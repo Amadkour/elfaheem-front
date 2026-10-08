@@ -76,9 +76,9 @@ class InstructorData {
 
 class HomeProvider extends BaseProvider {
   // ── State ──────────────────────────────────────────────────────────────────
-  final ApiClient _api;
+  final ApiClient api;
 
-  HomeProvider({ApiClient? api}) : _api = api ?? ApiClient();
+  HomeProvider({ApiClient? api}) : api = api ?? ApiClient();
 
   // Upcoming banner — in production this comes from the dashboard API
   final UpcomingCourse upcomingCourse = const UpcomingCourse(
@@ -105,12 +105,13 @@ class HomeProvider extends BaseProvider {
   Future<void> fetchStudentDashboard() async {
     makeLoading();
     final result = await run(
-      () => _api.get(
+          () => api.get(
         '/api/v1/teacher/student-dashboard',
         auth: true,
       ),
     );
-    makeLoading();
+    // Request failed → run() already holds the error. This used to throw "operator [] on null" here.
+    if (result is! Map) return;
 
     if (result['categories'] is List) {
       categories = (result['categories'] as List)
@@ -119,21 +120,28 @@ class HomeProvider extends BaseProvider {
       notifyListeners();
     }
 
-    if (result['enrolled_courses'] is List) {
-      myCourses = (result['enrolled_courses'] as List)
-          .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      notifyListeners();
-
+    // if (result['enrolled_courses'] is List) {
+    //   myCourses = (result['enrolled_courses'] as List)
+    //       .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
+    //       .toList();
+    //   notifyListeners();
+    //
+    // }
+    //
+    // if (result['other_courses'] is List) {
+    //   otherCourses = (result['other_courses'] as List)
+    //       .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
+    //       .toList();
+    //   notifyListeners();
+    //
+    // }
+    List<Map<String, dynamic>> _asMapList(dynamic v) {
+      if (v is List && v.isNotEmpty && v.first is List) v = v.first; // [[...], total]
+      return v is List ? v.whereType<Map<String, dynamic>>().toList() : const [];
     }
 
-    if (result['other_courses'] is List) {
-      otherCourses = (result['other_courses'] as List)
-          .map<CourseModel>((e) => CourseModel.fromJson(e as Map<String, dynamic>))
-          .toList();
-      notifyListeners();
-
-    }
+    myCourses = _asMapList(result['enrolled_courses']).map(CourseModel.fromJson).toList();
+    otherCourses = _asMapList(result['other_courses']).map(CourseModel.fromJson).toList();
 
     if (result['best_teachers'] is Map &&
         result['best_teachers']['items'] is List) {

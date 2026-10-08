@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cross_file/cross_file.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:http/http.dart' hide MultipartFile;
@@ -11,6 +12,8 @@ import '../../../config/storage_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../student/models.dart';
+import '../../admin/enrollment_request/teacher_transfers_provider.dart';
+import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:path/path.dart' as p;
 
 enum PasswordStep { form, otp }
@@ -19,8 +22,8 @@ class ProfileProvider extends BaseProvider {
   final StorageService _storage;
 
   ProfileProvider({required StorageService storage, ApiClient? api})
-      : _api = api ?? ApiClient(),
-        _storage = storage {
+    : _api = api ?? ApiClient(),
+      _storage = storage {
     _loadCachedMode();
   }
 
@@ -68,6 +71,7 @@ class ProfileProvider extends BaseProvider {
 
   bool get notificationsEnabled => _notificationsEnabled;
 
+  @override
   bool isLoading = false;
 
   void toggleNotifications(bool value) {
@@ -92,8 +96,10 @@ class ProfileProvider extends BaseProvider {
 
   Future<UserModel?> uploadImage() async {
     try {
-      final ext =
-      p.extension(imageFile!.path).replaceFirst('.', '').toLowerCase();
+      final ext = p
+          .extension(imageFile!.path)
+          .replaceFirst('.', '')
+          .toLowerCase();
       final mimeType = switch (ext) {
         'png' => 'image/png',
         'webp' => 'image/webp',
@@ -112,8 +118,10 @@ class ProfileProvider extends BaseProvider {
           contentType: MediaType.parse(mimeType),
         ),
       });
-      final response =
-      await _api.dio.post('/api/v1/auth/me/image', data: formData);
+      final response = await _api.dio.post(
+        '/api/v1/auth/me/image',
+        data: formData,
+      );
       if (response.statusCode != 200) return null;
       return UserModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
@@ -127,8 +135,11 @@ class ProfileProvider extends BaseProvider {
 
   Future<bool> resendOtp(String email) async {
     final result = await run(
-          () => _api.post('/api/v1/auth/resend-otp2',
-          body: {'gmail': email}, auth: false),
+      () => _api.post(
+        '/api/v1/auth/resend-otp2',
+        body: {'gmail': email},
+        auth: false,
+      ),
     );
     return result != null;
   }
@@ -149,9 +160,7 @@ class ProfileProvider extends BaseProvider {
       if (dob != null && dob.isNotEmpty) body['dob'] = dob;
       if (bio != null && bio.isNotEmpty) body['bio'] = bio;
       if (country != null && country.isNotEmpty) body['country'] = country;
-      final r = await run(
-            () => ApiClient().put('/api/v1/auth/me', body: body),
-      );
+      final r = await run(() => ApiClient().put('/api/v1/auth/me', body: body));
       if (r != null && r is Map) {
         _setLoading(false);
         return UserModel.fromJson(r as Map<String, dynamic>);
@@ -171,21 +180,24 @@ class ProfileProvider extends BaseProvider {
     _setLoading(true);
     try {
       final r = await run(
-            () => ApiClient().put('/api/v1/auth/change-password', body: {
-          'gmail': email,
-          'old_password': oldPassword,
-          'new_password': newPassword,
-        }),
+        () => ApiClient().put(
+          '/api/v1/auth/change-password',
+          body: {
+            'gmail': email,
+            'old_password': oldPassword,
+            'new_password': newPassword,
+          },
+        ),
       );
       if (r != null && r is Map) {
-        _setLoading(false);
         return r['message'] as String;
       }
-    } catch (e) {
-      _setLoading(false);
       return null;
+    } catch (e) {
+      return null;
+    } finally {
+      _setLoading(false);
     }
-    return null;
   }
 
   void _setLoading(bool v) {
@@ -231,9 +243,14 @@ class ProfileProvider extends BaseProvider {
     _reset();
 
     if (context.mounted) {
+      context.read<TeacherTransfersProvider>().reset();
+      context.read<TeacherDeviceRequestsProvider>().reset();
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-            (route) => false,
+        MaterialPageRoute(
+          settings: RouteSettings(name: '/login'),
+          builder: (_) => const LoginScreen(),
+        ),
+        (route) => false,
       );
     }
   }
@@ -258,9 +275,11 @@ class ProfileProvider extends BaseProvider {
         _reset();
 
         if (context.mounted) {
+          context.read<TeacherTransfersProvider>().reset();
+          context.read<TeacherDeviceRequestsProvider>().reset();
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
+            (route) => false,
           );
         }
         return deleteAfter;
@@ -291,20 +310,26 @@ class ProfileProvider extends BaseProvider {
     notifyListeners();
   }
 
-//   ================================[favorite]=====================
+  //   ================================[favorite]=====================
   void setQuery(String q) {
     _query = q;
     notifyListeners();
   }
+
   String _query = '';
 
   List<CourseModel> get favourites {
     if (_query.isEmpty) return List.unmodifiable(_favourites);
     final q = _query.toLowerCase();
     return _favourites
-        .where((s) =>
-    s.name.toLowerCase().contains(q) ||
-      (  s.description?.toLowerCase().contains(q)??false))
+        .where(
+          (s) =>
+              (s.titleAr?.toLowerCase().contains(q) ?? false) ||
+              (s.titleEn?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionAr?.toLowerCase().contains(q) ?? false) ||
+              (s.descriptionEn?.toLowerCase().contains(q) ?? false),
+        )
         .toList();
   }
 }

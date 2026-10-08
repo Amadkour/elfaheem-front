@@ -4,7 +4,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../../config/app_config.dart' as Helpers;
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
+import '../../../../../utils/widget/app_navigator.dart';
 import '../../../../auth/auth_provider.dart';
 import 'app_responsive.dart';
 
@@ -22,6 +23,26 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   int _idx = 0;
 
+  // _AppShellState
+  @override
+  void initState() {
+    super.initState();
+    AppNavigator.requestedTab.addListener(_onTabRequest);
+  }
+
+  @override
+  void dispose() {
+    AppNavigator.requestedTab.removeListener(_onTabRequest);
+    super.dispose();
+  }
+
+  void _onTabRequest() {
+    final i = widget.pages.indexWhere(
+      (p) => p.id != null && p.id == AppNavigator.requestedTab.value,
+    );
+    if (i != -1 && mounted) setState(() => _idx = i);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -30,12 +51,16 @@ class _AppShellState extends State<AppShell> {
           ? _WebLayout(
               pages: widget.pages,
               idx: _idx,
-              onSelect: (i) { if(mounted) setState(() => _idx = i);},
+              onSelect: (i) {
+                if (mounted) setState(() => _idx = i);
+              },
             )
           : _MobileLayout(
               pages: widget.pages,
               idx: _idx,
-              onSelect: (i) { if(mounted) setState(() => _idx = i);},
+              onSelect: (i) {
+                if (mounted) setState(() => _idx = i);
+              },
             ),
     );
   }
@@ -48,12 +73,14 @@ class ShellPage {
   final IconData icon;
   final IconData activeIcon;
   final Widget child;
+  final String? id;
 
   const ShellPage({
     required this.label,
     required this.icon,
     required this.activeIcon,
     required this.child,
+    this.id,
   });
 }
 
@@ -64,8 +91,11 @@ class _WebLayout extends StatelessWidget {
   final int idx;
   final ValueChanged<int> onSelect;
 
-  const _WebLayout(
-      {required this.pages, required this.idx, required this.onSelect});
+  const _WebLayout({
+    required this.pages,
+    required this.idx,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -89,8 +119,11 @@ class _Sidebar extends StatelessWidget {
   final int idx;
   final ValueChanged<int> onSelect;
 
-  const _Sidebar(
-      {required this.pages, required this.idx, required this.onSelect});
+  const _Sidebar({
+    required this.pages,
+    required this.idx,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -102,9 +135,7 @@ class _Sidebar extends StatelessWidget {
       width: Breakpoints.sidebarW,
       decoration: const BoxDecoration(
         color: Color(0xFF12102A),
-        border: Border(
-          left: BorderSide(color: Color(0x22FFFFFF), width: 0.5),
-        ),
+        border: Border(left: BorderSide(color: Color(0x22FFFFFF), width: 0.5)),
       ),
       child: Column(
         children: [
@@ -121,14 +152,17 @@ class _Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(11),
                     boxShadow: [
                       BoxShadow(
-                        color: context.colors.primary.withValues(alpha:0.4),
+                        color: context.colors.primary.withValues(alpha: 0.4),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.school_rounded,
-                      color: Colors.white, size: 20),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text(
@@ -144,7 +178,7 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          Container(height: 0.5, color: Colors.white.withValues(alpha:0.08)),
+          Container(height: 0.5, color: Colors.white.withValues(alpha: 0.08)),
           const SizedBox(height: 12),
 
           // Nav items
@@ -161,7 +195,7 @@ class _Sidebar extends StatelessWidget {
           }),
 
           const Spacer(),
-          Container(height: 0.5, color: Colors.white.withValues(alpha:0.08)),
+          Container(height: 0.5, color: Colors.white.withValues(alpha: 0.08)),
 
           // User footer
           Padding(
@@ -204,7 +238,7 @@ class _Sidebar extends StatelessWidget {
                       Text(
                         'طالب',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha:0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                           fontSize: 10,
                           fontFamily: 'bahji',
                         ),
@@ -245,7 +279,7 @@ class _SideNavItem extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             color: active
-                ? context.colors.primary.withValues(alpha:0.22)
+                ? context.colors.primary.withValues(alpha: 0.22)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -257,23 +291,27 @@ class _SideNavItem extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   gradient: active ? context.colors.primaryGradient : null,
-                  color: active ? null : Colors.white.withValues(alpha:0.07),
+                  color: active ? null : Colors.white.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: context.colors.primary.withValues(alpha:0.35),
+                            color: context.colors.primary.withValues(
+                              alpha: 0.35,
+                            ),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
                         ]
                       : null,
                 ),
-                child: Icon(icon,
-                    size: 18,
-                    color: active
-                        ? Colors.white
-                        : Colors.white.withValues(alpha:0.5)),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: active
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.5),
+                ),
               ),
               const SizedBox(width: 12),
               Text(
@@ -281,10 +319,9 @@ class _SideNavItem extends StatelessWidget {
                 style: TextStyle(
                   color: active
                       ? Colors.white
-                      : Colors.white.withValues(alpha:0.55),
+                      : Colors.white.withValues(alpha: 0.55),
                   fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                   fontFamily: 'bahji',
                 ),
               ),
@@ -303,8 +340,11 @@ class _MobileLayout extends StatelessWidget {
   final int idx;
   final ValueChanged<int> onSelect;
 
-  const _MobileLayout(
-      {required this.pages, required this.idx, required this.onSelect});
+  const _MobileLayout({
+    required this.pages,
+    required this.idx,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -325,8 +365,11 @@ class _BottomNav extends StatelessWidget {
   final int idx;
   final ValueChanged<int> onSelect;
 
-  const _BottomNav(
-      {required this.pages, required this.idx, required this.onSelect});
+  const _BottomNav({
+    required this.pages,
+    required this.idx,
+    required this.onSelect,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -335,13 +378,13 @@ class _BottomNav extends StatelessWidget {
         color: context.colors.cardBg,
         border: Border(
           top: BorderSide(
-            color: Colors.black.withValues(alpha:0.07),
+            color: Colors.black.withValues(alpha: 0.07),
             width: 0.5,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -349,8 +392,7 @@ class _BottomNav extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
             children: pages.asMap().entries.map((e) {
               final i = e.key;
@@ -369,8 +411,9 @@ class _BottomNav extends StatelessWidget {
                         width: 42,
                         height: 30,
                         decoration: BoxDecoration(
-                          gradient:
-                              active ? context.colors.primaryGradient : null,
+                          gradient: active
+                              ? context.colors.primaryGradient
+                              : null,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(

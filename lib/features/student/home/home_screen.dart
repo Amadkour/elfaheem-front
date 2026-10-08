@@ -1,20 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/category/categories_provider.dart';
 import 'package:flutter_education_app/features/category/categories_screen.dart';
-import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
+import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../../utils/widget/parent_component.dart';
+import '../../shared/course/course_access.dart';
 import '../../teacher/home/home_screen.dart';
 import '../courses/list/courses_list_screen.dart';
 import '../models.dart';
 import 'component/category_row.dart';
-import 'component/course_row.dart';
 import 'component/home_section_header.dart';
 import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
@@ -49,9 +51,9 @@ class _CoursesShimmer extends StatelessWidget {
           scrollDirection: Axis.vertical,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) =>
-          const Shimmer(width: 50, height: 50, radius: 25),
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, _) =>
+              const Shimmer(width: 50, height: 50, radius: 25),
         ),
       ),
       Expanded(
@@ -62,8 +64,8 @@ class _CoursesShimmer extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (_, __) =>
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (_, _) =>
                 Shimmer(width: context.width / 5, height: context.height / 5),
           ),
         ),
@@ -75,8 +77,8 @@ class _CoursesShimmer extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 20),
           itemCount: 3,
-          separatorBuilder: (_, __) => const SizedBox(width: 14),
-          itemBuilder: (_, __) =>
+          separatorBuilder: (_, _) => const SizedBox(width: 14),
+          itemBuilder: (_, _) =>
               Shimmer(width: context.width / 5, height: context.height / 5),
         ),
       ),
@@ -88,9 +90,9 @@ class _CoursesShimmer extends StatelessWidget {
             scrollDirection: Axis.vertical,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: 3,
-            separatorBuilder: (_, __) => const SizedBox(width: 14),
-            itemBuilder: (_, __) =>
-            const Shimmer(width: 50, height: 50, radius: 25),
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (_, _) =>
+                const Shimmer(width: 50, height: 50, radius: 25),
           ),
         ),
       ),
@@ -109,147 +111,202 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HomeProvider>(builder: (context, provider, child) {
-      return BasePage(
-        useWebCard: true,
-        child: SafeArea(
-          child: Center(
-            child: provider.isLoading
-                ? const _CoursesShimmer()
-                : ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 900),
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: [
-                  // ── Top bar ──────────────────────────────────────────
-                  SliverToBoxAdapter(child: TopBar()),
+    return Consumer<HomeProvider>(
+      builder: (context, provider, child) {
+        return BasePage(
+          key: const ValueKey('student_home'),
+          useWebCard: true,
+          child: SafeArea(
+            child: Center(
+              child: provider.isLoading
+                  ? const _CoursesShimmer()
+                  : ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 900),
+                      child: CustomScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        slivers: [
+                          // ── Top bar ──────────────────────────────────────────
+                          SliverToBoxAdapter(
+                            child: ParentComponent(
+                              child: TopBar(
+                                key: const ValueKey('student_home.top_bar'),
+                              ),
+                            ),
+                          ),
 
-                  // ── Search bar ───────────────────────────────────────
-                  SliverToBoxAdapter(
-                      child: SearchBarIcon(
-                        courses: provider.otherCourses,
-                      )),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 24)),
+                          // ── Search bar ───────────────────────────────────────
+                          SliverToBoxAdapter(
+                            child: ParentComponent(
+                              key: const ValueKey('student_home.search'),
+                              child: SearchBarIcon(
+                                courses: provider.otherCourses,
+                              ),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child:ParentComponent(
+                              key: ValueKey('student_home.upcoming_banner'),
+                              child: SizedBox(height: 24))),
 
-                  // ── Upcoming session banner ──────────────────────────
-                  const SliverToBoxAdapter(
-                      child: _UpcomingBanner()),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 28)),
+                          // ── Upcoming session banner ──────────────────────────
+                          const SliverToBoxAdapter(
+                            child: ParentComponent(
+                              key: ValueKey('student_home.upcoming_banner'),
+                              child: _UpcomingBanner(),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child:ParentComponent(
+                              key: ValueKey('student_home.upcoming_banner'),
+                              child: SizedBox(height: 28))),
 
-                  // ── Categories ───────────────────────────────────────
-                  if (context
-                      .read<CategoriesProvider>()
-                      .categories
-                      .length >
-                      5)
-                    SliverToBoxAdapter(
-                      child: SectionHeader(
-                        title: 'categories'.tr,
-                        actionLabel: 'show_more'.tr,
-                        onAction: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) =>
-                              const CategoriesScreen()),
-                        ),
+                          // ── Categories ───────────────────────────────────────
+                          if (context
+                                  .read<CategoriesProvider>()
+                                  .categories
+                                  .length >
+                              5)
+                            SliverToBoxAdapter(
+                              child: ParentComponent(
+                                key: const ValueKey(
+                                  'student_home.category',
+                                ),
+                                child: SectionHeader(
+                                  title: 'categories'.tr,
+                                  actionLabel: 'show_more'.tr,
+                                  onAction: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const CategoriesScreen(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                          const SliverToBoxAdapter(
+                            child: ParentComponent(
+                                key: ValueKey(
+                                  'student_home.category',
+                                ),
+                                child: CategoriesRow()),
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                          // ── My Courses ───────────────────────────────────────
+                          if (provider.myCourses.isNotEmpty) ...[
+                            SliverToBoxAdapter(
+                              child: ParentComponent(
+                                key: const ValueKey(
+                                  'student_home.courses',
+                                ),
+                                child: SectionHeader(
+                                  title: 'my_courses'.tr,
+                                  actionLabel: 'show_more'.tr,
+                                  onAction: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CoursesListScreen(
+                                        homeCourses: provider.myCourses,
+                                        forMyCourses: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 16),
+                            ),
+                            SliverToBoxAdapter(
+                              key: const ValueKey(
+                                'student_home.courses',
+                              ),
+                              child: ParentComponent(
+                                child: HomeCourseList(
+                                  courses: provider.myCourses,
+                                  pageName: 'home-my-courses',
+                                  isTeacher: false,
+                                  onTap: (CourseModel c) =>
+                                      openCourse(context, c, provider.api),
+
+                                  hasMore: false,
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          // ── Other Courses ────────────────────────────────────
+                          if (provider.otherCourses.isNotEmpty) ...[
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 28),
+                            ),
+                            SliverToBoxAdapter(
+                              child: ParentComponent(
+                                key: const ValueKey(
+                                  'student_home.other_courses',
+                                ),
+                                child: SectionHeader(
+                                  title: 'other_courses'.tr,
+                                  actionLabel: 'show_more'.tr,
+                                  onAction: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => CoursesListScreen(
+                                        homeCourses: provider.otherCourses,
+                                        forMyCourses: false,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: 16),
+                            ),
+                            SliverToBoxAdapter(
+                              child: ParentComponent(
+                                key: const ValueKey(
+                                  'student_home.other_courses',
+                                ),
+                                child: HomeCourseList(
+                                  pageName: 'home-other-courses',
+                                  courses: provider.otherCourses,
+                                  isTeacher: false,
+                                  // Private courses ask for the access code first.
+                                  onTap: (CourseModel c) =>
+                                      openCourse(context, c, provider.api),
+                                  hasMore: false,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SliverToBoxAdapter(child: SizedBox(height: 28)),
+
+                          // ── Best teachers ────────────────────────────────────
+                          SliverToBoxAdapter(
+                            child: ParentComponent(
+                              key: const ValueKey(
+                                'student_home.best_teachers',
+                              ),
+                              child: SectionHeader(
+                                title: 'best_teachers'.tr,
+                                actionLabel: 'show_more'.tr,
+                                onAction: () {},
+                              ),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                          SliverToBoxAdapter(
+                            child: ParentComponent(
+                              key: const ValueKey('student_home.best_teachers'),
+                              child: InstructorsRow(),
+                            ),
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+                        ],
                       ),
                     ),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 16)),
-                  const SliverToBoxAdapter(child: CategoriesRow()),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 28)),
-
-                  // ── My Courses ───────────────────────────────────────
-                  if (provider.myCourses.isNotEmpty) ...[
-                    SliverToBoxAdapter(
-                      child: SectionHeader(
-                        title: 'my_courses'.tr,
-                        actionLabel: 'show_more'.tr,
-                        onAction: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => CoursesListScreen(
-                                homeCourses: provider.myCourses,
-                                forMyCourses: true,
-                              )),
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(
-                        child: SizedBox(height: 16)),
-                    SliverToBoxAdapter(
-                      child: CoursesRow(
-                        courses: provider.myCourses,
-                        pageName: 'home-my-courses',
-                        isTeacher: false,
-                        onTap: (CourseModel c) {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      CourseDetailScreen(course: c)));
-                        },
-                      ),
-                    ),
-                  ],
-
-                  // ── Other Courses ────────────────────────────────────
-                  if (provider.otherCourses.isNotEmpty) ...[
-                    const SliverToBoxAdapter(
-                        child: SizedBox(height: 28)),
-                    SliverToBoxAdapter(
-                      child: SectionHeader(
-                        title: 'other_courses'.tr,
-                        actionLabel: 'show_more'.tr,
-                        onAction: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => CoursesListScreen(
-                                homeCourses: provider.otherCourses,
-                                forMyCourses: false,
-                              )),
-                        ),
-                      ),
-                    ),
-                    const SliverToBoxAdapter(
-                        child: SizedBox(height: 16)),
-                    SliverToBoxAdapter(
-                        child: CoursesRow(
-                          pageName: 'home-other-courses',
-                          courses: provider.otherCourses,
-                          isTeacher: false,
-                          onTap: (CourseModel c) {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        CourseDetailScreen(course: c)));
-                          },
-                        )),
-                  ],
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 28)),
-
-                  // ── Best teachers ────────────────────────────────────
-                  SliverToBoxAdapter(
-                    child: SectionHeader(
-                      title: 'best_teachers'.tr,
-                      actionLabel: 'show_more'.tr,
-                      onAction: () {},
-                    ),
-                  ),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 16)),
-                  SliverToBoxAdapter(child: InstructorsRow()),
-                  const SliverToBoxAdapter(
-                      child: SizedBox(height: 40)),
-                ],
-              ),
             ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 }
 
@@ -258,7 +315,7 @@ class _HomeScreenState extends State<HomeScreen> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _UpcomingBanner extends StatefulWidget {
-  const _UpcomingBanner();
+  const _UpcomingBanner({super.key});
 
   @override
   State<_UpcomingBanner> createState() => _UpcomingBannerState();
@@ -277,10 +334,13 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
   void initState() {
     super.initState();
     _bellCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 400));
-    _bellAnim = Tween<double>(begin: -200, end: 200).animate(
-      CurvedAnimation(parent: _bellCtrl, curve: Curves.elasticIn),
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
     );
+    _bellAnim = Tween<double>(
+      begin: -200,
+      end: 200,
+    ).animate(CurvedAnimation(parent: _bellCtrl, curve: Curves.elasticIn));
     _schedProv.fetch().then((_) => _startTick());
   }
 
@@ -294,14 +354,18 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
 
   void _startTick() {
     _recalcSeconds();
-    _tickTimer?.cancel();
-    _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (_secondsLeft > 0) {
-        if (mounted) setState(() => _secondsLeft -= 60);
-      } else {
-        _schedProv.fetch().then((_) => _recalcSeconds());
-      }
-    });
+    // _tickTimer?.cancel();
+    // _tickTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+    //   if(context.read<AuthProvider>().isAuthenticated){
+    //     _tickTimer?.cancel();
+    //     return;
+    //   }
+    //   if (_secondsLeft > 0) {
+    //     if (mounted) setState(() => _secondsLeft -= 60);
+    //   } else {
+    //     _schedProv.fetch().then((_) => _recalcSeconds());
+    //   }
+    // });
     Timer.periodic(const Duration(seconds: 5), (_) {
       if (mounted) _bellCtrl.forward(from: 0);
     });
@@ -314,8 +378,9 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
       return;
     }
     if (next.isOngoing) {
-      if (mounted)
+      if (mounted) {
         setState(() => _secondsLeft = (next.minutesUntilEnd ?? 0) * 60);
+      }
     } else {
       final mu = next.minutesUntilStart ?? 0;
       if (mounted) setState(() => _secondsLeft = mu > 0 ? mu * 60 : 0);
@@ -337,7 +402,7 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _schedProv,
-      builder: (_, __) {
+      builder: (_, _) {
         final next = _schedProv.nextSlot;
         final isOngoing = next?.isOngoing ?? false;
 
@@ -353,14 +418,14 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
             decoration: BoxDecoration(
               gradient: gradient,
-              borderRadius:
-              BorderRadius.circular(context.colors.radiusXL),
+              borderRadius: BorderRadius.circular(context.colors.radiusXL),
               boxShadow: [
                 BoxShadow(
-                  color: (isOngoing
-                      ? context.colors.danger
-                      : context.colors.primary)
-                      .withValues(alpha: 0.38),
+                  color:
+                      (isOngoing
+                              ? context.colors.danger
+                              : context.colors.primary)
+                          .withValues(alpha: 0.38),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -370,9 +435,11 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
               children: [
                 // Decorative circles
                 Positioned(
-                  right: -22, top: -22,
+                  right: -22,
+                  top: -22,
                   child: Container(
-                    width: 110, height: 110,
+                    width: 110,
+                    height: 110,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
@@ -380,9 +447,11 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                   ),
                 ),
                 Positioned(
-                  right: 36, bottom: -34,
+                  right: 36,
+                  bottom: -34,
                   child: Container(
-                    width: 75, height: 75,
+                    width: 75,
+                    height: 75,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.06),
                       shape: BoxShape.circle,
@@ -390,9 +459,11 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                   ),
                 ),
                 Positioned(
-                  left: -16, top: -16,
+                  left: -16,
+                  top: -16,
                   child: Container(
-                    width: 60, height: 60,
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.05),
                       shape: BoxShape.circle,
@@ -406,25 +477,29 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     Expanded(
                       child: next == null
                           ? _BannerContent(
-                        tag: 'today'.tr,
-                        title: 'no_sessions_today_title'.tr,
-                        subtitle: 'check_weekly_schedule'.tr,
-                      )
+                              tag: 'today'.tr,
+                              title: 'no_sessions_today_title'.tr,
+                              subtitle: 'check_weekly_schedule'.tr,
+                            )
                           : _BannerContent(
-                        tag: next.isOngoing
-                            ? 'session_ongoing_tag'.tr
-                            : 'upcoming_session_tag'.tr,
-                        title: next.courseName,
-                        subtitle:
-                        '${next.startTime} — ${next.endTime}',
-                        countdown: _countdownText.isNotEmpty
-                            ? (next.isOngoing
-                            ? 'ends_after_countdown'.tr
-                            .replaceAll('{t}', _countdownText)
-                            : 'starts_after_countdown'.tr
-                            .replaceAll('{t}', _countdownText))
-                            : null,
-                      ),
+                              tag: next.isOngoing
+                                  ? 'session_ongoing_tag'.tr
+                                  : 'upcoming_session_tag'.tr,
+                              title: next.courseName,
+                              subtitle: '${next.startTime} — ${next.endTime}',
+                              countdown: _countdownText.isNotEmpty
+                                  ? (next.isOngoing
+                                        ? 'ends_after_countdown'.tr.replaceAll(
+                                            '{t}',
+                                            _countdownText,
+                                          )
+                                        : 'starts_after_countdown'.tr
+                                              .replaceAll(
+                                                '{t}',
+                                                _countdownText,
+                                              ))
+                                  : null,
+                            ),
                     ),
                     const SizedBox(width: 16),
 
@@ -432,9 +507,12 @@ class _UpcomingBannerState extends State<_UpcomingBanner>
                     AnimatedBuilder(
                       animation: _bellAnim,
                       builder: (_, child) => Transform.rotate(
-                          angle: _bellAnim.value, child: child),
+                        angle: _bellAnim.value,
+                        child: child,
+                      ),
                       child: Container(
-                        width: 58, height: 58,
+                        width: 58,
+                        height: 58,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.20),
                           shape: BoxShape.circle,
@@ -484,8 +562,7 @@ class _BannerContent extends StatelessWidget {
         Row(
           children: [
             Container(
-              padding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.22),
                 borderRadius: BorderRadius.circular(20),
@@ -501,8 +578,11 @@ class _BannerContent extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 5),
-            Icon(Icons.access_time_rounded,
-                color: Colors.white.withValues(alpha: 0.75), size: 13),
+            Icon(
+              Icons.access_time_rounded,
+              color: Colors.white.withValues(alpha: 0.75),
+              size: 13,
+            ),
             const SizedBox(width: 5),
             Text(
               subtitle,
@@ -531,8 +611,7 @@ class _BannerContent extends StatelessWidget {
 
         if (countdown != null) ...[
           Container(
-            padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(20),

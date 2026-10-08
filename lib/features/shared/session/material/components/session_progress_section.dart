@@ -7,7 +7,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry — the whole progress block
@@ -17,12 +17,14 @@ class SessionProgressSection extends StatelessWidget {
   final int totalMaterial;
   final int completeMaterial;
   final bool isTeacher;
+  final bool isFull;
 
   const SessionProgressSection({
     super.key,
     required this.totalMaterial,
     required this.completeMaterial,
     required this.isTeacher,
+    required this.isFull,
   });
 
   @override
@@ -34,42 +36,74 @@ class SessionProgressSection extends StatelessWidget {
     final ratio = (done / total).clamp(0.0, 1.0);
     final isFinished = done == total;
 
-    final Color fillStart =
-        isFinished ? const Color(0xFF00C48C) : const Color(0xFF4DA6FF);
-    final Color fillEnd =
-        isFinished ? const Color(0xFF00E5A0) : const Color(0xFF845EF7);
+    final Color fillStart = isFinished
+        ? const Color(0xFF00C48C)
+        : const Color(0xFF4DA6FF);
+    final Color fillEnd = isFinished
+        ? const Color(0xFF00E5A0)
+        : const Color(0xFF845EF7);
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              fillStart.withValues(alpha: 0.06),
-              fillEnd.withValues(alpha: 0.04),
-            ],
-          ),
+          gradient: isFull ? context.colors.lightAccentGradient : null,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: fillStart.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _LabelRow(
-              done: done,
-              total: total,
-              ratio: ratio,
-              isFinished: isFinished,
-              fillStart: fillStart,
-              fillEnd: fillEnd,
-            ),
-            const SizedBox(height: 8),
-            SegmentedProgressBar(
-              total: total,
-              done: done,
-              fillStart: fillStart,
-              fillEnd: fillEnd,
+            if (isFull) ...[
+              _LabelRow(
+                done: done,
+                total: total,
+                ratio: ratio,
+                isFinished: isFinished,
+                fillStart: fillStart,
+                fillEnd: fillEnd,
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              children: [
+                Expanded(
+                  child: SegmentedProgressBar(
+                    total: total,
+                    done: done,
+                    fillStart: fillStart,
+                    fillEnd: fillEnd,
+                  ),
+                ),
+                if (!isFull) ...[
+                  SizedBox(width: 5),
+                  RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$done',
+                          style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: fillStart,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' / $total',
+                          style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: context.colors.textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -113,7 +147,9 @@ class _LabelRow extends StatelessWidget {
           child: isFinished
               ? _CompletedBadgePill(key: const ValueKey('done'))
               : _InProgressBadgePill(
-                  key: const ValueKey('progress'), fillStart: fillStart),
+                  key: const ValueKey('progress'),
+                  fillStart: fillStart,
+                ),
         ),
         const Spacer(),
         // Fraction counter
@@ -153,7 +189,7 @@ class _LabelRow extends StatelessWidget {
             '${(ratio * 100).toInt()}%',
             style: const TextStyle(
               fontFamily: 'bahji',
-              fontSize: 10,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
@@ -169,36 +205,37 @@ class _CompletedBadgePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              colors: [Color(0xFF00C48C), Color(0xFF00E5A0)]),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF00C48C).withValues(alpha: 0.35),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+      ),
+      borderRadius: BorderRadius.circular(20),
+      boxShadow: [
+        BoxShadow(
+          color: const Color(0xFF00C48C).withValues(alpha: 0.35),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.verified_rounded, size: 12, color: Colors.white),
-            const SizedBox(width: 4),
-            Text(
-              'completed'.tr,
-              style: const TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
-          ],
+      ],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.verified_rounded, size: 12, color: Colors.white),
+        const SizedBox(width: 4),
+        Text(
+          'completed'.tr,
+          style: const TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _InProgressBadgePill extends StatelessWidget {
@@ -208,29 +245,29 @@ class _InProgressBadgePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: fillStart.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: fillStart.withValues(alpha: 0.3)),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: fillStart.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: fillStart.withValues(alpha: 0.3)),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.auto_stories_rounded, size: 11, color: fillStart),
+        const SizedBox(width: 4),
+        Text(
+          'you_progress_in_course'.tr,
+          style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: fillStart,
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.auto_stories_rounded, size: 11, color: fillStart),
-            const SizedBox(width: 4),
-            Text(
-              'you_progress'.tr,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: fillStart,
-              ),
-            ),
-          ],
-        ),
-      );
+      ],
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -293,39 +330,41 @@ class SegmentedProgressBar extends StatelessWidget {
 
     // Smooth gradient bar for large material counts
     final ratio = (done / total).clamp(0.0, 1.0);
-    return LayoutBuilder(builder: (_, constraints) {
-      return Stack(
-        children: [
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: context.colors.textLight.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 600),
-            curve: Curves.easeOutCubic,
-            height: 8,
-            width: constraints.maxWidth * ratio,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [fillStart, fillEnd],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
+    return LayoutBuilder(
+      builder: (_, constraints) {
+        return Stack(
+          children: [
+            Container(
+              height: 8,
+              decoration: BoxDecoration(
+                color: context.colors.textLight.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
               ),
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: fillStart.withValues(alpha: 0.40),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
-              ],
             ),
-          ),
-        ],
-      );
-    });
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              height: 8,
+              width: constraints.maxWidth * ratio,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [fillStart, fillEnd],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: fillStart.withValues(alpha: 0.40),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

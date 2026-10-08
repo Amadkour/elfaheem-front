@@ -5,15 +5,19 @@ import 'dart:developer';
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_recorder.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Design System tokens (mirrors PreJoinPage & RoomPage)
 // ─────────────────────────────────────────────────────────────────────────────
 const _cyan      = Color(0xFF00D4FF);
 const _rose      = Color(0xFFFF4F72);
+const _amber     = Color(0xFFFFB800);   // pause indicator
+const _emerald   = Color(0xFF00E5A0);   // recording active
 const _textHigh  = Color(0xFFFFFFFF);
 const _textMid   = Color(0xB3FFFFFF);
 const _textLow   = Color(0x66FFFFFF);
@@ -30,6 +34,17 @@ class ControlsWidget extends StatefulWidget {
   final bool isTeacher;
   final Future<void> Function()? onToggleScreenShare;
 
+  // ── NEW: pause / resume recording callbacks ───────────────────────────────
+  // Passed from room.dart. Each is null when the action is not available
+  // (wrong RecState, transition in flight, or not a teacher). ControlsWidget
+  // disables the corresponding button automatically when the callback is null.
+  final Future<void> Function()? onPauseRecording;
+  final Future<void> Function()? onResumeRecording;
+
+  // Current recorder state — used to pick the correct icon / label / colour
+  // for the combined Pause/Resume button, and to gate the End button.
+  final RecState? recorderState;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -37,6 +52,10 @@ class ControlsWidget extends StatefulWidget {
         required this.onEndSession,
         required this.isTeacher,
         this.onToggleScreenShare,
+        // NEW optional — default null keeps non-teacher builds unchanged
+        this.onPauseRecording,
+        this.onResumeRecording,
+        this.recorderState,
       });
 
   @override
@@ -46,16 +65,18 @@ class ControlsWidget extends StatefulWidget {
 class _ControlsWidgetState extends State<ControlsWidget>
     with SingleTickerProviderStateMixin {
   CameraPosition position = CameraPosition.front;
+  bool _camActionBusy = false; // true while the camera on/off/flip cycle is in flight
 
   List<MediaDevice>? _audioInputs;
   List<MediaDevice>? _audioOutputs;
   List<MediaDevice>? _videoInputs;
 
   StreamSubscription? _subscription;
-  bool _speakerphoneOn   = Hardware.instance.speakerOn ?? false;
-  bool _screenShareBusy  = false;
+  bool _speakerphoneOn  = Hardware.instance.speakerOn ?? false;
+  bool _screenShareBusy = false;
+  bool _recActionBusy   = false;   // true while pause/resume is in flight
 
-  // Press animation
+  // Press animation for End button
   late AnimationController _endPressAnim;
 
   @override
@@ -107,23 +128,115 @@ class _ControlsWidgetState extends State<ControlsWidget>
     setState(() {});
   }
 
-  void _flipCamera() async {
-    final track = participant.videoTrackPublications
-        .where((p) => !p.isScreenShare && p.track != null)
-        .firstOrNull
-        ?.track;
-    if (track == null) return;
+  // ── Camera: two independent controls ────────────────────────────────────
+  // Button 1 — on/off: enabled whenever at least one camera (front or
+  // back) is available. Button 2 — front/back flip: only shown at all when
+  // a back camera actually exists (see _hasBackCamera). "back" always
+  // auto-selects the best available rear lens (see _bestBackCameraDevice)
+  // rather than whatever the OS/SDK's own default facing-mode pick is,
+  // which on multi-camera phones isn't guaranteed to be the main sensor.
+  bool get _hasAnyCamera => _videoInputs == null || _videoInputs!.isNotEmpty;
+  bool get _hasBackCamera => _bestBackCameraDevice() != null;
+
+  void _toggleCameraOnOff() async {
+    if (_camActionBusy) return;
+    if (mounted) setState(() => _camActionBusy = true);
     try {
-      final next = position.switched();
-      await track.setCameraPosition(next);
-      if(mounted) setState(() => position = next);
-    } catch (e) { log('flip camera: $e'); }
+      final isCamOn = participant.isCameraEnabled();
+      if (!isCamOn) {
+        // Always resume on front by default.
+        position = CameraPosition.front;
+        await participant.setCameraEnabled(true);
+        // setCameraEnabled(true) uses whichever default the SDK/OS
+        // resolves to, which isn't guaranteed to be "front" on every
+        // platform — pin it explicitly once the track exists.
+        final track = _localCameraTrack();
+        if (track != null) {
+          await track.setCameraPosition(CameraPosition.front);
+        }
+      } else {
+        await participant.setCameraEnabled(false);
+      }
+    } catch (e) {
+      log('toggle camera on/off: $e');
+    } finally {
+      if (mounted) setState(() => _camActionBusy = false);
+    }
+  }
+
+  void _toggleFrontBack() async {
+    if (_camActionBusy) return;
+    if (mounted) setState(() => _camActionBusy = true);
+    try {
+      if (position == CameraPosition.back) {
+        final track = _localCameraTrack();
+        await track?.setCameraPosition(CameraPosition.front);
+        if (mounted) setState(() => position = CameraPosition.front);
+      } else {
+        await _switchToBestBackCamera();
+      }
+    } catch (e) {
+      log('toggle front/back: $e');
+    } finally {
+      if (mounted) setState(() => _camActionBusy = false);
+    }
+  }
+
+  LocalVideoTrack? _localCameraTrack() => participant.videoTrackPublications
+      .where((p) => !p.isScreenShare && p.track != null)
+      .firstOrNull
+      ?.track;
+
+  /// Best-effort: finds the primary (non-ultra-wide/telephoto/macro) rear
+  /// camera from enumerated devices. Camera labels aren't standardized
+  /// across devices/OSes/browsers, so this is a heuristic — it prefers a
+  /// device explicitly excluded from known secondary-lens keywords, and
+  /// otherwise falls back to enumeration order, since Android's camera ID
+  /// 0 (almost always enumerated first) is conventionally the main rear
+  /// sensor, with ultra-wide/telephoto/macro lenses assigned higher IDs.
+  /// Also doubles as the "does a back camera exist at all" check for
+  /// _hasBackCamera, gating whether the flip button shows up.
+  MediaDevice? _bestBackCameraDevice() {
+    final inputs = _videoInputs;
+    if (inputs == null || inputs.isEmpty) return null;
+    final backs = inputs.where((d) {
+      final l = d.label.toLowerCase();
+      return l.contains('back') || !l.contains('front');
+    }).toList();
+    if (backs.isEmpty) return null;
+    const secondaryLensHints = [
+      'ultra', 'wide-angle', 'wide angle', 'macro', 'tele', 'zoom', 'depth',
+    ];
+    final primary = backs.where((d) {
+      final l = d.label.toLowerCase();
+      return !secondaryLensHints.any(l.contains);
+    }).toList();
+    return (primary.isNotEmpty ? primary : backs).first;
+  }
+
+  Future<void> _switchToBestBackCamera() async {
+    final device = _bestBackCameraDevice();
+    try {
+      if (device != null) {
+        await widget.room.setVideoInputDevice(device);
+      } else {
+        // No usable label info to pick from — fall back to plain
+        // facing-mode selection, which is at least correct on
+        // single/dual rear-camera devices even if it can't guarantee the
+        // main sensor on more complex multi-lens setups.
+        final track = _localCameraTrack();
+        await track?.setCameraPosition(CameraPosition.back);
+      }
+      if (mounted) setState(() => position = CameraPosition.back);
+    } catch (e) {
+      log('switch to back camera: $e');
+    }
   }
 
   // ── Screen share ───────────────────────────────────────────────────────────
   void _onScreenShareToggle() async {
     if (_screenShareBusy) return;
-    if(mounted) setState(() => _screenShareBusy = true);
+    if (mounted) setState(() => _screenShareBusy = true);
     try {
       if (lkPlatformIsDesktop()) {
         await _toggleDesktopScreenShare();
@@ -132,7 +245,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
         await widget.onToggleScreenShare!();
       }
     } catch (e) { log('screen share toggle: $e'); }
-    finally { if (mounted) if(mounted) setState(() => _screenShareBusy = false); }
+    finally { if (mounted) setState(() => _screenShareBusy = false); }
   }
 
   Future<void> _toggleDesktopScreenShare() async {
@@ -143,10 +256,32 @@ class _ControlsWidgetState extends State<ControlsWidget>
           context: context, builder: (_) => ScreenSelectDialog());
       if (source == null) return;
       final track = await LocalVideoTrack.createScreenShareTrack(
-        ScreenShareCaptureOptions(sourceId: source.id, maxFrameRate: 15.0, captureScreenAudio: true),
+        ScreenShareCaptureOptions(
+            sourceId: source.id, maxFrameRate: 15.0, captureScreenAudio: true),
       );
       await participant.publishVideoTrack(track);
     } catch (e) { log('desktop screen share: $e'); }
+  }
+
+  // ── NEW: pause / resume recording ─────────────────────────────────────────
+  //
+  // A single button toggles between Pause and Resume depending on recorderState.
+  // The callback coming from room.dart is already null when the action is
+  // unavailable, so we just disable the button in that case.
+  void _onRecordingAction() async {
+    if (_recActionBusy) return;
+    final isPaused = widget.recorderState == RecState.paused;
+    final cb = isPaused ? widget.onResumeRecording : widget.onPauseRecording;
+    if (cb == null) return;
+
+    if (mounted) setState(() => _recActionBusy = true);
+    try {
+      await cb();
+    } catch (e) {
+      log('recording action error: $e');
+    } finally {
+      if (mounted) setState(() => _recActionBusy = false);
+    }
   }
 
   // ── Disconnect ─────────────────────────────────────────────────────────────
@@ -154,7 +289,11 @@ class _ControlsWidgetState extends State<ControlsWidget>
     final result = await context.showDisconnectDialog();
     if (result == true) {
       await widget.onEndSession();
-      await widget.room.disconnect();
+      try {
+        await widget.room.disconnect();
+      } on TimeoutException catch (e) {
+        log('error on end room: ${e.toString()}');
+      }
     }
   }
 
@@ -172,14 +311,15 @@ class _ControlsWidgetState extends State<ControlsWidget>
       }
     }
   }
+
   void _onTapSimulateScenario() async {
     final result = await context.showSimulateScenarioDialog();
     if (result != null) {
       await widget.room.sendSimulateScenario(
-        nodeFailure:       result == SimulateScenarioResult.nodeFailure       ? true : null,
-        migration:         result == SimulateScenarioResult.migration         ? true : null,
-        serverLeave:       result == SimulateScenarioResult.serverLeave       ? true : null,
-        switchCandidate:   result == SimulateScenarioResult.switchCandidate   ? true : null,
+        nodeFailure:     result == SimulateScenarioResult.nodeFailure     ? true : null,
+        migration:       result == SimulateScenarioResult.migration       ? true : null,
+        serverLeave:     result == SimulateScenarioResult.serverLeave     ? true : null,
+        switchCandidate: result == SimulateScenarioResult.switchCandidate ? true : null,
       );
     }
   }
@@ -187,7 +327,8 @@ class _ControlsWidgetState extends State<ControlsWidget>
   void _onTapSendData() async {
     final result = await context.showSendDataDialog();
     if (result == true) {
-      await widget.participant.publishData(utf8.encode('This is a sample data message'), reliable: true);
+      await widget.participant.publishData(
+          utf8.encode('This is a sample data message'), reliable: true);
     }
   }
 
@@ -196,12 +337,12 @@ class _ControlsWidgetState extends State<ControlsWidget>
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final isMicOn     = participant.isMicrophoneEnabled();
-    final isCamOn     = participant.isCameraEnabled();
-    final isSharing   = participant.isScreenShareEnabled();
+    final isMicOn   = participant.isMicrophoneEnabled();
+    final isCamOn   = participant.isCameraEnabled();
+    final isSharing = participant.isScreenShareEnabled();
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         // ── Microphone ────────────────────────────────────────────────────
         _buildMicButton(isMicOn),
@@ -209,21 +350,17 @@ class _ControlsWidgetState extends State<ControlsWidget>
         // ── Camera ────────────────────────────────────────────────────────
         _buildCamButton(isCamOn),
 
-        // ── Flip camera ───────────────────────────────────────────────────
-        if (isCamOn) _CtrlButton(
-          icon: position == CameraPosition.back
-              ? Icons.video_camera_back_rounded
-              : Icons.video_camera_front_rounded,
-          label: 'Flip',
-          color: _textLow,
-          onTap: _flipCamera,
-        ),
+        // ── Front/Back flip — only shown if a back camera actually exists ──
+        if (isCamOn && _hasBackCamera) _buildFlipButton(),
 
         // ── Speakerphone (mobile) ─────────────────────────────────────────
         if (!kIsWeb && lkPlatformIsMobile())
           _CtrlButton(
-            icon: _speakerphoneOn ? Icons.speaker_phone_rounded : Icons.phone_android_rounded,
-            label: _speakerphoneOn ? 'Speaker' : 'Earpiece',
+            key: const ValueKey('live_room.speaker'),
+            icon: _speakerphoneOn
+                ? Icons.speaker_phone_rounded
+                : Icons.phone_android_rounded,
+            label: _speakerphoneOn ? 'lr_speaker'.tr : 'lr_earpiece'.tr,
             color: _speakerphoneOn ? _cyan : _textLow,
             onTap: _setSpeakerphoneOn,
           ),
@@ -232,23 +369,80 @@ class _ControlsWidgetState extends State<ControlsWidget>
         if (!lkPlatformIsMobile())
           _buildAudioOutputButton(),
 
-        // ── Screen share (teacher only) ───────────────────────────────────
+        // ── Screen share (teacher only) ─────────────────────────────────────
+        if (widget.isTeacher)
           _CtrlButton(
             icon: _screenShareBusy
                 ? null
-                : isSharing ? Icons.desktop_access_disabled_outlined : Icons.monitor_outlined,
-            label: isSharing ? 'Stop Share' : 'Share',
+                : isSharing
+                ? Icons.desktop_access_disabled_outlined
+                : Icons.monitor_outlined,
+            label: isSharing ? 'lr_stop_share'.tr : 'lr_share'.tr,
             color: isSharing ? _rose : _textLow,
             loading: _screenShareBusy,
             onTap: _screenShareBusy ? null : _onScreenShareToggle,
           ),
 
-        // ── Extra developer options ───────────────────────────────────────
-        // _buildMoreMenu(),
+        // ── NEW: Pause / Resume recording (teacher only) ──────────────────
+        if (widget.isTeacher) _buildRecordingToggleButton(),
 
-        // ── Disconnect ────────────────────────────────────────────────────
+        // ── End call ──────────────────────────────────────────────────────
         _buildEndButton(),
       ],
+    );
+  }
+
+  // ── NEW: Pause / Resume button ────────────────────────────────────────────
+  //
+  // Shows one button that adapts to the current recorder state:
+  //
+  //   RecState.recording  → amber "Pause"  button  (onPauseRecording)
+  //   RecState.paused     → emerald "Resume" button (onResumeRecording)
+  //   anything else       → greyed-out "Pause" button, disabled
+  //
+  // The button is also disabled while a transition is in flight (_recActionBusy)
+  // or while the session is ending (both callbacks will be null from room.dart).
+  Widget _buildRecordingToggleButton() {
+    final state    = widget.recorderState;
+    final isPaused = state == RecState.paused;
+    final isActive = state == RecState.recording || isPaused;
+
+    // Resolve label / icon / colour from current state
+    final IconData icon;
+    final String   label;
+    final Color    color;
+
+    if (_recActionBusy) {
+      icon  = Icons.hourglass_top_rounded;
+      label = isPaused ? 'lr_resuming'.tr : 'lr_pausing'.tr;
+      color = _textLow;
+    } else if (isPaused) {
+      icon  = Icons.play_circle_outline_rounded;
+      label = 'lr_resume'.tr;
+      color = _emerald;
+    } else if (state == RecState.recording) {
+      icon  = Icons.pause_circle_outline_rounded;
+      label = 'lr_pause'.tr;
+      color = _amber;
+    } else {
+      // idle / starting / uploading / done / error / null — show disabled
+      icon  = Icons.pause_circle_outline_rounded;
+      label = 'lr_pause'.tr;
+      color = _textLow;
+    }
+
+    // The tap handler is null when not available — _CtrlButton greys out automatically
+    final VoidCallback? onTap = (!_recActionBusy && isActive)
+        ? _onRecordingAction
+        : null;
+
+    return _CtrlButton(
+      key: const ValueKey('live_room.pause_recording'),
+      icon:    _recActionBusy ? null : icon,
+      label:   label,
+      color:   color,
+      loading: _recActionBusy,
+      onTap:   onTap,
     );
   }
 
@@ -256,72 +450,102 @@ class _ControlsWidgetState extends State<ControlsWidget>
   Widget _buildMicButton(bool isMicOn) {
     if (lkPlatformIs(PlatformType.android)) {
       return _CtrlButton(
+        key: const ValueKey('live_room.mic'),
         icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-        label: isMicOn ? 'Mute' : 'Unmute',
+        label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
         color: isMicOn ? _cyan : _rose,
         onTap: isMicOn ? _disableAudio : _enableAudio,
       );
     }
     return _PopupCtrlButton(
+      key: const ValueKey('live_room.mic'),
       icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-      label: isMicOn ? 'Mute' : 'Unmute',
+      label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
       color: isMicOn ? _cyan : _rose,
       items: [
         _PopupItem(
           icon: isMicOn ? Icons.mic_off_rounded : Icons.mic_rounded,
-          label: isMicOn ? 'Mute microphone' : 'Unmute microphone',
+          label: isMicOn ? 'lr_mute_microphone'.tr : 'lr_unmute_microphone'.tr,
           onTap: isMicOn ? _disableAudio : _enableAudio,
         ),
         if (_audioInputs != null)
           ..._audioInputs!.map((d) => _PopupItem(
             icon: d.deviceId == widget.room.selectedAudioInputDeviceId
-                ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-            iconColor: d.deviceId == widget.room.selectedAudioInputDeviceId ? _cyan : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Microphone',
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_off_rounded,
+            iconColor: d.deviceId == widget.room.selectedAudioInputDeviceId
+                ? _cyan
+                : _textLow,
+            label: d.label.isNotEmpty ? d.label : 'lr_microphone'.tr,
             onTap: () => _selectAudioInput(d),
           )),
       ],
     );
   }
 
-  // ── Camera button (with popup for device selection) ───────────────────────
+  // ── Camera on/off button ─────────────────────────────────────────────────
+  // Enabled whenever at least one camera (front or back) is available;
+  // shown but disabled (greyed, no-op) otherwise, matching how other
+  // controls in this bar handle unavailability rather than disappearing
+  // outright.
   Widget _buildCamButton(bool isCamOn) {
-    return _PopupCtrlButton(
-      icon: isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
-      label: isCamOn ? 'Camera' : 'Cam Off',
-      color: isCamOn ? _cyan : _rose,
-      items: [
-        _PopupItem(
-          icon: isCamOn ? Icons.videocam_off_rounded : Icons.videocam_rounded,
-          label: isCamOn ? 'Disable camera' : 'Enable camera',
-          onTap: isCamOn ? _disableVideo : _enableVideo,
-        ),
-        if (_videoInputs != null)
-          ..._videoInputs!.map((d) => _PopupItem(
-            icon: d.deviceId == widget.room.selectedVideoInputDeviceId
-                ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-            iconColor: d.deviceId == widget.room.selectedVideoInputDeviceId ? _cyan : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Camera',
-            onTap: () => _selectVideoInput(d),
-          )),
-      ],
+    final busy = _camActionBusy;
+    return _CtrlButton(
+      key: const ValueKey('live_room.camera'),
+      icon: busy
+          ? null
+          : isCamOn
+          ? Icons.videocam_rounded
+          : Icons.videocam_off_rounded,
+      label: isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr,
+      color: !_hasAnyCamera
+          ? _textLow
+          : isCamOn
+          ? _cyan
+          : _rose,
+      loading: busy,
+      onTap: (busy || !_hasAnyCamera) ? null : _toggleCameraOnOff,
+    );
+  }
+
+  // ── Front/Back flip button ───────────────────────────────────────────────
+  // Only ever built when isCamOn && _hasBackCamera (see the call site in
+  // build()) — a device with just one camera never shows this at all.
+  Widget _buildFlipButton() {
+    final busy = _camActionBusy;
+    final isBack = position == CameraPosition.back;
+    return _CtrlButton(
+      key: const ValueKey('live_room.flip_camera'),
+      icon: busy
+          ? null
+          : isBack
+          ? Icons.camera_front_rounded
+          : Icons.camera_rear_rounded,
+      label: isBack ? 'lr_front'.tr : 'lr_back'.tr,
+      color: _textLow,
+      loading: busy,
+      onTap: busy ? null : _toggleFrontBack,
     );
   }
 
   // ── Audio output popup ────────────────────────────────────────────────────
   Widget _buildAudioOutputButton() {
     return _PopupCtrlButton(
+      key: const ValueKey('live_room.audio_output'),
       icon: Icons.volume_up_rounded,
-      label: 'Output',
+      label: 'lr_output'.tr,
       color: _textLow,
       items: [
-        const _PopupItem(icon: Icons.speaker_rounded, label: 'Select audio output'),
+        _PopupItem(icon: Icons.speaker_rounded, label: 'lr_select_audio_output'.tr),
         if (_audioOutputs != null)
           ..._audioOutputs!.map((d) => _PopupItem(
             icon: d.deviceId == widget.room.selectedAudioOutputDeviceId
-                ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-            iconColor: d.deviceId == widget.room.selectedAudioOutputDeviceId ? _cyan : _textLow,
-            label: d.label.isNotEmpty ? d.label : 'Output',
+                ? Icons.radio_button_checked_rounded
+                : Icons.radio_button_off_rounded,
+            iconColor: d.deviceId == widget.room.selectedAudioOutputDeviceId
+                ? _cyan
+                : _textLow,
+            label: d.label.isNotEmpty ? d.label : 'lr_output'.tr,
             onTap: () => _selectAudioOutput(d),
           )),
       ],
@@ -332,12 +556,12 @@ class _ControlsWidgetState extends State<ControlsWidget>
   Widget _buildMoreMenu() {
     return _PopupCtrlButton(
       icon: Icons.more_horiz_rounded,
-      label: 'More',
+      label: 'more'.tr,
       color: _textLow,
       items: [
-        _PopupItem(icon: Icons.message_rounded,   label: 'Send test data',        onTap: _onTapSendData),
-        _PopupItem(icon: Icons.settings_rounded,  label: 'Subscribe permission',  onTap: _onTapUpdateSubscribePermission),
-        _PopupItem(icon: Icons.bug_report_rounded,label: 'Simulate scenario',     onTap: _onTapSimulateScenario),
+        _PopupItem(icon: Icons.message_rounded,    label: 'lr_send_test_data'.tr,       onTap: _onTapSendData),
+        _PopupItem(icon: Icons.settings_rounded,   label: 'lr_subscribe_permission'.tr, onTap: _onTapUpdateSubscribePermission),
+        _PopupItem(icon: Icons.bug_report_rounded, label: 'lr_simulate_scenario'.tr,    onTap: _onTapSimulateScenario),
       ],
     );
   }
@@ -345,8 +569,8 @@ class _ControlsWidgetState extends State<ControlsWidget>
   // ── End call button ───────────────────────────────────────────────────────
   Widget _buildEndButton() {
     return GestureDetector(
-      onTapDown: (_) => _endPressAnim.forward(),
-      onTapUp: (_) { _endPressAnim.reverse(); _onTapDisconnect(); },
+      onTapDown:  (_) => _endPressAnim.forward(),
+      onTapUp:    (_) { _endPressAnim.reverse(); _onTapDisconnect(); },
       onTapCancel: () => _endPressAnim.reverse(),
       child: ScaleTransition(
         scale: Tween<double>(begin: 1.0, end: 0.90).animate(
@@ -354,7 +578,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
         ),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
-            width: 52, height: 52,
+            width: context.width/10, height: context.width/10,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _rose.withValues(alpha: 0.18),
@@ -364,7 +588,9 @@ class _ControlsWidgetState extends State<ControlsWidget>
             child: const Icon(Icons.call_end_rounded, color: _rose, size: 24),
           ),
           const SizedBox(height: 5),
-          Text('End', style: TextStyle(fontSize: 10, color: _rose, fontWeight: FontWeight.w700)),
+          Text('lr_end'.tr,
+              style: TextStyle(
+                  fontSize: 10, color: _rose, fontWeight: FontWeight.w700)),
         ]),
       ),
     );
@@ -376,6 +602,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
 // ─────────────────────────────────────────────────────────────────────────────
 class _CtrlButton extends StatelessWidget {
   const _CtrlButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,
@@ -384,41 +611,53 @@ class _CtrlButton extends StatelessWidget {
   });
 
   final IconData? icon;
-  final String label;
-  final Color color;
+  final String    label;
+  final Color     color;
   final VoidCallback? onTap;
-  final bool loading;
+  final bool      loading;
 
   @override
   Widget build(BuildContext context) {
-    final isActive = color == _cyan;
+    // Treat cyan AND emerald AND amber as "active" (coloured glow).
+    // null onTap → disabled appearance.
+    final isActive   = onTap != null &&
+        (color == _cyan || color == _emerald || color == _amber);
+    final isDisabled = onTap == null && !loading;
+    final effectiveColor = isDisabled ? _textLow : color;
+
     return GestureDetector(
       onTap: onTap,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          width: 50, height: 50,
+          width: context.width/10, height: context.width/10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: isActive ? color.withValues(alpha: 0.15) : _glass10,
+            color: isActive
+                ? effectiveColor.withValues(alpha: 0.15)
+                : _glass10,
             border: Border.all(
-              color: isActive ? color.withValues(alpha: 0.45) : _glassBdr,
+              color: isActive
+                  ? effectiveColor.withValues(alpha: 0.45)
+                  : _glassBdr,
               width: 1,
             ),
             boxShadow: isActive
-                ? [BoxShadow(color: color.withValues(alpha: 0.25), blurRadius: 14)]
+                ? [BoxShadow(color: effectiveColor.withValues(alpha: 0.25), blurRadius: 14)]
                 : [],
           ),
           child: loading
               ? Padding(
-            padding: const EdgeInsets.all(14),
-            child: CircularProgressIndicator(strokeWidth: 2, color: color),
-          )
-              : Icon(icon, color: color, size: 22),
+              padding: const EdgeInsets.all(14),
+              child: AppLoadingIndicator())
+              : Icon(icon, color: effectiveColor, size: 22),
         ),
         const SizedBox(height: 5),
         Text(label,
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                fontSize: 10,
+                color: effectiveColor,
+                fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -434,23 +673,24 @@ class _PopupItem {
     this.onTap,
     this.iconColor,
   });
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  final Color? iconColor;
+  final IconData       icon;
+  final String         label;
+  final VoidCallback?  onTap;
+  final Color?         iconColor;
 }
 
 class _PopupCtrlButton extends StatelessWidget {
   const _PopupCtrlButton({
+    super.key,
     required this.icon,
     required this.label,
     required this.color,
     required this.items,
   });
 
-  final IconData icon;
-  final String label;
-  final Color color;
+  final IconData       icon;
+  final String         label;
+  final Color          color;
   final List<_PopupItem> items;
 
   @override
@@ -472,7 +712,8 @@ class _PopupCtrlButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(children: [
             Icon(item.icon, size: 18,
-                color: item.iconColor ?? (item.onTap != null ? _textMid : _textLow)),
+                color: item.iconColor ??
+                    (item.onTap != null ? _textMid : _textLow)),
             const SizedBox(width: 12),
             Text(item.label,
                 style: TextStyle(
@@ -486,7 +727,7 @@ class _PopupCtrlButton extends StatelessWidget {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 220),
-          width: 50, height: 50,
+          width: context.width/10, height: context.width/10,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isActive ? color.withValues(alpha: 0.15) : _glass10,
@@ -502,7 +743,8 @@ class _PopupCtrlButton extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         Text(label,
-            style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+            style: TextStyle(
+                fontSize: 10, color: color, fontWeight: FontWeight.w600)),
       ]),
     );
   }

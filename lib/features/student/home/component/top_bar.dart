@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../auth/auth_provider.dart';
 import '../../dashboard/dashboard_screen.dart';
 
@@ -11,8 +12,9 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
-    final name = user?.name ?? 'sir'.tr;
+    final AuthProvider provider = context.watch<AuthProvider>();
+    final unread = context.watch<NotificationsProvider>().unreadCount;
+    final name = provider.currentUser?.name ?? 'sir'.tr;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
@@ -20,12 +22,13 @@ class TopBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Gradient avatar with glow
-          if(user!=null)
+          if(provider.currentUser!=null)
           UserChipButton(
-            user: user,
+            user: provider.currentUser!,
             showLabel: false,
           ),
           // Greeting + name
+          SizedBox(width:5),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,52 +52,8 @@ class TopBar extends StatelessWidget {
             ),
           ),
 
-          // Notification bell — elevated card style
-          if(context.width<900)
-          GestureDetector(
-            onTap: () =>
-                Navigator.of(context).popAndPushNamed('/notifications'),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: context.colors.cardBg,
-                    borderRadius:
-                    BorderRadius.circular(context.colors.radiusMedium),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha:0.08),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child:  Icon(
-                    Icons.notifications_rounded,
-                    color: context.colors.primary,
-                    size: 22,
-                  ),
-                ),
-                Positioned(
-                  top: 9,
-                  right: 9,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      color: context.colors.danger,
-                      shape: BoxShape.circle,
-                      border:
-                      Border.all(color: context.colors.cardBg, width: 1.5),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          NotificationIcon(unreadCount: unread ),
+
         ],
       ),
     );

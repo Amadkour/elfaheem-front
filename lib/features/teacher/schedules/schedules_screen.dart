@@ -2,16 +2,20 @@ library;
 
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule;
+import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule, ScheduleSession;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
+import '../../admin/admin_common.dart' hide PrimaryButton;
 import 'schedules_provider.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -24,7 +28,7 @@ class ScheduleTabBody extends StatefulWidget {
   final String title;
   final String emptyMessage;
 
-   const ScheduleTabBody({
+  const ScheduleTabBody({
     super.key,
     required this.provider,
     required this.getData,
@@ -42,10 +46,22 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
     with AutomaticKeepAliveClientMixin {
   @override bool get wantKeepAlive => true;
 
-  // Local 1-second ticker — only for the live countdown inside cards
+  // PERFORMANCE: this used to be `Timer? _tick` ticking a plain `int _epoch`
+  // and `int _ongoingSecondsLeft` via setState() every second — which
+  // rebuilt this whole tab body (header, week strip, every session card)
+  // once a second regardless of how many cards were actually live. Split
+  // into two ValueNotifiers instead:
+  //   • `_now` feeds ScheduleSessionCard's own per-card ticker directly
+  //     (same mechanism used in queue_work_items.dart's ScheduleQueueList),
+  //     so only cards that are live/starting soon redraw each second.
+  //   • `_ongoingSecondsLeftNotifier` feeds just the "next lesson" banner's
+  //     countdown/progress bar via a ValueListenableBuilder in `_Header`.
+  // `_epoch` is gone entirely — it was passed into `_Header` but never
+  // actually read there, so it existed only to force a rebuild; it isn't
+  // needed once nothing here calls setState() from the timer.
   Timer? _tick;
-  int    _epoch = 0;
-  int    _ongoingSecondsLeft = 0;
+  final ValueNotifier<DateTime> _now = ValueNotifier(DateTime.now());
+  final ValueNotifier<int> _ongoingSecondsLeftNotifier = ValueNotifier<int>(0);
 
   // Whether a manual refresh is in flight (drives the spinning icon)
   bool _refreshing = false;
@@ -55,27 +71,32 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
   @override
   void initState() {
     super.initState();
-    // Lightweight tick — just for the countdown display, not network calls
+    // Lightweight tick — just for the countdown display, not network calls.
+    // No setState here anymore: only the two ValueNotifiers above update,
+    // so listeners (ScheduleSessionCard, the next-lesson banner) redraw
+    // themselves instead of this whole tab body rebuilding.
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() {
-        _epoch++;
-        if (_ongoingSecondsLeft > 0) _ongoingSecondsLeft--;
-      });
+      if (_ongoingSecondsLeftNotifier.value > 0) {
+        _ongoingSecondsLeftNotifier.value--;
+      }
+      _now.value = DateTime.now();
     });
   }
 
   @override
   void dispose() {
     _tick?.cancel();
+    _now.dispose();
+    _ongoingSecondsLeftNotifier.dispose();
     super.dispose();
   }
 
   void _syncOngoing(ScheduleResponse? data) {
     if (data == null) return;
     final ongoing = data.todaySlots.where((s) => s.isOngoing).firstOrNull;
-    if (ongoing != null && _ongoingSecondsLeft == 0) {
-      _ongoingSecondsLeft = (ongoing.minutesUntilEnd ?? 0) * 60;
+    if (ongoing != null && _ongoingSecondsLeftNotifier.value == 0) {
+      _ongoingSecondsLeftNotifier.value = (ongoing.minutesUntilEnd ?? 0) * 60;
     }
   }
 
@@ -90,80 +111,81 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
   Widget build(BuildContext context) {
     super.build(context);
     return  ListenableBuilder(
-          listenable: widget.provider,
-          builder: (_, __) {
-            final data        = widget.getData();
-            final lastFetched = widget.getLastFetched();
-            _syncOngoing(data);
+      listenable: widget.provider,
+      builder: (_, _) {
+        final data        = widget.getData();
+        final lastFetched = widget.getLastFetched();
+        _syncOngoing(data);
 
-            if (data == null) {
-              return _LoadingState(onRefresh: _doRefresh);
-            }
+        if (data == null) {
+          return _LoadingState(onRefresh: _doRefresh);
+        }
 
-            final activeDays = data.activeDays;
-            _selectedDay ??= data.todayDay.isEmpty ? null : data.todayDay;
+        final activeDays = data.activeDays;
+        _selectedDay ??= data.todayDay.isEmpty ? null : data.todayDay;
 
-            final dayHasSlots = _selectedDay != null &&
-                activeDays.contains(_selectedDay);
-            final shownSlots  = dayHasSlots
-                ? data.slotsForDay(_selectedDay!)
-                : <ScheduleSlot>[];
+        final dayHasSlots = _selectedDay != null &&
+            activeDays.contains(_selectedDay);
+        final shownSlots  = dayHasSlots
+            ? data.slotsForDay(_selectedDay!)
+            : <ScheduleSession>[];
 
-            return RefreshIndicator(
-              color: context.colors.primary,
-              onRefresh: _doRefresh,
-              child: CustomScrollView(
-                physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics()),
-                slivers: [
+        return RefreshIndicator(
+          color: context.colors.primary,
+          onRefresh: _doRefresh,
+          child: CustomScrollView(
+            physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics()),
+            slivers: [
 
-                  // ── Header ────────────────────────────────────────
-                  SliverToBoxAdapter(child: _Header(
-                    title:              widget.title.tr,
-                    todayLabel:         data.todayLabel,
-                    nextSlot:           data.nextSlot,
-                    epoch:              _epoch,
-                    ongoingSecondsLeft: _ongoingSecondsLeft,
-                    lastFetched:        lastFetched,
-                    isRefreshing:       _refreshing,
-                    onRefresh:          _doRefresh,
-                  )),
+              // ── Header ────────────────────────────────────────
+              SliverToBoxAdapter(child: _Header(
+                title:                     widget.title.tr,
+                todayLabel:                data.todayLabel,
+                nextSlot:                  data.nextSlot,
+                ongoingSecondsLeftListenable: _ongoingSecondsLeftNotifier,
+                lastFetched:               lastFetched,
+                isRefreshing:              _refreshing,
+                onRefresh:                 _doRefresh,
+              )),
 
-                  // ── Week strip ────────────────────────────────────
-                  SliverToBoxAdapter(child: _WeekStrip(
-                    activeDays:  activeDays,
-                    todayDay:    data.todayDay,
-                    selectedDay: _selectedDay ?? data.todayDay,
-                    onSelect:    (d) { if(mounted) setState(() => _selectedDay = d);},
-                    slotsForDay: data.slotsForDay,
-                  )),
+              // ── Week strip ────────────────────────────────────
+              SliverToBoxAdapter(child: _WeekStrip(
+                activeDays:  activeDays,
+                todayDay:    data.todayDay,
+                selectedDay: _selectedDay ?? data.todayDay,
+                onSelect:    (d) { if(mounted) setState(() => _selectedDay = d);},
+                slotsForDay: data.slotsForDay,
+              )),
 
-                  const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
 
-                  // ── Slot list ─────────────────────────────────────
-                  if (shownSlots.isEmpty)
-                    SliverToBoxAdapter(child: _EmptyDay(
-                      day:     _selectedDay != null ? slotDayLabel(_selectedDay!) : '',
-                      isToday: _selectedDay == data.todayDay,
-                      message: activeDays.isEmpty ? widget.emptyMessage : null,
-                    ))
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                      sliver: SliverList.separated(
-                        itemCount: shownSlots.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
-                        itemBuilder: (_, i) => ScheduleSlotCard(
-                          slot:               shownSlots[i],
-                          isSelectedDay:      _selectedDay == data.todayDay,
-                          ongoingSecondsLeft: _ongoingSecondsLeft,
+              // ── Slot list ─────────────────────────────────────
+              if (shownSlots.isEmpty)
+                SliverToBoxAdapter(child: _EmptyDay(
+                  day:     _selectedDay != null ? slotDayLabel(_selectedDay!) : '',
+                  isToday: _selectedDay == data.todayDay,
+                  message: activeDays.isEmpty ? widget.emptyMessage : null,
+                ))
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  sliver: SliverList.separated(
+                    itemCount: shownSlots.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, i) =>
+                        ScheduleSessionCard(
+                          key: ValueKey(shownSlots[i].scheduleId),
+                          background: context.colors.cardBg,
+                          session: shownSlots[i],
+                          nowListenable: _now,
                         ),
-                      ),
-                    ),
-                ],
-              ),
-            );
-          },
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -173,9 +195,8 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
 class _Header extends StatelessWidget {
   final String        title;
   final String        todayLabel;
-  final ScheduleSlot? nextSlot;
-  final int           epoch;
-  final int           ongoingSecondsLeft;
+  final ScheduleSession? nextSlot;
+  final ValueListenable<int> ongoingSecondsLeftListenable;
   final DateTime?     lastFetched;
   final bool          isRefreshing;
   final VoidCallback  onRefresh;
@@ -183,8 +204,7 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.title,
     required this.todayLabel,
-    required this.epoch,
-    required this.ongoingSecondsLeft,
+    required this.ongoingSecondsLeftListenable,
     required this.isRefreshing,
     required this.onRefresh,
     this.nextSlot,
@@ -195,9 +215,9 @@ class _Header extends StatelessWidget {
     if (lastFetched == null) return 'not-refreshed'.tr;
     final diff = DateTime.now().difference(lastFetched!);
     if (diff.inSeconds < 60)  return 'moments-ago'.tr;
-    if (diff.inMinutes < 60)  return 'since ${diff.inMinutes}m'.tr;
-    if (diff.inHours   < 24)  return 'since ${diff.inHours}hours'.tr;
-    return 'since ${diff.inDays} day'.tr;
+    if (diff.inMinutes < 60)  return trp('since_minutes', {'n': '${diff.inMinutes}'});
+    if (diff.inHours   < 24)  return trp('since_hours', {'n': '${diff.inHours}'});
+    return trp('since_days', {'n': '${diff.inDays}'});
   }
 
   @override
@@ -236,12 +256,19 @@ class _Header extends StatelessWidget {
         ]),
       ),
 
-      // Next session banner
+      // Next session banner — the only part of the header that ticks every
+      // second, so it's the only part scoped inside a ValueListenableBuilder.
+      // Title/date/last-updated above never rebuild from the local timer.
       if (nextSlot != null)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-          child: _NextBanner(
-              slot: nextSlot!, ongoingSecondsLeft: ongoingSecondsLeft),
+          child: ValueListenableBuilder<int>(
+            valueListenable: ongoingSecondsLeftListenable,
+            builder: (context, secondsLeft, _) => _NextBanner(
+              slot: nextSlot!,
+              ongoingSecondsLeft: secondsLeft,
+            ),
+          ),
         ),
     ]);
   }
@@ -250,7 +277,7 @@ class _Header extends StatelessWidget {
 // ── Next session banner ───────────────────────────────────────────────────────
 
 class _NextBanner extends StatelessWidget {
-  final ScheduleSlot slot;
+  final ScheduleSession slot;
   final int ongoingSecondsLeft;
 
   const _NextBanner({required this.slot, required this.ongoingSecondsLeft});
@@ -327,7 +354,7 @@ class _NextBanner extends StatelessWidget {
                         decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8)),
-                        child: Text('${slot.calcDuration}د',
+                        child: Text(trp('sched_duration_min', {'n': '${slot.calcDuration}'}),
                             style: const TextStyle(
                                 color: Colors.white70,
                                 fontSize: 11,
@@ -408,10 +435,10 @@ class _GlassCircle extends StatelessWidget {
 
 
       Container(
-      width: size, height: size,
-      decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.07),
-          shape: BoxShape.circle));
+          width: size, height: size,
+          decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              shape: BoxShape.circle));
 }
 
 class _ProgressRing extends StatelessWidget {
@@ -432,7 +459,7 @@ class _ProgressRing extends StatelessWidget {
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'bahji')),
-               Text('completed'.tr,
+              Text('completed'.tr,
                   style: TextStyle(
                       color: Colors.white60,
                       fontSize: 9,
@@ -479,7 +506,7 @@ class _WeekStrip extends StatelessWidget {
   final String todayDay;
   final String selectedDay;
   final void Function(String) onSelect;
-  final List<ScheduleSlot> Function(String) slotsForDay;
+  final List<ScheduleSession> Function(String) slotsForDay;
 
   const _WeekStrip({
     required this.activeDays,
@@ -499,7 +526,7 @@ class _WeekStrip extends StatelessWidget {
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: kDayOrder.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 8),
+          separatorBuilder: (_, _) => const SizedBox(width: 8),
           itemBuilder: (_, i) {
             final day        = kDayOrder[i];
             final isActive   = activeDays.contains(day);
@@ -526,15 +553,15 @@ class _WeekStrip extends StatelessWidget {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
 
-                      color: isSel
-                          ? Colors.transparent
-                          : isToday
-                          ? context.colors.primary.withValues(alpha: 0.4)
-                          : isActive
-                          ? context.colors.divider
-                          : context.colors.divider.withValues(alpha: 0.35),
-                      width: isSel ? 0 : 1,
-                    ),
+                    color: isSel
+                        ? Colors.transparent
+                        : isToday
+                        ? context.colors.primary.withValues(alpha: 0.4)
+                        : isActive
+                        ? context.colors.divider
+                        : context.colors.divider.withValues(alpha: 0.35),
+                    width: isSel ? 0 : 1,
+                  ),
 
 
                   boxShadow: isSel ? context.colors.primaryShadow : null,
@@ -591,273 +618,6 @@ class _WeekStrip extends StatelessWidget {
   }
 }
 
-// ══════════════════════════════════════════════════════════════════════════════
-//  ScheduleSlotCard
-// ══════════════════════════════════════════════════════════════════════════════
-
-class ScheduleSlotCard extends StatelessWidget {
-  final ScheduleSlot slot;
-  final bool isSelectedDay;
-  final int  ongoingSecondsLeft;
-  final bool showCourseName;
-
-  const ScheduleSlotCard({
-    super.key,
-    required this.slot,
-    this.isSelectedDay      = true,
-    this.ongoingSecondsLeft = 0,
-    this.showCourseName     = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isNow   = slot.isOngoing;
-    final isToday = slot.isToday;
-
-    final accentColor = isNow
-        ? context.colors.danger
-        : isToday
-        ? context.colors.success
-        : context.colors.primary;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: context.colors.cardShadow,
-        border: Border(
-          right: BorderSide(
-            color: isNow
-                ? context.colors.danger
-                : isToday
-                ? context.colors.success
-                : context.colors.primaryBlue,
-            width: isNow ? 4 : isToday ? 4 : 4,
-          ),
-
-        ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: [
-
-
-        // ── Main row ────────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-            // ── Time block ───────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: accentColor.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(children: [
-                Text(slot.startTime,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: accentColor)),
-                Container(
-                    margin: const EdgeInsets.symmetric(vertical: 3),
-                    width: 1.5, height: 14,
-                    color: accentColor.withValues(alpha: 0.3)),
-                Text(slot.endTime,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        color: accentColor.withValues(alpha: 0.7))),
-              ]),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Container(
-                width: 1,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-
-            // ── Info ─────────────────────────────────────────────────────
-            Expanded(child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showCourseName)
-                    Text(slot.courseName,
-                        style: context.colors.h3.copyWith(fontSize: 15),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis)
-                  else
-                    Text(slot.dayLabelStr, style: context.colors.label),
-                  const SizedBox(height: 6),
-                  Wrap(spacing: 8, runSpacing: 4, children: [
-                    _InfoChip(Icons.access_time_rounded,
-                        '${slot.calcDuration}${'m'.tr}', accentColor.withValues(alpha: 0.8)),
-                    if (slot.maxStudents != null)
-                      _InfoChip(Icons.people_outline_rounded,
-                          'حتى ${slot.maxStudents}', context.colors.textLight),
-                    if (slot.scheduledDate != null && !isToday)
-                      _InfoChip(Icons.calendar_today_rounded,
-                          slot.scheduledDate!, context.colors.textLight),
-                  ]),
-                  const SizedBox(height: 8),
-                  _StatusRow(
-                      slot: slot,
-                      ongoingSecondsLeft: ongoingSecondsLeft,
-                      accentColor: accentColor),
-                ])),
-
-            // ── Badge ─────────────────────────────────────────────────────
-            const SizedBox(width: 8),
-            _StatusBadge(slot: slot),
-          ]),
-        ),
-
-        // ── Progress bar (ongoing only) ──────────────────────────────────
-        if (isNow)
-          LinearProgressIndicator(
-            value: slot.progressFraction(ongoingSecondsLeft),
-            backgroundColor: context.colors.danger.withValues(alpha: 0.1),
-            valueColor:  AlwaysStoppedAnimation(context.colors.danger),
-            minHeight: 4,
-          ),
-      ]),
-    );
-  }
-}
-
-class _StatusRow extends StatelessWidget {
-  final ScheduleSlot slot;
-  final int          ongoingSecondsLeft;
-  final Color        accentColor;
-
-  const _StatusRow({
-    required this.slot,
-    required this.ongoingSecondsLeft,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (slot.isOngoing) {
-      final pct = ((slot.progressFraction(ongoingSecondsLeft)) * 100).toInt();
-      return Row(children: [
-         Icon(Icons.timer_outlined, size: 13, color: context.colors.danger),
-        const SizedBox(width: 4),
-        Text(slot.countdownLabel(ongoingSecondsLeft),
-            style:  TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: context.colors.danger)),
-        const SizedBox(width: 8),
-        Text('$pct%',
-            style: context.colors.caption.copyWith(color: context.colors.danger)),
-      ]);
-    }
-    if (slot.isToday) {
-      return Row(children: [
-        Icon(Icons.play_circle, size: 13, color: accentColor),
-        const SizedBox(width: 4),
-        Text(slot.countdownLabel(0),
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: accentColor)),
-      ]);
-    }
-    return Row(children: [
-       Icon(Icons.calendar_month_outlined,
-          size: 13, color: context.colors.textLight),
-      const SizedBox(width: 4),
-      Text(slot.dayLabelStr,
-          style: context.colors.caption.copyWith(fontWeight: FontWeight.w600)),
-    ]);
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final ScheduleSlot slot;
-  const _StatusBadge({required this.slot});
-
-  @override
-  Widget build(BuildContext context) {
-    if (slot.isOngoing) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color:  context.colors.danger.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: context.colors.danger.withValues(alpha: 0.3))),
-        child:  Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.circle, size: 7, color: context.colors.danger),
-          SizedBox(width: 4),
-          Text('session_type_live'.tr,
-              style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: context.colors.danger)),
-        ]),
-      );
-    }
-    if (slot.isToday) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-            color:  context.colors.success.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-            // border: Border.all(
-            //     color: context.colors.success.withValues(alpha: 0.3))
-               ),
-        child:  Text('today'.tr,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: context.colors.success)),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.07),
-          borderRadius: BorderRadius.circular(8)),
-      child: Text(slotDayShort(slot.day),
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: context.colors.primary.withValues(alpha: 0.8))),
-    );
-  }
-}
-
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String   label;
-  final Color    color;
-  const _InfoChip(this.icon, this.label, this.color);
-
-  @override
-  Widget build(BuildContext _) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 11, color:  AppTheme.textLight),
-        const SizedBox(width: 3),
-        Text(label,
-            style: TextStyle(
-                fontFamily: 'bahji', fontSize: 11, color: AppTheme.textLight)),
-      ]);
-}
-
 // ── Empty states ──────────────────────────────────────────────────────────────
 
 class _EmptyDay extends StatelessWidget {
@@ -905,7 +665,7 @@ class _EmptyDay extends StatelessWidget {
         ),
         if (isToday) ...[
           const SizedBox(height: 6),
-           Text('rest-follow'.tr,
+          Text('rest-follow'.tr,
               style: context.colors.caption, textAlign: TextAlign.center),
         ],
       ]),
@@ -920,10 +680,9 @@ class _LoadingState extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
     child: Column(mainAxisSize: MainAxisSize.min, children: [
-       CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary)),
+      AppLoadingIndicator(),
       const SizedBox(height: 16),
-       Text('loading-schedule'.tr,
+      Text('loading-schedule'.tr,
           style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 13,
@@ -982,57 +741,56 @@ class _TeacherSchedulesScreenState extends State<TeacherSchedulesScreen> {
 
     final provider = context.watch<TeacherSchedulesProvider>();
     return BasePage(
+      key: const ValueKey('teacher_schedules'),
       useWebCard: true,
       child:
-    SafeArea(child: Column(children: [
-          ScreenAppBar(
-            title: '${'appointment'.tr}$widget.course.title.tr',
-            actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
-          ),
+      SafeArea(child: Column(children: [
+        ScreenAppBar(
+          title: '${'appointment'.tr} ${Helpers.AppConfig.lang=='ar'?widget.course.titleAr:widget.course.titleEn}',
+          actions: [_AddBtn(onTap:()=> TeacherSchedulesScreen.openAddScheduleScreenSheet(context))],
+        ),
 
-          // Info banner
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: Container(
-              padding: const EdgeInsets.all(13),
-              decoration: BoxDecoration(
-                  color: context.colors.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                      color: context.colors.primary.withValues(alpha: 0.15))),
-              child: Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: context.colors.primary.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child:  Icon(Icons.repeat_rounded,
-                      color: context.colors.primary, size: 15),
+        // Info banner
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+                color: context.colors.primary.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: context.colors.primary.withValues(alpha: 0.15))),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: context.colors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'appointment-repeat'.tr,
-                    style: context.colors.caption.copyWith(
-                        color: context.colors.primary, height: 1.5),
-                  ),
+                child:  Icon(Icons.repeat_rounded,
+                    color: context.colors.primary, size: 15),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'appointment-repeat'.tr,
+                  style: context.colors.caption.copyWith(
+                      color: context.colors.primary, height: 1.5),
                 ),
-              ]),
-            ),
+              ),
+            ]),
           ),
+        ),
 
-          Expanded(
-            child: provider.isLoading && provider.schedules.isEmpty
-                ?  Center(
-                child: CircularProgressIndicator(
-                    valueColor:
-                    AlwaysStoppedAnimation(context.colors.primary)))
-                : provider.schedules.isEmpty
-                ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
-                : _ManageList(schedules: provider.schedules),
-          ),
-        ])),
+        Expanded(
+          child: provider.isLoading && provider.schedules.isEmpty
+              ?  Center(
+              child: AppLoadingIndicator())
+              : provider.schedules.isEmpty
+              ? _ManageEmptyState(onAdd: ()=>TeacherSchedulesScreen.openAddScheduleScreenSheet(context))
+              : _ManageList(schedules: provider.schedules),
+        ),
+      ])),
     );
   }
 }
@@ -1053,7 +811,7 @@ class _ManageList extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
     physics: const BouncingScrollPhysics(),
     itemCount: _sorted.length,
-    separatorBuilder: (_, __) => const SizedBox(height: 10),
+    separatorBuilder: (_, _) => const SizedBox(height: 10),
     itemBuilder: (ctx, i) => _ManageCard(schedule: _sorted[i]),
   );
 }
@@ -1099,7 +857,7 @@ class _ManageCard extends StatelessWidget {
                   style: context.colors.h3.copyWith(fontSize: 15)),
               const SizedBox(height: 5),
               Row(children: [
-                 Icon(Icons.access_time_filled_rounded,
+                Icon(Icons.access_time_filled_rounded,
                     size: 14, color: context.colors.primary),
                 const SizedBox(width: 5),
                 Text(
@@ -1140,7 +898,7 @@ class _ManageCard extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontWeight: FontWeight.w700)),
             content: Text(
-                '${'appointment-delete'.tr}$slotDayLabel(s.day)$s.startTime؟',
+                trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': s.startTime}),
 
                 style: const TextStyle(fontFamily: 'bahji')),
             actions: [
@@ -1188,9 +946,9 @@ class _ManageEmptyState extends StatelessWidget {
             child: const Icon(Icons.calendar_month_rounded,
                 color: Colors.white, size: 44)),
         const SizedBox(height: 20),
-         Text('no-appointment'.tr, style: context.colors.h3),
+        Text('no-appointment'.tr, style: context.colors.h3),
         const SizedBox(height: 6),
-         Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: 40),
           child: Text(
             'add-weekly-appointment-for-student'.tr,
@@ -1229,13 +987,13 @@ class AddScheduleSheet extends StatefulWidget {
 
 class _AddScheduleSheetState extends State<AddScheduleSheet> {
   static const _days = [
-    ('monday',    'الاثنين'),
-    ('tuesday',   'الثلاثاء'),
-    ('wednesday', 'الأربعاء'),
-    ('thursday',  'الخميس'),
-    ('friday',    'الجمعة'),
-    ('saturday',  'السبت'),
-    ('sunday',    'الأحد'),
+    ('monday',    'day_monday'),
+    ('tuesday',   'day_tuesday'),
+    ('wednesday', 'day_wednesday'),
+    ('thursday',  'day_thursday'),
+    ('friday',    'day_friday'),
+    ('saturday',  'day_saturday'),
+    ('sunday',    'day_sunday'),
   ];
   String    _day   = 'monday';
   TimeOfDay _start = const TimeOfDay(hour: 10, minute: 0);
@@ -1347,7 +1105,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                         color: context.colors.divider,
                         borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 18),
-             Text('add-weekly-appointment'.tr, style: context.colors.h2),
+            Text('add-weekly-appointment'.tr, style: context.colors.h2),
             const SizedBox(height: 20),
 
             // Day chips
@@ -1361,9 +1119,10 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: _days.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
-                  final (v, l) = _days[i];
+                  final (v, lKey) = _days[i];
+                  final l = lKey.tr;
                   final sel = _day == v;
                   return GestureDetector(
                     onTap: () { if(mounted) setState(() => _day = v);},
@@ -1421,7 +1180,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                       .copyWith(color: context.colors.danger)),
             ],
             const SizedBox(height: 24),
-            MyPrimaryButton(
+            PrimaryButton(
                 label: 'add-appointment'.tr,
                 isLoading: loading,
                 onPressed: _valid ? _submit : null),

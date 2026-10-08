@@ -3,9 +3,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentExamsTab extends StatefulWidget {
   const StudentExamsTab({super.key});
 
@@ -160,9 +161,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                   Expanded(
                       child: _loading
                           ?  Center(
-                          child: CircularProgressIndicator(
-                              valueColor:
-                              AlwaysStoppedAnimation(context.colors.primary)))
+                          child: AppLoadingIndicator())
                           : _error != null
                           ? Center(
                           child: Column(
@@ -205,7 +204,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                   20, 4, 20, 32),
                               physics: const BouncingScrollPhysics(),
                               itemCount: _exams.length,
-                              separatorBuilder: (_, __) =>
+                              separatorBuilder: (_, _) =>
                               const SizedBox(height: 12),
                               itemBuilder: (_, i) =>
                                   _ExamCard(exam: _exams[i])))),

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart' as Helpers;
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/app_bar.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import 'rewards_provider.dart';
 
 class RewardsScreen extends StatelessWidget {
@@ -15,7 +16,7 @@ class RewardsScreen extends StatelessWidget {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Consumer<RewardsProvider>(
-        builder: (_, provider, __) => AnimatedSwitcher(
+        builder: (_, provider, _) => AnimatedSwitcher(
           duration: const Duration(milliseconds: 350),
           transitionBuilder: (child, anim) => FadeTransition(
             opacity: anim,

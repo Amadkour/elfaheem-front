@@ -4,7 +4,8 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 /// FIX: The original used `_` as the builder's context parameter name,
 /// which shadowed the outer [context] passed into the function.

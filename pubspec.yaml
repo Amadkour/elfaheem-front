@@ -4,16 +4,15 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.10.0 <4.0.0'
 
 dependencies:
+  share_plus: ^10.0.0
+  flutter_web_plugins:
+      sdk: flutter
   flutter:
     sdk: flutter
-  flutter_screen_recording: ^2.0.25
-  record: ^6.2.0
   path_provider: ^2.1.0
-  http: ^1.2.0
-  http_parser: ^4.0.2
   provider: ^6.1.1
   dio: ^5.4.0
   shared_preferences: ^2.2.2
@@ -27,37 +26,50 @@ dependencies:
   intl: ^0.20.2
   fluttertoast: ^9.0.0
   url_launcher: ^6.2.2
-  daily_flutter: ^0.37.0
   flutter_localizations:
     sdk: flutter
   flutter_native_splash:
-  record_platform_interface: ^1.5.0
   flutter_background: ^1.1.0
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.3
   logging: ^1.0.1
-  google_fonts: ^6.2.1
   flutter_svg: ^2.0.5
-  dropdown_button2: ^2.3.6
   collection: '>=1.16.0'
-  livekit_client: ^2.7.0
   nested: any
-  flutter_webrtc: any
+  flutter_webrtc: ^1.6.0
   mime: any
   responsive_framework: ^1.5.1
-  flutter_displaymode: ^0.6.0
   moyasar: ^3.0.2
   path: any
   cross_file: any
   timeago: ^3.7.1
-  flutter_local_notifications: ^17.2.2
-  timezone: ^0.9.4
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2
   firebase_crashlytics: ^5.2.2
   firebase_remote_config: ^6.5.1
   video_player: ^2.9.2
   wakelock_plus: ^1.2.10
+  livekit_client: ^2.8.0
+  loading_animation_widget: ^1.3.0
+  # Modern replacement for dart:html / dart:js_util (both removed on recent
+  # Dart SDKs). Used only inside web_notification_web.dart.
+  web: ^1.1.0
+  linkify: ^5.0.0
+  flutter_secure_storage: ^10.3.4
+  # X25519 / AES-GCM / HKDF for the app-layer envelope encryption in
+  # api_client.dart. NOT the same package as `crypto` above (that one is
+  # hash-only — sha256 for certificate pinning); this one is a different
+  # pub.dev package and both are needed.
+  cryptography: ^2.7.0
+  android_id: ^0.5.2+1
+  screen_protector: ^1.5.3
+  file_saver: ^0.4.0
 dependency_overrides:
+  flutter_webrtc:
+    git:
+      url: https://github.com/Amadkour/flutter-webrtc.git
+      ref: main
   # Pin packages that use Apple APIs unavailable on CI runner's Xcode version.
   connectivity_plus: '>=7.0.0 <7.1.0' # NWPath.isUltraConstrained
   device_info_plus: '>=12.3.0 <12.4.0' # NSProcessInfo.isiOSAppOnVision
@@ -74,25 +86,65 @@ flutter:
   fonts:
     - family: bahji
       fonts:
-        - asset: fonts/Bahij_TheSansArabic-Bold.ttf
+        - asset: assets/fonts/Bahij_TheSansArabic-Bold.ttf
           style: italic
+    - family: tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+          style: italic
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+          style: italic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App launcher icon (was completely missing — this is why the project icon
+# was showing the default Flutter icon instead of your logo).
+# Run: dart run flutter_launcher_icons
+# dart run flutter_launcher_icons:generate -o
+# ─────────────────────────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Pre-composited: logo centered on a solid #D4FEFD square (no alpha —
+  # required for iOS App Store acceptance) and legacy/non-adaptive Android.
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  # Adaptive icons (Android 8+) crop the foreground into a circle/square/squircle
+  # mask depending on the device launcher, so the foreground image has generous
+  # transparent padding around the logo (logo ~58% of canvas width) so nothing
+  # gets clipped — this was the root cause of the cropped-icon issue.
+  adaptive_icon_background: "#0C1511"
+  adaptive_icon_foreground: "assets/images/adaptive_icon_foreground.png"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Splash screen
+# android_12 now points at a SEPARATE, padded image (splash_android12.png)
+# instead of reusing the full-bleed splash.png. Android 12+ renders this
+# image inside a fixed circular "safe zone" (~1/3 of a 960x960 canvas,
+# centered) and clips anything outside it — reusing the full-bleed logo is
+# exactly why it was being cropped before.
+# Run: dart run flutter_native_splash:create
+# ─────────────────────────────────────────────────────────────────────────────
 flutter_native_splash:
-  # General color for all platforms except Android 12+
-  color: "#FFFFFF"
-  # General image for all platforms except Android 12+
+  color: "#FBF7EC"
+  color_dark: "#0C1511"
+
   image: assets/images/splash.png
+  image_dark: assets/images/splash.png
 
-  android_gravity: fill
-
+  android_gravity: center
   ios_content_mode: center
 
   fullscreen: true
 
   # Android 12+ specific configuration (required for newer Android versions)
   android_12:
-    image: assets/images/splash.png
-    color: "#FFFFFF"
-    # Optional: background color for the icon
-    # icon_background_color: "#111111"
+    image: assets/images/splash_android12.png
+    icon_background_color: "#D4FEFD"
+    color: "#D4FEFD"
+    color_dark: "#D4FEFD"
+  web: true
 dev_dependencies:
   flutter_test: any
+  flutter_launcher_icons: ^0.14.3

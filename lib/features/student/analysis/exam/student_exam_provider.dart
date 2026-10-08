@@ -1,11 +1,12 @@
-
 library;
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import '../../../teacher/analysis/exam/exam_model.dart';
+import '../../../shared/models/exam_model.dart';
+import '../../courses/details/course_detail_provider.dart';
 import 'student_exam_api.dart';
+import 'exam_tr.dart';
 
 // ── Quiz session state ────────────────────────────────────────────────────────
 
@@ -47,7 +48,7 @@ class QuizSession {
   /// Whether the current result matches the best-ever
   bool get isCurrentBest =>
       result != null &&
-      (bestPercentage == null || result!.percentage >= bestPercentage!);
+          (bestPercentage == null || result!.percentage >= bestPercentage!);
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -92,21 +93,36 @@ class StudentExamProvider extends ChangeNotifier {
 
   String? courseExamsErrorFor(String courseId) => _courseExamsError[courseId];
 
-  // ── Timer ──────────────────────────────────────────────────────────────────
-  int _secondsLeft = 0;
+  /// True once a load for [courseId] has finished successfully (even if the
+  /// course has no exams) — lets many session cards share one request.
+  bool courseExamsLoadedFor(String courseId) =>
+      _courseExams.containsKey(courseId);
 
-  int get secondsLeft => _secondsLeft;
+  /// The exam attached to [sessionId], or null if that session has none.
+  StudentExamListItem? examForSession(String courseId, int sessionId) {
+    for (final e in courseExamsFor(courseId)) {
+      if (e.sessionId == sessionId) return e;
+    }
+    return null;
+  }
+
+  // ── Timer ──────────────────────────────────────────────────────────────────
+  // Ticks through its own notifier so the once-a-second countdown does NOT
+  // call notifyListeners() (that rebuilt every screen watching this provider,
+  // including the course pages underneath the quiz).
+  final ValueNotifier<int> secondsLeftNotifier = ValueNotifier<int>(0);
+  int get secondsLeft => secondsLeftNotifier.value;
   Timer? _timer;
 
   String get timerDisplay {
-    final m = _secondsLeft ~/ 60;
-    final s = _secondsLeft % 60;
+    final m = secondsLeft ~/ 60;
+    final s = secondsLeft % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  bool get timerCritical => _secondsLeft < 120;
+  bool get timerCritical => secondsLeft < 120;
 
-  bool get timerWarning => _secondsLeft < 300 && !timerCritical;
+  bool get timerWarning => secondsLeft < 300 && !timerCritical;
 
   // ══════════════════════════════════════════════════════════════════════════
   // My Exams list
@@ -155,8 +171,8 @@ class StudentExamProvider extends ChangeNotifier {
   Future<bool> startExam(StudentExamListItem exam) async {
     if (exam.isFrozen) {
       _questionsError = exam.isDeadlineFrozen
-          ? 'انتهى الموعد النهائي لهذا الاختبار'
-          : 'لقد استنفدت جميع محاولاتك المسموح بها';
+          ? tx('exam_err_deadline')
+          : tx('exam_err_attempts');
       notifyListeners();
       return false;
     }
@@ -166,7 +182,7 @@ class StudentExamProvider extends ChangeNotifier {
     try {
       final questions = await _api.fetchQuestions(exam.id);
       if (questions.isEmpty) {
-        _questionsError = 'هذا الاختبار لا يحتوي على أسئلة بعد';
+        _questionsError = tx('exam_err_no_questions');
         return false;
       }
       _session = QuizSession(exam: exam, questions: questions);
@@ -284,17 +300,41 @@ class StudentExamProvider extends ChangeNotifier {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
+  // Exam-flow finished hook
+  // ══════════════════════════════════════════════════════════════════════════
+  // The exam flow is detail → quiz → result and every step uses
+  // pushReplacement, so `await Navigator.push(detail)` completes as soon as
+  // the QUIZ opens — far too early to refresh the course. Whoever opens an
+  // exam stores its "after the exam" work here; the result screen fires it
+  // once, when it is really closed (exit button OR system back).
+
+  /// Runs once when the whole exam flow is over (see [finishFlow]).
+  Future<void> Function()? onFlowFinished;
+
+  /// Called by the result screen when it is closed (not when retrying).
+  void finishFlow() {
+    final cb = onFlowFinished;
+    onFlowFinished = null;
+    // Deferred: this is called from State.dispose(), where notifying
+    // listeners / rebuilding other widgets is not allowed.
+    Future(() async {
+      if (_session != null) closeSession();
+      await cb?.call();
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
   // Timer helpers
   // ══════════════════════════════════════════════════════════════════════════
 
   void _startTimer(int durationMinutes) {
     _stopTimer();
-    _secondsLeft = durationMinutes * 60;
+    secondsLeftNotifier.value = durationMinutes * 60;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (_secondsLeft > 0) {
-        _secondsLeft--;
-        notifyListeners();
+      if (secondsLeftNotifier.value > 0) {
+        secondsLeftNotifier.value--;
       } else {
+        _stopTimer();
         submitExam();
       }
     });
@@ -309,21 +349,29 @@ class StudentExamProvider extends ChangeNotifier {
   // Private helpers
   // ══════════════════════════════════════════════════════════════════════════
 
-  StudentExamListItem? _findUpdatedExam(int examId) =>
-      _myExams.where((e) => e.id == examId).firstOrNull;
+  /// Latest known copy of an exam: checks the my-exams list first, then any
+  /// cached course lists (the course list may be the only one loaded).
+  StudentExamListItem? _findUpdatedExam(int examId) {
+    final fromMy = _myExams.where((e) => e.id == examId).firstOrNull;
+    if (fromMy != null) return fromMy;
+    for (final list in _courseExams.values) {
+      final found = list.where((e) => e.id == examId).firstOrNull;
+      if (found != null) return found;
+    }
+    return null;
+  }
 
-  void _markSubmittedInList(int examId, StudentMyResult? result) {
-    final idx = _myExams.indexWhere((e) => e.id == examId);
-    if (idx == -1) return;
-    final old = _myExams[idx];
+  StudentExamListItem _withSubmission(
+      StudentExamListItem old, StudentMyResult? result) {
     final newSubCount = old.submissionCount + 1;
     final maxSub = old.maxSubmissions;
-    _myExams[idx] = StudentExamListItem(
+    return StudentExamListItem(
       id: old.id,
       name: old.name,
       description: old.description,
       courseId: old.courseId,
       courseName: old.courseName,
+      sessionId: old.sessionId,
       startDate: old.startDate,
       endDate: old.endDate,
       duration: old.duration,
@@ -341,13 +389,32 @@ class StudentExamProvider extends ChangeNotifier {
       percentage: result?.percentage,
       passed: result?.passed,
       enablePasscode: old.enablePasscode,
+      passcode: old.passcode,
     );
+  }
+
+  void _markSubmittedInList(int examId, StudentMyResult? result) {
+    // My-exams list
+    final idx = _myExams.indexWhere((e) => e.id == examId);
+    if (idx != -1) {
+      _myExams[idx] = _withSubmission(_myExams[idx], result);
+    }
+
+    // Cached course exam lists (course exam tab + per-session buttons).
+    // Runs even when the exam isn't in _myExams.
+    for (final list in _courseExams.values) {
+      final i = list.indexWhere((e) => e.id == examId);
+      if (i != -1) {
+        list[i] = _withSubmission(list[i], result);
+      }
+    }
     notifyListeners();
   }
 
   @override
   void dispose() {
     _stopTimer();
+    secondsLeftNotifier.dispose();
     super.dispose();
   }
 }

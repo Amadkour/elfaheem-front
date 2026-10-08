@@ -1,9 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' show LangProvider, pageDirection, Trans, AppConfig;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 
@@ -40,7 +40,7 @@ class ChangeLanguageScreen extends StatelessWidget {
                               context.colors.radiusMedium),
                           border: Border.all(
                               color: isSelected
-                                  ? context.colors.primaryBlue
+                                  ? context.colors.primary
                                   : context.colors.divider,
                               width: isSelected ? 2 : 1),
                           boxShadow: context.colors.cardShadow,
@@ -51,13 +51,13 @@ class ChangeLanguageScreen extends StatelessWidget {
                               Text(l.tr,
                                   style: context.colors.label.copyWith(
                                       color: isSelected
-                                          ? context.colors.primaryBlue
+                                          ? context.colors.primary
                                           : context.colors.textDark,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15)),
                               if (isSelected)
                                 Icon(Icons.check_circle_rounded,
-                                    color: context.colors.primaryBlue,
+                                    color: context.colors.primary,
                                     size: 22),
                             ]),
                       ),

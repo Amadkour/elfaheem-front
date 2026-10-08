@@ -6,8 +6,10 @@
 
 import 'package:flutter/material.dart';
 
-import '../../../../../config/app_theme.dart';
 import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/course_price_tag.dart';
+import '../../../student/models.dart' show AppCurrencyX;
 import '../../home/teacher_models.dart';
 import '../students/course_student_screen.dart';
 
@@ -25,6 +27,7 @@ class CourseStatsRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = <_StatItem>[
       _StatItem(
+        featureKey: 'course_stats.students',
         icon: Icons.people_alt_rounded,
         label: 'student'.tr,
         value: '${course.studentsCount}',
@@ -37,18 +40,33 @@ class CourseStatsRow extends StatelessWidget {
         ),
       ),
       _StatItem(
+        featureKey: 'course_stats.sessions',
         icon: Icons.play_lesson_rounded,
         label: 'sessions'.tr,
         value: '$sessionCount',
         color: context.colors.primary,
       ),
       _StatItem(
+        featureKey: 'course_stats.price',
         icon: Icons.sell_rounded,
         label: 'cost'.tr,
-        value: course.price == 0 ? 'free'.tr : '${course.price} ج',
+        value: course.currency.format(course.finalPrice??0),
         color: const Color(0xFF1DB954),
+        valueBuilder: course.discountActive??false
+            ? (context) => CoursePriceTag(
+          originalPrice: course.price,
+          finalPrice: course.finalPrice??0,
+          discountActive: true,
+          format: course.currency.format,
+          color: context.colors.textDark,
+          fontSize: 13,
+          originalFontSize: 9,
+          alignment: CrossAxisAlignment.center,
+        )
+            : null,
       ),
       _StatItem(
+        featureKey: 'course_stats.duration',
         icon: Icons.timer_rounded,
         label: 'duration'.tr,
         value: '${course.totalHours} ${'h'.tr}',
@@ -57,10 +75,10 @@ class CourseStatsRow extends StatelessWidget {
     ];
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      key: const ValueKey('course_stats'),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: context.colors.divider, width: 1),
         boxShadow: [
@@ -74,7 +92,7 @@ class CourseStatsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children:
-            stats.map((s) => Expanded(child: _StatChip(item: s))).toList(),
+        stats.map((s) => Expanded(child: _StatChip(key: ValueKey(s.featureKey), item: s))).toList(),
       ),
     );
   }
@@ -89,19 +107,28 @@ class _StatItem {
   final Color color;
   final VoidCallback? onTap;
 
+  /// Optional override for the value area (e.g. a discounted price with a
+  /// struck-through original). Falls back to a plain [Text] of [value].
+  final Widget Function(BuildContext context)? valueBuilder;
+
+  /// Hide/unhide key — must match the backend catalog.
+  final String featureKey;
+
   const _StatItem({
+    required this.featureKey,
     required this.icon,
     required this.label,
     required this.value,
     required this.color,
     this.onTap,
+    this.valueBuilder,
   });
 }
 
 class _StatChip extends StatelessWidget {
   final _StatItem item;
 
-  const _StatChip({required this.item});
+  const _StatChip({super.key, required this.item});
 
   @override
   Widget build(BuildContext context) {
@@ -118,23 +145,24 @@ class _StatChip extends StatelessWidget {
           child: Icon(item.icon, size: 18, color: item.color),
         ),
         const SizedBox(height: 6),
-        Text(
-          item.value,
-          style: TextStyle(
-            fontFamily: 'Tajawal',
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-            color: context.colors.textDark,
-          ),
-        ),
+        item.valueBuilder?.call(context) ??
+            Text(
+              item.value,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+                color: context.colors.textDark,
+              ),
+            ),
         const SizedBox(height: 2),
         Text(
           item.label,
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 10,
             decoration:
-                item.onTap == null ? null : TextDecoration.underline,
+            item.onTap == null ? null : TextDecoration.underline,
             decorationColor: Colors.blueAccent,
             decorationThickness: 2,
             color: context.colors.textMedium,

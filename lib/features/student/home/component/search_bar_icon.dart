@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import '../../../../config/app_config.dart';
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../courses/list/courses_list_screen.dart';
 
 class SearchBarIcon extends StatelessWidget {

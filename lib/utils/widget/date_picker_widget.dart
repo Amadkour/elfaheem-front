@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 class MyDatePicker extends StatelessWidget {
   const MyDatePicker(
       {super.key,
@@ -26,7 +27,7 @@ class MyDatePicker extends StatelessWidget {
         textDirection: TextDirection.rtl,
         controller: controller,
         style:  TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: context.colors.textDark),
@@ -37,7 +38,7 @@ class MyDatePicker extends StatelessWidget {
             hint: Text(
               label,
               style:  TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontWeight: FontWeight.w600,
                   color: context.colors.textMedium),
               textDirection: TextDirection.rtl,
@@ -68,20 +69,20 @@ class MyDatePicker extends StatelessWidget {
             primaryColorDark: context.colors.inputBg,
             colorScheme: isDark
                 ? ColorScheme.dark(
-              primary: context.colors.accent,       // Selected day circle
+              primary: context.colors.primary,       // Selected day circle
               onPrimary: context.colors.background, // Selected day text
               surface: context.colors.cardBg,       // Picker background
               onSurface: context.colors.textDark, // Day & header text
             )
                 : ColorScheme.light(
-              primary: context.colors.accent,       // Selected day circle
+              primary: context.colors.primary,       // Selected day circle
               onPrimary: context.colors.background, // Selected day text
               surface: context.colors.cardBg,       // Picker background
               onSurface: context.colors.textDark, // Day & header text
             ),
             textTheme: TextTheme.of(context).copyWith(
-              displaySmall: const TextStyle(fontFamily: 'Tajawal'),
-              titleLarge: const TextStyle(fontFamily: 'Tajawal'),
+              displaySmall: const TextStyle(fontFamily: 'tajawal'),
+              titleLarge: const TextStyle(fontFamily: 'tajawal'),
             ),
           ),
           child: child!,

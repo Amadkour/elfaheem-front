@@ -1,17 +1,14 @@
 <!DOCTYPE html><html><head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
+  <script>
+  // Prevent Flutter from trying to load Noto Color Emoji from Google
+  window._flutter = window._flutter || {};
+  window._flutter.config = {
+    canvasKitMaximumSurfaces: 8,
+    // Disable automatic font loading
+    useColorEmoji: false,
+  };
+</script>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -29,9 +26,37 @@
 
   <title>flutter_education_app</title>
   <link rel="manifest" href="manifest.json">
-  
-  
+
+
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+  
+  
+  <script src="recorder_compositor.js"></script>
+
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  <script>
+    // Remove the splash as soon as Flutter has drawn its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      removeSplashFromWeb();
+    });
+  </script>
+  <script>
+    // Remove the splash as soon as Flutter has drawn its first frame.
+    window.addEventListener('flutter-first-frame', function () {
+      removeSplashFromWeb();
+    });
+  </script>
   <style id="splash-screen-style">
     html {
       height: 100%
@@ -40,7 +65,7 @@
     body {
       margin: 0;
       min-height: 100%;
-      background-color: #FFFFFF;
+      background-color: #FBF7EC;
           background-size: 100% 100%;
     }
 
@@ -89,9 +114,14 @@
       bottom: 0;
       right: 0;
     }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #0C1511;
+          }
+    }
   </style>
   <script id="splash-screen-script">
-    window.flutterWebRenderer = "html";
     function removeSplashFromWeb() {
       document.getElementById("splash")?.remove();
       document.getElementById("splash-branding")?.remove();
@@ -106,7 +136,14 @@
       <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
   </picture>
   
-  <script src="flutter_bootstrap.js" async=""></script>
+  
+  
+  
+  
+  
+
+
+<script src="flutter_bootstrap.js" async=""></script>
 
 
 </body></html>

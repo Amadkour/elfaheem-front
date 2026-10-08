@@ -1,15 +1,19 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
+import '../../../utils/widget/count_badge.dart';
 import '../../../utils/widget/refresh_button.dart';
 import '../analysis/student_analytics_provider.dart';
 import '../analysis/student_analytics_screen.dart';
@@ -38,9 +42,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<DashboardItem> dashboardItems = [];
 
+  /// A dialog button / push asked for a tab ("profile" | "my_courses").
+  /// Nothing was listening before, so those buttons only popped to this screen and stopped.
+  void _onTabRequested() {
+    final id = AppNavigator.requestedTab.value;
+    if (id == null) return;
+    final label = switch (id) {
+      'profile' => 'my_profile',
+      'my_courses' => 'my_courses',
+      _ => null,
+    };
+    AppNavigator.requestedTab.value = null; // consumed
+    if (label == null || !mounted) return;
+    final i = dashboardItems.indexWhere((e) => e.label == label);
+    if (i >= 0) setState(() => _currentIndex = i); // i < 0 → that tab is switched off by the feature list
+  }
+
+  @override
+  void dispose() {
+    AppNavigator.requestedTab.removeListener(_onTabRequested);
+    super.dispose();
+  }
+
   @override
   void initState() {
+    AppNavigator.requestedTab.addListener(_onTabRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _onTabRequested(); // a request made BEFORE this screen existed (cold start from a dialog / push)
       await context.read<NotificationsProvider>().fetchNotifications();
     });
     dashboardItems.clear();
@@ -49,15 +77,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         CupertinoIcons.home,
         CupertinoIcons.house_fill,
         'home',
-        () async => context.read<HomeProvider>().init(context),
+            () async => context.read<HomeProvider>().init(context),
         const HomeScreen(),
       ),
       DashboardItem(
-          CupertinoIcons.book,
-          CupertinoIcons.book_fill,
-          'my_courses',
-          context.read<MyCoursesProvider>().fetchMyEnrollments,
-           MyCoursesScreen(courses:context.read<HomeProvider>().myCourses)),
+        CupertinoIcons.book,
+        CupertinoIcons.book_fill,
+        'my_courses',
+        context.read<MyCoursesProvider>().fetchMyEnrollments,
+        MyCoursesScreen(courses: context.read<HomeProvider>().myCourses),
+      ),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
@@ -80,6 +109,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const ProfileScreen(),
       ),
     ]);
+    dashboardItems.removeWhere(
+          (e) => Helpers.AppConfig.disableList.contains('student_tab_${e.label}'),
+    );
+
     super.initState();
   }
 
@@ -87,6 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final unread = context.watch<NotificationsProvider>().unreadCount;
         final w = constraints.maxWidth;
         if (w >= 900) {
           return WideShell(
@@ -95,15 +129,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (mounted) setState(() => _currentIndex = i);
             },
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
-        if (w >= 600) {
+        if (kIsWeb && w >= 600) {
           return RailShell(
             currentIndex: _currentIndex,
             onTap: (i) {
               if (mounted) setState(() => _currentIndex = i);
             },
             dashboardItems: dashboardItems,
+            unreadCount: unread,
           );
         }
         return MobileShell(
@@ -126,18 +162,19 @@ class WideShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<DashboardItem> dashboardItems;
+  final int unreadCount;
 
   const WideShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
+    required this.unreadCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    final unread = context.watch<NotificationsProvider>().unreadCount;
-    final user = context.watch<AuthProvider>().currentUser;
+    AuthProvider provider = context.watch<AuthProvider>();
     return BasePage(
       child: Row(
         children: [
@@ -146,16 +183,8 @@ class WideShell extends StatelessWidget {
             width: 240,
             child: Container(
               width: Breakpoints.sidebarW,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0F3A8F),
-                    Color(0xFF1A56C4),
-                    Color(0xFF2563EB)
-                  ],
-                ),
+              decoration: BoxDecoration(
+                gradient: context.colors.slideBarGradient,
               ),
               child: Stack(
                 children: [
@@ -188,29 +217,38 @@ class WideShell extends StatelessWidget {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: context.colors.primary
-                                    .withValues(alpha: 0.3),
+                                color: context.colors.primary.withValues(
+                                  alpha: 0.3,
+                                ),
                                 borderRadius: BorderRadius.circular(13),
                               ),
-                              child: const Icon(Icons.school_rounded,
-                                  color: Colors.white, size: 22),
+                              child: const Icon(
+                                Icons.school_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Elfaheem',
-                                    style: TextStyle(
-                                        fontFamily: 'bahji',
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 17)),
-                                Text('منصة التعلم الذكي',
-                                    style: TextStyle(
-                                        fontFamily: 'Tajawal',
-                                        color:
-                                            Colors.white.withValues(alpha: 0.4),
-                                        fontSize: 10)),
+                                const Text(
+                                  'Al-Faheem',
+                                  style: TextStyle(
+                                    fontFamily: 'bahji',
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 17,
+                                  ),
+                                ),
+                                Text(
+                                  'app_tagline'.tr,
+                                  style: TextStyle(
+                                    fontFamily: 'tajawal',
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                    fontSize: 10,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -218,8 +256,9 @@ class WideShell extends StatelessWidget {
                       ),
                       const SizedBox(height: 28),
                       Divider(
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.07)),
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.07),
+                      ),
                       const SizedBox(height: 10),
 
                       // Nav items
@@ -229,20 +268,22 @@ class WideShell extends StatelessWidget {
                           selectedIcon: dashboardItems[i].selectedIcon,
                           label: dashboardItems[i].label.tr,
                           selected: currentIndex == i,
-                          badge: i == 4 && unread > 0 ? unread : 0,
+                          // badge: i == 4 && unread > 0 ? unread : 0,
                           onTap: () => onTap(i),
+                          badge: dashboardItems[i].badge,
                         ),
 
                       const Spacer(),
                       Divider(
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.07)),
+                        height: 1,
+                        color: Colors.white.withValues(alpha: 0.07),
+                      ),
                       const SizedBox(height: 14),
-                      if (user != null)
+                      if (provider.currentUser != null)
                         UserChipButton(
-                          user: user,
+                          user: provider.currentUser!,
                           showLabel: true,
-                        )
+                        ),
                     ],
                   ),
                 ],
@@ -256,15 +297,16 @@ class WideShell extends StatelessWidget {
               children: [
                 // Topbar
                 _WideTopBar(
-                  title: dashboardItems[currentIndex].label,
-                  unread: unread,
+                  title: dashboardItems[currentIndex].label.tr,
+                  unread: unreadCount,
                   onRefresh: dashboardItems[currentIndex].onRefresh,
                 ),
                 // Screen body — IndexedStack preserves state
                 Expanded(
                   child: IndexedStack(
-                      index: currentIndex,
-                      children: dashboardItems.map((e) => e.screen).toList()),
+                    index: currentIndex,
+                    children: dashboardItems.map((e) => e.screen).toList(),
+                  ),
                 ),
               ],
             ),
@@ -279,8 +321,11 @@ class UserChipButton extends StatelessWidget {
   final UserModel user;
   final bool showLabel;
 
-  const UserChipButton(
-      {super.key, required this.user, required this.showLabel});
+  const UserChipButton({
+    super.key,
+    required this.user,
+    required this.showLabel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -294,70 +339,90 @@ class UserChipButton extends StatelessWidget {
       child: InkWell(
         onTap: () {
           Navigator.push(
-              context, MaterialPageRoute(builder: (_) => EditAccountScreen()));
+            context,
+            MaterialPageRoute(builder: (_) => EditAccountScreen()),
+          );
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.07),
+            color: Colors.white.withValues(alpha: 0.17),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Row(children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: context.read<AuthProvider>().currentUser!.imageUrl != null
-                  ? Container(
-                      width: 35,
-                      height: 35,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: context.colors.primary.withValues(alpha: 0.1),
-                        border: Border.all(
-                            color: context.colors.primaryBlue, width: 2.5),
-                      ),
-                      child: ClipOval(
-                          child: AppNetworkImage(
-                        url:
-                            context.read<AuthProvider>().currentUser!.imageUrl!,
-                        enableFullscreen: false,
-                        heroTag: "user_logo-dashboard",
-                      )))
-                  : Text(initial,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          fontFamily: 'bahji')),
-            ),
-            if (showLabel) ...[
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'bahji'),
-                        overflow: TextOverflow.ellipsis),
-                    Text(user.isTeacher ? 'teacher'.tr : 'student'.tr,
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 10,
-                            fontFamily: 'bahji')),
-                  ],
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: context.colors.accentGradient,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child:
+                context.read<AuthProvider>().currentUser!.imageUrl != null
+                    ? Container(
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: context.colors.primary.withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: context.colors.primary,
+                      width: 2.5,
+                    ),
+                  ),
+                  child: ClipOval(
+                    child: AppNetworkImage(
+                      url: context
+                          .read<AuthProvider>()
+                          .currentUser!
+                          .imageUrl!,
+                      enableFullscreen: false,
+                      heroTag: "user_logo-dashboard",
+                    ),
+                  ),
+                )
+                    : Text(
+                  initial,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'bahji',
+                  ),
                 ),
               ),
-            ]
-          ]),
+              if (showLabel) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          color: context.colors.primaryLight,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w100,
+                          fontFamily: 'bahji',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        user.role.tr,
+                        style: TextStyle(
+                          color: context.colors.accent2,
+                          fontSize: 10,
+                          fontFamily: 'bahji',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
@@ -372,6 +437,8 @@ class _SidebarTile extends StatelessWidget {
   final String label;
   final bool selected;
   final int badge;
+
+  // final int badge;
   final VoidCallback onTap;
 
   const _SidebarTile({
@@ -379,8 +446,9 @@ class _SidebarTile extends StatelessWidget {
     required this.selectedIcon,
     required this.label,
     required this.selected,
-    required this.badge,
+    // required this.badge,
     required this.onTap,
+    required this.badge,
   });
 
   @override
@@ -393,7 +461,7 @@ class _SidebarTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         decoration: BoxDecoration(
           color: selected
-              ? context.colors.primary.withValues(alpha: 0.2)
+              ? context.colors.accent2.withValues(alpha: 0.2)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -423,7 +491,7 @@ class _SidebarTile extends StatelessWidget {
               size: 20,
             ),
             const SizedBox(width: 12),
-            Expanded(
+            Flexible(
               child: Text(
                 label,
                 style: TextStyle(
@@ -431,24 +499,30 @@ class _SidebarTile extends StatelessWidget {
                   color: selected
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.48),
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
                   fontSize: 14,
                 ),
               ),
             ),
-            if (badge > 0)
+            if (badge > 0) ...[
+              SizedBox(width: 10),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
-                    color: context.colors.danger,
-                    borderRadius: BorderRadius.circular(20)),
-                child: Text('$badge',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        fontFamily: 'bahji')),
+                  color: context.colors.danger,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$badge',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    fontFamily: 'bahji',
+                  ),
+                ),
               ),
+            ],
           ],
         ),
       ),
@@ -463,33 +537,47 @@ class _WideTopBar extends StatelessWidget {
   final int unread;
   final Future<void> Function()? onRefresh;
 
-  const _WideTopBar(
-      {required this.title, required this.unread, required this.onRefresh});
+  const _WideTopBar({
+    required this.title,
+    required this.unread,
+    required this.onRefresh,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 64,
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
+        color: context.colors.isDark
+            ? context.colors.cardBg
+            : context.colors.primary,
         border: Border(
-            bottom: BorderSide(
-                color: context.colors.primary.withValues(alpha: 0.08))),
+          bottom: BorderSide(
+            color: context.colors.primary.withValues(alpha: 0.08),
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2))
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
         children: [
-          Text(title, style: context.colors.h2),
+          Text(
+            title,
+            style: context.colors.h2.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.normal,
+            ),
+          ),
           const Spacer(),
           if (onRefresh != null) RefreshButton(onTap: onRefresh!),
-          SizedBox(width: 5,),
-          NotificationIcon(haveUnreadNotifications: unread > 0),
+          SizedBox(width: 5),
+          NotificationIcon(unreadCount: unread),
         ],
       ),
     );
@@ -497,9 +585,9 @@ class _WideTopBar extends StatelessWidget {
 }
 
 class NotificationIcon extends StatelessWidget {
-  const NotificationIcon({super.key, required this.haveUnreadNotifications});
+  const NotificationIcon({super.key, required this.unreadCount});
 
-  final bool haveUnreadNotifications;
+  final int unreadCount;
 
   @override
   Widget build(BuildContext context) {
@@ -510,24 +598,31 @@ class NotificationIcon extends StatelessWidget {
         margin: EdgeInsets.all(5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          color: context.colors.primary,
+          color: context.colors.accent2,
         ),
-        child: Stack(clipBehavior: Clip.none, children: [
-          Icon(Icons.notifications_rounded,
-              color: Colors.white,
-              size: 20),
-          if (haveUnreadNotifications)
-            Positioned(
-              top: -2,
-              right: -2,
-              child: Container(
-                width: 11,
-                height: 11,
-                decoration: BoxDecoration(
-                    color: context.colors.danger, shape: BoxShape.circle),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Icon(Icons.notifications_rounded, color: Colors.white, size: 20),
+            if (unreadCount > 0)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Container(
+                  padding: EdgeInsets.all(2),
+                  alignment: AlignmentGeometry.center,
+                  decoration: BoxDecoration(
+                    color: context.colors.danger,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                    style: AppTheme.small.copyWith(color: Colors.white),
+                  ),
+                ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -541,47 +636,65 @@ class RailShell extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   final List<DashboardItem> dashboardItems;
+  final int unreadCount;
 
   const RailShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
+    required this.unreadCount,
   });
 
   @override
   Widget build(BuildContext context) {
+    AuthProvider provider = context.watch<AuthProvider>();
     return BasePage(
       child: Row(
         children: [
           ColoredBox(
-            color: context.colors.primaryDark,
+            color: context.colors.primary,
             child: Column(
               children: [
                 Expanded(
                   child: NavigationRail(
-                    backgroundColor: context.colors.primaryDark,
+                    backgroundColor: context.colors.isDark
+                        ? context.colors.cardBg
+                        : context.colors.primary,
                     selectedIndex: currentIndex,
                     onDestinationSelected: onTap,
                     minWidth: 66,
                     labelType: NavigationRailLabelType.none,
-                    indicatorColor:
-                        context.colors.primary.withValues(alpha: 0.35),
-                    selectedIconTheme:
-                        const IconThemeData(color: Colors.white, size: 23),
+                    indicatorColor: context.colors.primary.withValues(
+                      alpha: 0.35,
+                    ),
+                    selectedIconTheme: const IconThemeData(
+                      color: Colors.white,
+                      size: 23,
+                    ),
                     unselectedIconTheme: IconThemeData(
-                        color: Colors.white.withValues(alpha: 0.38), size: 22),
+                      color: Colors.white.withValues(alpha: 0.38),
+                      size: 22,
+                    ),
                     leading: Padding(
                       padding: const EdgeInsets.only(top: 24, bottom: 12),
-                      child: Icon(Icons.school_rounded,
-                          color: Colors.white.withValues(alpha: 0.75),
-                          size: 26),
+                      child: Icon(
+                        Icons.school_rounded,
+                        color: context.colors.accent2,
+                        size: 26,
+                      ),
                     ),
                     destinations: [
                       for (int i = 0; i < dashboardItems.length; i++)
                         NavigationRailDestination(
-                          icon: Icon(dashboardItems[i].icon),
-                          selectedIcon: Icon(dashboardItems[i].selectedIcon),
+                          icon: CountBadge(
+                            count: dashboardItems[i].badge,
+                            child: Icon(dashboardItems[i].icon),
+                          ),
+                          selectedIcon: CountBadge(
+                            count: dashboardItems[i].badge,
+                            child: Icon(dashboardItems[i].selectedIcon),
+                          ),
                           label: Text(dashboardItems[i].label.tr),
                         ),
                     ],
@@ -589,18 +702,32 @@ class RailShell extends StatelessWidget {
                 ),
                 if (context.watch<AuthProvider>().currentUser != null)
                   UserChipButton(
-                    user: context.watch<AuthProvider>().currentUser!,
+                    user: provider.currentUser!,
                     showLabel: false,
-                  )
+                  ),
               ],
             ),
           ),
           VerticalDivider(
-              width: 1, color: Colors.white.withValues(alpha: 0.06)),
+            width: 1,
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
           Expanded(
-            child: IndexedStack(
-                index: currentIndex,
-                children: dashboardItems.map((e) => e.screen).toList()),
+            child: Column(
+              children: [
+                _WideTopBar(
+                  title: dashboardItems[currentIndex].label.tr,
+                  unread: unreadCount,
+                  onRefresh: dashboardItems[currentIndex].onRefresh,
+                ),
+                Expanded(
+                  child: IndexedStack(
+                    index: currentIndex,
+                    children: dashboardItems.map((e) => e.screen).toList(),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -633,8 +760,9 @@ class MobileShell extends StatelessWidget {
         dashboardItems: dashboardItems,
       ),
       child: IndexedStack(
-          index: currentIndex,
-          children: dashboardItems.map((e) => e.screen).toList()),
+        index: currentIndex,
+        children: dashboardItems.map((e) => e.screen).toList(),
+      ),
     );
   }
 }
@@ -652,51 +780,60 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          border: Border(
-              top: BorderSide(
-                  color: Colors.black.withValues(alpha: 0.07), width: 0.5)),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 20,
-                offset: const Offset(0, -4)),
-          ],
+    decoration: BoxDecoration(
+      color: context.colors.cardBg,
+      border: Border(
+        top: BorderSide(
+          color: Colors.black.withValues(alpha: 0.07),
+          width: 0.5,
         ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: Row(
-              children: dashboardItems.asMap().entries.map((e) {
-                final i = e.key;
-                final item = e.value;
-                final active = i == index;
-                return Expanded(
-                  child: GestureDetector(
-                    onTap: () => onSelect(i),
-                    behavior: HitTestBehavior.opaque,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          width: 42,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            gradient:
-                                active ? context.colors.primaryGradient : null,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: active
-                                ? [
-                                    BoxShadow(
-                                        color: context.colors.primaryBlue
-                                            .withValues(alpha: 0.3),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2))
-                                  ]
-                                : null,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.06),
+          blurRadius: 20,
+          offset: const Offset(0, -4),
+        ),
+      ],
+    ),
+    child: SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Row(
+          children: dashboardItems.asMap().entries.map((e) {
+            final i = e.key;
+            final item = e.value;
+            final active = i == index;
+            return Expanded(
+              child: GestureDetector(
+                onTap: () => onSelect(i),
+                behavior: HitTestBehavior.opaque,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      width: 42,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        gradient: active ? context.colors.accentGradient : null,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: active
+                            ? [
+                          BoxShadow(
+                            color: context.colors.primary.withValues(
+                              alpha: 0.3,
+                            ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
+                        ]
+                            : null,
+                      ),
+                      child: CountBadge(
+                        count: dashboardItems[i].badge,
+
+                        child: Center(
                           child: Icon(
                             active ? item.selectedIcon : item.icon,
                             size: 20,
@@ -705,26 +842,27 @@ class _BottomNav extends StatelessWidget {
                                 : context.colors.textLight,
                           ),
                         ),
-                        const SizedBox(height: 3),
-                        Text(
-                          dashboardItems[i].label.tr,
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                            color: active
-                                ? context.colors.primaryBlue
-                                : context.colors.textLight,
-                            fontFamily: 'bahji',
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+                    const SizedBox(height: 3),
+                    Text(
+                      dashboardItems[i].label.tr,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        color: active
+                            ? context.colors.primary
+                            : context.colors.textLight,
+                        fontFamily: 'bahji',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
         ),
-      );
+      ),
+    ),
+  );
 }

@@ -3,20 +3,20 @@
 /// Premium design: deep emerald + gold fintech aesthetic, animated hero card.
 library;
 
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/text_field.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'saved_payment_models.dart';
 import 'saved_methods_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class TeacherPayoutScreen extends StatelessWidget {
   const TeacherPayoutScreen({super.key});
@@ -45,7 +45,7 @@ class _TeacherPayoutView extends StatelessWidget {
               child: Consumer<SavedMethodsProvider>(
                 builder: (context, p, _) {
                   if (p.isLoading && !p.fetched) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(child: AppLoadingIndicator());
                   }
                   return SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -482,10 +482,10 @@ class _AddBankFormState extends State<_AddBankForm> {
               ),
             ),
             const SizedBox(height: 22),
-            MyPrimaryButton(
+            PrimaryButton(
               label: 'save_bank_account_btn'.tr,
               isLoading: _saving,
-              onPressed: _save,
+              onPressed: _save
             ),
           ],
         ),

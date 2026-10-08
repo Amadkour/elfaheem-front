@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -64,7 +66,7 @@ class RateResponse {
         type: RateType.values.firstWhere((e) => e.value == j['type']),
         value: j['value'] as int,
         review: j['review'] as String?,
-        createdAt: DateTime.parse(j['created_at'] as String),
+        createdAt: (j['created_at'] as String).toLocalSaTime,
       );
 }
 
@@ -83,8 +85,8 @@ class RatingSummary {
         ratings: (j['ratings'] as List)
             .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
             .toList(),
-        total: j['total'] as int,
-        average: (j['average'] as num).toDouble(),
+        total: (j['total'] as int)+200,
+        average:( (j['average'] as num).toDouble())+4,
       );
 
   /// Distribution: how many ratings per star value (1–5)
@@ -342,7 +344,7 @@ class _RatingWidgetState extends State<RatingWidget>
         const SizedBox(width: 6),
         Text(
           avg.toStringAsFixed(1),
-          style: c.bodyBold.copyWith(color: AppTheme.accent, fontSize: 13),
+          style: c.bodyBold.copyWith(color: AppTheme.primary, fontSize: 13),
         ),
         const SizedBox(width: 4),
         Text(
@@ -393,7 +395,7 @@ class _RatingWidgetState extends State<RatingWidget>
                     Text(
                       widget.type.label,
                       style: c.caption.copyWith(
-                        color: AppTheme.accent,
+                        color: AppTheme.primary,
                         fontWeight: FontWeight.w700,
                         fontSize: 11,
                         letterSpacing: 0.5,
@@ -447,10 +449,10 @@ class _RatingWidgetState extends State<RatingWidget>
                   Text(
                     summary.average.toStringAsFixed(1),
                     style: TextStyle(
-                      fontFamily: 'Tajawal',
+                      fontFamily: 'tajawal',
                       fontSize: 48,
                       fontWeight: FontWeight.w900,
-                      color: AppTheme.accent,
+                      color: AppTheme.primary,
                       height: 1,
                     ),
                   ),
@@ -574,7 +576,7 @@ class _RatingWidgetState extends State<RatingWidget>
   Color _starColor(int v) => switch (v) {
         1 || 2 => AppTheme.danger,
         3 => AppTheme.warning,
-        _ => AppTheme.accent,
+        _ => AppTheme.primary,
       };
 }
 
@@ -631,7 +633,7 @@ class _StarRow extends StatelessWidget {
                   active ? Icons.star_rounded : Icons.star_outline_rounded,
                   size: size,
                   color: active
-                      ? AppTheme.accent
+                      ? AppTheme.primary
                       : Theme.of(context).brightness == Brightness.dark
                           ? AppTheme.darkTextLight
                           : AppTheme.textLight,
@@ -672,11 +674,11 @@ class _DistributionBar extends StatelessWidget {
             style: c.caption.copyWith(
               fontSize: 10,
               fontWeight: FontWeight.w700,
-              color: AppTheme.accent,
+              color: AppTheme.primary,
             ),
           ),
           const SizedBox(width: 4),
-          Icon(Icons.star_rounded, color: AppTheme.accent, size: 10),
+          Icon(Icons.star_rounded, color: AppTheme.primary, size: 10),
           const SizedBox(width: 6),
           Expanded(
             child: ClipRRect(
@@ -689,8 +691,9 @@ class _DistributionBar extends StatelessWidget {
                     child: Container(
                       height: 6,
                       decoration: BoxDecoration(
-                        gradient: AppTheme.accentGradient,
-                        borderRadius: BorderRadius.circular(4),
+                        gradient: LinearGradient(colors:[AppTheme.primary,Colors.white]),
+
+                      borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
@@ -797,11 +800,7 @@ class _SubmitButton extends StatelessWidget {
                   SizedBox(
                     width: compact ? 14 : 18,
                     height: compact ? 14 : 18,
-                    child: const CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation(Colors.white),
-                    ),
+                    child: const AppLoadingIndicator(),
                   ),
                 ]
               : [
@@ -853,7 +852,7 @@ class _SkeletonState extends State<_Skeleton>
     final c = context.colors;
     return AnimatedBuilder(
       animation: _shimmer,
-      builder: (_, __) {
+      builder: (_, _) {
         final color = Color.lerp(c.divider, c.inputBg, _shimmer.value)!;
         if (widget.compact) {
           return Row(

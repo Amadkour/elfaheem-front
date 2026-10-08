@@ -15,11 +15,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/password_text_field.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
@@ -46,6 +47,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   bool _obscureOld  = true;
   bool _obscureNew  = true;
   bool _obscureConf = true;
+  bool _busy = false; // loading state for the reset-password flow
 
   @override
   void initState() {
@@ -95,12 +97,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return s;
   }
 
-  Color _strengthColor(AppColors c) {
+  Color _strengthColor(ThemeConfigProvider c) {
     switch (_strength) {
       case 1: return c.danger;
       case 2: return c.warning;
       case 3: return c.success;
-      case 4: return c.primaryBlue;
+      case 4: return c.primary;
       default: return c.divider;
     }
   }
@@ -139,15 +141,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (!_canSubmit) return;
 
     final authProvider = context.read<AuthProvider>();
+    setState(() => _busy = true);
+    // Send the same trimmed value that the validation rules checked.
     final success = await authProvider.changePassword(
       email: widget.email!,
-      password: _newCtrl.text,
+      password: _new,
       code: widget.code!,
     );
 
     if (!mounted) return;
+    setState(() => _busy = false);
 
     if (success) {
+      _showSnack('password_changed_success'.tr, context.colors.success);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginScreen()),
             (route) => false,
@@ -196,7 +202,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // WEB — centered card
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _webLayout(ProfileProvider p, AppColors c) {
+  Widget _webLayout(ProfileProvider p, ThemeConfigProvider c) {
     Widget w = Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
@@ -227,7 +233,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   // MOBILE — full scroll
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildForm(ProfileProvider p, AppColors c) => Column(
+  Widget _buildForm(ProfileProvider p, ThemeConfigProvider c) => Column(
     children: [
       // ── Security icon badge ──────────────────────────────────────────
       Container(
@@ -267,7 +273,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         reqDigit:       _reqDigit,
         reqDifferent:   _reqDifferent,
         reqMatch:       _reqMatch,
-        canSubmit:      _canSubmit,
+        canSubmit:      _canSubmit && !_busy,
+        busy:           _busy,
         onSubmit:       _submit,
         onSubmitForget: _resetPassword,
         fromProfile:    widget.fromProfile,
@@ -275,7 +282,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     ],
   );
 
-  Widget _mobileLayout(ProfileProvider p, AppColors c) {
+  Widget _mobileLayout(ProfileProvider p, ThemeConfigProvider c) {
     return SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -289,7 +296,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
 class _PasswordCard extends StatelessWidget {
   final ProfileProvider p;
-  final AppColors c;
+  final ThemeConfigProvider c;
   final TextEditingController oldCtrl;
   final TextEditingController newCtrl;
   final TextEditingController confCtrl;
@@ -308,6 +315,7 @@ class _PasswordCard extends StatelessWidget {
   final bool reqDifferent;
   final bool reqMatch;
   final bool canSubmit;
+  final bool busy;
   final Future<void> Function() onSubmit;
   final Future<void> Function() onSubmitForget;
   final bool fromProfile;
@@ -335,12 +343,11 @@ class _PasswordCard extends StatelessWidget {
     required this.reqDifferent,
     required this.reqMatch,
     required this.canSubmit,
+    this.busy = false,
     required this.onSubmit,
     this.fromProfile = true,
-    this.email,
-    this.code,
-    required this.onSubmitForget,
-  });
+    required this.onSubmitForget, this.email, this.code,
+  }) ;
 
   @override
   Widget build(BuildContext context) {
@@ -427,9 +434,9 @@ class _PasswordCard extends StatelessWidget {
           AnimatedOpacity(
             opacity: canSubmit ? 1.0 : 0.45,
             duration: const Duration(milliseconds: 200),
-            child: MyPrimaryButton(
+            child: PrimaryButton(
               label: 'change_password'.tr,
-              isLoading: p.isLoading,
+              isLoading: p.isLoading || busy,
               onPressed:
               canSubmit ? (fromProfile ? onSubmit : onSubmitForget) : null,
             ),
@@ -448,7 +455,7 @@ class StrengthBar extends StatelessWidget {
   final int strength;
   final Color strengthColor;
   final String strengthLabel;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const StrengthBar({
     super.key,
@@ -482,7 +489,7 @@ class StrengthBar extends StatelessWidget {
               strengthLabel,
               key: ValueKey(strengthLabel),
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: strengthColor,
@@ -502,7 +509,7 @@ class StrengthBar extends StatelessWidget {
 class PasswordReq extends StatelessWidget {
   final bool met;
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const PasswordReq(
       {super.key, required this.met, required this.label, required this.c});
@@ -527,7 +534,7 @@ class PasswordReq extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 12,
             color: met ? c.textDark : c.textLight,
             fontWeight: met ? FontWeight.w600 : FontWeight.w400,
@@ -544,7 +551,7 @@ class PasswordReq extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String label;
-  final AppColors c;
+  final ThemeConfigProvider c;
 
   const _SectionLabel({required this.label, required this.c});
 

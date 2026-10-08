@@ -3,12 +3,15 @@
 // About Us + Terms & Conditions — server-driven, dark/light, AR/EN adaptive
 // ─────────────────────────────────────────────────────────────────────────────
 library;
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -84,8 +87,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
+      child: BasePage(key: const ValueKey('about'), useWebCard: true,
         child: SafeArea(
           child: Column(children: [
             ScreenAppBar(title: _l(context, 'من نحن', 'About Us')),
@@ -96,9 +98,9 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Widget _buildBody(AboutTermsProvider p, AppColors c, bool isWide) {
+  Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c, bool isWide) {
     if (p.isLoadingAbout) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
     if (p.aboutError != null) {
       return _ErrorState(
@@ -107,7 +109,7 @@ class _AboutScreenState extends State<AboutScreen> {
       );
     }
     if (p.about == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
 
     final about = p.about!;
@@ -123,37 +125,37 @@ class _AboutScreenState extends State<AboutScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
               child: Column(children: [
-                _HeroBanner(info: about.info),
+                ParentComponent(featureKey: 'about.hero', child: _HeroBanner(info: about.info)),
                 const SizedBox(height: 32),
-                if ((about.info?.mission ?? '').isNotEmpty) ...[
+                if ((about.info?.mission ?? '').isNotEmpty) ParentComponent(featureKey: 'about.mission', child: Column(mainAxisSize: MainAxisSize.min, children: [
                   _SectionTitle(text: _l(context, 'رسالتنا', 'Our Mission')),
                   const SizedBox(height: 12),
                   _MissionCard(mission: about.info!.mission!),
                   const SizedBox(height: 32),
-                ],
-                if (about.stats.isNotEmpty) ...[
+                ])),
+                if (about.stats.isNotEmpty) ParentComponent(featureKey: 'about.stats', child: Column(mainAxisSize: MainAxisSize.min, children: [
                   _StatsRow(stats: about.stats),
                   const SizedBox(height: 32),
-                ],
-                if (about.features.isNotEmpty) ...[
+                ])),
+                if (about.features.isNotEmpty) ParentComponent(featureKey: 'about.features', child: Column(mainAxisSize: MainAxisSize.min, children: [
                   _SectionTitle(
                       text:
-                          _l(context, 'ما يميّزنا', 'What Makes Us Different')),
+                      _l(context, 'ما يميّزنا', 'What Makes Us Different')),
                   const SizedBox(height: 16),
                   _FeaturesGrid(features: about.features, isWide: isWide),
                   const SizedBox(height: 32),
-                ],
-                if (about.team.isNotEmpty) ...[
+                ])),
+                if (about.team.isNotEmpty) ParentComponent(featureKey: 'about.team', child: Column(mainAxisSize: MainAxisSize.min, children: [
                   _SectionTitle(text: _l(context, 'فريقنا', 'Our Team')),
                   const SizedBox(height: 16),
                   _TeamRow(team: about.team),
                   const SizedBox(height: 32),
-                ],
+                ])),
                 if (about.contacts.isNotEmpty)
-                  _ContactCard(
+                  ParentComponent(featureKey: 'about.contact', child: _ContactCard(
                     contacts: about.contacts,
                     title: _l(context, 'تواصل معنا', 'Contact Us'),
-                  ),
+                  )),
               ]),
             ),
           ),
@@ -194,11 +196,11 @@ class _HeroBanner extends StatelessWidget {
           ),
           child: info?.logoUrl != null
               ? ClipOval(
-                  child: AppNetworkImage(
-                    url: info!.logoUrl!,
-                    fit: BoxFit.cover,
-                  ),
-                )
+            child: AppNetworkImage(
+              url: info!.logoUrl!,
+              fit: BoxFit.cover,
+            ),
+          )
               : const Icon(Icons.school_rounded, size: 52, color: Colors.white),
         ),
         const SizedBox(height: 20),
@@ -408,7 +410,7 @@ class _TeamRow extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: team.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (_, i) {
           final m = team[i];
           return Container(
@@ -420,29 +422,29 @@ class _TeamRow extends StatelessWidget {
               boxShadow: c.cardShadow,
             ),
             child:
-                Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Column(mainAxisAlignment: MainAxisAlignment.center, children: [
               // MinIO image, emoji fallback, or default avatar
               m.imageUrl != null
                   ? CircleAvatar(
-                      radius: 28,
-                      backgroundColor: c.primaryTint,
-                      child: ClipOval(
-                        child: AppNetworkImage(
-                          url: m.imageUrl!,
-                          width: 56,
-                          height: 56,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    )
+                radius: 28,
+                backgroundColor: c.primaryTint,
+                child: ClipOval(
+                  child: AppNetworkImage(
+                    url: m.imageUrl!,
+                    width: 56,
+                    height: 56,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              )
                   : m.emoji != null
-                      ? Text(m.emoji!, style: const TextStyle(fontSize: 36))
-                      : CircleAvatar(
-                          radius: 28,
-                          backgroundColor: c.primaryTint,
-                          child: Icon(Icons.person_rounded,
-                              size: 30, color: c.primary),
-                        ),
+                  ? Text(m.emoji!, style: const TextStyle(fontSize: 36))
+                  : CircleAvatar(
+                radius: 28,
+                backgroundColor: c.primaryTint,
+                child: Icon(Icons.person_rounded,
+                    size: 30, color: c.primary),
+              ),
               const SizedBox(height: 8),
               Text(m.name,
                   style: c.h3.copyWith(fontSize: 12),
@@ -607,8 +609,7 @@ class _TermsScreenState extends State<TermsScreen> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: BasePage(
-        useWebCard: true,
+      child: BasePage(key: const ValueKey('terms'), useWebCard: true,
         child: SafeArea(
           child: Column(children: [
             ScreenAppBar(
@@ -620,9 +621,9 @@ class _TermsScreenState extends State<TermsScreen> {
     );
   }
 
-  Widget _buildBody(AboutTermsProvider p, AppColors c) {
+  Widget _buildBody(AboutTermsProvider p, ThemeConfigProvider c) {
     if (p.isLoadingTerms) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child:AppLoadingIndicator());
     }
     if (p.termsError != null) {
       return _ErrorState(
@@ -631,7 +632,7 @@ class _TermsScreenState extends State<TermsScreen> {
       );
     }
     if (p.terms == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
 
     final terms = p.terms!;
@@ -647,11 +648,11 @@ class _TermsScreenState extends State<TermsScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
               child: Column(children: [
-                _TermsHeader(meta: terms.meta),
+                ParentComponent(featureKey: 'terms.header', child: _TermsHeader(meta: terms.meta)),
                 const SizedBox(height: 20),
                 ...terms.sections.map((section) {
                   final isOpen = _expanded.contains(section.id);
-                  return Padding(
+                  return ParentComponent(featureKey: 'terms.sections', child: Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _TermsSection(
                       section: section,
@@ -664,10 +665,10 @@ class _TermsScreenState extends State<TermsScreen> {
                         }
                       }),
                     ),
-                  );
+                  ));
                 }),
                 const SizedBox(height: 16),
-                _TermsFooter(),
+                ParentComponent(featureKey: 'terms.footer', child: _TermsFooter()),
               ]),
             ),
           ),
@@ -717,7 +718,7 @@ class _TermsHeader extends StatelessWidget {
         const SizedBox(width: 14),
         Expanded(
           child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               _l(context, 'الشروط والأحكام', 'Terms & Conditions'),
               style: c.h2.copyWith(fontSize: 16),
@@ -725,13 +726,12 @@ class _TermsHeader extends StatelessWidget {
             if (meta != null) ...[
               const SizedBox(height: 4),
               Text(
-                _l(context, 'آخر تحديث:', 'Last updated:') +
-                    ' ${meta!.lastUpdated}',
+                '${_l(context, 'آخر تحديث:', 'Last updated:')} ${meta!.lastUpdated}',
                 style: c.caption.copyWith(fontSize: 12),
               ),
               if ((meta!.version ?? '').isNotEmpty)
                 Text(
-                  _l(context, 'الإصدار', 'Version') + ' ${meta!.version}',
+                  '${_l(context, 'الإصدار', 'Version')} ${meta!.version}',
                   style: c.caption.copyWith(fontSize: 11, color: c.textLight),
                 ),
             ],
@@ -808,7 +808,7 @@ class _TermsSection extends StatelessWidget {
         AnimatedCrossFade(
           duration: const Duration(milliseconds: 250),
           crossFadeState:
-              isOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+          isOpen ? CrossFadeState.showFirst : CrossFadeState.showSecond,
           firstChild: Container(
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),

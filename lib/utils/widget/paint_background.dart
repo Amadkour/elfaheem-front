@@ -1,18 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 
-import '../../config/app_theme.dart';
 
 class ElearningPatternPainter extends CustomPainter {
-  final bool isDark;
   final double width;
-  const ElearningPatternPainter({required this.isDark, required this.width});
+  final Color color;
+  const ElearningPatternPainter({required this.color, required this.width});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final color = isDark
-        ? Colors.white.withValues(alpha: 0.05)
-        : AppTheme.primary.withValues(alpha: 0.09);
     final rnd = Random(42);
 
 
@@ -118,5 +115,5 @@ class ElearningPatternPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(ElearningPatternPainter old) => old.isDark != isDark;
+  bool shouldRepaint(ElearningPatternPainter old) => 1 != 1;
 }

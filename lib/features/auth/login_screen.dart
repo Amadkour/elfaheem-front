@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
-import '../../core/api_client.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
-import '../teacher/dashboard/teacher_dashboard_screen.dart';
+import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
@@ -30,8 +29,13 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController.text = 'Ahmed.Madkour@it-ranks.com';
-    _passwordController.text = 'Aa@@aA2291996';
+    // if (AppConfig.testMode) {
+    //   _emailController.text = 'super@c.c';
+    //   _passwordController.text = 'Aa@@aA2291996';
+    // } else {
+      _emailController.clear();
+      _passwordController.clear();
+    // }
   }
 
   @override
@@ -50,16 +54,24 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
-      Navigator.of(context).pushReplacement(
+      authProvider.loadCachedUser();
+      if (mounted) {
+        Navigator.of(context).pushNamed(authProvider.homeRoute);
+      }
+    } else if (authProvider.needsVerification) {
+      Helpers.showMessage('account_not_verified'.tr, isError: false);
+      Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => authProvider.isTeacher
-              ? const TeacherDashboardScreen()
-              : const DashboardScreen(),
+          builder: (_) => OtpVerificationScreen(
+            email: _emailController.text.trim(),
+            role: authProvider.pendingRole ?? 'student',
+            flow: OtpFlowEnum.registration,
+          ),
         ),
       );
     } else {
       Helpers.showMessage(
-        authProvider.errorMessage ?? 'Login failed',
+        authProvider.errorMessage ?? 'incorrect_email_or_password'.tr,
         isError: true,
       );
     }
@@ -69,11 +81,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
 
-    return Consumer<LangProvider>(builder: (context, l, _) {
-      return BasePage(
-        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-      );
-    });
+    return Consumer<LangProvider>(
+      builder: (context, l, _) {
+        return BasePage(
+          child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+        );
+      },
+    );
   }
 
   // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
@@ -93,26 +107,35 @@ class _LoginScreenState extends State<LoginScreen> {
                 padding: const EdgeInsets.all(0.0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.cardBg,
+                  color: context.colors.isDark
+                      ? context.colors.cardBg
+                      : context.colors.background,
                 ),
                 child: ClipRRect(
-                  borderRadius:
-                      BorderRadiusGeometry.circular(context.colors.radiusXL),
-                  child: SingleChildScrollView(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 440),
-                      child: _buildFormCard(),
+                  borderRadius: BorderRadiusGeometry.circular(
+                    context.colors.radiusXL,
+                  ),
+                  child: ColoredBox(
+                    color: context.colors.isDark
+                        ? context.colors.cardBg
+                        : context.colors.primary.withAlpha(30),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 48,
+                        vertical: 40,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 440),
+                        child: _buildFormCard(),
+                      ),
                     ),
                   ),
                 ),
               ),
               Spacer(),
-
             ],
           ),
-        )
+        ),
       ],
     );
   }
@@ -130,8 +153,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFormCard() {
-    final provider = context.watch<ProfileProvider>();
-
+    ProfileProvider provider = context.read<ProfileProvider>();
     return Form(
       key: _formKey,
       child: Column(
@@ -142,7 +164,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               AppNetworkImage(
-                url: '',
+                url: 'assets/images/logo.png',
                 width: 100,
                 height: 100,
                 heroTag: "logo-login",
@@ -157,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             'login'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 26,
               fontWeight: FontWeight.bold,
               color: context.colors.textDark,
@@ -166,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Text(
             'login_welcome'.tr,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: context.colors.secondText,
@@ -195,21 +217,21 @@ class _LoginScreenState extends State<LoginScreen> {
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: GestureDetector(
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ForgetScreen()),
-              ),
+              onTap: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
               child: Text(
                 'forget_password'.tr,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 13,
-                  color: context.colors.primaryBlue,
+                  color: context.colors.primary,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
-           SizedBox(height: context.height/10),
+          SizedBox(height: context.height / 10),
 
           // Login button
           PrimaryButton(
@@ -224,11 +246,11 @@ class _LoginScreenState extends State<LoginScreen> {
           LinkRow(
             message: "doesn't_have_account".tr,
             linkText: 'register'.tr,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const RegisterScreen()),
-            ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
-          SizedBox(height: context.height/50),
+          SizedBox(height: context.height / 50),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -246,17 +268,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(40),
                     gradient: provider.darkMode
                         ? const LinearGradient(
-                            colors: [
-                              Color(0xff0F172A),
-                              Color(0xff1E293B),
-                            ],
+                            colors: [Color(0xff0F172A), Color(0xff1E293B)],
                           )
-                        : const LinearGradient(
-                            colors: [
-                              Color(0xffFFE082),
-                              Color(0xffFFB300),
-                            ],
-                          ),
+                        : context.colors.accentGradient,
                   ),
                   child: Stack(
                     children: [

@@ -2,7 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class MyPrimaryMenu extends StatelessWidget {
   const MyPrimaryMenu(
@@ -34,7 +35,7 @@ class MyPrimaryMenu extends StatelessWidget {
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
           style:  TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontWeight: FontWeight.w100,
             fontSize: 17,
             color: context.colors.textDark,
@@ -61,7 +62,7 @@ class MyPrimaryMenu extends StatelessWidget {
                         title: Text(
                           options[i]['text'].toString().tr,
                           style:  TextStyle(
-                            fontFamily: 'Tajawal',
+                            fontFamily: 'tajawal',
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
                             color: context.colors.textMedium,

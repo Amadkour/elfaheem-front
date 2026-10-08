@@ -4,10 +4,17 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import '../../../../config/app_config.dart';
+import '../../../../utils/helpers.dart';
+import '../../../student/models.dart';
 import '../components/exts.dart';
 import '../model/live_response_model.dart';
+import '../../../../core/api_client.dart';
+import '../sessions_provider.dart';
+import 'local_debug_save.dart';
 import 'room.dart';
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -29,9 +36,11 @@ class JoinArgs {
     required this.onStart,
     required this.onEnd,
     this.onComplete,
+    // ── NEW: ApiClient passed through so RoomPage can upload chunks ──────────
+    required this.apiClient,
   });
 
-  final int sessionId;
+  late final int? sessionId;
   final int courseId;
   final int? maxStudents;
   final bool e2ee;
@@ -44,28 +53,33 @@ class JoinArgs {
   final bool dynacast;
   final String preferredCodec;
   final bool enableBackupVideoCodec;
+
+  /// For teachers:  calls POST /live-sessions/start  → returns LiveResponseModel
+  /// For students:  calls GET  /live-sessions/{id}/join → returns LiveResponseModel
   final Future<dynamic> Function() onStart;
+
+  /// Called when the session ends (teacher taps End, or room disconnects).
   final Future<dynamic> Function() onEnd;
 
-  /// Called after the student leaves the live room (RoomPage pops).
-  /// Not used for teachers. Triggers POST /sessions/{id}/complete.
+  /// Called after a student leaves the room. Triggers POST /sessions/{id}/complete.
   final Future<void> Function()? onComplete;
+
+  /// ApiClient instance scoped to the authenticated user.
+  /// Passed down to RoomPage → _ClientRecorder for chunk upload auth.
+  final ApiClient apiClient;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Design System
+// Design System (local, matches room.dart)
 // ─────────────────────────────────────────────────────────────────────────────
 class _DS {
   static const bg = Color(0xFF060810);
   static const surfaceHi = Color(0xFF151826);
-
   static const cyan = Color(0xFF00D4FF);
   static const indigo = Color(0xFF6B6EF9);
   static const rose = Color(0xFFFF4F72);
-
   static const textHigh = Color(0xFFFFFFFF);
   static const textLow = Color(0x66FFFFFF);
-
   static const glass10 = Color(0x1AFFFFFF);
   static const glass15 = Color(0x26FFFFFF);
   static const glassBdr = Color(0x30FFFFFF);
@@ -75,7 +89,7 @@ class _DS {
   static const joinGrad = [
     Color(0xFF00D4FF),
     Color(0xFF6B6EF9),
-    Color(0xFF9B59F5)
+    Color(0xFF9B59F5),
   ];
   static const micOnGrad = [Color(0xFF00E5A0), Color(0xFF00C4D4)];
   static const micOffGrad = [Color(0xFFFF4F72), Color(0xFFFF8C42)];
@@ -123,23 +137,30 @@ class _PreJoinPageState extends State<PreJoinPage>
     super.initState();
 
     _masterFade = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 900));
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
     _fadeIn = CurvedAnimation(parent: _masterFade, curve: Curves.easeOut);
     _slideUp = CurvedAnimation(
-        parent: _masterFade,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic));
+      parent: _masterFade,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOutCubic),
+    );
 
     _joinPressAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 120));
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
 
     _pulseAnim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2200))
-      ..repeat(reverse: true);
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
     _pulse = CurvedAnimation(parent: _pulseAnim, curve: Curves.easeInOut);
 
-    _auroraAnim =
-    AnimationController(vsync: this, duration: const Duration(seconds: 8))
-      ..repeat();
+    _auroraAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 8),
+    )..repeat();
 
     _masterFade.forward();
     unawaited(_initDevices());
@@ -161,8 +182,9 @@ class _PreJoinPageState extends State<PreJoinPage>
   }
 
   Future<void> _initDevices() async {
-    _subscription =
-        Hardware.instance.onDeviceChange.stream.listen(_loadDevices);
+    _subscription = Hardware.instance.onDeviceChange.stream.listen(
+      _loadDevices,
+    );
     await _loadDevices(await Hardware.instance.enumerateDevices());
   }
 
@@ -182,6 +204,9 @@ class _PreJoinPageState extends State<PreJoinPage>
       _selectedAudioDevice = _audioOptions.first;
       await _changeLocalAudioTrack();
     }
+
+    // On Flutter Web without a camera, _videoInputs is empty — that's fine.
+    // The teacher can still join and the client recorder will use screen share or audio.
     if (_enableVideo &&
         _videoInputs.isNotEmpty &&
         _selectedVideoDevice == null) {
@@ -191,6 +216,12 @@ class _PreJoinPageState extends State<PreJoinPage>
         orElse: () => opts.first,
       );
       await _changeLocalVideoTrack();
+    } else if (_enableVideo && _videoInputs.isEmpty) {
+      // No camera available — disable video silently rather than showing error
+      _enableVideo = false;
+      log(
+        'PreJoin: no camera found — video disabled, continuing with audio/screen share',
+      );
     }
     if (mounted) setState(() {});
   }
@@ -234,7 +265,8 @@ class _PreJoinPageState extends State<PreJoinPage>
     if (_selectedAudioDevice != null) {
       _audioTrack = await LocalAudioTrack.create(
         AudioCaptureOptions(
-            deviceId: _selectedAudioDevice!['device_id'] as String),
+          deviceId: _selectedAudioDevice!['device_id'] as String,
+        ),
       );
       await _audioTrack!.start();
     }
@@ -267,25 +299,37 @@ class _PreJoinPageState extends State<PreJoinPage>
     super.dispose();
   }
 
-  void _join(BuildContext context) async {
+  // ─────────────────────────────────────────────────────────────────────────
+  // _join  — connects to LiveKit, pushes RoomPage, then calls onComplete
+  // ─────────────────────────────────────────────────────────────────────────
+  Future<void> _join(BuildContext context) async {
     _busy = true;
     setState(() {});
     final args = widget.args;
+
     try {
-      const cameraEncoding =
-      VideoEncoding(maxBitrate: 5 * 1000 * 1000, maxFramerate: 60);
-
-      // FIX #2: raised from 15 → 30 fps — 15fps was causing slow-motion look.
-      // FIX #2: bitrate raised to 4 Mbps for sharper screen content.
-      const screenEncoding =
-      VideoEncoding(maxBitrate: 4 * 1000 * 1000, maxFramerate: 30);
-
+      const cameraEncoding = VideoEncoding(
+        maxBitrate: 5 * 1000 * 1000,
+        maxFramerate: 60,
+      );
+      const screenEncoding = VideoEncoding(
+        maxBitrate: 4 * 1000 * 1000,
+        maxFramerate: 30,
+      );
+      late int localSessionId;
+      if (args.sessionId==null){
+        final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
+        if(r ==null){
+          Helpers.showMessage('failed to create session'.tr, isError: true);
+        }else {
+          localSessionId = r.id;
+        }
+      }
       final room = Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
           dynacast: args.dynacast,
           defaultAudioPublishOptions: const AudioPublishOptions(
-            // FIX audio quality: 128 kbps, RED for packet-loss recovery
             encoding: AudioEncoding(maxBitrate: 128000),
             dtx: false,
             red: true,
@@ -293,24 +337,22 @@ class _PreJoinPageState extends State<PreJoinPage>
           defaultCameraCaptureOptions: const CameraCaptureOptions(
             cameraPosition: CameraPosition.front,
             maxFrameRate: 60,
-            params: VideoParameters(dimensions: VideoDimensionsPresets.h1080_169),
+            params: VideoParameters(
+              dimensions: VideoDimensionsPresets.h1080_169,
+            ),
           ),
           defaultScreenShareCaptureOptions: const ScreenShareCaptureOptions(
-            // FIX #2: preferCurrentTab REMOVED — shows full picker (Screen/Window/Tab).
-            // FIX #3: captureScreenAudio set here at room level only (not repeated
-            //         in setScreenShareEnabled call) — prevents double-permission dialog.
             captureScreenAudio: true,
-            maxFrameRate: 30,  // FIX #2: was 15fps
+            maxFrameRate: 30,
             params: VideoParametersPresets.screenShareH1080FPS15,
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             simulcast: args.simulcast,
             videoCodec: args.preferredCodec,
-            // FIX #2: changed from maintainFramerateAndResolution which conflicts
-            // with a 15fps cap and causes the encoder to throttle. BALANCED lets
-            // the encoder maintain quality at the requested framerate.
             degradationPreference: DegradationPreference.balanced,
-            backupVideoCodec: BackupVideoCodec(enabled: args.enableBackupVideoCodec),
+            backupVideoCodec: BackupVideoCodec(
+              enabled: args.enableBackupVideoCodec,
+            ),
             videoEncoding: cameraEncoding,
             screenShareEncoding: screenEncoding,
           ),
@@ -319,7 +361,10 @@ class _PreJoinPageState extends State<PreJoinPage>
 
       final listener = room.createListener();
       final data = await args.onStart() as LiveResponseModel?;
-      await room.prepareConnection(data!.url, data.token);
+      if (data == null)
+        throw Exception('No LiveResponseModel returned from onStart');
+
+      await room.prepareConnection(data.url, data.token);
       await room.connect(
         data.url,
         data.token,
@@ -333,143 +378,152 @@ class _PreJoinPageState extends State<PreJoinPage>
       await Navigator.push<void>(
         context,
         MaterialPageRoute(
-            builder: (_) => RoomPage(
-              room,
-              listener,
-              fastConnection: true,
-              onEnd: widget.args.onEnd,
-              isTeacher: widget.args.isTeacher,
-              courseId: widget.args.courseId,
-              sessionId: widget.args.sessionId,
-            )),
+          builder: (_) => RoomPage(
+            room,
+            listener,
+            fastConnection: true,
+            onEnd: () async {
+              LocalDebugSave.stop();
+              args.onEnd.call();
+            },
+            isTeacher: args.isTeacher,
+            courseId: args.courseId,
+            sessionId: args.sessionId??localSessionId,
+            // ── Passes the authenticated ApiClient so _ClientRecorder can
+            //    upload chunks with the correct Bearer token ─────────────────
+            apiClient: args.apiClient,
+            // ── Prejoin audio/video toggle state ─────────────────────────────
+            enableAudio: _enableAudio,
+            enableVideo: _enableVideo,
+          ),
+        ),
       );
 
-      // ── Student live-completion ───────────────────────────────────────────
-      // When a student leaves the room (RoomPage pops) we hit the complete API
-      // automatically — no manual tap needed.
-      if (!widget.args.isTeacher) {
-        await widget.args.onComplete?.call();
+      // Student live-completion: fire after room page pops
+      if (!args.isTeacher) {
+        await args.onComplete?.call();
+      } else {
+        LocalDebugSave.start();
       }
     } catch (error) {
-      log('Could not connect $error');
+      log('PreJoinPage._join error: $error');
       if (!context.mounted) return;
       await context.showErrorDialog(error);
     } finally {
-      if(mounted) setState(() => _busy = false);
+      if (mounted) setState(() => _busy = false);
     }
   }
 
-  List<Map<String, dynamic>> get _videoOptions {
-    final List<Map<String, dynamic>> result = [];
-    for (final d in _videoInputs) {
-      result.add(<String, dynamic>{
-        'text': d.label.isNotEmpty ? d.label : 'Camera',
-        'value': d.toString(),
-        'is_front': d.label.toLowerCase().contains('front'),
-        'device_id': d.deviceId,
-      });
-    }
-    return result;
-  }
+  // ── Device option lists ───────────────────────────────────────────────────
 
-  List<Map<String, dynamic>> get _audioOptions {
-    final List<Map<String, dynamic>> result = [];
-    for (final d in _audioInputs) {
-      result.add(<String, dynamic>{
-        'text': d.label.isNotEmpty ? d.label : 'Microphone',
-        'value': d.toString(),
-        'device_id': d.deviceId,
-      });
-    }
-    return result;
-  }
+  List<Map<String, dynamic>> get _videoOptions => _videoInputs
+      .map<Map<String, dynamic>>(
+        (d) => <String, dynamic>{
+      'text': d.label.isNotEmpty ? d.label : 'lr_camera'.tr,
+      'value': d.toString(),
+      'is_front': d.label.toLowerCase().contains('front'),
+      'device_id': d.deviceId,
+    },
+  )
+      .toList();
+
+  List<Map<String, dynamic>> get _audioOptions => _audioInputs
+      .map<Map<String, dynamic>>(
+        (d) => <String, dynamic>{
+      'text': d.label.isNotEmpty ? d.label : 'lr_microphone'.tr,
+      'value': d.toString(),
+      'device_id': d.deviceId,
+    },
+  )
+      .toList();
 
   // ─────────────────────────────────────────────────────────────────────────
   // Build
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData.dark(),
-      child: Scaffold(
-        backgroundColor: _DS.bg,
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            // Animated aurora mesh
-            AnimatedBuilder(
-              animation: _auroraAnim,
-              builder: (_, __) => CustomPaint(
-                painter: _AuroraPainter(_auroraAnim.value),
-                child: const SizedBox.expand(),
-              ),
+    return Scaffold(
+      key: const ValueKey('prejoin'),
+      backgroundColor: _DS.bg,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Animated aurora mesh
+          AnimatedBuilder(
+            animation: _auroraAnim,
+            builder: (_, _) => CustomPaint(
+              painter: _AuroraPainter(_auroraAnim.value),
+              child: const SizedBox.expand(),
             ),
+          ),
 
-            // Full-screen camera
-            FadeTransition(opacity: _fadeIn, child: _buildCameraPreview()),
+          // Full-screen camera preview
+          FadeTransition(opacity: _fadeIn, child: _buildCameraPreview()),
 
-            // Bottom scrim
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              height: MediaQuery.of(context).size.height * 0.50,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      _DS.bg.withValues(alpha: 0.72),
-                      _DS.bg.withValues(alpha: 0.96),
-                      _DS.bg,
-                    ],
-                    stops: const [0.0, 0.28, 0.6, 1.0],
-                  ),
+          // Bottom scrim
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: MediaQuery.of(context).size.height * 0.50,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    _DS.bg.withValues(alpha: 0.72),
+                    _DS.bg.withValues(alpha: 0.96),
+                    _DS.bg,
+                  ],
+                  stops: const [0.0, 0.28, 0.6, 1.0],
                 ),
               ),
             ),
+          ),
 
-            // Top scrim
-            Positioned(
-              left: 0,
-              right: 0,
-              top: 0,
-              height: 130,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      _DS.bg.withValues(alpha: 0.85),
-                      Colors.transparent
-                    ],
-                  ),
+          // Top scrim
+          Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 130,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    _DS.bg.withValues(alpha: 0.85),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
+          ),
 
-            // All UI content
-            SafeArea(
-              child: Column(
-                children: [
-                  FadeTransition(opacity: _fadeIn, child: _buildTopBar()),
-                  const SizedBox(height: 10),
-                  const Spacer(),
-                  SlideTransition(
-                    position: Tween<Offset>(
-                        begin: const Offset(0, 0.25), end: Offset.zero)
-                        .animate(_slideUp),
-                    child: FadeTransition(
-                        opacity: _fadeIn, child: _buildBottomSection()),
+          // UI content
+          SafeArea(
+            child: Column(
+              children: [
+                FadeTransition(opacity: _fadeIn, child: _buildTopBar()),
+                const SizedBox(height: 10),
+                const Spacer(),
+                SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.25),
+                    end: Offset.zero,
+                  ).animate(_slideUp),
+                  child: FadeTransition(
+                    opacity: _fadeIn,
+                    child: _buildBottomSection(),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -485,81 +539,94 @@ class _PreJoinPageState extends State<PreJoinPage>
     }
     return AnimatedBuilder(
       animation: _pulse,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         color: _DS.bg,
         child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            // Ripple rings
-            SizedBox(
-              width: 160,
-              height: 160,
-              child: Stack(alignment: Alignment.center, children: [
-                // Outer ring
-                Container(
-                  width: 150 + _pulse.value * 10,
-                  height: 150 + _pulse.value * 10,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: (_enableVideo ? _DS.cyan : _DS.rose)
-                          .withValues(alpha: 0.12 + _pulse.value * 0.08),
-                      width: 1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: 160,
+                height: 160,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Outer ring
+                    Container(
+                      width: 150 + _pulse.value * 10,
+                      height: 150 + _pulse.value * 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: (_enableVideo ? _DS.cyan : _DS.rose)
+                              .withValues(alpha: 0.12 + _pulse.value * 0.08),
+                          width: 1,
+                        ),
+                      ),
                     ),
-                  ),
+                    // Middle ring
+                    Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: (_enableVideo ? _DS.cyan : _DS.rose)
+                              .withValues(alpha: 0.2 + _pulse.value * 0.1),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    // Core
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            (_enableVideo ? _DS.cyan : _DS.rose).withValues(
+                              alpha: 0.18 + _pulse.value * 0.1,
+                            ),
+                            Colors.transparent,
+                          ],
+                        ),
+                        border: Border.all(
+                          color: (_enableVideo ? _DS.cyan : _DS.rose)
+                              .withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Icon(
+                        _enableVideo
+                            ? Icons.videocam_rounded
+                            : Icons.videocam_off_rounded,
+                        color: (_enableVideo ? _DS.cyan : _DS.rose).withValues(
+                          alpha: 0.9,
+                        ),
+                        size: 36,
+                      ),
+                    ),
+                  ],
                 ),
-                // Middle ring
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: (_enableVideo ? _DS.cyan : _DS.rose)
-                          .withValues(alpha: 0.2 + _pulse.value * 0.1),
-                      width: 1,
-                    ),
-                  ),
-                ),
-                // Core
-                Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        (_enableVideo ? _DS.cyan : _DS.rose)
-                            .withValues(alpha: 0.18 + _pulse.value * 0.1),
-                        Colors.transparent,
-                      ],
-                    ),
-                    border: Border.all(
-                      color: (_enableVideo ? _DS.cyan : _DS.rose)
-                          .withValues(alpha: 0.4),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Icon(
-                    _enableVideo
-                        ? Icons.videocam_rounded
-                        : Icons.videocam_off_rounded,
-                    color: (_enableVideo ? _DS.cyan : _DS.rose)
-                        .withValues(alpha: 0.9),
-                    size: 36,
-                  ),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              _enableVideo ? 'Starting camera…' : 'Camera is off',
-              style: TextStyle(
+              ),
+              const SizedBox(height: 18),
+              Text(
+                _enableVideo
+                    ? 'lr_starting_camera'.tr
+                    : (_videoInputs.isEmpty
+                    ? 'lr_no_camera_screen_recorded'.tr
+                    : 'lr_camera_off_msg'.tr),
+                style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textLow,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  letterSpacing: 0.4),
-            ),
-          ]),
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -569,127 +636,173 @@ class _PreJoinPageState extends State<PreJoinPage>
   Widget _buildTopBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(children: [
-        _GlassIconButton(
-          onTap: () async {
-            if (_enableVideo) await _toggleCamera();
-            if (_enableAudio) await _toggleAudio();
-            if (mounted) Navigator.of(context).pop();
-          },
-          child: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: _DS.textHigh, size: 17),
-        ),
-        const SizedBox(width: 14),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Ready to join?',
-              style: TextStyle(
+      child: Row(
+        children: [
+          _GlassIconButton(
+            onTap: () async {
+              if (_enableVideo) await _toggleCamera();
+              if (_enableAudio) await _toggleAudio();
+              if (mounted) Navigator.of(context).pop();
+            },
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: _DS.textHigh,
+              size: 17,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'lr_ready_to_join'.tr,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textHigh,
                   fontSize: 19,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.4,
-                  height: 1.1)),
-          const SizedBox(height: 2),
-          Text('Check your devices below',
-              style: TextStyle(
+                  height: 1.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'lr_check_devices'.tr,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
                   color: _DS.textLow,
                   fontSize: 12,
-                  fontWeight: FontWeight.w400)),
-        ]),
-        const Spacer(),
-        // Pulsing HD badge
-        AnimatedBuilder(
-          animation: _pulse,
-          builder: (_, __) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(9),
-              gradient: LinearGradient(colors: [
-                _DS.cyan.withValues(alpha: 0.14 + _pulse.value * 0.07),
-                _DS.indigo.withValues(alpha: 0.14 + _pulse.value * 0.07),
-              ]),
-              border: Border.all(
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          // Pulsing 1080p badge
+          AnimatedBuilder(
+            animation: _pulse,
+            builder: (_, _) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(9),
+                gradient: LinearGradient(
+                  colors: [
+                    _DS.cyan.withValues(alpha: 0.14 + _pulse.value * 0.07),
+                    _DS.indigo.withValues(alpha: 0.14 + _pulse.value * 0.07),
+                  ],
+                ),
+                border: Border.all(
                   color: _DS.cyan.withValues(alpha: 0.38 + _pulse.value * 0.14),
-                  width: 1),
-              boxShadow: [
-                BoxShadow(
-                    color:
-                    _DS.cyan.withValues(alpha: 0.10 + _pulse.value * 0.08),
-                    blurRadius: 14)
-              ],
-            ),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.hd_rounded,
-                  color: _DS.cyan.withValues(alpha: 0.9), size: 14),
-              const SizedBox(width: 4),
-              const Text('1080p',
-                  style: TextStyle(
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _DS.cyan.withValues(
+                      alpha: 0.10 + _pulse.value * 0.08,
+                    ),
+                    blurRadius: 14,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.hd_rounded,
+                    color: _DS.cyan.withValues(alpha: 0.9),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    '1080p',
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
                       color: _DS.cyan,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      letterSpacing: 0.6)),
-            ]),
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
-  // ── Bottom section ─────────────────────────────────────────────────────────
+
+  // ── Bottom section ────────────────────────────────────────────────────────
   Widget _buildBottomSection() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 30),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        // Camera + Mic cards
-        Row(children: [
-          Expanded(
-              child: _buildDeviceCard(
-                icon: _enableVideo
-                    ? Icons.videocam_rounded
-                    : Icons.videocam_off_rounded,
-                label: 'Camera',
-                sublabel: _enableVideo ? 'Front · 1080p' : 'Disabled',
-                isActive: _enableVideo,
-                gradColors: _enableVideo ? _DS.camOnGrad : _DS.camOffGrad,
-                onTap: _toggleCamera,
-              )),
-          const SizedBox(width: 12),
-          Expanded(
-              child: _buildDeviceCard(
-                icon: _enableAudio ? Icons.mic_rounded : Icons.mic_off_rounded,
-                label: 'Microphone',
-                sublabel: _enableAudio
-                    ? (_audioInputs.isNotEmpty &&
-                    _audioInputs.first.label.isNotEmpty
-                    ? _audioInputs.first.label
-                    : 'Default mic')
-                    : 'Muted',
-                isActive: _enableAudio,
-                gradColors: _enableAudio ? _DS.micOnGrad : _DS.micOffGrad,
-                onTap: _toggleAudio,
-              )),
-        ]),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Camera + Mic cards
+          Row(
+            children: [
+              Expanded(
+                child: _buildDeviceCard(
+                  icon: _enableVideo
+                      ? Icons.videocam_rounded
+                      : Icons.videocam_off_rounded,
+                  label: 'lr_camera'.tr,
+                  sublabel: _enableVideo ? 'lr_camera_front_1080p'.tr : 'lr_disabled'.tr,
+                  isActive: _enableVideo,
+                  gradColors: _enableVideo ? _DS.camOnGrad : _DS.camOffGrad,
+                  onTap: _toggleCamera,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildDeviceCard(
+                  icon: _enableAudio
+                      ? Icons.mic_rounded
+                      : Icons.mic_off_rounded,
+                  label: 'lr_microphone'.tr,
+                  sublabel: _enableAudio
+                      ? (_audioInputs.isNotEmpty &&
+                      _audioInputs.first.label.isNotEmpty
+                      ? _audioInputs.first.label
+                      : 'lr_default_mic'.tr)
+                      : 'lr_muted'.tr,
+                  isActive: _enableAudio,
+                  gradColors: _enableAudio ? _DS.micOnGrad : _DS.micOffGrad,
+                  onTap: _toggleAudio,
+                ),
+              ),
+            ],
+          ),
 
-        const SizedBox(height: 18),
+          const SizedBox(height: 18),
 
-        // Divider
-        Row(children: [
-          Expanded(child: Divider(color: _DS.glassBdr, thickness: 1)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text('ALL SET?',
-                style: TextStyle(
+          // Divider
+          Row(
+            children: [
+              Expanded(child: Divider(color: _DS.glassBdr, thickness: 1)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'lr_all_set'.tr,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
                     color: _DS.textLow,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.4)),
+                    letterSpacing: 1.4,
+                  ),
+                ),
+              ),
+              Expanded(child: Divider(color: _DS.glassBdr, thickness: 1)),
+            ],
           ),
-          Expanded(child: Divider(color: _DS.glassBdr, thickness: 1)),
-        ]),
 
-        const SizedBox(height: 18),
+          const SizedBox(height: 18),
 
-        // Join button
-        _buildJoinButton(),
-      ]),
+          _buildJoinButton(),
+        ],
+      ),
     );
   }
 
@@ -720,79 +833,98 @@ class _PreJoinPageState extends State<PreJoinPage>
           boxShadow: isActive
               ? [
             BoxShadow(
-                color: gradColors.first.withValues(alpha: 0.14),
-                blurRadius: 22,
-                spreadRadius: 0)
+              color: gradColors.first.withValues(alpha: 0.14),
+              blurRadius: 22,
+              spreadRadius: 0,
+            ),
           ]
               : [],
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            // Icon
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: isActive
-                    ? LinearGradient(
-                    colors: gradColors,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight)
-                    : null,
-                color: isActive ? null : _DS.glass15,
-                boxShadow: isActive
-                    ? [
-                  BoxShadow(
-                      color: gradColors.first.withValues(alpha: 0.4),
-                      blurRadius: 10)
-                ]
-                    : [],
-              ),
-              child: Icon(icon,
-                  color: isActive ? Colors.white : _DS.textLow, size: 19),
-            ),
-            // Mini toggle
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: 38,
-              height: 22,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(11),
-                gradient: isActive ? LinearGradient(colors: gradColors) : null,
-                color: isActive ? null : _DS.glass15,
-                border:
-                isActive ? null : Border.all(color: _DS.glassBdr, width: 1),
-              ),
-              child: AnimatedAlign(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                alignment:
-                isActive ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.all(3),
-                  width: 16,
-                  height: 16,
-                  decoration: const BoxDecoration(
-                      shape: BoxShape.circle, color: Colors.white),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Icon chip
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: isActive
+                        ? LinearGradient(
+                      colors: gradColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    )
+                        : null,
+                    color: isActive ? null : _DS.glass15,
+                    boxShadow: isActive
+                        ? [
+                      BoxShadow(
+                        color: gradColors.first.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                      ),
+                    ]
+                        : [],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: isActive ? Colors.white : _DS.textLow,
+                    size: 19,
+                  ),
                 ),
+                // Mini toggle
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 38,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(11),
+                    gradient: isActive
+                        ? LinearGradient(colors: gradColors)
+                        : null,
+                    color: isActive ? null : _DS.glass15,
+                    border: isActive
+                        ? null
+                        : Border.all(color: _DS.glassBdr, width: 1),
+                  ),
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    alignment: isActive
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      margin: const EdgeInsets.all(3),
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3),
+            Text(
+              sublabel,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                color: isActive
+                    ? gradColors.first.withValues(alpha: 0.85)
+                    : _DS.textLow,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-          ]),
-          const SizedBox(height: 3),
-          Text(
-            sublabel,
-            style: TextStyle(
-              color: isActive
-                  ? gradColors.first.withValues(alpha: 0.85)
-                  : _DS.textLow,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-            ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -812,7 +944,7 @@ class _PreJoinPageState extends State<PreJoinPage>
         ),
         child: AnimatedBuilder(
           animation: _pulse,
-          builder: (_, __) => AnimatedContainer(
+          builder: (_, _) => AnimatedContainer(
             duration: const Duration(milliseconds: 250),
             height: 62,
             decoration: BoxDecoration(
@@ -830,67 +962,78 @@ class _PreJoinPageState extends State<PreJoinPage>
                   ? []
                   : [
                 BoxShadow(
-                  color: _DS.cyan
-                      .withValues(alpha: 0.28 + _pulse.value * 0.14),
+                  color: _DS.cyan.withValues(
+                    alpha: 0.28 + _pulse.value * 0.14,
+                  ),
                   blurRadius: 26 + _pulse.value * 12,
                   offset: const Offset(0, 8),
                 ),
                 BoxShadow(
-                  color: _DS.indigo
-                      .withValues(alpha: 0.18 + _pulse.value * 0.08),
+                  color: _DS.indigo.withValues(
+                    alpha: 0.18 + _pulse.value * 0.08,
+                  ),
                   blurRadius: 40,
                   spreadRadius: -4,
                   offset: const Offset(0, 14),
                 ),
               ],
             ),
-            child: Stack(alignment: Alignment.center, children: [
-              // Inner highlight stripe
-              if (!_busy)
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: 26,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius:
-                      const BorderRadius.vertical(top: Radius.circular(20)),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.13),
-                          Colors.transparent
-                        ],
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (!_busy)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 26,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.13),
+                            Colors.transparent,
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              Row(
-                  mainAxisSize: MainAxisSize.max,
+                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: _busy
                       ? [
                     const SizedBox(
                       width: 24,
                       height: 24,
-                      child: CircularProgressIndicator(
-                          color: _DS.cyan, strokeWidth: 2.5),
+                      child: AppLoadingIndicator(),
                     ),
                   ]
                       : [
-                    Icon(Icons.play_circle_filled_rounded,
-                        color: Colors.white, size: 26),
-                    SizedBox(width: 10),
-                    Text('Join Session',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.3))
-                  ]),
-            ]),
+                    const Icon(
+                      Icons.play_circle_filled_rounded,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'lr_join_session'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -902,7 +1045,7 @@ class _PreJoinPageState extends State<PreJoinPage>
 // Aurora background painter
 // ─────────────────────────────────────────────────────────────────────────────
 class _AuroraPainter extends CustomPainter {
-  _AuroraPainter(this.t);
+  const _AuroraPainter(this.t);
 
   final double t;
 
@@ -910,38 +1053,52 @@ class _AuroraPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final a = t * 2 * math.pi;
     _blob(
-        canvas,
-        Offset(size.width * (0.12 + 0.07 * math.sin(a)),
-            size.height * (0.13 + 0.06 * math.cos(a * 0.7))),
-        size.width * 0.58,
-        const Color(0xFF00D4FF).withValues(alpha: 0.09));
+      canvas,
+      Offset(
+        size.width * (0.12 + 0.07 * math.sin(a)),
+        size.height * (0.13 + 0.06 * math.cos(a * 0.7)),
+      ),
+      size.width * 0.58,
+      const Color(0xFF00D4FF).withValues(alpha: 0.09),
+    );
     _blob(
-        canvas,
-        Offset(size.width * (0.84 + 0.06 * math.cos(a * 1.3)),
-            size.height * (0.24 + 0.08 * math.sin(a * 0.9))),
-        size.width * 0.52,
-        const Color(0xFF6B6EF9).withValues(alpha: 0.08));
+      canvas,
+      Offset(
+        size.width * (0.84 + 0.06 * math.cos(a * 1.3)),
+        size.height * (0.24 + 0.08 * math.sin(a * 0.9)),
+      ),
+      size.width * 0.52,
+      const Color(0xFF6B6EF9).withValues(alpha: 0.08),
+    );
     _blob(
-        canvas,
-        Offset(size.width * (0.16 + 0.05 * math.sin(a * 0.6)),
-            size.height * (0.77 + 0.05 * math.cos(a * 0.5))),
-        size.width * 0.48,
-        const Color(0xFF00E5A0).withValues(alpha: 0.06));
+      canvas,
+      Offset(
+        size.width * (0.16 + 0.05 * math.sin(a * 0.6)),
+        size.height * (0.77 + 0.05 * math.cos(a * 0.5)),
+      ),
+      size.width * 0.48,
+      const Color(0xFF00E5A0).withValues(alpha: 0.06),
+    );
     _blob(
-        canvas,
-        Offset(size.width * (0.87 + 0.04 * math.cos(a * 1.1)),
-            size.height * (0.83 + 0.04 * math.sin(a * 0.8))),
-        size.width * 0.44,
-        const Color(0xFFFF4F72).withValues(alpha: 0.05));
+      canvas,
+      Offset(
+        size.width * (0.87 + 0.04 * math.cos(a * 1.1)),
+        size.height * (0.83 + 0.04 * math.sin(a * 0.8)),
+      ),
+      size.width * 0.44,
+      const Color(0xFFFF4F72).withValues(alpha: 0.05),
+    );
   }
 
   void _blob(Canvas canvas, Offset center, double r, Color color) {
     canvas.drawCircle(
-        center,
-        r,
-        Paint()
-          ..shader = RadialGradient(colors: [color, Colors.transparent])
-              .createShader(Rect.fromCircle(center: center, radius: r)));
+      center,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [color, Colors.transparent],
+        ).createShader(Rect.fromCircle(center: center, radius: r)),
+    );
   }
 
   @override
@@ -949,7 +1106,7 @@ class _AuroraPainter extends CustomPainter {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Glass icon button
+// _GlassIconButton
 // ─────────────────────────────────────────────────────────────────────────────
 class _GlassIconButton extends StatelessWidget {
   const _GlassIconButton({required this.onTap, required this.child});
@@ -958,19 +1115,17 @@ class _GlassIconButton extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: _DS.glass10,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: _DS.glassBdr, width: 1),
-        ),
-        child: Center(child: child),
+  Widget build(BuildContext context) => GestureDetector(
+    onTap: onTap,
+    child: Container(
+      width: 42,
+      height: 42,
+      decoration: BoxDecoration(
+        color: _DS.glass10,
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: _DS.glassBdr, width: 1),
       ),
-    );
-  }
+      child: Center(child: child),
+    ),
+  );
 }

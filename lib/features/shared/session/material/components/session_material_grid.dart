@@ -4,21 +4,25 @@
 // panel. Handles tap → video player / image viewer / external URL, plus
 // teacher edit / delete dialogs.
 // ─────────────────────────────────────────────────────────────────────────────
-
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
 import '../../../../student/models.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
+import '../../../course/studend_course_roadmap_section.dart';
 import '../../screen_vedio_recorder.dart';
 import '../session_material_model.dart';
+import 'material_file_style.dart';
+import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -32,6 +36,11 @@ class SessionMaterialGrid extends StatelessWidget {
   final int columns;
   final bool isTeacher;
 
+  /// The exam attached to this session (null / empty → none). Rendered as the
+  /// last, non-reorderable entry.
+  final SessionExamGate? examGate;
+  final VoidCallback? onOpenExam;
+
   const SessionMaterialGrid({
     super.key,
     required this.session,
@@ -39,67 +48,122 @@ class SessionMaterialGrid extends StatelessWidget {
     required this.columns,
     required this.isTeacher,
     required this.isLoading,
+    this.examGate,
+    this.onOpenExam,
   });
+
+  bool get _hasExam => examGate != null && !examGate!.isEmpty;
 
   // ── Icons: one distinct icon per type ──────────────────────────────────────
   static const _typeIcons = {
-    SessionMaterialType.image:     Icons.image_rounded,
-    SessionMaterialType.video:     Icons.smart_display_rounded,      // filled play screen – live/uploaded video
-    SessionMaterialType.pdf:       Icons.picture_as_pdf_rounded,
-    SessionMaterialType.document:  Icons.article_rounded,            // document page
-    SessionMaterialType.link:      Icons.open_in_browser_rounded,    // web link
-    SessionMaterialType.recorded:  Icons.video_library_rounded,      // recorded archive – distinct from live video
+    SessionMaterialType.image: Icons.image_rounded,
+    SessionMaterialType.video: Icons.smart_display_rounded,
+    // filled play screen – live/uploaded video
+    SessionMaterialType.pdf: Icons.picture_as_pdf_rounded,
+    SessionMaterialType.document: Icons.article_rounded,
+    // document page
+    SessionMaterialType.link: Icons.open_in_browser_rounded,
+    // web link
+    SessionMaterialType.recorded: Icons.video_library_rounded,
+    // recorded archive – distinct from live video
     // SessionMaterialType.recording uses a spinning widget, not a static icon
   };
 
   // ── Colors per type ────────────────────────────────────────────────────────
   static const _typeColors = {
-    SessionMaterialType.image:     Color(0xFF4CAF50),  // green
-    SessionMaterialType.video:     Color(0xFF2196F3),  // blue
-    SessionMaterialType.pdf:       Color(0xFFF44336),  // red
-    SessionMaterialType.document:  Color(0xFFFF9800),  // orange
-    SessionMaterialType.link:      Color(0xFF9C27B0),  // purple
-    SessionMaterialType.recorded:  Color(0xFF5C6BC0),  // indigo – archive feel
-    SessionMaterialType.recording: Color(0xFFE53935),  // vivid red – live/active
+    SessionMaterialType.image: Color(0xFF4CAF50), // green
+    SessionMaterialType.video: Color(0xFF2196F3), // blue
+    SessionMaterialType.pdf: Color(0xFFF44336), // red
+    SessionMaterialType.document: Color(0xFFFF9800), // orange
+    SessionMaterialType.link: Color(0xFF9C27B0), // purple
+    SessionMaterialType.recorded: Color(0xFF5C6BC0), // indigo – archive feel
+    SessionMaterialType.recording: Color(0xFFE53935), // vivid red – live/active
   };
 
   // ── Label keys ─────────────────────────────────────────────────────────────
   static const _typeLabelKeys = {
-    SessionMaterialType.image:     'material_type_image',
-    SessionMaterialType.video:     'material_type_video',
-    SessionMaterialType.pdf:       'material_type_pdf',
-    SessionMaterialType.document:  'material_type_document',
-    SessionMaterialType.link:      'material_type_link',
-    SessionMaterialType.recorded:  'material_type_recorded',
+    SessionMaterialType.image: 'material_type_image',
+    SessionMaterialType.video: 'material_type_video',
+    SessionMaterialType.pdf: 'material_type_pdf',
+    SessionMaterialType.document: 'material_type_document',
+    SessionMaterialType.link: 'material_type_link',
+    SessionMaterialType.recorded: 'material_type_recorded',
     SessionMaterialType.recording: 'material_type_recording',
   };
 
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: AppLoadingIndicator());
     }
+    if (!_hasExam) return _buildMaterialsList(context);
 
+    // The session exam is ALWAYS the last entry. It lives OUTSIDE the
+    // ReorderableListView on purpose: it can't be dragged, and nothing can be
+    // dropped after it.
+    final enrolled =
+        isTeacher || context.read<CourseDetailProvider>().course.isEnrolled;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (materials.isNotEmpty) _buildMaterialsList(context),
+        SessionExamTile(
+          gate: examGate!,
+          isTeacher: isTeacher,
+          enrolled: enrolled,
+          onOpen: onOpenExam,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMaterialsList(BuildContext context) {
     if (materials.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(children: [
-          Icon(Icons.folder_open_rounded,
-              size: 18, color: context.colors.textLight),
-          const SizedBox(width: 8),
-          Text(
-            'no_attachments_yet'.tr,
-            style: context.colors.caption
-                .copyWith(color: context.colors.textLight),
-          ),
-        ]),
+        child: Row(
+          children: [
+            Icon(
+              Icons.folder_open_rounded,
+              size: 18,
+              color: context.colors.textLight,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'no_attachments_yet'.tr,
+              style: context.colors.caption.copyWith(
+                color: context.colors.textLight,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Teachers: one drag-and-drop list (long-press-free: grab the handle).
+    if (isTeacher) {
+      return ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: materials.length,
+        onReorder: (oldIndex, newIndex) => context
+            .read<TeacherCourseScreenProvider>()
+            .reorderMaterials(session.id, oldIndex, newIndex),
+        itemBuilder: (ctx, i) => KeyedSubtree(
+          key: ValueKey('material_${materials[i].id}'),
+          child: _buildTile(ctx, materials[i], i + 1, dragIndex: i),
+        ),
       );
     }
 
     if (columns == 1) {
       return Column(
-        children: materials.map((m) => _buildTile(context, m)).toList(),
-      );
+          children: materials
+              .asMap()
+              .entries
+              .map((entry) => _buildTile(context, entry.value, entry.key+1))
+              .toList());
     }
 
     // Multi-column layout
@@ -107,19 +171,21 @@ class SessionMaterialGrid extends StatelessWidget {
     for (int i = 0; i < materials.length; i += columns) {
       final end = (i + columns).clamp(0, materials.length);
       final rowItems = materials.sublist(i, end);
-      rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (int j = 0; j < rowItems.length; j++) ...[
-            if (j > 0) const SizedBox(width: 12),
-            Expanded(child: _buildTile(context, rowItems[j])),
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int j = 0; j < rowItems.length; j++) ...[
+              if (j > 0) const SizedBox(width: 12),
+              Expanded(child: _buildTile(context, rowItems[j],i+j+1)),
+            ],
+            if (rowItems.length < columns) ...[
+              const SizedBox(width: 12),
+              const Expanded(child: SizedBox.shrink()),
+            ],
           ],
-          if (rowItems.length < columns) ...[
-            const SizedBox(width: 12),
-            const Expanded(child: SizedBox.shrink()),
-          ],
-        ],
-      ));
+        ),
+      );
       if (end < session.totalMaterial) rows.add(const SizedBox(height: 10));
     }
     return Column(children: rows);
@@ -127,218 +193,299 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Tile ───────────────────────────────────────────────────────────────────
 
-  Widget _buildTile(BuildContext context, SessionMaterialModel m) {
+  Widget _buildTile(
+      BuildContext context,
+      SessionMaterialModel m,
+      int index, {
+        int? dragIndex,
+      }) {
     final isRecording = m.type == SessionMaterialType.recording;
-    final isRecorded  = m.type == SessionMaterialType.recorded;
+    final isRecorded = m.type == SessionMaterialType.recorded;
 
-    final icon       = _typeIcons[m.type] ?? Icons.attach_file_rounded;
-    final color      = _typeColors[m.type] ?? context.colors.primary;
-    final labelKey   = _typeLabelKeys[m.type] ?? 'material_type_link';
+    // Word / Excel / CSV / PowerPoint / Python get their own badge + colour.
+    final fileStyle = m.type == SessionMaterialType.document
+        ? MaterialFileStyle.forExtension(m.fileExtension)
+        : null;
+    final icon = _typeIcons[m.type] ?? Icons.attach_file_rounded;
+    final color =
+        fileStyle?.color ?? _typeColors[m.type] ?? context.colors.primary;
+    final labelKey = _typeLabelKeys[m.type] ?? 'material_type_link';
     final isCompleted = m.completed;
 
     // ── Derived display values ─────────────────────────────────────────────
     // For recording / recorded, surface the creation date as part of the title.
     final String displayName = isRecording
-        ? 'recording_in_progress'.tr               // hardcoded "Recording in progress…"
-        : (isRecorded
-        ? '${m.name}  •  ${_formatDate(m.createdAt)}'
-        : m.name);
+        ? 'recording_in_progress'
+        .tr // hardcoded "Recording in progress…"
+        : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
 
-    return GestureDetector(
-      onTap: isRecording ? null : () => _onTapMaterial(context, m, isCompleted),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isCompleted
-                ? const Color(0xFF00C48C).withValues(alpha: 0.35)
-                : color.withValues(alpha: 0.18),
-            width: isCompleted ? 1.5 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
+    return  Directionality(
+      textDirection: Helpers.textDirOf(displayName),
+      child: GestureDetector(
+        onTap: isRecording ? null : () => _onTapMaterial(context, m, isCompleted),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: context.colors.cardBg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
               color: isCompleted
-                  ? const Color(0xFF00C48C).withValues(alpha: 0.10)
-                  : color.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+                  ? const Color(0xFF00C48C).withValues(alpha: 0.35)
+                  : color.withValues(alpha: 0.18),
+              width: isCompleted ? 1.5 : 1.0,
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Column(
-            children: [
-              // ── Top accent strip ─────────────────────────────────────────
-              if (isCompleted)
-                Container(
-                  height: 3,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
-                    ),
-                  ),
-                )
-              else if (isRecording)
-              // Pulsing red strip for active recording
-                Container(
-                  height: 3,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        color,
-                        color.withValues(alpha: 0.4),
-                      ],
-                    ),
-                  ),
-                ),
-
-              Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // ── Leading icon ────────────────────────────────────────
-                    isRecording
-                        ? _RecordingSpinnerIcon(color: color)
-                        : MaterialIconWidget(
-                      icon: icon,
-                      color: color,
-                      isCompleted: isCompleted,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  displayName,
-                                  style: context.colors.body.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
-                                    fontStyle: isRecording
-                                        ? FontStyle.italic
-                                        : FontStyle.normal,
-                                    color: isCompleted
-                                        ? context.colors.textMedium
-                                        : isRecording
-                                        ? color
-                                        : null,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (isCompleted && !isTeacher) ...[
-                                    const MaterialCompletedBadge(),
-                                    const SizedBox(width: 5),
-                                  ],
-                                  // For recording, show a live dot instead of age
-                                  if (isRecording)
-                                    _LiveDotBadge(color: color)
-                                  else if (isRecorded)
-                                  // Show formatted date for recorded items
-                                    Text(
-                                      _formatDate(m.createdAt),
-                                      style: context.colors.caption.copyWith(
-                                        fontSize: 10,
-                                        color: color.withValues(alpha: 0.8),
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    )
-                                  else
-                                    Text(
-                                      m.createdAt.age,
-                                      style: context.colors.navLabelUnselected,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 3),
-                          Row(children: [
-                            SessionPill(labelKey.tr, color),
-                            if (m.fileSize != null && !isRecording) ...[
-                              const SizedBox(width: 6),
-                              Text(
-                                m.sizeLabel,
-                                style: context.colors.caption
-                                    .copyWith(fontSize: 10),
-                              ),
-                            ],
-                          ]),
-                          if (!isRecording)
-                            RatingWidget(
-                              type: RateType.material,
-                              sourceId: m.id.toString(),
-                              canEdit: !isTeacher,
-                              rateSummary: m.rateSummary,
-                            ),
-                        ],
-                      ),
-                    ),
-                    // ── Trailing: teacher actions / student open indicator ──
-                    if (isTeacher)
-                      Row(children: [
-                        if (!isRecording) ...[
-                          _iconBtn(
-                            icon: CupertinoIcons.settings_solid,
-                            color: context.colors.textMedium,
-                            onTap: () => _showEditDialog(context, m),
-                          ),
-                        ],
-                        _iconBtn(
-                          icon: CupertinoIcons.minus_circle_fill,
-                          color: context.colors.danger,
-                          onTap: () => _showDeleteDialog(context, m),
-                        ),
-                      ])
-                    else if (!isRecording)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
-                            transitionBuilder: (child, anim) => ScaleTransition(
-                              scale: anim,
-                              child: FadeTransition(
-                                  opacity: anim, child: child),
-                            ),
-                            child: isCompleted
-                                ? const Padding(
-                              key: ValueKey('check'),
-                              padding: EdgeInsets.only(right: 5),
-                              child: Icon(
-                                Icons.check_circle_rounded,
-                                size: 15,
-                                color: Color(0xFF00C48C),
-                              ),
-                            )
-                                : const SizedBox.shrink(
-                                key: ValueKey('empty')),
-                          ),
-                          Icon(Icons.open_in_new_rounded,
-                              size: 16, color: context.colors.textLight),
-                        ],
-                      ),
-                  ],
-                ),
+            boxShadow: [
+              BoxShadow(
+                color: isCompleted
+                    ? const Color(0xFF00C48C).withValues(alpha: 0.10)
+                    : color.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 3),
               ),
             ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                // ── Top accent strip ─────────────────────────────────────────
+                if (isCompleted)
+                  Container(
+                    height: 3,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                      ),
+                    ),
+                  )
+                else
+                  if (isRecording)
+                  // Pulsing red strip for active recording
+                    Container(
+                      height: 3,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [color, color.withValues(alpha: 0.4)],
+                        ),
+                      ),
+                    ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ── Leading icon ────────────────────────────────────────
+                      Container(
+                        decoration: BoxDecoration(
+                            shape: BoxShape.rectangle,
+                            borderRadius: BorderRadius.circular(10),
+                            border: BoxBorder.all(color: context.colors.primary)
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.fromLTRB(5, 5, 5, 0),
+                              alignment: Alignment.bottomCenter,
+
+                              child: Text(
+                                (index < 10 ? '0' : '') +
+                                    index.toString(),
+                                textAlign: TextAlign.center,
+
+                                style: context.colors.h4.copyWith(
+                                    color: context.colors.primary),
+                              ),
+                            ),
+                            isRecording
+                                ? _RecordingSpinnerIcon(color: color)
+                                : MaterialIconWidget(
+                              icon: icon,
+                              color: color,
+                              isCompleted: isCompleted,
+                              badge: fileStyle?.badge,
+                              badgeTextColor: fileStyle?.badgeTextColor,
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    displayName,
+                                    style: context.colors.body.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                      fontStyle: isRecording
+                                          ? FontStyle.italic
+                                          : FontStyle.normal,
+                                      color: isCompleted
+                                          ? context.colors.textMedium
+                                          : isRecording
+                                          ? color
+                                          : null,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isCompleted && !isTeacher) ...[
+                                      const MaterialCompletedBadge(),
+                                      const SizedBox(width: 5),
+                                    ],
+                                    // For recording, show a live dot instead of age
+                                    if (isRecording)
+                                      _LiveDotBadge(color: color)
+                                    else
+                                      if (isRecorded)
+                                      // Show formatted date for recorded items
+                                        Text(
+                                          _formatDate(m.createdAt),
+                                          style: context.colors.caption.copyWith(
+                                            fontSize: 10,
+                                            color: color.withValues(alpha: 0.8),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        )
+                                      else
+                                        Text(
+                                          m.createdAt.age,
+                                          style: context.colors
+                                              .navLabelUnselected,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                SessionPill(fileStyle?.label ?? labelKey.tr, color),
+                                if (m.sizeLabel.isNotEmpty && !isRecording) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    m.sizeLabel, // KB under 1 MB, else MB
+                                    style: context.colors.caption.copyWith(
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                                if (m.durationLabel.isNotEmpty && !isRecording) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.schedule_rounded,
+                                    size: 11,
+                                    color: context.colors.textLight,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    m.durationLabel, // h:mm:ss
+                                    style: context.colors.caption.copyWith(
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (!isRecording)
+                              RatingWidget(
+                                type: RateType.material,
+                                sourceId: m.id.toString(),
+                                canEdit: !isTeacher,
+                                rateSummary: m.rateSummary,
+                              ),
+                          ],
+                        ),
+                      ),
+                      // ── Trailing: teacher actions / student open indicator ──
+                      if (isTeacher)
+                        Row(
+                          children: [
+                            if (dragIndex != null)
+                              ReorderableDragStartListener(
+                                index: dragIndex,
+                                child: Padding(
+                                  padding:
+                                  const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Icon(
+                                    Icons.menu,
+                                    size: 23,
+                                    color: context.colors.textLight,
+                                  ),
+                                ),
+                              ),
+                            if (!isRecording) ...[
+                              _iconBtn(
+                                icon: CupertinoIcons.settings_solid,
+                                color: context.colors.textMedium,
+                                onTap: () => _showEditDialog(context, m),
+                              ),
+                            ],
+                            _iconBtn(
+                              icon: CupertinoIcons.minus_circle_fill,
+                              color: context.colors.danger,
+                              onTap: () => _showDeleteDialog(context, m),
+                            ),
+                          ],
+                        )
+                      else
+                        if (!isRecording)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 300),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(
+                                      scale: anim,
+                                      child: FadeTransition(
+                                        opacity: anim,
+                                        child: child,
+                                      ),
+                                    ),
+                                child: isCompleted
+                                    ? const Padding(
+                                  key: ValueKey('check'),
+                                  padding: EdgeInsets.only(right: 5),
+                                  child: Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 15,
+                                    color: Color(0xFF00C48C),
+                                  ),
+                                )
+                                    : const SizedBox.shrink(
+                                    key: ValueKey('empty')),
+                              ),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                size: 16,
+                                color: context.colors.textLight,
+                              ),
+                            ],
+                          ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -350,33 +497,60 @@ class SessionMaterialGrid extends StatelessWidget {
   /// Returns a short formatted date string, e.g. "14 Jan 2025".
   String _formatDate(DateTime dt) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 
-  Future<void> _onTapMaterial(
-      BuildContext context,
+  Future<void> _onTapMaterial(BuildContext context,
       SessionMaterialModel m,
-      bool isCompleted,
-      ) async {
-    if (m.urlLow == null) {
+      bool isCompleted,) async {
+    // Belt-and-braces: the card that hosts this grid already blocks
+    // expansion for a locked session, but guard the actual open action too
+    // in case this grid is ever reached another way.
+    if (!isTeacher &&
+        !context.read<CourseDetailProvider>().isSessionUnlockedById(
+          session.id,
+        )) {
+      Helpers.showMessage(
+        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
+        isError: true,
+      );
+      return;
+    }
+    // Protected videos arrive WITHOUT a url (m.requiresPlay): the player fetches
+    // a device-bound stream link via POST .../play, which also counts the view.
+    if (!m.requiresPlay && (m.urlLow == null || m.urlLow!.isEmpty)) {
       Helpers.showMessage('video_not_available'.tr);
       return;
     }
-    final uri = Uri.parse(m.urlLow!);
+    final uri = Uri.parse(m.urlLow ?? m.urlHigh ?? '');
 
-    if ([SessionMaterialType.video, SessionMaterialType.recorded].contains(m.type)) {
+    if ([
+      SessionMaterialType.video,
+      SessionMaterialType.recorded,
+    ].contains(m.type)) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => VideoPlayerScreen(
-            autoPlay: true,
-            startFullScreen: false,
-            material: m,
-          ),
+          builder: (_) =>
+              VideoPlayerScreen(
+                autoPlay: true,
+                startFullScreen: false,
+                material: m,
+              ),
         ),
       );
     } else if (m.type == SessionMaterialType.image) {
@@ -386,17 +560,19 @@ class SessionMaterialGrid extends StatelessWidget {
             MaterialImageViewerDialog(url: m.urlLow!, title: m.name),
       );
       if (!isTeacher && context.mounted) {
-        await context
-            .read<CourseDetailProvider>()
-            .markMaterialComplete(session.id, m.id);
+        await context.read<CourseDetailProvider>().markMaterialComplete(
+          session.id,
+          m.id,
+        );
       }
     } else {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
         if (!isTeacher && context.mounted) {
-          await context
-              .read<CourseDetailProvider>()
-              .markMaterialComplete(session.id, m.id);
+          await context.read<CourseDetailProvider>().markMaterialComplete(
+            session.id,
+            m.id,
+          );
         }
       }
     }
@@ -423,59 +599,79 @@ class SessionMaterialGrid extends StatelessWidget {
     final nameCtrl = TextEditingController(text: m.name);
     final descCtrl = TextEditingController(text: m.description ?? '');
     final urlCtrl = TextEditingController(text: m.urlLow ?? '');
+    final orderCtrl = TextEditingController(text: m.order.toString());
 
     showDialog(
       context: context,
-      builder: (_) => RtlDialog(
-        title: 'edit_material'.tr,
-        content: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
-            const SizedBox(height: 12),
-            SessionField(ctrl: descCtrl, label: 'description_optional'.tr),
-            if (m.type == SessionMaterialType.link) ...[
-              const SizedBox(height: 12),
-              SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
-            ],
-          ]),
-        ),
-        onCancel: () => Navigator.pop(context),
-        onConfirm: () async {
-          Navigator.pop(context);
-          await context.read<TeacherCourseScreenProvider>().updateMaterial(
-            session.id,
-            m.id,
-            name: nameCtrl.text.trim(),
-            description: descCtrl.text.trim().isEmpty
-                ? null
-                : descCtrl.text.trim(),
-            url: m.type == SessionMaterialType.link
-                ? urlCtrl.text.trim()
-                : null,
-          );
-        },
-        confirmLabel: 'save'.tr,
-        confirmColor: context.colors.primary,
-      ),
+      builder: (_) =>
+          RtlDialog(
+            title: 'edit_material'.tr,
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
+                  const SizedBox(height: 12),
+                  SessionField(
+                      ctrl: descCtrl, label: 'description_optional'.tr),
+                  const SizedBox(height: 12),
+                  SessionField(
+                    ctrl: orderCtrl,
+                    label: 'order_label'.tr, // add key: "الترتيب" / "Order"
+                    keyboardType: TextInputType.number,
+                  ),
+                  if (m.type == SessionMaterialType.link) ...[
+                    const SizedBox(height: 12),
+                    SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
+                  ],
+                ],
+              ),
+            ),
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () async {
+              Navigator.pop(context);
+              await context.read<TeacherCourseScreenProvider>().updateMaterial(
+                session.id,
+                m.id,
+                name: nameCtrl.text.trim().isEmpty
+                    ? m.name
+                    : nameCtrl.text.trim(),
+                order: int.tryParse(orderCtrl.text.trim()) ?? m.order,
+                description: descCtrl.text
+                    .trim()
+                    .isEmpty
+                    ? null
+                    : descCtrl.text.trim(),
+                url: m.type == SessionMaterialType.link
+                    ? urlCtrl.text.trim()
+                    : null,
+              );
+            },
+            confirmLabel: 'save'.tr,
+            confirmColor: context.colors.primary,
+          ),
     );
   }
 
   void _showDeleteDialog(BuildContext context, SessionMaterialModel m) {
     showDialog(
       context: context,
-      builder: (_) => RtlDialog(
-        title: 'delete_material'.tr,
-        content: Text('delete_confirm_message'.tr, style: context.colors.body),
-        onCancel: () => Navigator.pop(context),
-        onConfirm: () async {
-          Navigator.pop(context);
-          await context
-              .read<TeacherCourseScreenProvider>()
-              .deleteMaterial(session.id, m.id);
-        },
-        confirmLabel: 'delete'.tr,
-        confirmColor: context.colors.danger,
-      ),
+      builder: (_) =>
+          RtlDialog(
+            title: 'delete_material'.tr,
+            content: Text(
+                'delete_confirm_message'.tr, style: context.colors.body),
+            onCancel: () => Navigator.pop(context),
+            onConfirm: () async {
+              Navigator.pop(context);
+              await context.read<TeacherCourseScreenProvider>().deleteMaterial(
+                session.id,
+                m.id,
+              );
+            },
+            confirmLabel: 'delete'.tr,
+            confirmColor: context.colors.danger,
+          ),
     );
   }
 }
@@ -486,6 +682,7 @@ class SessionMaterialGrid extends StatelessWidget {
 
 class _RecordingSpinnerIcon extends StatefulWidget {
   final Color color;
+
   const _RecordingSpinnerIcon({required this.color});
 
   @override
@@ -502,7 +699,8 @@ class _RecordingSpinnerIconState extends State<_RecordingSpinnerIcon>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat();
+    )
+      ..repeat();
   }
 
   @override
@@ -517,19 +715,7 @@ class _RecordingSpinnerIconState extends State<_RecordingSpinnerIcon>
       alignment: Alignment.center,
       children: [
         // Spinning ring
-        RotationTransition(
-          turns: _ctrl,
-          child: SizedBox(
-            width: 38,
-            height: 38,
-            child: CircularProgressIndicator(
-              strokeWidth: 2.5,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                widget.color.withValues(alpha: 0.6),
-              ),
-            ),
-          ),
-        ),
+        RotationTransition(turns: _ctrl, child: AppLoadingIndicator()),
         // Static red dot in center
         Container(
           width: 14,
@@ -557,6 +743,7 @@ class _RecordingSpinnerIconState extends State<_RecordingSpinnerIcon>
 
 class _LiveDotBadge extends StatefulWidget {
   final Color color;
+
   const _LiveDotBadge({required this.color});
 
   @override
@@ -574,7 +761,8 @@ class _LiveDotBadgeState extends State<_LiveDotBadge>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    )
+      ..repeat(reverse: true);
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -632,11 +820,17 @@ class MaterialIconWidget extends StatelessWidget {
   final Color color;
   final bool isCompleted;
 
+  /// Letters drawn instead of the icon (file-type badge, e.g. "W", "PY").
+  final String? badge;
+  final Color? badgeTextColor;
+
   const MaterialIconWidget({
     super.key,
     required this.icon,
     required this.color,
     required this.isCompleted,
+    this.badge,
+    this.badgeTextColor,
   });
 
   @override
@@ -658,7 +852,9 @@ class MaterialIconWidget extends StatelessWidget {
                 : null,
             color: isCompleted
                 ? null
-                : effectiveColor.withValues(alpha: 0.12),
+                : (badge != null
+                ? effectiveColor
+                : effectiveColor.withValues(alpha: 0.12)),
             borderRadius: BorderRadius.circular(10),
             boxShadow: isCompleted
                 ? [
@@ -670,7 +866,19 @@ class MaterialIconWidget extends StatelessWidget {
             ]
                 : null,
           ),
-          child: Icon(
+          child: (badge != null && !isCompleted)
+              ? Center(
+            child: Text(
+              badge!,
+              style: TextStyle(
+                color: badgeTextColor ?? Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: badge!.length > 2 ? 11 : 18,
+                letterSpacing: 0.3,
+              ),
+            ),
+          )
+              : Icon(
             isCompleted ? Icons.check_rounded : icon,
             color: isCompleted ? Colors.white : effectiveColor,
             size: 20,
@@ -765,12 +973,12 @@ class MaterialImageViewerDialog extends StatelessWidget {
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
-                loadingBuilder: (_, child, progress) => progress == null
+                loadingBuilder: (_, child, progress) =>
+                progress == null
                     ? child
-                    : const Center(
-                    child: CircularProgressIndicator(
-                        color: Colors.white)),
-                errorBuilder: (_, __, ___) => const Icon(
+                    : const Center(child: AppLoadingIndicator()),
+                errorBuilder: (_, _, _) =>
+                const Icon(
                   Icons.broken_image_rounded,
                   color: Colors.white54,
                   size: 64,
@@ -791,40 +999,48 @@ class MaterialImageViewerDialog extends StatelessWidget {
                 ),
               ),
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 8,
+                top: MediaQuery
+                    .of(context)
+                    .padding
+                    .top + 8,
                 left: 12,
                 right: 12,
                 bottom: 20,
               ),
-              child: Row(children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(10),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white12,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.close_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
-                    child: const Icon(Icons.close_rounded,
-                        color: Colors.white, size: 20),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'bahji',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'bahji',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ]),
+                ],
+              ),
             ),
           ),
         ],

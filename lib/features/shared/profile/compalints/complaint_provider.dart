@@ -4,11 +4,24 @@
 
 import 'dart:developer';
 
-import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
 import 'complaint_model.dart';
+
+// ── Pending attachment (before upload) ────────────────────────────────────────
+
+class PendingAttachment {
+  final XFile file;
+  final String localPreviewUrl; // file.path on mobile, blob URL on web
+
+  PendingAttachment({required this.file, required this.localPreviewUrl});
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ComplaintProvider extends BaseProvider {
   ComplaintProvider({ApiClient? api}) : _api = api ?? ApiClient();
@@ -20,16 +33,27 @@ class ComplaintProvider extends BaseProvider {
   ComplaintModel? _selected;
   ComplaintStats _stats = const ComplaintStats();
 
-  bool isLoadingList  = false;
-  bool isLoadingDetail = false;
-  bool isSending      = false;
+  bool isLoadingList    = false;
+  bool isLoadingDetail  = false;
+  bool isSending        = false;
+  bool isUploadingImage = false;
   String? errorMsg;
 
+  // ── Pending attachments (form / reply) ─────────────────────────────────────
+  final List<PendingAttachment> _pendingAttachments      = [];
+  final List<PendingAttachment> _pendingReplyAttachments = [];
+
+  List<PendingAttachment> get pendingAttachments =>
+      List.unmodifiable(_pendingAttachments);
+  List<PendingAttachment> get pendingReplyAttachments =>
+      List.unmodifiable(_pendingReplyAttachments);
+
+  // ── Pagination / filter state ─────────────────────────────────────────────
   int _page       = 1;
   int _totalPages = 1;
   bool get hasMore => _page < _totalPages;
 
-  ComplaintStatus? _statusFilter;
+  ComplaintStatus?   _statusFilter;
   ComplaintCategory? _categoryFilter;
   String _search = '';
 
@@ -65,13 +89,183 @@ class ComplaintProvider extends BaseProvider {
     loadComplaints(reset: true);
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Image picking  (for new complaint form)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static const int _maxImages = 4;
+  final _picker = ImagePicker();
+
+  static const List<String> _allowedAttachmentExtensions = [
+    'jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf',
+  ];
+
+  /// Converts a file_picker result into a PendingAttachment, working both
+  /// on platforms with a real file path and on web (bytes only).
+  PendingAttachment? _pendingFromPlatformFile(PlatformFile f) {
+    if (f.path != null) {
+      final file = XFile(f.path!, name: f.name);
+      return PendingAttachment(file: file, localPreviewUrl: f.path!);
+    }
+    if (f.bytes != null) {
+      final file = XFile.fromData(f.bytes!, name: f.name);
+      return PendingAttachment(file: file, localPreviewUrl: f.name);
+    }
+    return null;
+  }
+
+  Future<void> pickComplaintImages() async {
+    if (_pendingAttachments.length >= _maxImages) return;
+    final remaining = _maxImages - _pendingAttachments.length;
+    final files = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    for (final f in files) {
+      _pendingAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    }
+    notifyListeners();
+  }
+
+  Future<void> pickComplaintImageFromCamera() async {
+    if (_pendingAttachments.length >= _maxImages) return;
+    final f = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    if (f == null) return;
+    _pendingAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    notifyListeners();
+  }
+
+  /// Browse the device for any image OR a PDF (scanned evidence, receipts,
+  /// invoices, etc.) — not limited to the camera roll like the pickers above.
+  Future<void> pickComplaintFile() async {
+    if (_pendingAttachments.length >= _maxImages) return;
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _allowedAttachmentExtensions,
+      withData: true,
+      allowMultiple: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final remaining = _maxImages - _pendingAttachments.length;
+    for (final f in result.files.take(remaining)) {
+      final pending = _pendingFromPlatformFile(f);
+      if (pending != null) _pendingAttachments.add(pending);
+    }
+    notifyListeners();
+  }
+
+  void removeComplaintImage(int index) {
+    if (index < 0 || index >= _pendingAttachments.length) return;
+    _pendingAttachments.removeAt(index);
+    notifyListeners();
+  }
+
+  void clearComplaintImages() {
+    _pendingAttachments.clear();
+    notifyListeners();
+  }
+
+  // ── Reply images ──────────────────────────────────────────────────────────
+
+  Future<void> pickReplyImage() async {
+    if (_pendingReplyAttachments.length >= _maxImages) return;
+    final remaining = _maxImages - _pendingReplyAttachments.length;
+    final files = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    for (final f in files) {
+      _pendingReplyAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    }
+    notifyListeners();
+  }
+
+  Future<void> pickReplyImageFromCamera() async {
+    if (_pendingReplyAttachments.length >= _maxImages) return;
+    final f = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    if (f == null) return;
+    _pendingReplyAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    notifyListeners();
+  }
+
+  /// Same as pickComplaintFile() but for a reply — any image or a PDF.
+  Future<void> pickReplyFile() async {
+    if (_pendingReplyAttachments.length >= _maxImages) return;
+    final result = await FilePicker.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: _allowedAttachmentExtensions,
+      withData: true,
+      allowMultiple: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final remaining = _maxImages - _pendingReplyAttachments.length;
+    for (final f in result.files.take(remaining)) {
+      final pending = _pendingFromPlatformFile(f);
+      if (pending != null) _pendingReplyAttachments.add(pending);
+    }
+    notifyListeners();
+  }
+
+  void removeReplyImage(int index) {
+    if (index < 0 || index >= _pendingReplyAttachments.length) return;
+    _pendingReplyAttachments.removeAt(index);
+    notifyListeners();
+  }
+
+  void clearReplyImages() {
+    _pendingReplyAttachments.clear();
+    notifyListeners();
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Upload helpers — use postMultipart (consistent with teacher docs pattern)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<Map?> _uploadOne(PendingAttachment pending) async {
+    try {
+
+      final bytes = await pending.file.readAsBytes();
+
+      final res = await _api.postMultipart(
+        '/api/v1/complaints/upload-attachment',
+        fields:    {},
+        fileField: 'file',
+        fileName:  pending.file.name,
+        fileBytes: bytes,
+      );
+      if (res != null && res is Map && res['file_url'] != null) {
+        return res;
+      }
+      log('_uploadOne ❌ unexpected response: $res');
+    } catch (e) {
+      log('_uploadOne ❌ $e');
+    }
+    return null;
+  }
+
+  Future<List<Map>> _uploadAll(List<PendingAttachment> pending) async {
+    if (pending.isEmpty) return [];
+    isUploadingImage = true;
+    notifyListeners();
+    final urls = <Map>[];
+    try {
+      for (final item in pending) {
+        final url = await _uploadOne(item);
+        if (url != null) urls.add(url);
+      }
+    } finally {
+      isUploadingImage = false;
+      notifyListeners();
+    }
+    return urls;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  CRUD
+  // ══════════════════════════════════════════════════════════════════════════
+
   // ── Load list ─────────────────────────────────────────────────────────────
   Future<void> loadComplaints({bool reset = false}) async {
     if (reset) {
       _page = 1;
       _complaints = [];
     }
-
     if (isLoadingList) return;
     isLoadingList = true;
     errorMsg = null;
@@ -81,18 +275,16 @@ class ComplaintProvider extends BaseProvider {
       final params = <String, dynamic>{
         'page': _page,
         'per_page': 20,
-        if (_statusFilter != null) 'status': _statusFilter!.toJson(),
+        if (_statusFilter != null)   'status':   _statusFilter!.toJson(),
         if (_categoryFilter != null) 'category': _categoryFilter!.toJson(),
-        if (_search.isNotEmpty) 'search': _search,
+        if (_search.isNotEmpty)      'search':   _search,
       };
 
       final res = await _api.get('/api/v1/complaints', queryParams: params);
-
       if (res != null && res is Map) {
         final items = (res['items'] as List? ?? [])
             .map((j) => ComplaintModel.fromJson(j as Map<String, dynamic>))
             .toList();
-
         if (reset) {
           _complaints = items;
         } else {
@@ -115,12 +307,10 @@ class ComplaintProvider extends BaseProvider {
     isLoadingDetail = true;
     _selected = null;
     notifyListeners();
-
     try {
       final res = await _api.get('/api/v1/complaints/$id');
       if (res != null && res is Map) {
         _selected = ComplaintModel.fromJson(res as Map<String, dynamic>);
-        // Update item in list if present
         final idx = _complaints.indexWhere((c) => c.id == id);
         if (idx != -1) _complaints[idx] = _selected!;
       }
@@ -145,24 +335,33 @@ class ComplaintProvider extends BaseProvider {
     }
   }
 
-  // ── Create ────────────────────────────────────────────────────────────────
+  // ── Create (uploads images first, then sends all data) ────────────────────
   Future<ComplaintModel?> createComplaint({
     required String title,
     required String description,
     required ComplaintCategory category,
     required ComplaintPriority priority,
     String? courseId,
+    String? suggestedSolution,        // ← NEW  optional param
   }) async {
     isSending = true;
     notifyListeners();
 
     try {
+      final attachmentUrls = await _uploadAll(_pendingAttachments);
+
+      // Trim the suggestion; send null if blank so the backend stores NULL.
+      final trimmedSuggestion = suggestedSolution?.trim();
+
       final body = <String, dynamic>{
-        'title': title,
+        'title':       title,
         'description': description,
-        'category': category.toJson(),
-        'priority': priority.toJson(),
-        if (courseId != null) 'course_id': courseId,
+        'category':    category.toJson(),
+        'priority':    priority.toJson(),
+        'course_id': ?courseId,
+        if (attachmentUrls.isNotEmpty) 'attachment_urls': attachmentUrls,
+        if (trimmedSuggestion != null && trimmedSuggestion.isNotEmpty)
+          'suggested_solution': trimmedSuggestion,       // ← NEW
       };
 
       final res = await _api.post('/api/v1/complaints', body: body);
@@ -170,13 +369,14 @@ class ComplaintProvider extends BaseProvider {
         final complaint = ComplaintModel.fromJson(res as Map<String, dynamic>);
         _complaints.insert(0, complaint);
         _stats = ComplaintStats(
-          total: _stats.total + 1,
-          open: _stats.open + 1,
-          inProgress: _stats.inProgress,
-          resolved: _stats.resolved,
-          closed: _stats.closed,
+          total:       _stats.total + 1,
+          open:        _stats.open + 1,
+          inProgress:  _stats.inProgress,
+          resolved:    _stats.resolved,
+          closed:      _stats.closed,
           unreadAdmin: _stats.unreadAdmin + 1,
         );
+        _pendingAttachments.clear();
         isSending = false;
         notifyListeners();
         return complaint;
@@ -190,7 +390,7 @@ class ComplaintProvider extends BaseProvider {
     return null;
   }
 
-  // ── Reply ─────────────────────────────────────────────────────────────────
+  // ── Reply (uploads images first) ──────────────────────────────────────────
   Future<ComplaintReply?> addReply({
     required int complaintId,
     required String message,
@@ -200,36 +400,41 @@ class ComplaintProvider extends BaseProvider {
     notifyListeners();
 
     try {
+      final uploadedUrls = await _uploadAll(_pendingReplyAttachments);
+      final allUrls = [...attachmentUrls, ...uploadedUrls];
+
       final res = await _api.post(
         '/api/v1/complaints/$complaintId/replies',
-        body: {'message': message, 'attachment_urls': attachmentUrls},
+        body: {'message': message, 'attachment_urls': allUrls},
       );
 
       if (res != null && res is Map) {
         final reply = ComplaintReply.fromJson(res as Map<String, dynamic>);
         if (_selected?.id == complaintId) {
           _selected = ComplaintModel(
-            id: _selected!.id,
-            userId: _selected!.userId,
-            userName: _selected!.userName,
-            userImage: _selected!.userImage,
-            courseId: _selected!.courseId,
-            courseTitle: _selected!.courseTitle,
-            title: _selected!.title,
-            description: _selected!.description,
-            category: _selected!.category,
-            priority: _selected!.priority,
-            status: _selected!.status,
+            id:           _selected!.id,
+            userId:       _selected!.userId,
+            userName:     _selected!.userName,
+            userImage:    _selected!.userImage,
+            courseId:     _selected!.courseId,
+            courseTitle:  _selected!.courseTitle,
+            title:        _selected!.title,
+            description:  _selected!.description,
+            suggestedSolution: _selected!.suggestedSolution,  // preserve
+            category:     _selected!.category,
+            priority:     _selected!.priority,
+            status:       _selected!.status,
             isReadByAdmin: _selected!.isReadByAdmin,
-            isReadByUser: _selected!.isReadByUser,
-            createdAt: _selected!.createdAt,
-            updatedAt: DateTime.now(),
-            resolvedAt: _selected!.resolvedAt,
+            isReadByUser:  _selected!.isReadByUser,
+            createdAt:    _selected!.createdAt,
+            updatedAt:    DateTime.now(),
+            resolvedAt:   _selected!.resolvedAt,
             repliesCount: _selected!.repliesCount + 1,
-            replies: [..._selected!.replies, reply],
-            attachments: _selected!.attachments,
+            replies:      [..._selected!.replies, reply],
+            attachments:  _selected!.attachments,
           );
         }
+        _pendingReplyAttachments.clear();
         isSending = false;
         notifyListeners();
         return reply;

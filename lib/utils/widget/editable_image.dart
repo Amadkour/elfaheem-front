@@ -1,14 +1,12 @@
 // ── Image picking ──────────────────────────────────────────────────────────
 import 'dart:typed_data';
 
-import 'package:cross_file/cross_file.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class EditableImage extends StatelessWidget {
   const EditableImage(

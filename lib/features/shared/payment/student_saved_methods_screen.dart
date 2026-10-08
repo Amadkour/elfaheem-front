@@ -7,7 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/text_field.dart';
@@ -178,7 +179,7 @@ class _VisualCardState extends State<_VisualCard>
     final p = context.read<SavedMethodsProvider>();
     return AnimatedBuilder(
       animation: _anim,
-      builder: (_, __) => _buildCard(context, m, p),
+      builder: (_, _) => _buildCard(context, m, p),
     );
   }
 
@@ -814,10 +815,11 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
               },
             ),
             const SizedBox(height: 18),
-            MyPrimaryButton(
+            PrimaryButton(
               label:     'save_account_btn'.tr,
               isLoading: _saving,
               onPressed: _save,
+              icon: null,
             ),
           ],
         ),

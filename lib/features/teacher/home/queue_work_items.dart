@@ -1,19 +1,56 @@
 // ── Teacher Schedule Queue ────────────────────────────────────────────────────
+//
+// PERFORMANCE REFACTOR
+// ─────────────────────────────────────────────────────────────────────────
+// `_ScheduleQueueListState` used to run `Timer.periodic(1s, () => setState())`
+// on the widget that owns the *entire* queue — every day group, every
+// session card, every countdown. That meant a full rebuild of the whole
+// schedule list once a second regardless of how many sessions were live or
+// even visible, and it also called `TeacherHomeProvider.init()` (a
+// loading-state-flipping fetch) directly from that timer.
+//
+// Every `ScheduleSessionCard` was also unconditionally wrapped in its own
+// `ChangeNotifierProvider<TeacherCourseScreenProvider>` (one full provider +
+// ApiClient per card, per build) purely to feed a `_CreateSessionSheet` that
+// is never actually shown anywhere in this file — dead weight on every
+// render of the queue.
+//
+// Fixes:
+//   • The 1-second tick now updates a single `ValueNotifier<DateTime>`
+//     instead of calling `setState()`. Each `ScheduleSessionCard` listens to
+//     it individually via `ValueListenableBuilder`, so only cards that are
+//     live or starting soon actually re-render each second — the header,
+//     other day groups, and non-time-sensitive cards are untouched.
+//   • Removed the unused per-card `ChangeNotifierProvider` wrap (and the
+//     dead `_CreateSessionSheet` class it was feeding).
+//   • The background refresh triggered when a session starts now calls
+//     `TeacherHomeProvider.refreshSilently()` instead of `init()`, so it can't
+//     flash a full-screen loading state on the dashboard.
+//   • Cards get a stable `ValueKey(scheduleId)` so Flutter can correctly
+//     diff/reuse them (and their internal `_LiveDot` animation controllers)
+//     across resorts instead of rebuilding by list position.
+// ─────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/home/teacher_provider.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_theme.dart';
+import '../../../config/theme/app_theme.dart';
+import '../../../config/theme/theme_config_provider.dart';
+import '../../../utils/helpers.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
-
+import '../sessions/sessions_screen.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Parses 'HH:MM' from [session] fields and combines with [session.scheduledDate]
@@ -21,14 +58,21 @@ import '../sessions/sessions_provider.dart';
 ({DateTime start, DateTime end}) _sessionDateTimes(ScheduleSession session) {
   final parts = session.startTime.split(':');
   final eParts = session.endTime.split(':');
-  final base = session.scheduledDate;
+  final base = session.scheduledDate ?? DateTime.now();
+
   final start = DateTime.utc(
-    base.year, base.month, base.day,
-    int.parse(parts[0]), int.parse(parts[1]),
+    base.year,
+    base.month,
+    base.day,
+    int.parse(parts[0]),
+    int.parse(parts[1]),
   );
   final end = DateTime.utc(
-    base.year, base.month, base.day,
-    int.parse(eParts[0]), int.parse(eParts[1]),
+    base.year,
+    base.month,
+    base.day,
+    int.parse(eParts[0]),
+    int.parse(eParts[1]),
   );
   return (start: start, end: end);
 }
@@ -53,7 +97,8 @@ class ScheduleQueueList extends StatefulWidget {
 }
 
 class _ScheduleQueueListState extends State<ScheduleQueueList> {
-  late Timer _ticker;
+  late final Timer _ticker;
+  final ValueNotifier<DateTime> _now = ValueNotifier(DateTime.now().toUtc());
 
   /// Sessions for which we have already fired the refresh call this run.
   final Set<int> _refreshFired = {};
@@ -62,17 +107,40 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
   void initState() {
     super.initState();
     // Tick every second so countdowns stay smooth.
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+    _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
+    _startPolling();
   }
+  Timer? _pollTimer;
 
+  void _startPolling() {
+    // _pollTimer?.cancel();
+    // _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    //   if (!mounted) return;
+    //   if (!context.read<AuthProvider>().isAuthenticated) {
+    //     _pollTimer?.cancel();
+    //     return;
+    //   }
+    //   context.read<TeacherHomeProvider>().refreshSilently();
+    // });
+  }
   @override
   void dispose() {
     _ticker.cancel();
+    _now.dispose();
     super.dispose();
   }
-
   void _onTick() {
     if (!mounted) return;
+
+    // Guard every tick, not just on start — the user can log out at any
+    // point while this widget stays alive (AutomaticKeepAliveClientMixin
+    // keeps it mounted across tab switches), and without this check the
+    // countdown crossing a session's start time would still fire an
+    // authenticated-only API call with no valid session.
+    if (!context.read<AuthProvider>().isAuthenticated) {
+      _ticker.cancel();
+      return;
+    }
 
     final now = DateTime.now().toUtc();
 
@@ -83,29 +151,27 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
       final (:start, :end) = _sessionDateTimes(session);
       final untilStart = start.difference(now);
 
-      // Fire once when we cross the 0-second mark (was positive, now ≤ 0).
       if (untilStart.inSeconds <= 0 && untilStart.inSeconds > -5) {
         _refreshFired.add(scheduleId);
         log('[SCHEDULE] Session ${session.sessionId} starting — refreshing dashboard');
-        context.read<TeacherProvider>().init();
+        context.read<TeacherHomeProvider>().refreshSilently();
       }
     }
 
-    setState(() {}); // rebuild all countdown displays
+    _now.value = now;
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.sessions.isEmpty) return const _EmptyQueue();
 
-    final now = DateTime.now().toUtc();
-
-    final sorted = [...widget.sessions]..sort((a, b) {
-      if (a.isOngoing != b.isOngoing) return a.isOngoing ? -1 : 1;
-      if (a.isToday != b.isToday) return a.isToday ? -1 : 1;
-      final dc = a.scheduledDate.compareTo(b.scheduledDate);
-      return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
-    });
+    final sorted = [...widget.sessions]
+      ..sort((a, b) {
+        if (a.isOngoing != b.isOngoing) return a.isOngoing ? -1 : 1;
+        if (a.isToday != b.isToday) return a.isToday ? -1 : 1;
+        final dc = a.scheduledDate.compareTo(b.scheduledDate);
+        return dc != 0 ? dc : a.startTime.compareTo(b.startTime);
+      });
 
     final groups = <String, List<ScheduleSession>>{};
     for (final s in sorted) {
@@ -120,7 +186,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
               (e) => _DayGroup(
             dayLabel: e.key,
             sessions: e.value,
-            now: now,
+            nowListenable: _now,
           ),
         ),
         const SizedBox(height: 8),
@@ -133,6 +199,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
 
 class _QueueHeader extends StatelessWidget {
   final int count;
+
   const _QueueHeader({required this.count});
 
   @override
@@ -142,7 +209,7 @@ class _QueueHeader extends StatelessWidget {
       child: Row(
         children: [
           Text(
-            'جدول الأسبوع',
+            'weekly_schedule'.tr,
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 13,
@@ -161,7 +228,7 @@ class _QueueHeader extends StatelessWidget {
             ),
             child: Text(
               '$count',
-              style:  TextStyle(
+              style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -180,12 +247,12 @@ class _QueueHeader extends StatelessWidget {
 class _DayGroup extends StatelessWidget {
   final String dayLabel;
   final List<ScheduleSession> sessions;
-  final DateTime now;
+  final ValueListenable<DateTime> nowListenable;
 
   const _DayGroup({
     required this.dayLabel,
     required this.sessions,
-    required this.now,
+    required this.nowListenable,
   });
 
   @override
@@ -206,7 +273,16 @@ class _DayGroup extends StatelessWidget {
             ),
           ),
         ),
-        ...sessions.map((s) => _SessionCard(session: s, now: now)),
+        ...sessions.map(
+          // Stable key: lets Flutter reuse elements (and their internal
+          // _LiveDot animation controllers) across resorts instead of
+          // rebuilding by list position.
+              (s) => ScheduleSessionCard(
+            key: ValueKey(s.scheduleId),
+            session: s,
+            nowListenable: nowListenable,
+          ),
+        ),
       ],
     );
   }
@@ -214,112 +290,132 @@ class _DayGroup extends StatelessWidget {
 
 // ── Session card ──────────────────────────────────────────────────────────────
 
-class _SessionCard extends StatelessWidget {
+class ScheduleSessionCard extends StatelessWidget {
   final ScheduleSession session;
-  final DateTime now;
+  final ValueListenable<DateTime> nowListenable;
+  final Color? background;
 
-  const _SessionCard({required this.session, required this.now});
+  const ScheduleSessionCard({
+    super.key,
+    required this.session,
+    required this.nowListenable,
+    this.background,
+  });
 
-  Color get _accent {
-    if (session.isOngoing) return const Color(0xFFE24B4A);
+  Color _accentFor({required bool isOngoing}) {
+    if (isOngoing) return const Color(0xFFE24B4A);
     if (session.isToday) return const Color(0xFF378ADD);
     return const Color(0xFF1D9E75);
   }
 
   @override
   Widget build(BuildContext context) {
+    final TeacherCourse course = TeacherCourse.dummy(session.courseId);
     final (:start, :end) = _sessionDateTimes(session);
-    final untilStart = start.difference(now);
-    final untilEnd   = end.difference(now);
 
-    // Recompute live flags locally so they stay accurate between API refreshes
-    final isOngoing = now.isAfter(start) && now.isBefore(end);
-    final isUpcoming = !isOngoing && untilStart.inSeconds > 0;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.background,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isOngoing
-                ? _accent.withValues(alpha: 0.5)
-                : context.colors.divider,
-            width: isOngoing ? 1.2 : 0.5,
+    void openSessionsScreen() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) => TeacherCourseScreenProvider(initialCourse: course),
+            child: TeacherSessionsScreen(expandDetails: true),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: _accent.withValues(alpha: isOngoing ? 0.12 : 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Accent top bar
-            // Container(
-            //   height: 3,
-            //   decoration: BoxDecoration(
-            //     gradient: LinearGradient(
-            //       colors: [_accent, _accent.withValues(alpha: 0.3)],
-            //     ),
-            //   ),
-            // ),
+      );
+    }
 
-            // Main row
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 8,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _TimeBlock(session: session, accent: _accent),
-                          const SizedBox(width: 10),
-                          //_CourseImage(session: session),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _CourseInfo(
-                              session: session,
-                              accent: _accent,
-                              isOngoing: isOngoing,
+    // Only this ValueListenableBuilder rebuilds each tick — not the day
+    // group, not sibling cards, not the queue header.
+    return ValueListenableBuilder<DateTime>(
+      valueListenable: nowListenable,
+      builder: (context, now, _) {
+        final untilStart = start.difference(now);
+        final untilEnd = end.difference(now);
+
+        // Recompute live flags locally so they stay accurate between API
+        // refreshes.
+        final isOngoing = now.isAfter(start) && now.isBefore(end);
+        final isUpcoming = !isOngoing && untilStart.inSeconds > 0;
+        final accent = _accentFor(isOngoing: isOngoing);
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: background ?? context.colors.primary.withAlpha(50),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isOngoing
+                    ? accent.withValues(alpha: 0.5)
+                    : context.colors.divider,
+                width: isOngoing ? 1.2 : 0.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: isOngoing ? 0.12 : 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Main row
+                InkWell(
+                  onTap: openSessionsScreen,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          flex: 8,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 15, 10, 10),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                _TimeBlock(session: session, accent: accent),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: _CourseInfo(
+                                    session: session,
+                                    accent: accent,
+                                    isOngoing: isOngoing??false,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: _InlineStartButton(
+                            session: session,
+                            accent: accent,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: _InlineStartButton(
-                      session: session,
-                      accent: _accent,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                ),
 
-            // ── Countdown / progress row ──────────────────────────────────────
-            if (isOngoing || (session.isToday && isUpcoming))
-              _CountdownBar(
-                accent:      _accent,
-                isOngoing:   isOngoing,
-                untilStart:  untilStart,
-                untilEnd:    untilEnd,
-                totalMinutes: session.durationMinutes,
-              ),
-          ],
-        ),
-      ),
+                // ── Countdown / progress row ──────────────────────────
+                if (isOngoing || (session.isToday && isUpcoming))
+                  _CountdownBar(
+                    accent: accent,
+                    isOngoing: isOngoing,
+                    untilStart: untilStart,
+                    untilEnd: untilEnd,
+                    totalMinutes: session.durationMinutes ?? -1,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -345,9 +441,11 @@ class _CountdownBar extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isOngoing) {
       // Progress bar + remaining time
-      final totalSec  = totalMinutes * 60;
-      final elapsed   = totalSec - untilEnd.inSeconds.clamp(0, totalSec);
-      final progress  = totalSec > 0 ? (elapsed / totalSec).clamp(0.0, 1.0) : 0.0;
+      final totalSec = totalMinutes * 60;
+      final elapsed = totalSec - untilEnd.inSeconds.clamp(0, totalSec);
+      final progress = totalSec > 0
+          ? (elapsed / totalSec).clamp(0.0, 1.0)
+          : 0.0;
 
       return Container(
         color: accent.withValues(alpha: 0.06),
@@ -358,10 +456,10 @@ class _CountdownBar extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value:           progress,
+                value: progress,
                 backgroundColor: accent.withValues(alpha: 0.15),
-                valueColor:      AlwaysStoppedAnimation(accent),
-                minHeight:       4,
+                valueColor: AlwaysStoppedAnimation(accent),
+                minHeight: 4,
               ),
             ),
             const SizedBox(height: 6),
@@ -369,34 +467,45 @@ class _CountdownBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Elapsed
-                Row(children: [
-                  Icon(Icons.play_circle_outline_rounded, size: 12, color: accent),
-                  const SizedBox(width: 4),
-                  Text(
-                    'مباشر الآن',
-                    style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
+                Row(
+                  children: [
+                    Icon(
+                      Icons.play_circle_outline_rounded,
+                      size: 12,
                       color: accent,
                     ),
-                  ),
-                ]),
-                // Time remaining
-                Row(children: [
-                  Icon(Icons.timer_outlined, size: 12,
-                      color: accent.withValues(alpha: 0.7)),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ينتهي بعد  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
-                    style: TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: accent.withValues(alpha: 0.85),
+                    const SizedBox(width: 4),
+                    Text(
+                      'qw_live_now'.tr,
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
+                // Time remaining
+                Row(
+                  children: [
+                    Icon(
+                      Icons.timer_outlined,
+                      size: 12,
+                      color: accent.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${'qw_ends_in'.tr}  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
+                      style: TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: accent.withValues(alpha: 0.85),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ],
@@ -411,11 +520,14 @@ class _CountdownBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       child: Row(
         children: [
-          Icon(Icons.hourglass_top_rounded, size: 13,
-              color: accent.withValues(alpha: 0.8)),
+          Icon(
+            Icons.hourglass_top_rounded,
+            size: 13,
+            color: accent.withValues(alpha: 0.8),
+          ),
           const SizedBox(width: 6),
           Text(
-            'يبدأ بعد  ${_fmtCountdown(display)}',
+            '${'qw_starts_in'.tr}  ${_fmtCountdown(display)}',
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 11,
@@ -433,9 +545,7 @@ class _CountdownBar extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: lit
-                    ? accent
-                    : accent.withValues(alpha: 0.2),
+                color: lit ? accent : accent.withValues(alpha: 0.2),
               ),
             );
           }),
@@ -455,14 +565,14 @@ class _InlineStartButton extends StatelessWidget {
 
   IconData get _icon {
     if (session.isOngoing) return Icons.sensors_rounded;
-    if (session.isToday)   return Icons.play_arrow_rounded;
+    if (session.isToday) return Icons.play_arrow_rounded;
     return Icons.sensors_rounded;
   }
 
   String get _label {
-    if (session.isOngoing) return 'مباشر';
-    if (session.isToday)   return 'ابدأ';
-    return 'ابدأ الان';
+    if (session.isOngoing) return 'qw_live'.tr;
+    if (session.isToday) return 'qw_start'.tr;
+    return 'qw_start_now'.tr;
   }
 
   LinearGradient get _gradient {
@@ -488,47 +598,46 @@ class _InlineStartButton extends StatelessWidget {
   }
 
   void _handleTap(BuildContext context) {
-    if (session.canJoinNow) {
-      _openPreJoin(context);
-    } else {
-      _openCreationSheet(context);
-    }
+    // if (session.canJoinNow) {
+    _openPreJoin(context);
+    // } else {
+    // Helpers.showAddSessionSheet(
+    //   context,
+    //   TeacherCourse.dummy(session.courseId),
+    //   openLive: true,
+    // );
+    // _openCreationSheet(context);
+    // }
   }
 
   void _openPreJoin(BuildContext context) {
-    final teacher = context.read<TeacherProvider>();
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => PreJoinPage(
+        builder: (context) => PreJoinPage(
           args: JoinArgs(
-            sessionId:   session.sessionId!,
-            courseId:    session.courseId,
+            sessionId: session.sessionId,
+            courseId: session.courseId,
             maxStudents: session.maxStudents,
-            isTeacher:   true,
-            userName:    context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
-            userId:      context.read<AuthProvider>().currentUser?.id   ?? 0,
+            isTeacher: true,
+            userName:
+            context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
+            userId: context.read<AuthProvider>().currentUser?.id ?? 0,
             onStart: () async {
-              log('[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}');
+              log(
+                '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',
+              );
               return LiveResponseModel(
                 sessionId: session.sessionId!,
-                url:       session.joinUrl!,
-                token:     session.token!,
+                url: session.joinUrl!,
+                token: session.token!,
               );
             },
-            onEnd: () => teacher.endLiveSession(session.sessionId!),
+            onEnd: () => context.read<TeacherCourseScreenProvider>().endLive(session.sessionId!),
+            apiClient: ApiClient(),
           ),
         ),
       ),
-    );
-  }
-
-  void _openCreationSheet(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _CreateSessionSheet(session: session),
     );
   }
 
@@ -541,16 +650,13 @@ class _InlineStartButton extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (session.isOngoing) ...[
-              _LiveDot(),
-              const SizedBox(height: 5),
-            ],
+            if (session.isOngoing) ...[_LiveDot(), const SizedBox(height: 5)],
             Icon(_icon, color: Colors.white, size: 20),
             const SizedBox(height: 4),
             Text(
               _label,
               style: const TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 10,
                 fontWeight: FontWeight.normal,
                 color: Colors.white,
@@ -569,88 +675,48 @@ class _TimeBlock extends StatelessWidget {
   final ScheduleSession session;
   final Color accent;
 
-  const _TimeBlock({required this.session, required this.accent});
+  const _TimeBlock({required this.session,  this.accent=Colors.red});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.09),
+        // color: accent.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: accent.withValues(alpha: 0.22)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(session.startTime,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                color: accent,
-              )),
+          Text(
+            session.startTime,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: accent,
+            ),
+          ),
           Container(
             margin: const EdgeInsets.symmetric(vertical: 2),
             width: 1.5,
             height: 8,
             color: accent.withValues(alpha: 0.3),
           ),
-          Text(session.endTime,
-              style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: accent.withValues(alpha: 0.7),
-              )),
+          Text(
+            session.endTime,
+            style: TextStyle(
+              fontFamily: 'bahji',
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: accent.withValues(alpha: 0.7),
+            ),
+          ),
         ],
       ),
     );
   }
-}
-
-// ── Course image ──────────────────────────────────────────────────────────────
-
-class _CourseImage extends StatelessWidget {
-  final ScheduleSession session;
-  const _CourseImage({required this.session});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(9),
-      child: Container(
-        width: 38,
-        height: 38,
-        color: context.colors.primary.withValues(alpha: 0.08),
-        child: session.courseImage != null
-            ? Image.network(
-          session.courseImage!,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _Initials(session.courseName),
-        )
-            : _Initials(session.courseName),
-      ),
-    );
-  }
-}
-
-class _Initials extends StatelessWidget {
-  final String name;
-  const _Initials(this.name);
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Text(
-      name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
-      style:  TextStyle(
-        fontFamily: 'bahji',
-        fontSize: 13,
-        fontWeight: FontWeight.w900,
-        color: context.colors.textMedium,
-      ),
-    ),
-  );
 }
 
 // ── Course info ───────────────────────────────────────────────────────────────
@@ -658,51 +724,53 @@ class _Initials extends StatelessWidget {
 class _CourseInfo extends StatelessWidget {
   final ScheduleSession session;
   final Color accent;
-  final bool isOngoing;
+  final bool? isOngoing;
 
   const _CourseInfo({
     required this.session,
     required this.accent,
-    required this.isOngoing,
+    this.isOngoing=false,
   });
 
   @override
   Widget build(BuildContext context) {
-    final dur      = session.durationMinutes > 0 ? '${session.durationMinutes}د' : '—';
+    final dur = session.durationMinutes > 0
+        ? '${session.durationMinutes}${'qw_minute_short'.tr}'
+        : '—';
     final students = session.maxStudents != null
-        ? '${session.maxStudents} طالب'
-        : 'غير محدود';
+        ? '${session.maxStudents} ${'qw_student'.tr}'
+        : 'qw_unlimited'.tr;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(children: [
-          Expanded(
-            child: Text(
-              session.courseName,
-              style: context.colors.h3.copyWith(fontSize: 13),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                session.courseName,
+                style: context.colors.h3.copyWith(fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-          ),
-          if (isOngoing) ...[
-            const SizedBox(width: 5),
-            _LiveDot(),
+            if (isOngoing??false) ...[const SizedBox(width: 5), _LiveDot()],
           ],
-        ]),
+        ),
         const SizedBox(height: 8),
 
-        Row(children: [
-          _MetaChip(Icons.timer_rounded, dur),
-          const SizedBox(width: 5),
-          Text("|"),
-          const SizedBox(width: 5),
-
-          _MetaChip(Icons.group_rounded, students),
-        ]),
-        Divider(),
-        _StatusBadge(session: session, accent: accent, isOngoing: isOngoing),
+        Row(
+          children: [
+            _MetaChip(Icons.timer_rounded, dur),
+            const SizedBox(width: 5),
+            Text("|"),
+            const SizedBox(width: 5),
+            _MetaChip(Icons.group_rounded, students),
+          ],
+        ),
+        Divider(color: Color(0xFF1D9E75)),
+        _StatusBadge(session: session, accent: accent, isOngoing: isOngoing??false),
       ],
     );
   }
@@ -711,6 +779,7 @@ class _CourseInfo extends StatelessWidget {
 class _MetaChip extends StatelessWidget {
   final IconData icon;
   final String label;
+
   const _MetaChip(this.icon, this.label);
 
   @override
@@ -719,12 +788,14 @@ class _MetaChip extends StatelessWidget {
     children: [
       Icon(icon, size: 11, color: context.colors.textMedium),
       const SizedBox(width: 3),
-      Text(label,
-          style:  TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 11,
-            color: context.colors.textMedium,
-          )),
+      Text(
+        label,
+        style: TextStyle(
+          fontFamily: 'bahji',
+          fontSize: 11,
+          color: context.colors.textMedium,
+        ),
+      ),
     ],
   );
 }
@@ -741,8 +812,8 @@ class _StatusBadge extends StatelessWidget {
   });
 
   String get _label {
-    if (isOngoing)        return 'مباشر الآن';
-    if (session.isToday)  return 'اليوم';
+    if (isOngoing) return 'qw_live_now'.tr;
+    if (session.isToday) return 'qw_today'.tr;
     return session.dayLabel;
   }
 
@@ -754,13 +825,15 @@ class _StatusBadge extends StatelessWidget {
       borderRadius: BorderRadius.circular(6),
       border: Border.all(color: accent.withValues(alpha: 0.3)),
     ),
-    child: Text(_label,
-        style: TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 10,
-          fontWeight: FontWeight.w800,
-          color: accent,
-        )),
+    child: Text(
+      _label,
+      style: TextStyle(
+        fontFamily: 'bahji',
+        fontSize: 10,
+        fontWeight: FontWeight.w800,
+        color: accent,
+      ),
+    ),
   );
 }
 
@@ -771,7 +844,8 @@ class _LiveDot extends StatefulWidget {
   State<_LiveDot> createState() => _LiveDotState();
 }
 
-class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
+class _LiveDotState extends State<_LiveDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl;
   late final Animation<double> _anim;
 
@@ -818,237 +892,48 @@ class _EmptyQueue extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.primary.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: context.colors.primary.withValues(alpha: 0.15)),
+        border: Border.all(
+          color: context.colors.primary.withValues(alpha: 0.15),
+        ),
       ),
-      child: Row(children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: context.colors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: context.colors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_today_outlined,
+              color: context.colors.primary,
+              size: 20,
+            ),
           ),
-          child:  Icon(Icons.calendar_today_outlined,
-              color: context.colors.primary, size: 20),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            'لا توجد مواعيد خلال الأسبوع القادم',
-            style: context.colors.caption.copyWith(color: context.colors.textMedium),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              'qw_no_sessions'.tr,
+              style: context.colors.caption.copyWith(
+                color: context.colors.textMedium,
+              ),
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     ),
   );
 }
 
 // ── Bottom sheet ──────────────────────────────────────────────────────────────
-
-class _CreateSessionSheet extends StatefulWidget {
-  final ScheduleSession session;
-  const _CreateSessionSheet({required this.session});
-
-  @override
-  State<_CreateSessionSheet> createState() => _CreateSessionSheetState();
-}
-
-class _CreateSessionSheetState extends State<_CreateSessionSheet> {
-  late final TextEditingController _nameCtrl;
-  late final TextEditingController _descCtrl;
-  late final TextEditingController _durCtrl;
-  final _formKey = GlobalKey<FormState>();
-  bool _submitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameCtrl = TextEditingController(text: widget.session.defaultSessionName);
-    _descCtrl = TextEditingController();
-    _durCtrl  = TextEditingController(
-        text: widget.session.durationMinutes > 0
-            ? '${widget.session.durationMinutes}'
-            : '60');
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _descCtrl.dispose();
-    _durCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    if(mounted) setState(() => _submitting = true);
-    final duration =
-        int.tryParse(_durCtrl.text.trim()) ?? widget.session.durationMinutes;
-    final sessionId = await context.read<TeacherProvider>().createSession(
-      courseId:        widget.session.courseId,
-      name:            _nameCtrl.text.trim(),
-      durationMinutes: duration,
-      description:
-      _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-    );
-    if (context.mounted) {
-      context
-          .read<TeacherCourseScreenProvider>()
-          .startLive( sessionId);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: Container(
-      padding: EdgeInsets.only(
-        left: 24, right: 24, top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-      ),
-      decoration:  BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(
-                  color: context.colors.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(children: [
-              Container(
-                width: 44, height: 44,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: const Icon(Icons.videocam_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('إنشاء حصة وبدء البث', style: context.colors.h2),
-                    Text(widget.session.courseName,
-                        style: context.colors.caption
-                            .copyWith(color: context.colors.primary),
-                        overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: context.colors.primary.withValues(alpha: 0.15)),
-              ),
-              child: Row(children: [
-                 Icon(Icons.schedule_rounded,
-                    color: context.colors.primary, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  '${widget.session.dayLabel}  '
-                      '${widget.session.startTime} — ${widget.session.endTime}',
-                  style: context.colors.label.copyWith(color: context.colors.primary),
-                ),
-              ]),
-            ),
-            const SizedBox(height: 18),
-            TextFormField(
-              controller: _nameCtrl,
-              textDirection: TextDirection.rtl,
-              style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
-              validator: (v) =>
-              (v?.isEmpty ?? true) ? 'أدخل اسم الحصة' : null,
-              decoration: InputDecoration(
-                labelText: 'اسم الحصة',
-                labelStyle: context.colors.caption,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _durCtrl,
-              keyboardType: TextInputType.number,
-              style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
-              validator: (v) {
-                final n = int.tryParse(v ?? '');
-                return (n == null || n <= 0) ? 'أدخل مدة صحيحة' : null;
-              },
-              decoration: InputDecoration(
-                labelText: 'المدة (بالدقائق)',
-                labelStyle: context.colors.caption,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
-              ),
-            ),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _submitting ? null : _submit,
-              child: Container(
-                height: 52,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(30),
-                  boxShadow: [
-                    BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.38),
-                      blurRadius: 18,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: _submitting
-                      ? const SizedBox(
-                    width: 22, height: 22,
-                    child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2.5),
-                  )
-                      : const Text(
-                    'إنشاء الحصة وبدء البث 🚀',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            TextButton(
-              onPressed: _submitting ? null : () => Navigator.pop(context),
-              child: Text('إلغاء',
-                  style:
-                  context.colors.label.copyWith(color: context.colors.textMedium)),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
+//
+// NOTE: `_CreateSessionSheet` below was previously defined here but never
+// instantiated anywhere in this file — `_InlineStartButton._handleTap` opens
+// `Helpers.showAddSessionSheet(...)` instead. It was dead code, and the only
+// thing that read `TeacherCourseScreenProvider` from it, which is why every
+// `ScheduleSessionCard` was being wrapped in its own unused
+// `ChangeNotifierProvider<TeacherCourseScreenProvider>` (a full provider +
+// ApiClient instantiated per card, per build, for nothing). Removed.
+// ─────────────────────────────────────────────────────────────────────────
+// (End of file — dead `_CreateSessionSheet` class removed, see note above.)

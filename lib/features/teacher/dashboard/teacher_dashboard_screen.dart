@@ -1,17 +1,23 @@
 library;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
+import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
+import 'package:flutter_education_app/features/admin/enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
+import '../../../utils/widget/app_loading_indicator.dart';
 import '../analysis/analytics_hub_screen.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
-import '../home/teacher_provider.dart';
+import '../home/teacher_home_provider.dart';
 import '../schedules/schedules_provider.dart';
 import '../schedules/schedules_screen.dart';
 
@@ -23,18 +29,20 @@ class TeacherDashboardScreen extends StatefulWidget {
 }
 
 class _State extends State<TeacherDashboardScreen> {
-  int _currentIndex = 0;
-
   List<DashboardItem> dashboardItems = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await context.read<NotificationsProvider>().fetchNotifications();
-
+      final transfers = context.read<TeacherTransfersProvider>();
+      final devices = context.read<TeacherDeviceRequestsProvider>();
+      await Future.wait([
+        context.read<NotificationsProvider>().fetchNotifications(), // one request, reused by the screen
+        devices.ensureLoaded(),
+      ]);
     });
-    TeacherProvider provider = context.read<TeacherProvider>();
+    TeacherHomeProvider provider = context.read<TeacherHomeProvider>();
     dashboardItems.clear();
     dashboardItems.addAll([
       DashboardItem(
@@ -45,11 +53,12 @@ class _State extends State<TeacherDashboardScreen> {
         const TeacherHomeScreen(),
       ),
       DashboardItem(
-          CupertinoIcons.book,
-          CupertinoIcons.book_fill,
-          'my_courses',
-          context.read<TeacherProvider>().fetchMyCourses,
-          const TeacherCoursesScreen()),
+        CupertinoIcons.book,
+        CupertinoIcons.book_fill,
+        'my_courses',
+        context.read<TeacherCoursesProvider>().fetchMyCourses,
+        const TeacherCoursesScreen(),
+      ),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
@@ -72,31 +81,68 @@ class _State extends State<TeacherDashboardScreen> {
         const ProfileScreen(),
       ),
     ]);
+    dashboardItems.removeWhere((e)=>Helpers.AppConfig.disableList.contains('teacher_tab_${e.label}'));
+
   }
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        if (w >= 900) {
-          return WideShell(
-            currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-            dashboardItems: dashboardItems,
-          );
-        }
-        if (w >= 600) {
-          return RailShell(
-            currentIndex: _currentIndex,
-            onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-            dashboardItems: dashboardItems,
-          );
-        }
-        return MobileShell(
-          currentIndex: _currentIndex,
-          onTap: (i) { if(mounted) setState(() => _currentIndex = i);},
-          dashboardItems: dashboardItems,
+    return ChangeNotifierProvider(
+      create: (_) => TeacherDashboardProvider(),
+      builder: (context, _) {
+        TeacherDashboardProvider provider = context
+            .watch<TeacherDashboardProvider>();
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (_,_){
+            provider.onChangeTab(0);
+          },
+          child: Directionality(
+            textDirection: Helpers.pageDirection,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final unread = context.watch<NotificationsProvider>().unreadCount;
+                // select: rebuild the dashboard only when the NUMBER changes,
+                // not on every loading/processing notification of the providers.
+                final pending =
+                        context.select<TeacherDeviceRequestsProvider, int>(
+                              (p) => p.items.length,
+                        );
+                for (final item in dashboardItems) {
+                  item.badge = item.label == 'my_profile' ? pending : 0;
+                }
+
+                final w = constraints.maxWidth;
+                if (w >= 900) {
+                  return WideShell(
+                    currentIndex: provider.currentTab,
+                    onTap: (i) {
+                      if (mounted) provider.onChangeTab(i);
+                    },
+                    dashboardItems: dashboardItems,
+                    unreadCount: unread,
+                  );
+                }
+                if (kIsWeb && w >= 600) {
+                  return RailShell(
+                    currentIndex: provider.currentTab,
+                    onTap: (i) {
+                      if (mounted) provider.onChangeTab(i);
+                    },
+                    dashboardItems: dashboardItems,
+                    unreadCount: unread,
+                  );
+                }
+                return MobileShell(
+                  currentIndex: provider.currentTab,
+                  onTap: (i) {
+                    if (mounted) provider.onChangeTab(i);
+                  },
+                  dashboardItems: dashboardItems,
+                );
+              },
+            ),
+          ),
         );
       },
     );
@@ -122,8 +168,9 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
   void initState() {
     super.initState();
     _prov = context.read<TeacherScheduleOverviewProvider>();
-    WidgetsBinding.instance
-        .addPostFrameCallback((_) async => await _prov.fetch());
+    WidgetsBinding.instance.addPostFrameCallback(
+          (_) async => await _prov.fetch(),
+    );
   }
 
   @override
@@ -137,8 +184,13 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
     super.build(context);
     return BasePage(
       useWebCard: true,
+
       child: SafeArea(
-        child:_prov.isLoading? Center(child: CircularProgressIndicator(strokeWidth: context.width/120,),): ScheduleTabBody(
+        child: _prov.isLoading
+            ? Center(
+          child: AppLoadingIndicator(),
+        )
+            : ScheduleTabBody(
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,
@@ -157,6 +209,15 @@ class DashboardItem {
   final Future<void> Function()? onRefresh;
   final Widget screen;
 
+  /// Number shown on the tab icon (0 = hidden). Set by the dashboard.
+  int badge;
+
   DashboardItem(
-      this.icon, this.selectedIcon, this.label, this.onRefresh, this.screen);
+      this.icon,
+      this.selectedIcon,
+      this.label,
+      this.onRefresh,
+      this.screen, {
+        this.badge = 0,
+      });
 }

@@ -1,9 +1,8 @@
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class RefreshButton extends StatefulWidget {
   final Future<void> Function() onTap;
@@ -55,7 +54,7 @@ class _RefreshButtonState extends State<RefreshButton>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          gradient: isRefreshing ? null : context.colors.primaryGradientOnColor,
+          gradient: isRefreshing ? null : context.colors.primaryGradient,
           color:    isRefreshing
               ? context.colors.primary.withValues(alpha: 0.1)
               : null,
@@ -69,7 +68,7 @@ class _RefreshButtonState extends State<RefreshButton>
             child: Icon(
               Icons.refresh_rounded,
               size: 16,
-              color: isRefreshing ? context.colors.primaryBlue : Colors.white,
+              color: isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
           const SizedBox(width: 6),
@@ -79,7 +78,7 @@ class _RefreshButtonState extends State<RefreshButton>
               fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: isRefreshing ? context.colors.primaryBlue : Colors.white,
+              color: isRefreshing ? context.colors.primary : Colors.white,
             ),
           ),
         ]),

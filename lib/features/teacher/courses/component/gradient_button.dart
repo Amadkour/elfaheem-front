@@ -5,7 +5,9 @@
 // FIX: removed unused `dart:math` import that caused an analysis warning.
 import 'package:flutter/material.dart';
 
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class GradientButton extends StatelessWidget {
   final String label;
@@ -38,9 +40,7 @@ class GradientButton extends StatelessWidget {
             ? const SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(
-                strokeWidth: 2, color: Colors.white))
-            : Text(
+            child: AppLoadingIndicator()): Text(
           label,
           style: const TextStyle(
             color: Colors.white,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 class StatChip extends StatelessWidget {
   final IconData icon;
@@ -44,7 +44,7 @@ class StatChip extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Spacer(flex: 2,),
+            Spacer(flex: 4,),
             Container(
               width: maxHeight/3,
               height: maxHeight/3,
@@ -64,7 +64,7 @@ class StatChip extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            Spacer(flex: 2,),
+            Spacer(flex: 1,),
 
           ],
         ),

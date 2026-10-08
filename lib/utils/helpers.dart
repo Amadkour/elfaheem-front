@@ -3,24 +3,77 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:provider/provider.dart';
 import '../config/app_config.dart';
-import '../config/app_theme.dart';
+import '../config/theme/app_theme.dart';
+import '../config/theme/theme_config_provider.dart';
+import '../features/student/models.dart';
+import '../features/teacher/home/teacher_models.dart';
+import '../features/teacher/sessions/components/session_form_sheet.dart';
+import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
 
+// ══════════════════════════════════════════════════════════════════════════════
+//  Saudi Arabia Timezone  (AST = UTC+3, no DST)
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// The fixed UTC+3 offset used in Saudi Arabia (and Egypt Standard Time).
+const Duration _kAstOffset = Duration(hours: 3);
+
+/// Extension on [String] — drop-in replacement for [DateTime.parse] that
+/// returns a [DateTime] in Saudi Arabia / Egypt local time (UTC+3).
+///
+/// Usage:
+///   final dt = '2025-06-01T10:00:00Z'.toLocalSaTime();
+///   // dt is 2025-06-01 13:00:00.000+03:00
+extension SaudiDateTimeString on String {
+  /// Parse this ISO-8601 string and convert to AST (UTC+3).
+  /// Returns [DateTime.now()] in AST if parsing fails.
+  DateTime get toLocalSaTime {
+    try {
+      final parsed = DateTime.parse(this);
+      return parsed.toAst();
+    } catch (_) {
+      return DateTime.now().toAst();
+    }
+  }
+}
+
+/// Extension on [DateTime] for Saudi Arabia / Egypt time conversions.
+extension SaudiDateTime on DateTime {
+  static final _astTimeZone =
+      DateTime.now().timeZoneOffset; // unused – kept for docs
+
+  /// Convert any [DateTime] (UTC or local) to AST (UTC+3).
+  DateTime toAst() {
+    final utc = isUtc ? this : toUtc();
+    return utc.add(_kAstOffset);
+  }
+
+  /// Format this datetime in AST and return a display string.
+  /// Falls back to the raw value if [pattern] is invalid.
+  String toAstString([String pattern = 'MMM dd, yyyy hh:mm a']) {
+    return DateFormat(pattern).format(toAst());
+  }
+
+  /// true if this datetime is in AST (offset == +03:00).
+  bool get isAst => timeZoneOffset == _kAstOffset;
+}
+
 class Helpers {
-  /// Format date to readable string
+  /// Format date to readable string (AST)
   static String formatDate(DateTime date) {
-    return DateFormat('MMM dd, yyyy').format(date);
+    return DateFormat('MMM dd, yyyy').format(date.toAst());
   }
 
-  /// Format datetime to readable string
+  /// Format datetime to readable string (AST)
   static String formatDateTime(DateTime date) {
-    return DateFormat('MMM dd, yyyy hh:mm a').format(date);
+    return DateFormat('MMM dd, yyyy hh:mm a').format(date.toAst());
   }
 
-  /// Format time
+  /// Format time (AST)
   static String formatTime(DateTime date) {
-    return DateFormat('hh:mm a').format(date);
+    return DateFormat('hh:mm a').format(date.toAst());
   }
 
   /// Format currency
@@ -59,95 +112,167 @@ class Helpers {
   }
 
   /// Show snackbar message
-  static void showMessage( String message, {bool isError = false}) {
-    if(navigatorKey.currentContext==null) {
+  static void showMessage(String message, {bool isError = false}) {
+    if (navigatorKey.currentContext == null) {
       return;
     }
-    BuildContext context= navigatorKey.currentContext!;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(
-          !isError ? Icons.check_circle_rounded : Icons.error_rounded,
-          color: Colors.white,
-          size: 18,
+    BuildContext context = navigatorKey.currentContext!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Directionality(
+          textDirection: pageDirection,
+          child: Wrap(
+            children: [
+              Icon(
+                !isError ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(width: 10),
-        Text(
-   message,
-          style: const TextStyle(
-              fontFamily: 'Tajawal',
-              color: Colors.white,
-              fontWeight: FontWeight.w600),
-        ),
-      ]),
-      backgroundColor:
-      !isError ? context.colors.success : context.colors.danger,
-      behavior: SnackBarBehavior.floating,
-      margin: const EdgeInsets.all(16),
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    ));
+        backgroundColor: !isError
+            ? context.colors.success
+            : context.colors.danger,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+    );
   }
 
+  static TextDirection get pageDirection =>
+      AppConfig.lang == 'ar' ? TextDirection.rtl : TextDirection.ltr;
 
-  static TextDirection get pageDirection => AppConfig.lang=='ar'? TextDirection.rtl:TextDirection.ltr;
+  static TextDirection get pageDirectionInverse =>
+      AppConfig.lang == 'ar' ? TextDirection.ltr : TextDirection.rtl;
 
-  static Future<bool?> confirmDialog(BuildContext context,{
+  static TextDirection textDirOf(String text) {
+    for (final r in text.runes) {
+      if ((r >= 0x0590 && r <= 0x08FF) ||
+          (r >= 0xFB1D && r <= 0xFDFF) ||
+          (r >= 0xFE70 && r <= 0xFEFF)) {
+        return TextDirection.rtl;
+      }
+      if ((r >= 0x41 && r <= 0x5A) || (r >= 0x61 && r <= 0x7A)) {
+        return TextDirection.ltr;
+      }
+    }
+    return TextDirection.ltr;
+  }
+
+  static Future<bool?> confirmDialog(
+    BuildContext context, {
     String? title,
     String? confirm,
     String? cancel,
     void Function()? onConfirm,
-    void Function()? onCancel
+    void Function()? onCancel,
   }) => showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
         shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
-        title:  Text(confirm?? 'logout'.tr,
-            style: const TextStyle(
-                fontFamily: 'Tajawal', fontWeight: FontWeight.w700)),
-        content:  Text(title??'هل أنت متأكد أنك تريد تسجيل الخروج؟',
-            style: TextStyle(fontFamily: 'bahji')),
+          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
+        ),
+        title: Text(
+          confirm ?? 'logout'.tr,
+          style: const TextStyle(
+            fontFamily: 'tajawal',
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          title ?? 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
+          style: TextStyle(fontFamily: 'bahji'),
+        ),
         actions: [
           TextButton(
             onPressed: () {
-              if(onConfirm!=null){
-                onConfirm.call();
-              }else{
+              if (onCancel != null) {
+                onCancel.call();
+              } else {
                 Navigator.pop(context, false);
-              }            },
-            child:  Text(cancel??'cancel'.tr,
-                style:  TextStyle(
-                    fontFamily: 'Tajawal', color: context.colors.textMedium)),
+              }
+            },
+            child: Text(
+              cancel ?? 'cancel'.tr,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                color: context.colors.textMedium,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: context.colors.danger,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onPressed: () {
-              if(onConfirm!=null){
+              if (onConfirm != null) {
                 onConfirm.call();
-              }else{
+              } else {
                 Navigator.pop(context, true);
               }
             },
-            child:  Text(confirm??'exit'.tr,
-                style: const TextStyle(
-                    fontFamily: 'Tajawal',
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700)),
+            child: Text(
+              confirm ?? 'exit'.tr,
+              style: const TextStyle(
+                fontFamily: 'tajawal',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
     ),
   );
 
-  static double  calculateRemainingWidth(BuildContext context,{double? maxWith}) {
-    return context.width >= 1100 ? (maxWith??900) : context.width >= 900 ? 650: context.width >=
-        900 ? 500 : context.width >= 600 ? context.width - 70 : context.width;
+  static double calculateRemainingWidth(
+    BuildContext context, {
+    double? maxWith,
+  }) {
+    return context.width >= 1100
+        ? (maxWith ?? 900)
+        : context.width >= 900
+        ? 650
+        : context.width >= 900
+        ? 500
+        : context.width >= 600
+        ? context.width - 70
+        : context.width;
+  }
+
+  static void showAddSessionSheet(
+    BuildContext context,
+    TeacherCourseScreenProvider provider, {
+    TeacherSessionItem? existing,
+    bool? openLive,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (_) => SessionFormSheet(
+        existing: existing,
+        provider: provider,
+        openLive: openLive,
+      ),
+    );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../models.dart';
@@ -9,6 +10,7 @@ class CoursesProvider extends BaseProvider {
 
   List<CourseModel> _courses = [];
   int _skip = 0;
+  int _total = 0;
   bool _hasMore = true;
   static const _pageSize = 20;
 
@@ -18,9 +20,18 @@ class CoursesProvider extends BaseProvider {
 
   bool get hasMore => _hasMore;
 
+  /// Server total for the current filter (GET /courses → `total`) — drives the "Showing 40 of 134" card.
+  int get total => _total;
+
+  /// True only while fetching another page onto an already-populated list —
+  /// distinct from the initial-load spinner, so the UI can show a small
+  /// footer loader instead of blanking the whole list.
+  bool get isLoadingMore => isLoading && _courses.isNotEmpty;
+
   Future<void> fetchCourses(
       {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     _skip = 0;
+    _total = 0;
     _hasMore = true;
     _courses.clear();
     await _loadPage(
@@ -39,11 +50,11 @@ class CoursesProvider extends BaseProvider {
       {String? categoryId, int? teacherId, String? search,int? pageSize}) async {
     final r = await run(() => _api.get('/api/v1/courses',
         queryParams: {
-          'skip': _skip,
-          'limit':pageSize?? _pageSize,
-          if (categoryId != null) 'category_id': categoryId,
-          if (teacherId != null) 'teacher_id': teacherId,
-          if (search != null) 'search': search
+        'skip': _skip,
+        'limit':pageSize?? _pageSize,
+        'category_id': ?categoryId,
+        'teacher_id': ?teacherId,
+        'search': ?search
         },
         auth: true));
     if (r is Map && r['items'] is List) {
@@ -52,12 +63,18 @@ class CoursesProvider extends BaseProvider {
           .toList();
       _courses = [..._courses, ...page];
       _skip += page.length;
-      _hasMore = page.length == _pageSize;
+      final limit = pageSize ?? _pageSize;
+      _total = r['total'] is num ? (r['total'] as num).toInt() : _courses.length;
+      // Compare with the page size actually requested (it used to compare with the constant, so a
+      // custom pageSize stopped pagination), and trust the server total when it sends one.
+      _hasMore = page.isNotEmpty &&
+          (r['total'] is num ? _courses.length < _total : page.length >= limit);
       notifyListeners();
     }
   }
 
   Future<void> toggleFavorite(String courseId) async {
+    if (ViewAsState.active) return;
     final idx = _courses.indexWhere((c) => c.id == courseId);
     if (idx == -1) return;
     final cur = _courses[idx];

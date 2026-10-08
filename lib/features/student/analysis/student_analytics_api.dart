@@ -18,7 +18,7 @@ class StudentAnalyticsApi {
     return (r).map((e) {
       final j = e as Map<String, dynamic>;
       final courseJson = j['course'] as Map<String, dynamic>? ?? j;
-      final progress = (j['progress'] as num?)?.toDouble() ?? 0.0;
+      final progress = ((j['progress'] as num?)?.toDouble() ?? 0.0).toInt();
       return EnrolledCourse.fromCourseJson(courseJson, progress);
     }).toList();
   }

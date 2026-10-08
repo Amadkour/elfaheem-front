@@ -4,7 +4,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_api.dart';
 
 import '../../../../core/api_client.dart';
-import 'exam_model.dart';
+import '../../../shared/models/exam_model.dart';
+import 'exam_files.dart';
 
 class TeacherExamProvider extends ChangeNotifier {
   final TeacherExamApi _api;
@@ -22,6 +23,33 @@ class TeacherExamProvider extends ChangeNotifier {
 
   String? _examsError;
   String? get examsError => _examsError;
+
+  // ── Sessions of the course (for "attach exam to a session") ────────────────
+  List<SessionOption> _sessions = [];
+  List<SessionOption> get sessions => _sessions;
+  bool _sessionsLoaded = false;
+  bool get sessionsLoaded => _sessionsLoaded;
+
+  String? sessionNameFor(ExamModel e) {
+    if (e.sessionName != null) return e.sessionName;
+    final id = e.sessionId;
+    if (id == null) return null;
+    for (final s in _sessions) {
+      if (s.id == id) return s.name;
+    }
+    return null;
+  }
+
+  Future<void> loadSessions() async {
+    try {
+      _sessions = await _api.fetchCourseSessions(courseId);
+    } catch (_) {
+      // Not fatal: exams still work, the picker just has no sessions to offer.
+    } finally {
+      _sessionsLoaded = true;
+      notifyListeners();
+    }
+  }
 
   // ── Results ────────────────────────────────────────────────────────────────
   bool _loadingResults = false;
@@ -77,6 +105,7 @@ class TeacherExamProvider extends ChangeNotifier {
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> loadExams() async {
+    loadSessions(); // in parallel; fills the "session" chip on each exam
     _loadingExams = true;
     _examsError = null;
     notifyListeners();
@@ -99,6 +128,7 @@ class TeacherExamProvider extends ChangeNotifier {
   Future<bool> createExam({
     required String name,
     String? description,
+    int? sessionId,
     DateTime? startDate,
     DateTime? endDate,
     int? duration,
@@ -106,6 +136,9 @@ class TeacherExamProvider extends ChangeNotifier {
     double? totalMarks,
     String? passcode,
     int? maxSubmissions,
+    int? questionsPerStudent,
+    bool shuffleQuestions = false,
+    bool shuffleOptions = false,
   }) async {
     _saving = true;
     notifyListeners();
@@ -114,6 +147,7 @@ class TeacherExamProvider extends ChangeNotifier {
         name: name,
         description: description,
         courseId: courseId,
+        sessionId: sessionId,
         startDate: startDate,
         endDate: endDate,
         duration: duration,
@@ -121,6 +155,9 @@ class TeacherExamProvider extends ChangeNotifier {
         totalMarks: totalMarks,
         passcode: passcode,
         maxSubmissions: maxSubmissions,
+        questionsPerStudent: questionsPerStudent,
+        shuffleQuestions: shuffleQuestions,
+        shuffleOptions: shuffleOptions,
       );
       _exams.insert(0, created);
       return true;
@@ -146,6 +183,44 @@ class TeacherExamProvider extends ChangeNotifier {
           ? await _api.unpublishExam(exam.id)
           : await _api.publishExam(exam.id);
       _replaceExam(updated);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Change attempts / random-paper rules. Returns null on success, else an
+  /// error message. Papers already handed out keep their layout.
+  Future<String?> updateExamRules(ExamModel exam, ExamRules rules) async {
+    _saving = true;
+    notifyListeners();
+    try {
+      final updated = await _api.updateExamSettings(exam.id, rules);
+      _replaceExam(updated);
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    } finally {
+      _saving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Attach the exam to [sessionId] (or detach with null).
+  /// Returns null on success, an error message on failure.
+  Future<String?> assignSession(ExamModel exam, int? sessionId) async {
+    try {
+      await _api.assignExamToSession(exam.id, sessionId);
+      final idx = _exams.indexWhere((e) => e.id == exam.id);
+      if (idx != -1) {
+        _exams[idx] = _exams[idx]
+            .copyWith(sessionId: sessionId, clearSession: sessionId == null);
+      }
+      notifyListeners();
       return null;
     } on ApiException catch (e) {
       return e.message;
@@ -302,11 +377,71 @@ class TeacherExamProvider extends ChangeNotifier {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // Import / export
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Downloads + saves the sample .xlsx. Returns null on success, else an error.
+  Future<String?> downloadTemplate() async {
+    try {
+      await saveExamFile(await _api.downloadImportTemplate());
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  /// Imports questions from an Excel / CSV file into [examId].
+  Future<({ImportResult? result, String? error})> importQuestions(
+      int examId, ExamFile file) async {
+    _saving = true;
+    notifyListeners();
+    try {
+      final r = await _api.importQuestions(examId, file);
+      final idx = _exams.indexWhere((e) => e.id == examId);
+      if (idx != -1) {
+        _exams[idx] = _exams[idx].copyWith(questionCount: r.questionsCount);
+      }
+      await loadQuestions(examId); // refresh the list the teacher is looking at
+      return (result: r, error: null);
+    } on ApiException catch (e) {
+      return (result: null, error: e.message);
+    } catch (e) {
+      return (result: null, error: e.toString());
+    } finally {
+      _saving = false;
+      notifyListeners();
+    }
+  }
+
+  /// Exports [kind] = questions | marks | answers | all as .xlsx and saves it.
+  /// Returns null on success, else an error message.
+  Future<String?> exportExam(int examId, String kind) async {
+    try {
+      await saveExamFile(await _api.exportExam(examId, kind));
+      return null;
+    } on ApiException catch (e) {
+      return e.message;
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────────
 
   void _replaceExam(ExamModel updated) {
     final idx = _exams.indexWhere((e) => e.id == updated.id);
-    if (idx != -1) _exams[idx] = updated;
+    if (idx != -1) {
+      final old = _exams[idx];
+      // publish/unpublish return the bare exam (no question count / session
+      // name) — keep what we already know instead of blanking it.
+      _exams[idx] = updated.copyWith(
+        questionCount: updated.questionCount == 0 ? old.questionCount : null,
+        sessionName: updated.sessionName ?? old.sessionName,
+      );
+    }
     notifyListeners();
   }
 
@@ -314,18 +449,7 @@ class TeacherExamProvider extends ChangeNotifier {
     final idx = _exams.indexWhere((e) => e.id == examId);
     if (idx == -1) return;
     final old = _exams[idx];
-    _exams[idx] = ExamModel(
-      id: old.id,
-      name: old.name,
-      description: old.description,
-      courseId: old.courseId,
-      startDate: old.startDate,
-      duration: old.duration,
-      passingScore: old.passingScore,
-      totalMarks: old.totalMarks,
-      passcode: old.passcode,
-      isPublished: old.isPublished,
-      createdAt: old.createdAt,
+    _exams[idx] = old.copyWith(
       questionCount: (old.questionCount + delta).clamp(0, 9999),
     );
   }

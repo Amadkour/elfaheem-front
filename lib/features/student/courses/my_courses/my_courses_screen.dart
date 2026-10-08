@@ -1,16 +1,21 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/features/student/home/home_provider.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../../config/app_theme.dart';
+import '../../../../config/theme/app_theme.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
+import '../../../../utils/widget/paged_progress.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../../shared/course/home_course_list.dart';
 import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'my_courses_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
@@ -21,23 +26,40 @@ class MyCoursesScreen extends StatefulWidget {
 
 class _MyCoursesScreenState extends State<MyCoursesScreen> {
   final _search = TextEditingController();
+  late final HomeProvider _home;
+  List<CourseModel>? _synced;
+
+  /// [widget.courses] is only a snapshot taken when the dashboard was built (usually still empty, and
+  /// stale after any later refresh / enrolment). Follow the HomeProvider's CURRENT list instead and
+  /// re-seed the provider whenever the home dashboard loads a new one.
+  void _syncFromHome() {
+    if (!mounted) return;
+    final list = _home.myCourses;
+    if (identical(list, _synced)) return; // same list as last time → nothing new
+    _synced = list;
+    context.read<MyCoursesProvider>().init(list);
+  }
 
   @override
   void dispose() {
+    _home.removeListener(_syncFromHome);
     _search.dispose();
     super.dispose();
   }
-@override
+
+  @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_){
-      context.read<MyCoursesProvider>().init(widget.courses);
-    });
     super.initState();
+    _home = context.read<HomeProvider>();
+    _home.addListener(_syncFromHome);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncFromHome());
   }
+
   @override
   Widget build(BuildContext context) {
     return BasePage(
-      appBar: ScreenAppBar(title: 'courses'.tr,showBack: !kIsWeb,),
+      key: const ValueKey('my_courses'),
+      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
       useWebCard: true,
       child: SafeArea(
         child: Column(
@@ -47,17 +69,15 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
                   constraints:
-                      const BoxConstraints(maxWidth: Breakpoints.contentMax),
+                  const BoxConstraints(maxWidth: Breakpoints.contentMax),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const SizedBox(height: 16),
-                      const _StatsRow(),
+                      const ParentComponent(
+                          featureKey: 'my_courses.stats', child: _StatsRow()),
                       const SizedBox(height: 14),
-                      Expanded(
-                          child: _CourseList(
-                        controller: _search,
-                      )),
+                      Expanded(child: _CourseList(controller: _search)),
                     ],
                   ),
                 ),
@@ -69,6 +89,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     );
   }
 }
+
 // ── Stat cards ────────────────────────────────────────────────────────────────
 
 class _StatsRow extends StatelessWidget {
@@ -94,7 +115,7 @@ class _StatsRow extends StatelessWidget {
             label: 'ongoing_courses'.tr,
             count: p.inProgressCount,
             icon: Icons.trending_up_rounded,
-            gradient: context.colors.tealGradient,
+            gradient: context.colors.accentGradient,
             shadowColor: context.colors.accent,
           ),
           const SizedBox(width: 10),
@@ -128,50 +149,50 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Expanded(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: shadowColor.withValues(alpha: 0.32),
-                blurRadius: 16,
-                offset: const Offset(0, 5),
-              ),
-            ],
+    child: Container(
+      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: shadowColor.withValues(alpha: 0.32),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.white, size: 18),
-              const SizedBox(height: 10),
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  '$count',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'bahji',
-                    height: 1,
-                  ),
-                ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(height: 10),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'bahji',
+                height: 1,
               ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontFamily: 'bahji',
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      );
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontFamily: 'bahji',
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 // ── Filter tabs ───────────────────────────────────────────────────────────────
@@ -183,9 +204,9 @@ class _FilterTabs extends StatelessWidget {
     (CourseStatus.all, 'filter_all'.tr, Icons.apps_rounded),
     (CourseStatus.inProgress, 'ongoing'.tr, Icons.play_arrow_rounded),
     (
-      CourseStatus.completed,
-      'completed_courses'.tr,
-      Icons.check_circle_rounded
+    CourseStatus.completed,
+    'completed_courses'.tr,
+    Icons.check_circle_rounded
     ),
   ];
 
@@ -194,7 +215,6 @@ class _FilterTabs extends StatelessWidget {
     return Container(
       height: 44,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-
       decoration: BoxDecoration(
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(10),
@@ -213,11 +233,10 @@ class _FilterTabs extends StatelessWidget {
 
           return Expanded(
             child: GestureDetector(
-              onTap: () =>
-                  context.read<MyCoursesProvider>().setFilter(status),
+              onTap: () => context.read<MyCoursesProvider>().setFilter(status),
               child: AnimatedContainer(
                 height: 30,
-                margin: EdgeInsets.all(8),
+                margin: const EdgeInsets.all(8),
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOut,
                 decoration: BoxDecoration(
@@ -245,8 +264,7 @@ class _FilterTabs extends StatelessWidget {
                         color: active
                             ? context.colors.primary
                             : context.colors.textLight,
-                        fontWeight:
-                            active ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         fontSize: 12,
                       ),
                     ),
@@ -270,53 +288,84 @@ class _CourseList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MyCoursesProvider>(
-        builder:(context, provider, child) {
-    if (provider.isLoading && provider.allCourses.isEmpty) {
-      return Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation(context.colors.primary),
-          strokeWidth: 2.5,
+    return Consumer<MyCoursesProvider>(builder: (context, provider, child) {
+      if (provider.isLoading && provider.allCourses.isEmpty) {
+        return Center(child: AppLoadingIndicator());
+      }
+
+      final courses = provider.filteredCourses;
+      // Only show "empty" once the server has nothing more: with client-side search / filter an
+      // empty result on page 1 must still be allowed to load page 2.
+      final showEmpty = courses.isEmpty && !provider.hasMore;
+
+      return Column(children: [
+        ParentComponent(
+          featureKey: 'my_courses.search',
+          child: MySearchBar(
+            controller: controller,
+            hint: 'search_course_by_name_description',
+            onChanged: provider.setQuery,
+          ),
         ),
-      );
-    }
-
-    final courses = provider.filteredCourses;
-
-    return Column(children: [
-      MySearchBar(
-        controller: controller,
-        hint: 'search_course_by_name_description',
-        onChanged: provider.setQuery,
-      ),
-       _FilterTabs(p:provider),
-      SizedBox(height: 10,),
-      Expanded(
-          child:courses.isEmpty?Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
+        ParentComponent(
+            featureKey: 'my_courses.filters', child: _FilterTabs(p: provider)),
+        const SizedBox(height: 10),
+        if (provider.allCount > 0 && (provider.total > 0 || !provider.hasMore) && (provider.total > provider.allCount
+            ? provider.total
+            : provider.allCount)>20)
+          PagedCountCard(
+            loaded: provider.allCount,
+            total: provider.total > provider.allCount
+                ? provider.total
+                : provider.allCount,
+            loadingMore: provider.isLoadingMore,
+            done: !provider.hasMore,
+            icon: Icons.library_books_rounded,
+            margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+          ),
+        Expanded(
+          child: showEmpty
+              ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color:
+                    context.colors.primaryLight.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.menu_book_rounded,
+                      size: 38, color: context.colors.primary),
                 ),
-                child: Icon(Icons.menu_book_rounded,
-                    size: 38, color: context.colors.primary),
-              ),
-              const SizedBox(height: 14),
-              Text('no_courses_in_section'.tr, style: context.colors.body),
-            ],
-          ): HomeCourseList(
-        hasMore: false,
-        courses: courses,
-        onTap: (CourseModel c) {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (_) => CourseDetailScreen(course: c)));
-        },
-        isTeacher: false, pageName: 'My-courses-profile-filtered',
-      ))
-    ]);});
+                const SizedBox(height: 14),
+                Text('no_courses_in_section'.tr,
+                    style: context.colors.body),
+              ],
+            ),
+          )
+              : ParentComponent(
+            featureKey: 'my_courses.list',
+            child: HomeCourseList(
+              hasMore: provider.hasMore,
+              courses: courses,
+              loadingMore: provider.isLoadingMore,
+              onLoadMore: provider.loadMore,
+              onRefresh: provider.refresh,
+              onTap: (CourseModel c) {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => CourseDetailScreen(course: c)));
+              },
+              isTeacher: false,
+              pageName: 'My-courses-profile-filtered',
+            ),
+          ),
+        ),
+      ]);
+    });
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-
-import '../../../../config/app_theme.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
 
 class SectionCard extends StatelessWidget {
   final IconData icon;
@@ -9,7 +10,11 @@ class SectionCard extends StatelessWidget {
   final VoidCallback onAdd;
   final void Function(int) onRemove;
 
-  const SectionCard({super.key, 
+  /// Feature id used to hide this card (see ParentComponent).
+  final String? featureKey;
+
+  const SectionCard({super.key,
+    this.featureKey,
     required this.icon,
     required this.title,
     required this.items,
@@ -18,7 +23,10 @@ class SectionCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      ParentComponent(featureKey: featureKey, child: _buildCard(context));
+
+  Widget _buildCard(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
         color: context.colors.cardBg,
@@ -57,10 +65,10 @@ class SectionCard extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                         Icon(Icons.add,
+                        Icon(Icons.add,
                             size: 14, color: context.colors.primary),
                         const SizedBox(width: 4),
-                        Text('إضافة',
+                        Text('sc_add'.tr,
                             style: context.colors.caption.copyWith(
                                 color: context.colors.primary,
                                 fontWeight: FontWeight.w700)),
@@ -80,7 +88,7 @@ class SectionCard extends StatelessWidget {
           if (items.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-              child: Text('لم يتم الإضافة بعد',
+              child: Text('sc_empty'.tr,
                   style: context.colors.caption.copyWith(color: context.colors.textLight)),
             ),
         ],
@@ -103,7 +111,7 @@ class _ItemRow extends StatelessWidget {
     trailing: GestureDetector(
       onTap: onRemove,
       child:
-       Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
+      Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
     ),
   );
 }

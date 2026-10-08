@@ -8,7 +8,7 @@ class EnrolledCourse {
   final String? imageUrl;
   final String? teacherName;
   final int sessionsCount;
-  final double progress;
+  final int progress;
 
   EnrolledCourse({
     required this.id,
@@ -16,13 +16,13 @@ class EnrolledCourse {
     this.imageUrl,
     this.teacherName,
     this.sessionsCount = 0,
-    this.progress = 0.0,
+    this.progress = 0,
   });
 
   // Built from the CourseModel returned by my-enrollments
   factory EnrolledCourse.fromCourseJson(
     Map<String, dynamic> course,
-    double progress,
+    int progress,
   ) =>
       EnrolledCourse(
         id: int.parse(course['id'].toString()),
@@ -81,7 +81,7 @@ class StudentExamSummary {
         totalMarks: (j['total_marks'] as num?)?.toDouble(),
         passingScore: (j['passing_score'] as num?)?.toDouble(),
         marksObtained: (j['marks_obtained'] as num?)?.toDouble(),
-        percentage: (j['percentage'] as num?)?.toDouble(),
+        percentage: (j['percentage'] as num?)?.toDouble().floorToDouble(),
         passed: j['passed'] as bool?,
         attempted: j['attempted'] as bool? ?? false,
       );

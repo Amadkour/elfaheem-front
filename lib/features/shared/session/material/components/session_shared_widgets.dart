@@ -5,9 +5,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/app_theme.dart';
+import '../../../../../config/theme/app_theme.dart';
+import '../../../../../config/theme/theme_config_provider.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RTL themed AlertDialog wrapper
@@ -78,17 +80,20 @@ class RtlDialog extends StatelessWidget {
 class SessionField extends StatelessWidget {
   final TextEditingController ctrl;
   final String label;
+  final TextInputType? keyboardType;
 
   const SessionField({
     super.key,
     required this.ctrl,
     required this.label,
+    this.keyboardType,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: ctrl,
+      keyboardType: keyboardType,
       style: context.colors.body,
       decoration: InputDecoration(
         labelText: label,
@@ -153,21 +158,21 @@ class SessionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 9,
-            color: color,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        fontFamily: 'bahji',
+        fontSize: 9,
+        color: color,
+        fontWeight: FontWeight.w700,
+      ),
+    ),
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,18 +183,20 @@ class SessionActionBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final bool filled;
   final bool outlined;
+  final bool loading;
 
   const SessionActionBtn({
     super.key,
     required this.icon,
     required this.label,
     required this.color,
-    required this.onTap,
+    this.onTap,
     this.filled = false,
     this.outlined = false,
+    this.loading = false,
   });
 
   @override
@@ -197,13 +204,13 @@ class SessionActionBtn extends StatelessWidget {
     final bg = filled
         ? color
         : outlined
-            ? Colors.transparent
-            : color.withValues(alpha: 0.09);
+        ? Colors.transparent
+        : color.withValues(alpha: 0.09);
 
     final textColor = filled ? Colors.white : color;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap:loading? null:onTap,
       child: Container(
         height: 30,
         padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -213,15 +220,15 @@ class SessionActionBtn extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.40), width: 1.2),
           boxShadow: filled
               ? [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.30),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ]
+            BoxShadow(
+              color: color.withValues(alpha: 0.30),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ]
               : null,
         ),
-        child: Row(
+        child:loading?AppLoadingIndicator(ringColor: textColor,showLogo: false,size: 25,): Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -230,7 +237,7 @@ class SessionActionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Tajawal',
+                fontFamily: 'tajawal',
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: textColor,

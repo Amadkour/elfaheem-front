@@ -4,100 +4,190 @@
 // Purely presentational — receives a [TeacherCourse] and renders itself.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
-import '../../../../../config/app_theme.dart';
+import 'package:flutter_education_app/features/student/models.dart' show CourseSummary;
+import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
 import '../../../../config/app_config.dart';
+import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/teacher_course_roadmap_section.dart';
+import '../../../student/models.dart' show CourseSummary, CourseModel;
+import '../../courses/component/certificate_manager_sheet.dart';
 import '../../home/teacher_models.dart';
+
+class _AddButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _AddButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text("donnot_have_schedule".tr),
+        GestureDetector(
+          onTap: onTap,
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              gradient: context.colors.accentGradient,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: context.colors.primaryShadow,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'add_schedule'.tr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'tajawal',
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class CourseDetailsSection extends StatelessWidget {
   final TeacherCourse course;
+  final ValueChanged<CourseSummary>? onTapRecommendedCourse;
 
-  const CourseDetailsSection({super.key, required this.course});
+  const CourseDetailsSection({
+    super.key,
+    required this.course,
+    this.onTapRecommendedCourse,
+  });
 
-  bool get _hasAny =>
-      course.schedules.isNotEmpty ||
-      course.prerequisites.isNotEmpty ||
-      course.tools.isNotEmpty ||
-      course.certificates.isNotEmpty;
+  bool get _hasAny => true;
 
+  // course.schedules.isNotEmpty ||
+  // course.prerequisites.isNotEmpty ||
+  // course.tools.isNotEmpty ||
+  // course.certificates.isNotEmpty;
   @override
   Widget build(BuildContext context) {
     if (!_hasAny) return const SizedBox.shrink();
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Section label ──────────────────────────────────────────────
-          Row(
-            children: [
-              Container(
-                width: 4,
-                height: 18,
-                decoration: BoxDecoration(
-                  gradient: context.colors.primaryGradient,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Section label ──────────────────────────────────────────────
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 18,
+              decoration: BoxDecoration(
+                gradient: context.colors.primaryGradient,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 10),
-              Text(
-                'course_details'.tr,
-                style: context.colors.h3.copyWith(fontSize: 14),
-              ),
-            ],
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'course_details'.tr,
+              style: context.colors.h3.copyWith(fontSize: 14),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // ── Cards ──────────────────────────────────────────────────────
+        // if (course.schedules.isNotEmpty)
+        DetailCard(
+          expanded: false,
+          course: course,
+          onSetting:course.schedules.isEmpty?null:(){   Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  TeacherSchedulesScreen(course: course),
+            ),
+          );},
+          icon: Icons.calendar_month_rounded,
+          title: 'weekly_schedule'.tr,
+          color: const Color(0xFF4DA6FF),
+          children: course.schedules.isEmpty
+              ? <Widget>[
+                  _AddButton(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              TeacherSchedulesScreen(course: course),
+                        ),
+                      );
+                    },
+                  ),
+                ]
+              : course.schedules.map((s) => _ScheduleRow(schedule: s)).toList(),
+        ),
+
+        if (course.prerequisites.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.checklist_rounded,
+            title: 'prerequisites'.tr,
+            course: course,
+            color: const Color(0xFFFF9F43),
+            children: course.prerequisites
+                .map((p) => _BulletRow(text: p.title))
+                .toList(),
           ),
-          const SizedBox(height: 12),
-
-          // ── Cards ──────────────────────────────────────────────────────
-          if (course.schedules.isNotEmpty)
-            DetailCard(
-              icon: Icons.calendar_month_rounded,
-              title: 'weekly_schedule'.tr,
-              color: const Color(0xFF4DA6FF),
-              children: course.schedules
-                  .map((s) => _ScheduleRow(schedule: s))
-                  .toList(),
-            ),
-
-          if (course.prerequisites.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              icon: Icons.checklist_rounded,
-              title: 'prerequisites'.tr,
-              color: const Color(0xFFFF9F43),
-              children: course.prerequisites
-                  .map((p) => _BulletRow(text: p.title))
-                  .toList(),
-            ),
-          ],
-
-          if (course.tools.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              icon: Icons.build_rounded,
-              title: 'required_tools'.tr,
-              color: const Color(0xFF1DB954),
-              children:
-                  course.tools.map((t) => _BulletRow(text: t.name)).toList(),
-            ),
-          ],
-
-          if (course.certificates.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            DetailCard(
-              icon: Icons.workspace_premium_rounded,
-              title: 'certificates'.tr,
-              color: const Color(0xFFFFD700),
-              children: course.certificates
-                  .map((c) => _CertificateRow(cert: c))
-                  .toList(),
-            ),
-          ],
-
-          const SizedBox(height: 4),
         ],
-      ),
+
+        if (course.tools.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.build_rounded,
+            title: 'required_tools'.tr,
+            course: course,
+            color: const Color(0xFF1DB954),
+            children: course.tools
+                .map((t) => _BulletRow(text: t.name))
+                .toList(),
+          ),
+        ],
+
+        if (course.certificates.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          DetailCard(
+            expanded: false,
+            icon: Icons.workspace_premium_rounded,
+            title: 'certificates'.tr,
+            color: const Color(0xFFFFD700),
+             course: course,
+            children: course.certificates
+                .map((c) => _CertificateRow(cert: c, courseId: course.id))
+                .toList(),
+          ),
+        ],
+
+        // if (course.nextCourseIds.isNotEmpty ||
+        //     course.recommendedCourseSummaries.isNotEmpty ||
+        //     course.similarCourses.isNotEmpty) ...[
+        //   const SizedBox(height: 16),
+        //   CourseRecommendationsSection(
+        //     nextCourses: course.nextCourses,
+        //     recommendedCourses: course.recommendedCourseSummaries,
+        //     similarCourses: course.similarCourses,
+        //     onTapCourse: onTapRecommendedCourse ?? (_) {},
+        //   ),
+        // ],
+        const SizedBox(height: 4),
+      ],
     );
   }
 }
@@ -111,12 +201,18 @@ class DetailCard extends StatefulWidget {
   final String title;
   final Color color;
   final List<Widget> children;
-
+  final bool expanded;
+  final TeacherCourse course;
+final Function()? onSetting;
   const DetailCard({
+    super.key,
     required this.icon,
     required this.title,
     required this.color,
     required this.children,
+    required this.expanded,
+    this.onSetting,
+    required this.course,
   });
 
   @override
@@ -137,6 +233,13 @@ class _DetailCardState extends State<DetailCard>
       duration: const Duration(milliseconds: 250),
     );
     _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+    if (widget.expanded) {
+      _expanded = true;
+      _ctrl.forward();
+    } else {
+      _expanded = false;
+      _ctrl.reverse();
+    }
   }
 
   @override
@@ -154,7 +257,7 @@ class _DetailCardState extends State<DetailCard>
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.surface,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: _expanded
@@ -179,8 +282,7 @@ class _DetailCardState extends State<DetailCard>
             onTap: _toggle,
             borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
                   Container(
@@ -197,7 +299,7 @@ class _DetailCardState extends State<DetailCard>
                     child: Text(
                       widget.title,
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: context.colors.textDark,
@@ -205,9 +307,27 @@ class _DetailCardState extends State<DetailCard>
                     ),
                   ),
                   // Count badge
+                  if(widget.onSetting!=null)
+                  GestureDetector(
+                    onTap: () =>    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            TeacherSchedulesScreen(course: widget.course),
+                      ),
+                    ),
+                    child: Icon(
+                     CupertinoIcons.settings,
+                     size: 25,
+                     color: widget.color,
+                                              ),
+                  ),
+                  SizedBox(width: 15,),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
@@ -215,7 +335,7 @@ class _DetailCardState extends State<DetailCard>
                     child: Text(
                       '${widget.children.length}',
                       style: TextStyle(
-                        fontFamily: 'Tajawal',
+                        fontFamily: 'tajawal',
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: widget.color,
@@ -252,11 +372,12 @@ class _DetailCardState extends State<DetailCard>
                   padding: const EdgeInsets.fromLTRB(14, 6, 14, 12),
                   child: Column(
                     children: widget.children
-                        .map((child) => Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4),
-                              child: child,
-                            ))
+                        .map(
+                          (child) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: child,
+                          ),
+                        )
                         .toList(),
                   ),
                 ),
@@ -291,7 +412,7 @@ class _ScheduleRow extends StatelessWidget {
           child: Text(
             schedule.dayLabel,
             style: const TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: Color(0xFF4DA6FF),
@@ -299,13 +420,16 @@ class _ScheduleRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 10),
-        Icon(Icons.access_time_rounded,
-            size: 13, color: context.colors.textMedium),
+        Icon(
+          Icons.access_time_rounded,
+          size: 13,
+          color: context.colors.textMedium,
+        ),
         const SizedBox(width: 4),
         Text(
           '${schedule.startTime} – ${schedule.endTime}',
           style: TextStyle(
-            fontFamily: 'Tajawal',
+            fontFamily: 'tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: context.colors.textDark,
@@ -328,15 +452,14 @@ class _BulletRow extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 5),
-          child:
-              Icon(Icons.circle, size: 6, color: context.colors.textMedium),
+          child: Icon(Icons.circle, size: 6, color: context.colors.textMedium),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
-              fontFamily: 'Tajawal',
+              fontFamily: 'tajawal',
               fontSize: 13,
               color: context.colors.textDark,
               height: 1.4,
@@ -350,8 +473,9 @@ class _BulletRow extends StatelessWidget {
 
 class _CertificateRow extends StatelessWidget {
   final CourseCertificate cert;
+  final int courseId;
 
-  const _CertificateRow({required this.cert});
+  const _CertificateRow({required this.cert, required this.courseId});
 
   @override
   Widget build(BuildContext context) {
@@ -367,19 +491,18 @@ class _CertificateRow extends StatelessWidget {
               Text(
                 cert.title,
                 style: TextStyle(
-                  fontFamily: 'Tajawal',
+                  fontFamily: 'tajawal',
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textDark,
                 ),
               ),
-              if (cert.description != null &&
-                  cert.description!.isNotEmpty) ...[
+              if (cert.description != null && cert.description!.isNotEmpty) ...[
                 const SizedBox(height: 2),
                 Text(
                   cert.description!,
                   style: TextStyle(
-                    fontFamily: 'Tajawal',
+                    fontFamily: 'tajawal',
                     fontSize: 11,
                     color: context.colors.textMedium,
                     height: 1.4,
@@ -387,6 +510,45 @@ class _CertificateRow extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () => showCertificateManagerSheet(
+            context,
+            courseId: courseId,
+            certificateId: cert.id,
+            certificateTitle: cert.title,
+            // requires the `templateUrl` field added to CourseCertificate
+            // in teacher_models.dart — see the patch notes.
+            templateUrl: cert.templateUrl,
+          ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'manage_certificate_btn'.tr,
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFFB8860B),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.send_rounded,
+                  size: 12,
+                  color: Color(0xFFB8860B),
+                ),
+              ],
+            ),
           ),
         ),
       ],

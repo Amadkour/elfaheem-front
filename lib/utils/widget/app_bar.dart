@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../config/app_theme.dart';
+import '../../config/theme/app_theme.dart';
+import '../../config/theme/theme_config_provider.dart';
 
 class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -23,7 +24,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppBar(
-      backgroundColor: background ?? c.cardBg,
+      backgroundColor: background ?? c.background,
       automaticallyImplyLeading: false,
       leading: showBack
           ? GestureDetector(
@@ -33,7 +34,6 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
           decoration: BoxDecoration(
             color: c.cardBg,
             borderRadius: BorderRadius.circular(14),
-            boxShadow: c.cardShadow,
           ),
           child: Icon(
             CupertinoIcons.back,
@@ -45,7 +45,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
           : null,
       title: Text(
         title,
-        style: c.h2.copyWith(fontFamily: 'bahji'),
+        style: context.colors.h2.copyWith(fontFamily: 'bahji'),
         textAlign: TextAlign.right,
       ),
       actions: actions,

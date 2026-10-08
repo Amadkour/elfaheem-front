@@ -1,320 +1,390 @@
-import 'dart:async';
+/// enrollment_provider.dart — single-course enrollment.
+///
+/// Payment paths (chosen from the backend's GET /api/v1/config, never hardcoded):
+///   free course                → POST /courses/{id}/enroll
+///   saved card (Moyasar)       → POST /payments  → 3DS in browser → poll /verify
+///   new card, Moyasar, mobile  → Moyasar SDK    → POST /payments/record-sdk-payment
+///   everything else            → hosted checkout (POST /payments/create-web-session)
+///
+/// Fees always come from GET /payments/fees/preview, so the amount shown is the
+/// amount the server will accept.
+///
+/// Price plans: a course can sell several plans (monthly / 6 months / yearly).
+/// They come from GET /payments/price-options; the student picks one and every
+/// payment call below carries that `plan`. The manual-transfer amount is the
+/// quote TOTAL (plan price + platform fee + VAT + that method's gateway fee).
+library;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/student/enrollment/transfer/transfer_payment_screen.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
-import '../../shared/payment/saved_methods_provider.dart';
+import '../../../config/app_config.dart';
 import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
-import 'enrollment_screen.dart';
+import 'checkout_pages.dart';
+import 'enrollment_models.dart';
+import 'payment_flow_provider.dart';
 
-import 'checkout_web_impl.dart'
-if (dart.library.io) 'checkout_stub_impl.dart';
+export 'payment_flow_provider.dart' show EnrollStep;
 
-// webview_flutter is imported only on mobile. On web the stub file above
-// provides dummy classes so this import is tree-shaken away.
-import 'package:webview_flutter/webview_flutter.dart'
-if (dart.library.html) 'webview_stub.dart';
+class EnrollmentProvider extends PaymentFlowProvider {
+  EnrollmentProvider(this.course, {super.api});
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum EnrollStep {
-  method,
-  stcMobile,
-  stcOtp,
-  bankDetails,
-  verifying,
-  success,
-  failed,
-}
-
-enum _Selection { savedCard, bankTransfer, stcPay, newCard }
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-class EnrollmentProvider extends BaseProvider {
-  final ApiClient _api;
   final CourseModel course;
 
-  static const String _publishableKey = String.fromEnvironment(
-    'MOYASAR_PUBLISHABLE_KEY',
-    defaultValue: 'pk_test_Ut6582RweTo7JgUEuVYBYrQv4v3RAMW7VRW3Umw5',
-  );
+  SavedPaymentMethod? _selectedCard; // null = "new card"
+  final Map<String, FeeQuote> _quotes = {}; // key: "<plan>|<fee method>"
 
-  EnrollmentProvider(this.course, {ApiClient? api}) : _api = api ?? ApiClient();
-
-  EnrollStep _step = EnrollStep.method;
-  _Selection _selection = _Selection.newCard;
-
-  SavedPaymentMethod? _selectedCard;
-  Map<String, dynamic>? _bankInfo;
-  bool _paidViaBankTransfer = false;
+  // ── Price plans ───────────────────────────────────────────────────────────
+  List<PriceOption> _options = const [];
+  bool _optionsLoaded = false;
+  String _plan = PlanKeys.yearly;
   int? _pendingPaymentId;
   String? _pendingTransactionId;
-  String? _failureReason;
-  String? _stcOtpError;
-  String? _stcTransactionUrl;
 
-  EnrollStep get step => _step;
-  Map<String, dynamic>? get bankInfo => _bankInfo;
-  bool get paidViaBankTransfer => _paidViaBankTransfer;
-  bool get isFree => course.price == 0;
-  String? get failureReason => _failureReason;
-  String? get stcOtpError => _stcOtpError;
+  // Set when EnrollStep.pending was reached because a manual transfer
+  // (bank/InstaPay) proof is already awaiting teacher review — as opposed to
+  // a card payment whose webhook/verification just hasn't landed yet. The
+  // UI uses this to show "your request is under processing" copy (plus a
+  // "send it again" option that cancels-and-resubmits) instead of the
+  // generic "we'll confirm this in a few minutes" one.
+  bool _pendingIsManualReview = false;
+
+  // Set when EnrollStep.failed was reached because the teacher rejected a
+  // manual transfer, rather than an actual gateway failure. The UI swaps
+  // "حاول مرة أخرى" copy for a clearer "send payment again" and a distinct title.
+  bool _manualTransferRejected = false;
+
+  // ── State ─────────────────────────────────────────────────────────────────
+
+  /// Free = the server offers no plan with a price. Until the plans arrive we
+  /// fall back to the course's own (yearly) price.
+  bool get isFree => _optionsLoaded ? _options.isEmpty : (course.finalPrice ?? 0) == 0;
+
+  bool get optionsLoaded => _optionsLoaded;
+  List<PriceOption> get priceOptions => _options;
+  String get selectedPlan => _plan;
+
+  PriceOption? get selectedOption {
+    for (final o in _options) {
+      if (o.plan == _plan) return o;
+    }
+    return null;
+  }
+
+  bool get pendingIsManualReview => _pendingIsManualReview;
+  bool get manualTransferRejected => _manualTransferRejected;
+
+  SavedPaymentMethod? get selectedCard => _selectedCard;
+
+  /// Saved-card charging is Moyasar-only on the backend.
+  bool get supportsSavedCards => gateway?.provider == 'moyasar';
+
+  bool get _usesMoyasarSdk => !kIsWeb && gateway?.provider == 'moyasar';
+
+  /// The fee key the backend will use for this flow (must match its rules):
+  /// manual transfer → that method (admin-managed fee, 0 by default) ·
+  /// saved card → that card's brand · Moyasar SDK → mada · hosted checkout → creditcard.
+  String get _quoteMethod {
+    final manual = _selectedManualMethod;
+    if (manual != null) return manual;
+    final card = _selectedCard;
+    if (card != null) return card.cardBrand?.apiKey ?? 'mada';
+    return _usesMoyasarSdk ? 'mada' : 'creditcard';
+  }
+
+  FeeQuote? get quote => _quotes['$_plan|$_quoteMethod'];
+
+  // ── Loading ───────────────────────────────────────────────────────────────
+
+  /// Call from the provider's `create:` — runs after the first frame.
+  void scheduleInitialLoad() => Future.microtask(loadInitial);
+
+  Future<void> loadInitial() async {
+    // An existing manual-transfer attempt (pending or rejected) takes
+    // priority over everything else: don't even load the method picker.
+    if (await _checkManualTransferStatus()) return;
+    await prepareMethodStep();
+  }
+
+  /// Everything the method picker needs: gateway config, the course's plans
+  /// and the fee quote. Safe to call again (e.g. after "send payment again").
+  Future<void> prepareMethodStep() async {
+    await loadGatewayConfig();
+    // InstaPay is the default only when the server actually offers it.
+    _selectedManualMethod = (gateway?.instapayEnabled ?? false) ? 'instapay' : null;
+    if (!_optionsLoaded) await loadPriceOptions();
+    await ensureQuote();
+  }
+
+  /// GET /api/v1/payments/price-options — the plans this course sells.
+  Future<void> loadPriceOptions() async {
+    final json = asJsonMap(await run(
+          () async => api.get('/api/v1/payments/price-options?course_id=${course.id}'),
+    ));
+    final parsed = [
+      for (final raw in (json?['options'] as List? ?? const []))
+        PriceOption.fromJson(Map<String, dynamic>.from(raw as Map)),
+    ];
+    if (json != null) {
+      _options = parsed;
+      final def = json['default_plan'] as String?;
+      _plan = parsed.any((o) => o.plan == def)
+          ? def!
+          : (parsed.isNotEmpty ? parsed.last.plan : PlanKeys.yearly);
+    } else if ((course.finalPrice ?? 0) > 0) {
+      // Offline fallback: sell the yearly price the course card already shows.
+      _options = [
+        PriceOption(
+          plan: PlanKeys.yearly,
+          durationDays: 365,
+          price: course.price,
+          finalPrice: course.finalPrice ?? course.price,
+        ),
+      ];
+      _plan = PlanKeys.yearly;
+    }
+    _optionsLoaded = true;
+    safeNotify();
+  }
+
+  void selectPlan(String plan) {
+    if (_plan == plan || !_options.any((o) => o.plan == plan)) return;
+    _plan = plan;
+    safeNotify();
+    ensureQuote();
+  }
+
+  /// GET /api/v1/payments/transfer-status — see TransferStatus in
+  /// enrollment_models.dart. Returns true (and sets the appropriate step)
+  /// when there's an outstanding pending or rejected transfer to show
+  /// instead of the normal method picker.
+  Future<bool> _checkManualTransferStatus() async {
+    final json = asJsonMap(await run(
+          () async => api.get('/api/v1/payments/transfer-status?course_id=${course.id}'),
+    ));
+    if (json == null) return false;
+    final status = TransferStatus.fromJson(json);
+
+    if (status.isPending) {
+      _pendingIsManualReview = true;
+      setStep(EnrollStep.pending);
+      return true;
+    }
+    if (status.isRejected) {
+      _manualTransferRejected = true;
+      setStep(
+        EnrollStep.failed,
+        reason: status.rejectionReason?.isNotEmpty == true
+            ? status.rejectionReason
+            : 'transfer_previous_rejected_fallback'.tr,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  /// Withdraws the student's own still-pending transfer proof and takes
+  /// them back to the method picker so they can send a corrected one — the
+  /// "send payment again" action on the pending/manual-review screen.
+  Future<void> cancelAndRetryManualTransfer() async {
+    final r = await run(
+          () => api.post('/api/v1/payments/transfers/cancel-mine', queryParams: {'course_id': course.id}),
+    );
+    if (r != null) backToMethod();
+  }
+
+  /// Back to the method picker, clearing any manual-transfer flags so a
+  /// fresh attempt starts from a clean slate.
+  @override
+  void backToMethod() {
+    _pendingIsManualReview = false;
+    _manualTransferRejected = false;
+    super.backToMethod();
+    // Arriving here from a pending/rejected transfer skipped the normal load.
+    if (!_optionsLoaded) prepareMethodStep();
+  }
+
+  Future<FeeQuote?> ensureQuote() async {
+    if (isFree || !_optionsLoaded) return null;
+    final method = _quoteMethod;
+    final plan = _plan;
+    final key = '$plan|$method';
+    final cached = _quotes[key];
+    if (cached != null) return cached;
+
+    final json = asJsonMap(await run(() async => api.get(
+        '/api/v1/payments/fees/preview?course_id=${course.id}&payment_method=$method&plan=$plan')));
+    if (json == null) return null;
+
+    final fetched = FeeQuote.fromJson(json);
+    _quotes[key] = fetched;
+    safeNotify();
+    return fetched;
+  }
 
   // ── Selection ─────────────────────────────────────────────────────────────
 
   void selectSavedCard(SavedPaymentMethod card) {
-    _selection = _Selection.savedCard;
     _selectedCard = card;
-    notifyListeners();
-  }
-
-  void selectBankTransfer() {
-    _selection = _Selection.bankTransfer;
-    _selectedCard = null;
-    notifyListeners();
-  }
-
-  void selectStcPay() {
-    _selection = _Selection.stcPay;
-    _selectedCard = null;
-    notifyListeners();
+    _selectedManualMethod = null;
+    safeNotify();
+    ensureQuote();
   }
 
   void selectNewCard() {
-    _selection = _Selection.newCard;
     _selectedCard = null;
-    notifyListeners();
+    _selectedManualMethod = null; // otherwise confirm() would still go to the transfer flow
+    safeNotify();
+    ensureQuote();
   }
-
-  FeeBreakdown computedFees(SavedMethodsProvider savedP) =>
-      FeeBreakdown.calculate(
-        coursePrice: course.price,
-        brand: _selection == _Selection.stcPay
-            ? CardBrand.stcPay
-            : _selectedCard?.cardBrand ?? CardBrand.mada,
-      );
 
   // ── Confirm ───────────────────────────────────────────────────────────────
+  String? _selectedManualMethod; // "bank_transfer" | "instapay" | null
 
-  Future<void> confirm(SavedMethodsProvider savedP, BuildContext context) async {
-    if (isFree) {
-      await _enrollFree();
-      return;
-    }
-    switch (_selection) {
-      case _Selection.newCard:
-        await _openMoyasarCardScreen(context);
-      case _Selection.savedCard:
-        if (_selectedCard != null) await _chargeWithSavedCard(_selectedCard!);
-      case _Selection.bankTransfer:
-        await _initBankTransfer();
-      case _Selection.stcPay:
-        _step = EnrollStep.stcMobile;
-        notifyListeners();
-    }
+  String? get selectedManualMethod => _selectedManualMethod;
+
+  void selectManualMethod(String method) {
+    _selectedManualMethod = method;
+    _selectedCard = null;
+    safeNotify();
+    ensureQuote(); // price it under THIS method's own (admin-managed) fee
   }
 
-  // ── Free enroll ───────────────────────────────────────────────────────────
+  Future<void> confirm(BuildContext context) async {
+    if (isLoading || !_optionsLoaded) return;
+    if (isFree) return _enrollFree();
+
+    final manual = _selectedManualMethod;
+    if (manual != null) return _startManualTransfer(context, manual);
+
+    final card = _selectedCard;
+    if (card != null) return _chargeSavedCard(card);
+    if (_usesMoyasarSdk) return _startMoyasarSdk(context);
+    return _openHostedCheckout(context);
+  }
+
+  Future<void> _startManualTransfer(BuildContext context, String method) async {
+    // The request carries the TOTAL (plan price + platform fee + VAT + this
+    // method's fee) — the same number the server computes and the teacher sees.
+    final fees = await ensureQuote();
+    if (fees == null) {
+      setStep(EnrollStep.failed, reason: 'payment_fees_load_failed'.tr);
+      return;
+    }
+    if (!context.mounted) return;
+    final result = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => TransferPaymentScreen(
+        courseId: int.parse(course.id),
+        method: method,
+        plan: _plan,
+        amount: fees.total,
+        currencySymbol: currencySymbol,
+      ),
+    ));
+    if (result == true) setStep(EnrollStep.pending); // never instantly confirmed — a teacher must review it
+  }
 
   Future<void> _enrollFree() async {
-    final r = await run(() => _api.post('/api/v1/courses/${course.id}/enroll'));
-    if (r != null) {
-      _step = EnrollStep.success;
-      notifyListeners();
-    }
+    final r = await run(() => api.post('/api/v1/courses/${course.id}/enroll'));
+    if (r != null) setStep(EnrollStep.success);
   }
 
-  // ── New card entry point ──────────────────────────────────────────────────
+  Future<void> _openHostedCheckout(BuildContext context) => openHostedCheckout(
+    context,
+    '/api/v1/payments/create-web-session',
+    body: {'course_id': course.id, 'plan': _plan},
+  );
 
-  Future<void> _openMoyasarCardScreen(BuildContext context) async {
-    if (kIsWeb) {
-      await _openWebCheckout(context);
+  // ── Moyasar SDK (mobile) ──────────────────────────────────────────────────
+
+  Future<void> _startMoyasarSdk(BuildContext context) async {
+    final publishableKey = gateway?.publishableKey;
+    if (publishableKey == null || publishableKey.isEmpty) {
+      return _openHostedCheckout(context); // no SDK key configured → hosted page
+    }
+    final fees = await ensureQuote();
+    if (fees == null) {
+      setStep(EnrollStep.failed, reason: 'payment_fees_load_failed'.tr);
       return;
     }
-    // Mobile: Moyasar SDK handles card form + 3DS internally.
-    final fees = FeeBreakdown.calculate(
-      coursePrice: course.price,
-      brand: CardBrand.mada,
-    );
+    if (!context.mounted) return;
+
     final config = PaymentConfig(
-      publishableApiKey: _publishableKey,
-      amount: (fees.total * 100).round(),
-      description: 'كورس: ${course.name}',
-      metadata: {'course_id': course.id.toString()},
+      publishableApiKey: publishableKey,
+      amount: fees.amountMinor,
+      description: '${'course'.tr} : ${ (AppConfig.lang=='ar'? course.titleAr:course.titleEn)??''}',
+      metadata: {'course_id': course.id.toString(), 'plan': _plan},
       creditCard: CreditCardConfig(saveCard: false, manual: false),
     );
-    if (!context.mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => MoyasarCardPaymentScreen(
-          config: config,
-          onPaymentResult: (result) {
-            Navigator.of(context).pop();
-            _handleSdkResult(result, context);
-          },
-        ),
+
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => MoyasarCardPaymentScreen(
+        config: config,
+        onPaymentResult: (result) {
+          Navigator.of(context).pop();
+          _handleSdkResult(result);
+        },
       ),
-    );
+    ));
   }
 
-  // ── Web checkout (Flutter Web) ────────────────────────────────────────────
-
-  Future<void> _openWebCheckout(BuildContext context) async {
-    makeLoading();
-    notifyListeners();
-
-    try {
-      final session = await run(() => _api.post(
-        '/api/v1/payments/create-web-session',
-        body: {'course_id': course.id},
-      ));
-
-      if (session is! Map<String, dynamic>) {
-        _failureReason = 'فشل إنشاء جلسة الدفع. حاول مرة أخرى.';
-        _step = EnrollStep.failed;
-        notifyListeners();
-        return;
-      }
-
-      if (session['already_paid'] == true) {
-        _step = EnrollStep.success;
-        notifyListeners();
-        return;
-      }
-
-      final checkoutUrl = session['checkout_url'] as String?;
-      final token = session['session_token'] as String?;
-
-      final resolvedUrl = checkoutUrl?.isNotEmpty == true
-          ? checkoutUrl!
-          : (token != null && token.isNotEmpty)
-          ? '${AppConfig.baseUrl}/checkout?token=$token'
-          : null;
-
-      if (resolvedUrl == null) {
-        _failureReason = 'بيانات الجلسة غير مكتملة. حاول مرة أخرى.';
-        _step = EnrollStep.failed;
-        notifyListeners();
-        return;
-      }
-
-      stopLoading();
-      notifyListeners();
-
-      if (!context.mounted) return;
-
-      // Push the platform-appropriate checkout page.
-      // On web  → _IFrameCheckoutPage (from checkout_web_impl.dart)
-      // On mobile → _MobileCheckoutPage (defined below in this file)
-      final Widget checkoutPage = kIsWeb
-          ? IFrameCheckoutPage(url: resolvedUrl) // web impl via conditional import
-          : MobileCheckoutPage(url: resolvedUrl);
-
-      final result = await Navigator.of(context).push<String>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => checkoutPage,
-        ),
-      );
-
-      _handleWebCallbackStatus(result ?? 'failed');
-    } catch (e) {
-      _failureReason = 'تعذّر فتح صفحة الدفع: $e';
-      _step = EnrollStep.failed;
-      notifyListeners();
-    } finally {
-      stopLoading();
-    }
-  }
-
-  void _handleWebCallbackStatus(String status) {
-    switch (status) {
-      case 'paid':
-        _step = EnrollStep.success;
-      case 'initiated':
-        _failureReason = 'الدفع قيد التأكيد. سيُفعَّل كورسك خلال دقائق.';
-        _step = EnrollStep.failed;
-      default:
-        _failureReason = 'فشلت عملية الدفع. حاول مرة أخرى.';
-        _step = EnrollStep.failed;
-    }
-    notifyListeners();
-  }
-
-  // ── Handle Moyasar SDK result (mobile) ────────────────────────────────────
-
-  void _handleSdkResult(dynamic result, BuildContext context) {
+  void _handleSdkResult(dynamic result) {
     if (result is! PaymentResponse) {
-      _failureReason = 'استجابة غير متوقعة من بوابة الدفع';
-      _step = EnrollStep.failed;
-      notifyListeners();
+      setStep(EnrollStep.failed, reason: 'payment_unexpected_gateway_response'.tr);
       return;
     }
-    final statusName = result.status.name.toLowerCase();
-    if (statusName == 'paid' ||
-        statusName == 'authorized' ||
-        statusName == 'captured') {
-      _recordSdkPayment(result.id);
-    } else if (statusName == 'failed') {
-      _failureReason =
-          (result.source as dynamic)?.message as String? ??
-              'فشلت عملية الدفع. حاول مرة أخرى.';
-      _step = EnrollStep.failed;
-      notifyListeners();
-    } else {
-      _failureReason = 'الدفع قيد المعالجة. سيُفعَّل كورسك تلقائياً قريباً.';
-      _step = EnrollStep.failed;
-      notifyListeners();
+    switch (result.status.name.toLowerCase()) {
+      case 'paid' || 'authorized' || 'captured':
+        _recordSdkPayment(result.id);
+      case 'failed':
+        setStep(EnrollStep.failed,
+            reason: (result.source as dynamic)?.message as String? ??
+                'payment_failed_try_again'.tr);
+      default:
+        setStep(EnrollStep.pending);
     }
   }
 
-  Future<void> _recordSdkPayment(String moyasarPaymentId) async {
-    _step = EnrollStep.verifying;
-    notifyListeners();
-
-    final r = await run(() => _api.post(
+  /// The backend re-fetches the payment from the gateway with its SECRET key,
+  /// checks the amount, then activates the enrollment.
+  Future<void> _recordSdkPayment(String gatewayPaymentId) async {
+    setStep(EnrollStep.verifying);
+    final r = asJsonMap(await run(() async => api.post(
       '/api/v1/payments/record-sdk-payment',
-      body: {
-        'course_id': course.id,
-        'moyasar_payment_id': moyasarPaymentId,
-      },
-    ));
-
-    final status = (r is Map ? r['status'] as String? : null) ?? '';
-    if (status == 'completed' || status == 'paid') {
-      _step = EnrollStep.success;
+      body: {'course_id': course.id, 'moyasar_payment_id': gatewayPaymentId, 'plan': _plan},
+    )));
+    if (r?['status'] == 'completed') {
+      setStep(EnrollStep.success);
     } else {
-      _failureReason = 'تم الدفع. سيُفعَّل كورسك خلال دقائق.';
-      _step = EnrollStep.failed;
+      // The card WAS charged but verification didn't complete — don't say "failed".
+      setStep(EnrollStep.pending);
     }
-    notifyListeners();
   }
 
-  // ── Saved card ────────────────────────────────────────────────────────────
+  // ── Saved card (Moyasar) ──────────────────────────────────────────────────
 
-  Future<void> _chargeWithSavedCard(SavedPaymentMethod card) async {
-    final r = await run(() => _api.post('/api/v1/payments', queryParams: {
+  Future<void> _chargeSavedCard(SavedPaymentMethod card) async {
+    final r = asJsonMap(await run(() async => api.post('/api/v1/payments', queryParams: {
       'course_id': course.id,
       'payment_method': card.cardBrand?.apiKey ?? 'mada',
       'saved_method_id': card.id,
-    }));
-    if (r is! Map<String, dynamic>) return;
+      'plan': _plan,
+    })));
+    if (r == null) return;
 
     _pendingPaymentId = (r['payment_id'] as num?)?.toInt();
     _pendingTransactionId = r['transaction_id'] as String?;
 
     if (r['status'] == 'completed') {
-      _step = EnrollStep.success;
-      notifyListeners();
+      setStep(EnrollStep.success);
       return;
     }
 
+    // 3DS challenge happens in the browser; we poll until it finishes.
     final txUrl = r['transaction_url'] as String?;
     if (txUrl != null && txUrl.isNotEmpty) {
       final uri = Uri.parse(txUrl);
@@ -322,237 +392,36 @@ class EnrollmentProvider extends BaseProvider {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       }
     }
-
-    await _verifyAfterReturn();
+    await _pollVerification();
   }
 
-  // ── STC Pay ───────────────────────────────────────────────────────────────
-
-  Future<void> initStcPay(String mobile, BuildContext context) async {
-    final fees = FeeBreakdown.calculate(
-      coursePrice: course.price,
-      brand: CardBrand.stcPay,
-    );
-    final config = PaymentConfig(
-      publishableApiKey: _publishableKey,
-      amount: (fees.total * 100).round(),
-      description: 'كورس: ${course.name}',
-    );
-
-    makeLoading();
-    try {
-      final result = await Moyasar.pay(
-        apiKey: _publishableKey,
-        paymentRequest: PaymentRequest(config, StcRequestSource(mobile: mobile)),
-      );
-
-      if (result is PaymentResponse) {
-        if (result.status == PaymentStatus.initiated) {
-          _stcTransactionUrl =
-          (result.source as dynamic)?.transactionUrl as String?;
-          _step = EnrollStep.stcOtp;
-        } else if (result.status == PaymentStatus.paid) {
-          await _recordSdkPayment(result.id);
-          return;
-        } else {
-          _failureReason = 'فشل بدء عملية STC Pay';
-          _step = EnrollStep.failed;
-        }
-      } else {
-        _failureReason = 'فشل الاتصال ببوابة الدفع';
-        _step = EnrollStep.failed;
-      }
-    } catch (e) {
-      _failureReason = 'خطأ: $e';
-      _step = EnrollStep.failed;
-    } finally {
-      stopLoading();
-      notifyListeners();
-    }
-  }
-
-  Future<void> submitStcOtp(String otp) async {
-    if (_stcTransactionUrl == null) {
-      _stcOtpError = 'انتهت الجلسة. ابدأ من جديد.';
-      notifyListeners();
+  Future<void> _pollVerification() async {
+    final paymentId = _pendingPaymentId;
+    final transactionId = _pendingTransactionId;
+    if (paymentId == null || transactionId == null) {
+      setStep(EnrollStep.failed, reason: 'payment_data_not_found'.tr);
       return;
     }
-    _stcOtpError = null;
-    makeLoading();
-    notifyListeners();
 
-    try {
-      final result = await Moyasar.verifyOTP(
-        transactionURL: _stcTransactionUrl!,
-        otpRequest: OtpRequestSource(otpValue: otp),
-      );
-      if (result is PaymentResponse && result.status == PaymentStatus.paid) {
-        await _recordSdkPayment(result.id);
-      } else {
-        _stcOtpError = 'رمز التحقق غير صحيح أو انتهت صلاحيته';
-        notifyListeners();
+    setStep(EnrollStep.verifying);
+    for (var attempt = 0; attempt < 18 && !isDisposed; attempt++) {
+      await Future.delayed(const Duration(seconds: 5));
+      if (isDisposed) return;
+
+      final r = asJsonMap(await run(() async => api.post(
+        '/api/v1/payments/$paymentId/verify',
+        queryParams: {'transaction_id': transactionId},
+      )));
+      final status = r?['status'] as String?;
+      if (status == 'completed' || status == 'paid') {
+        setStep(EnrollStep.success);
+        return;
       }
-    } catch (e) {
-      _stcOtpError = 'خطأ: $e';
-      notifyListeners();
-    } finally {
-      stopLoading();
+      if (status == 'failed') {
+        setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
+        return;
+      }
     }
-  }
-
-  // ── Bank transfer ─────────────────────────────────────────────────────────
-
-  Future<void> _initBankTransfer() async {
-    final r = await run(() => _api.post(
-      '/api/v1/payments/bank-transfer',
-      queryParams: {'course_id': course.id},
-    ));
-    if (r is Map<String, dynamic>) {
-      _bankInfo = r;
-      _step = EnrollStep.bankDetails;
-      notifyListeners();
-    }
-  }
-
-  void confirmBankTransfer() {
-    _paidViaBankTransfer = true;
-    _step = EnrollStep.success;
-    notifyListeners();
-  }
-
-  void backToMethod() {
-    _step = EnrollStep.method;
-    _bankInfo = null;
-    notifyListeners();
-  }
-
-  // ── Verify after 3DS return ───────────────────────────────────────────────
-
-  Future<void> _verifyAfterReturn() async {
-    if (_pendingPaymentId == null) {
-      _failureReason = 'لم يتم العثور على بيانات الدفع.';
-      _step = EnrollStep.failed;
-      notifyListeners();
-      return;
-    }
-    _step = EnrollStep.verifying;
-    notifyListeners();
-
-    final r = await run(() => _api.post(
-      '/api/v1/payments/$_pendingPaymentId/verify',
-      queryParams: _pendingTransactionId != null
-          ? {'transaction_id': _pendingTransactionId}
-          : {},
-    ));
-
-    final status = (r is Map ? r['status'] as String? : null) ?? '';
-    if (status == 'completed' || status == 'paid') {
-      _step = EnrollStep.success;
-    } else if (status == 'failed') {
-      _failureReason = 'فشلت عملية الدفع. جرّب طريقة دفع أخرى.';
-      _step = EnrollStep.failed;
-    } else {
-      _failureReason = 'الدفع قيد المعالجة. سيُفعَّل كورسك خلال دقائق.';
-      _step = EnrollStep.failed;
-    }
-    notifyListeners();
-  }
-
-  // ── Reset ─────────────────────────────────────────────────────────────────
-
-  void retryFromStart() {
-    _step = EnrollStep.method;
-    _failureReason = null;
-    _stcOtpError = null;
-    _stcTransactionUrl = null;
-    _pendingPaymentId = null;
-    _pendingTransactionId = null;
-    notifyListeners();
-  }
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// _MobileCheckoutPage  — iOS / Android only
-//
-// Uses webview_flutter's WebViewController which fully supports
-// setJavaScriptMode and onNavigationRequest on native platforms.
-// ═════════════════════════════════════════════════════════════════════════════
-
-class MobileCheckoutPage extends StatefulWidget {
-  final String url;
-  const MobileCheckoutPage({super.key, required this.url});
-
-  @override
-  State<MobileCheckoutPage> createState() => _MobileCheckoutPageState();
-}
-
-class _MobileCheckoutPageState extends State<MobileCheckoutPage> {
-  late final WebViewController _controller;
-  bool _loading = true;
-
-  // result.html redirects to APP_URL/#/payment/callback?status=paid
-  static const String _callbackMarker = '/payment/callback';
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted) // fine on iOS/Android
-      ..setNavigationDelegate(NavigationDelegate(
-        onPageFinished: (_) {
-          if (mounted) if(mounted) setState(() => _loading = false);
-        },
-        onNavigationRequest: (req) {
-          if (req.url.contains(_callbackMarker)) {
-            final uri = Uri.parse(req.url);
-            // Handle hash-style URL:  /#/payment/callback?status=paid
-            final fragment = uri.fragment; // "payment/callback?status=paid"
-            String status = 'failed';
-            if (fragment.contains('status=')) {
-              final q = Uri.parse('?${fragment.split('?').last}');
-              status = q.queryParameters['status'] ?? 'failed';
-            } else {
-              status = uri.queryParameters['status'] ?? 'failed';
-            }
-            Navigator.of(context).pop(status);
-            return NavigationDecision.prevent;
-          }
-          return NavigationDecision.navigate;
-        },
-        onWebResourceError: (e) =>
-            debugPrint('WebView resource error: ${e.description}'),
-      ))
-      ..loadRequest(Uri.parse(widget.url));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('إتمام الدفع'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          tooltip: 'إلغاء',
-          onPressed: () => Navigator.of(context).pop('cancelled'),
-        ),
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_loading)
-            const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('جارٍ تحميل صفحة الدفع…'),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+    setStep(EnrollStep.pending);
   }
 }

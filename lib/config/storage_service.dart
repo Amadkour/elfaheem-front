@@ -61,7 +61,8 @@ class StorageService {
 
   bool? get loadMode => _prefs.getBool('is_dark');
 
-  Future<void> saveMode(bool isDark) async =>await _prefs.setBool('is_dark', isDark);
+  Future<void> saveMode(bool isDark) async =>
+      await _prefs.setBool('is_dark', isDark);
 
   String? get loadLanguage => _prefs.getString('lang');
 
