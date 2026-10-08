@@ -62,37 +62,40 @@ class _TransfersView extends StatelessWidget {
         child: !p.hasLoaded && !failedFirstLoad
             ? const Center(child: AppLoadingIndicator(showLogo: false))
             : RefreshIndicator(
-          onRefresh: p.load,
-          child: failedFirstLoad
-              ? RequestStateView(
-            icon: Icons.error_outline_rounded,
-            color: c.danger,
-            message: p.errorMessage ?? 'failed_to_load'.tr,
-            actionLabel: 'retry'.tr,
-            onAction: p.load,
-          )
-              : p.items.isEmpty
-              ? RequestStateView(
-            icon: Icons.task_alt_rounded,
-            message: 'no_pending_requests'.tr,
-          )
-              : ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-            // +1: the hint banner is the first row.
-            itemCount: p.items.length + 1,
-            itemBuilder: (_, i) {
-              if (i == 0) {
-                return SwipeHintBanner(key: const ValueKey('transfer_requests.hint'), count: p.items.length);
-              }
-              final t = p.items[i - 1];
-              return _TransferCard(
-                key: ValueKey(t.paymentId),
-                transfer: t,
-              );
-            },
-          ),
-        ),
+                onRefresh: p.load,
+                child: failedFirstLoad
+                    ? RequestStateView(
+                        icon: Icons.error_outline_rounded,
+                        color: c.danger,
+                        message: p.errorMessage ?? 'failed_to_load'.tr,
+                        actionLabel: 'retry'.tr,
+                        onAction: p.load,
+                      )
+                    : p.items.isEmpty
+                    ? RequestStateView(
+                        icon: Icons.task_alt_rounded,
+                        message: 'no_pending_requests'.tr,
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                        // +1: the hint banner is the first row.
+                        itemCount: p.items.length + 1,
+                        itemBuilder: (_, i) {
+                          if (i == 0) {
+                            return SwipeHintBanner(
+                              key: const ValueKey('transfer_requests.hint'),
+                              count: p.items.length,
+                            );
+                          }
+                          final t = p.items[i - 1];
+                          return _TransferCard(
+                            key: ValueKey(t.paymentId),
+                            transfer: t,
+                          );
+                        },
+                      ),
+              ),
       ),
     );
   }
@@ -282,7 +285,7 @@ class _TransferCard extends StatelessWidget {
                       icon: Icons.sell_outlined,
                       label: 'transfer_course_price'.tr,
                       value:
-                      '${transfer.coursePrice!.toStringAsFixed(2)} ${transfer.currency}',
+                          '${transfer.coursePrice!.toStringAsFixed(2)} ${transfer.currency}',
                     ),
                   ],
                   if (transfer.fees != null) ...[
@@ -291,7 +294,7 @@ class _TransferCard extends StatelessWidget {
                       icon: Icons.receipt_long_outlined,
                       label: 'transfer_fees_total'.tr,
                       value:
-                      '${(transfer.fees!.platformFee + transfer.fees!.vatOnPlatform + transfer.fees!.gatewayFee).toStringAsFixed(2)} ${transfer.currency}',
+                          '${(transfer.fees!.platformFee + transfer.fees!.vatOnPlatform + transfer.fees!.gatewayFee).toStringAsFixed(2)} ${transfer.currency}',
                     ),
                   ],
                   const SizedBox(height: 10),
@@ -331,7 +334,10 @@ class _TransferCard extends StatelessWidget {
             ),
             const SizedBox(height: 14),
 
-            RequestActionButtons(key: const ValueKey('transfer_requests.actions'), ctl: ctl),
+            RequestActionButtons(
+              key: const ValueKey('transfer_requests.actions'),
+              ctl: ctl,
+            ),
           ],
         ),
       ),
@@ -398,15 +404,15 @@ class _ProofImage extends StatelessWidget {
               loadingBuilder: (_, child, progress) => progress == null
                   ? child
                   : Container(
-                height: _height,
-                alignment: Alignment.center,
-                color: c.divider.withValues(alpha: 0.4),
-                child: const SizedBox(
-                  width: 26,
-                  height: 26,
-                  child: AppLoadingIndicator(showLogo: false),
-                ),
-              ),
+                      height: _height,
+                      alignment: Alignment.center,
+                      color: c.divider.withValues(alpha: 0.4),
+                      child: const SizedBox(
+                        width: 26,
+                        height: 26,
+                        child: AppLoadingIndicator(showLogo: false),
+                      ),
+                    ),
               errorBuilder: (_, __, ___) => Container(
                 height: _height,
                 alignment: Alignment.center,

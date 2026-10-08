@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import '../teacher/profile/payout/teacher_payouts_screen.dart';
 import 'admin_common.dart';
@@ -335,7 +336,20 @@ class _RequestCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(child: _rejectButton(context, p)),
+                  OutlineButton(
+                    color: context.colors.danger,
+                    label: 'request_reject'.tr,
+                    onPressed: () async {
+                      final reason = await askText(
+                        context,
+                        title: 'rejection_reason_title'.tr,
+                        multiline: true,
+                      );
+                      if (reason != null && reason.isNotEmpty)
+                        await p.reject(w.id, reason);
+                    },
+                    icon: Icons.close_rounded,
+                  ),
                 ],
               ),
             if (w.status == 'approved' && w.state == 'processing')
@@ -396,16 +410,32 @@ class _RequestCard extends StatelessWidget {
                 padding: const EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.price_check_rounded),
-                        label: Text('admin_mark_paid_manual'.tr),
-                        onPressed: () => _markPaid(context, p),
-                      ),
+                    OutlineButton(
+                      color: context.colors.primary,
+                      label: 'admin_mark_paid_manual'.tr,
+                      onPressed: () async {
+                        await _markPaid(context, p);
+                      },
+                      icon: Icons.price_check_rounded,
                     ),
+
                     if (w.state != 'unknown') ...[
                       const SizedBox(width: 8),
-                      Expanded(child: _rejectButton(context, p)),
+                      OutlineButton(
+                        color: context.colors.danger,
+                        label: 'request_reject'.tr,
+                        onPressed: () async {
+                          final reason = await askText(
+                            context,
+                            title: 'rejection_reason_title'.tr,
+                            multiline: true,
+                          );
+                          if (reason != null && reason.isNotEmpty) {
+                            await p.reject(w.id, reason);
+                          }
+                        },
+                        icon: Icons.close_rounded,
+                      ),
                     ],
                   ],
                 ),
@@ -413,23 +443,6 @@ class _RequestCard extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _rejectButton(BuildContext context, AdminPayoutRequestsProvider p) {
-    final c = context.colors;
-    return OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-      icon: const Icon(Icons.close_rounded),
-      label: Text('request_reject'.tr),
-      onPressed: () async {
-        final reason = await askText(
-          context,
-          title: 'rejection_reason_title'.tr,
-          multiline: true,
-        );
-        if (reason != null && reason.isNotEmpty) await p.reject(w.id, reason);
-      },
     );
   }
 
@@ -600,13 +613,22 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   }
 
   Widget _preview(PlatformFile f) {
-    Widget broken(BuildContext _, Object __, StackTrace? ___) => const Center(
-          child: Icon(Icons.broken_image_rounded, size: 40),
-        );
+    Widget broken(BuildContext _, Object __, StackTrace? ___) =>
+        const Center(child: Icon(Icons.broken_image_rounded, size: 40));
     if (kIsWeb) {
-      return Image.memory(f.bytes!, fit: BoxFit.cover, cacheWidth: 600, errorBuilder: broken);
+      return Image.memory(
+        f.bytes!,
+        fit: BoxFit.cover,
+        cacheWidth: 600,
+        errorBuilder: broken,
+      );
     }
-    return Image.file(File(f.path!), fit: BoxFit.cover, cacheWidth: 600, errorBuilder: broken);
+    return Image.file(
+      File(f.path!),
+      fit: BoxFit.cover,
+      cacheWidth: 600,
+      errorBuilder: broken,
+    );
   }
 
   void _submit() {
@@ -647,14 +669,18 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                 decoration: InputDecoration(hintText: 'admin_transfer_ref'.tr),
               ),
               const SizedBox(height: 14),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.attach_file_rounded),
-                label: Text(
-                  _file == null
-                      ? 'admin_attach_receipt'.tr
-                      : 'admin_change_receipt'.tr,
-                ),
-                onPressed: _pick,
+              Row(
+                children: [
+                  OutlineButton(
+                    color: context.colors.primary,
+                    icon: Icons.attach_file_rounded,
+                    label: _file == null
+                        ? 'admin_attach_receipt'.tr
+                        : 'admin_change_receipt'.tr,
+
+                    onPressed: _pick,
+                  ),
+                ],
               ),
               if (_file != null)
                 Padding(

@@ -38,8 +38,37 @@ bool isSuperNow(BuildContext context) =>
     context.read<AuthProvider>().isSuper &&
         !(ViewAsState.active && ViewAsState.instance.role == 'admin');
 
-void toast(String message, {bool error = false}) =>
+// ── toast ────────────────────────────────────────────────────────────────────
+
+/// Global messenger key. Put it on the app's MaterialApp:
+///     MaterialApp(scaffoldMessengerKey: rootMessengerKey, ...)
+/// Snackbars shown through it never depend on a widget BuildContext, so they
+/// are safe to show after a dialog / bottom sheet has already closed (the cause
+/// of "Looking up a deactivated widget's ancestor is unsafe").
+final GlobalKey<ScaffoldMessengerState> rootMessengerKey =
+GlobalKey<ScaffoldMessengerState>();
+
+void toast(String message, {bool error = false}) {
+  // 1) preferred: the app-level messenger (no BuildContext involved)
+  final messenger = rootMessengerKey.currentState;
+  if (messenger != null) {
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message, style: const TextStyle(fontFamily: 'tajawal')),
+          backgroundColor: error ? Colors.red.shade700 : null,
+        ),
+      );
+    return;
+  }
+  // 2) fallback: the old helper, but never let a stale context crash the caller
+  try {
     Helpers.showMessage(message, isError: error);
+  } catch (e) {
+    debugPrint('toast skipped (stale context): $message');
+  }
+}
 
 String money(num v, [String? currency]) {
   final s = v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
@@ -121,33 +150,67 @@ Future<String?> askText(
       required String title,
       String? hint,
       bool multiline = false,
-    }) async {
-  final ctrl = TextEditingController();
-  final r = await showDialog<String>(
+    }) {
+  return showDialog<String>(
     context: context,
-    builder: (ctx) => Directionality(
+    builder: (_) => _AskTextDialog(
+      title: title,
+      hint: hint,
+      multiline: multiline,
+    ),
+  );
+}
+
+/// The controller lives in this State, so it is disposed only after the dialog's
+/// closing animation has finished (disposing right after showDialog returns
+/// caused "TextEditingController was used after being disposed").
+class _AskTextDialog extends StatefulWidget {
+  const _AskTextDialog({
+    required this.title,
+    required this.hint,
+    required this.multiline,
+  });
+
+  final String title;
+  final String? hint;
+  final bool multiline;
+
+  @override
+  State<_AskTextDialog> createState() => _AskTextDialogState();
+}
+
+class _AskTextDialogState extends State<_AskTextDialog> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
       textDirection: dir,
       child: AlertDialog(
-        title: Text(title, style: const TextStyle(fontFamily: 'tajawal')),
+        title: Text(widget.title, style: const TextStyle(fontFamily: 'tajawal')),
         content: TextField(
-          controller: ctrl,
+          controller: _ctrl,
           autofocus: true,
-          maxLines: multiline ? 4 : 1,
-          decoration: InputDecoration(hintText: hint),
+          maxLines: widget.multiline ? 4 : 1,
+          decoration: InputDecoration(hintText: widget.hint),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
+              onPressed: () => Navigator.pop(context),
               child: Text('exam_cancel'.tr)),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              onPressed: () => Navigator.pop(context, _ctrl.text.trim()),
               child: Text('admin_ok'.tr)),
         ],
       ),
-    ),
-  );
-  ctrl.dispose();
-  return r;
+    );
+  }
 }
 
 /// Full-height modal sheet that survives the keyboard.
@@ -301,29 +364,17 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(
-      children: [
-        IconButton(onPressed: () async {
-          final ok = await Helpers.confirmDialog(context);
-          if (ok == true && context.mounted) {
-            await context.read<ProfileProvider>().logout(
-              context,
-            );
-          }
-        }, icon: Icon(Icons.logout)),
-        Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 52, color: c.textLight),
-              const SizedBox(height: 10),
-              Text(message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
-            ]),
-          ),
-        ),
-      ],
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 52, color: c.textLight),
+          const SizedBox(height: 10),
+          Text(message,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+        ]),
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_labels.dart';
@@ -113,8 +114,8 @@ class _UsersView extends StatelessWidget {
       appBar: embedded
           ? null
           : ScreenAppBar(
-        title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-      ),
+              title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
+            ),
       floatingActionButton: fab,
       child: list,
     );
@@ -189,13 +190,13 @@ class _UserTile extends StatelessWidget {
                         u.hasActiveSubscription
                             ? 'admin_subscribed'.tr
                             : (sub?.status == 'pending'
-                            ? 'admin_sub_pending'.tr
-                            : 'admin_no_sub'.tr),
+                                  ? 'admin_sub_pending'.tr
+                                  : 'admin_no_sub'.tr),
                         u.hasActiveSubscription
                             ? c.success
                             : (sub?.status == 'pending'
-                            ? c.warning
-                            : c.textLight),
+                                  ? c.warning
+                                  : c.textLight),
                       ),
                     if (isStudent)
                       StatusChip(
@@ -225,9 +226,7 @@ class _UserTile extends StatelessWidget {
                 role: u.role,
               ),
             ),
-          Icon( Icons.chevron_right_rounded,
-            color: c.textLight,
-          ),
+          Icon(Icons.chevron_right_rounded, color: c.textLight),
         ],
       ),
     );
@@ -239,13 +238,13 @@ class _UserTile extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openDetail(
-    BuildContext context,
-    AdminUsersProvider p,
-    int id,
-    ) async {
+  BuildContext context,
+  AdminUsersProvider p,
+  int id,
+) async {
   await showAdminSheet(
     context,
-        (ctx) => ChangeNotifierProvider.value(
+    (ctx) => ChangeNotifierProvider.value(
       value: p,
       child: _UserDetailSheet(userId: id),
     ),
@@ -328,8 +327,8 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                       u.pendingDeletion
                           ? 'admin_pending_deletion'.tr
                           : (u.isActive
-                          ? 'exam_status_active'.tr
-                          : 'admin_inactive'.tr),
+                                ? 'exam_status_active'.tr
+                                : 'admin_inactive'.tr),
                     ),
                     KeyValue('admin_joined'.tr, shortDate(u.createdAt)),
                     KeyValue('admin_last_login'.tr, shortDateTime(u.lastLogin)),
@@ -364,22 +363,27 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                   children: [
                     if (isSuperNow(context) &&
                         (u.role == 'student' || u.role == 'teacher')) ...[
-                      PrimaryButton(
-                        label: 'view_as_user'.tr,
-                        icon: Icons.visibility_rounded,
-                        onPressed: () {
-                          final nav = Navigator.of(
-                            context,
-                            rootNavigator: true,
-                          );
-                          Navigator.pop(context); // close the sheet first
-                          startViewAs(
-                            nav,
-                            id: u.id,
-                            name: u.name,
-                            role: u.role,
-                          );
-                        }, isLoading: false,
+                      Row(
+                        children: [
+                          OutlineButton(
+                            label: 'view_as_user'.tr,
+                            color: context.colors.success,
+                            icon: Icons.visibility_rounded,
+                            onPressed: (){
+                              final nav = Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              );
+                              Navigator.pop(context); // close the sheet first
+                              startViewAs(
+                                nav,
+                                id: u.id,
+                                name: u.name,
+                                role: u.role,
+                              );
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                     ],
@@ -388,9 +392,12 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           ? 'admin_deactivate_account'.tr
                           : 'admin_activate_account'.tr,
                       isLoading: false,
+                      iconBefore: true,
+
                       icon: u.isActive
                           ? Icons.block_rounded
                           : Icons.check_circle_rounded,
+                      background: context.colors.danger,
                       onPressed: () async {
                         final ok = await confirm(
                           context,
@@ -412,9 +419,11 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           ? 'admin_unverify_account'.tr
                           : 'admin_verify_account'.tr,
                       isLoading: false,
+                      iconBefore: true,
                       icon: u.isVerified
                           ? Icons.gpp_bad_rounded
                           : Icons.verified_rounded,
+                      background: context.colors.warning,
                       onPressed: () async {
                         final ok = await confirm(
                           context,
@@ -432,37 +441,33 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.edit_rounded),
-                            label: Text('btn_edit'.tr),
-                            onPressed: () async {
-                              await _openForm(context, p, existing: u);
-                              await _load();
-                            },
-                          ),
+                        OutlineButton(
+                          label: 'btn_edit'.tr,
+                          color: context.colors.warning,
+                          icon: Icons.edit_rounded,
+                          onPressed: () async {
+                            await _openForm(context, p, existing: u);
+                            await _load();
+                          },
                         ),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: c.danger,
-                            ),
-                            icon: const Icon(Icons.delete_outline_rounded),
-                            label: Text('delete'.tr),
-                            onPressed: () async {
-                              final ok = await confirm(
-                                context,
-                                message:
-                                'admin_permanently_delete_this_user_this'
-                                    .tr,
-                                danger: true,
-                              );
-                              if (!ok) return;
-                              if (await p.remove(u.id) && context.mounted)
-                                Navigator.pop(context);
-                            },
-                          ),
+                        OutlineButton(
+                          label: 'delete'.tr,
+                          color: context.colors.danger,
+                          icon: Icons.delete_outline_rounded,
+                          onPressed: () async {
+                            final ok = await confirm(
+                              context,
+                              message:
+                              'admin_permanently_delete_this_user_this'
+                                  .tr,
+                              danger: true,
+                            );
+                            if (!ok) return;
+                            if (await p.remove(u.id) && context.mounted) {
+                              Navigator.pop(context);
+                            }
+                          },
                         ),
                       ],
                     ),
@@ -477,10 +482,10 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
   }
 
   List<Widget> _studentSections(
-      BuildContext context,
-      AdminUsersProvider p,
-      AdminUser u,
-      ) {
+    BuildContext context,
+    AdminUsersProvider p,
+    AdminUser u,
+  ) {
     final c = context.colors;
     final sub = d!.subscriptions.isEmpty ? null : d!.subscriptions.first;
 
@@ -497,18 +502,18 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         ),
         child: sub == null
             ? Text(
-          'admin_no_subscription'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-        )
+                'admin_no_subscription'.tr,
+                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+              )
             : Column(
-          children: [
-            KeyValue('status'.tr, subscriptionStatusLabel(sub.status)),
-            KeyValue('admin_plan'.tr, planLabel(sub.planCode)),
-            KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
-            KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
-            KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
-          ],
-        ),
+                children: [
+                  KeyValue('status'.tr, subscriptionStatusLabel(sub.status)),
+                  KeyValue('admin_plan'.tr, planLabel(sub.planCode)),
+                  KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
+                  KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
+                  KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
+                ],
+              ),
       ),
       Section(
         title: 'admin_subscribed_courses'.tr,
@@ -522,126 +527,126 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         ),
         child: d!.enrollments.isEmpty
             ? Text(
-          'admin_no_courses'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-        )
+                'admin_no_courses'.tr,
+                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+              )
             : Column(
-          children: [
-            for (final e in d!.enrollments)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        asStr(e['course_name']),
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          color: c.textDark,
-                        ),
+                children: [
+                  for (final e in d!.enrollments)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              asStr(e['course_name']),
+                              style: TextStyle(
+                                fontFamily: 'tajawal',
+                                color: c.textDark,
+                              ),
+                            ),
+                          ),
+                          StatusChip(
+                            enrollmentStatusLabel(asStr(e['status'])),
+                            asStr(e['status']) == 'active'
+                                ? c.success
+                                : (asStr(e['status']) == 'dropped'
+                                      ? c.danger
+                                      : c.warning),
+                          ),
+                          if (asStr(e['status']) != 'dropped')
+                            IconButton(
+                              tooltip: 'admin_remove'.tr,
+                              icon: Icon(
+                                Icons.remove_circle_outline_rounded,
+                                color: c.danger,
+                                size: 20,
+                              ),
+                              onPressed: () async {
+                                final ok = await confirm(
+                                  context,
+                                  message:
+                                      'admin_remove_the_student_from_this_course'
+                                          .tr,
+                                  danger: true,
+                                );
+                                if (!ok) return;
+                                if (await p.unenroll(
+                                  u.id,
+                                  asInt(e['course_id']),
+                                ))
+                                  await _load();
+                              },
+                            ),
+                        ],
                       ),
                     ),
-                    StatusChip(
-                      enrollmentStatusLabel(asStr(e['status'])),
-                      asStr(e['status']) == 'active'
-                          ? c.success
-                          : (asStr(e['status']) == 'dropped'
-                          ? c.danger
-                          : c.warning),
-                    ),
-                    if (asStr(e['status']) != 'dropped')
-                      IconButton(
-                        tooltip: 'admin_remove'.tr,
-                        icon: Icon(
-                          Icons.remove_circle_outline_rounded,
-                          color: c.danger,
-                          size: 20,
-                        ),
-                        onPressed: () async {
-                          final ok = await confirm(
-                            context,
-                            message:
-                            'admin_remove_the_student_from_this_course'
-                                .tr,
-                            danger: true,
-                          );
-                          if (!ok) return;
-                          if (await p.unenroll(
-                            u.id,
-                            asInt(e['course_id']),
-                          ))
-                            await _load();
-                        },
-                      ),
-                  ],
-                ),
+                ],
               ),
-          ],
-        ),
       ),
       Section(
         title: 'admin_devices'.tr,
         trailing: d!.devices.isEmpty
             ? null
             : TextButton(
-          onPressed: () async {
-            final ok = await confirm(
-              context,
-              message: 'admin_remove_all_devices_and_reset_the'.tr,
-              danger: true,
-            );
-            if (!ok) return;
-            if (await p.resetDevices(u.id)) await _load();
-          },
-          child: Text(
-            'admin_reset_all'.tr,
-            style: TextStyle(color: c.danger),
-          ),
-        ),
+                onPressed: () async {
+                  final ok = await confirm(
+                    context,
+                    message: 'admin_remove_all_devices_and_reset_the'.tr,
+                    danger: true,
+                  );
+                  if (!ok) return;
+                  if (await p.resetDevices(u.id)) await _load();
+                },
+                child: Text(
+                  'admin_reset_all'.tr,
+                  style: TextStyle(color: c.danger),
+                ),
+              ),
         child: d!.devices.isEmpty
             ? Text(
-          'admin_no_registered_devices'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-        )
+                'admin_no_registered_devices'.tr,
+                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+              )
             : Column(
-          children: [
-            for (final dev in d!.devices)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                dense: true,
-                leading: Icon(
-                  Icons.phone_android_rounded,
-                  color: c.primary,
-                ),
-                title: Text(
-                  dev.deviceName,
-                  style: const TextStyle(fontFamily: 'tajawal'),
-                ),
-                subtitle: Text(
-                  '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 11.5,
-                  ),
-                ),
-                trailing: IconButton(
-                  icon: Icon(
-                    Icons.delete_outline_rounded,
-                    color: c.danger,
-                    size: 20,
-                  ),
-                  onPressed: () async {
-                    if (await p.removeDevice(u.id, dev.id)) await _load();
-                  },
-                ),
+                children: [
+                  for (final dev in d!.devices)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                      leading: Icon(
+                        Icons.phone_android_rounded,
+                        color: c.primary,
+                      ),
+                      title: Text(
+                        dev.deviceName,
+                        style: const TextStyle(fontFamily: 'tajawal'),
+                      ),
+                      subtitle: Text(
+                        '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 11.5,
+                        ),
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: c.danger,
+                          size: 20,
+                        ),
+                        onPressed: () async {
+                          if (await p.removeDevice(u.id, dev.id)) await _load();
+                        },
+                      ),
+                    ),
+                  if (d!.lastDeviceSwitchAt != null)
+                    KeyValue(
+                      'admin_last_switch'.tr,
+                      shortDate(d!.lastDeviceSwitchAt),
+                    ),
+                ],
               ),
-            if (d!.lastDeviceSwitchAt != null)
-              KeyValue(
-                'admin_last_switch'.tr,
-                shortDate(d!.lastDeviceSwitchAt),
-              ),
-          ],
-        ),
       ),
       if (d!.payments.isNotEmpty)
         Section(
@@ -679,8 +684,8 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                         asStr(pay['status']) == 'completed'
                             ? c.success
                             : (asStr(pay['status']) == 'pending'
-                            ? c.warning
-                            : c.danger),
+                                  ? c.warning
+                                  : c.danger),
                       ),
                     ],
                   ),
@@ -693,10 +698,10 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 }
 
 Future<void> _grantDialog(
-    BuildContext context,
-    AdminUsersProvider p,
-    int userId,
-    ) async {
+  BuildContext context,
+  AdminUsersProvider p,
+  int userId,
+) async {
   final daysCtrl = TextEditingController();
   String plan = 'monthly';
   await showDialog(
@@ -759,10 +764,10 @@ Future<void> _grantDialog(
 }
 
 Future<void> _enrollDialog(
-    BuildContext context,
-    AdminUsersProvider p,
-    int userId,
-    ) async {
+  BuildContext context,
+  AdminUsersProvider p,
+  int userId,
+) async {
   final courses = await p.courseChoices();
   if (!context.mounted) return;
   if (courses.isEmpty) {
@@ -814,13 +819,13 @@ Future<void> _enrollDialog(
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openForm(
-    BuildContext context,
-    AdminUsersProvider p, {
-      AdminUser? existing,
-    }) {
+  BuildContext context,
+  AdminUsersProvider p, {
+  AdminUser? existing,
+}) {
   return showAdminSheet(
     context,
-        (ctx) => _UserForm(provider: p, existing: existing),
+    (ctx) => _UserForm(provider: p, existing: existing),
   );
 }
 
@@ -898,8 +903,8 @@ class _UserFormState extends State<_UserForm> {
           editing
               ? 'admin_edit_user'.tr
               : (role == 'teacher'
-              ? 'admin_add_teacher'.tr
-              : 'admin_add_student'.tr),
+                    ? 'admin_add_teacher'.tr
+                    : 'admin_add_student'.tr),
         ),
         Flexible(
           child: SingleChildScrollView(
@@ -921,7 +926,7 @@ class _UserFormState extends State<_UserForm> {
                     keyboard: TextInputType.emailAddress,
                     ltr: true,
                     validator: (v) =>
-                    (v == null || !v.contains('@') || !v.contains('.'))
+                        (v == null || !v.contains('@') || !v.contains('.'))
                         ? 'admin_invalid_email'.tr
                         : null,
                   ),

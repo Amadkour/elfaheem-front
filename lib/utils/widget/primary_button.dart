@@ -8,6 +8,7 @@ import 'app_loading_indicator.dart';
 class PrimaryButton extends StatelessWidget {
   final bool isLoading;
   final bool enable;
+  final Color? background;
   final bool iconBefore;
   final String label;
   final IconData? icon;
@@ -21,6 +22,7 @@ class PrimaryButton extends StatelessWidget {
     this.onPressed,
     this.enable = true,
     this.iconBefore = false,
+    this.background,
   });
 
   @override
@@ -44,7 +46,10 @@ class PrimaryButton extends StatelessWidget {
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               decoration: BoxDecoration(
-                gradient: context.colors.accentGradient,
+                color: background,
+                gradient: background != null
+                    ? null
+                    : context.colors.accentGradient,
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: context.colors.primaryShadow,
               ),
@@ -53,10 +58,11 @@ class PrimaryButton extends StatelessWidget {
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
-                      textDirection: iconBefore || AppConfig.lang=='ar'
-                          ? TextDirection.rtl
-                          : TextDirection.ltr,
                       children: [
+                        if (icon != null && iconBefore ) ...[
+                          const SizedBox(width: 6),
+                          Icon(icon, color: Colors.white, size: 18),
+                        ],
                         Flexible(
                           child: Text(
                             label,
@@ -70,7 +76,7 @@ class PrimaryButton extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (icon != null) ...[
+                        if (icon != null && !iconBefore ) ...[
                           const SizedBox(width: 6),
                           Icon(icon, color: Colors.white, size: 18),
                         ],
