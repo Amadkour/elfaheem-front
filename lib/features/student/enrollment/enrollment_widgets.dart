@@ -10,6 +10,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../../utils/widget/primary_button.dart';
 import 'enrollment_models.dart';
 
 bool isWideLayout(BuildContext context) =>
@@ -37,72 +38,6 @@ void popToHome(BuildContext context) {
   Navigator.of(context).pushReplacementNamed('/dashboard');
 }
 // ── Buttons ───────────────────────────────────────────────────────────────────
-
-class GradientButton extends StatelessWidget {
-  final String label;
-  final VoidCallback? onTap; // null = disabled
-  final bool loading;
-  final List<Color>? colors;
-
-  const GradientButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.loading = false,
-    this.colors,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final enabled = onTap != null && !loading;
-    final gradient = colors != null
-        ? LinearGradient(
-            colors: colors!,
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
-        : c.primaryGradient;
-
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Opacity(
-        opacity: onTap == null ? .45 : 1,
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: gradient,
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: (colors?.first ?? c.primary).withValues(alpha: .38),
-                blurRadius: 18,
-                offset: const Offset(0, 7),
-              ),
-            ],
-          ),
-          child: Center(
-            child: loading
-                ? const SizedBox(
-                    height: 22,
-                    child: AppLoadingIndicator(showLogo: false),
-                  )
-                : Text(
-                    label,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      fontFamily: 'bahji',
-                    ),
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class SoftOutlineButton extends StatelessWidget {
   final String label;
@@ -150,11 +85,7 @@ class EnrollConfirmBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-      decoration: BoxDecoration(color: c.cardBg, boxShadow: c.bottomNavShadow),
-      child: GradientButton(label: label, onTap: onTap, loading: loading),
-    );
+    return PrimaryButton(label: label, onPressed: onTap, isLoading: loading);
   }
 }
 
@@ -511,10 +442,9 @@ class _PaymentResultViewState extends State<PaymentResultView>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 44),
-            GradientButton(
+            PrimaryButton(
               label: widget.primaryLabel,
-              colors: [c1, c2],
-              onTap: widget.onPrimary,
+              onPressed: widget.onPrimary, isLoading: false,
             ),
             if (widget.secondaryLabel != null &&
                 widget.onSecondary != null) ...[
@@ -712,6 +642,7 @@ class EnrollScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
+      maxWith:1100,
         child: SafeArea(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 380),

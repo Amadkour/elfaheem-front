@@ -47,7 +47,8 @@ class AppTheme {
   static const Color purple          = Color(0xFF8B6FFF);   // Kept for special states
 
   // ── Light surfaces (Premium Clean) ────────────────────────────────────────
-  static const Color background           = Color(0xFFD4FEFD);   // Light teal-tinted background
+  // static const Color background           = Color(0xFFD4FEFD);   // Light teal-tinted background
+  static const Color background           = Color(0xFFFBF7EC);   // Light teal-tinted background
   static const Color surfaceCard          = Color(0xFFFFFFFF);   // Pure White cards
   static const Color cardBg                 = Color(0xFFFFFFFF);   // Pure White
   static const Color textFieldBackground    = Color(0xFFF8F8F8);   // Slightly off-white inputs

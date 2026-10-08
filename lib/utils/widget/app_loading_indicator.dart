@@ -63,8 +63,6 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
 
   @override
   Widget build(BuildContext context) {
-    final ringColor = widget.ringColor ?? const Color(0xFF29B6F6);
-
     return SizedBox(
       width: widget.size,
       height: widget.size,
@@ -88,7 +86,7 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
                       angle: _rotateController.value * 2 * math.pi,
                       child: CustomPaint(
                         size: Size(widget.size, widget.size),
-                        painter: _RingPainter(color: ringColor),
+                        painter: _RingPainter(color: context.colors.primary),
                       ),
                     ),
                     // Pulsing logo
@@ -104,7 +102,7 @@ class _AppLoadingIndicatorState extends State<AppLoadingIndicator>
                             errorBuilder: (_, __, ___) => Icon(
                               Icons.school_rounded,
                               size: widget.size * 0.5,
-                              color: ringColor,
+                              color: context.colors.primary,
                             ),
                           ),
                         ),

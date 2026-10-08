@@ -405,7 +405,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: canResend ? context.colors.accent : context.colors.textLight,
+            color: canResend ? context.colors.primary : context.colors.textLight,
             decoration:
             canResend ? TextDecoration.underline : TextDecoration.none,
           ),

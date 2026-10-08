@@ -101,6 +101,7 @@ flutter:
 # App launcher icon (was completely missing — this is why the project icon
 # was showing the default Flutter icon instead of your logo).
 # Run: dart run flutter_launcher_icons
+# dart run flutter_launcher_icons:generate -o
 # ─────────────────────────────────────────────────────────────────────────────
 flutter_launcher_icons:
   android: true
@@ -113,7 +114,7 @@ flutter_launcher_icons:
   # mask depending on the device launcher, so the foreground image has generous
   # transparent padding around the logo (logo ~58% of canvas width) so nothing
   # gets clipped — this was the root cause of the cropped-icon issue.
-  adaptive_icon_background: "#D4FEFD"
+  adaptive_icon_background: "#0C1511"
   adaptive_icon_foreground: "assets/images/adaptive_icon_foreground.png"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -126,8 +127,8 @@ flutter_launcher_icons:
 # Run: dart run flutter_native_splash:create
 # ─────────────────────────────────────────────────────────────────────────────
 flutter_native_splash:
-  color: "#D4FEFD"
-  color_dark: "#D4FEFD"
+  color: "#FBF7EC"
+  color_dark: "#0C1511"
 
   image: assets/images/splash.png
   image_dark: assets/images/splash.png

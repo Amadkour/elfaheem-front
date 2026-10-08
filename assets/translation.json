@@ -7529,6 +7529,18 @@
     "en": "Save",
     "ar": "وفّر"
   },
+  "plan_per_month": {
+    "en": "/ month",
+    "ar": "/ شهرياً"
+  },
+  "plan_total": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "plan_best_value": {
+    "en": "Best value",
+    "ar": "الأفضل قيمة"
+  },
   "choose_plan_title": {
     "en": "Choose your plan",
     "ar": "اختر مدة الاشتراك"
