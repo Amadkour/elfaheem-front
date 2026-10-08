@@ -180,135 +180,133 @@ class _View extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: 1200),
-              child: GridView.count(
-                crossAxisCount: MediaQuery.of(context).size.width > 1000
-                    ? 4
-                    : MediaQuery.of(context).size.width > 700
-                    ? 3
-                    : 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 1.35,
-                children: [
-                  card(
-                    Icons.school_rounded,
-                    'admin_students'.tr,
-                    '${o.i('students')}',
-                    c.primary,
-                    onTap: () => onOpenTab(1),
+          Container(
+            constraints: BoxConstraints(maxWidth: 1200),
+            child: GridView.count(
+              crossAxisCount: MediaQuery.of(context).size.width > 1000
+                  ? 4
+                  : MediaQuery.of(context).size.width > 700
+                  ? 3
+                  : 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.35,
+              children: [
+                card(
+                  Icons.school_rounded,
+                  'admin_students'.tr,
+                  '${o.i('students')}',
+                  c.primary,
+                  onTap: () => onOpenTab(1),
+                ),
+                card(
+                  Icons.person_pin_rounded,
+                  'admin_teachers'.tr,
+                  '${o.i('teachers')}',
+                  c.purple,
+                  onTap: () => onOpenTab(
+                    3,
+                  ), // Teachers is a tab of the shell now (was pushing a duplicate page)
+                ),
+                card(
+                  Icons.menu_book_rounded,
+                  'courses'.tr,
+                  '${o.i('courses')}',
+                  c.success,
+                  onTap: () => onOpenTab(2),
+                ),
+                card(
+                  Icons.public_rounded,
+                  'filter_published'.tr,
+                  '${o.i('published_courses')}',
+                  c.warning,
+                  onTap: () => onOpenTab(2),
+                ),
+                // Money cards: totals PER CURRENCY (never EGP + SAR added together); tap = full price breakdown.
+                card(
+                  Icons.payments_rounded,
+                  'admin_course_income_after_discounts'.tr,
+                  moneyByCurrency(o.byCurrency('income_by_currency')),
+                  c.success,
+                  onTap: () => showIncomeBreakdown(context),
+                ),
+                card(
+                  Icons.request_quote_rounded,
+                  'admin_collected_incl_fees'.tr,
+                  moneyByCurrency(o.byCurrency('collected_by_currency')),
+                  c.charcoal,
+                  onTap: () => showIncomeBreakdown(context),
+                ),
+                card(
+                  Icons.account_balance_rounded,
+                  'admin_platform_income'.tr,
+                  moneyByCurrency(o.byCurrency('platform_income_by_currency')),
+                  c.primary,
+                  onTap: () => showIncomeBreakdown(context),
+                ),
+                card(
+                  Icons.card_membership_rounded,
+                  'admin_subscription_income'.tr,
+                  moneyByCurrency(
+                    o.byCurrency('subscription_income_by_currency'),
                   ),
-                  card(
-                    Icons.person_pin_rounded,
-                    'admin_teachers'.tr,
-                    '${o.i('teachers')}',
-                    c.purple,
-                    onTap: () => onOpenTab(
-                      3,
-                    ), // Teachers is a tab of the shell now (was pushing a duplicate page)
-                  ),
-                  card(
-                    Icons.menu_book_rounded,
-                    'courses'.tr,
-                    '${o.i('courses')}',
-                    c.success,
-                    onTap: () => onOpenTab(2),
-                  ),
-                  card(
-                    Icons.public_rounded,
-                    'filter_published'.tr,
-                    '${o.i('published_courses')}',
-                    c.warning,
-                    onTap: () => onOpenTab(2),
-                  ),
-                  // Money cards: totals PER CURRENCY (never EGP + SAR added together); tap = full price breakdown.
-                  card(
-                    Icons.payments_rounded,
-                    'admin_course_income_after_discounts'.tr,
-                    moneyByCurrency(o.byCurrency('income_by_currency')),
-                    c.success,
-                    onTap: () => showIncomeBreakdown(context),
-                  ),
-                  card(
-                    Icons.request_quote_rounded,
-                    'admin_collected_incl_fees'.tr,
-                    moneyByCurrency(o.byCurrency('collected_by_currency')),
-                    c.charcoal,
-                    onTap: () => showIncomeBreakdown(context),
-                  ),
-                  card(
-                    Icons.account_balance_rounded,
-                    'admin_platform_income'.tr,
-                    moneyByCurrency(o.byCurrency('platform_income_by_currency')),
-                    c.primary,
-                    onTap: () => showIncomeBreakdown(context),
-                  ),
-                  card(
-                    Icons.card_membership_rounded,
-                    'admin_subscription_income'.tr,
-                    moneyByCurrency(
-                      o.byCurrency('subscription_income_by_currency'),
-                    ),
-                    c.purple,
-                    onTap: () => open(const AdminSubscriptionsPage()),
-                  ),
-                  card(
-                    Icons.pending_actions_rounded,
-                    'admin_pending_transfers'.tr,
-                    '${o.i('pending_transfers')}',
-                    c.danger,
-                    onTap: () => open(const TeacherTransfersScreen()),
-                  ),
-                  card(
-                    Icons.how_to_reg_rounded,
-                    'admin_active_enrolments'.tr,
-                    '${o.i('active_enrollments')}',
-                    c.primary,
-                    onTap: () => onOpenTab(1),
-                  ),
-                  card(
-                    Icons.undo_rounded,
-                    'admin_refunded'.tr,
-                    moneyByCurrency(o.byCurrency('refunded_by_currency')),
-                    c.warning,
-                    onTap: () => showIncomeBreakdown(context),
-                  ),
-                  // ── Counters that mirror the "More" tab ──
-                  card(
-                    Icons.account_balance_wallet_rounded,
-                    'admin_pending_payouts'.tr,
-                    '$pendingPayouts',
-                    c.danger,
-                    onTap: () async {
-                      final badge = context.read<AdminPendingPayoutsProvider>();
-                      await Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const AdminPayoutsPage(),
-                        ),
-                      );
-                      badge.refresh();
-                    },
-                  ),
-                  card(
-                    Icons.card_membership_rounded,
-                    'admin_active_subscribers'.tr,
-                    '${o.i('active_subscriptions')}',
-                    c.success,
-                    onTap: () => open(const AdminSubscriptionsPage()),
-                  ),
-                  card(
-                    Icons.hourglass_top_rounded,
-                    'admin_pending_subscriptions'.tr,
-                    '${o.i('pending_subscriptions')}',
-                    c.warning,
-                    onTap: () => open(const AdminSubscriptionsPage()),
-                  ),
-                ],
-              ),
+                  c.purple,
+                  onTap: () => open(const AdminSubscriptionsPage()),
+                ),
+                card(
+                  Icons.pending_actions_rounded,
+                  'admin_pending_transfers'.tr,
+                  '${o.i('pending_transfers')}',
+                  c.danger,
+                  onTap: () => open(const TeacherTransfersScreen()),
+                ),
+                card(
+                  Icons.how_to_reg_rounded,
+                  'admin_active_enrolments'.tr,
+                  '${o.i('active_enrollments')}',
+                  c.primary,
+                  onTap: () => onOpenTab(1),
+                ),
+                card(
+                  Icons.undo_rounded,
+                  'admin_refunded'.tr,
+                  moneyByCurrency(o.byCurrency('refunded_by_currency')),
+                  c.warning,
+                  onTap: () => showIncomeBreakdown(context),
+                ),
+                // ── Counters that mirror the "More" tab ──
+                card(
+                  Icons.account_balance_wallet_rounded,
+                  'admin_pending_payouts'.tr,
+                  '$pendingPayouts',
+                  c.danger,
+                  onTap: () async {
+                    final badge = context.read<AdminPendingPayoutsProvider>();
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const AdminPayoutsPage(),
+                      ),
+                    );
+                    badge.refresh();
+                  },
+                ),
+                card(
+                  Icons.card_membership_rounded,
+                  'admin_active_subscribers'.tr,
+                  '${o.i('active_subscriptions')}',
+                  c.success,
+                  onTap: () => open(const AdminSubscriptionsPage()),
+                ),
+                card(
+                  Icons.hourglass_top_rounded,
+                  'admin_pending_subscriptions'.tr,
+                  '${o.i('pending_subscriptions')}',
+                  c.warning,
+                  onTap: () => open(const AdminSubscriptionsPage()),
+                ),
+              ],
             ),
           ),
         ],
