@@ -7868,5 +7868,25 @@
   "egp_currency": {
     "en": "EGP",
     "ar": "ج.م"
+  },
+  "sender_phone_field": {
+    "en": "Sender Phone Number",
+    "ar": "رقم هاتف المُرسِل"
+  },
+  "bank_reference_field": {
+    "en": "Bank Transfer Reference Number",
+    "ar": "رقم مرجع التحويل"
+  },
+  "instapay_reference_field": {
+    "en": "InstaPay Transaction Number",
+    "ar": "رقم عملية إنستاباي"
+  },
+  "transfer_amount_below_min": {
+    "en": "The minimum transfer amount for this method is {amount}.",
+    "ar": "الحد الأدنى لمبلغ التحويل بهذه الطريقة هو {amount}."
+  },
+  "transfer_amount_above_max": {
+    "en": "The maximum transfer amount for this method is {amount}.",
+    "ar": "الحد الأقصى لمبلغ التحويل بهذه الطريقة هو {amount}."
   }
 }

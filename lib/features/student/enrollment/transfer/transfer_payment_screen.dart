@@ -111,6 +111,8 @@ class _TransferViewState extends State<_TransferView> {
 
   Future<void> _submit(TransferPaymentProvider p) async {
     if (!_formKey.currentState!.validate()) return;
+    final details = p.details;
+    if (details != null && _amountProblem(details.requirementsFor(p.isBankTransfer)) != null) return;
     final ok = await p.submit(
       senderName: _senderNameCtrl.text.trim(),
       senderPhone: _senderPhoneCtrl.text.trim(),
@@ -119,11 +121,31 @@ class _TransferViewState extends State<_TransferView> {
     if (ok && mounted) Navigator.of(context).pop(true);
   }
 
+  /// "Label *" when the admin made the field mandatory, "Label (optional)" otherwise.
+  String _fieldLabel(String key, bool required) =>
+      required ? '${key.tr} *' : '${key.tr} (${'optional'.tr})';
+
+  /// The amount the student has to transfer must be inside the admin's min / max for this method.
+  String? _amountProblem(TransferRequirements r) {
+    String money(double v) => '${v.toStringAsFixed(2)} ${widget.currencySymbol}';
+    final min = r.minAmount, max = r.maxAmount;
+    if (min != null && widget.amount < min) {
+      return 'transfer_amount_below_min'.tr.replaceAll('{amount}', money(min));
+    }
+    if (max != null && widget.amount > max) {
+      return 'transfer_amount_above_max'.tr.replaceAll('{amount}', money(max));
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<TransferPaymentProvider>();
     final c = context.colors;
     final d = p.details;
+    // What the ADMIN requires for the method the student picked (Admin → Payment methods).
+    final req = d?.requirementsFor(p.isBankTransfer) ?? const TransferRequirements();
+    final amountProblem = d == null ? null : _amountProblem(req);
 
     return EnrollScaffold(
       child: CenteredBody(
@@ -151,6 +173,10 @@ class _TransferViewState extends State<_TransferView> {
                         currencySymbol: widget.currencySymbol,
                       ),
                       const SizedBox(height: 16),
+                      if (amountProblem != null) ...[
+                        _AmountProblemBanner(message: amountProblem),
+                        const SizedBox(height: 16),
+                      ],
                       _TransferTimeWarningBanner(
                         remainingSeconds: _remainingSeconds,
                         totalSeconds: _warningDurationSeconds,
@@ -175,17 +201,24 @@ class _TransferViewState extends State<_TransferView> {
                         controller: _senderPhoneCtrl,
                         keyboardType: TextInputType.phone,
                         decoration: InputDecoration(
-                          labelText: 'sender_phone_label'.tr,
+                          labelText: _fieldLabel('sender_phone_field', req.requireSenderPhone),
                         ),
+                        validator: (v) => (req.requireSenderPhone && (v == null || v.trim().isEmpty))
+                            ? 'required'.tr
+                            : null,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _referenceCtrl,
                         decoration: InputDecoration(
-                          labelText: p.isBankTransfer
-                              ? 'bank_reference_label'.tr
-                              : 'instapay_reference_label'.tr,
+                          labelText: _fieldLabel(
+                            p.isBankTransfer ? 'bank_reference_field' : 'instapay_reference_field',
+                            req.requireTransferReference,
+                          ),
                         ),
+                        validator: (v) => (req.requireTransferReference && (v == null || v.trim().isEmpty))
+                            ? 'required'.tr
+                            : null,
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -214,11 +247,35 @@ class _TransferViewState extends State<_TransferView> {
             EnrollConfirmBar(
               label: 'submit_transfer_proof_btn'.tr,
               loading: p.step == TransferSubmitStep.submitting,
-              onTap: d == null ? null : () => _submit(p),
+              onTap: (d == null || amountProblem != null) ? null : () => _submit(p),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AmountProblemBanner extends StatelessWidget {
+  final String message;
+
+  const _AmountProblemBanner({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.danger.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.danger.withValues(alpha: .25)),
+      ),
+      child: Row(children: [
+        Icon(Icons.info_outline_rounded, color: c.danger, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text(message, style: c.caption.copyWith(color: c.danger, height: 1.5))),
+      ]),
     );
   }
 }
