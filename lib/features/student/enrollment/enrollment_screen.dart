@@ -7,15 +7,13 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../shared/payment/saved_methods_provider.dart';
-import '../../shared/payment/saved_payment_models.dart';
 import '../../shared/profile/course_instractor_profile.dart';
 import '../../student/models.dart';
 import 'enrollment_models.dart';
@@ -41,7 +39,6 @@ class EnrollmentScreen extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => EnrollmentProvider(course)..scheduleInitialLoad(),
         ),
-        ChangeNotifierProvider(create: (_) => SavedMethodsProvider()),
       ],
       child: const _EnrollView(),
     );
@@ -163,15 +160,15 @@ class _MethodStep extends StatelessWidget {
                   else if (enroll.isFree)
                     const _FreeCourseBanner()
                   else ...[
-                    const _PricePlanPicker(),
-                    const SizedBox(height: 20),
-                    const _PaymentMethodPicker(),
-                    const SizedBox(height: 20),
-                    FeeBreakdownCard(
-                      quote: quote,
-                      currencySymbol: enroll.currencySymbol,
-                    ),
-                  ],
+                      const _PricePlanPicker(),
+                      const SizedBox(height: 20),
+                      const _PaymentMethodPicker(),
+                      const SizedBox(height: 20),
+                      FeeBreakdownCard(
+                        quote: quote,
+                        currencySymbol: enroll.currencySymbol,
+                      ),
+                    ],
                 ],
               ),
             ),
@@ -179,7 +176,7 @@ class _MethodStep extends StatelessWidget {
           EnrollConfirmBar(
             label: label,
             loading: enroll.isLoading,
-            onTap: enroll.optionsLoaded ? () => enroll.confirm(context) : null,
+            onTap: enroll.canConfirm ? () => enroll.confirm(context) : null,
           ),
         ],
       ),
@@ -562,13 +559,13 @@ class _PlanTile extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: selected
               ? LinearGradient(
-                  colors: [
-                    c.primary.withValues(alpha: .10),
-                    c.primary.withValues(alpha: .03),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
+            colors: [
+              c.primary.withValues(alpha: .10),
+              c.primary.withValues(alpha: .03),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
               : null,
           color: selected ? null : c.cardBg,
           borderRadius: BorderRadius.circular(20),
@@ -578,12 +575,12 @@ class _PlanTile extends StatelessWidget {
           ),
           boxShadow: selected
               ? [
-                  BoxShadow(
-                    color: c.primary.withValues(alpha: .20),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ]
+            BoxShadow(
+              color: c.primary.withValues(alpha: .20),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ]
               : c.cardShadow,
         ),
         child: Column(
@@ -813,53 +810,105 @@ class _PaymentMethodPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    final c = context.colors;
+    final g = enroll.gateway;
+    // "New card" is selected only when neither a saved card nor a transfer method is.
+    final newCardSelected =
+        enroll.selectedCard == null && enroll.selectedManualMethod == null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _SectionHeader(icon: Icons.payment_rounded, title: 'payment_method'.tr),
         const SizedBox(height: 14),
-        // if (enroll.supportsSavedCards)
-        //   for (final card in cards)
-        //     _MethodTile(
-        //       selected: enroll.selectedCard?.id == card.id,
-        //       icon: Icons.credit_card_rounded,
-        //       iconColor: _brandColor(card.cardBrand),
-        //       title: card.displayTitle,
-        //       subtitle: '${card.cardBrand?.feeLabel ?? ''} رسوم المعالجة',
-        //       badge: card.isDefault ? 'افتراضية' : null,
-        //       onTap: () => enroll.selectSavedCard(card),
-        //     ),
-        if (!(enroll.gateway?.instapayEnabled ?? false))
-          _MethodTile(
-            selected: enroll.selectedCard == null,
-            icon: Icons.add_card_rounded,
-            iconColor: _kNewCardColor,
-            title: 'new_card_title'.tr,
-            subtitle: 'new_card_subtitle'.tr,
-            customBadge: const _SecureBadge(),
-            onTap: enroll.selectNewCard,
-          ),
-        if (enroll.gateway?.bankTransferEnabled ?? false)
-          _MethodTile(
-            selected: enroll.selectedManualMethod == 'bank_transfer',
-            icon: Icons.account_balance_rounded,
-            iconColor: const Color(0xFF2E7D32),
-            title: 'transfer_bank_title'.tr,
-            subtitle: 'bank_transfer_subtitle'.tr,
-            onTap: () => enroll.selectManualMethod('bank_transfer'),
-          ),
-        if (enroll.gateway?.instapayEnabled ?? false)
-          _MethodTile(
-            selected: enroll.selectedManualMethod == 'instapay',
-            icon: Icons.qr_code_2_rounded,
-            iconColor: const Color(0xFF6A1B9A),
-            title: 'transfer_instapay_title'.tr,
-            subtitle: 'instapay_subtitle'.tr,
-            onTap: () => enroll.selectManualMethod('instapay'),
-          ),
+        if (g == null || !g.anyMethodEnabled)
+          _NoMethodsNotice(onRetry: enroll.prepareMethodStep)
+        else ...[
+          // Saved cards exactly as the backend returned them (only while card payments are open).
+          for (final card in enroll.availableSavedCards)
+            _MethodTile(
+              selected: enroll.selectedCard?.id == card.id,
+              icon: Icons.credit_card_rounded,
+              iconColor: _brandColor(card.cardBrand?.apiKey),
+              title: card.displayTitle,
+              // Expiry, not CardBrand.feeLabel: that label is a hard-coded rate that drifts from the
+              // admin-managed fees. The real fee of the selected card is in the server-quoted breakdown below.
+              subtitle: card.displaySubtitle,
+              badge: card.isDefault ? 'default_card_badge'.tr : null,
+              onTap: () => enroll.selectSavedCard(card),
+            ),
+          if (g.cardEnabled)
+            _MethodTile(
+              selected: newCardSelected,
+              icon: Icons.add_card_rounded,
+              iconColor: _kNewCardColor,
+              title: 'new_card_title'.tr,
+              subtitle: 'new_card_subtitle'.tr,
+              customBadge: const _SecureBadge(),
+              onTap: enroll.selectNewCard,
+            ),
+          if (g.bankTransferEnabled)
+            _MethodTile(
+              selected: enroll.selectedManualMethod == 'bank_transfer',
+              icon: Icons.account_balance_rounded,
+              iconColor: const Color(0xFF2E7D32),
+              title: 'transfer_bank_title'.tr,
+              subtitle: 'bank_transfer_subtitle'.tr,
+              onTap: () => enroll.selectManualMethod('bank_transfer'),
+            ),
+          if (g.instapayEnabled)
+            _MethodTile(
+              selected: enroll.selectedManualMethod == 'instapay',
+              icon: Icons.qr_code_2_rounded,
+              iconColor: const Color(0xFF6A1B9A),
+              title: 'transfer_instapay_title'.tr,
+              subtitle: 'instapay_subtitle'.tr,
+              onTap: () => enroll.selectManualMethod('instapay'),
+            ),
+        ],
       ],
+    );
+  }
+}
+
+/// Tile colour per card network (falls back to the "new card" blue).
+Color _brandColor(String? apiKey) => switch (apiKey?.toLowerCase()) {
+  'mada' => const Color(0xFF0B8A4F),
+  'visa' => const Color(0xFF1A1F71),
+  'mastercard' || 'master' => const Color(0xFFEB001B),
+  'amex' || 'american_express' => const Color(0xFF2E77BB),
+  _ => _kNewCardColor,
+};
+
+/// Shown when the admin has closed every method (or the config could not be loaded).
+class _NoMethodsNotice extends StatelessWidget {
+  final Future<void> Function() onRetry;
+
+  const _NoMethodsNotice({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.divider),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.payments_outlined, size: 30, color: c.textLight),
+          const SizedBox(height: 10),
+          Text(
+            'payment_no_methods_available'.tr,
+            style: c.body.copyWith(height: 1.6),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          TextButton(onPressed: onRetry, child: Text('retry'.tr)),
+        ],
+      ),
     );
   }
 }
@@ -935,12 +984,12 @@ class _MethodTile extends StatelessWidget {
           ),
           boxShadow: selected
               ? [
-                  BoxShadow(
-                    color: c.primary.withValues(alpha: .14),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+            BoxShadow(
+              color: c.primary.withValues(alpha: .14),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ]
               : c.cardShadow,
         ),
         child: Row(
@@ -1016,10 +1065,10 @@ class _MethodTile extends StatelessWidget {
               ),
               child: selected
                   ? const Icon(
-                      Icons.check_rounded,
-                      size: 13,
-                      color: Colors.white,
-                    )
+                Icons.check_rounded,
+                size: 13,
+                color: Colors.white,
+              )
                   : null,
             ),
           ],

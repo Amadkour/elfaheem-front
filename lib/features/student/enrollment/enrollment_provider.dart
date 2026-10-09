@@ -17,12 +17,11 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:flutter_education_app/features/student/enrollment/transfer/transfer_payment_screen.dart';
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import '../../../config/app_config.dart';
-import '../../shared/payment/saved_payment_models.dart';
 import '../../student/models.dart';
 import 'checkout_pages.dart';
 import 'enrollment_models.dart';
@@ -36,6 +35,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   final CourseModel course;
 
   SavedPaymentMethod? _selectedCard; // null = "new card"
+  List<SavedPaymentMethod> _savedCards = const [];
   final Map<String, FeeQuote> _quotes = {}; // key: "<plan>|<fee method>"
 
   // ── Price plans ───────────────────────────────────────────────────────────
@@ -83,6 +83,24 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// Saved-card charging is Moyasar-only on the backend.
   bool get supportsSavedCards => gateway?.provider == 'moyasar';
 
+  /// Every card the backend returned for this student (GET /api/v1/payment-methods).
+  List<SavedPaymentMethod> get savedCards => _savedCards;
+
+  /// The cards the student can actually pick: card payments are open (admin switch) AND the
+  /// gateway can charge a saved token.
+  List<SavedPaymentMethod> get availableSavedCards =>
+      ((gateway?.cardEnabled ?? false) && supportsSavedCards) ? _savedCards : const [];
+
+  /// The picker has something selected that is still open → the confirm button may be used.
+  bool get canConfirm {
+    if (!_optionsLoaded) return false;
+    if (isFree) return true;
+    final g = gateway;
+    if (g == null) return false;
+    final manual = _selectedManualMethod;
+    return manual != null ? g.isEnabled(manual) : g.cardEnabled;
+  }
+
   bool get _usesMoyasarSdk => !kIsWeb && gateway?.provider == 'moyasar';
 
   /// The fee key the backend will use for this flow (must match its rules):
@@ -113,11 +131,62 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// Everything the method picker needs: gateway config, the course's plans
   /// and the fee quote. Safe to call again (e.g. after "send payment again").
   Future<void> prepareMethodStep() async {
-    await loadGatewayConfig();
-    // InstaPay is the default only when the server actually offers it.
-    _selectedManualMethod = (gateway?.instapayEnabled ?? false) ? 'instapay' : null;
+    // course_id → the server applies THIS course's gateway + the methods the admin left open for it.
+    await loadGatewayConfig(courseId: course.id);
+    if ((gateway?.cardEnabled ?? false) && supportsSavedCards) {
+      await loadSavedCards();
+    } else {
+      _savedCards = const [];
+    }
+    _ensureValidSelection();
     if (!_optionsLoaded) await loadPriceOptions();
     await ensureQuote();
+  }
+
+  /// GET /api/v1/payment-methods → ALL the student's saved methods (cards and bank accounts);
+  /// only the cards matter here. A failed call just means "no saved cards".
+  Future<void> loadSavedCards() async {
+    final raw = await run(() async => api.get('/api/v1/payment-methods'));
+    final cards = <SavedPaymentMethod>[];
+    if (raw is List) {
+      for (final item in raw) {
+        final j = asJsonMap(item);
+        if (j == null) continue;
+        try {
+          final m = SavedPaymentMethod.fromJson(j);
+          if (m.isCard) cards.add(m);
+        } catch (e) {
+          debugPrint('Skipped an unreadable saved card: $e');
+        }
+      }
+    }
+    _savedCards = cards;
+    safeNotify();
+  }
+
+  /// Keeps the student's choice while it is still open; otherwise falls back to the first open
+  /// method (new card → InstaPay → bank transfer). Runs after every config reload, because the
+  /// admin can close a method at any time.
+  void _ensureValidSelection() {
+    final g = gateway;
+    if (g == null) return;
+    final manual = _selectedManualMethod;
+    final card = _selectedCard;
+    final stillOpen = manual != null
+        ? g.isEnabled(manual)
+        : card != null
+        ? g.cardEnabled && supportsSavedCards && _savedCards.any((c) => c.id == card.id)
+        : g.cardEnabled;
+    if (stillOpen) return;
+
+    _selectedCard = null;
+    _selectedManualMethod = g.cardEnabled
+        ? null // new card
+        : g.instapayEnabled
+        ? 'instapay'
+        : g.bankTransferEnabled
+        ? 'bank_transfer'
+        : null;
   }
 
   /// GET /api/v1/payments/price-options — the plans this course sells.
@@ -204,8 +273,9 @@ class EnrollmentProvider extends PaymentFlowProvider {
     _pendingIsManualReview = false;
     _manualTransferRejected = false;
     super.backToMethod();
-    // Arriving here from a pending/rejected transfer skipped the normal load.
-    if (!_optionsLoaded) prepareMethodStep();
+    // Re-read what the admin has switched on/off (it can change at any time). This also covers
+    // arriving here from a pending/rejected transfer, which skipped the normal load.
+    prepareMethodStep();
   }
 
   Future<FeeQuote?> ensureQuote() async {
@@ -257,6 +327,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   Future<void> confirm(BuildContext context) async {
     if (isLoading || !_optionsLoaded) return;
     if (isFree) return _enrollFree();
+    if (!canConfirm) return; // nothing selectable (e.g. the admin just closed the chosen method)
 
     final manual = _selectedManualMethod;
     if (manual != null) return _startManualTransfer(context, manual);
@@ -268,6 +339,12 @@ class EnrollmentProvider extends PaymentFlowProvider {
   }
 
   Future<void> _startManualTransfer(BuildContext context, String method) async {
+    // The admin may have closed this method since the picker was drawn → refresh instead of sending
+    // the student to a form the server will refuse.
+    if (gateway?.isEnabled(method) != true) {
+      await prepareMethodStep();
+      return;
+    }
     // The request carries the TOTAL (plan price + platform fee + VAT + this
     // method's fee) — the same number the server computes and the teacher sees.
     final fees = await ensureQuote();

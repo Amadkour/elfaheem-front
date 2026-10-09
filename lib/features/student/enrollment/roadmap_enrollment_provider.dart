@@ -24,6 +24,10 @@ class RoadmapEnrollmentProvider extends PaymentFlowProvider {
   bool get loadFailed => _loadFailed;
   bool get isLoadingQuote => _quote == null && !_loadFailed;
 
+  /// A roadmap is always paid through the hosted CARD checkout, so it needs card payments open.
+  /// (Unknown config → don't block; the server enforces it anyway.)
+  bool get cardAvailable => gateway?.cardEnabled ?? true;
+
   /// Call from the provider's `create:` — runs after the first frame.
   void scheduleLoad() => Future.microtask(load);
 
@@ -31,7 +35,7 @@ class RoadmapEnrollmentProvider extends PaymentFlowProvider {
     _loadFailed = false;
     safeNotify();
 
-    await loadGatewayConfig();
+    await loadGatewayConfig(courseId: courseId);
     final json = asJsonMap(await run(() async => api.get(
         '/api/v1/payments/roadmap/$courseId/quote?payment_method=creditcard')));
 
@@ -46,6 +50,7 @@ class RoadmapEnrollmentProvider extends PaymentFlowProvider {
   Future<void> confirm(BuildContext context) async {
     final q = _quote;
     if (isLoading || q == null || q.nothingToDo) return;
+    if (q.payableCount > 0 && !cardAvailable) return; // admin closed card payments
     await openHostedCheckout(context, '/api/v1/payments/roadmap/$courseId/checkout');
   }
 }

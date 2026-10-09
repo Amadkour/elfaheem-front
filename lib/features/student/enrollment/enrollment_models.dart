@@ -38,11 +38,18 @@ class GatewayConfig {
     ],
   );
 
-  // bool get bankTransferEnabled =>
-  //     paymentMethods.any((m) => m.type == 'bank_transfer' && m.enabled);
-  bool get bankTransferEnabled =>false;
-  bool get instapayEnabled =>
-      paymentMethods.any((m) => m.type == 'instapay' && m.enabled);
+  /// True when the admin has this method switched on (Admin → Payment methods).
+  /// The server already applies the per-course restriction and the InstaPay = EGP-only rule,
+  /// so the app never decides this on its own.
+  bool isEnabled(String type) =>
+      paymentMethods.any((m) => m.type == type && m.enabled);
+
+  bool get cardEnabled => isEnabled('card');
+  bool get bankTransferEnabled => isEnabled('bank_transfer');
+  bool get instapayEnabled => isEnabled('instapay');
+
+  /// At least one way to pay is open.
+  bool get anyMethodEnabled => cardEnabled || bankTransferEnabled || instapayEnabled;
 }
 
 /// A plan a course is sold in. Keys match the backend: monthly | six_months | yearly.
@@ -274,8 +281,7 @@ class TransferMethodDetails {
       isBankTransfer ? bankRequirements : instapayRequirements;
 
   factory TransferMethodDetails.fromJson(Map<String, dynamic> j) => TransferMethodDetails(
-    // bankTransferEnabled: j['bank_transfer_enabled'] == true,
-    bankTransferEnabled: false,
+    bankTransferEnabled: j['bank_transfer_enabled'] == true,
     bankName: j['bank_name'] as String?,
     accountName: j['account_name'] as String?,
     iban: j['iban'] as String?,

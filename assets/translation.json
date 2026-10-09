@@ -7848,5 +7848,25 @@
   "payment_failed_try_other_method": {
     "en": "Payment failed. Try another payment method.",
     "ar": "فشلت عملية الدفع. جرّب طريقة دفع أخرى."
+  },
+  "card_processing_fee": {
+    "en": "{fee} processing fee",
+    "ar": "{fee} رسوم المعالجة"
+  },
+  "payment_no_methods_available": {
+    "en": "No payment method is available right now. Please try again later.",
+    "ar": "لا توجد طريقة دفع متاحة حالياً. حاول مرة أخرى لاحقاً."
+  },
+  "roadmap_card_unavailable": {
+    "en": "Card payments are currently unavailable, so the paid courses in this roadmap can't be purchased right now.",
+    "ar": "الدفع بالبطاقة غير متاح حالياً، لذلك لا يمكن شراء الكورسات المدفوعة في هذا المسار الآن."
+  },
+  "brand_mada": {
+    "en": "Mada",
+    "ar": "مدى"
+  },
+  "egp_currency": {
+    "en": "EGP",
+    "ar": "ج.م"
   }
 }

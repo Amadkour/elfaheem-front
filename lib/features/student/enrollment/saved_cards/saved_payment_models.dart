@@ -1,6 +1,7 @@
 /// saved_payment_models.dart
 /// Models: SavedPaymentMethod · FeeBreakdown · PaymentMethod enum
 library;
+import '../../../../config/app_config.dart';
 
 // ── Enums ─────────────────────────────────────────────────────────────────────
 
@@ -11,13 +12,13 @@ enum CardBrand { mada, visa, mastercard, applePay, stcPay,paymob, unknown }
 extension CardBrandX on CardBrand {
   String get label {
     switch (this) {
-      case CardBrand.mada:       return 'مدى';
+      case CardBrand.mada:       return 'brand_mada'.tr;
       case CardBrand.paymob:       return 'paymob';
       case CardBrand.visa:       return 'Visa';
       case CardBrand.mastercard: return 'Mastercard';
       case CardBrand.applePay:   return 'Apple Pay';
       case CardBrand.stcPay:     return 'STC Pay';
-      case CardBrand.unknown:    return 'بطاقة';
+      case CardBrand.unknown:    return 'card_label'.tr;
     }
   }
 
@@ -36,10 +37,10 @@ extension CardBrandX on CardBrand {
   /// Moyasar fee label for display
   String get feeLabel {
     switch (this) {
-      case CardBrand.mada:   return '1.9% + 1 ر.س';
-      case CardBrand.paymob:   return '3% + 3 ج';
-      case CardBrand.stcPay: return '2.5% + 1 ر.س';
-      default:               return '2.9% + 1 ر.س';
+      case CardBrand.mada:   return '1.9% + 1 ${'sar_currency'.tr}';
+      case CardBrand.paymob: return '3% + 3 ${'egp_currency'.tr}';
+      case CardBrand.stcPay: return '2.5% + 1 ${'sar_currency'.tr}';
+      default:               return '2.9% + 1 ${'sar_currency'.tr}';
     }
   }
 
@@ -50,6 +51,7 @@ extension CardBrandX on CardBrand {
       case 'mastercard':  return CardBrand.mastercard;
       case 'apple_pay':   return CardBrand.applePay;
       case 'stc_pay':     return CardBrand.stcPay;
+      case 'paymob':      return CardBrand.paymob;
       default:            return CardBrand.unknown;
     }
   }
@@ -122,13 +124,13 @@ class SavedPaymentMethod {
   /// Short display string for the picker
   String get displayTitle {
     if (isCard) {
-      return '${cardBrand?.label ?? 'بطاقة'} •••• ${cardLast4 ?? ''}';
+      return '${cardBrand?.label ?? 'card_label'.tr} •••• ${cardLast4 ?? ''}';
     }
-    return '${bankName ?? 'بنك'} — ${_ibanTail(iban)}';
+    return '${bankName ?? 'sub_bank'.tr} — ${_ibanTail(iban)}';
   }
 
   String get displaySubtitle {
-    if (isCard) return 'ينتهي $cardExpiryMonth/$cardExpiryYear';
+    if (isCard) return '${'expires_label'.tr} $cardExpiryMonth/$cardExpiryYear';
     return accountName ?? '';
   }
 

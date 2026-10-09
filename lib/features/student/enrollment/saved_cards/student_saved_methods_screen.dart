@@ -505,10 +505,10 @@ class _MoyasarNotice extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           // Fee table
-          _FeeRow(brand: 'مدى',         fee: '1.9% + 1 ر.س', isLowest: true),
-          _FeeRow(brand: 'STC Pay',     fee: '2.5% + 1 ر.س'),
-          _FeeRow(brand: 'Visa / MC',   fee: '2.9% + 1 ر.س'),
-          _FeeRow(brand: 'Apple Pay',   fee: '2.9% + 1 ر.س'),
+          _FeeRow(brand: 'brand_mada'.tr, fee: '1.9% + 1 ${'sar_currency'.tr}', isLowest: true),
+          _FeeRow(brand: 'STC Pay',       fee: '2.5% + 1 ${'sar_currency'.tr}'),
+          _FeeRow(brand: 'Visa / MC',     fee: '2.9% + 1 ${'sar_currency'.tr}'),
+          _FeeRow(brand: 'Apple Pay',     fee: '2.9% + 1 ${'sar_currency'.tr}'),
           const SizedBox(height: 8),
           Text(
             'moyasar_card_save_notice'.tr,

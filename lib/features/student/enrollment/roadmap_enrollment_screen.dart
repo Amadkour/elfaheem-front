@@ -92,6 +92,8 @@ class _RoadmapBody extends StatelessWidget {
     final quote = p.quote;
     final c = context.colors;
     final wide = isWideLayout(context);
+    // Paid courses in the bundle + card payments closed by the admin → can't check out.
+    final blocked = quote != null && quote.payableCount > 0 && !p.cardAvailable;
 
     Widget content;
     if (p.loadFailed) {
@@ -110,6 +112,10 @@ class _RoadmapBody extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(wide ? 32 : 20, 12, wide ? 32 : 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           ParentComponent(featureKey: 'roadmap_enroll.intro', child: _Intro(courseName: courseName, quote: quote)),
+          if (blocked) ...[
+            const SizedBox(height: 12),
+            const _CardUnavailableBanner(),
+          ],
           const SizedBox(height: 20),
           for (var i = 0; i < quote.items.length; i++)
             ParentComponent(
@@ -139,7 +145,7 @@ class _RoadmapBody extends StatelessWidget {
           EnrollConfirmBar(
             label: _label(quote, p.currencySymbol),
             loading: p.isLoading,
-            onTap: quote.nothingToDo ? null : () => p.confirm(context),
+            onTap: (quote.nothingToDo || blocked) ? null : () => p.confirm(context),
           ),
       ]),
     );
@@ -150,6 +156,28 @@ class _RoadmapBody extends StatelessWidget {
     final fees = q.fees;
     if (fees == null) return '${'roadmap_enroll_free_prefix'.tr} ${q.freeCount} ${'roadmap_course_unit'.tr}';
     return '${'roadmap_enroll_and_pay'.tr} ${fees.fmt(fees.total)} $symbol';
+  }
+}
+
+class _CardUnavailableBanner extends StatelessWidget {
+  const _CardUnavailableBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.danger.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: c.danger.withValues(alpha: .25)),
+      ),
+      child: Row(children: [
+        Icon(Icons.info_outline_rounded, color: c.danger, size: 20),
+        const SizedBox(width: 10),
+        Expanded(child: Text('roadmap_card_unavailable'.tr, style: c.caption.copyWith(height: 1.5))),
+      ]),
+    );
   }
 }
 

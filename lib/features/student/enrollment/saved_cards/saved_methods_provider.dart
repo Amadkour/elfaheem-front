@@ -23,8 +23,14 @@ class SavedMethodsProvider extends BaseProvider {
   List<SavedPaymentMethod> get bankAccounts =>
       _methods.where((m) => m.isBankAccount).toList();
 
-  SavedPaymentMethod? get defaultCard =>
-      cards.firstWhere((m) => m.isDefault, orElse: () => cards.isNotEmpty ? cards.first : throw StateError(''));
+  /// The default card, else the newest one, else null (it used to THROW when there was no card).
+  SavedPaymentMethod? get defaultCard {
+    final list = cards;
+    for (final m in list) {
+      if (m.isDefault) return m;
+    }
+    return list.isNotEmpty ? list.first : null;
+  }
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
 

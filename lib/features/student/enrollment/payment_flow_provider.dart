@@ -57,8 +57,12 @@ abstract class PaymentFlowProvider extends BaseProvider {
 
   // ── Config ────────────────────────────────────────────────────────────────
 
-  Future<void> loadGatewayConfig() async {
-    final json = asJsonMap(await run(() async => api.get('/api/v1/config')));
+  /// Pass [courseId] so the server applies that course's own gateway and allowed methods
+  /// (without it you get the global settings, and a method the admin closed for this course
+  /// would still be offered).
+  Future<void> loadGatewayConfig({Object? courseId}) async {
+    final path = courseId == null ? '/api/v1/config' : '/api/v1/config?course_id=$courseId';
+    final json = asJsonMap(await run(() async => api.get(path)));
     if (json == null) return;
     _gateway = GatewayConfig.fromJson(json);
     safeNotify();
