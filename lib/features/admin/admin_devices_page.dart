@@ -21,9 +21,9 @@ class AdminDevicesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (_) => AdminSettingsProvider()..load(),
-        child: const _View(),
-      );
+    create: (_) => AdminSettingsProvider()..load(),
+    child: const _View(),
+  );
 }
 
 class _View extends StatefulWidget {
@@ -38,6 +38,7 @@ class _ViewState extends State<_View> {
   final _videos = TextEditingController();
   final _days = TextEditingController();
   bool _filled = false;
+  bool _allowResub = true;
   bool _busy = false;
 
   @override
@@ -54,6 +55,7 @@ class _ViewState extends State<_View> {
     _devices.text = '${s.maxDevices}';
     _videos.text = '${s.maxVideos}';
     _days.text = '${s.switchDays}';
+    _allowResub = s.allowResubscribe;
   }
 
   Future<void> _save(AdminSettingsProvider s) async {
@@ -78,6 +80,7 @@ class _ViewState extends State<_View> {
       'max_devices': dev,
       'device_switch_days': days,
       'max_monthly_view': videos,
+      'allow_resubscribe': _allowResub,
     });
     if (mounted) setState(() => _busy = false);
   }
@@ -116,6 +119,21 @@ class _ViewState extends State<_View> {
             ),
           ]),
         ),
+        Section(
+          title: 'admin_resubscribe_section'.tr,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('admin_global_allow_resubscribe'.tr,
+                  style: const TextStyle(fontFamily: 'tajawal')),
+              subtitle: Text('admin_global_allow_resubscribe_hint'.tr,
+                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5)),
+              value: _allowResub,
+              activeTrackColor: c.primary,
+              onChanged: (v) => setState(() => _allowResub = v),
+            ),
+          ]),
+        ),
         PrimaryButton(label: 'admin_save_settings'.tr, isLoading: _busy, onPressed: () => _save(s)),
       ]);
     }
@@ -123,7 +141,7 @@ class _ViewState extends State<_View> {
     return BasePage(
       useWebCard: true,
       maxWith: 900,
-      appBar: ScreenAppBar(title: 'admin_devices_title'.tr),
+      appBar: ScreenAppBar(title: 'admin_devices'.tr),
       child: body,
     );
   }

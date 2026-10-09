@@ -2,6 +2,8 @@
 // per-course payment provider / allowed methods / platform fee.
 library;
 
+import 'dart:math' show Random;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -314,6 +316,7 @@ class _CourseDetail extends StatefulWidget {
 
 class _CourseDetailState extends State<_CourseDetail> {
   AdminCourse? course;
+  Map<String, dynamic> raw = {};
   bool loading = true;
 
   // payment-settings form
@@ -337,9 +340,11 @@ class _CourseDetailState extends State<_CourseDetail> {
 
   Future<void> _load() async {
     final r = await context.read<AdminCoursesProvider>().detail(widget.id);
+    final rawMap = await context.read<AdminCoursesProvider>().detailRaw(widget.id);
     if (!mounted) return;
     setState(() {
       course = r;
+      raw = rawMap ?? {};
       loading = false;
       if (r != null) {
         provider = r.paymentSettings.provider;
@@ -351,6 +356,65 @@ class _CourseDetailState extends State<_CourseDetail> {
         _fee.text = r.paymentSettings.feePercent?.toString() ?? '';
       }
     });
+  }
+
+  String _randomCode() {
+    final r = Random.secure();
+    return List.generate(6, (_) => r.nextInt(10)).join();
+  }
+
+  Future<void> _changeCode(int id) async {
+    final ctrl = TextEditingController(text: (raw['access_code'] ?? '').toString());
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => Directionality(
+          textDirection: dir,
+          child: AlertDialog(
+            title: Text('admin_change_access_code'.tr,
+                style: const TextStyle(fontFamily: 'tajawal')),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Field(
+                  controller: ctrl,
+                  label: 'admin_access_code_hint'.tr,
+                  keyboard: TextInputType.number,
+                ),
+                TextButton.icon(
+                  onPressed: () => setS(() => ctrl.text = _randomCode()),
+                  icon: const Icon(Icons.casino_rounded, size: 18),
+                  label: Text('admin_generate_code'.tr),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text('exam_cancel'.tr),
+              ),
+              TextButton(
+                onPressed: () {
+                  if (!RegExp(r'^\d{6}$').hasMatch(ctrl.text.trim())) {
+                    toast('admin_code_6_digits'.tr, error: true);
+                    return;
+                  }
+                  Navigator.pop(ctx, true);
+                },
+                child: Text('save'.tr),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final code = ctrl.text.trim();
+    disposeAfterRoute([ctrl]);
+    if (ok == true && mounted) {
+      if (await context.read<AdminCoursesProvider>().update(id, {'access_code': code})) {
+        await _load();
+      }
+    }
   }
 
   Future<void> _savePayment() async {
@@ -445,6 +509,57 @@ class _CourseDetailState extends State<_CourseDetail> {
                     KeyValue(
                       'admin_effective_platform_fee'.tr,
                       '${co.paymentSettings.effectiveFeePercent}%',
+                    ),
+                  ],
+                ),
+              ),
+              Section(
+                title: 'admin_access_and_resubscribe'.tr,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'admin_private_course'.tr,
+                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 14),
+                      ),
+                      value: raw['is_private'] == true,
+                      activeTrackColor: c.primary,
+                      onChanged: (v) async {
+                        if (await p.update(co.id, {'is_private': v})) await _load();
+                      },
+                    ),
+                    if (raw['is_private'] == true) ...[
+                      KeyValue('admin_access_code'.tr,
+                          (raw['access_code'] ?? '—').toString()),
+                      Row(
+                        children: [
+                          OutlineButton(
+                            label: 'admin_change_access_code'.tr,
+                            color: c.primary,
+                            icon: Icons.password_rounded,
+                            onPressed: () => _changeCode(co.id),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        'admin_allow_resubscribe'.tr,
+                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        'admin_allow_resubscribe_hint'.tr,
+                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5),
+                      ),
+                      value: raw['allow_resubscribe'] != false,
+                      activeTrackColor: c.primary,
+                      onChanged: (v) async {
+                        if (await p.update(co.id, {'allow_resubscribe': v})) await _load();
+                      },
                     ),
                   ],
                 ),

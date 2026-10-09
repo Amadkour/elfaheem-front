@@ -8048,5 +8048,41 @@
   "admin_allow_resubscribe_hint": {
     "en": "When off, students can't buy again after their plan ends",
     "ar": "عند الإيقاف لا يستطيع الطالب الشراء مجدداً بعد انتهاء اشتراكه"
+  },
+  "admin_resubscribe_section": {
+    "en": "Resubscribe",
+    "ar": "إعادة الاشتراك"
+  },
+  "admin_global_allow_resubscribe": {
+    "en": "Allow resubscribe for all users",
+    "ar": "السماح بإعادة الاشتراك لجميع المستخدمين"
+  },
+  "admin_global_allow_resubscribe_hint": {
+    "en": "When off, no student can buy a course again after it ended or was dropped (overrides every course).",
+    "ar": "عند الإيقاف لا يستطيع أي طالب شراء كورس مرة أخرى بعد انتهائه أو إلغائه (يسري على كل الكورسات)."
+  },
+  "admin_access_and_resubscribe": {
+    "en": "Access & resubscribe",
+    "ar": "الوصول وإعادة الاشتراك"
+  },
+  "admin_access_code": {
+    "en": "Access code",
+    "ar": "كود الدخول"
+  },
+  "admin_change_access_code": {
+    "en": "Change access code",
+    "ar": "تغيير كود الدخول"
+  },
+  "admin_generate_code": {
+    "en": "Generate random code",
+    "ar": "توليد كود عشوائي"
+  },
+  "admin_resubscribe_allow_payment": {
+    "en": "Let the student pay again",
+    "ar": "السماح للطالب بالدفع مرة أخرى"
+  },
+  "admin_resubscribe_reopen": {
+    "en": "Re-activate now (no payment)",
+    "ar": "إعادة التفعيل الآن (بدون دفع)"
   }
 }

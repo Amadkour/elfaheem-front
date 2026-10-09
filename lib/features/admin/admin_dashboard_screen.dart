@@ -389,21 +389,7 @@ class _MorePageState extends State<_MorePage> {
                           ),
                         ),
                       ),
-                      ParentComponent(
-                        featureKey: 'profile.payment',
-                        child: TileCountOverlay(
-                          count: context.select<TeacherTransfersProvider, int>(
-                                (p) => p.total,
-                          ),
-                          child: SettingsTile(
-                            icon: CupertinoIcons.creditcard,
-                            iconBg: c.successTint,
-                            iconColor: c.success,
-                            label: 'apm_title'.tr,
-                            onTap: () => _push(const AdminPaymentsPage()),
-                          ),
-                        ),
-                      ),
+
                       SettingsTile(
                         icon: Icons.card_membership_rounded,
                         iconBg: c.warning.withAlpha(50),
@@ -411,19 +397,22 @@ class _MorePageState extends State<_MorePage> {
                         label: 'subscriptions'.tr,
                         onTap: () => _push(const AdminSubscriptionsPage()),
                       ),
+                      ParentComponent(
+                        featureKey: 'profile.payment',
+                        child:  SettingsTile(
+                            icon: CupertinoIcons.creditcard,
+                            iconBg: c.successTint,
+                            iconColor: c.success,
+                            label: 'apm_title'.tr,
+                            onTap: () => _push(const AdminPaymentsPage()),
+                          ),
+                      ),
                       SettingsTile(
                         icon: Icons.devices_rounded,
                         iconBg: c.danger.withAlpha(50),
                         iconColor: c.danger,
-                        label: 'admin_devices_title'.tr,
+                        label: 'admin_devices'.tr,
                         onTap: () => _push(const AdminDevicesPage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.account_balance_wallet_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'admin_payments'.tr,
-                        onTap: () => _push(const AdminPaymentsPage()),
                       ),
                     ],
                   ),

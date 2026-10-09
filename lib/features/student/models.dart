@@ -459,6 +459,7 @@ class CourseSummary with DiscountInfo {
 
 class CourseModel with DiscountInfo {
   final bool isPrivate;                                   // field
+  final bool allowResubscribe;                            // admin switch: repeat purchase allowed
   final String id, imageUrl, type;
   final CategoryModel? category;
   @override
@@ -501,6 +502,7 @@ class CourseModel with DiscountInfo {
 
   CourseModel({
     this.isPrivate = false,                                 // constructor
+    this.allowResubscribe = true,
     required this.id,
     required this.imageUrl,
     required this.price,
@@ -569,6 +571,7 @@ class CourseModel with DiscountInfo {
     id: j['id'].toString(),
     imageUrl: j['image_url'] as String? ?? '',
     isPrivate: j['is_private'] as bool? ?? false,
+    allowResubscribe: j['allow_resubscribe'] as bool? ?? true,
     category: j['category'] != null
         ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
         : null,

@@ -98,7 +98,7 @@ class _UsersView extends StatelessWidget {
 
     final fab =  FloatingActionButton.extended(
       heroTag: "users_float",
-        key: ValueKey("users_float"),
+      key: ValueKey("users_float"),
       backgroundColor: c.primary,
       onPressed: () => _openForm(context, p),
       icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
@@ -116,8 +116,8 @@ class _UsersView extends StatelessWidget {
       appBar: embedded
           ? null
           : ScreenAppBar(
-              title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-            ),
+        title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
+      ),
       floatingActionButton: fab,
       child: list,
     );
@@ -192,13 +192,13 @@ class _UserTile extends StatelessWidget {
                         u.hasActiveSubscription
                             ? 'admin_subscribed'.tr
                             : (sub?.status == 'pending'
-                                  ? 'admin_sub_pending'.tr
-                                  : 'admin_no_sub'.tr),
+                            ? 'admin_sub_pending'.tr
+                            : 'admin_no_sub'.tr),
                         u.hasActiveSubscription
                             ? c.success
                             : (sub?.status == 'pending'
-                                  ? c.warning
-                                  : c.textLight),
+                            ? c.warning
+                            : c.textLight),
                       ),
                     if (isStudent)
                       StatusChip(
@@ -240,13 +240,13 @@ class _UserTile extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openDetail(
-  BuildContext context,
-  AdminUsersProvider p,
-  int id,
-) async {
+    BuildContext context,
+    AdminUsersProvider p,
+    int id,
+    ) async {
   await showAdminSheet(
     context,
-    (ctx) => ChangeNotifierProvider.value(
+        (ctx) => ChangeNotifierProvider.value(
       value: p,
       child: _UserDetailSheet(userId: id),
     ),
@@ -329,8 +329,8 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                       u.pendingDeletion
                           ? 'admin_pending_deletion'.tr
                           : (u.isActive
-                                ? 'exam_status_active'.tr
-                                : 'admin_inactive'.tr),
+                          ? 'exam_status_active'.tr
+                          : 'admin_inactive'.tr),
                     ),
                     KeyValue('admin_joined'.tr, shortDate(u.createdAt)),
                     KeyValue('admin_last_login'.tr, shortDateTime(u.lastLogin)),
@@ -484,10 +484,10 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
   }
 
   List<Widget> _studentSections(
-    BuildContext context,
-    AdminUsersProvider p,
-    AdminUser u,
-  ) {
+      BuildContext context,
+      AdminUsersProvider p,
+      AdminUser u,
+      ) {
     final c = context.colors;
     final sub = d!.subscriptions.isEmpty ? null : d!.subscriptions.first;
 
@@ -504,18 +504,18 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         ),
         child: sub == null
             ? Text(
-                'admin_no_subscription'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-              )
+          'admin_no_subscription'.tr,
+          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+        )
             : Column(
-                children: [
-                  KeyValue('status'.tr, subscriptionStatusLabel(sub.status)),
-                  KeyValue('admin_plan'.tr, planLabel(sub.planCode)),
-                  KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
-                  KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
-                  KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
-                ],
-              ),
+          children: [
+            KeyValue('status'.tr, subscriptionStatusLabel(sub.status)),
+            KeyValue('admin_plan'.tr, planLabel(sub.planCode)),
+            KeyValue('admin_from'.tr, shortDate(sub.startsAt)),
+            KeyValue('admin_until'.tr, shortDate(sub.endsAt)),
+            KeyValue('admin_amount'.tr, money(sub.amount, sub.currency)),
+          ],
+        ),
       ),
       Section(
         title: 'admin_subscribed_courses'.tr,
@@ -529,126 +529,146 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         ),
         child: d!.enrollments.isEmpty
             ? Text(
-                'admin_no_courses'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-              )
+          'admin_no_courses'.tr,
+          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+        )
             : Column(
-                children: [
-                  for (final e in d!.enrollments)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              asStr(e['course_name']),
-                              style: TextStyle(
-                                fontFamily: 'tajawal',
-                                color: c.textDark,
-                              ),
-                            ),
-                          ),
-                          StatusChip(
-                            enrollmentStatusLabel(asStr(e['status'])),
-                            asStr(e['status']) == 'active'
-                                ? c.success
-                                : (asStr(e['status']) == 'dropped'
-                                      ? c.danger
-                                      : c.warning),
-                          ),
-                          if (asStr(e['status']) != 'dropped')
-                            IconButton(
-                              tooltip: 'admin_remove'.tr,
-                              icon: Icon(
-                                Icons.remove_circle_outline_rounded,
-                                color: c.danger,
-                                size: 20,
-                              ),
-                              onPressed: () async {
-                                final ok = await confirm(
-                                  context,
-                                  message:
-                                      'admin_remove_the_student_from_this_course'
-                                          .tr,
-                                  danger: true,
-                                );
-                                if (!ok) return;
-                                if (await p.unenroll(
-                                  u.id,
-                                  asInt(e['course_id']),
-                                ))
-                                  await _load();
-                              },
-                            ),
-                        ],
+          children: [
+            for (final e in d!.enrollments)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        asStr(e['course_name']),
+                        style: TextStyle(
+                          fontFamily: 'tajawal',
+                          color: c.textDark,
+                        ),
                       ),
                     ),
-                ],
+                    StatusChip(
+                      enrollmentStatusLabel(asStr(e['status'])),
+                      asStr(e['status']) == 'active'
+                          ? c.success
+                          : (asStr(e['status']) == 'dropped'
+                          ? c.danger
+                          : c.warning),
+                    ),
+                    if (e['can_resubscribe'] == true)
+                      IconButton(
+                        tooltip: 'admin_allow_resubscribe'.tr,
+                        icon: Icon(
+                          Icons.autorenew_rounded,
+                          color: c.success,
+                          size: 20,
+                        ),
+                        onPressed: () async {
+                          final mode = await _resubscribeDialog(context);
+                          if (mode == null) return;
+                          if (await p.allowResubscribe(
+                            u.id,
+                            asInt(e['course_id']),
+                            mode: mode,
+                          )) {
+                            await _load();
+                          }
+                        },
+                      ),
+                    if (asStr(e['status']) != 'dropped')
+                      IconButton(
+                        tooltip: 'admin_remove'.tr,
+                        icon: Icon(
+                          Icons.remove_circle_outline_rounded,
+                          color: c.danger,
+                          size: 20,
+                        ),
+                        onPressed: () async {
+                          final ok = await confirm(
+                            context,
+                            message:
+                            'admin_remove_the_student_from_this_course'
+                                .tr,
+                            danger: true,
+                          );
+                          if (!ok) return;
+                          if (await p.unenroll(
+                            u.id,
+                            asInt(e['course_id']),
+                          ))
+                            await _load();
+                        },
+                      ),
+                  ],
+                ),
               ),
+          ],
+        ),
       ),
       Section(
         title: 'admin_devices'.tr,
         trailing: d!.devices.isEmpty
             ? null
             : TextButton(
-                onPressed: () async {
-                  final ok = await confirm(
-                    context,
-                    message: 'admin_remove_all_devices_and_reset_the'.tr,
-                    danger: true,
-                  );
-                  if (!ok) return;
-                  if (await p.resetDevices(u.id)) await _load();
-                },
-                child: Text(
-                  'admin_reset_all'.tr,
-                  style: TextStyle(color: c.danger),
-                ),
-              ),
+          onPressed: () async {
+            final ok = await confirm(
+              context,
+              message: 'admin_remove_all_devices_and_reset_the'.tr,
+              danger: true,
+            );
+            if (!ok) return;
+            if (await p.resetDevices(u.id)) await _load();
+          },
+          child: Text(
+            'admin_reset_all'.tr,
+            style: TextStyle(color: c.danger),
+          ),
+        ),
         child: d!.devices.isEmpty
             ? Text(
-                'admin_no_registered_devices'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
-              )
+          'admin_no_registered_devices'.tr,
+          style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+        )
             : Column(
-                children: [
-                  for (final dev in d!.devices)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      leading: Icon(
-                        Icons.phone_android_rounded,
-                        color: c.primary,
-                      ),
-                      title: Text(
-                        dev.deviceName,
-                        style: const TextStyle(fontFamily: 'tajawal'),
-                      ),
-                      subtitle: Text(
-                        '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(
-                          Icons.delete_outline_rounded,
-                          color: c.danger,
-                          size: 20,
-                        ),
-                        onPressed: () async {
-                          if (await p.removeDevice(u.id, dev.id)) await _load();
-                        },
-                      ),
-                    ),
-                  if (d!.lastDeviceSwitchAt != null)
-                    KeyValue(
-                      'admin_last_switch'.tr,
-                      shortDate(d!.lastDeviceSwitchAt),
-                    ),
-                ],
+          children: [
+            for (final dev in d!.devices)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: Icon(
+                  Icons.phone_android_rounded,
+                  color: c.primary,
+                ),
+                title: Text(
+                  dev.deviceName,
+                  style: const TextStyle(fontFamily: 'tajawal'),
+                ),
+                subtitle: Text(
+                  '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
+                  style: const TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 11.5,
+                  ),
+                ),
+                trailing: IconButton(
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    color: c.danger,
+                    size: 20,
+                  ),
+                  onPressed: () async {
+                    if (await p.removeDevice(u.id, dev.id)) await _load();
+                  },
+                ),
               ),
+            if (d!.lastDeviceSwitchAt != null)
+              KeyValue(
+                'admin_last_switch'.tr,
+                shortDate(d!.lastDeviceSwitchAt),
+              ),
+          ],
+        ),
       ),
       if (d!.payments.isNotEmpty)
         Section(
@@ -686,8 +706,8 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                         asStr(pay['status']) == 'completed'
                             ? c.success
                             : (asStr(pay['status']) == 'pending'
-                                  ? c.warning
-                                  : c.danger),
+                            ? c.warning
+                            : c.danger),
                       ),
                     ],
                   ),
@@ -700,10 +720,10 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 }
 
 Future<void> _grantDialog(
-  BuildContext context,
-  AdminUsersProvider p,
-  int userId,
-) async {
+    BuildContext context,
+    AdminUsersProvider p,
+    int userId,
+    ) async {
   final daysCtrl = TextEditingController();
   String plan = 'monthly';
   await showDialog(
@@ -765,11 +785,43 @@ Future<void> _grantDialog(
   disposeAfterRoute([daysCtrl]);
 }
 
+/// Returns 'allow_payment' (student pays again) | 'reopen' (re-activate, no payment) | null.
+Future<String?> _resubscribeDialog(BuildContext context) {
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => Directionality(
+      textDirection: dir,
+      child: SimpleDialog(
+        title: Text(
+          'admin_allow_resubscribe'.tr,
+          style: const TextStyle(fontFamily: 'tajawal'),
+        ),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'allow_payment'),
+            child: Text(
+              'admin_resubscribe_allow_payment'.tr,
+              style: const TextStyle(fontFamily: 'tajawal'),
+            ),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'reopen'),
+            child: Text(
+              'admin_resubscribe_reopen'.tr,
+              style: const TextStyle(fontFamily: 'tajawal'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 Future<void> _enrollDialog(
-  BuildContext context,
-  AdminUsersProvider p,
-  int userId,
-) async {
+    BuildContext context,
+    AdminUsersProvider p,
+    int userId,
+    ) async {
   final courses = await p.courseChoices();
   if (!context.mounted) return;
   if (courses.isEmpty) {
@@ -821,13 +873,13 @@ Future<void> _enrollDialog(
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openForm(
-  BuildContext context,
-  AdminUsersProvider p, {
-  AdminUser? existing,
-}) {
+    BuildContext context,
+    AdminUsersProvider p, {
+      AdminUser? existing,
+    }) {
   return showAdminSheet(
     context,
-    (ctx) => _UserForm(provider: p, existing: existing),
+        (ctx) => _UserForm(provider: p, existing: existing),
   );
 }
 
@@ -905,8 +957,8 @@ class _UserFormState extends State<_UserForm> {
           editing
               ? 'admin_edit_user'.tr
               : (role == 'teacher'
-                    ? 'admin_add_teacher'.tr
-                    : 'admin_add_student'.tr),
+              ? 'admin_add_teacher'.tr
+              : 'admin_add_student'.tr),
         ),
         Flexible(
           child: SingleChildScrollView(
@@ -928,7 +980,7 @@ class _UserFormState extends State<_UserForm> {
                     keyboard: TextInputType.emailAddress,
                     ltr: true,
                     validator: (v) =>
-                        (v == null || !v.contains('@') || !v.contains('.'))
+                    (v == null || !v.contains('@') || !v.contains('.'))
                         ? 'admin_invalid_email'.tr
                         : null,
                   ),
