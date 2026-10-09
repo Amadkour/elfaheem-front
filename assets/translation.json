@@ -7888,5 +7888,165 @@
   "transfer_amount_above_max": {
     "en": "The maximum transfer amount for this method is {amount}.",
     "ar": "الحد الأقصى لمبلغ التحويل بهذه الطريقة هو {amount}."
+  },
+  "transfer_time_warning_n": {
+    "en": "You must submit this request within {time} of sending the money to avoid errors",
+    "ar": "لابد أن ترسل الطلب خلال {time} من وقت إرسال النقود لتجنب الأخطاء"
+  },
+  "apm_title": {
+    "en": "Payment methods",
+    "ar": "طرق الدفع"
+  },
+  "apm_card": {
+    "en": "Card payment",
+    "ar": "الدفع بالبطاقة"
+  },
+  "apm_bank_transfer": {
+    "en": "Bank transfer",
+    "ar": "التحويل البنكي"
+  },
+  "apm_instapay": {
+    "en": "InstaPay",
+    "ar": "إنستاباي"
+  },
+  "apm_enabled": {
+    "en": "On — students can use it",
+    "ar": "مفعّلة — متاحة للطلاب"
+  },
+  "apm_disabled": {
+    "en": "Off — hidden from students",
+    "ar": "متوقفة — مخفية عن الطلاب"
+  },
+  "apm_section_display": {
+    "en": "Name and instructions",
+    "ar": "الاسم والتعليمات"
+  },
+  "apm_label_ar": {
+    "en": "Name shown to students (Arabic)",
+    "ar": "الاسم الظاهر للطلاب (عربي)"
+  },
+  "apm_label_en": {
+    "en": "Name shown to students (English)",
+    "ar": "الاسم الظاهر للطلاب (إنجليزي)"
+  },
+  "apm_instructions_ar": {
+    "en": "How to pay — instructions (Arabic)",
+    "ar": "طريقة الدفع — التعليمات (عربي)"
+  },
+  "apm_instructions_en": {
+    "en": "How to pay — instructions (English)",
+    "ar": "طريقة الدفع — التعليمات (إنجليزي)"
+  },
+  "apm_section_receiving": {
+    "en": "Receiving account",
+    "ar": "حساب الاستلام"
+  },
+  "apm_bank_name": {
+    "en": "Bank name",
+    "ar": "اسم البنك"
+  },
+  "apm_account_name": {
+    "en": "Account holder name",
+    "ar": "اسم صاحب الحساب"
+  },
+  "apm_iban": {
+    "en": "IBAN",
+    "ar": "رقم الآيبان"
+  },
+  "apm_swift": {
+    "en": "SWIFT code",
+    "ar": "كود السويفت"
+  },
+  "apm_instapay_id": {
+    "en": "InstaPay address / ID",
+    "ar": "عنوان / معرّف إنستاباي"
+  },
+  "apm_instapay_egp_note": {
+    "en": "InstaPay is only shown for courses priced in EGP.",
+    "ar": "إنستاباي يظهر فقط للكورسات المسعّرة بالجنيه المصري."
+  },
+  "apm_section_requirements": {
+    "en": "What the student must provide",
+    "ar": "المطلوب من الطالب"
+  },
+  "apm_require_phone": {
+    "en": "Require the sender's phone number",
+    "ar": "إلزام رقم هاتف المُرسِل"
+  },
+  "apm_require_reference": {
+    "en": "Require the transfer reference number",
+    "ar": "إلزام رقم مرجع التحويل"
+  },
+  "apm_min_amount": {
+    "en": "Minimum amount",
+    "ar": "الحد الأدنى للمبلغ"
+  },
+  "apm_max_amount": {
+    "en": "Maximum amount",
+    "ar": "الحد الأقصى للمبلغ"
+  },
+  "apm_amount_hint": {
+    "en": "Leave empty for no limit",
+    "ar": "اتركه فارغاً لعدم وجود حد"
+  },
+  "apm_window": {
+    "en": "Time to send the proof (minutes)",
+    "ar": "مهلة إرسال الإثبات (بالدقائق)"
+  },
+  "apm_window_hint": {
+    "en": "0 = no timer. Empty = default (2 minutes).",
+    "ar": "0 = بدون مؤقّت. فارغ = الافتراضي (دقيقتان)."
+  },
+  "apm_save": {
+    "en": "Save changes",
+    "ar": "حفظ التعديلات"
+  },
+  "apm_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "apm_save_failed": {
+    "en": "Couldn't save. Check the values and try again.",
+    "ar": "تعذّر الحفظ. تحقّق من القيم وحاول مرة أخرى."
+  },
+  "apm_invalid_number": {
+    "en": "Enter a valid number",
+    "ar": "أدخل رقماً صحيحاً"
+  },
+  "apm_min_gt_max": {
+    "en": "The minimum can't be greater than the maximum",
+    "ar": "الحد الأدنى لا يمكن أن يكون أكبر من الحد الأقصى"
+  },
+  "apm_window_invalid": {
+    "en": "Enter a whole number from 0 to 1440",
+    "ar": "أدخل رقماً صحيحاً من 0 إلى 1440"
+  },
+  "apm_load_failed": {
+    "en": "Couldn't load the payment methods",
+    "ar": "تعذّر تحميل طرق الدفع"
+  },
+  "session_type_both": {
+    "en": "Live & recorded",
+    "ar": "مباشر ومسجّل"
+  },
+  "admin_private_course": {
+    "en": "Private course (access code)",
+    "ar": "كورس خاص (بكود دخول)"
+  },
+  "admin_access_code_hint": {
+    "en": "Access code (6 digits, empty = auto-generate)",
+    "ar": "كود الدخول (6 أرقام — اتركه فارغاً للتوليد التلقائي)"
+  },
+  "admin_code_6_digits": {
+    "en": "Must be 6 digits",
+    "ar": "يجب أن يكون 6 أرقام"
+  },
+  "admin_allow_resubscribe": {
+    "en": "Allow resubscribe",
+    "ar": "السماح بإعادة الاشتراك"
+  },
+  "admin_allow_resubscribe_hint": {
+    "en": "When off, students can't buy again after their plan ends",
+    "ar": "عند الإيقاف لا يستطيع الطالب الشراء مجدداً بعد انتهاء اشتراكه"
   }
 }

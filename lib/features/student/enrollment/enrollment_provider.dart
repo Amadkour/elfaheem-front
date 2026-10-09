@@ -191,6 +191,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   /// GET /api/v1/payments/price-options — the plans this course sells.
   Future<void> loadPriceOptions() async {
+    _optionsLoaded = false;
     final json = asJsonMap(await run(
           () async => api.get('/api/v1/payments/price-options?course_id=${course.id}'),
     ));

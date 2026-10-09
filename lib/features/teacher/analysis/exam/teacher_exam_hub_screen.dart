@@ -96,6 +96,8 @@ class _HubViewState extends State<_HubView>
       useWebCard: true,
       floatingActionButton: prov.tab == 0
           ? FloatingActionButton.extended(
+        heroTag: "teacher_exam_float",
+        key: ValueKey("teacher_exam_float"),
         onPressed: () => _showCreateSheet(context),
         backgroundColor: context.colors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),

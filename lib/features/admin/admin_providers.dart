@@ -215,6 +215,17 @@ class AdminUsersProvider extends AdminPagedProvider {
     return r != null;
   }
 
+  /// mode: 'allow_payment' (student pays again) | 'reopen' (admin re-activates, no payment)
+  Future<bool> allowResubscribe(int userId, int courseId,
+      {String mode = 'allow_payment', String? plan, int? days}) async {
+    final r = await call(
+            () => api.post('$_base/users/$userId/courses/$courseId/allow-resubscribe',
+            body: {'mode': mode, 'plan': ?plan, 'days': ?days}),
+        ok: 'admin_saved'.tr);
+    if (r != null) await refresh();
+    return r != null;
+  }
+
   Future<bool> unenroll(int userId, int courseId) async {
     final r = await call(() => api.delete('$_base/users/$userId/enrollments/$courseId'),
         ok: 'admin_removed_from_course'.tr);
@@ -288,6 +299,12 @@ class AdminCoursesProvider extends AdminPagedProvider {
   Future<AdminCourse?> detail(int id) async {
     final r = await run(() => api.get('$_base/courses/$id'), makLoading: false);
     return r is Map ? AdminCourse(Map<String, dynamic>.from(r)) : null;
+  }
+
+  /// Raw course map (includes is_private / access_code / allow_resubscribe).
+  Future<Map<String, dynamic>?> detailRaw(int id) async {
+    final r = await run(() => api.get('$_base/courses/$id'), makLoading: false);
+    return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
   Future<bool> create(Map<String, dynamic> body) async {

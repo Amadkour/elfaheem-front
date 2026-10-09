@@ -11,6 +11,7 @@
 ///  price · discount · enroll                                  → buy card / bar
 ///  certificate · live/recorded                                → highlights
 library;
+
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -35,7 +36,7 @@ import 'course_detail_provider.dart';
 import 'growth_tr.dart';
 
 /// Below this width we use the single-column (phone/tablet) layout.
-const double _kTwoColumnW = 980;
+const double _kTwoColumnW = 800;
 const double _kSideW = 240;
 
 void _openRecommendedCourse(BuildContext context, CourseSummary summary) {
@@ -114,7 +115,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
-      maxWith: twoCol ? 1180 : 760,
+      maxWith: twoCol ? 1180 : 800,
       child: loading
           ? Center(
               child: SizedBox(
@@ -146,7 +147,13 @@ class _Body extends StatelessWidget {
               TeacherCourseScreenProvider(initialCourse: course.toTeacherModel),
         ),
       ],
-      child: twoCol ? const _WebLayout() : const _MobileLayout(),
+      child: Column(
+        children: [
+          Expanded(child: twoCol ? const _WebLayout() : const _MobileLayout()),
+          if(context.width<1200)
+          _MobileBuyBar(),
+        ],
+      ),
     );
   }
 }
@@ -253,7 +260,6 @@ class _MobileLayout extends StatelessWidget {
               ),
             ),
           ),
-          const _MobileBuyBar(),
         ],
       ),
     );

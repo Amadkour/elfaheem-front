@@ -133,6 +133,8 @@ class _WebHeader extends StatelessWidget {
 class _FloatingAddBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FloatingActionButton(
+    heroTag: "add_course_float",
+    key: ValueKey("add_course_float"),
     onPressed: () => Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),

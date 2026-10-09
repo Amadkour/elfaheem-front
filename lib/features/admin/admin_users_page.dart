@@ -96,7 +96,9 @@ class _UsersView extends StatelessWidget {
           _UserTile(AdminUser(row), isStudent: isStudent),
     );
 
-    final fab = FloatingActionButton.extended(
+    final fab =  FloatingActionButton.extended(
+      heroTag: "users_float",
+        key: ValueKey("users_float"),
       backgroundColor: c.primary,
       onPressed: () => _openForm(context, p),
       icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),

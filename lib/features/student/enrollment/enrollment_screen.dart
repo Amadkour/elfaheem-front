@@ -11,6 +11,7 @@ import 'package:flutter_education_app/features/student/enrollment/saved_cards/sa
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
+import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -55,58 +56,60 @@ class _EnrollView extends StatelessWidget {
     final enroll = context.watch<EnrollmentProvider>();
 
     return EnrollScaffold(
-      child: switch (enroll.step) {
-        EnrollStep.method => const _MethodStep(key: ValueKey('method')),
-        EnrollStep.verifying => const PaymentVerifyingView(
-          key: ValueKey('verifying'),
-        ),
-        EnrollStep.pending => PaymentResultView(
-          key: const ValueKey('pending'),
-          kind: ResultKind.pending,
-          title: enroll.pendingIsManualReview
-              ? ResultCopy.pendingReviewTitle
-              : ResultCopy.pendingTitle,
-          message: enroll.pendingIsManualReview
-              ? ResultCopy.pendingReviewMessage
-              : ResultCopy.pendingMessage,
-          primaryLabel: 'back_to_home'.tr,
-          onPrimary: () => popToHome(context),
-          // Manual-transfer review only: let the student withdraw the
-          // pending proof and go send a corrected one right away, instead
-          // of waiting for the teacher to reject it first.
-          secondaryLabel: enroll.pendingIsManualReview
-              ? 'resend_transfer_request'.tr
-              : null,
-          // The old proof is withdrawn when the new one is submitted
-          // (TransferPaymentProvider.submit), so just go back to the picker.
-          onSecondary: () async {
-            await enroll.prepareMethodStep();
-            enroll.setStep(EnrollStep.method);
-          },
-        ),
-        EnrollStep.success => PaymentResultView(
-          key: const ValueKey('success'),
-          kind: ResultKind.success,
-          title: 'enroll_success_title'.tr,
-          message: 'enroll_success_message'.tr,
-          primaryLabel: 'start_learning_now'.tr,
-          onPrimary: () => popToHome(context),
-        ),
-        EnrollStep.failed => PaymentResultView(
-          key: const ValueKey('failed'),
-          kind: ResultKind.failed,
-          title: enroll.manualTransferRejected
-              ? ResultCopy.rejectedTitle
-              : ResultCopy.failedTitle,
-          message: enroll.failureReason ?? ResultCopy.failedFallback,
-          primaryLabel: enroll.manualTransferRejected
-              ? 'resend_transfer_request'.tr
-              : 'try_again_payment'.tr,
-          onPrimary: enroll.backToMethod,
-          secondaryLabel: 'back_to_home'.tr,
-          onSecondary: () => popToHome(context),
-        ),
-      },
+      child: enroll.isLoading
+          ? Center(child: AppLoadingIndicator())
+          : switch (enroll.step) {
+              EnrollStep.method => const _MethodStep(key: ValueKey('method')),
+              EnrollStep.verifying => const PaymentVerifyingView(
+                key: ValueKey('verifying'),
+              ),
+              EnrollStep.pending => PaymentResultView(
+                key: const ValueKey('pending'),
+                kind: ResultKind.pending,
+                title: enroll.pendingIsManualReview
+                    ? ResultCopy.pendingReviewTitle
+                    : ResultCopy.pendingTitle,
+                message: enroll.pendingIsManualReview
+                    ? ResultCopy.pendingReviewMessage
+                    : ResultCopy.pendingMessage,
+                primaryLabel: 'back_to_home'.tr,
+                onPrimary: () => popToHome(context),
+                // Manual-transfer review only: let the student withdraw the
+                // pending proof and go send a corrected one right away, instead
+                // of waiting for the teacher to reject it first.
+                secondaryLabel: enroll.pendingIsManualReview
+                    ? 'resend_transfer_request'.tr
+                    : null,
+                // The old proof is withdrawn when the new one is submitted
+                // (TransferPaymentProvider.submit), so just go back to the picker.
+                onSecondary: () async {
+                  await enroll.prepareMethodStep();
+                  enroll.setStep(EnrollStep.method);
+                },
+              ),
+              EnrollStep.success => PaymentResultView(
+                key: const ValueKey('success'),
+                kind: ResultKind.success,
+                title: 'enroll_success_title'.tr,
+                message: 'enroll_success_message'.tr,
+                primaryLabel: 'start_learning_now'.tr,
+                onPrimary: () => popToHome(context),
+              ),
+              EnrollStep.failed => PaymentResultView(
+                key: const ValueKey('failed'),
+                kind: ResultKind.failed,
+                title: enroll.manualTransferRejected
+                    ? ResultCopy.rejectedTitle
+                    : ResultCopy.failedTitle,
+                message: enroll.failureReason ?? ResultCopy.failedFallback,
+                primaryLabel: enroll.manualTransferRejected
+                    ? 'resend_transfer_request'.tr
+                    : 'try_again_payment'.tr,
+                onPrimary: enroll.backToMethod,
+                secondaryLabel: 'back_to_home'.tr,
+                onSecondary: () => popToHome(context),
+              ),
+            },
     );
   }
 }
@@ -121,7 +124,6 @@ class _MethodStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enroll = context.watch<EnrollmentProvider>();
-    final wide = isWideLayout(context);
     final quote = enroll.quote;
 
     final label = enroll.isFree
@@ -130,7 +132,7 @@ class _MethodStep extends StatelessWidget {
         ? 'continue'.tr
         : '${'pay_action'.tr} ${quote.fmt(quote.total)} ${enroll.currencySymbol}';
 
-    return CenteredBody(
+    return Center(
       child: Column(
         children: [
           enrollAppBar(
@@ -154,21 +156,21 @@ class _MethodStep extends StatelessWidget {
                     const Padding(
                       padding: EdgeInsets.symmetric(vertical: 40),
                       child: Center(
-                        child: AppLoadingIndicator(showLogo: false),
+                        child: AppLoadingIndicator(),
                       ),
                     )
                   else if (enroll.isFree)
                     const _FreeCourseBanner()
                   else ...[
-                      const _PricePlanPicker(),
-                      const SizedBox(height: 20),
-                      const _PaymentMethodPicker(),
-                      const SizedBox(height: 20),
-                      FeeBreakdownCard(
-                        quote: quote,
-                        currencySymbol: enroll.currencySymbol,
-                      ),
-                    ],
+                    const _PricePlanPicker(),
+                    const SizedBox(height: 20),
+                    const _PaymentMethodPicker(),
+                    const SizedBox(height: 20),
+                    FeeBreakdownCard(
+                      quote: quote,
+                      currencySymbol: enroll.currencySymbol,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -559,13 +561,13 @@ class _PlanTile extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: selected
               ? LinearGradient(
-            colors: [
-              c.primary.withValues(alpha: .10),
-              c.primary.withValues(alpha: .03),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          )
+                  colors: [
+                    c.primary.withValues(alpha: .10),
+                    c.primary.withValues(alpha: .03),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
               : null,
           color: selected ? null : c.cardBg,
           borderRadius: BorderRadius.circular(20),
@@ -575,12 +577,12 @@ class _PlanTile extends StatelessWidget {
           ),
           boxShadow: selected
               ? [
-            BoxShadow(
-              color: c.primary.withValues(alpha: .20),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ]
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: .20),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ]
               : c.cardShadow,
         ),
         child: Column(
@@ -654,13 +656,11 @@ class _PlanTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 3),
-                  child: Flexible(
-                    child: Text(
-                      'plan_per_month'.tr,
-                      style: c.caption.copyWith(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  child: Text(
+                    'plan_per_month'.tr,
+                    style: c.caption.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -851,7 +851,7 @@ class _PaymentMethodPicker extends StatelessWidget {
               selected: enroll.selectedManualMethod == 'bank_transfer',
               icon: Icons.account_balance_rounded,
               iconColor: const Color(0xFF2E7D32),
-              title: 'transfer_bank_title'.tr,
+              title: g.labelFor('bank_transfer') ?? 'transfer_bank_title'.tr,
               subtitle: 'bank_transfer_subtitle'.tr,
               onTap: () => enroll.selectManualMethod('bank_transfer'),
             ),
@@ -860,7 +860,7 @@ class _PaymentMethodPicker extends StatelessWidget {
               selected: enroll.selectedManualMethod == 'instapay',
               icon: Icons.qr_code_2_rounded,
               iconColor: const Color(0xFF6A1B9A),
-              title: 'transfer_instapay_title'.tr,
+              title: g.labelFor('instapay') ?? 'transfer_instapay_title'.tr,
               subtitle: 'instapay_subtitle'.tr,
               onTap: () => enroll.selectManualMethod('instapay'),
             ),
@@ -984,12 +984,12 @@ class _MethodTile extends StatelessWidget {
           ),
           boxShadow: selected
               ? [
-            BoxShadow(
-              color: c.primary.withValues(alpha: .14),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ]
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: .14),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
               : c.cardShadow,
         ),
         child: Row(
@@ -1065,10 +1065,10 @@ class _MethodTile extends StatelessWidget {
               ),
               child: selected
                   ? const Icon(
-                Icons.check_rounded,
-                size: 13,
-                color: Colors.white,
-              )
+                      Icons.check_rounded,
+                      size: 13,
+                      color: Colors.white,
+                    )
                   : null,
             ),
           ],

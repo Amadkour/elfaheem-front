@@ -77,6 +77,8 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'categories'.tr),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "categories_float",
+        key: ValueKey("categories_float"),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
         icon: const Icon(Icons.add_rounded, color: Colors.white),

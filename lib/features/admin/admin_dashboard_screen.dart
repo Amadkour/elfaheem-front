@@ -12,6 +12,7 @@
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -42,14 +43,15 @@ import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
 import 'admin_courses_page.dart';
+import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
 import 'admin_overview_page.dart';
+import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
-import 'admin_system_page.dart';
 import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
 import 'admin_versions_page.dart';
@@ -387,6 +389,21 @@ class _MorePageState extends State<_MorePage> {
                           ),
                         ),
                       ),
+                      ParentComponent(
+                        featureKey: 'profile.payment',
+                        child: TileCountOverlay(
+                          count: context.select<TeacherTransfersProvider, int>(
+                                (p) => p.total,
+                          ),
+                          child: SettingsTile(
+                            icon: CupertinoIcons.creditcard,
+                            iconBg: c.successTint,
+                            iconColor: c.success,
+                            label: 'apm_title'.tr,
+                            onTap: () => _push(const AdminPaymentsPage()),
+                          ),
+                        ),
+                      ),
                       SettingsTile(
                         icon: Icons.card_membership_rounded,
                         iconBg: c.warning.withAlpha(50),
@@ -398,8 +415,15 @@ class _MorePageState extends State<_MorePage> {
                         icon: Icons.devices_rounded,
                         iconBg: c.danger.withAlpha(50),
                         iconColor: c.danger,
-                        label: 'devices_and_payments'.tr,
-                        onTap: () => _push(const AdminSystemPage()),
+                        label: 'admin_devices_title'.tr,
+                        onTap: () => _push(const AdminDevicesPage()),
+                      ),
+                      SettingsTile(
+                        icon: Icons.account_balance_wallet_rounded,
+                        iconBg: c.primary.withAlpha(50),
+                        iconColor: c.primary,
+                        label: 'admin_payments'.tr,
+                        onTap: () => _push(const AdminPaymentsPage()),
                       ),
                     ],
                   ),

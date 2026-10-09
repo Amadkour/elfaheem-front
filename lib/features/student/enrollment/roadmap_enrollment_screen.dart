@@ -137,7 +137,7 @@ class _RoadmapBody extends StatelessWidget {
       );
     }
 
-    return CenteredBody(
+    return Center(
       child: Column(children: [
         enrollAppBar('roadmap_enrollment_title'.tr),
         Expanded(child: content),

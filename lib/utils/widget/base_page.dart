@@ -18,7 +18,8 @@ class BasePage extends StatelessWidget {
     this.bottomNavigationBar,
     this.appBar,
     this.useWebCard = false,
-    this.maxWith,  this.enableFooterWidget=true,
+    this.maxWith,
+    this.enableFooterWidget = true,
   });
 
   final double? maxWith;
@@ -42,6 +43,16 @@ class BasePage extends StatelessWidget {
     );
   }
 
+  /// Several BasePages can be alive in the same route at once (admin shell,
+  /// tabs, stacked pages), and every FloatingActionButton is a Hero. Duplicate
+  /// hero tags throw "multiple heroes share the same tag", so FABs are excluded
+  /// from hero transitions here instead of relying on unique tags per page.
+  Widget? _buildFab() {
+    final fab = floatingActionButton;
+    if (fab == null) return null;
+    return HeroMode(enabled: false, child: fab);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Rebuild whenever the disable list changes (silent FCM push / theme fetch).
@@ -56,27 +67,30 @@ class BasePage extends StatelessWidget {
     value: final v,
     ) when AppConfig.disableList.contains(v)) {
       return Scaffold(
-        appBar: ScreenAppBar(title:(key as ValueKey).value.toString().tr,),
+        appBar: ScreenAppBar(title: (key as ValueKey).value.toString().tr),
         body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('🚀',style: TextStyle(fontSize: 70),),
-                Text('coming_soon'.tr , style: context.colors.h2.copyWith(color: context.colors.accent2),),
-              ],
-            )
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text('🚀', style: TextStyle(fontSize: 70)),
+              Text(
+                'coming_soon'.tr,
+                style: context.colors.h2.copyWith(color: context.colors.accent2),
+              ),
+            ],
+          ),
         ),
       );
     }
-    Widget w =  Scaffold(
+    Widget w = Scaffold(
       appBar: appBar,
-      backgroundColor:
-      background ??context.colors.background,
-      floatingActionButton: floatingActionButton,
-      bottomNavigationBar:enableFooterWidget? _footerWith(bottomNavigationBar):null,
+      backgroundColor: background ?? context.colors.background,
+      floatingActionButton: _buildFab(), // was: floatingActionButton
+      bottomNavigationBar:
+      enableFooterWidget ? _footerWith(bottomNavigationBar) : null,
       body: Directionality(
         textDirection: Helpers.pageDirection,
-        child:DecoratedBox(
+        child: DecoratedBox(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(context.colors.radiusXL),
           ),
@@ -89,18 +103,16 @@ class BasePage extends StatelessWidget {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
-          backgroundColor:
-          background ??(context.colors.background),
+          backgroundColor: background ?? (context.colors.background),
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).
-
           body: Stack(
             children: [
               Positioned.fill(
                 child: CustomPaint(
                   painter: ElearningPatternPainter(
-                    color: context.colors.primaryLight.withValues(alpha:0.2),
+                    color: context.colors.primaryLight.withValues(alpha: 0.2),
                     width: Helpers.calculateRemainingWidth(context),
                   ),
                 ),
@@ -115,11 +127,8 @@ class BasePage extends StatelessWidget {
                   margin: EdgeInsets.symmetric(vertical: 10),
                   padding: const EdgeInsets.all(0.0),
                   decoration: BoxDecoration(
-                    // border: BoxBorder.all(
-                    //   color: context.colors.primary,
-                    //   width: 1,
-                    // ),
-                    borderRadius: BorderRadius.circular(context.colors.radiusXL),
+                    borderRadius:
+                    BorderRadius.circular(context.colors.radiusXL),
                     color: context.colors.background,
                   ),
                   child: ClipRRect(
@@ -136,6 +145,6 @@ class BasePage extends StatelessWidget {
       );
     }
 
-    return  w;
+    return w;
   }
 }

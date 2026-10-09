@@ -181,13 +181,15 @@ class _View extends StatelessWidget {
             ),
           ),
           GridView.count(
-            crossAxisCount: width > 1500
+            crossAxisCount: width > 2000
+                ? 7
+                :width > 1800
                 ? 6
-                : width > 1200
+                : width > 1500
                 ? 5
-                : width > 1000
+                : width > 1200
                 ? 4
-                : width > 700
+                : width > 900
                 ? 3
                 : 2,
             shrinkWrap: true,

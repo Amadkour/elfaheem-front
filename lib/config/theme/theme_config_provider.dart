@@ -8,12 +8,13 @@
 //      context.read<ThemeConfigProvider>().load() — not through the
 //      context.themeConfig getter below, which is for reading colours/
 //      styles during build, not for lifecycle calls).
-//   2. Hit the API first.
-//        • Success → parse the model, cache it to SharedPreferences, done.
-//        • Failure → fall back to whatever was last cached in
-//          SharedPreferences. If nothing was ever cached, every getter
-//          below falls back to the hard-coded AppTheme constants, so the
-//          app never breaks or shows blank colours.
+//   2. The built-in DEFAULT theme is AppTheme (app_theme.dart). On top of it:
+//        • the last cached server palette (SharedPreferences) is applied
+//          instantly, so the app opens without waiting for the network;
+//        • the server palette is then fetched. Success → applied + cached.
+//          Failure → [serverUnreachable] becomes true and the app shows a
+//          "no internet" banner with a reload button (see main.dart); the
+//          cached/default palette keeps working meanwhile.
 //   3. Widgets read context.themeConfig.primary, .h2, .cardShadow, etc.
 //      Every colour/style/shadow/gradient the app used to get from
 //      `context.colors` (ThemeConfigProvider) lives here now — there is no second
@@ -31,7 +32,9 @@ import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
 
-const _kCacheKey = 'theme_config_v1';
+// v2: drops palettes cached before the new default theme, so offline users
+// get the new default instead of the old cached one.
+const _kCacheKey = 'theme_config_v2';
 const _kDisableListCacheKey = 'disable_list_v1';
 
 /// Detects which platform string to send to the API.
@@ -63,6 +66,16 @@ class ThemeConfigProvider extends ChangeNotifier {
   String? _error;
   String? get error => _error;
 
+  /// True when the last attempt to fetch the theme from the server failed
+  /// (offline, timeout, server error). The app then runs on the cached /
+  /// default palette and shows a banner with a reload button.
+  bool _serverUnreachable = false;
+  bool get serverUnreachable => _serverUnreachable;
+
+  /// True while the banner's reload button is fetching.
+  bool _isRetrying = false;
+  bool get isRetrying => _isRetrying;
+
   /// Feature kill-switch list for the current platform. Same value as
   /// [AppConfig.disableList] — exposed here too so widgets that already
   /// read context.themeConfig don't need a second lookup.
@@ -77,19 +90,29 @@ class ThemeConfigProvider extends ChangeNotifier {
 
   // ── Entry point ───────────────────────────────────────────────────────────
 
-  /// Call this once at app startup (and again for a manual refresh).
-  /// Always hits the API first; only reads the SharedPreferences cache if
-  /// the API call fails.
+  /// Call this once at app startup.
+  ///
+  /// The cached palette is applied first (instant, works offline). The app
+  /// only waits briefly for the server — if it is slow or unreachable the app
+  /// opens on the cached / default theme and the fetch finishes in the
+  /// background (the banner appears if it fails).
   Future<void> load() async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final fetchedFromServer = await _fetchFromServer();
-      if (!fetchedFromServer) {
-        await _loadFromCache();
+      await _loadFromCache();
+
+      final fetch = _fetchFromServer();
+      if (_model == null) {
+        // Nothing cached: give the server a short window so the very first
+        // frame is usually right, then continue with the default theme.
+        await fetch.timeout(const Duration(seconds: 3), onTimeout: () => false);
       }
+      _isLoading = false;
+      notifyListeners();
+      await fetch;
     } catch (e) {
       debugPrint('[ThemeConfigProvider] load error: $e');
     } finally {
@@ -99,9 +122,24 @@ class ThemeConfigProvider extends ChangeNotifier {
     }
   }
 
-  /// Alias for [load] — call after an admin colour change to force a
+  /// Re-fetch from the server WITHOUT going back to the splash screen (the
+  /// splash would tear down the Navigator and lose the current screen).
+  /// Used by the "no internet" banner's reload button.
+  Future<void> reload() async {
+    if (_isRetrying) return;
+    _isRetrying = true;
+    notifyListeners();
+    try {
+      await _fetchFromServer();
+    } finally {
+      _isRetrying = false;
+      notifyListeners();
+    }
+  }
+
+  /// Alias for [reload] — call after an admin colour change to force a
   /// fresh fetch.
-  Future<void> refresh() => load();
+  Future<void> refresh() => reload();
 
   // ══════════════════════════════════════════════════════════════════════
   // SURFACES
@@ -127,8 +165,8 @@ class ThemeConfigProvider extends ChangeNotifier {
       : (_model?.cardBg ?? AppTheme.cardBg);
 
   Color get inputBg => isDark
-      ? (_model?.inputBgDark ?? AppTheme.darkInput)
-      : (_model?.inputBg ?? AppTheme.textFieldBackground);
+      ? (_model?.inputBgDark ?? AppTheme.inputBgDark)
+      : (_model?.inputBg ?? AppTheme.inputBg);
 
   Color get divider => isDark
       ? (_model?.darkDivider ?? AppTheme.darkDivider)
@@ -195,8 +233,8 @@ class ThemeConfigProvider extends ChangeNotifier {
   /// Server-configured, unlike the other tints below — the admin can set
   /// this to something other than a flat alpha derivative of [primary].
   Color get primaryTint => isDark
-      ? (_model?.primaryTintDark ?? primary.withValues(alpha: 0.20))
-      : (_model?.primaryTint ?? primary.withValues(alpha: 0.12));
+      ? (_model?.primaryTintDark ?? AppTheme.primaryTintDark)
+      : (_model?.primaryTint ?? AppTheme.primaryTint);
 
   Color get blueTint => charcoal.withValues(alpha: isDark ? 0.20 : 0.12);
 
@@ -356,8 +394,8 @@ class ThemeConfigProvider extends ChangeNotifier {
 
   List<BoxShadow> get cardShadow {
     final base = isDark
-        ? (_model?.cardShadowColorDark ?? Colors.black)
-        : (_model?.cardShadowColor ?? const Color(0xFF1A1A1A));
+        ? (_model?.cardShadowColorDark ?? AppTheme.cardShadowColorDark)
+        : (_model?.cardShadowColor ?? AppTheme.cardShadowColor);
     return isDark
         ? [
       BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 24, offset: const Offset(0, 8)),
@@ -371,8 +409,8 @@ class ThemeConfigProvider extends ChangeNotifier {
 
   List<BoxShadow> get primaryShadow {
     final shadowColor = isDark
-        ? (_model?.primaryShadowColorDark ?? primary.withValues(alpha: 0.15))
-        : (_model?.primaryShadowColor ?? primary.withValues(alpha: 0.30));
+        ? (_model?.primaryShadowColorDark ?? AppTheme.primaryShadowColorDark)
+        : (_model?.primaryShadowColor ?? AppTheme.primaryShadowColor);
     return [BoxShadow(color: shadowColor, blurRadius: 20, offset: const Offset(0, 8))];
   }
 
@@ -416,10 +454,10 @@ class ThemeConfigProvider extends ChangeNotifier {
 
   TextStyle get label => AppTheme.label.copyWith(color: textMedium);
 
-  /// Button text — charcoal on yellow (premium contrast).
-  TextStyle get button => AppTheme.button.copyWith(color: charcoalDark);
+  /// Button text — white on the indigo primary (readable contrast).
+  TextStyle get button => AppTheme.button.copyWith(color: Colors.white);
 
-  TextStyle get buttonSm => AppTheme.buttonSmall.copyWith(color: charcoalDark);
+  TextStyle get buttonSm => AppTheme.buttonSmall.copyWith(color: Colors.white);
 
   TextStyle get navLabelSelected => AppTheme.navLabelSelected.copyWith(color: primary);
 
@@ -455,18 +493,23 @@ class ThemeConfigProvider extends ChangeNotifier {
       AppConfig.disableList = disableItems;
 
       await _saveCache(_model!, disableItems);
+      _serverUnreachable = false;
+      _error = null;
+      notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
+      _serverUnreachable = true;
       debugPrint('[ThemeConfigProvider] fetch error: $e');
+      notifyListeners();
       return false;
     }
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────────
 
-  /// Only called when the API call fails — reads the last-known-good
-  /// palette (and disable list) back out of SharedPreferences.
+  /// Reads the last-known-good palette (and disable list) back out of
+  /// SharedPreferences. Called first on every launch.
   Future<void> _loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();

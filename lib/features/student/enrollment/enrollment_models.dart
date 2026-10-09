@@ -38,6 +38,14 @@ class GatewayConfig {
     ],
   );
 
+  /// The name the admin gave [type] (or the server default), already in the app's language.
+  String? labelFor(String type) {
+    for (final m in paymentMethods) {
+      if (m.type == type && m.label.trim().isNotEmpty) return m.label;
+    }
+    return null;
+  }
+
   /// True when the admin has this method switched on (Admin → Payment methods).
   /// The server already applies the per-course restriction and the InstaPay = EGP-only rule,
   /// so the app never decides this on its own.
@@ -236,11 +244,16 @@ class TransferRequirements {
   final double? minAmount;
   final double? maxAmount;
 
+  /// Minutes the student is given to send the proof after transferring (admin-controlled per
+  /// method). 0 = no timer. The server always sends it; 2 is only the fallback for an old server.
+  final int transferWindowMinutes;
+
   const TransferRequirements({
     this.requireSenderPhone = false,
     this.requireTransferReference = false,
     this.minAmount,
     this.maxAmount,
+    this.transferWindowMinutes = 2,
   });
 
   factory TransferRequirements.fromJson(Map<String, dynamic>? j) => TransferRequirements(
@@ -248,6 +261,7 @@ class TransferRequirements {
     requireTransferReference: j?['require_transfer_reference'] == true,
     minAmount: (j?['min_amount'] as num?)?.toDouble(),
     maxAmount: (j?['max_amount'] as num?)?.toDouble(),
+    transferWindowMinutes: (j?['transfer_window_minutes'] as num?)?.toInt() ?? 2,
   );
 }
 
@@ -290,7 +304,8 @@ class TransferMethodDetails {
     bankRequirements: TransferRequirements.fromJson(asJsonMap(j['bank_requirements'])),
     instapayEnabled: j['instapay_enabled'] == true,
     instapayId: j['instapay_id'] as String?,
-    instapayInstructions: j['instapay_instructions'] as String? ?? 'account: https://ipn.eg/S/nextbrain/instapay/3kVlMZ Click the link to send money to nextbrain@instapay Powered by InstaPay',
+    // No hard-coded fallback: the receiving account and its instructions belong to the admin.
+    instapayInstructions: j['instapay_instructions'] as String?,
     instapayRequirements: TransferRequirements.fromJson(asJsonMap(j['instapay_requirements'])),
     currency: j['currency'] as String? ?? 'EGP',
   );

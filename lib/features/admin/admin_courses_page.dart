@@ -109,12 +109,14 @@ class _CoursesView extends StatelessWidget {
         appBar: embedded
             ? null
             : AppBar(
-                title: Text(
-                  'courses'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal'),
-                ),
-              ),
+          title: Text(
+            'courses'.tr,
+            style: const TextStyle(fontFamily: 'tajawal'),
+          ),
+        ),
         floatingActionButton: FloatingActionButton.extended(
+          heroTag: "courses_float",
+          key: ValueKey("courses_float"),
           backgroundColor: c.primary,
           onPressed: () => _openCourseForm(context, p),
           icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -288,13 +290,13 @@ class _Stat extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openCourseDetail(
-  BuildContext context,
-  AdminCoursesProvider p,
-  int id,
-) {
+    BuildContext context,
+    AdminCoursesProvider p,
+    int id,
+    ) {
   return showAdminSheet(
     context,
-    (ctx) => ChangeNotifierProvider.value(
+        (ctx) => ChangeNotifierProvider.value(
       value: p,
       child: _CourseDetail(id: id),
     ),
@@ -492,7 +494,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                               selected: methods.contains(m.key),
                               selectedColor: c.primary.withValues(alpha: 0.25),
                               onSelected: (s) => setState(
-                                () => s
+                                    () => s
                                     ? methods.add(m.key)
                                     : methods.remove(m.key),
                               ),
@@ -563,8 +565,8 @@ class _CourseDetailState extends State<_CourseDetail> {
                                 asStr(pay['status']) == 'completed'
                                     ? c.success
                                     : (asStr(pay['status']) == 'pending'
-                                          ? c.warning
-                                          : c.danger),
+                                    ? c.warning
+                                    : c.danger),
                               ),
                             ],
                           ),
@@ -640,7 +642,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                             final ok = await confirm(
                               context,
                               message:
-                                  'admin_delete_this_course_permanently_all'.tr,
+                              'admin_delete_this_course_permanently_all'.tr,
                               danger: true,
                             );
                             if (!ok) return;
@@ -668,13 +670,13 @@ class _CourseDetailState extends State<_CourseDetail> {
 // ═════════════════════════════════════════════════════════════════════════════
 
 Future<void> _openCourseForm(
-  BuildContext context,
-  AdminCoursesProvider p, {
-  AdminCourse? existing,
-}) {
+    BuildContext context,
+    AdminCoursesProvider p, {
+      AdminCourse? existing,
+    }) {
   return showAdminSheet(
     context,
-    (ctx) => _CourseForm(provider: p, existing: existing),
+        (ctx) => _CourseForm(provider: p, existing: existing),
   );
 }
 
@@ -710,11 +712,14 @@ class _CourseFormState extends State<_CourseForm> {
   late String currency = widget.existing?.currency ?? 'EGP';
   late int defaultPlan =
       widget.existing?.defaultPricePlanIndex ??
-      0; // 0 yearly · 1 six months · 2 monthly
+          0; // 0 yearly · 1 six months · 2 monthly
   late String type = (widget.existing?.type ?? 'recorded').toLowerCase();
   int? teacherId;
   int? categoryId;
   bool published = false;
+  bool isPrivate = false;
+  bool allowResub = true;
+  final _code = TextEditingController();
 
   List<AdminUser> teachers = [];
   List<AdminCategory> categories = [];
@@ -735,17 +740,26 @@ class _CourseFormState extends State<_CourseForm> {
   Future<void> _loadChoices() async {
     final tch = await widget.provider.teacherChoices();
     final cat = await widget.provider.categoryChoices();
+    Map<String, dynamic>? raw;
+    if (widget.existing != null) {
+      raw = await widget.provider.detailRaw(widget.existing!.id);
+    }
     if (!mounted) return;
     setState(() {
       teachers = tch;
       categories = cat;
+      if (raw != null) {
+        isPrivate = raw['is_private'] == true;
+        allowResub = raw['allow_resubscribe'] != false;
+        _code.text = (raw['access_code'] ?? '').toString();
+      }
       ready = true;
     });
   }
 
   @override
   void dispose() {
-    for (final c in [_name, _desc, _fees, _max, _monthly, _sixMonths]) {
+    for (final c in [_name, _desc, _fees, _max, _monthly, _sixMonths, _code]) {
       c.dispose();
     }
     super.dispose();
@@ -772,6 +786,10 @@ class _CourseFormState extends State<_CourseForm> {
       'category_id': categoryId,
       'max_students': int.tryParse(_max.text.trim()),
       'is_published': published,
+      'is_private': isPrivate,
+      'allow_resubscribe': allowResub,
+      if (isPrivate && _code.text.trim().isNotEmpty)
+        'access_code': _code.text.trim(),
     };
     final ok = editing
         ? await widget.provider.update(widget.existing!.id, body)
@@ -827,7 +845,7 @@ class _CourseFormState extends State<_CourseForm> {
             .where((u) => u.id == teacherId)
             .map((u) => u.name)
             .firstOrNull ??
-        (editing ? widget.existing!.teacherName : null);
+            (editing ? widget.existing!.teacherName : null);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -836,175 +854,213 @@ class _CourseFormState extends State<_CourseForm> {
         Flexible(
           child: !ready
               ? const SizedBox(
-                  height: 200,
-                  child: Center(child: CircularProgressIndicator()),
-                )
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          )
               : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-                  child: Form(
-                    key: _form,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Field(
-                          controller: _name,
-                          label: 'admin_course_name'.tr,
-                          validator: (v) => (v == null || v.trim().length < 2)
-                              ? 'admin_name_is_required'.tr
-                              : null,
-                        ),
-                        Field(
-                          controller: _desc,
-                          label: 'description'.tr,
-                          maxLines: 3,
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Field(
-                                controller: _fees,
-                                label: 'price_yearly_label'.tr,
-                                keyboard: const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                validator: (v) {
-                                  final n = double.tryParse((v ?? '').trim());
-                                  return (n == null || n < 0)
-                                      ? 'admin_invalid_price'.tr
-                                      : null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Field(
-                                controller: _max,
-                                label: 'admin_max_students'.tr,
-                                keyboard: TextInputType.number,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Field(
-                                controller: _sixMonths,
-                                label: 'price_six_months_label'.tr,
-                                keyboard: const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                validator: (v) {
-                                  final s = (v ?? '').trim();
-                                  if (s.isEmpty) return null;
-                                  final n = double.tryParse(s);
-                                  return (n == null || n < 0)
-                                      ? 'admin_invalid_price'.tr
-                                      : null;
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Field(
-                                controller: _monthly,
-                                label: 'price_monthly_label'.tr,
-                                keyboard: const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
-                                validator: (v) {
-                                  final s = (v ?? '').trim();
-                                  if (s.isEmpty) return null;
-                                  final n = double.tryParse(s);
-                                  return (n == null || n < 0)
-                                      ? 'admin_invalid_price'.tr
-                                      : null;
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Text(
-                            'price_plans_hint'.tr,
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 11.5,
-                              color: context.colors.textLight,
-                            ),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+            child: Form(
+              key: _form,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Field(
+                    controller: _name,
+                    label: 'admin_course_name'.tr,
+                    validator: (v) => (v == null || v.trim().length < 2)
+                        ? 'admin_name_is_required'.tr
+                        : null,
+                  ),
+                  Field(
+                    controller: _desc,
+                    label: 'description'.tr,
+                    maxLines: 3,
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Field(
+                          controller: _fees,
+                          label: 'price_yearly_label'.tr,
+                          keyboard: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                        ),
-                        ChoiceRow<int>(
-                          label: 'default_plan_label'.tr,
-                          options: {
-                            0: 'price_yearly_label'.tr,
-                            1: 'price_six_months_label'.tr,
-                            2: 'price_monthly_label'.tr,
+                          validator: (v) {
+                            final n = double.tryParse((v ?? '').trim());
+                            return (n == null || n < 0)
+                                ? 'admin_invalid_price'.tr
+                                : null;
                           },
-                          value: defaultPlan,
-                          onChanged: (v) => setState(() => defaultPlan = v),
                         ),
-                        ChoiceRow<String>(
-                          label: 'currency_label'.tr,
-                          options: const {
-                            'EGP': 'EGP',
-                            'SAR': 'SAR',
-                            'USD': 'USD',
-                          },
-                          value: currency,
-                          onChanged: (v) => setState(() => currency = v),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Field(
+                          controller: _max,
+                          label: 'admin_max_students'.tr,
+                          keyboard: TextInputType.number,
                         ),
-                        ChoiceRow<String>(
-                          label: 'admin_type'.tr,
-                          options: {
-                            'recorded': 'session_type_recorded'.tr,
-                            'live': 'session_type_live'.tr,
-                          },
-                          value: type,
-                          onChanged: (v) => setState(() => type = v),
-                        ),
-                        Row(
-                          children: [
-                            OutlineButton(
-                              color: context.colors.primary,
-                              onPressed: _pickTeacher,
-                              icon: Icons.school_rounded,
-                              label: teacherName ?? 'admin_choose_teacher'.tr,
-                            ),
-                            Spacer(flex:3)
-                          ],
-                        ),
-                        if (categories.isNotEmpty)
-                          ChoiceRow<int?>(
-                            label: 'category_label'.tr,
-                            options: {
-                              null: 'admin_none'.tr,
-                              for (final cat in categories) cat.id: cat.display,
-                            },
-                            value: categoryId,
-                            onChanged: (v) => setState(() => categoryId = v),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Field(
+                          controller: _sixMonths,
+                          label: 'price_six_months_label'.tr,
+                          keyboard: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'published'.tr,
-                            style: const TextStyle(fontFamily: 'tajawal'),
+                          validator: (v) {
+                            final s = (v ?? '').trim();
+                            if (s.isEmpty) return null;
+                            final n = double.tryParse(s);
+                            return (n == null || n < 0)
+                                ? 'admin_invalid_price'.tr
+                                : null;
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Field(
+                          controller: _monthly,
+                          label: 'price_monthly_label'.tr,
+                          keyboard: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                          value: published,
-                          activeTrackColor: c.primary,
-                          onChanged: (v) => setState(() => published = v),
+                          validator: (v) {
+                            final s = (v ?? '').trim();
+                            if (s.isEmpty) return null;
+                            final n = double.tryParse(s);
+                            return (n == null || n < 0)
+                                ? 'admin_invalid_price'.tr
+                                : null;
+                          },
                         ),
-                        const SizedBox(height: 8),
-                        PrimaryButton(
-                          label: 'save'.tr,
-                          isLoading: busy,
-                          onPressed: _submit,
-                        ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Text(
+                      'price_plans_hint'.tr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 11.5,
+                        color: context.colors.textLight,
+                      ),
                     ),
                   ),
-                ),
+                  ChoiceRow<int>(
+                    label: 'default_plan_label'.tr,
+                    options: {
+                      0: 'price_yearly_label'.tr,
+                      1: 'price_six_months_label'.tr,
+                      2: 'price_monthly_label'.tr,
+                    },
+                    value: defaultPlan,
+                    onChanged: (v) => setState(() => defaultPlan = v),
+                  ),
+                  ChoiceRow<String>(
+                    label: 'currency_label'.tr,
+                    options: const {
+                      'EGP': 'EGP',
+                      'SAR': 'SAR',
+                      'USD': 'USD',
+                    },
+                    value: currency,
+                    onChanged: (v) => setState(() => currency = v),
+                  ),
+                  ChoiceRow<String>(
+                    label: 'admin_type'.tr,
+                    options: {
+                      'recorded': 'session_type_recorded'.tr,
+                      'live': 'session_type_live'.tr,
+                      'both': 'session_type_both'.tr,
+                    },
+                    value: type,
+                    onChanged: (v) => setState(() => type = v),
+                  ),
+                  Row(
+                    children: [
+                      OutlineButton(
+                        color: context.colors.primary,
+                        onPressed: _pickTeacher,
+                        icon: Icons.school_rounded,
+                        label: teacherName ?? 'admin_choose_teacher'.tr,
+                      ),
+                      Spacer(flex:3)
+                    ],
+                  ),
+                  if (categories.isNotEmpty)
+                    ChoiceRow<int?>(
+                      label: 'category_label'.tr,
+                      options: {
+                        null: 'admin_none'.tr,
+                        for (final cat in categories) cat.id: cat.display,
+                      },
+                      value: categoryId,
+                      onChanged: (v) => setState(() => categoryId = v),
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'admin_private_course'.tr,
+                      style: const TextStyle(fontFamily: 'tajawal'),
+                    ),
+                    value: isPrivate,
+                    activeTrackColor: c.primary,
+                    onChanged: (v) => setState(() => isPrivate = v),
+                  ),
+                  if (isPrivate)
+                    Field(
+                      controller: _code,
+                      label: 'admin_access_code_hint'.tr,
+                      keyboard: TextInputType.number,
+                      validator: (v) {
+                        final s = (v ?? '').trim();
+                        return (s.isEmpty || RegExp(r'^\d{6}$').hasMatch(s))
+                            ? null
+                            : 'admin_code_6_digits'.tr;
+                      },
+                    ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'admin_allow_resubscribe'.tr,
+                      style: const TextStyle(fontFamily: 'tajawal'),
+                    ),
+                    subtitle: Text(
+                      'admin_allow_resubscribe_hint'.tr,
+                      style: const TextStyle(
+                          fontFamily: 'tajawal', fontSize: 11.5),
+                    ),
+                    value: allowResub,
+                    activeTrackColor: c.primary,
+                    onChanged: (v) => setState(() => allowResub = v),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      'published'.tr,
+                      style: const TextStyle(fontFamily: 'tajawal'),
+                    ),
+                    value: published,
+                    activeTrackColor: c.primary,
+                    onChanged: (v) => setState(() => published = v),
+                  ),
+                  const SizedBox(height: 8),
+                  PrimaryButton(
+                    label: 'save'.tr,
+                    isLoading: busy,
+                    onPressed: _submit,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );

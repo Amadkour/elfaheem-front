@@ -32,10 +32,14 @@ Future<void> openCourse(BuildContext context, CourseModel c,ApiClient api) async
           body: {'code': code},
           auth: true,
         );
+       print("==========================================");
+       print(r);
+       print("==========================================");
         return  r['unlocked']??false;
       },
       errorText: (e) => e.toString(),
     );
+
     if (!unlocked || !context.mounted) return;
   }
 

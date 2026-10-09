@@ -75,13 +75,19 @@ class _TransferViewState extends State<_TransferView> {
   // the transfer to the bank/InstaPay account is made right after seeing the
   // receiving details). The banner escalates from a neutral warning to an
   // urgent one, and finally to an "expired" state, without blocking submit.
-  static const int _warningDurationSeconds = 120;
-  int _remainingSeconds = _warningDurationSeconds;
+  // The length of the window is set by the ADMIN per method (Admin → Payment methods →
+  // requirements.transfer_window_minutes; 0 = no timer), so the countdown can only start once the
+  // method's details have been loaded.
+  int _totalSeconds = 0;
+  int _remainingSeconds = 0;
+  bool _timerStarted = false;
   Timer? _warningTimer;
 
-  @override
-  void initState() {
-    super.initState();
+  void _startTimer(int minutes) {
+    _timerStarted = true;
+    _totalSeconds = minutes * 60;
+    _remainingSeconds = _totalSeconds;
+    if (_totalSeconds <= 0) return; // admin turned the timer off
     _warningTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) return;
       if (_remainingSeconds <= 0) {
@@ -146,9 +152,14 @@ class _TransferViewState extends State<_TransferView> {
     // What the ADMIN requires for the method the student picked (Admin → Payment methods).
     final req = d?.requirementsFor(p.isBankTransfer) ?? const TransferRequirements();
     final amountProblem = d == null ? null : _amountProblem(req);
+    if (d != null && !_timerStarted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_timerStarted) setState(() => _startTimer(req.transferWindowMinutes));
+      });
+    }
 
     return EnrollScaffold(
-      child: CenteredBody(
+      child: Center(
         child: Column(
           children: [
             enrollAppBar(
@@ -177,10 +188,11 @@ class _TransferViewState extends State<_TransferView> {
                         _AmountProblemBanner(message: amountProblem),
                         const SizedBox(height: 16),
                       ],
-                      _TransferTimeWarningBanner(
-                        remainingSeconds: _remainingSeconds,
-                        totalSeconds: _warningDurationSeconds,
-                      ),
+                      if (_totalSeconds > 0)
+                        _TransferTimeWarningBanner(
+                          remainingSeconds: _remainingSeconds,
+                          totalSeconds: _totalSeconds,
+                        ),
                       const SizedBox(height: 20),
                       Text(
                         'transfer_details_title'.tr,
@@ -312,7 +324,7 @@ class _TransferTimeWarningBannerState
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    // _pulseController.dispose();
     super.dispose();
   }
 
@@ -362,7 +374,10 @@ class _TransferTimeWarningBannerState
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'transfer_time_warning'.tr,
+                  'transfer_time_warning_n'.tr.replaceAll(
+                    '{time}',
+                    '${widget.totalSeconds ~/ 60} ${'minutes'.tr}',
+                  ),
                   style: c.caption.copyWith(
                     color: accent,
                     fontWeight: FontWeight.w600,

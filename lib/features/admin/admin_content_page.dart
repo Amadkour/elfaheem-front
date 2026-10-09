@@ -162,6 +162,8 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'terms_and_conditions'.tr),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "content_float",
+        key: ValueKey("content_float"),
         backgroundColor: c.primary,
         onPressed: () => _sectionForm(context, p),
         icon: const Icon(Icons.add_rounded, color: Colors.white),

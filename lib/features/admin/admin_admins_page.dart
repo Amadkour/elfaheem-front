@@ -264,6 +264,8 @@ class _AdminsViewState extends State<_AdminsView> {
       enableFooterWidget: !widget.embedded,
       appBar: widget.embedded ? null : ScreenAppBar(title: 'admin_admins'.tr),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "admins_float",
+        key: ValueKey("admins_float"),
         backgroundColor: c.primary,
         onPressed: () => _openAdminForm(context, p),
         icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white),

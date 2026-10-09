@@ -1,16 +1,16 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// app_theme.dart
-/// Premium Theme — Brand Teal & Purple Accents
+/// Premium Theme — Indigo Brand & Gold Accents (built-in DEFAULT theme)
 ///
 /// This file holds only:
 ///   • Raw static design tokens (colours, radii, text styles, gradients,
 ///     shadows) — the last-resort fallback values.
 ///   • ThemeData factories (themeData / darkThemeData) for MaterialApp.
 ///
-/// The live palette comes from ThemeConfigProvider (fetched from the API,
-/// cached in SharedPreferences) — see theme_config_provider.dart. Every
-/// token here is only ever used as a fallback, before the first theme load
-/// resolves or if both the API call and the cache are unavailable.
+/// This file IS the default theme: it is what the app shows on first launch,
+/// offline, or whenever the API / cache has no value for a token. The live
+/// palette (fetched from the API, cached in SharedPreferences) overrides it —
+/// see theme_config_provider.dart.
 ///
 /// There is no `context.colors` / ThemeConfigProvider anymore — the single theme
 /// accessor across the whole app is `context.themeConfig`, defined in
@@ -28,49 +28,58 @@ import 'package:flutter/material.dart';
 class AppTheme {
   AppTheme._();
 
-  // ── Premium Brand palette ─────────────────────────────────────────────────
-  static const Color primary         = Color(0xFF24B1B1);   // Main Brand Teal
-  static const Color primaryDark     = Color(0xFF2E2E2E);   // Deeper hover/press tone
-  static const Color primaryLight    = Color(0xFF24B1B1);   // Same as primary (per palette)
-  static const Color lightPrimary    = Color(0x2024B1B1);   // 12% opacity teal
+  // ── Brand palette (DEFAULT theme) ─────────────────────────────────────────
+  static const Color primary         = Color(0xFF2F3E9E);   // Indigo
+  static const Color primaryDark     = Color(0xFF1B2466);
+  static const Color primaryLight    = Color(0xFF5C6BD6);
+  static const Color lightPrimary    = Color(0x1F2F3E9E);   // primary @ ~12 %
 
-  static const Color charcoal        = Color(0xFF2E2E2E);   // Dark Charcoal
-  static const Color charcoalLight   = Color(0xFF4A4A4A);   // Lighter charcoal
-  static const Color charcoalDark    = Color(0xFF1A1A1A);   // Near Black
+  static const Color charcoal        = Color(0xFF2A2D45);
+  static const Color charcoalLight   = Color(0xFF4B4F6B);
+  static const Color charcoalDark    = Color(0xFF1B1E33);
 
-  static const Color accent          = Color(0xFFD7C3F1);   // Light purple accent
-  static const Color accent2         = Color(0xFF7E5CAD);   // Deeper purple accent
-  static const Color success         = Color(0xFF34C270);
-  static const Color danger          = Color(0xFFFF3B5C);
-  static const Color warning         = Color(0xFFF4A742);   // Warm amber
-  static const Color secondText      = Color(0xFF8A8A8A);   // Muted gray for secondary text
-  static const Color purple          = Color(0xFF8B6FFF);   // Kept for special states
+  static const Color accent          = Color(0xFFF6E3B4);   // Soft gold
+  static const Color accent2         = Color(0xFFC9A227);   // Gold
+  static const Color success         = Color(0xFF2FB67C);
+  static const Color danger          = Color(0xFFF0435F);
+  static const Color warning         = Color(0xFFF2A93B);
+  static const Color secondText      = Color(0xFF8A8EA8);
+  static const Color purple          = Color(0xFF7C5CFF);
 
-  // ── Light surfaces (Premium Clean) ────────────────────────────────────────
-  // static const Color background           = Color(0xFFD4FEFD);   // Light teal-tinted background
-  static const Color background           = Color(0xFFFBF7EC);   // Light teal-tinted background
-  static const Color surfaceCard          = Color(0xFFFFFFFF);   // Pure White cards
-  static const Color cardBg                 = Color(0xFFFFFFFF);   // Pure White
-  static const Color textFieldBackground    = Color(0xFFF8F8F8);   // Slightly off-white inputs
-  static const Color divider              = Color(0xFFE8E8E8);   // Subtle gray divider
+  // ── Tints & shadow base colours ───────────────────────────────────────────
+  static const Color primaryTint            = Color(0x1F2F3E9E);
+  static const Color primaryTintDark        = Color(0x335C6BD6);
+  static const Color primaryShadowColor     = Color(0x4C2F3E9E);   // light mode
+  static const Color primaryShadowColorDark = Color(0x262F3E9E);   // dark mode
+  static const Color cardShadowColor        = Color(0xFF1B2040);   // light mode
+  static const Color cardShadowColorDark    = Color(0xFF000000);   // dark mode
 
-  // ── Light text (Premium hierarchy) ────────────────────────────────────────
-  static const Color textDark     = Color(0xFF1A1A1A);   // Near Black — primary text
-  static const Color textMedium   = Color(0xFF4A4A4A);   // Charcoal Light — secondary
-  static const Color textLight    = Color(0xFF8A8A8A);   // Muted gray — tertiary
-  static const Color textAction   = Color(0xFF2E2E2E);   // Charcoal for action links
+  // ── Light surfaces ────────────────────────────────────────────────────────
+  static const Color background           = Color(0xFFF2F4FF);
+  static const Color surfaceCard          = Color(0xFFFFFFFF);
+  static const Color cardBg               = Color(0xFFFFFFFF);
+  static const Color textFieldBackground  = Color(0xFFF6F7FC);
+  static const Color inputBg              = Color(0xFFF6F7FC);
+  static const Color divider              = Color(0xFFE6E8F2);
 
-  // ── Dark surfaces (Premium Dark Mode) ─────────────────────────────────────
-  static const Color darkBackground  = Color(0xFF1A1A1A);   // Near Black
-  static const Color darkSurface     = Color(0xFF222222);   // Slightly elevated
-  static const Color darkCard        = Color(0xFF2E2E2E);   // Charcoal cards
-  static const Color darkInput       = Color(0xFF333333);   // Input fields
-  static const Color darkDivider     = Color(0xFF3A3A3A);   // Subtle dark divider
+  // ── Light text ────────────────────────────────────────────────────────────
+  static const Color textDark     = Color(0xFF1B1E33);
+  static const Color textMedium   = Color(0xFF4B4F6B);
+  static const Color textLight    = Color(0xFF8A8EA8);
+  static const Color textAction   = Color(0xFF2F3E9E);
+
+  // ── Dark surfaces ─────────────────────────────────────────────────────────
+  static const Color darkBackground  = Color(0xFF0F1224);
+  static const Color darkSurface     = Color(0xFF161A33);
+  static const Color darkCard        = Color(0xFF1E2342);
+  static const Color darkInput       = Color(0xFF262B4D);
+  static const Color inputBgDark     = Color(0xFF262B4D);
+  static const Color darkDivider     = Color(0xFF2F3560);
 
   // ── Dark text ─────────────────────────────────────────────────────────────
-  static const Color darkTextPrimary  = Color(0xFFF5F5F5);   // Off-white primary
-  static const Color darkTextMuted    = Color(0xFFB0B0B0);   // Muted light gray
-  static const Color darkTextLight    = Color(0xFF666666);   // Dimmed dark mode
+  static const Color darkTextPrimary  = Color(0xFFF4F5FB);
+  static const Color darkTextMuted    = Color(0xFFA9AECC);
+  static const Color darkTextLight    = Color(0xFF6B7099);
 
   // ── Radii ─────────────────────────────────────────────────────────────────
   static const double radiusSmall  = 10;
@@ -78,24 +87,24 @@ class AppTheme {
   static const double radiusLarge  = 24;
   static const double radiusXL     = 32;
 
-  // ── Gradients ─────────────────────────────────────────────────────────────
+  // ── Gradients (derived from the palette above) ───────────────────────────
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF24B1B1), Color(0xFF71CCCC), Color(0xFF24B1B1)],
+    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6), Color(0xFF2F3E9E)],
   );
   static const LinearGradient disableGradient = LinearGradient(
-    colors: [Color(0x501A1A1A), Color(0x504A4A4A)],
+    colors: [Color(0x501B1E33), Color(0x504B4F6B)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient backgroundGradient = LinearGradient(
-    colors: [Color(0xFFF5F5F5), Color(0xFFFAFAFA)],
+    colors: [Color(0xFFF2F4FF), Color(0xFFFFFFFF)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
   static const LinearGradient darkBackgroundGradient = LinearGradient(
-    colors: [Color(0xFF1A1A1A), Color(0xFF222222)],
+    colors: [Color(0xFF0F1224), Color(0xFF161A33)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -107,40 +116,40 @@ class AppTheme {
   static const LinearGradient lightSlideBarGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2E2E2E), Color(0xFF4A4A4A), Color(0xFF2E2E2E)],
+    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
   );
   static const LinearGradient accentGradient = LinearGradient(
-    colors: [Color(0xFF7E5CAD), Color(0xFFD7C3F1)],
+    colors: [Color(0xFFC9A227), Color(0xFFF6E3B4)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient sliderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2E2E2E), Color(0xFF4A4A4A), Color(0xFF2E2E2E)],
+    colors: [Color(0xFF2A2D45), Color(0xFF4B4F6B), Color(0xFF2A2D45)],
   );
   static const LinearGradient tealGradient = LinearGradient(
-    colors: [Color(0xFF24B1B1), Color(0xFF71CCCC)],
+    colors: [Color(0xFF2F3E9E), Color(0xFF5C6BD6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient successGradient = LinearGradient(
-    colors: [success, Color(0xFF4ADE80)],
+    colors: [success, Color(0xFF5FD8A3)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient dangerGradient = LinearGradient(
-    colors: [Color(0xFFFF3B5C), Color(0xFFFF6B85)],
+    colors: [Color(0xFFF0435F), Color(0xFFFF7A90)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient purpleGradient = LinearGradient(
-    colors: [Color(0xFF8B6FFF), Color(0xFFB39DFF)],
+    colors: [Color(0xFF7C5CFF), Color(0xFFA992FF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
   static const LinearGradient goldCharcoalGradient = LinearGradient(
-    colors: [Color(0xFF24B1B1), Color(0xFF2E2E2E)],
+    colors: [Color(0xFFC9A227), Color(0xFF2A2D45)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -148,7 +157,7 @@ class AppTheme {
   // ── Shadows ───────────────────────────────────────────────────────────────
   static List<BoxShadow> cardShadow = [
     BoxShadow(
-        color: const Color(0xFF1A1A1A).withValues(alpha: 0.04),
+        color: cardShadowColor.withValues(alpha: 0.04),
         blurRadius: 24,
         offset: const Offset(0, 8)),
     BoxShadow(
@@ -178,13 +187,13 @@ class AppTheme {
   ];
   static List<BoxShadow> primaryShadow = [
     BoxShadow(
-        color: primary.withValues(alpha: 0.30),
+        color: primaryShadowColor,
         blurRadius: 20,
         offset: const Offset(0, 8)),
   ];
   static List<BoxShadow> primaryShadowDark = [
     BoxShadow(
-        color: primary.withValues(alpha: 0.15),
+        color: primaryShadowColorDark,
         blurRadius: 20,
         offset: const Offset(0, 8))
   ];
@@ -410,8 +419,8 @@ class AppTheme {
     style: ElevatedButton.styleFrom(
       elevation: 0,
       backgroundColor: primary,
-      foregroundColor: charcoalDark,   // Dark text on teal for premium contrast
-      disabledBackgroundColor: const Color(0xFFE8E8E8),
+      foregroundColor: Colors.white,   // White text on the indigo primary
+      disabledBackgroundColor: divider,
       disabledForegroundColor: textLight,
       shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusMedium)),

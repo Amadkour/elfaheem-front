@@ -657,6 +657,15 @@ class _EncryptionInterceptor extends Interceptor {
   static const _plainKey = '_encPlain';
 
   Future<void> _encryptInto(RequestOptions options, _EncSession session) async {
+    // GET/HEAD have no body: encrypting `null` would turn it into an
+    // {"n","ct"} body, which browsers refuse to send on GET (Dio: "GET request
+    // with a body data are not support on the web platform"). Send only the
+    // session header so the server can still encrypt the RESPONSE.
+    final method = options.method.toUpperCase();
+    if (method == 'GET' || method == 'HEAD') {
+      options.headers['X-Enc-Session'] = session.sessionId;
+      return;
+    }
     if (!options.extra.containsKey(_plainKey)) {
       options.extra[_plainKey] = options.data;
     }
@@ -763,7 +772,10 @@ class ApiClient {
         connectTimeout: const Duration(minutes: 60),
 
         // Unlimited upload/download timeouts.
-        sendTimeout: const Duration(minutes: 60),
+        // Web: a non-null sendTimeout makes Dio attach an XHR upload-progress
+        // listener, which FORCES a CORS preflight on every request — so it is
+        // left unset in the browser (XHR has no real send timeout anyway).
+        sendTimeout: kIsWeb ? null : const Duration(minutes: 60),
         receiveTimeout: const Duration(minutes: 60),
 
         // Keep the error body so we can read {"detail": ...}.

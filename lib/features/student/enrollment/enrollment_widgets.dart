@@ -16,24 +16,6 @@ import 'enrollment_models.dart';
 bool isWideLayout(BuildContext context) =>
     MediaQuery.of(context).size.width > 600;
 
-/// Web / tablets: centred column, max 560 px. Mobile: full width.
-class CenteredBody extends StatelessWidget {
-  final Widget child;
-
-  const CenteredBody({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isWideLayout(context)) return child;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 560),
-        child: child,
-      ),
-    );
-  }
-}
-
 void popToHome(BuildContext context) {
   Navigator.of(context).pushReplacementNamed('/dashboard');
 }
@@ -642,7 +624,7 @@ class EnrollScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return BasePage(
       useWebCard: true,
-      maxWith:1100,
+      maxWith:900,
         child: SafeArea(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 380),

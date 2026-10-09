@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -241,15 +242,17 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
           // ViewAsBanner shows the "View only: <name> · Back to admin" bar above EVERY screen while a
           // super-admin is in view-as mode (it renders nothing otherwise).
           builder: (_, child) => ViewAsBanner(
-            child: ResponsiveBreakpoints.builder(
-              breakpoints: [
-                const Breakpoint(start: 0, end: 450, name: MOBILE),
-                const Breakpoint(start: 451, end: 800, name: TABLET),
-                const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-                const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-              ],
-              useShortestSide: true,
-              child: child!,
+            child: _OfflineThemeBanner(
+              child: ResponsiveBreakpoints.builder(
+                breakpoints: [
+                  const Breakpoint(start: 0, end: 450, name: MOBILE),
+                  const Breakpoint(start: 451, end: 800, name: TABLET),
+                  const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+                  const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+                ],
+                useShortestSide: true,
+                child: child!,
+              ),
             ),
           ),
           supportedLocales: context
@@ -333,19 +336,123 @@ PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
   transitionDuration: const Duration(milliseconds: 300),
 );
 // ─────────────────────────────────────────────────────────────────────────────
+// "No internet" header — shown above every screen while the theme could not be
+// fetched from the server. The app keeps running on the cached / default theme.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OfflineThemeBanner extends StatelessWidget {
+  const _OfflineThemeBanner({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final tc = context.watch<ThemeConfigProvider>();
+    final show = tc.serverUnreachable;
+    final c = context.colors;
+
+    // The child keeps the same slot (index 1, wrapped in the same widgets)
+    // whether the banner is visible or not — otherwise toggling the banner
+    // would rebuild the Navigator below and lose the current screen.
+    return Column(
+      children: [
+        show
+            ? Directionality(
+          textDirection: Helpers.pageDirection,
+          child: Material(
+            color: c.danger,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(Icons.wifi_off_rounded,
+                        color: Colors.white, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'no_network_banner'.tr,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    if (tc.isRetrying)
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      TextButton.icon(
+                        onPressed: () =>
+                            context.read<ThemeConfigProvider>().reload(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: Text(
+                          'retry'.tr,
+                          style: const TextStyle(
+                            fontFamily: 'tajawal',
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        )
+            : const SizedBox.shrink(),
+        Expanded(
+          // The banner already covers the status bar, so the screens below
+          // must not add their own top inset a second time.
+          child: MediaQuery.removePadding(
+            context: context,
+            removeTop: show,
+            child: child,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Premium splash screen — shown while the live theme is being fetched
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _PremiumLoadingScreen extends StatelessWidget {
   const _PremiumLoadingScreen();
 
+  // On web / deep links the platform's initial route (e.g. "/login") is passed
+  // to THIS MaterialApp first. It must resolve every route name to the splash,
+  // otherwise Flutter logs "Could not navigate to initial route".
+  Route<dynamic> _splashRoute(RouteSettings _) => PageRouteBuilder(
+    settings: const RouteSettings(name: '/'),
+    pageBuilder: (_, _, _) => const _SplashBody(),
+  );
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.light, fontFamily: 'tajawal'),
-      home: const _SplashBody(),
+      onGenerateRoute: _splashRoute,
+      onGenerateInitialRoutes: (_) => [
+        _splashRoute(const RouteSettings(name: '/')),
+      ],
     );
   }
 }

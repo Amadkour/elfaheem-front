@@ -70,6 +70,7 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'app_version'.tr),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: "admin_float",
         key: const ValueKey('admin_versions.publish'),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),

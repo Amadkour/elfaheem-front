@@ -101,7 +101,7 @@ class _ViewState extends State<_View> {
               },
             ),
           ),
-          if ((items.isNotEmpty || p.total > 0) && p.total>20)
+          if ((items.isNotEmpty || p.total > 0) && p.total > 20)
             PagedCountCard(
               loaded: items.length,
               total: p.total,
@@ -166,6 +166,8 @@ class _ViewState extends State<_View> {
       // adding features is a super-admin-only tool
       floatingActionButton: p.canAddCustom
           ? FloatingActionButton.extended(
+              heroTag: "features_float",
+              key: ValueKey("features_float"),
               backgroundColor: c.primary,
               onPressed: () => showDialog<void>(
                 context: context,
