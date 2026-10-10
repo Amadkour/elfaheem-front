@@ -85,13 +85,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // One counter per tab. Refreshing bumps it, which re-creates that tab's page
   // (so it reloads its data) without touching the individual admin pages.
-  final _epochs = List.generate(5, (_) => ValueNotifier<int>(0));
+  final _epochs = List.generate(4, (_) => ValueNotifier<int>(0)); // tabs 0-3
 
+  // Returns immediately: RefreshButton hides itself while the returned Future
+  // is pending, so we must not await any network call here. The page that was
+  // re-created shows its own loading state, and the badge updates by itself.
   Future<void> _refreshTab(int i) async {
     _epochs[i].value++;
     if (!_isAdmin) return;
     context.read<TeacherTransfersProvider>().ensureLoaded();
-    await _payouts.refresh(); // also updates the "More" badge
+    _payouts.refresh(); // fire-and-forget: updates the "More" badge
   }
 
   static const _moreLabel = 'admin_more';
@@ -159,13 +162,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.apps_outlined,
         Icons.apps_rounded,
         _moreLabel,
-            () => _refreshTab(4),
-        _AdminTab(
-          titleKey: _moreLabel,
-          epoch: _epochs[4],
-          onRefresh: () => _refreshTab(4),
-          child: const _MorePage(),
-        ),
+        null, // the "More" page has no refresh button
+        const _AdminTab(titleKey: _moreLabel, child: _MorePage()),
       ),
     ];
 
@@ -173,9 +171,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted && _isAdmin) _payouts.refresh();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin) {
+      if (mounted && _isAdmin)
         context.read<TeacherTransfersProvider>().ensureLoaded();
-      }
     });
   }
 
@@ -276,14 +273,14 @@ class _AdminTab extends StatelessWidget {
   const _AdminTab({
     required this.titleKey,
     required this.child,
-    required this.epoch,
-    required this.onRefresh,
+    this.epoch,
+    this.onRefresh,
   });
 
   final String titleKey;
   final Widget child;
-  final ValueNotifier<int> epoch;
-  final Future<void> Function() onRefresh;
+  final ValueNotifier<int>? epoch;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -293,13 +290,16 @@ class _AdminTab extends StatelessWidget {
 
     final page = BasePage(
       appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
-      child: ValueListenableBuilder<int>(
-        valueListenable: epoch,
-        builder: (_, e, __) => KeyedSubtree(key: ValueKey(e), child: child),
+      child: epoch == null
+          ? child
+          : ValueListenableBuilder<int>(
+        valueListenable: epoch!,
+        builder: (_, e, __) =>
+            KeyedSubtree(key: ValueKey(e), child: child),
       ),
     );
 
-    if (!isMobileShell) return page;
+    if (!isMobileShell || onRefresh == null) return page;
 
     return Stack(
       children: [
@@ -307,7 +307,7 @@ class _AdminTab extends StatelessWidget {
         PositionedDirectional(
           top: MediaQuery.paddingOf(context).top + 4,
           end: 8,
-          child: RefreshButton(onTap: onRefresh),
+          child: RefreshButton(onTap: onRefresh!),
         ),
       ],
     );
