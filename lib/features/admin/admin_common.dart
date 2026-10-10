@@ -299,29 +299,37 @@ class Section extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // Material (not a decorated Container) so ListTile / SwitchListTile children
+    // can paint their background + ink splash on it. A Container's own colour sits
+    // between them and the Material ancestor and hides the effects (Flutter asserts).
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
+      child: Material(
         color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: c.divider),
+        clipBehavior: Clip.antiAlias, // keeps splashes inside the rounded corners
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: c.divider),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(
+                child: Text(title,
+                    style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: c.textDark)),
+              ),
+              if (trailing != null) trailing!,
+            ]),
+            const SizedBox(height: 10),
+            child,
+          ]),
+        ),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(
-            child: Text(title,
-                style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: c.textDark)),
-          ),
-          if (trailing != null) trailing!,
-        ]),
-        const SizedBox(height: 10),
-        child,
-      ]),
     );
   }
 }
