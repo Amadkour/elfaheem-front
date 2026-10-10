@@ -1,8 +1,8 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
 export "FLUTTER_ROOT=D:\flutter"
-export "FLUTTER_APPLICATION_PATH=D:\elfaheem\flutter_education_app"
-export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\elfaheem\flutter_education_app\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
+export "FLUTTER_APPLICATION_PATH=D:\platform\nextbrain\nextbrain-front"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\platform\nextbrain\nextbrain-front\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"
