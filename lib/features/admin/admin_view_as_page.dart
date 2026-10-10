@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
@@ -209,7 +210,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
 
     Widget list;
     if (_loading) {
-      list = const Center(child: CircularProgressIndicator());
+      list = const Center(child: AppLoadingIndicator());
     } else if (_error != null) {
       list = ErrorRetry(message: _error!, onRetry: _load);
     } else if (_items.isEmpty) {

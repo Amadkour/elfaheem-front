@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
@@ -102,7 +103,7 @@ class _RequestsViewState extends State<_RequestsView> {
 
     Widget list;
     if (!p.loaded && p.isLoading) {
-      list = const Center(child: CircularProgressIndicator());
+      list = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.rows.isEmpty) {
       list = ErrorRetry(message: p.error!, onRetry: p.refresh);
     } else if (p.rows.isEmpty) {
@@ -118,7 +119,7 @@ class _RequestsViewState extends State<_RequestsView> {
             ? (p.loadingMore
                   ? const Padding(
                       padding: EdgeInsets.all(16),
-                      child: Center(child: CircularProgressIndicator()),
+                      child: Center(child: AppLoadingIndicator()),
                     )
                   : const SizedBox(height: 30))
             : _RequestCard(items[i]),
@@ -291,7 +292,7 @@ class _RequestCard extends StatelessWidget {
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(6),
-                child: CircularProgressIndicator(),
+                child: AppLoadingIndicator(),
               ),
             )
           else ...[
@@ -1006,7 +1007,7 @@ class _SettingsViewState extends State<_SettingsView> {
     final c = context.colors;
     if (p.data.isEmpty) {
       return p.isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingIndicator())
           : ErrorRetry(
               message: p.error ?? 'admin_could_not_load'.tr,
               onRetry: p.load,

@@ -8,6 +8,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
@@ -36,7 +37,7 @@ class _View extends StatelessWidget {
         p.termsMeta == null &&
         p.aboutInfo == null &&
         p.isLoading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.sections.isEmpty && p.termsMeta == null) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else {

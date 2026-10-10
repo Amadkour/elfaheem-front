@@ -28,43 +28,87 @@ class ComplaintProvider extends BaseProvider {
 
   final ApiClient _api;
 
+  // ── Unread badge ──────────────────────────────────────────────────────────
+  // Number of complaints that need THIS user's attention (server-side rule:
+  // staff → new complaints / follow-ups they have not opened; student →
+  // complaints with an unopened reply). Drives the dashboard / tile badges.
+  int _count = 0;
+
+  int get count => _count;
+
+  bool _disposed = false;
+  int _listRequestId = 0; // lets a newer list request supersede an older one
+
+  @override
+  void notifyListeners() {
+    if (_disposed) return; // late network replies after the owner was disposed
+    super.notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  /// Cheap call (single COUNT on the server) — safe to fire-and-forget.
+  Future<void> refreshCount() async {
+    try {
+      final res = await _api.get('/api/v1/complaints/unread-count');
+      if (_disposed || res is! Map) return;
+      final n = (res['count'] as num?)?.toInt() ?? 0;
+      if (n != _count) {
+        _count = n;
+        notifyListeners();
+      }
+    } catch (e) {
+      log('refreshCount ❌ $e'); // keep the last known number
+    }
+  }
+
   // ── State ─────────────────────────────────────────────────────────────────
   List<ComplaintModel> _complaints = [];
   ComplaintModel? _selected;
   ComplaintStats _stats = const ComplaintStats();
 
-  bool isLoadingList    = false;
-  bool isLoadingDetail  = false;
-  bool isSending        = false;
+  bool isLoadingList = false;
+  bool isLoadingDetail = false;
+  bool isSending = false;
   bool isUploadingImage = false;
   String? errorMsg;
 
   // ── Pending attachments (form / reply) ─────────────────────────────────────
-  final List<PendingAttachment> _pendingAttachments      = [];
+  final List<PendingAttachment> _pendingAttachments = [];
   final List<PendingAttachment> _pendingReplyAttachments = [];
 
   List<PendingAttachment> get pendingAttachments =>
       List.unmodifiable(_pendingAttachments);
+
   List<PendingAttachment> get pendingReplyAttachments =>
       List.unmodifiable(_pendingReplyAttachments);
 
   // ── Pagination / filter state ─────────────────────────────────────────────
-  int _page       = 1;
+  int _page = 1;
   int _totalPages = 1;
+
   bool get hasMore => _page < _totalPages;
 
-  ComplaintStatus?   _statusFilter;
+  ComplaintStatus? _statusFilter;
   ComplaintCategory? _categoryFilter;
   String _search = '';
 
   // ── Getters ───────────────────────────────────────────────────────────────
   List<ComplaintModel> get complaints => List.unmodifiable(_complaints);
-  ComplaintModel?      get selected   => _selected;
-  ComplaintStats       get stats      => _stats;
 
-  ComplaintStatus?   get statusFilter   => _statusFilter;
+  ComplaintModel? get selected => _selected;
+
+  ComplaintStats get stats => _stats;
+
+  ComplaintStatus? get statusFilter => _statusFilter;
+
   ComplaintCategory? get categoryFilter => _categoryFilter;
-  String             get search         => _search;
+
+  String get search => _search;
 
   // ── Filter helpers ────────────────────────────────────────────────────────
   void setStatusFilter(ComplaintStatus? v) {
@@ -83,9 +127,9 @@ class ComplaintProvider extends BaseProvider {
   }
 
   void clearFilters() {
-    _statusFilter   = null;
+    _statusFilter = null;
     _categoryFilter = null;
-    _search         = '';
+    _search = '';
     loadComplaints(reset: true);
   }
 
@@ -97,7 +141,12 @@ class ComplaintProvider extends BaseProvider {
   final _picker = ImagePicker();
 
   static const List<String> _allowedAttachmentExtensions = [
-    'jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf',
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'gif',
+    'pdf',
   ];
 
   /// Converts a file_picker result into a PendingAttachment, working both
@@ -117,18 +166,28 @@ class ComplaintProvider extends BaseProvider {
   Future<void> pickComplaintImages() async {
     if (_pendingAttachments.length >= _maxImages) return;
     final remaining = _maxImages - _pendingAttachments.length;
-    final files = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final files = await _picker.pickMultiImage(
+      imageQuality: 85,
+      limit: remaining,
+    );
     for (final f in files) {
-      _pendingAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+      _pendingAttachments.add(
+        PendingAttachment(file: f, localPreviewUrl: f.path),
+      );
     }
     notifyListeners();
   }
 
   Future<void> pickComplaintImageFromCamera() async {
     if (_pendingAttachments.length >= _maxImages) return;
-    final f = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    final f = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
     if (f == null) return;
-    _pendingAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    _pendingAttachments.add(
+      PendingAttachment(file: f, localPreviewUrl: f.path),
+    );
     notifyListeners();
   }
 
@@ -168,18 +227,28 @@ class ComplaintProvider extends BaseProvider {
   Future<void> pickReplyImage() async {
     if (_pendingReplyAttachments.length >= _maxImages) return;
     final remaining = _maxImages - _pendingReplyAttachments.length;
-    final files = await _picker.pickMultiImage(imageQuality: 85, limit: remaining);
+    final files = await _picker.pickMultiImage(
+      imageQuality: 85,
+      limit: remaining,
+    );
     for (final f in files) {
-      _pendingReplyAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+      _pendingReplyAttachments.add(
+        PendingAttachment(file: f, localPreviewUrl: f.path),
+      );
     }
     notifyListeners();
   }
 
   Future<void> pickReplyImageFromCamera() async {
     if (_pendingReplyAttachments.length >= _maxImages) return;
-    final f = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+    final f = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85,
+    );
     if (f == null) return;
-    _pendingReplyAttachments.add(PendingAttachment(file: f, localPreviewUrl: f.path));
+    _pendingReplyAttachments.add(
+      PendingAttachment(file: f, localPreviewUrl: f.path),
+    );
     notifyListeners();
   }
 
@@ -219,14 +288,13 @@ class ComplaintProvider extends BaseProvider {
 
   Future<Map?> _uploadOne(PendingAttachment pending) async {
     try {
-
       final bytes = await pending.file.readAsBytes();
 
       final res = await _api.postMultipart(
         '/api/v1/complaints/upload-attachment',
-        fields:    {},
+        fields: {},
         fileField: 'file',
-        fileName:  pending.file.name,
+        fileName: pending.file.name,
         fileBytes: bytes,
       );
       if (res != null && res is Map && res['file_url'] != null) {
@@ -264,9 +332,17 @@ class ComplaintProvider extends BaseProvider {
   Future<void> loadComplaints({bool reset = false}) async {
     if (reset) {
       _page = 1;
+      _totalPages = 1;
       _complaints = [];
+    } else if (isLoadingList || !hasMore) {
+      // Paging: don't start a second request, and stop once the last page is in
+      // (the scroll listener used to re-request page N+1 forever).
+      return;
     }
-    if (isLoadingList) return;
+    // A reset must win over a request that is still in flight (typing in the
+    // search box / changing a filter). The old guard dropped the new request
+    // and left the list empty.
+    final requestId = ++_listRequestId;
     isLoadingList = true;
     errorMsg = null;
     notifyListeners();
@@ -275,12 +351,13 @@ class ComplaintProvider extends BaseProvider {
       final params = <String, dynamic>{
         'page': _page,
         'per_page': 20,
-        if (_statusFilter != null)   'status':   _statusFilter!.toJson(),
+        if (_statusFilter != null) 'status': _statusFilter!.toJson(),
         if (_categoryFilter != null) 'category': _categoryFilter!.toJson(),
-        if (_search.isNotEmpty)      'search':   _search,
+        if (_search.isNotEmpty) 'search': _search,
       };
 
       final res = await _api.get('/api/v1/complaints', queryParams: params);
+      if (requestId != _listRequestId) return; // superseded by a newer request
       if (res != null && res is Map) {
         final items = (res['items'] as List? ?? [])
             .map((j) => ComplaintModel.fromJson(j as Map<String, dynamic>))
@@ -291,14 +368,16 @@ class ComplaintProvider extends BaseProvider {
           _complaints = [..._complaints, ...items];
         }
         _totalPages = res['pages'] ?? 1;
-        _page       = (res['page'] ?? 1) + 1;
+        _page = (res['page'] ?? 1) + 1;
       }
     } catch (e) {
-      errorMsg = e.toString();
+      if (requestId == _listRequestId) errorMsg = e.toString();
       log('loadComplaints ❌ $e');
     } finally {
-      isLoadingList = false;
-      notifyListeners();
+      if (requestId == _listRequestId) {
+        isLoadingList = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -313,6 +392,7 @@ class ComplaintProvider extends BaseProvider {
         _selected = ComplaintModel.fromJson(res as Map<String, dynamic>);
         final idx = _complaints.indexWhere((c) => c.id == id);
         if (idx != -1) _complaints[idx] = _selected!;
+        refreshCount(); // opening it marks it read on the server → badge goes down
       }
     } catch (e) {
       log('loadDetail ❌ $e');
@@ -328,6 +408,7 @@ class ComplaintProvider extends BaseProvider {
       final res = await _api.get('/api/v1/complaints/stats');
       if (res != null && res is Map) {
         _stats = ComplaintStats.fromJson(res as Map<String, dynamic>);
+        _count = _stats.unreadAdmin; // role-aware on the server
         notifyListeners();
       }
     } catch (e) {
@@ -342,50 +423,56 @@ class ComplaintProvider extends BaseProvider {
     required ComplaintCategory category,
     required ComplaintPriority priority,
     String? courseId,
-    String? suggestedSolution,        // ← NEW  optional param
+    String? suggestedSolution, // ← NEW  optional param
   }) async {
     isSending = true;
     notifyListeners();
 
     try {
       final attachmentUrls = await _uploadAll(_pendingAttachments);
+      if (attachmentUrls.length != _pendingAttachments.length) {
+        // Some files failed to upload — don't silently send the complaint
+        // without them. Keep the picked files so the user can just retry.
+        errorMsg = 'upload_failed'; // translation key
+        return null;
+      }
 
       // Trim the suggestion; send null if blank so the backend stores NULL.
       final trimmedSuggestion = suggestedSolution?.trim();
 
       final body = <String, dynamic>{
-        'title':       title,
-        'description': description,
-        'category':    category.toJson(),
-        'priority':    priority.toJson(),
-        'course_id': ?courseId,
-        if (attachmentUrls.isNotEmpty) 'attachment_urls': attachmentUrls,
-        if (trimmedSuggestion != null && trimmedSuggestion.isNotEmpty)
-          'suggested_solution': trimmedSuggestion,       // ← NEW
-      };
+    'title': title,
+    'description': description,
+    'category': category.toJson(),
+    'priority': priority.toJson(),
+    'course_id': ?(courseId == null ? null : int.tryParse(courseId)),
+    if (attachmentUrls.isNotEmpty) 'attachment_urls': attachmentUrls,
+    if (trimmedSuggestion != null && trimmedSuggestion.isNotEmpty)
+    'suggested_solution': trimmedSuggestion, // ← NEW
+    };
 
-      final res = await _api.post('/api/v1/complaints', body: body);
-      if (res != null && res is Map) {
-        final complaint = ComplaintModel.fromJson(res as Map<String, dynamic>);
-        _complaints.insert(0, complaint);
-        _stats = ComplaintStats(
-          total:       _stats.total + 1,
-          open:        _stats.open + 1,
-          inProgress:  _stats.inProgress,
-          resolved:    _stats.resolved,
-          closed:      _stats.closed,
-          unreadAdmin: _stats.unreadAdmin + 1,
-        );
-        _pendingAttachments.clear();
-        isSending = false;
-        notifyListeners();
-        return complaint;
-      }
+    final res = await _api.post('/api/v1/complaints', body: body);
+    if (res != null && res is Map) {
+    final complaint = ComplaintModel.fromJson(res as Map<String, dynamic>);
+    _complaints.insert(0, complaint);
+    _stats = ComplaintStats(
+    total: _stats.total + 1,
+    open: _stats.open + 1,
+    inProgress: _stats.inProgress,
+    resolved: _stats.resolved,
+    closed: _stats.closed,
+    unreadAdmin: _stats.unreadAdmin + 1,
+    );
+    _pendingAttachments.clear();
+    isSending = false;
+    notifyListeners();
+    return complaint;
+    }
     } catch (e) {
-      log('createComplaint ❌ $e');
+    log('createComplaint ❌ $e');
     } finally {
-      isSending = false;
-      notifyListeners();
+    isSending = false;
+    notifyListeners();
     }
     return null;
   }
@@ -401,6 +488,10 @@ class ComplaintProvider extends BaseProvider {
 
     try {
       final uploadedUrls = await _uploadAll(_pendingReplyAttachments);
+      if (uploadedUrls.length != _pendingReplyAttachments.length) {
+        errorMsg = 'upload_failed'; // translation key
+        return null; // keep staged files for a retry
+      }
       final allUrls = [...attachmentUrls, ...uploadedUrls];
 
       final res = await _api.post(
@@ -412,26 +503,27 @@ class ComplaintProvider extends BaseProvider {
         final reply = ComplaintReply.fromJson(res as Map<String, dynamic>);
         if (_selected?.id == complaintId) {
           _selected = ComplaintModel(
-            id:           _selected!.id,
-            userId:       _selected!.userId,
-            userName:     _selected!.userName,
-            userImage:    _selected!.userImage,
-            courseId:     _selected!.courseId,
-            courseTitle:  _selected!.courseTitle,
-            title:        _selected!.title,
-            description:  _selected!.description,
-            suggestedSolution: _selected!.suggestedSolution,  // preserve
-            category:     _selected!.category,
-            priority:     _selected!.priority,
-            status:       _selected!.status,
+            id: _selected!.id,
+            userId: _selected!.userId,
+            userName: _selected!.userName,
+            userImage: _selected!.userImage,
+            courseId: _selected!.courseId,
+            courseTitle: _selected!.courseTitle,
+            title: _selected!.title,
+            description: _selected!.description,
+            suggestedSolution: _selected!.suggestedSolution,
+            // preserve
+            category: _selected!.category,
+            priority: _selected!.priority,
+            status: _selected!.status,
             isReadByAdmin: _selected!.isReadByAdmin,
-            isReadByUser:  _selected!.isReadByUser,
-            createdAt:    _selected!.createdAt,
-            updatedAt:    DateTime.now(),
-            resolvedAt:   _selected!.resolvedAt,
+            isReadByUser: _selected!.isReadByUser,
+            createdAt: _selected!.createdAt,
+            updatedAt: DateTime.now(),
+            resolvedAt: _selected!.resolvedAt,
             repliesCount: _selected!.repliesCount + 1,
-            replies:      [..._selected!.replies, reply],
-            attachments:  _selected!.attachments,
+            replies: [..._selected!.replies, reply],
+            attachments: _selected!.attachments,
           );
         }
         _pendingReplyAttachments.clear();
@@ -456,7 +548,7 @@ class ComplaintProvider extends BaseProvider {
         body: {'status': newStatus.toJson()},
       );
       if (res != null) {
-        await loadDetail(complaintId);
+        await loadDetail(complaintId); // also refreshes the badge
         return true;
       }
     } catch (e) {

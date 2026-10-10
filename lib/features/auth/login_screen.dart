@@ -168,6 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 100,
                 height: 100,
                 heroTag: "logo-login",
+                fit: BoxFit.scaleDown,
                 color: context.colors.background,
               ),
               LangDropdown(),

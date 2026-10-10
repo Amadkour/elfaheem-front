@@ -23,6 +23,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import '../student/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
@@ -152,7 +153,7 @@ class AdminFeeRatesSection extends StatelessWidget {
           style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
       const SizedBox(height: 8),
       if (!p.loaded && p.isLoading)
-        const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
+        const Padding(padding: EdgeInsets.all(20), child: Center(child: AppLoadingIndicator()))
       else if (!p.loaded)
         ErrorRetry(message: p.errorMessage ?? 'admin_could_not_load'.tr, onRetry: p.load)
       else ...[
