@@ -13,6 +13,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../utils/widget/app_loading_indicator.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
 
@@ -107,7 +108,7 @@ class _ViewState extends State<_View> {
 
     Widget body;
     if (!p.loaded) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.plans.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else if (p.hasAccess && p.required && p.active != null) {

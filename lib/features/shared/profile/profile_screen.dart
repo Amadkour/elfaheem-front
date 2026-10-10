@@ -49,10 +49,10 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
   @override
   void initState() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refresh(context);
-    });
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refresh(context);
+    });
   }
 
   void _refresh(BuildContext context) {
@@ -277,17 +277,39 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                         children: [
                           ParentComponent(
                             featureKey: 'profile.help_center',
-                            child: SettingsTile(
-                              onTap: () => _push(
-                                ChangeNotifierProvider(
-                                  create: (_) => ComplaintProvider(),
-                                  child: const ComplaintsScreen(),
-                                ),
+                            // The teacher dashboard provides a shared ComplaintProvider
+                            // (badge). Students don't — nullable lookup returns null there.
+                            child: TileCountOverlay(
+                              count: context.select<ComplaintProvider?, int>(
+                                    (p) => p?.count ?? 0,
                               ),
-                              icon: Icons.headset_mic_rounded,
-                              iconBg: c.primaryTint,
-                              iconColor: c.primary,
-                              label: 'help_center'.tr,
+                              child: SettingsTile(
+                                onTap: () async {
+                                  final shared =
+                                  Provider.of<ComplaintProvider?>(
+                                    context,
+                                    listen: false,
+                                  );
+                                  await _push(
+                                    shared != null
+                                        ? ChangeNotifierProvider<
+                                        ComplaintProvider
+                                    >.value(
+                                      value: shared,
+                                      child: const ComplaintsScreen(),
+                                    )
+                                        : ChangeNotifierProvider(
+                                      create: (_) => ComplaintProvider(),
+                                      child: const ComplaintsScreen(),
+                                    ),
+                                  );
+                                  shared?.refreshCount();
+                                },
+                                icon: Icons.headset_mic_rounded,
+                                iconBg: c.primaryTint,
+                                iconColor: c.primary,
+                                label: 'help_center'.tr,
+                              ),
                             ),
                           ),
                           ParentComponent(

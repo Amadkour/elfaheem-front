@@ -18,6 +18,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -134,7 +135,7 @@ class _ViewState extends State<_View> {
 
     Widget body;
     if (s.values.isEmpty && s.isLoading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (s.values.isEmpty) {
       body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
@@ -422,7 +423,7 @@ class _MethodsTab extends StatelessWidget {
           subtitle: _t('فعّل الطريقة أو اضغط على البطاقة لتعديل كل تفاصيلها.',
               'Switch a method on/off, or tap a card to edit all its details.')),
       if (pm.items.isEmpty && pm.isLoading)
-        const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+        const Padding(padding: EdgeInsets.all(24), child: Center(child: AppLoadingIndicator()))
       else if (pm.items.isEmpty)
         ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
       else
@@ -468,7 +469,7 @@ class _GatewayTile extends StatelessWidget {
             SizedBox(
               height: 26,
               child: loading
-                  ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                  ? const Center(child: SizedBox(width: 18, height: 18, child: AppLoadingIndicator()))
                   : Icon(selected ? Icons.check_circle_rounded : icon,
                   color: selected ? c.primary : c.textLight, size: 24),
             ),

@@ -37,6 +37,8 @@ import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/parent_component.dart';
 import '../shared/profile/change_language_screen.dart';
+import '../shared/profile/compalints/complaint_provider.dart';
+import '../shared/profile/compalints/complaints_screen.dart';
 import '../shared/profile/components/setting_group.dart';
 import '../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'admin_admins_page.dart';
@@ -81,6 +83,10 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _tabs = AdminDashboardProvider();
   final _payouts = AdminPendingPayoutsProvider();
+
+  // Owned here (like _payouts) and shared with the "More" page + the complaints
+  // screens, so the badge and the list always read the same instance.
+  final _complaints = ComplaintProvider();
   late final List<DashboardItem> _items;
 
   // One counter per tab. Refreshing bumps it, which re-creates that tab's page
@@ -95,6 +101,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     if (!_isAdmin) return;
     context.read<TeacherTransfersProvider>().ensureLoaded();
     _payouts.refresh(); // fire-and-forget: updates the "More" badge
+    _complaints.refreshCount();
   }
 
   static const _moreLabel = 'admin_more';
@@ -155,7 +162,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           titleKey: 'teachers',
           epoch: _epochs[3],
           onRefresh: () => _refreshTab(3),
-          child: AdminUsersPage(role: 'teacher',embedded:true),
+          child: AdminUsersPage(role: 'teacher', embedded: true),
         ),
       ),
       DashboardItem(
@@ -168,7 +175,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ];
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin) _payouts.refresh();
+      if (mounted && _isAdmin) {
+        _payouts.refresh();
+        _complaints.refreshCount();
+      }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isAdmin)
@@ -180,6 +190,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void dispose() {
     _tabs.dispose();
     _payouts.dispose();
+    _complaints.dispose();
     for (final e in _epochs) {
       e.dispose();
     }
@@ -201,6 +212,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ChangeNotifierProvider<AdminPendingPayoutsProvider>.value(
           value: _payouts,
         ),
+        ChangeNotifierProvider<ComplaintProvider>.value(value: _complaints),
       ],
       builder: (context, _) {
         final tabs = context.watch<AdminDashboardProvider>();
@@ -222,7 +234,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ) +
                         context.select<TeacherTransfersProvider, int>(
                               (p) => p.total,
-                        );
+                        ) +
+                        context.select<ComplaintProvider, int>((p) => p.count);
                 for (final item in _items) {
                   item.badge = item.label == _moreLabel ? pending : 0;
                 }
@@ -409,7 +422,7 @@ class _MorePageState extends State<_MorePage> {
                 ),
                 const SizedBox(height: 20),
 
-                // ── Finance & requests ───────────────────────────────────
+                // ── Finance  ───────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
@@ -460,7 +473,7 @@ class _MorePageState extends State<_MorePage> {
                       ),
                       ParentComponent(
                         featureKey: 'profile.payment',
-                        child:  SettingsTile(
+                        child: SettingsTile(
                           icon: CupertinoIcons.creditcard,
                           iconBg: c.successTint,
                           iconColor: c.success,
@@ -468,10 +481,46 @@ class _MorePageState extends State<_MorePage> {
                           onTap: () => _push(const AdminPaymentsPage()),
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // ──  requests ───────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SettingsGroup(
+                    title: 'help'.tr,
+                    children: [
+                      // New / unopened complaints — same overlay as the payout
+                      // and enrollment-request tiles.
+                      TileCountOverlay(
+                        count: context.select<ComplaintProvider, int>(
+                              (p) => p.count,
+                        ),
+                        child: SettingsTile(
+                          onTap: () async {
+                            final complaints = context.read<ComplaintProvider>();
+                            // .value, NOT create: `create` would DISPOSE the shared
+                            // provider as soon as the complaints screen is popped.
+                            await _push(
+                              ChangeNotifierProvider<ComplaintProvider>.value(
+                                value: complaints,
+                                child: const ComplaintsScreen(),
+                              ),
+                            );
+                            // read / replied / status changed in there → recount
+                            complaints.refreshCount();
+                          },
+                          icon: Icons.headset_mic_rounded,
+                          iconBg: c.primaryTint,
+                          iconColor: c.primary,
+                          label: 'help_center'.tr,
+                        ),
+                      ),
                       SettingsTile(
                         icon: Icons.devices_rounded,
-                        iconBg: c.danger.withAlpha(50),
-                        iconColor: c.danger,
+                        iconBg: c.primary.withAlpha(50),
+                        iconColor: c.primary,
                         label: 'admin_devices'.tr,
                         onTap: () => _push(const AdminDevicesPage()),
                       ),

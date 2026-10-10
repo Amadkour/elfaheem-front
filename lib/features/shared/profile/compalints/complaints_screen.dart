@@ -600,7 +600,9 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     if (msg.isEmpty && p.pendingReplyAttachments.isEmpty) return;
     _replyCtrl.clear();
 
-    await p.addReply(complaintId: widget.complaintId, message: msg);
+    final sent = await p.addReply(complaintId: widget.complaintId, message: msg);
+    // Failed (network / upload) → give the typed text back instead of losing it.
+    if (sent == null && mounted) _replyCtrl.text = msg;
     await Future.delayed(const Duration(milliseconds: 100));
     if (_scrollCtrl.hasClients) {
       _scrollCtrl.animateTo(
@@ -619,62 +621,62 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
     final complaint = p.selected;
     log(' persona is===========> ${auth.isStudent}');
     return BasePage(child: SafeArea(
-          child: Column(
-            children: [
-              ScreenAppBar(title: 'complaint_details_title'.tr),
-              if (p.isLoadingDetail)
-                const Expanded(
-                  child: Center(child: AppLoadingIndicator()),
-                )
-              else if (complaint == null)
-                Expanded(child: Center(child: Text('complaint_not_found'.tr)))
-              else ...[
-                  Expanded(
-                    child: ListView(
-                      controller: _scrollCtrl,
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      children: [
-                        // ── Info card ──────────────────────────────────────────
-                        ParentComponent(featureKey: 'complaint_detail.info', child: _InfoCard(
-                          complaint: complaint,
-                          isAdmin: !auth.isStudent,
-                          provider: p,
-                        )),
-                        const SizedBox(height: 16),
-                        // ── Replies ────────────────────────────────────────────
-                        if (complaint.replies.isNotEmpty) ParentComponent(featureKey: 'complaint_detail.replies', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: Text('replies_label'.tr, style: c.h3),
-                          ),
-                          ...complaint.replies.map(
-                                (r) => _ReplyBubble(
-                              reply: r,
-                              myId: auth.currentUser?.id ?? 0,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ])),
-                      ],
-                    ),
-                  ),
-                  // ── Reply input ──────────────────────────────────────────────
-                  if (complaint.status != ComplaintStatus.closed)
-                    ParentComponent(featureKey: 'complaint_detail.reply_input', child: _ReplyInput(
-                      controller: _replyCtrl,
-                      isSending: p.isSending,
-                      pendingAttachments: p.pendingReplyAttachments,
-                      onSend: _sendReply,
-                      onPickGallery: () => p.pickReplyImage(),
-                      onPickCamera: () => p.pickReplyImageFromCamera(),
-                      onPickFile: () => p.pickReplyFile(),
-                      onRemoveImage: (i) => p.removeReplyImage(i),
+      child: Column(
+        children: [
+          ScreenAppBar(title: 'complaint_details_title'.tr),
+          if (p.isLoadingDetail)
+            const Expanded(
+              child: Center(child: AppLoadingIndicator()),
+            )
+          else if (complaint == null)
+            Expanded(child: Center(child: Text('complaint_not_found'.tr)))
+          else ...[
+              Expanded(
+                child: ListView(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  children: [
+                    // ── Info card ──────────────────────────────────────────
+                    ParentComponent(featureKey: 'complaint_detail.info', child: _InfoCard(
+                      complaint: complaint,
+                      isAdmin: !auth.isStudent,
+                      provider: p,
                     )),
-                ],
+                    const SizedBox(height: 16),
+                    // ── Replies ────────────────────────────────────────────
+                    if (complaint.replies.isNotEmpty) ParentComponent(featureKey: 'complaint_detail.replies', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Text('replies_label'.tr, style: c.h3),
+                      ),
+                      ...complaint.replies.map(
+                            (r) => _ReplyBubble(
+                          reply: r,
+                          myId: auth.currentUser?.id ?? 0,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ])),
+                  ],
+                ),
+              ),
+              // ── Reply input ──────────────────────────────────────────────
+              if (complaint.status != ComplaintStatus.closed)
+                ParentComponent(featureKey: 'complaint_detail.reply_input', child: _ReplyInput(
+                  controller: _replyCtrl,
+                  isSending: p.isSending,
+                  pendingAttachments: p.pendingReplyAttachments,
+                  onSend: _sendReply,
+                  onPickGallery: () => p.pickReplyImage(),
+                  onPickCamera: () => p.pickReplyImageFromCamera(),
+                  onPickFile: () => p.pickReplyFile(),
+                  onRemoveImage: (i) => p.removeReplyImage(i),
+                )),
             ],
-          ),
-        ),
-      );
+        ],
+      ),
+    ),
+    );
   }
 }
 

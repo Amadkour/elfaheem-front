@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -450,11 +451,12 @@ class _CourseDetailState extends State<_CourseDetail> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.read<AdminCoursesProvider>();
-    if (loading)
+    if (loading) {
       return const SizedBox(
         height: 260,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: AppLoadingIndicator()),
       );
+    }
     final co = course;
     if (co == null) {
       return SizedBox(
@@ -970,7 +972,7 @@ class _CourseFormState extends State<_CourseForm> {
           child: !ready
               ? const SizedBox(
             height: 200,
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: AppLoadingIndicator()),
           )
               : SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),

@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
@@ -69,7 +70,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (loading) {
-      return const SizedBox(height: 260, child: Center(child: CircularProgressIndicator()));
+      return const SizedBox(height: 260, child: Center(child: AppLoadingIndicator()));
     }
     if (data == null) {
       return SizedBox(height: 260, child: ErrorRetry(message: error ?? 'admin_could_not_load_data'.tr, onRetry: _load));

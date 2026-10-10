@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -34,7 +35,7 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (p.items.isEmpty && p.isLoading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.items.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else if (p.items.isEmpty) {

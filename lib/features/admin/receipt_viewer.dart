@@ -14,6 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../utils/widget/app_loading_indicator.dart';
+
 Future<void> _launch(String url) async {
   var ok = false;
   try {
@@ -91,7 +93,7 @@ class _ImageDialog extends StatelessWidget {
                   fit: BoxFit.contain,
                   loadingBuilder: (_, child, prog) => prog == null
                       ? child
-                      : const SizedBox(height: 240, child: Center(child: CircularProgressIndicator())),
+                      : const SizedBox(height: 240, child: Center(child: AppLoadingIndicator())),
                   // Web (CanvasKit) needs CORS headers on the storage host to DRAW a network image.
                   // If they are missing, offer the browser instead of a blank box.
                   errorBuilder: (_, __, ___) => SizedBox(

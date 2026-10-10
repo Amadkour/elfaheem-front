@@ -6,6 +6,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
 import 'admin_providers.dart';
 
@@ -52,7 +53,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
 
     Widget body;
     if (!p.loaded && p.isLoading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.rows.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.refresh);
     } else if (p.rows.isEmpty) {
@@ -68,7 +69,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
             return p.loadingMore
                 ? const Padding(
                     padding: EdgeInsets.all(16),
-                    child: Center(child: CircularProgressIndicator()))
+                    child: Center(child: AppLoadingIndicator()))
                 : (p.hasMore
                     ? const SizedBox(height: 40)
                     : Padding(

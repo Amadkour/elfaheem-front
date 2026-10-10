@@ -21,6 +21,7 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/editable_image.dart';
 import '../../utils/widget/primary_button.dart';
@@ -207,7 +208,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (_failed) {
       body = ErrorRetry(message: 'admin_could_not_load_data'.tr, onRetry: _load);
     } else {

@@ -8,6 +8,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
@@ -292,7 +293,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
     if (loading) {
       return const SizedBox(
         height: 260,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: AppLoadingIndicator()),
       );
     }
     if (d == null) {

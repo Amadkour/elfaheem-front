@@ -2970,7 +2970,7 @@
     "ar": "الفيديو غير متاح بعد"
   },
   "are_you_sure_to_delete_account": {
-    "en": "Are you sure to delete your account ؟",
+    "en": "Are you sure to delete your account?",
     "ar": "هل انت متاكد من حذف الحساب ؟"
   },
   "your_account_will_deleted_successfully_through_14_days": {
@@ -8084,5 +8084,21 @@
   "admin_resubscribe_reopen": {
     "en": "Re-activate now (no payment)",
     "ar": "إعادة التفعيل الآن (بدون دفع)"
+  },
+  "admin_section_personal": {
+    "en": "Personal information",
+    "ar": "المعلومات الشخصية"
+  },
+  "admin_section_contact": {
+    "en": "Contact details",
+    "ar": "بيانات التواصل"
+  },
+  "admin_section_security": {
+    "en": "Security",
+    "ar": "الأمان"
+  },
+  "admin_tap_photo_to_change": {
+    "en": "Tap the photo to change it",
+    "ar": "اضغط على الصورة لتغييرها"
   }
 }

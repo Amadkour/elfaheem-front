@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/paged_progress.dart';
 import 'admin_common.dart';
@@ -81,7 +82,7 @@ class _ViewState extends State<_View> {
     final items = p.currentItems;
     Widget body;
     if (p.tabs.isEmpty && (p.isLoading || !p.loaded)) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.tabs.isEmpty) {
       body = ErrorRetry(
         message: p.error ?? 'admin_could_not_load_data'.tr,
@@ -896,10 +897,7 @@ class _AddFeatureDialogState extends State<_AddFeatureDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
+                  child: AppLoadingIndicator(showLogo: false,),
                 )
               : Text(
                   isAr ? 'إضافة' : 'Add',

@@ -7,6 +7,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
 import 'admin_income_breakdown.dart';
 import 'admin_models.dart';
@@ -42,7 +43,7 @@ class _View extends StatelessWidget {
     if (o == null) {
       return p.error != null
           ? ErrorRetry(message: p.error!, onRetry: p.load)
-          : const Center(child: CircularProgressIndicator());
+          : const Center(child: AppLoadingIndicator());
     }
 
     // Live count owned by the dashboard shell (same number as the "More" badge).

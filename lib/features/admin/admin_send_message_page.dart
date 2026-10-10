@@ -8,6 +8,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import '../../utils/widget/primary_button.dart';
@@ -467,7 +468,7 @@ class _PickerSheetState extends State<_PickerSheet> {
           ),
           Expanded(
             child: _loading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: AppLoadingIndicator())
                 : _failed
                 ? ErrorRetry(
                     message: 'admin_could_not_load_data'.tr,

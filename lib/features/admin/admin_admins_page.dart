@@ -17,6 +17,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
+import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -229,7 +230,7 @@ class _AdminsViewState extends State<_AdminsView> {
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator());
     } else if (p.failed) {
       body = ErrorRetry(
         message: 'admin_could_not_load_data'.tr,
@@ -249,7 +250,7 @@ class _AdminsViewState extends State<_AdminsView> {
             if (i >= p.items.length) {
               return const Padding(
                 padding: EdgeInsets.all(16),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: AppLoadingIndicator()),
               );
             }
             return _AdminTile(p.items[i]);
