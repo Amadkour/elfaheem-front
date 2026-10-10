@@ -226,12 +226,13 @@ class ApiException implements Exception {
     final serverMsg = codedMsg ?? _messageFromBody(body);   // coded messages are already user-ready
 
     // Never leak raw 5xx internals to users; the body is still available.
-    // A plain 403 (no machine code) always gets the friendly message.
+    // A plain 403 with NO readable server message gets the friendly generic
+    // text; if the server sent a readable message, it is shown instead.
     final message = type == ApiErrorType.server
         ? ApiMessages.server
         : (type == ApiErrorType.forbidden && ViewAsState.active)
         ? translate('admin_view_as_readonly') // every write is refused by the server in view-as: say so clearly
-        : (type == ApiErrorType.forbidden && code == null)
+        : (type == ApiErrorType.forbidden && code == null && serverMsg == null)
         ? ApiMessages.forbidden
         : (serverMsg ?? _defaultMessage(type));
 
@@ -292,13 +293,25 @@ class ApiException implements Exception {
     if (body is Map) {
       for (final key in const ['detail', 'message', 'error', 'msg']) {
         final m = _messageFromValue(body[key]);
-        if (m != null) return m.replaceAll(" ", "_").toLowerCase().tr;
+        if (m != null) return _translateIfKey(m);
       }
       return null;
     }
 
     if (body is List) return _messageFromValue(body);
     return null;
+  }
+
+  /// Only ASCII messages are treated as translation keys
+  /// ("User not found" -> "user_not_found"). Anything else (e.g. Arabic) is
+  /// already user-ready and returned untouched. If no translation exists for
+  /// the key, the original text is shown instead of "some_key_with_underscores".
+  static String _translateIfKey(String m) {
+    final isAscii = RegExp(r'^[\x00-\x7F]+$').hasMatch(m);
+    if (!isAscii) return m;
+    final key = m.replaceAll(' ', '_').toLowerCase();
+    final t = key.tr;
+    return t == key ? m : t;
   }
 
   static String? _messageFromValue(dynamic v) {
@@ -885,7 +898,8 @@ class ApiClient {
         }
         // Any other 403 (VIEW_LIMIT_REACHED, SWITCH_LIMIT, plain forbidden,
         // ...): NO navigation. The error is passed to the caller, which shows
-        // ApiException.message (a friendly text for a plain 403).
+        // ApiException.message (the server's message if readable, otherwise a
+        // friendly generic text).
         return handler.next(error);
       }
 

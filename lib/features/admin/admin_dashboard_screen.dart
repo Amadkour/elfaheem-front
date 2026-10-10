@@ -30,6 +30,7 @@ import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboa
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/count_badge.dart';
+import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -82,6 +83,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _payouts = AdminPendingPayoutsProvider();
   late final List<DashboardItem> _items;
 
+  // One counter per tab. Refreshing bumps it, which re-creates that tab's page
+  // (so it reloads its data) without touching the individual admin pages.
+  final _epochs = List.generate(5, (_) => ValueNotifier<int>(0));
+
+  Future<void> _refreshTab(int i) async {
+    _epochs[i].value++;
+    if (!_isAdmin) return;
+    context.read<TeacherTransfersProvider>().ensureLoaded();
+    await _payouts.refresh(); // also updates the "More" badge
+  }
+
   static const _moreLabel = 'admin_more';
 
   bool get _isAdmin => [
@@ -99,9 +111,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.dashboard_outlined,
         Icons.dashboard_rounded,
         'admin_overview_2',
-        null,
+            () => _refreshTab(0),
         _AdminTab(
           titleKey: 'admin_dashboard',
+          epoch: _epochs[0],
+          onRefresh: () => _refreshTab(0),
           child: AdminOverviewPage(onOpenTab: _tabs.onChangeTab),
         ),
       ),
@@ -109,9 +123,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.school_outlined,
         Icons.school_rounded,
         'admin_students',
-        null,
-        const _AdminTab(
+            () => _refreshTab(1),
+        _AdminTab(
           titleKey: 'admin_students',
+          epoch: _epochs[1],
+          onRefresh: () => _refreshTab(1),
           child: AdminUsersPage(role: 'student', embedded: true),
         ),
       ),
@@ -119,9 +135,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.menu_book_outlined,
         Icons.menu_book_rounded,
         'courses',
-        null,
-        const _AdminTab(
+            () => _refreshTab(2),
+        _AdminTab(
           titleKey: 'courses',
+          epoch: _epochs[2],
+          onRefresh: () => _refreshTab(2),
           child: AdminCoursesPage(embedded: true),
         ),
       ),
@@ -129,9 +147,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.person_pin_rounded,
         Icons.person_pin_rounded,
         'teachers',
-        null,
-        const _AdminTab(
+            () => _refreshTab(3),
+        _AdminTab(
           titleKey: 'teachers',
+          epoch: _epochs[3],
+          onRefresh: () => _refreshTab(3),
           child: AdminUsersPage(role: 'teacher',embedded:true),
         ),
       ),
@@ -139,8 +159,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.apps_outlined,
         Icons.apps_rounded,
         _moreLabel,
-        _payouts.refresh,
-        const _AdminTab(titleKey: _moreLabel, child: _MorePage()),
+            () => _refreshTab(4),
+        _AdminTab(
+          titleKey: _moreLabel,
+          epoch: _epochs[4],
+          onRefresh: () => _refreshTab(4),
+          child: const _MorePage(),
+        ),
       ),
     ];
 
@@ -148,8 +173,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted && _isAdmin) _payouts.refresh();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin)
+      if (mounted && _isAdmin) {
         context.read<TeacherTransfersProvider>().ensureLoaded();
+      }
     });
   }
 
@@ -157,6 +183,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void dispose() {
     _tabs.dispose();
     _payouts.dispose();
+    for (final e in _epochs) {
+      e.dispose();
+    }
     super.dispose();
   }
 
@@ -238,17 +267,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
 /// Gives each tab its own page frame (app bar + web card), like the teacher's
 /// tabs which each build their own BasePage.
+///
+/// • [epoch] changes → the page is re-created, so it reloads its data.
+/// • On wide / rail layouts the refresh button lives in the shell's top bar
+///   (same as the user dashboard). On the phone layout there is no top bar, so
+///   the button is drawn over the app bar here.
 class _AdminTab extends StatelessWidget {
-  const _AdminTab({required this.titleKey, required this.child});
+  const _AdminTab({
+    required this.titleKey,
+    required this.child,
+    required this.epoch,
+    required this.onRefresh,
+  });
 
   final String titleKey;
   final Widget child;
+  final ValueNotifier<int> epoch;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    final w = MediaQuery.sizeOf(context).width;
+    // Mirrors the shell choice in _AdminDashboardScreenState.build.
+    final isMobileShell = !(w >= 1000) && !(kIsWeb && w >= 600);
+
+    final page = BasePage(
       appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
-      child: child,
+      child: ValueListenableBuilder<int>(
+        valueListenable: epoch,
+        builder: (_, e, __) => KeyedSubtree(key: ValueKey(e), child: child),
+      ),
+    );
+
+    if (!isMobileShell) return page;
+
+    return Stack(
+      children: [
+        page,
+        PositionedDirectional(
+          top: MediaQuery.paddingOf(context).top + 4,
+          end: 8,
+          child: RefreshButton(onTap: onRefresh),
+        ),
+      ],
     );
   }
 }
@@ -400,12 +461,12 @@ class _MorePageState extends State<_MorePage> {
                       ParentComponent(
                         featureKey: 'profile.payment',
                         child:  SettingsTile(
-                            icon: CupertinoIcons.creditcard,
-                            iconBg: c.successTint,
-                            iconColor: c.success,
-                            label: 'apm_title'.tr,
-                            onTap: () => _push(const AdminPaymentsPage()),
-                          ),
+                          icon: CupertinoIcons.creditcard,
+                          iconBg: c.successTint,
+                          iconColor: c.success,
+                          label: 'apm_title'.tr,
+                          onTap: () => _push(const AdminPaymentsPage()),
+                        ),
                       ),
                       SettingsTile(
                         icon: Icons.devices_rounded,

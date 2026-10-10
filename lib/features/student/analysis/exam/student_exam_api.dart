@@ -206,10 +206,4 @@ class StudentExamApi {
     final data = await _api.get('/api/v1/exams/$examId/results');
     return StudentMyResult.fromJson(data as Map<String, dynamic>, examId);
   }
-
-  Future<List<StudentExamListItem>> fetchCourseExams(String courseId) async {
-    final data = await _api.get('/api/v1/courses/$courseId/exams/student');
-    if (data is! List) return [];
-    return data.cast<Map<String, dynamic>>().map(StudentExamListItem.fromJson).toList();
-  }
 }

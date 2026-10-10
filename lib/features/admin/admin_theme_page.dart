@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_models.dart';
@@ -175,14 +176,12 @@ class _ThemeCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton.icon(
-                icon: Icon(
-                  th.isBuiltin ? Icons.copy_rounded : Icons.edit_rounded,
-                  size: 18,
-                ),
-                label: Text(th.isBuiltin ? 'admin_copy'.tr : 'btn_edit'.tr),
+              OutlineButton(
+                icon: th.isBuiltin ? Icons.copy_rounded : Icons.edit_rounded,
+                label: th.isBuiltin ? 'admin_copy'.tr : 'btn_edit'.tr,
                 onPressed: () =>
                     _openEditor(context, p, base: th, edit: !th.isBuiltin),
+                color: context.colors.primary,
               ),
               if (!th.isBuiltin && !active)
                 IconButton(

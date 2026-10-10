@@ -156,9 +156,9 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<StudentExamProvider>().loadCourseExams(widget.courseId);
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   context.read<StudentExamProvider>().loadCourseExams(widget.courseId);
+    // });
   }
 
   @override

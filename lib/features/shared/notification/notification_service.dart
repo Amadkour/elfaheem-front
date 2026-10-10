@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/core/base_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest.dart' as tz;
 
+import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../main.dart';
 import '../../../utils/top_route_observer.dart';
@@ -35,12 +35,12 @@ import 'package:flutter_education_app/features/student/courses/details/course_de
 // be throttled).
 @pragma('vm:entry-point')
 Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-  print(
-    '[FCM][background] id=${message.messageId} '
-        'title=${message.notification?.title} '
-        'body=${message.notification?.body} '
-        'data=${message.data}',
-  );
+  // print(
+  //   '[FCM][background] id=${message.messageId} '
+  //   'title=${message.notification?.title} '
+  //   'body=${message.notification?.body} '
+  //   'data=${message.data}',
+  // );
 }
 
 class NotificationService {
@@ -49,7 +49,7 @@ class NotificationService {
   static final NotificationService instance = NotificationService._();
 
   final FlutterLocalNotificationsPlugin _plugin =
-  FlutterLocalNotificationsPlugin();
+      FlutterLocalNotificationsPlugin();
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
 
   ApiClient? _api;
@@ -129,8 +129,8 @@ class NotificationService {
 
       final androidPlugin = _plugin
           .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-      >();
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await androidPlugin?.requestNotificationsPermission();
       await androidPlugin?.createNotificationChannel(_channel);
     }
@@ -166,7 +166,7 @@ class NotificationService {
       if (kIsWeb) {
         token = await _fcm.getToken(
           vapidKey:
-          'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
+              'BLpXoCZIPMtfWfU9Ftnl8NzJgx4wHo-ZY16GCZ01ZD5fvs12c8KcMpAYPQ30-0kWdTrZku8dVxc3Gxl0smubJJ0',
         );
       } else {
         token = await _fcm.getToken();
@@ -221,9 +221,9 @@ class NotificationService {
     // visible too.
     print(
       '[FCM][foreground] id=${message.messageId} '
-          'title=${message.notification?.title} '
-          'body=${message.notification?.body} '
-          'data=${message.data}',
+      'title=${message.notification?.title} '
+      'body=${message.notification?.body} '
+      'data=${message.data}',
     );
 
     final data = message.data;
@@ -232,6 +232,15 @@ class NotificationService {
       print('[FCM] disable_list_updated received → refreshing');
       _refreshDisableList();
 
+      return;
+    }
+    // Silent push: the admin changed the theme -> re-fetch it, repaint live, show nothing.
+    if (data['type'] == 'theme_updated') {
+      final target = data['platform'] as String?;
+      if (target == null || target == _deviceType()) {
+        print('[FCM] theme_updated received -> refreshing theme');
+        _refreshTheme();
+      }
       return;
     }
     if (data['type'] == 'session_started' || data['type'] == 'session_ended') {
@@ -259,7 +268,9 @@ class NotificationService {
       final title = notification.title;
       final body = notification.body ?? '';
       Helpers.showMessage(
-        title != null && title.isNotEmpty && body.isNotEmpty ? '$title\n$body' : (body.isNotEmpty ? body : (title ?? '')),
+        title != null && title.isNotEmpty && body.isNotEmpty
+            ? '$title\n$body'
+            : (body.isNotEmpty ? body : (title ?? '')),
       );
       return;
     }
@@ -268,7 +279,9 @@ class NotificationService {
       title: notification.title,
       body: notification.body,
       notificationDetails: _notifDetails,
-      payload: jsonEncode(message.data), // lets a tap on the local notification open the right screen
+      payload: jsonEncode(
+        message.data,
+      ), // lets a tap on the local notification open the right screen
     );
   }
 
@@ -302,7 +315,9 @@ class NotificationService {
       ).fetchSessions(activeCourseId);
     } catch (e) {
       // (the old fallback called the very same lookup again and re-threw)
-      debugPrint('[FCM] CourseDetailProvider not reachable from navigatorKey context: $e');
+      debugPrint(
+        '[FCM] CourseDetailProvider not reachable from navigatorKey context: $e',
+      );
     }
   }
 
@@ -316,7 +331,8 @@ class NotificationService {
   /// user at that moment, so opening immediately silently lost every "tap while app was closed".)
   void _openOrQueue(Map<String, dynamic> data) {
     final ctx = navigatorKey.currentContext;
-    final ready = ctx != null && ctx.mounted && ctx.read<AuthProvider>().isAuthenticated;
+    final ready =
+        ctx != null && ctx.mounted && ctx.read<AuthProvider>().isAuthenticated;
     if (!ready) {
       _pendingPush = data;
       return;
@@ -328,7 +344,10 @@ class NotificationService {
     final data = _pendingPush;
     if (data == null) return;
     final ctx = navigatorKey.currentContext;
-    if (ctx == null || !ctx.mounted || !ctx.read<AuthProvider>().isAuthenticated) return;
+    if (ctx == null ||
+        !ctx.mounted ||
+        !ctx.read<AuthProvider>().isAuthenticated)
+      return;
     _pendingPush = null;
     AppNavigator.openFromPush(data);
   }
@@ -384,6 +403,17 @@ class NotificationService {
     if (Platform.isAndroid) return 'android';
     if (Platform.isIOS) return 'ios';
     return 'unknown';
+  }
+
+  // Re-fetches the theme palette. Silent: no toast, no splash, no banner on failure.
+  void _refreshTheme() {
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    try {
+      Provider.of<ThemeConfigProvider>(ctx, listen: false).silentRefresh();
+    } catch (e) {
+      print('[FCM] refreshTheme failed: $e');
+    }
   }
 
   // Reloads the disable list from the server. Silent: no toast, no local notification.

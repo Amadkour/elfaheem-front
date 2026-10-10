@@ -44,10 +44,32 @@ String get _currentPlatform {
   return 'android';
 }
 
-class ThemeConfigProvider extends ChangeNotifier {
+class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   final ApiClient _api;
 
-  ThemeConfigProvider({required ApiClient api}) : _api = api;
+  ThemeConfigProvider({required ApiClient api}) : _api = api {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Silent pushes only reach the app while it is in the foreground, so a theme
+  // changed while the app was in the background is picked up on resume.
+  DateTime? _lastFetchAt;
+  bool _silentInFlight = false;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    final last = _lastFetchAt;
+    if (_isLoading || last == null) return;
+    if (DateTime.now().difference(last) < const Duration(seconds: 30)) return;
+    silentRefresh();
+  }
 
   // ── Loading / model state ─────────────────────────────────────────────────
 
@@ -140,6 +162,21 @@ class ThemeConfigProvider extends ChangeNotifier {
   /// Alias for [reload] — call after an admin colour change to force a
   /// fresh fetch.
   Future<void> refresh() => reload();
+
+  /// Re-fetch the theme in the background (admin changed it -> silent FCM push
+  /// `theme_updated`, or the app was resumed). No splash, no retry spinner and
+  /// no "no internet" banner on failure - the current palette just stays.
+  /// Listeners are notified on success, so every `context.colors` consumer
+  /// repaints automatically.
+  Future<void> silentRefresh() async {
+    if (_silentInFlight || _isRetrying) return;
+    _silentInFlight = true;
+    try {
+      await _fetchFromServer(silent: true);
+    } finally {
+      _silentInFlight = false;
+    }
+  }
 
   // ══════════════════════════════════════════════════════════════════════
   // SURFACES
@@ -475,10 +512,49 @@ class ThemeConfigProvider extends ChangeNotifier {
   TextStyle labelSized(double size) =>
       AppTheme.label.copyWith(fontSize: size, color: textMedium);
 
+  // ══════════════════════════════════════════════════════════════════════
+  // MATERIAL THEME  (MaterialApp.theme / darkTheme)
+  // ══════════════════════════════════════════════════════════════════════
+
+  /// AppTheme's static ThemeData with the server palette laid on top, so
+  /// Material widgets (buttons, tabs, checkboxes, scaffold) follow a live
+  /// theme change too — not only widgets that read `context.colors`.
+  ThemeData materialTheme({required bool dark}) {
+    final base = dark ? AppTheme.darkThemeData : AppTheme.themeData;
+    final m = _model;
+    if (m == null) return base;
+    final p = m.primary;
+    final disabledBg = dark ? m.darkDivider : m.divider;
+    return base.copyWith(
+      scaffoldBackgroundColor: dark ? m.darkBackground : m.background,
+      colorScheme: base.colorScheme.copyWith(
+        primary: p,
+        error: m.danger,
+        surface: dark ? m.darkSurface : m.surfaceCard,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: base.elevatedButtonTheme.style?.copyWith(
+          backgroundColor: WidgetStateProperty.resolveWith(
+                (s) => s.contains(WidgetState.disabled) ? disabledBg : p,
+          ),
+        ),
+      ),
+      tabBarTheme: base.tabBarTheme.copyWith(
+        labelColor: p,
+        indicatorColor: p,
+      ),
+      checkboxTheme: base.checkboxTheme.copyWith(
+        fillColor: WidgetStateProperty.resolveWith(
+              (s) => s.contains(WidgetState.selected) ? p : Colors.transparent,
+        ),
+      ),
+    );
+  }
+
   // ── Network ───────────────────────────────────────────────────────────────
 
   /// Returns true on success (model populated + cached), false on failure.
-  Future<bool> _fetchFromServer() async {
+  Future<bool> _fetchFromServer({bool silent = false}) async {
     try {
       final platform = _currentPlatform;
       final json = await _api
@@ -495,12 +571,14 @@ class ThemeConfigProvider extends ChangeNotifier {
       await _saveCache(_model!, disableItems);
       _serverUnreachable = false;
       _error = null;
+      _lastFetchAt = DateTime.now();
       notifyListeners();
       return true;
     } catch (e) {
+      debugPrint('[ThemeConfigProvider] fetch error: $e');
+      if (silent) return false; // keep the current palette, no banner
       _error = e.toString();
       _serverUnreachable = true;
-      debugPrint('[ThemeConfigProvider] fetch error: $e');
       notifyListeners();
       return false;
     }

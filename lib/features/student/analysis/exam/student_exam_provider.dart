@@ -3,6 +3,7 @@ library;
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import '../../../../core/base_provider.dart';
 import '../../../shared/models/exam_model.dart';
 import '../../courses/details/course_detail_provider.dart';
 import 'student_exam_api.dart';
@@ -53,7 +54,7 @@ class QuizSession {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-class StudentExamProvider extends ChangeNotifier {
+class StudentExamProvider extends BaseProvider {
   final StudentExamApi _api;
 
   StudentExamProvider({StudentExamApi? api}) : _api = api ?? StudentExamApi();
@@ -148,12 +149,17 @@ class StudentExamProvider extends ChangeNotifier {
   // Course-specific exams
   // ══════════════════════════════════════════════════════════════════════════
 
+  Future<List<StudentExamListItem>> fetchCourseExams(String courseId) async {
+    final data = await run(() => ApiClient().get('/api/v1/courses/$courseId/exams/student',),makLoading: false);
+    if (data is! List) return [];
+    return data.cast<Map<String, dynamic>>().map(StudentExamListItem.fromJson).toList();
+  }
   Future<void> loadCourseExams(String courseId) async {
     _loadingCourseExams[courseId] = true;
     _courseExamsError[courseId] = null;
     notifyListeners();
     try {
-      _courseExams[courseId] = await _api.fetchCourseExams(courseId);
+      _courseExams[courseId] = await fetchCourseExams(courseId);
     } on ApiException catch (e) {
       _courseExamsError[courseId] = e.message;
     } catch (e) {

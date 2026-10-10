@@ -1,11 +1,15 @@
-// lib/features/admin/admin_payments_page.dart  (NEW FILE)
-// One premium screen for everything about payments:
-//  • hero summary (enabled methods, default gateway)
-//  • default card gateway (Moyasar / Paymob) + default platform fee %
-//  • payment methods: card / bank transfer / InstaPay
-//  • gateway fee (percent + fixed) of every method
-// Each method card expands into the FULL configuration (same fields as the old
-// admin_payment_methods_screen.dart). Devices live in admin_devices_page.dart.
+// lib/features/admin/admin_payments_page.dart
+// One premium screen for everything about payments, split into two clear tabs:
+//
+//  Hero (always visible): active methods · default gateway · platform fee
+//
+//  Tab 1 · Methods  → default card gateway (tap to switch, saves instantly)
+//                   → card / bank transfer / InstaPay, each expands into its full editor
+//  Tab 2 · Fees     → platform fee, student VAT, teacher VAT and the gateway fee of every
+//                     method (AdminFeeRatesSection — percent, fixed amount, or both)
+//
+// The platform fee % is edited ONLY in the Fees tab (one place = no stale overwrites).
+// Devices live in admin_devices_page.dart.
 library;
 
 import 'package:flutter/material.dart';
@@ -19,6 +23,63 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_fee_rates.dart';
 import 'admin_providers.dart';
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Small helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Inline AR / EN text for strings that have no translation key yet.
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+/// Arabic-Indic digits → ASCII so "٥٠٫٥" parses as 50.5.
+String _digits(String s) {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  final b = StringBuffer();
+  for (final ch in s.trim().split('')) {
+    final i = arabic.indexOf(ch);
+    b.write(i >= 0 ? '$i' : (ch == '٫' ? '.' : ch));
+  }
+  return b.toString();
+}
+
+double? _num(String? s) {
+  final t = _digits(s ?? '');
+  return t.isEmpty ? null : double.tryParse(t);
+}
+
+int? _int(String? s) {
+  final t = _digits(s ?? '');
+  return t.isEmpty ? null : int.tryParse(t);
+}
+
+/// 10.0 → "10", 1.9 → "1.9"
+String _pct(Object? v) {
+  final d = (v as num?)?.toDouble();
+  if (d == null) return '—';
+  return d.truncateToDouble() == d ? d.toStringAsFixed(0) : d.toString();
+}
+
+IconData _methodIcon(String m) => switch (m) {
+  'card' => Icons.credit_card_rounded,
+  'bank_transfer' => Icons.account_balance_rounded,
+  _ => Icons.qr_code_2_rounded,
+};
+
+BoxDecoration _cardDecoration(BuildContext context, {Color? border}) {
+  final c = context.colors;
+  return BoxDecoration(
+    color: c.cardBg,
+    borderRadius: BorderRadius.circular(22),
+    border: Border.all(color: border ?? c.divider),
+    boxShadow: [
+      BoxShadow(color: Colors.black.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, 6)),
+    ],
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Page
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AdminPaymentsPage extends StatelessWidget {
   const AdminPaymentsPage({super.key});
@@ -42,46 +103,34 @@ class _View extends StatefulWidget {
 }
 
 class _ViewState extends State<_View> {
-  final _fee = TextEditingController();
-  String? _provider;
-  bool _filled = false;
-  bool _busy = false;
+  int _tab = 0;
 
-  @override
-  void dispose() {
-    _fee.dispose();
-    super.dispose();
-  }
+  // Gateway choice saves the moment it is tapped; this shows the new value while the request runs.
+  bool _gwBusy = false;
+  bool _hasPending = false;
+  String? _pending;
 
-  void _fill(AdminSettingsProvider s) {
-    if (_filled || s.values.isEmpty) return;
-    _filled = true;
-    _fee.text = s.platformFee?.toString() ?? '';
-    _provider = s.defaultProvider;
-  }
-
-  Future<void> _save(AdminSettingsProvider s) async {
-    final feeText = _fee.text.trim();
-    final fee = feeText.isEmpty ? null : double.tryParse(feeText);
-    if (feeText.isNotEmpty && (fee == null || fee < 0 || fee > 100)) {
-      toast('admin_fee_must_be_0_100'.tr, error: true);
-      return;
-    }
-    FocusScope.of(context).unfocus();
-    setState(() => _busy = true);
-    await s.save({
-      'default_payment_provider': _provider,
-      'platform_fee_percent': fee,
+  Future<void> _pickGateway(AdminSettingsProvider s, String? value) async {
+    if (_gwBusy || value == s.defaultProvider) return;
+    setState(() {
+      _pending = value;
+      _hasPending = true;
+      _gwBusy = true;
     });
-    if (mounted) setState(() => _busy = false);
+    await s.save({'default_payment_provider': value});
+    if (mounted) {
+      setState(() {
+        _hasPending = false;
+        _gwBusy = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final s = context.watch<AdminSettingsProvider>();
     final pm = context.watch<AdminPaymentMethodsProvider>();
-    final c = context.colors;
-    _fill(s);
+    final fr = context.watch<AdminFeeRatesProvider>();
 
     Widget body;
     if (s.values.isEmpty && s.isLoading) {
@@ -89,53 +138,38 @@ class _ViewState extends State<_View> {
     } else if (s.values.isEmpty) {
       body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
+      final gateway = _hasPending ? _pending : s.defaultProvider;
       final enabledCount = pm.items.where((m) => asBool(m['enabled'])).length;
-      body = ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 28), children: [
+      final platformPct = fr.platform.isNotEmpty ? fr.platform['percent'] : s.platformFee;
+
+      body = ListView(padding: const EdgeInsets.fromLTRB(14, 14, 14, 32), children: [
         _Hero(
-          enabled: enabledCount,
-          total: pm.items.length,
-          gateway: s.defaultProvider == null
-              ? 'admin_server_default'.tr
-              : (s.defaultProvider == 'moyasar' ? 'Moyasar' : 'Paymob'),
+          stats: [
+            _Stat(Icons.check_circle_rounded, 'apm_enabled'.tr, '$enabledCount/${pm.items.length}'),
+            _Stat(Icons.payments_rounded, _t('البوابة', 'Gateway'), _gatewayName(gateway)),
+            _Stat(Icons.percent_rounded, _t('رسوم المنصة', 'Platform fee'),
+                platformPct == null ? 'admin_server_default'.tr : '${_pct(platformPct)}%'),
+          ],
         ),
-        const SizedBox(height: 18),
-        Section(
-          title: 'admin_payments'.tr,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ChoiceRow<String?>(
-              label: 'admin_default_card_gateway'.tr,
-              options: {null: 'admin_server_default'.tr, 'moyasar': 'Moyasar', 'paymob': 'Paymob'},
-              value: _provider,
-              onChanged: (v) => setState(() => _provider = v),
-            ),
-            Field(
-              controller: _fee,
-              label: 'admin_default_platform_fee_empty_server'.tr,
-              keyboard: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            Text(
-              'admin_each_course_can_override_these_on_its'.tr,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
-            ),
-            const SizedBox(height: 12),
-            PrimaryButton(
-                label: 'admin_save_settings'.tr, isLoading: _busy, onPressed: () => _save(s)),
-          ]),
+        const SizedBox(height: 16),
+        _Segments(
+          index: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+          items: [
+            (Icons.credit_card_rounded, 'admin_payment_methods'.tr),
+            (Icons.receipt_long_rounded, 'admin_fee_rates'.tr),
+          ],
         ),
-        const SizedBox(height: 10),
-        Text('admin_payment_methods'.tr,
-            style: TextStyle(
-                fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
-        const SizedBox(height: 10),
-        if (pm.items.isEmpty && pm.isLoading)
-          const Padding(
-              padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
-        else if (pm.items.isEmpty)
-          ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
-        else
-          for (final m in pm.items) _MethodCard(m),
-        const SizedBox(height: 18),
-        const AdminFeeRatesSection(),
+        const SizedBox(height: 16),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child: KeyedSubtree(
+            key: ValueKey(_tab),
+            child: _tab == 0
+                ? _MethodsTab(gateway: gateway, busy: _gwBusy, onPick: (v) => _pickGateway(s, v))
+                : const _FeesTab(),
+          ),
+        ),
       ]);
     }
 
@@ -146,128 +180,355 @@ class _ViewState extends State<_View> {
       child: body,
     );
   }
+
+  String _gatewayName(String? g) =>
+      g == null ? 'admin_server_default'.tr : (g == 'moyasar' ? 'Moyasar' : 'Paymob');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Hero
+//  Hero + segmented tabs
 // ─────────────────────────────────────────────────────────────────────────────
 
+class _Stat {
+  const _Stat(this.icon, this.label, this.value);
+  final IconData icon;
+  final String label;
+  final String value;
+}
+
 class _Hero extends StatelessWidget {
-  const _Hero({required this.enabled, required this.total, required this.gateway});
-  final int enabled;
-  final int total;
-  final String gateway;
+  const _Hero({required this.stats});
+  final List<_Stat> stats;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
-      padding: const EdgeInsets.all(20),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(26),
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [c.primary, c.primary.withValues(alpha: .72)],
+          colors: [c.primary, c.primary.withValues(alpha: .7)],
         ),
         boxShadow: [
-          BoxShadow(
-              color: c.primary.withValues(alpha: .28), blurRadius: 24, offset: const Offset(0, 10)),
+          BoxShadow(color: c.primary.withValues(alpha: .3), blurRadius: 26, offset: const Offset(0, 12)),
         ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: .2),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 26),
+      child: Stack(children: [
+        // soft decorative circles
+        PositionedDirectional(
+          top: -40,
+          end: -30,
+          child: Container(
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .08)),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('admin_payments'.tr,
-                  style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontWeight: FontWeight.w900,
-                      fontSize: 19,
-                      color: Colors.white)),
-              const SizedBox(height: 2),
-              Text('admin_payments_hero_hint'.tr,
-                  style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12.5,
-                      color: Colors.white.withValues(alpha: .85))),
+        ),
+        PositionedDirectional(
+          bottom: -50,
+          start: -20,
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .06)),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .2),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('admin_payments'.tr,
+                      style: const TextStyle(
+                          fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white)),
+                  const SizedBox(height: 2),
+                  Text('admin_payments_hero_hint'.tr,
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: .85))),
+                ]),
+              ),
             ]),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          _Chip(icon: Icons.check_circle_rounded, text: '$enabled/$total ${'apm_enabled'.tr}'),
-          _Chip(icon: Icons.payments_rounded, text: gateway),
-        ]),
+            const SizedBox(height: 18),
+            Row(children: [
+              for (var i = 0; i < stats.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(child: _StatTile(stats[i])),
+              ],
+            ]),
+          ]),
+        ),
       ]),
     );
   }
 }
 
-class _Chip extends StatelessWidget {
-  const _Chip({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
+class _StatTile extends StatelessWidget {
+  const _StatTile(this.s);
+  final _Stat s;
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .18),
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.white.withValues(alpha: .16),
+      borderRadius: BorderRadius.circular(16),
     ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 15, color: Colors.white),
-      const SizedBox(width: 6),
-      Text(text,
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Icon(s.icon, size: 14, color: Colors.white.withValues(alpha: .9)),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(s.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.white.withValues(alpha: .85))),
+        ),
+      ]),
+      const SizedBox(height: 6),
+      Text(s.value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-              fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+              fontFamily: 'tajawal', fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
     ]),
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Helpers (Arabic-Indic digits → ASCII so "٥٠٫٥" parses as 50.5)
-// ─────────────────────────────────────────────────────────────────────────────
+class _Segments extends StatelessWidget {
+  const _Segments({required this.index, required this.onChanged, required this.items});
+  final int index;
+  final ValueChanged<int> onChanged;
+  final List<(IconData, String)> items;
 
-String _digits(String s) {
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  final b = StringBuffer();
-  for (final ch in s.trim().split('')) {
-    final i = arabic.indexOf(ch);
-    b.write(i >= 0 ? '$i' : (ch == '٫' ? '.' : ch));
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: c.divider),
+      ),
+      child: Row(children: [
+        for (var i = 0; i < items.length; i++)
+          Expanded(
+            child: Material(
+              color: i == index ? c.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => onChanged(i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(items[i].$1, size: 18, color: i == index ? Colors.white : c.textLight),
+                    const SizedBox(width: 7),
+                    Flexible(
+                      child: Text(items[i].$2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13.5,
+                              color: i == index ? Colors.white : c.textLight)),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+      ]),
+    );
   }
-  return b.toString();
 }
 
-double? _num(String? s) {
-  final t = _digits(s ?? '');
-  return t.isEmpty ? null : double.tryParse(t);
-}
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.title, {this.subtitle});
+  final String title;
+  final String? subtitle;
 
-int? _int(String? s) {
-  final t = _digits(s ?? '');
-  return t.isEmpty ? null : int.tryParse(t);
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title,
+            style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
+        if (subtitle != null) ...[
+          const SizedBox(height: 3),
+          Text(subtitle!, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+        ],
+      ]),
+    );
+  }
 }
-
-IconData _methodIcon(String m) => switch (m) {
-  'card' => Icons.credit_card_rounded,
-  'bank_transfer' => Icons.account_balance_rounded,
-  _ => Icons.qr_code_2_rounded,
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Method card: header (icon, status, switch) that expands into the full editor
+//  Tab 1 · Methods
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _MethodsTab extends StatelessWidget {
+  const _MethodsTab({required this.gateway, required this.busy, required this.onPick});
+  final String? gateway;
+  final bool busy;
+  final ValueChanged<String?> onPick;
+
+  @override
+  Widget build(BuildContext context) {
+    final pm = context.watch<AdminPaymentMethodsProvider>();
+    final c = context.colors;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _SectionTitle('admin_default_card_gateway'.tr,
+          subtitle: _t('اضغط لتغيير البوابة — يُحفظ فوراً. يمكن لكل كورس تخصيصها.',
+              'Tap to switch — saved instantly. Each course can override it.')),
+      Row(children: [
+        for (final (i, g) in <(String?, IconData, String)>[
+          (null, Icons.dns_rounded, 'admin_server_default'.tr),
+          ('moyasar', Icons.payments_rounded, 'Moyasar'),
+          ('paymob', Icons.account_balance_wallet_rounded, 'Paymob'),
+        ].indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: _GatewayTile(
+              icon: g.$2,
+              label: g.$3,
+              selected: gateway == g.$1,
+              loading: busy && gateway == g.$1,
+              onTap: () => onPick(g.$1),
+            ),
+          ),
+        ],
+      ]),
+      const SizedBox(height: 22),
+      _SectionTitle('admin_payment_methods'.tr,
+          subtitle: _t('فعّل الطريقة أو اضغط على البطاقة لتعديل كل تفاصيلها.',
+              'Switch a method on/off, or tap a card to edit all its details.')),
+      if (pm.items.isEmpty && pm.isLoading)
+        const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+      else if (pm.items.isEmpty)
+        ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
+      else
+        for (final m in pm.items) _MethodCard(m),
+      const SizedBox(height: 4),
+      Text(
+        _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط.', 'InstaPay is only shown to students paying in EGP.'),
+        style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
+      ),
+    ]);
+  }
+}
+
+class _GatewayTile extends StatelessWidget {
+  const _GatewayTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.loading,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool loading;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: selected ? c.primary.withValues(alpha: .1) : c.cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: BorderSide(color: selected ? c.primary : c.divider, width: selected ? 1.6 : 1),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(
+              height: 26,
+              child: loading
+                  ? const Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)))
+                  : Icon(selected ? Icons.check_circle_rounded : icon,
+                  color: selected ? c.primary : c.textLight, size: 24),
+            ),
+            const SizedBox(height: 8),
+            Text(label,
+                maxLines: 2,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 12.5,
+                    fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
+                    color: selected ? c.primary : c.textDark)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tab 2 · Fees
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FeesTab extends StatelessWidget {
+  const _FeesTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: c.primary.withValues(alpha: .07),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: c.primary.withValues(alpha: .2)),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.info_outline_rounded, size: 20, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _t('كل رسم يمكن ضبطه كنسبة مئوية، أو مبلغ ثابت، أو الاثنين معاً. '
+                  'لكل رسم قيمة افتراضية يمكنك الرجوع إليها.',
+                  'Every fee can be set as a percent, a fixed amount, or both. '
+                      'Each one has a default you can reset to.'),
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, height: 1.45, color: c.textDark),
+            ),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      const AdminFeeRatesSection(),
+    ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Method card: header (icon, summary, status, switch) that expands into the editor
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MethodCard extends StatefulWidget {
@@ -281,6 +542,24 @@ class _MethodCard extends StatefulWidget {
 class _MethodCardState extends State<_MethodCard> {
   bool _open = false;
 
+  /// One-line, human summary + whether required details are missing.
+  ({String text, bool incomplete}) _summary(Map<String, dynamic> m, String method) {
+    String tail(String v) => v.length <= 4 ? v : '•••• ${v.substring(v.length - 4)}';
+    switch (method) {
+      case 'bank_transfer':
+        final iban = asStr(m['iban']).trim();
+        if (iban.isEmpty) return (text: 'admin_method_details_required'.tr, incomplete: true);
+        final bank = asStr(m['bank_name']).trim();
+        return (text: [if (bank.isNotEmpty) bank, tail(iban)].join('  ·  '), incomplete: false);
+      case 'instapay':
+        final id = asStr(m['instapay_id']).trim();
+        if (id.isEmpty) return (text: 'admin_method_details_required'.tr, incomplete: true);
+        return (text: id, incomplete: false);
+      default:
+        return (text: _t('عبر البوابة الافتراضية', 'Via the default gateway'), incomplete: false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -288,75 +567,64 @@ class _MethodCardState extends State<_MethodCard> {
     final m = widget.m;
     final method = asStr(m['method']);
     final enabled = asBool(m['enabled']);
+    final summary = _summary(m, method);
+    final warn = Colors.amber.shade800;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: enabled ? c.primary.withValues(alpha: .35) : c.divider),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: .04), blurRadius: 14, offset: const Offset(0, 6)),
-        ],
-      ),
-      // The card's DecoratedBox paints a background; this transparent Material gives the InkWell /
-      // SwitchListTiles inside their own ink surface so splashes stay visible (and fixes the
-      // "ListTile background color or ink splashes may be invisible" assertion).
+      decoration: _cardDecoration(context, border: enabled ? c.primary.withValues(alpha: .4) : null),
+      // Transparent Material = ink surface for the InkWell / SwitchListTiles inside the decorated box.
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           InkWell(
-            borderRadius: BorderRadius.circular(20),
             onTap: () => setState(() => _open = !_open),
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
               child: Row(children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    color: c.primary.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(13),
+                    color: (enabled ? c.primary : c.textLight).withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(_methodIcon(method), color: c.primary, size: 22),
+                  child: Icon(_methodIcon(method), color: enabled ? c.primary : c.textLight, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(asStr(m['label']),
                         style: TextStyle(
-                            fontFamily: 'tajawal',
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            color: c.textDark)),
+                            fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 15.5, color: c.textDark)),
                     const SizedBox(height: 3),
                     Row(children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                            shape: BoxShape.circle, color: enabled ? c.success : c.danger),
+                      if (summary.incomplete) ...[
+                        Icon(Icons.warning_amber_rounded, size: 14, color: warn),
+                        const SizedBox(width: 4),
+                      ],
+                      Expanded(
+                        child: Text(summary.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: method == 'card' || summary.incomplete ? null : TextDirection.ltr,
+                            style: TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 12.5,
+                                color: summary.incomplete ? warn : c.textLight)),
                       ),
-                      const SizedBox(width: 6),
-                      Text(enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
-                          style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 12,
-                              color: enabled ? c.success : c.danger)),
                     ]),
+                    const SizedBox(height: 6),
+                    _StatusPill(enabled: enabled),
                   ]),
                 ),
                 Switch(
                   value: enabled,
                   activeTrackColor: c.primary,
                   onChanged: (v) {
-                    final missing =
-                        (method == 'bank_transfer' && asStr(m['iban']).trim().isEmpty) ||
-                            (method == 'instapay' && asStr(m['instapay_id']).trim().isEmpty);
-                    if (v && missing) {
+                    if (v && summary.incomplete) {
                       toast('admin_method_details_required'.tr, error: true);
                       setState(() => _open = true);
                       return;
@@ -364,31 +632,62 @@ class _MethodCardState extends State<_MethodCard> {
                     p.save(method, {'enabled': v});
                   },
                 ),
-                Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-                    color: c.textLight),
+                AnimatedRotation(
+                  turns: _open ? .5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(Icons.expand_more_rounded, color: c.textLight),
+                ),
               ]),
             ),
           ),
-          if (_open) ...[
-            Divider(height: 1, color: c.divider),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: _MethodForm(key: ValueKey('form_$method'), method: method, item: m),
-            ),
-          ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _open
+                ? Column(children: [
+              Divider(height: 1, color: c.divider),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: _MethodForm(key: ValueKey('form_$method'), method: method, item: m),
+              ),
+            ])
+                : const SizedBox(width: double.infinity),
+          ),
         ]),
       ),
     );
   }
 }
 
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.enabled});
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final color = enabled ? c.success : c.danger;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(20)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
+        const SizedBox(width: 6),
+        Text(enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
+            style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+      ]),
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-//  Full editor
-//  All    : name students see (AR + EN), "how to pay" instructions (AR + EN)
-//  Bank   : bank name, account holder, IBAN, SWIFT
+//  Full editor (grouped, AR/EN side by side on wide screens)
+//  All     : name students see (AR + EN), "how to pay" instructions (AR + EN)
+//  Bank    : bank name, account holder, IBAN, SWIFT
 //  InstaPay: InstaPay address
-//  Manual : require sender phone / transfer reference, min + max amount,
-//           time to send the proof (0 = no timer)
+//  Manual  : require sender phone / transfer reference, min + max amount,
+//            time to send the proof (0 = no timer)
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _MethodForm extends StatefulWidget {
@@ -506,16 +805,6 @@ class _MethodFormState extends State<_MethodForm> {
 
   // ── builders ────────────────────────────────────────────────────────────
 
-  Widget _heading(String key) => Padding(
-    padding: const EdgeInsets.only(top: 6, bottom: 12),
-    child: Text(key.tr,
-        style: TextStyle(
-            fontFamily: 'tajawal',
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-            color: context.colors.textDark)),
-  );
-
   Widget _field(
       TextEditingController ctrl,
       String labelKey, {
@@ -524,24 +813,40 @@ class _MethodFormState extends State<_MethodForm> {
         String? Function(String?)? validator,
         String? helperKey,
         bool ltr = false,
+        IconData? icon,
       }) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: TextFormField(
-          controller: ctrl,
-          maxLines: maxLines,
-          minLines: maxLines > 1 ? 3 : 1,
-          keyboardType: keyboard,
-          validator: validator,
-          textDirection: ltr ? TextDirection.ltr : null,
-          decoration: InputDecoration(
-            labelText: labelKey.tr,
-            helperText: helperKey?.tr,
-            helperMaxLines: 2,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
+      TextFormField(
+        controller: ctrl,
+        maxLines: maxLines,
+        minLines: maxLines > 1 ? 3 : 1,
+        keyboardType: keyboard,
+        validator: validator,
+        textDirection: ltr ? TextDirection.ltr : null,
+        decoration: InputDecoration(
+          labelText: labelKey.tr,
+          helperText: helperKey?.tr,
+          helperMaxLines: 2,
+          prefixIcon: icon == null ? null : Icon(icon, size: 20),
+          alignLabelWithHint: maxLines > 1,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
+
+  Widget _switchTile(String labelKey, bool value, ValueChanged<bool> onChanged) {
+    final c = context.colors;
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+      value: value,
+      activeTrackColor: c.primary,
+      onChanged: onChanged,
+      tileColor: c.cardBg,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: c.divider),
+      ),
+      title: Text(labelKey.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -551,56 +856,136 @@ class _MethodFormState extends State<_MethodForm> {
     return Form(
       key: _formKey,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _heading('apm_section_display'),
-        _field(_labelAr, 'apm_label_ar'),
-        _field(_labelEn, 'apm_label_en', ltr: true),
-        _field(_insAr, 'apm_instructions_ar', maxLines: 5),
-        _field(_insEn, 'apm_instructions_en', maxLines: 5, ltr: true),
+        _Group(
+          icon: Icons.edit_note_rounded,
+          title: 'apm_section_display'.tr,
+          children: [
+            _Pair(
+              _field(_labelAr, 'apm_label_ar'),
+              _field(_labelEn, 'apm_label_en', ltr: true),
+            ),
+            _Pair(
+              _field(_insAr, 'apm_instructions_ar', maxLines: 5),
+              _field(_insEn, 'apm_instructions_en', maxLines: 5, ltr: true),
+            ),
+          ],
+        ),
         if (_isBank) ...[
-          _heading('apm_section_receiving'),
-          _field(_bankName, 'apm_bank_name'),
-          _field(_accountName, 'apm_account_name'),
-          _field(_iban, 'apm_iban', ltr: true),
-          _field(_swift, 'apm_swift', ltr: true),
+          const SizedBox(height: 14),
+          _Group(
+            icon: Icons.account_balance_rounded,
+            title: 'apm_section_receiving'.tr,
+            children: [
+              _Pair(
+                _field(_bankName, 'apm_bank_name'),
+                _field(_accountName, 'apm_account_name'),
+              ),
+              _Pair(
+                _field(_iban, 'apm_iban', ltr: true),
+                _field(_swift, 'apm_swift', ltr: true),
+              ),
+            ],
+          ),
         ],
         if (_isInstapay) ...[
-          _heading('apm_section_receiving'),
-          _field(_instapayId, 'apm_instapay_id', ltr: true),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text('apm_instapay_egp_note'.tr,
-                style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+          const SizedBox(height: 14),
+          _Group(
+            icon: Icons.qr_code_2_rounded,
+            title: 'apm_section_receiving'.tr,
+            children: [
+              _field(_instapayId, 'apm_instapay_id', ltr: true),
+              Text('apm_instapay_egp_note'.tr,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+            ],
           ),
         ],
         if (_isManual) ...[
-          _heading('apm_section_requirements'),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _reqPhone,
-            activeTrackColor: c.primary,
-            onChanged: (v) => setState(() => _reqPhone = v),
-            title: Text('apm_require_phone'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+          const SizedBox(height: 14),
+          _Group(
+            icon: Icons.rule_rounded,
+            title: 'apm_section_requirements'.tr,
+            children: [
+              _Pair(
+                _switchTile('apm_require_phone', _reqPhone, (v) => setState(() => _reqPhone = v)),
+                _switchTile('apm_require_reference', _reqRef, (v) => setState(() => _reqRef = v)),
+              ),
+              _Pair(
+                _field(_min, 'apm_min_amount',
+                    keyboard: number, validator: _optionalAmount, helperKey: 'apm_amount_hint'),
+                _field(_max, 'apm_max_amount',
+                    keyboard: number, validator: _maxAmount, helperKey: 'apm_amount_hint'),
+              ),
+              _field(_window, 'apm_window',
+                  keyboard: TextInputType.number,
+                  validator: _windowMinutes,
+                  helperKey: 'apm_window_hint',
+                  icon: Icons.timer_outlined),
+            ],
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: _reqRef,
-            activeTrackColor: c.primary,
-            onChanged: (v) => setState(() => _reqRef = v),
-            title: Text('apm_require_reference'.tr, style: const TextStyle(fontFamily: 'tajawal')),
-          ),
-          const SizedBox(height: 8),
-          _field(_min, 'apm_min_amount',
-              keyboard: number, validator: _optionalAmount, helperKey: 'apm_amount_hint'),
-          _field(_max, 'apm_max_amount',
-              keyboard: number, validator: _maxAmount, helperKey: 'apm_amount_hint'),
-          _field(_window, 'apm_window',
-              keyboard: TextInputType.number,
-              validator: _windowMinutes,
-              helperKey: 'apm_window_hint'),
         ],
-        const SizedBox(height: 4),
+        const SizedBox(height: 16),
         PrimaryButton(label: 'apm_save'.tr, isLoading: _busy, onPressed: _save),
       ]),
     );
   }
+}
+
+/// A soft, titled block that groups related fields (children are spaced 12px apart).
+class _Group extends StatelessWidget {
+  const _Group({required this.icon, required this.title, required this.children});
+  final IconData icon;
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.primary.withValues(alpha: .035),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: c.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: c.primary.withValues(alpha: .12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, size: 17, color: c.primary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(title,
+                style: TextStyle(
+                    fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 14, color: c.textDark)),
+          ),
+        ]),
+        for (final w in children) ...[const SizedBox(height: 12), w],
+      ]),
+    );
+  }
+}
+
+/// Two widgets side by side on wide screens, stacked on phones.
+class _Pair extends StatelessWidget {
+  const _Pair(this.a, this.b);
+  final Widget a;
+  final Widget b;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (_, box) {
+    if (box.maxWidth < 560) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [a, const SizedBox(height: 12), b]);
+    }
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Expanded(child: a),
+      const SizedBox(width: 12),
+      Expanded(child: b),
+    ]);
+  });
 }
