@@ -557,6 +557,66 @@ class ComplaintProvider extends BaseProvider {
     return false;
   }
 
+  // ── Swipe actions (resolve / close from the list) ─────────────────────────
+  //
+  // Two steps so the swipe card can play its exit animation BEFORE the list
+  // changes: [changeStatusSilently] only calls the API; [applyStatus] updates
+  // the list once the card has left the screen.
+
+  Future<bool> changeStatusSilently(int id, ComplaintStatus s) async {
+    try {
+      final res = await _api.put(
+        '/api/v1/complaints/$id',
+        body: {'status': s.toJson()},
+      );
+      return res != null;
+    } catch (e) {
+      log('changeStatusSilently ❌ $e');
+      return false;
+    }
+  }
+
+  /// Reflect a status change locally: drop the item when it no longer matches
+  /// the active status filter, otherwise update it in place. Then re-sync the
+  /// stats banner and the unread badge.
+  void applyStatus(int id, ComplaintStatus s) {
+    final idx = _complaints.indexWhere((c) => c.id == id);
+    if (idx != -1) {
+      if (_statusFilter != null && _statusFilter != s) {
+        _complaints.removeAt(idx);
+      } else {
+        _complaints[idx] = _withStatus(_complaints[idx], s);
+      }
+    }
+    if (_selected?.id == id) _selected = _withStatus(_selected!, s);
+    notifyListeners();
+    loadStats(); // also refreshes the badge (stats carries the unread number)
+  }
+
+  ComplaintModel _withStatus(ComplaintModel m, ComplaintStatus s) =>
+      ComplaintModel(
+        id: m.id,
+        userId: m.userId,
+        userName: m.userName,
+        userImage: m.userImage,
+        courseId: m.courseId,
+        courseTitle: m.courseTitle,
+        title: m.title,
+        description: m.description,
+        suggestedSolution: m.suggestedSolution,
+        category: m.category,
+        priority: m.priority,
+        status: s,
+        isReadByAdmin: true, // whoever acted on it has seen it
+        isReadByUser: m.isReadByUser,
+        createdAt: m.createdAt,
+        updatedAt: DateTime.now(),
+        resolvedAt: s == ComplaintStatus.resolved ? DateTime.now() : m.resolvedAt,
+        repliesCount: m.repliesCount,
+        replies: m.replies,
+        attachments: m.attachments,
+      );
+
   void clearSelected() {
     _selected = null;
     notifyListeners();

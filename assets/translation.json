@@ -8100,5 +8100,41 @@
   "admin_tap_photo_to_change": {
     "en": "Tap the photo to change it",
     "ar": "اضغط على الصورة لتغييرها"
+  },
+  "complaint_swipe_resolve": {
+    "en": "Resolve",
+    "ar": "تم الحل"
+  },
+  "complaint_swipe_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "complaint_swipe_hint_right": {
+    "en": "Swipe right to resolve · swipe left to close",
+    "ar": "اسحب لليمين للحل · لليسار للإغلاق"
+  },
+  "complaint_swipe_hint_left": {
+    "en": "Swipe left to resolve · swipe right to close",
+    "ar": "اسحب لليسار للحل · لليمين للإغلاق"
+  },
+  "complaint_resolved_snack": {
+    "en": "Complaint marked as resolved",
+    "ar": "تم وضع علامة «تم الحل» على الشكوى"
+  },
+  "complaint_closed_snack": {
+    "en": "Complaint closed",
+    "ar": "تم إغلاق الشكوى"
+  },
+  "complaint_close_confirm": {
+    "en": "Close this complaint? The sender will no longer be able to reply.",
+    "ar": "إغلاق هذه الشكوى؟ لن يتمكن صاحبها من الرد بعد الآن."
+  },
+  "complaints_new_n": {
+    "en": "{n} new",
+    "ar": "{n} جديدة"
+  },
+  "no_network_banner": {
+    "en": "No internet connection. Check your network and try again.",
+    "ar": "لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى."
   }
 }

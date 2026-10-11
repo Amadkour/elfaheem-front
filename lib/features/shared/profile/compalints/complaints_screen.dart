@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'dart:async';
 import 'dart:developer';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -20,6 +21,60 @@ import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../../../utils/helpers.dart' show Helpers;
+// ⚠ adjust this path to wherever swipe_request_card.dart lives in your project
+// (it is the file the teacher transfer / device-request screens already import).
+import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
+
+// ── Shared label / colour helpers (used by the new list widgets) ─────────────
+
+Color _statusClr(ComplaintStatus s) => switch (s) {
+  ComplaintStatus.open => const Color(0xFFF59E0B),
+  ComplaintStatus.inProgress => const Color(0xFF3B82F6),
+  ComplaintStatus.resolved => const Color(0xFF10B981),
+  ComplaintStatus.closed => const Color(0xFF6B7280),
+};
+
+String _statusTxt(ComplaintStatus s) => switch (s) {
+  ComplaintStatus.open => 'status_open'.tr,
+  ComplaintStatus.inProgress => 'status_in_progress'.tr,
+  ComplaintStatus.resolved => 'status_resolved'.tr,
+  ComplaintStatus.closed => 'status_closed'.tr,
+};
+
+Color _priorityClr(ComplaintPriority p) => switch (p) {
+  ComplaintPriority.urgent => const Color(0xFFEF4444),
+  ComplaintPriority.high => const Color(0xFFF97316),
+  ComplaintPriority.medium => const Color(0xFFF59E0B),
+  ComplaintPriority.low => const Color(0xFF10B981),
+};
+
+String _priorityTxt(ComplaintPriority p) => switch (p) {
+  ComplaintPriority.urgent => 'priority_urgent'.tr,
+  ComplaintPriority.high => 'priority_high'.tr,
+  ComplaintPriority.medium => 'priority_medium'.tr,
+  ComplaintPriority.low => 'priority_low'.tr,
+};
+
+String _categoryTxt(ComplaintCategory cat) => switch (cat) {
+  ComplaintCategory.technical => 'category_technical'.tr,
+  ComplaintCategory.payment => 'category_payment'.tr,
+  ComplaintCategory.courseContent => 'category_content'.tr,
+  ComplaintCategory.teacher => 'category_teacher'.tr,
+  ComplaintCategory.student => 'category_student'.tr,
+  ComplaintCategory.general => 'category_general'.tr,
+};
+
+String _agoTxt(DateTime d) {
+  final diff = DateTime.now().difference(d);
+  if (diff.inMinutes < 60) {
+    return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
+  }
+  if (diff.inHours < 24) {
+    return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
+  }
+  return '${d.day}/${d.month}/${d.year}';
+}
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
@@ -33,6 +88,10 @@ class ComplaintsScreen extends StatefulWidget {
 class _ComplaintsScreenState extends State<ComplaintsScreen> {
   final _searchCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
+  Timer? _debounce;
+
+  /// Status chosen by a swipe, applied to the list once the card has left.
+  final Map<int, ComplaintStatus> _swiped = {};
 
   @override
   void initState() {
@@ -44,48 +103,148 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
       p.loadStats();
     });
     _scrollCtrl.addListener(_onScroll);
+    _searchCtrl.addListener(_onSearchChanged);
   }
 
   void _onScroll() {
+    if (!_scrollCtrl.hasClients) return;
+    final p = context.read<ComplaintProvider>();
     if (_scrollCtrl.position.pixels >=
         _scrollCtrl.position.maxScrollExtent - 200 &&
-        !context.read<ComplaintProvider>().isLoadingList) {
-      context.read<ComplaintProvider>().loadComplaints();
+        !p.isLoadingList) {
+      p.loadComplaints();
     }
+  }
+
+  /// The search box was never connected to the provider — typing did nothing.
+  void _onSearchChanged() {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final p = context.read<ComplaintProvider>();
+      final q = _searchCtrl.text.trim();
+      if (q != p.search) p.setSearch(q);
+    });
+  }
+
+  void _clearFilters() {
+    _searchCtrl.clear();
+    context.read<ComplaintProvider>().clearFilters();
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  // Staff can swipe other people's open / in-progress complaints.
+  bool _canSwipe(ComplaintModel cm, bool staff, int myId) =>
+      staff &&
+          cm.userId != myId &&
+          (cm.status == ComplaintStatus.open ||
+              cm.status == ComplaintStatus.inProgress);
+
+  Future<bool> _setStatus(
+      ComplaintModel cm,
+      ComplaintStatus target,
+      String okMessage,
+      ) async {
+    final p = context.read<ComplaintProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final colors = context.colors;
+    final ok = await p.changeStatusSilently(cm.id, target);
+    if (ok) _swiped[cm.id] = target;
+    showRequestSnack(
+      messenger,
+      ok ? okMessage : 'error_try_again'.tr,
+      color: ok ? colors.success : colors.danger,
+      icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+    );
+    return ok;
+  }
+
+  Future<bool> _resolve(ComplaintModel cm) => _setStatus(
+    cm,
+    ComplaintStatus.resolved,
+    'complaint_resolved_snack'.tr,
+  );
+
+  Future<bool> _close(ComplaintModel cm) async {
+    // Closing blocks further replies, so confirm first.
+    final sure = await Helpers.confirmDialog(
+      context,
+      title: 'complaint_close_confirm'.tr,
+      confirm: 'complaint_swipe_close'.tr,
+    );
+    if (sure != true || !mounted) return false;
+    return _setStatus(cm, ComplaintStatus.closed, 'complaint_closed_snack'.tr);
+  }
+
+  void _onSwipedAway(int id) {
+    final target = _swiped.remove(id);
+    if (target != null && mounted) {
+      context.read<ComplaintProvider>().applyStatus(id, target);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ComplaintProvider>();
     final auth = context.watch<AuthProvider>();
-    log(' persona is ${auth.isStudent}');
+    final staff = !auth.isStudent;
+    final myId = auth.currentUser?.id ?? 0;
+    final swipeable =
+        p.complaints.where((cm) => _canSwipe(cm, staff, myId)).length;
+
     return BasePage(key: const ValueKey('complaints'), useWebCard: true,
       child: SafeArea(
         child: Column(
           children: [
             ScreenAppBar(title: 'complaints_and_support'.tr),
-            ParentComponent(featureKey: 'complaints.stats', child: _StatsBanner(stats: p.stats)),
-            ParentComponent(featureKey: 'complaints.filters', child: _FilterRow(provider: p, searchCtrl: _searchCtrl)),
+            ParentComponent(
+              featureKey: 'complaints.stats',
+              child: _StatsBanner(
+                stats: p.stats,
+                selected: p.statusFilter,
+                onSelect: p.setStatusFilter,
+              ),
+            ),
+            ParentComponent(
+              featureKey: 'complaints.filters',
+              child: _FilterRow(
+                provider: p,
+                searchCtrl: _searchCtrl,
+                onClear: _clearFilters,
+              ),
+            ),
+            if (swipeable > 0) const _SwipeHint(),
             Expanded(
               child: p.isLoadingList && p.complaints.isEmpty
                   ? const Center(child: AppLoadingIndicator())
                   : p.complaints.isEmpty
-                  ? _EmptyState()
+                  ? RefreshIndicator(
+                onRefresh: () => p.loadComplaints(reset: true),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: 360,
+                      child: _EmptyState(),
+                    ),
+                  ],
+                ),
+              )
                   : RefreshIndicator(
                 onRefresh: () => p.loadComplaints(reset: true),
-                child: ListView.separated(
+                child: ListView.builder(
                   controller: _scrollCtrl,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                   itemCount:
                   p.complaints.length + (p.isLoadingList ? 1 : 0),
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
                   itemBuilder: (_, i) {
                     if (i >= p.complaints.length) {
                       return const Center(
@@ -95,10 +254,32 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
                         ),
                       );
                     }
-                    return _ComplaintCard(
-                      complaint: p.complaints[i],
-                      isAdmin: !auth.isStudent,
-                      onTap: () => _openDetail(p.complaints[i].id),
+                    final cm = p.complaints[i];
+
+                    Widget card(bool busy) => _ComplaintCard(
+                      complaint: cm,
+                      isAdmin: staff,
+                      myId: myId,
+                      busy: busy,
+                      onTap: () => _openDetail(cm.id),
+                    );
+
+                    if (!_canSwipe(cm, staff, myId)) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: card(false),
+                      );
+                    }
+                    return SwipeRequestCard(
+                      // status in the key: after a swipe the item may stay in
+                      // the list (filter "all") as a different, non-swipeable card.
+                      itemId: 'complaint-${cm.id}-${cm.status.name}',
+                      approveLabel: 'complaint_swipe_resolve'.tr,
+                      rejectLabel: 'complaint_swipe_close'.tr,
+                      onApprove: () => _resolve(cm),
+                      onReject: () => _close(cm),
+                      onRemoved: () => _onSwipedAway(cm.id),
+                      builder: (_, ctl) => card(ctl.busy),
                     );
                   },
                 ),
@@ -122,89 +303,190 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   }
 }
 
-// ── Stats Banner ──────────────────────────────────────────────────────────────
+// ── Stats Banner (tap a tile to filter) ───────────────────────────────────────
 
 class _StatsBanner extends StatelessWidget {
-  const _StatsBanner({required this.stats});
+  const _StatsBanner({
+    required this.stats,
+    required this.selected,
+    required this.onSelect,
+  });
 
   final ComplaintStats stats;
+  final ComplaintStatus? selected;
+  final ValueChanged<ComplaintStatus?> onSelect;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
       decoration: BoxDecoration(
         gradient: c.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: c.primaryShadow,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _Stat(label: 'stat_all'.tr, value: stats.total, color: Colors.white),
-          _vDivider,
-          _Stat(
-            label: 'status_open'.tr,
-            value: stats.open,
-            color: const Color(0xFFFFF0B3),
-          ),
-          _vDivider,
-          _Stat(
-            label: 'status_in_progress'.tr,
-            value: stats.inProgress,
-            color: const Color(0xFFB3E5FC),
-          ),
-          _vDivider,
-          _Stat(
-            label: 'status_resolved_banner'.tr,
-            value: stats.resolved,
-            color: const Color(0xFFB9F6CA),
+          if (stats.unreadAdmin > 0)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.notifications_active_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'complaints_new_n'.tr
+                          .replaceAll('{n}', '${stats.unreadAdmin}'),
+                      style: const TextStyle(
+                        fontFamily: 'bahji',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Row(
+            children: [
+              _StatTile(
+                label: 'stat_all'.tr,
+                value: stats.total,
+                selected: selected == null,
+                onTap: () => onSelect(null),
+              ),
+              _StatTile(
+                label: 'status_open'.tr,
+                value: stats.open,
+                selected: selected == ComplaintStatus.open,
+                onTap: () => onSelect(ComplaintStatus.open),
+              ),
+              _StatTile(
+                label: 'status_in_progress'.tr,
+                value: stats.inProgress,
+                selected: selected == ComplaintStatus.inProgress,
+                onTap: () => onSelect(ComplaintStatus.inProgress),
+              ),
+              _StatTile(
+                label: 'status_resolved'.tr,
+                value: stats.resolved,
+                selected: selected == ComplaintStatus.resolved,
+                onTap: () => onSelect(ComplaintStatus.resolved),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
-
-  Widget get _vDivider => Container(
-    width: 1,
-    height: 32,
-    color: Colors.white.withValues(alpha: 0.3),
-  );
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value, required this.color});
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String label;
   final int value;
-  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          '$value',
-          style: TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-            color: color,
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+          decoration: BoxDecoration(
+            color: selected
+                ? Colors.white.withValues(alpha: 0.22)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$value',
+                style: const TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 11,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: Colors.white.withValues(alpha: selected ? 1 : 0.75),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 11,
-            color: Colors.white70,
-          ),
+      ),
+    );
+  }
+}
+
+// ── Swipe hint ────────────────────────────────────────────────────────────────
+
+class _SwipeHint extends StatelessWidget {
+  const _SwipeHint();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    // Resolve = drag from start towards end (physically left in RTL).
+    final text = rtl
+        ? 'complaint_swipe_hint_left'.tr
+        : 'complaint_swipe_hint_right'.tr;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: c.primary.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: c.primary.withValues(alpha: 0.18)),
         ),
-      ],
+        child: Row(
+          children: [
+            Icon(Icons.swipe_rounded, color: c.primary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(text, style: c.caption)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -212,13 +494,22 @@ class _Stat extends StatelessWidget {
 // ── Filter Row ────────────────────────────────────────────────────────────────
 
 class _FilterRow extends StatelessWidget {
-  const _FilterRow({required this.provider, required this.searchCtrl});
+  const _FilterRow({
+    required this.provider,
+    required this.searchCtrl,
+    required this.onClear,
+  });
 
   final ComplaintProvider provider;
   final TextEditingController searchCtrl;
+  final VoidCallback onClear;
 
   @override
   Widget build(BuildContext context) {
+    final active = provider.statusFilter != null ||
+        provider.categoryFilter != null ||
+        provider.search.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
@@ -241,33 +532,48 @@ class _FilterRow extends StatelessWidget {
                 ),
                 ...ComplaintStatus.values.map(
                       (s) => _FilterChip(
-                    label: _statusLabel(s),
+                    label: _statusTxt(s),
                     selected: provider.statusFilter == s,
-                    color: _statusColor(s),
+                    color: _statusClr(s),
                     onTap: () => provider.setStatusFilter(s),
                   ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _FilterChip(
+                  label: 'stat_all'.tr,
+                  selected: provider.categoryFilter == null,
+                  onTap: () => provider.setCategoryFilter(null),
+                ),
+                ...ComplaintCategory.values.map(
+                      (cat) => _FilterChip(
+                    label: _categoryTxt(cat),
+                    selected: provider.categoryFilter == cat,
+                    onTap: () => provider.setCategoryFilter(cat),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (active)
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                onPressed: onClear,
+                icon: const Icon(Icons.filter_alt_off_rounded, size: 16),
+                label: Text('clear_btn'.tr),
+              ),
+            ),
         ],
       ),
     );
   }
-
-  String _statusLabel(ComplaintStatus s) => switch (s) {
-    ComplaintStatus.open => 'status_open'.tr,
-    ComplaintStatus.inProgress => 'status_in_progress'.tr,
-    ComplaintStatus.resolved => 'status_resolved'.tr,
-    ComplaintStatus.closed => 'status_closed'.tr,
-  };
-
-  Color _statusColor(ComplaintStatus s) => switch (s) {
-    ComplaintStatus.open => const Color(0xFFF59E0B),
-    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-    ComplaintStatus.resolved => const Color(0xFF10B981),
-    ComplaintStatus.closed => const Color(0xFF6B7280),
-  };
 }
 
 class _FilterChip extends StatelessWidget {
@@ -291,7 +597,7 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(left: 8),
+        margin: const EdgeInsetsDirectional.only(end: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? accent : c.cardBg,
@@ -313,213 +619,225 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
+// ── Owner avatar (photo, falls back to the initial) ──────────────────────────
+
+class _OwnerAvatar extends StatelessWidget {
+  const _OwnerAvatar({required this.name, this.imageUrl, this.size = 44});
+
+  final String name;
+  final String? imageUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = SizedBox(
+      width: size,
+      height: size,
+      child: FittedBox(child: RequestAvatar(name: name)),
+    );
+    if (imageUrl == null || imageUrl!.isEmpty) return fallback;
+    return ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Image.network(
+          imageUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => fallback,
+        ),
+      ),
+    );
+  }
+}
+
 // ── Complaint Card ────────────────────────────────────────────────────────────
 
 class _ComplaintCard extends StatelessWidget {
   const _ComplaintCard({
     required this.complaint,
     required this.isAdmin,
+    required this.myId,
     required this.onTap,
+    this.busy = false,
   });
 
   final ComplaintModel complaint;
-  final bool isAdmin;
+  final bool isAdmin; // staff view → show who sent it
+  final int myId;
+  final bool busy;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final statusClr = _statusColor(complaint.status);
-    final hasUnread = isAdmin
-        ? !complaint.isReadByAdmin
-        : !complaint.isReadByUser;
+    final cm = complaint;
+    final mine = cm.userId == myId;
+    final unread = (isAdmin && !mine) ? !cm.isReadByAdmin : !cm.isReadByUser;
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: c.cardBg,
-          borderRadius: BorderRadius.circular(c.radiusMedium),
-          boxShadow: c.cardShadow,
-          border: hasUnread
-              ? Border.all(color: c.primary.withValues(alpha: 0.5), width: 1.5)
-              : null,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      child: RequestCardShell(
+        accent: _priorityClr(cm.priority),
+        busy: busy,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Owner (staff only) ─────────────────────────────────────────
+            if (isAdmin) ...[
               Row(
                 children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    margin: const EdgeInsets.only(left: 8),
-                    decoration: BoxDecoration(
-                      color: _priorityColor(complaint.priority),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                  _OwnerAvatar(name: cm.userName, imageUrl: cm.userImage),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      complaint.title,
-                      style: c.h3.copyWith(fontSize: 14),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          mine ? 'you_label'.tr : cm.userName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: c.h3.copyWith(fontSize: 14),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          cm.courseTitle ?? _categoryTxt(cm.category),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: c.caption,
+                        ),
+                      ],
                     ),
                   ),
-                  if (hasUnread)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: c.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                complaint.description,
-                style: c.caption.copyWith(height: 1.5),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusClr.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _statusLabel(complaint.status),
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: statusClr,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: c.primaryTint,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _categoryLabel(complaint.category),
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: c.primary,
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  // Attachment indicator
-                  if (complaint.attachments.isNotEmpty) ...[
-                    Icon(
-                      Icons.photo_library_outlined,
-                      size: 14,
-                      color: c.textLight,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${complaint.attachments.length}',
-                      style: c.caption.copyWith(fontSize: 11),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  // Suggestion indicator
-                  if (complaint.suggestedSolution != null) ...[
-                    const Icon(
-                      Icons.lightbulb_outline_rounded,
-                      size: 14,
-                      color: Color(0xFF059669),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline_rounded,
-                        size: 14,
-                        color: c.textLight,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${complaint.repliesCount}',
-                        style: c.caption.copyWith(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
                   Text(
-                    _formatDate(complaint.updatedAt),
+                    _agoTxt(cm.updatedAt),
                     style: c.caption.copyWith(fontSize: 11),
                   ),
                 ],
               ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Divider(height: 1, color: c.divider),
+              ),
             ],
-          ),
+
+            // ── Title + unread dot ─────────────────────────────────────────
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (unread)
+                  Container(
+                    width: 9,
+                    height: 9,
+                    margin: const EdgeInsetsDirectional.only(end: 8, top: 5),
+                    decoration: BoxDecoration(
+                      color: c.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    cm.title,
+                    style: c.h3.copyWith(
+                      fontSize: 15,
+                      fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (!isAdmin)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8),
+                    child: Text(
+                      _agoTxt(cm.updatedAt),
+                      style: c.caption.copyWith(fontSize: 11),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              cm.description,
+              style: c.caption.copyWith(height: 1.5),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+
+            // ── Status / priority / category ───────────────────────────────
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                _MetaChip(
+                  icon: Icons.circle,
+                  label: _statusTxt(cm.status),
+                  color: _statusClr(cm.status),
+                ),
+                _MetaChip(
+                  icon: Icons.flag_rounded,
+                  label: _priorityTxt(cm.priority),
+                  color: _priorityClr(cm.priority),
+                ),
+                if (isAdmin && cm.courseTitle != null)
+                  _MetaChip(
+                    icon: Icons.label_outline_rounded,
+                    label: _categoryTxt(cm.category),
+                    color: c.primary,
+                  )
+                else if (!isAdmin)
+                  _MetaChip(
+                    icon: Icons.label_outline_rounded,
+                    label: _categoryTxt(cm.category),
+                    color: c.primary,
+                  ),
+              ],
+            ),
+
+            // ── Footer: attachments / suggestion / replies ─────────────────
+            if (cm.attachments.isNotEmpty ||
+                cm.suggestedSolution != null ||
+                cm.repliesCount > 0) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  if (cm.attachments.isNotEmpty) ...[
+                    Icon(Icons.attach_file_rounded, size: 15, color: c.textLight),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${cm.attachments.length}',
+                      style: c.caption.copyWith(fontSize: 12),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  if (cm.suggestedSolution != null) ...[
+                    const Icon(
+                      Icons.lightbulb_outline_rounded,
+                      size: 15,
+                      color: Color(0xFF059669),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  if (cm.repliesCount > 0) ...[
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 14,
+                      color: c.textLight,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${cm.repliesCount}',
+                      style: c.caption.copyWith(fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ],
         ),
       ),
     );
-  }
-
-  Color _statusColor(ComplaintStatus s) => switch (s) {
-    ComplaintStatus.open => const Color(0xFFF59E0B),
-    ComplaintStatus.inProgress => const Color(0xFF3B82F6),
-    ComplaintStatus.resolved => const Color(0xFF10B981),
-    ComplaintStatus.closed => const Color(0xFF6B7280),
-  };
-
-  Color _priorityColor(ComplaintPriority p) => switch (p) {
-    ComplaintPriority.urgent => const Color(0xFFEF4444),
-    ComplaintPriority.high => const Color(0xFFF97316),
-    ComplaintPriority.medium => const Color(0xFFF59E0B),
-    ComplaintPriority.low => const Color(0xFF10B981),
-  };
-
-  String _statusLabel(ComplaintStatus s) => switch (s) {
-    ComplaintStatus.open => 'status_open'.tr,
-    ComplaintStatus.inProgress => 'status_in_progress'.tr,
-    ComplaintStatus.resolved => 'status_resolved'.tr,
-    ComplaintStatus.closed => 'status_closed'.tr,
-  };
-
-  String _categoryLabel(ComplaintCategory cat) => switch (cat) {
-    ComplaintCategory.technical => 'category_technical'.tr,
-    ComplaintCategory.payment => 'category_payment'.tr,
-    ComplaintCategory.courseContent => 'category_content'.tr,
-    ComplaintCategory.teacher => 'category_teacher'.tr,
-    ComplaintCategory.student => 'category_student'.tr,
-    ComplaintCategory.general => 'category_general'.tr,
-  };
-
-  String _formatDate(DateTime d) {
-    final diff = DateTime.now().difference(d);
-    if (diff.inMinutes < 60) {
-      return 'ago_minutes_short'.tr.replaceAll('{n}', '${diff.inMinutes}');
-    }
-    if (diff.inHours < 24) {
-      return 'ago_hours_short'.tr.replaceAll('{n}', '${diff.inHours}');
-    }
-    return '${d.day}/${d.month}/${d.year}';
   }
 }
 
@@ -708,6 +1026,42 @@ class _InfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Who sent it (staff only)
+          if (isAdmin) ...[
+            Row(
+              children: [
+                _OwnerAvatar(
+                  name: complaint.userName,
+                  imageUrl: complaint.userImage,
+                  size: 42,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        complaint.userName,
+                        style: c.h3.copyWith(fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${complaint.createdAt.day}/${complaint.createdAt.month}/${complaint.createdAt.year}'
+                            '  ${complaint.createdAt.hour.toString().padLeft(2, '0')}:${complaint.createdAt.minute.toString().padLeft(2, '0')}',
+                        style: c.caption,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(height: 1, color: c.divider),
+            ),
+          ],
           // Title + status
           Row(
             children: [
