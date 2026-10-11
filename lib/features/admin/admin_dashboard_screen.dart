@@ -48,6 +48,7 @@ import 'admin_content_page.dart';
 import 'admin_courses_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_finance_page.dart';
 import 'admin_overview_page.dart';
 import 'admin_payment_page.dart';
 import 'admin_payouts_page.dart';
@@ -479,6 +480,16 @@ class _MorePageState extends State<_MorePage> {
                           iconColor: c.success,
                           label: 'apm_title'.tr,
                           onTap: () => _push(const AdminPaymentsPage()),
+                        ),
+                      ),
+                      ParentComponent(
+                        featureKey: 'profile.historical_payment',
+                        child: SettingsTile(
+                          icon: CupertinoIcons.doc_text_fill,
+                          iconBg: c.successTint,
+                          iconColor: c.success,
+                          label: 'apm_title'.tr,
+                          onTap: () => _push(const AdminFinancePage()),
                         ),
                       ),
                     ],

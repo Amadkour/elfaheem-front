@@ -7,11 +7,11 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_labels.dart';
+import 'admin_list.dart';
 import 'admin_providers.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
@@ -46,25 +46,6 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminVersionsProvider>();
     final c = context.colors;
 
-    Widget body;
-    if (p.items.isEmpty && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
-    } else if (p.error != null && p.items.isEmpty) {
-      body = ErrorRetry(message: p.error!, onRetry: p.load);
-    } else if (p.items.isEmpty) {
-      body = EmptyState(
-        'admin_no_versions_published_yet'.tr,
-      );
-    } else {
-      body = RefreshIndicator(
-        onRefresh: p.load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 90),
-          children: [for (final v in p.items) _VersionCard(v)],
-        ),
-      );
-    }
-
     return BasePage(
       key: const ValueKey('admin_versions'),
       useWebCard: true,
@@ -81,10 +62,24 @@ class _View extends StatelessWidget {
           style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
         ),
       ),
-      child: body,
+      child: AdminSimpleList(
+        loading: p.isLoading,
+        error: p.error,
+        isEmpty: p.items.isEmpty,
+        emptyText: 'admin_no_versions_published_yet'.tr,
+        emptyIcon: Icons.rocket_launch_rounded,
+        onRefresh: p.load,
+        children: [for (final v in p.items) _VersionCard(v)],
+      ),
     );
   }
 }
+
+IconData _platformIcon(String platform) => switch (platform) {
+  'ios' => Icons.apple_rounded,
+  'web' => Icons.language_rounded,
+  _ => Icons.android_rounded,
+};
 
 class _VersionCard extends StatelessWidget {
   const _VersionCard(this.v);
@@ -97,32 +92,44 @@ class _VersionCard extends StatelessWidget {
     final p = context.read<AdminVersionsProvider>();
     final active = asBool(v['is_active']);
     final id = asInt(v['id']);
+    final platform = asStr(v['platform']);
+    final accent = active ? c.success : c.textLight;
+    final notes = asStr(v['release_notes_ar'], asStr(v['release_notes_en']));
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: active ? c.success : c.divider),
-      ),
+    return RowCard(
+      accent: accent,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text(
-                'v${asStr(v['version'])}',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  color: c.textDark,
+              IconBadge(_platformIcon(platform), c.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'v${asStr(v['version'])}',
+                      textDirection: TextDirection.ltr,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: c.textDark,
+                      ),
+                    ),
+                    Text(
+                      platform,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 12,
+                        color: c.textLight,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              StatusChip(asStr(v['platform']), c.primary),
-              const Spacer(),
               Switch(
                 value: active,
                 activeTrackColor: c.success,
@@ -140,23 +147,33 @@ class _VersionCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 6,
+            runSpacing: 6,
             children: [
+              StatusChip(
+                active ? 'exam_status_active'.tr : 'admin_inactive'.tr,
+                accent,
+              ),
               if (asBool(v['force_update']))
                 StatusChip('admin_forced'.tr, c.danger),
               if (asBool(v['recommend_update']))
                 StatusChip('admin_recommended'.tr, c.warning),
               if (asStrOrNull(v['min_supported']) != null)
-                StatusChip(trp('admin_min_version', {'version': asStr(v['min_supported'])}), c.charcoal),
+                StatusChip(
+                  trp('admin_min_version', {'version': asStr(v['min_supported'])}),
+                  c.charcoal,
+                ),
             ],
           ),
-          if (asStrOrNull(v['release_notes_ar']) != null ||
-              asStrOrNull(v['release_notes_en']) != null)
+          if (notes.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 10),
               child: Text(
-                asStr(v['release_notes_ar'], asStr(v['release_notes_en'])),
+                notes,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 12.5,
@@ -164,6 +181,7 @@ class _VersionCard extends StatelessWidget {
                 ),
               ),
             ),
+          const SizedBox(height: 4),
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: Row(

@@ -71,80 +71,34 @@ class _RequestsTab extends StatelessWidget {
   );
 }
 
-class _RequestsView extends StatefulWidget {
+class _RequestsView extends StatelessWidget {
   const _RequestsView();
-
-  @override
-  State<_RequestsView> createState() => _RequestsViewState();
-}
-
-class _RequestsViewState extends State<_RequestsView> {
-  final _scroll = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(() {
-      if (_scroll.position.pixels > _scroll.position.maxScrollExtent - 300) {
-        context.read<AdminPayoutRequestsProvider>().loadMore();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminPayoutRequestsProvider>();
 
-    Widget list;
-    if (!p.loaded && p.isLoading) {
-      list = const Center(child: AppLoadingIndicator());
-    } else if (p.error != null && p.rows.isEmpty) {
-      list = ErrorRetry(message: p.error!, onRetry: p.refresh);
-    } else if (p.rows.isEmpty) {
-      list = EmptyState('admin_no_requests'.tr);
-    } else {
-      final items = p.items;
-      list = ListView.builder(
-        controller: _scroll,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(14, 6, 14, 60),
-        itemCount: items.length + 1,
-        itemBuilder: (ctx, i) => i == items.length
-            ? (p.loadingMore
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(child: AppLoadingIndicator()),
-                    )
-                  : const SizedBox(height: 30))
-            : _RequestCard(items[i]),
-      );
-    }
-
-    return Column(
-      children: [
-        const SizedBox(height: 8),
-        FilterChips<String>(
-          value: p.status ?? 'all',
-          options: {
-            'pending': 'admin_pending_3'.tr,
-            'approved': 'admin_approved'.tr,
-            'paid': 'admin_paid_2'.tr,
-            'rejected': 'admin_rejected'.tr,
-            'all': 'filter_all'.tr,
-          },
-          onChanged: (v) => p.setStatus(v == 'all' ? null : v),
-        ),
-        const SizedBox(height: 6),
-        Expanded(
-          child: RefreshIndicator(onRefresh: p.refresh, child: list),
-        ),
-      ],
+    return PagedList<AdminPayoutRequestsProvider>(
+      countIcon: Icons.account_balance_wallet_rounded,
+      emptyText: 'admin_no_requests'.tr,
+      header: Column(
+        children: [
+          const SizedBox(height: 8),
+          FilterChips<String>(
+            value: p.status ?? 'all',
+            options: {
+              'pending': 'admin_pending_3'.tr,
+              'approved': 'admin_approved'.tr,
+              'paid': 'admin_paid_2'.tr,
+              'rejected': 'admin_rejected'.tr,
+              'all': 'filter_all'.tr,
+            },
+            onChanged: (v) => p.setStatus(v == 'all' ? null : v),
+          ),
+          const SizedBox(height: 6),
+        ],
+      ),
+      indexedBuilder: (ctx, pr, i) => _RequestCard(pr.items[i]),
     );
   }
 }
@@ -236,8 +190,8 @@ class _RequestCard extends StatelessWidget {
                 w.status == 'paid'
                     ? c.success
                     : (w.status == 'rejected'
-                          ? c.danger
-                          : (w.status == 'approved' ? c.primary : c.warning)),
+                    ? c.danger
+                    : (w.status == 'approved' ? c.primary : c.warning)),
               ),
               StatusChip(payoutMethodLabel(w.method), c.charcoal),
               if (w.state != 'none')
@@ -322,14 +276,14 @@ class _RequestCard extends StatelessWidget {
                           context,
                           message: w.automatic
                               ? trp(
-                                  'admin_approving_sends_right_now_via_continue',
-                                  {
-                                    'amount': money(w.amount),
-                                    'method': payoutMethodLabel(w.method),
-                                  },
-                                )
+                            'admin_approving_sends_right_now_via_continue',
+                            {
+                              'amount': money(w.amount),
+                              'method': payoutMethodLabel(w.method),
+                            },
+                          )
                               : 'admin_approve_this_request_you_will_transfer'
-                                    .tr,
+                              .tr,
                           confirmLabel: 'request_approve'.tr,
                         );
                         if (ok) await p.approve(w.id);
@@ -448,9 +402,9 @@ class _RequestCard extends StatelessWidget {
   }
 
   Future<void> _markPaid(
-    BuildContext context,
-    AdminPayoutRequestsProvider p,
-  ) async {
+      BuildContext context,
+      AdminPayoutRequestsProvider p,
+      ) async {
     final result = await showDialog<_PaidInput>(
       context: context,
       builder: (_) => const _MarkPaidDialog(),
@@ -469,9 +423,9 @@ class _RequestCard extends StatelessWidget {
   }
 
   Future<void> _resolveDialog(
-    BuildContext context,
-    AdminPayoutRequestsProvider p,
-  ) async {
+      BuildContext context,
+      AdminPayoutRequestsProvider p,
+      ) async {
     final r = await showDialog<_ResolveInput>(
       context: context,
       builder: (_) => const _ResolveDialog(),
@@ -598,7 +552,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
       withData:
-          kIsWeb, // web has no file path — the bytes are the only way to read it
+      kIsWeb, // web has no file path — the bytes are the only way to read it
     );
     final f = res?.files.single;
     if (f == null) return;
@@ -845,8 +799,8 @@ class _TeacherTile extends StatelessWidget {
                       override == null
                           ? 'admin_follows_global'.tr
                           : (override == true
-                                ? 'admin_allowed'.tr
-                                : 'admin_blocked'.tr),
+                          ? 'admin_allowed'.tr
+                          : 'admin_blocked'.tr),
                       override == null
                           ? c.textLight
                           : (override == true ? c.success : c.danger),
@@ -926,7 +880,7 @@ class _TeacherTile extends StatelessWidget {
                                 ),
                                 selected: chosen.contains(m),
                                 onSelected: (s) => setS(
-                                  () => s ? chosen.add(m) : chosen.remove(m),
+                                      () => s ? chosen.add(m) : chosen.remove(m),
                                 ),
                               ),
                           ],
@@ -1009,9 +963,9 @@ class _SettingsViewState extends State<_SettingsView> {
       return p.isLoading
           ? const Center(child: AppLoadingIndicator())
           : ErrorRetry(
-              message: p.error ?? 'admin_could_not_load'.tr,
-              onRetry: p.load,
-            );
+        message: p.error ?? 'admin_could_not_load'.tr,
+        onRetry: p.load,
+      );
     }
     if (!_filled) {
       _filled = true;
@@ -1098,17 +1052,17 @@ class _SettingsViewState extends State<_SettingsView> {
                   ),
                   subtitle: asBool(m['automatic'])
                       ? Text(
-                          asBool(m['configured'])
-                              ? '${'admin_ready'.tr} • ${asStr(m['currency'])}'
-                              : 'admin_not_configured_on_the_server_falls'.tr,
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            fontSize: 12,
-                            color: asBool(m['configured'])
-                                ? c.success
-                                : c.warning,
-                          ),
-                        )
+                    asBool(m['configured'])
+                        ? '${'admin_ready'.tr} • ${asStr(m['currency'])}'
+                        : 'admin_not_configured_on_the_server_falls'.tr,
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 12,
+                      color: asBool(m['configured'])
+                          ? c.success
+                          : c.warning,
+                    ),
+                  )
                       : null,
                   onChanged: (v) {
                     final next = <String>{...p.allowed};
@@ -1132,7 +1086,7 @@ class _SettingsViewState extends State<_SettingsView> {
               Field(
                 controller: _min,
                 label:
-                    '${'admin_amount_empty_default'.tr} ${money(p.defaultMin)})',
+                '${'admin_amount_empty_default'.tr} ${money(p.defaultMin)})',
                 keyboard: const TextInputType.numberWithOptions(decimal: true),
               ),
               PrimaryButton(

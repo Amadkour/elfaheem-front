@@ -88,10 +88,20 @@ class ComplaintProvider extends BaseProvider {
       List.unmodifiable(_pendingReplyAttachments);
 
   // ── Pagination / filter state ─────────────────────────────────────────────
+  // _page = the NEXT page to request (1 after a reset, 2 once page 1 is in …).
   int _page = 1;
   int _totalPages = 1;
+  int _total = 0;
 
-  bool get hasMore => _page < _totalPages;
+  /// Next page still exists. (`<` skipped the last page: after page N of N the
+  /// next page is N+1, which is > N, so `<=` is the right test.)
+  bool get hasMore => _page <= _totalPages;
+
+  /// Total rows for the current filters — drives the "Showing X of Y" card.
+  int get total => _total;
+
+  /// A page is being APPENDED (first load / reset shows the big spinner instead).
+  bool get loadingMore => isLoadingList && _complaints.isNotEmpty;
 
   ComplaintStatus? _statusFilter;
   ComplaintCategory? _categoryFilter;
@@ -333,6 +343,7 @@ class ComplaintProvider extends BaseProvider {
     if (reset) {
       _page = 1;
       _totalPages = 1;
+      _total = 0;
       _complaints = [];
     } else if (isLoadingList || !hasMore) {
       // Paging: don't start a second request, and stop once the last page is in
@@ -369,6 +380,9 @@ class ComplaintProvider extends BaseProvider {
         }
         _totalPages = res['pages'] ?? 1;
         _page = (res['page'] ?? 1) + 1;
+        // Use the server total when it sends one, otherwise estimate from pages.
+        _total = (res['total'] as num?)?.toInt() ??
+            (hasMore ? _totalPages * 20 : _complaints.length);
       }
     } catch (e) {
       if (requestId == _listRequestId) errorMsg = e.toString();

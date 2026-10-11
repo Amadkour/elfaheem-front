@@ -43,7 +43,7 @@ class _View extends StatelessWidget {
         child: Material(
           color: c.cardBg,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             side: BorderSide(color: p.required ? c.primary : c.divider, width: p.required ? 1.5 : 1),
           ),
           child: Padding(
@@ -99,9 +99,9 @@ class _View extends StatelessWidget {
       useWebCard: true,
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
-      child:
-      PagedList<AdminSubscriptionsProvider>(
+      child: PagedList<AdminSubscriptionsProvider>(
         header: header,
+        countIcon: Icons.card_membership_rounded,
         emptyText: 'admin_no_subscription_requests'.tr,
         itemBuilder: (ctx, row) => _SubTile(SubInfo(row)),
       ),
@@ -217,29 +217,84 @@ class _SubTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.read<AdminSubscriptionsProvider>();
+    final color = _color(context);
+    final method = s.grantedByAdmin
+        ? 'admin_admin_grant'.tr
+        : paymentMethodLabel(s.paymentMethod);
 
     return RowCard(
+      accent: color,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // ── who · how much ──────────────────────────────────────────────
         Row(children: [
+          AdminAvatar(name: s.studentName),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(s.studentName,
-                style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(s.studentName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14.5,
+                      color: c.textDark)),
+              Text(s.studentGmail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+            ]),
           ),
-          StatusChip(subscriptionStatusLabel(s.status), _color(context)),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text(money(s.amount, s.currency),
+                style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: c.textDark)),
+            const SizedBox(height: 4),
+            StatusChip(subscriptionStatusLabel(s.status), color),
+          ]),
         ]),
-        Text(s.studentGmail,
-            textDirection: TextDirection.ltr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
-        const SizedBox(height: 8),
-        KeyValue('admin_plan'.tr, '${planLabel(s.planCode)} • ${money(s.amount, s.currency)}'),
-        KeyValue('admin_method'.tr, s.grantedByAdmin ? 'admin_admin_grant'.tr : paymentMethodLabel(s.paymentMethod)),
-        if (s.senderName != null) KeyValue('admin_sender'.tr, '${s.senderName} ${s.senderPhone ?? ''}'),
-        if (s.transferReference != null) KeyValue('admin_reference_2'.tr, s.transferReference!),
-        if (s.endsAt != null) KeyValue('admin_ends'.tr, shortDate(s.endsAt)),
-        if (s.rejectionReason != null) KeyValue('admin_reason'.tr, s.rejectionReason!),
+        const SizedBox(height: 10),
+
+        // ── plan · method · end date ─────────────────────────────────────
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          InfoChip(Icons.event_repeat_rounded, planLabel(s.planCode), c.primary),
+          InfoChip(
+              s.grantedByAdmin ? Icons.card_giftcard_rounded : Icons.payments_rounded,
+              method,
+              c.textMedium),
+          if (s.endsAt != null)
+            InfoChip(Icons.schedule_rounded, '${'admin_ends'.tr} ${shortDate(s.endsAt)}', c.textMedium),
+        ]),
+
+        // ── transfer details ─────────────────────────────────────────────
+        if (s.senderName != null || s.transferReference != null || s.rejectionReason != null) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: c.inputBg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(children: [
+              if (s.senderName != null)
+                KeyValue('admin_sender'.tr, '${s.senderName} ${s.senderPhone ?? ''}'),
+              if (s.transferReference != null)
+                KeyValue('admin_reference_2'.tr, s.transferReference!),
+              if (s.rejectionReason != null)
+                KeyValue('admin_reason'.tr, s.rejectionReason!),
+            ]),
+          ),
+        ],
+
+        // ── receipt ──────────────────────────────────────────────────────
         if (s.proofImageUrl != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 10),
             child: GestureDetector(
               onTap: () => showDialog(
                 context: context,
@@ -248,7 +303,7 @@ class _SubTile extends StatelessWidget {
                 ),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(14),
                 child: Image.network(
                   s.proofImageUrl!,
                   height: 120,
@@ -264,25 +319,15 @@ class _SubTile extends StatelessWidget {
               ),
             ),
           ),
-        const SizedBox(height: 10),
-        if (s.status == 'pending')
+
+        // ── actions ──────────────────────────────────────────────────────
+        if (s.status == 'pending') ...[
+          const SizedBox(height: 12),
           Row(children: [
-            Expanded(
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: c.success),
-                icon: const Icon(Icons.check_rounded, color: Colors.white),
-                label: Text('admin_approve'.tr, style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
-                onPressed: () async {
-                  final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
-                  if (ok) await p.approve(s.id);
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(foregroundColor: c.danger),
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(Icons.close_rounded, size: 18),
                 label: Text('request_reject'.tr),
                 onPressed: () async {
                   final reason = await askText(context,
@@ -291,13 +336,26 @@ class _SubTile extends StatelessWidget {
                 },
               ),
             ),
-          ])
-        else if (s.status == 'active')
+            const SizedBox(width: 10),
+            Expanded(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(backgroundColor: c.success),
+                icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                label: Text('admin_approve'.tr,
+                    style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+                onPressed: () async {
+                  final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
+                  if (ok) await p.approve(s.id);
+                },
+              ),
+            ),
+          ]),
+        ] else if (s.status == 'active')
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: TextButton.icon(
               style: TextButton.styleFrom(foregroundColor: c.danger),
-              icon: const Icon(Icons.block_rounded),
+              icon: const Icon(Icons.block_rounded, size: 18),
               label: Text('admin_cancel_subscription'.tr),
               onPressed: () async {
                 final ok = await confirm(context,

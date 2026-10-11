@@ -25,6 +25,9 @@ import '../../../../utils/helpers.dart' show Helpers;
 // ⚠ adjust this path to wherever swipe_request_card.dart lives in your project
 // (it is the file the teacher transfer / device-request screens already import).
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
+import 'package:flutter_education_app/utils/widget/paged_progress.dart';
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 // ── Shared label / colour helpers (used by the new list widgets) ─────────────
 
@@ -63,6 +66,15 @@ String _categoryTxt(ComplaintCategory cat) => switch (cat) {
   ComplaintCategory.teacher => 'category_teacher'.tr,
   ComplaintCategory.student => 'category_student'.tr,
   ComplaintCategory.general => 'category_general'.tr,
+};
+
+IconData _categoryIcon(ComplaintCategory cat) => switch (cat) {
+  ComplaintCategory.technical => Icons.build_circle_outlined,
+  ComplaintCategory.payment => Icons.payments_outlined,
+  ComplaintCategory.courseContent => Icons.menu_book_outlined,
+  ComplaintCategory.teacher => Icons.person_pin_outlined,
+  ComplaintCategory.student => Icons.school_outlined,
+  ComplaintCategory.general => Icons.support_agent_rounded,
 };
 
 String _agoTxt(DateTime d) {
@@ -106,14 +118,26 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     _searchCtrl.addListener(_onSearchChanged);
   }
 
+  int _fillRows = -1; // rows count at the last "fill the screen" attempt
+
+  /// Near the bottom → append the next page (provider ignores it when busy / done).
   void _onScroll() {
     if (!_scrollCtrl.hasClients) return;
-    final p = context.read<ComplaintProvider>();
-    if (_scrollCtrl.position.pixels >=
-        _scrollCtrl.position.maxScrollExtent - 200 &&
-        !p.isLoadingList) {
-      p.loadComplaints();
+    if (_scrollCtrl.position.extentAfter < 320) {
+      context.read<ComplaintProvider>().loadComplaints();
     }
+  }
+
+  /// Too few rows to scroll → keep loading until the screen is full.
+  /// Runs once per row-count, so a failing request can never loop.
+  void _fillViewport(ComplaintProvider p) {
+    if (!p.hasMore || p.isLoadingList || p.errorMsg != null) return;
+    if (p.complaints.length == _fillRows) return;
+    _fillRows = p.complaints.length;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollCtrl.hasClients) return;
+      if (_scrollCtrl.position.maxScrollExtent <= 0) p.loadComplaints();
+    });
   }
 
   /// The search box was never connected to the provider — typing did nothing.
@@ -199,14 +223,14 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
     final swipeable =
         p.complaints.where((cm) => _canSwipe(cm, staff, myId)).length;
 
-    return BasePage(key: const ValueKey('complaints'), useWebCard: true,
+    return BasePage(key: const ValueKey('complaints'), useWebCard: true, maxWith: 1000,
       child: SafeArea(
         child: Column(
           children: [
             ScreenAppBar(title: 'complaints_and_support'.tr),
             ParentComponent(
               featureKey: 'complaints.stats',
-              child: _StatsBanner(
+              child: _OverviewStrip(
                 stats: p.stats,
                 selected: p.statusFilter,
                 onSelect: p.setStatusFilter,
@@ -221,72 +245,92 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
               ),
             ),
             if (swipeable > 0) const _SwipeHint(),
-            Expanded(
-              child: p.isLoadingList && p.complaints.isEmpty
-                  ? const Center(child: AppLoadingIndicator())
-                  : p.complaints.isEmpty
-                  ? RefreshIndicator(
-                onRefresh: () => p.loadComplaints(reset: true),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: 360,
-                      child: _EmptyState(),
-                    ),
-                  ],
-                ),
-              )
-                  : RefreshIndicator(
-                onRefresh: () => p.loadComplaints(reset: true),
-                child: ListView.builder(
-                  controller: _scrollCtrl,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  itemCount:
-                  p.complaints.length + (p.isLoadingList ? 1 : 0),
-                  itemBuilder: (_, i) {
-                    if (i >= p.complaints.length) {
-                      return const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: AppLoadingIndicator(),
-                        ),
-                      );
-                    }
-                    final cm = p.complaints[i];
+            // pinned "Showing 20 of 134" — same pagination progress as every admin list
+            if (p.complaints.isNotEmpty && p.total > 20)
+              PagedCountCard(
+                loaded: p.complaints.length,
+                total: p.total,
+                loadingMore: p.loadingMore,
+                done: !p.hasMore,
+                icon: Icons.support_agent_rounded,
+                margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              ),
+            Expanded(child: _buildList(p, staff, myId)),
+          ],
+        ),
+      ),
+    );
+  }
 
-                    Widget card(bool busy) => _ComplaintCard(
-                      complaint: cm,
-                      isAdmin: staff,
-                      myId: myId,
-                      busy: busy,
-                      onTap: () => _openDetail(cm.id),
-                    );
+  Widget _buildList(ComplaintProvider p, bool staff, int myId) {
+    if (p.isLoadingList && p.complaints.isEmpty) {
+      return const Center(child: AppLoadingIndicator());
+    }
 
-                    if (!_canSwipe(cm, staff, myId)) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: card(false),
-                      );
-                    }
-                    return SwipeRequestCard(
-                      // status in the key: after a swipe the item may stay in
-                      // the list (filter "all") as a different, non-swipeable card.
-                      itemId: 'complaint-${cm.id}-${cm.status.name}',
-                      approveLabel: 'complaint_swipe_resolve'.tr,
-                      rejectLabel: 'complaint_swipe_close'.tr,
-                      onApprove: () => _resolve(cm),
-                      onReject: () => _close(cm),
-                      onRemoved: () => _onSwipedAway(cm.id),
-                      builder: (_, ctl) => card(ctl.busy),
-                    );
-                  },
-                ),
+    if (p.complaints.isEmpty) {
+      final filtered = p.statusFilter != null ||
+          p.categoryFilter != null ||
+          p.search.isNotEmpty;
+      return RefreshIndicator(
+        onRefresh: () => p.loadComplaints(reset: true),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: 360,
+              child: _EmptyState(
+                filtered: filtered,
+                onClear: filtered ? _clearFilters : null,
               ),
             ),
           ],
         ),
+      );
+    }
+
+    _fillViewport(p);
+    return RefreshIndicator(
+      onRefresh: () => p.loadComplaints(reset: true),
+      child: ListView.builder(
+        controller: _scrollCtrl,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 100),
+        itemCount: p.complaints.length + 1,
+        itemBuilder: (_, i) {
+          if (i == p.complaints.length) {
+            return PagedListFooter(
+              loadingMore: p.loadingMore,
+              hasMore: p.hasMore,
+            );
+          }
+          final cm = p.complaints[i];
+
+          Widget card(bool busy) => _ComplaintCard(
+            complaint: cm,
+            isAdmin: staff,
+            myId: myId,
+            busy: busy,
+            onTap: () => _openDetail(cm.id),
+          );
+
+          if (!_canSwipe(cm, staff, myId)) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: card(false),
+            );
+          }
+          return SwipeRequestCard(
+            // status in the key: after a swipe the item may stay in the list
+            // (filter "all") as a different, non-swipeable card.
+            itemId: 'complaint-${cm.id}-${cm.status.name}',
+            approveLabel: 'complaint_swipe_resolve'.tr,
+            rejectLabel: 'complaint_swipe_close'.tr,
+            onApprove: () => _resolve(cm),
+            onReject: () => _close(cm),
+            onRemoved: () => _onSwipedAway(cm.id),
+            builder: (_, ctl) => card(ctl.busy),
+          );
+        },
       ),
     );
   }
@@ -303,10 +347,10 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   }
 }
 
-// ── Stats Banner (tap a tile to filter) ───────────────────────────────────────
+// ── Overview strip (KPI cards — tap one to filter) ───────────────────────────
 
-class _StatsBanner extends StatelessWidget {
-  const _StatsBanner({
+class _OverviewStrip extends StatelessWidget {
+  const _OverviewStrip({
     required this.stats,
     required this.selected,
     required this.onSelect,
@@ -319,138 +363,212 @@ class _StatsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
-      decoration: BoxDecoration(
-        gradient: c.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: c.primaryShadow,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (stats.unreadAdmin > 0)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.notifications_active_rounded,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'complaints_new_n'.tr
-                          .replaceAll('{n}', '${stats.unreadAdmin}'),
-                      style: const TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+    String share(int n) =>
+        stats.total == 0 ? '0%' : '${(n * 100 / stats.total).round()}%';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _t('نظرة عامة', 'Overview'),
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: c.textDark,
+                  ),
                 ),
               ),
-            ),
-          Row(
+              if (stats.unreadAdmin > 0)
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.notifications_active_rounded,
+                        size: 14,
+                        color: Color(0xFFEF4444),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'complaints_new_n'.tr
+                            .replaceAll('{n}', '${stats.unreadAdmin}'),
+                        style: const TextStyle(
+                          fontFamily: 'bahji',
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFEF4444),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 112,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
             children: [
-              _StatTile(
-                label: 'stat_all'.tr,
+              _Kpi(
+                icon: Icons.inbox_rounded,
+                color: c.primary,
+                title: 'stat_all'.tr,
                 value: stats.total,
+                sub: _t('كل الشكاوى', 'All complaints'),
                 selected: selected == null,
                 onTap: () => onSelect(null),
               ),
-              _StatTile(
-                label: 'status_open'.tr,
+              _Kpi(
+                icon: Icons.mark_email_unread_rounded,
+                color: _statusClr(ComplaintStatus.open),
+                title: _statusTxt(ComplaintStatus.open),
                 value: stats.open,
+                sub: share(stats.open),
                 selected: selected == ComplaintStatus.open,
                 onTap: () => onSelect(ComplaintStatus.open),
               ),
-              _StatTile(
-                label: 'status_in_progress'.tr,
+              _Kpi(
+                icon: Icons.autorenew_rounded,
+                color: _statusClr(ComplaintStatus.inProgress),
+                title: _statusTxt(ComplaintStatus.inProgress),
                 value: stats.inProgress,
+                sub: share(stats.inProgress),
                 selected: selected == ComplaintStatus.inProgress,
                 onTap: () => onSelect(ComplaintStatus.inProgress),
               ),
-              _StatTile(
-                label: 'status_resolved'.tr,
+              _Kpi(
+                icon: Icons.check_circle_rounded,
+                color: _statusClr(ComplaintStatus.resolved),
+                title: _statusTxt(ComplaintStatus.resolved),
                 value: stats.resolved,
+                sub: share(stats.resolved),
                 selected: selected == ComplaintStatus.resolved,
                 onTap: () => onSelect(ComplaintStatus.resolved),
               ),
+              _Kpi(
+                icon: Icons.lock_rounded,
+                color: _statusClr(ComplaintStatus.closed),
+                title: _statusTxt(ComplaintStatus.closed),
+                value: stats.closed,
+                sub: share(stats.closed),
+                selected: selected == ComplaintStatus.closed,
+                onTap: () => onSelect(ComplaintStatus.closed),
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
 
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
+class _Kpi extends StatelessWidget {
+  const _Kpi({
+    required this.icon,
+    required this.color,
+    required this.title,
     required this.value,
+    required this.sub,
     required this.selected,
     required this.onTap,
   });
 
-  final String label;
+  final IconData icon;
+  final Color color;
+  final String title;
   final int value;
+  final String sub;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.white.withValues(alpha: 0.22)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+    final c = context.colors;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 140,
+        margin: const EdgeInsetsDirectional.only(end: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.10) : c.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? color : color.withValues(alpha: 0.25),
+            width: selected ? 1.6 : 1,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$value',
-                style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
+          boxShadow: c.cardShadow,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, size: 16, color: color),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'bahji',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: c.textMedium,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            TweenAnimationBuilder<double>(
+              tween: Tween(end: value.toDouble()),
+              duration: const Duration(milliseconds: 450),
+              curve: Curves.easeOutCubic,
+              builder: (_, v, _) => Text(
+                '${v.round()}',
                 style: TextStyle(
                   fontFamily: 'bahji',
-                  fontSize: 11,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  color: Colors.white.withValues(alpha: selected ? 1 : 0.75),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: c.textDark,
                 ),
               ),
-            ],
-          ),
+            ),
+            Text(
+              sub,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                color: c.textLight,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -491,7 +609,7 @@ class _SwipeHint extends StatelessWidget {
   }
 }
 
-// ── Filter Row ────────────────────────────────────────────────────────────────
+// ── Filter bar (search · filter button · status pill · active chips) ─────────
 
 class _FilterRow extends StatelessWidget {
   const _FilterRow({
@@ -504,72 +622,286 @@ class _FilterRow extends StatelessWidget {
   final TextEditingController searchCtrl;
   final VoidCallback onClear;
 
+  void _openCategorySheet(BuildContext context) {
+    final c = context.colors;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: c.cardBg,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: c.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Text(
+                _t('تصفية حسب النوع', 'Filter by category'),
+                style: TextStyle(
+                  fontFamily: 'bahji',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: c.textDark,
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                runSpacing: 8,
+                children: [
+                  _FilterChip(
+                    label: 'stat_all'.tr,
+                    selected: provider.categoryFilter == null,
+                    onTap: () {
+                      provider.setCategoryFilter(null);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                  for (final cat in ComplaintCategory.values)
+                    _FilterChip(
+                      label: _categoryTxt(cat),
+                      selected: provider.categoryFilter == cat,
+                      onTap: () {
+                        provider.setCategoryFilter(cat);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final stats = provider.stats;
     final active = provider.statusFilter != null ||
         provider.categoryFilter != null ||
         provider.search.isNotEmpty;
 
+    Widget seg(
+        String label,
+        bool selected,
+        Color color,
+        VoidCallback onTap, {
+          int badge = 0,
+        }) =>
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: selected ? color : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'bahji',
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : c.textMedium,
+                  ),
+                ),
+                if (badge > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: selected ? Colors.white : color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge > 99 ? '99+' : '$badge',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                        color: selected ? color : Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+
+    final category = provider.categoryFilter;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconTextField(
-            controller: searchCtrl,
-            label: 'search_complaints_hint'.tr,
-            icon: Icons.search_rounded,
+          Row(
+            children: [
+              Expanded(
+                child: IconTextField(
+                  controller: searchCtrl,
+                  label: 'search_complaints_hint'.tr,
+                  icon: Icons.search_rounded,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton.filledTonal(
+                    onPressed: () => _openCategorySheet(context),
+                    icon: const Icon(Icons.tune_rounded),
+                    tooltip: _t('تصفية', 'Filters'),
+                  ),
+                  if (category != null)
+                    PositionedDirectional(
+                      top: -2,
+                      end: -2,
+                      child: Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Text(
+                          '1',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'stat_all'.tr,
-                  selected: provider.statusFilter == null,
-                  onTap: () => provider.setStatusFilter(null),
-                ),
-                ...ComplaintStatus.values.map(
-                      (s) => _FilterChip(
-                    label: _statusTxt(s),
-                    selected: provider.statusFilter == s,
-                    color: _statusClr(s),
-                    onTap: () => provider.setStatusFilter(s),
-                  ),
-                ),
-              ],
+          // status — segmented pill (same look as the finance tabs)
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: c.inputBg,
+              borderRadius: BorderRadius.circular(18),
             ),
-          ),
-          const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChip(
-                  label: 'stat_all'.tr,
-                  selected: provider.categoryFilter == null,
-                  onTap: () => provider.setCategoryFilter(null),
-                ),
-                ...ComplaintCategory.values.map(
-                      (cat) => _FilterChip(
-                    label: _categoryTxt(cat),
-                    selected: provider.categoryFilter == cat,
-                    onTap: () => provider.setCategoryFilter(cat),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (active)
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton.icon(
-                onPressed: onClear,
-                icon: const Icon(Icons.filter_alt_off_rounded, size: 16),
-                label: Text('clear_btn'.tr),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  seg('stat_all'.tr, provider.statusFilter == null, c.primary,
+                          () => provider.setStatusFilter(null)),
+                  for (final s in ComplaintStatus.values)
+                    seg(
+                      _statusTxt(s),
+                      provider.statusFilter == s,
+                      _statusClr(s),
+                          () => provider.setStatusFilter(s),
+                      // numbers that need attention
+                      badge: s == ComplaintStatus.open
+                          ? stats.open
+                          : s == ComplaintStatus.inProgress
+                          ? stats.inProgress
+                          : 0,
+                    ),
+                ],
               ),
             ),
+          ),
+          // removable active filters
+          if (active) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (category != null)
+                  _ActiveChip(
+                    _categoryTxt(category),
+                        () => provider.setCategoryFilter(null),
+                  ),
+                if (provider.search.isNotEmpty)
+                  _ActiveChip('“${provider.search}”', () {
+                    searchCtrl.clear();
+                    provider.setSearch('');
+                  }),
+                TextButton.icon(
+                  onPressed: onClear,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    foregroundColor: c.danger,
+                  ),
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 16),
+                  label: Text('clear_btn'.tr),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Removable chip for an active filter.
+class _ActiveChip extends StatelessWidget {
+  const _ActiveChip(this.label, this.onRemove);
+
+  final String label;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 5, 6, 5),
+      decoration: BoxDecoration(
+        color: c.primary.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.primary.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: c.primary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          GestureDetector(
+            onTap: onRemove,
+            child: Icon(Icons.close_rounded, size: 16, color: c.primary),
+          ),
         ],
       ),
     );
@@ -600,18 +932,20 @@ class _FilterChip extends StatelessWidget {
         margin: const EdgeInsetsDirectional.only(end: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? accent : c.cardBg,
+          color: selected ? accent.withValues(alpha: 0.14) : c.cardBg,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? accent : c.divider, width: 1.5),
-          boxShadow: selected ? c.cardShadow : [],
+          border: Border.all(
+            color: selected ? accent : c.divider,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontFamily: 'bahji',
             fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: selected ? Colors.white : c.textMedium,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            color: selected ? accent : c.textMedium,
           ),
         ),
       ),
@@ -650,7 +984,7 @@ class _OwnerAvatar extends StatelessWidget {
   }
 }
 
-// ── Complaint Card ────────────────────────────────────────────────────────────
+// ── Complaint Card (finance-style: who · status, text, chips, counters) ─────
 
 class _ComplaintCard extends StatelessWidget {
   const _ComplaintCard({
@@ -673,6 +1007,7 @@ class _ComplaintCard extends StatelessWidget {
     final cm = complaint;
     final mine = cm.userId == myId;
     final unread = (isAdmin && !mine) ? !cm.isReadByAdmin : !cm.isReadByUser;
+    final statusColor = _statusClr(cm.status);
 
     return GestureDetector(
       onTap: onTap,
@@ -683,45 +1018,69 @@ class _ComplaintCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // ── Owner (staff only) ─────────────────────────────────────────
-            if (isAdmin) ...[
-              Row(
-                children: [
-                  _OwnerAvatar(name: cm.userName, imageUrl: cm.userImage),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          mine ? 'you_label'.tr : cm.userName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: c.h3.copyWith(fontSize: 14),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          cm.courseTitle ?? _categoryTxt(cm.category),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: c.caption,
-                        ),
-                      ],
+            // ── who · status ────────────────────────────────────────────
+            Row(
+              children: [
+                if (isAdmin)
+                  _OwnerAvatar(name: cm.userName, imageUrl: cm.userImage)
+                else
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: c.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      _categoryIcon(cm.category),
+                      color: c.primary,
+                      size: 22,
                     ),
                   ),
-                  Text(
-                    _agoTxt(cm.updatedAt),
-                    style: c.caption.copyWith(fontSize: 11),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isAdmin
+                            ? (mine ? 'you_label'.tr : cm.userName)
+                            : _categoryTxt(cm.category),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: c.h3.copyWith(fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        cm.courseTitle ??
+                            (isAdmin ? _categoryTxt(cm.category) : _agoTxt(cm.updatedAt)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: c.caption,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Divider(height: 1, color: c.divider),
-              ),
-            ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _MetaChip(
+                      icon: Icons.circle,
+                      label: _statusTxt(cm.status),
+                      color: statusColor,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _agoTxt(cm.updatedAt),
+                      style: c.caption.copyWith(fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-            // ── Title + unread dot ─────────────────────────────────────────
+            // ── title + unread dot ──────────────────────────────────────
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -746,14 +1105,6 @@ class _ComplaintCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                if (!isAdmin)
-                  Padding(
-                    padding: const EdgeInsetsDirectional.only(start: 8),
-                    child: Text(
-                      _agoTxt(cm.updatedAt),
-                      style: c.caption.copyWith(fontSize: 11),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(height: 6),
@@ -765,75 +1116,42 @@ class _ComplaintCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // ── Status / priority / category ───────────────────────────────
+            // ── priority · category · counters ──────────────────────────
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
                 _MetaChip(
-                  icon: Icons.circle,
-                  label: _statusTxt(cm.status),
-                  color: _statusClr(cm.status),
-                ),
-                _MetaChip(
                   icon: Icons.flag_rounded,
                   label: _priorityTxt(cm.priority),
                   color: _priorityClr(cm.priority),
                 ),
-                if (isAdmin && cm.courseTitle != null)
+                if (isAdmin || cm.courseTitle != null)
                   _MetaChip(
-                    icon: Icons.label_outline_rounded,
-                    label: _categoryTxt(cm.category),
-                    color: c.primary,
-                  )
-                else if (!isAdmin)
-                  _MetaChip(
-                    icon: Icons.label_outline_rounded,
+                    icon: _categoryIcon(cm.category),
                     label: _categoryTxt(cm.category),
                     color: c.primary,
                   ),
+                if (cm.attachments.isNotEmpty)
+                  _MetaChip(
+                    icon: Icons.attach_file_rounded,
+                    label: '${cm.attachments.length}',
+                    color: c.textMedium,
+                  ),
+                if (cm.suggestedSolution != null)
+                  _MetaChip(
+                    icon: Icons.lightbulb_outline_rounded,
+                    label: 'suggested_solution_label'.tr,
+                    color: const Color(0xFF059669),
+                  ),
+                if (cm.repliesCount > 0)
+                  _MetaChip(
+                    icon: Icons.chat_bubble_outline_rounded,
+                    label: '${cm.repliesCount}',
+                    color: c.textMedium,
+                  ),
               ],
             ),
-
-            // ── Footer: attachments / suggestion / replies ─────────────────
-            if (cm.attachments.isNotEmpty ||
-                cm.suggestedSolution != null ||
-                cm.repliesCount > 0) ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (cm.attachments.isNotEmpty) ...[
-                    Icon(Icons.attach_file_rounded, size: 15, color: c.textLight),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${cm.attachments.length}',
-                      style: c.caption.copyWith(fontSize: 12),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  if (cm.suggestedSolution != null) ...[
-                    const Icon(
-                      Icons.lightbulb_outline_rounded,
-                      size: 15,
-                      color: Color(0xFF059669),
-                    ),
-                    const SizedBox(width: 12),
-                  ],
-                  if (cm.repliesCount > 0) ...[
-                    Icon(
-                      Icons.chat_bubble_outline_rounded,
-                      size: 14,
-                      color: c.textLight,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${cm.repliesCount}',
-                      style: c.caption.copyWith(fontSize: 12),
-                    ),
-                  ],
-                ],
-              ),
-            ],
           ],
         ),
       ),
@@ -844,6 +1162,12 @@ class _ComplaintCard extends StatelessWidget {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState({this.filtered = false, this.onClear});
+
+  /// Filters / search are active → "nothing matches" instead of "no complaints yet".
+  final bool filtered;
+  final VoidCallback? onClear;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -859,19 +1183,29 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: c.primaryShadow,
             ),
-            child: const Icon(
-              Icons.support_agent_rounded,
+            child: Icon(
+              filtered ? Icons.search_off_rounded : Icons.support_agent_rounded,
               size: 40,
               color: Colors.white,
             ),
           ),
           const SizedBox(height: 18),
-          Text('no_complaints_yet'.tr, style: c.h2.copyWith(fontSize: 16)),
-          const SizedBox(height: 8),
           Text(
-            'complaints_empty_hint'.tr,
-            style: c.caption.copyWith(color: c.textLight),
+            filtered ? 'admin_nothing_here_yet'.tr : 'no_complaints_yet'.tr,
+            style: c.h2.copyWith(fontSize: 16),
           ),
+          const SizedBox(height: 8),
+          if (!filtered)
+            Text(
+              'complaints_empty_hint'.tr,
+              style: c.caption.copyWith(color: c.textLight),
+            ),
+          if (filtered && onClear != null)
+            TextButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+              label: Text('clear_btn'.tr),
+            ),
         ],
       ),
     );

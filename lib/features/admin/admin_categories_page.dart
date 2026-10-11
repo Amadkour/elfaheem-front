@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -33,59 +32,79 @@ class _View extends StatelessWidget {
     final p = context.watch<AdminCategoriesProvider>();
     final c = context.colors;
 
-    Widget body;
-    if (p.items.isEmpty && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
-    } else if (p.error != null && p.items.isEmpty) {
-      body = ErrorRetry(message: p.error!, onRetry: p.load);
-    } else if (p.items.isEmpty) {
-      body = EmptyState('admin_no_categories_yet'.tr);
-    } else {
-      body = RefreshIndicator(
-        onRefresh: p.load,
-        child: ListView(padding: const EdgeInsets.fromLTRB(14, 10, 14, 90), children: [
-          for (final cat in p.items)
-            RowCard(
-              onTap: () => _form(context, p, existing: cat),
-              child: Row(children: [
-                Icon(Icons.category_rounded, color: c.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(cat.nameAr.isEmpty ? cat.nameEn : cat.nameAr,
-                        style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                    if (cat.nameEn.isNotEmpty && cat.nameAr.isNotEmpty)
-                      Text(cat.nameEn, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
-                  ]),
-                ),
-                StatusChip('${cat.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),
-                IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-                  onPressed: () async {
-                    final ok = await confirm(context,
-                        message: 'admin_delete_this_category'.tr, danger: true);
-                    if (ok) await p.remove(cat.id);
-                  },
-                ),
-              ]),
-            ),
-        ]),
-      );
-    }
-
     return BasePage(
       useWebCard: true,
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'categories'.tr),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: "categories_float",
-        key: ValueKey("categories_float"),
+        key: const ValueKey("categories_float"),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
         icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text('admin_add_category'.tr, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        label: Text('admin_add_category'.tr,
+            style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
       ),
-      child: body,
+      child: AdminSimpleList(
+        loading: p.isLoading,
+        error: p.error,
+        isEmpty: p.items.isEmpty,
+        emptyText: 'admin_no_categories_yet'.tr,
+        onRefresh: p.load,
+        children: [for (final cat in p.items) _CategoryCard(cat)],
+      ),
+    );
+  }
+}
+
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard(this.cat);
+
+  final AdminCategory cat;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = context.read<AdminCategoriesProvider>();
+    final title = cat.nameAr.isEmpty ? cat.nameEn : cat.nameAr;
+
+    return RowCard(
+      accent: c.primary,
+      onTap: () => _form(context, p, existing: cat),
+      child: Row(children: [
+        IconBadge(Icons.category_rounded, c.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: c.textDark)),
+            if (cat.nameEn.isNotEmpty && cat.nameAr.isNotEmpty)
+              Text(cat.nameEn,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+            const SizedBox(height: 6),
+            InfoChip(Icons.menu_book_rounded,
+                '${cat.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),
+          ]),
+        ),
+        IconButton(
+          tooltip: 'delete'.tr,
+          icon: Icon(Icons.delete_outline_rounded, color: c.danger),
+          onPressed: () async {
+            final ok = await confirm(context,
+                message: 'admin_delete_this_category'.tr, danger: true);
+            if (ok) await p.remove(cat.id);
+          },
+        ),
+      ]),
     );
   }
 }

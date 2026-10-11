@@ -2,8 +2,8 @@
 library;
 
 
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
+import '../../../../core/api_client.dart';
+import '../../../../core/base_provider.dart';
 import 'saved_payment_models.dart';
 
 class SavedMethodsProvider extends BaseProvider {
