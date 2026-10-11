@@ -994,16 +994,20 @@ class AdminContentProvider extends AdminBase {
 // ═════════════════════════════════════════════════════════════════════════════
 
 /// Withdrawal requests. The existing endpoint paginates with skip/limit.
-class AdminPayoutRequestsProvider extends AdminBase {
+class AdminPayoutRequestsProvider extends AdminPagedProvider {
   String? status = 'pending'; // null = all
-  final List<Map<String, dynamic>> rows = [];
-  int total = 0;
-  bool loaded = false;
-  bool loadingMore = false;
-  String? error;
   final Set<int> busy = {};
 
+  // Required by AdminPagedProvider; unused because this endpoint paginates with
+  // skip/limit, so refresh / loadMore / hasMore are overridden below.
+  @override
+  String get path => '$_base/withdrawals';
+  @override
+  Map<String, dynamic> get filters => {'status': status};
+
   List<Withdrawal> get items => rows.map(Withdrawal.new).toList();
+
+  @override
   bool get hasMore => rows.length < total;
 
   Future<void> setStatus(String? s) {
@@ -1011,20 +1015,22 @@ class AdminPayoutRequestsProvider extends AdminBase {
     return refresh();
   }
 
+  @override
   Future<void> refresh() async {
     rows.clear();
     total = 0;
     loaded = false;
     error = null;
-    await _fetch(0);
+    await _fetchSkip(0);
   }
 
+  @override
   Future<void> loadMore() async {
     if (loadingMore || isLoading || !hasMore) return;
-    await _fetch(rows.length);
+    await _fetchSkip(rows.length);
   }
 
-  Future<void> _fetch(int skip) async {
+  Future<void> _fetchSkip(int skip) async {
     if (skip > 0) {
       loadingMore = true;
       notifyListeners();

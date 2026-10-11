@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
+import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_list.dart' show RowCard;
@@ -44,6 +45,7 @@ class AdminAdminsProvider extends ChangeNotifier {
   bool failed = false;
   bool hasMore = true;
   int _total = 0;
+  int get total => _total;
   String search = '';
   bool _disposed = false;
   int _gen = 0; // drops stale responses when the search changes mid-flight
@@ -198,21 +200,36 @@ class _AdminsView extends StatefulWidget {
 
 class _AdminsViewState extends State<_AdminsView> {
   final _scroll = ScrollController();
+  int _fillRows = -1;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() {
-      if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 300) {
-        context.read<AdminAdminsProvider>().loadMore();
-      }
-    });
+    _scroll.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _scroll.removeListener(_onScroll);
     _scroll.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scroll.hasClients && _scroll.position.extentAfter < 320) {
+      context.read<AdminAdminsProvider>().loadMore();
+    }
+  }
+
+  /// Too few rows to scroll → keep loading until the screen is full (once per row-count).
+  void _fillViewport(AdminAdminsProvider p) {
+    if (!p.hasMore || p.loadingMore || p.loading || p.failed) return;
+    if (p.items.length == _fillRows) return;
+    _fillRows = p.items.length;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      if (_scroll.position.maxScrollExtent <= 0) p.loadMore();
+    });
   }
 
   @override
@@ -239,18 +256,19 @@ class _AdminsViewState extends State<_AdminsView> {
     } else if (p.items.isEmpty) {
       body = EmptyState('admin_no_admins_found'.tr, icon: Icons.shield_outlined);
     } else {
+      _fillViewport(p);
       body = RefreshIndicator(
         onRefresh: p.refresh,
         child: ListView.builder(
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 90),
-          itemCount: p.items.length + (p.loadingMore ? 1 : 0),
+          padding: const EdgeInsets.fromLTRB(14, 6, 14, 90),
+          itemCount: p.items.length + 1,
           itemBuilder: (ctx, i) {
-            if (i >= p.items.length) {
-              return const Padding(
-                padding: EdgeInsets.all(16),
-                child: Center(child: AppLoadingIndicator()),
+            if (i == p.items.length) {
+              return PagedListFooter(
+                loadingMore: p.loadingMore,
+                hasMore: p.hasMore,
               );
             }
             return _AdminTile(p.items[i]);
@@ -278,6 +296,15 @@ class _AdminsViewState extends State<_AdminsView> {
       child: Column(
         children: [
           search,
+          if (p.items.isNotEmpty && p.total > 20)
+            PagedCountCard(
+              loaded: p.items.length,
+              total: p.total,
+              loadingMore: p.loadingMore,
+              done: !p.hasMore,
+              icon: Icons.admin_panel_settings_rounded,
+              margin: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            ),
           Expanded(child: body),
         ],
       ),
