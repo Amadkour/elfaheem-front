@@ -418,7 +418,7 @@ class _OverviewStrip extends StatelessWidget {
           ),
         ),
         SizedBox(
-          height: 112,
+          height: 130,
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -502,7 +502,7 @@ class _Kpi extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: 140,
+        width: 150,
         margin: const EdgeInsetsDirectional.only(end: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -516,6 +516,7 @@ class _Kpi extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Row(
               children: [
