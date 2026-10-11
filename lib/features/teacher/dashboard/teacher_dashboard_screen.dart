@@ -66,7 +66,7 @@ class _State extends State<TeacherDashboardScreen> {
         CupertinoIcons.book,
         CupertinoIcons.book_fill,
         'my_courses',
-        context.read<TeacherCoursesProvider>().fetchMyCourses,
+        context.read<TeacherCoursesProvider>().refresh,
         const TeacherCoursesScreen(),
       ),
       DashboardItem(

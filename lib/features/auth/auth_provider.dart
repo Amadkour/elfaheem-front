@@ -337,6 +337,10 @@ class AuthProvider extends BaseProvider {
   /// Authenticates the user, saves tokens + user object to disk.
   Future<bool> login({required String gmail, required String password}) async {
     isLoadingLogin = true;
+    // Reset from any previous attempt, otherwise a stale flag from an earlier
+    // unverified login would send a later wrong-password attempt to the OTP screen.
+    needsVerification = false;
+    pendingRole = null;
     notifyListeners();
     final previousUser = _currentUser;
     _currentUser = UserModel(
@@ -354,13 +358,13 @@ class AuthProvider extends BaseProvider {
           auth: false,
         );
       } on ApiException catch (e) {
-        // Login only returns 403 for inactive / unverified accounts.
-        if (e.statusCode == 403) {
+        // Only an UNVERIFIED account goes to the OTP screen. A deactivated
+        // account (also 403) must show its error instead.
+        if (e.statusCode == 403 && e.code == 'ACCOUNT_NOT_VERIFIED') {
           needsVerification = true;
-          final b = e.body;
-          if (b is Map && b['detail'] is Map) {
-            pendingRole = b['detail']['role']?.toString();
-          }
+          final b = ApiException.asMap(e.body);
+          final d = b?['detail'];
+          if (d is Map) pendingRole = d['role']?.toString();
         }
         rethrow;
       }

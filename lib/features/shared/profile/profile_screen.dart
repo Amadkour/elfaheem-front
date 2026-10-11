@@ -100,11 +100,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'account'.tr,
+                        icon: Icons.account_circle_rounded,
                         children: [
                           ParentComponent(
                             featureKey: 'profile.update_account',
                             child: SettingsTile(
-                              icon: Icons.person_rounded,
+                              icon: Icons.manage_accounts_rounded,
                               iconBg: c.primaryTint,
                               iconColor: c.primary,
                               label: 'update_account'.tr,
@@ -123,7 +124,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           ParentComponent(
                             featureKey: 'profile.change_password',
                             child: SettingsTile(
-                              icon: Icons.lock_rounded,
+                              icon: Icons.lock_reset_rounded,
                               iconBg: c.accentTint,
                               iconColor: c.accent,
                               label: 'change_password'.tr,
@@ -134,7 +135,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ParentComponent(
                               featureKey: 'profile.teacher_profile',
                               child: SettingsTile(
-                                icon: Icons.person_rounded,
+                                icon: Icons.badge_rounded,
                                 iconBg: c.dangerTint,
                                 iconColor: c.danger,
                                 label: 'teacher_profile'.tr,
@@ -155,7 +156,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ParentComponent(
                               featureKey: 'profile.payout',
                               child: SettingsTile(
-                                icon: Icons.account_balance_wallet_rounded,
+                                icon: Icons.payments_rounded,
                                 iconBg: c.dangerTint,
                                 iconColor: c.danger,
                                 label: 'payout'.tr,
@@ -214,11 +215,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'settings'.tr,
+                        icon: Icons.settings_rounded,
                         children: [
                           ParentComponent(
                             featureKey: 'profile.notifications',
                             child: SettingsTile(
-                              icon: Icons.notifications_rounded,
+                              icon: Icons.notifications_active_rounded,
                               iconBg: c.successTint,
                               iconColor: c.success,
                               label: 'notifications'.tr,
@@ -274,6 +276,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: SettingsGroup(
                         title: 'help'.tr,
+                        icon: Icons.help_center_rounded,
                         children: [
                           ParentComponent(
                             featureKey: 'profile.help_center',
@@ -305,7 +308,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                   );
                                   shared?.refreshCount();
                                 },
-                                icon: Icons.headset_mic_rounded,
+                                icon: Icons.support_agent_rounded,
                                 iconBg: c.primaryTint,
                                 iconColor: c.primary,
                                 label: 'help_center'.tr,
@@ -315,7 +318,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           ParentComponent(
                             featureKey: 'profile.privacy',
                             child: SettingsTile(
-                              icon: Icons.privacy_tip_rounded,
+                              icon: Icons.verified_user_rounded,
                               iconBg: c.successTint,
                               iconColor: c.success,
                               label: 'privacy'.tr,
@@ -350,12 +353,13 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: SettingsGroup(
                         title: 'exit'.tr,
+                        icon: Icons.exit_to_app_rounded,
                         itemBackground: c.danger.withAlpha(30),
                         children: [
                           ParentComponent(
                             featureKey: 'profile.logout',
                             child: SettingsTile(
-                              icon: Icons.logout,
+                              icon: Icons.logout_rounded,
                               iconBg: c.dangerTint,
                               iconColor: c.danger,
                               label: 'logout'.tr,
@@ -372,7 +376,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                           ParentComponent(
                             featureKey: 'profile.delete_account',
                             child: SettingsTile(
-                              icon: Icons.delete,
+                              icon: Icons.delete_forever_rounded,
                               iconBg: c.dangerTint,
                               iconColor: c.danger,
                               label: 'delete_account_title'.tr,
