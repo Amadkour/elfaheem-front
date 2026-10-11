@@ -4,9 +4,9 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
+import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
-import 'package:flutter_education_app/features/admin/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -31,15 +31,25 @@ class TeacherDashboardScreen extends StatefulWidget {
 class _State extends State<TeacherDashboardScreen> {
   List<DashboardItem> dashboardItems = [];
 
+  // Owned by the dashboard and shared with the Profile tab + complaints screens
+  // so the badge and the list always use the same instance.
+  final _complaints = ComplaintProvider();
+
+  @override
+  void dispose() {
+    _complaints.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final transfers = context.read<TeacherTransfersProvider>();
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
         context.read<NotificationsProvider>().fetchNotifications(), // one request, reused by the screen
         devices.ensureLoaded(),
+        _complaints.refreshCount(),
       ]);
     });
     TeacherHomeProvider provider = context.read<TeacherHomeProvider>();
@@ -56,7 +66,7 @@ class _State extends State<TeacherDashboardScreen> {
         CupertinoIcons.book,
         CupertinoIcons.book_fill,
         'my_courses',
-        context.read<TeacherCoursesProvider>().fetchMyCourses,
+        context.read<TeacherCoursesProvider>().refresh,
         const TeacherCoursesScreen(),
       ),
       DashboardItem(
@@ -87,15 +97,20 @@ class _State extends State<TeacherDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TeacherDashboardProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TeacherDashboardProvider()),
+        ChangeNotifierProvider<ComplaintProvider>.value(value: _complaints),
+      ],
       builder: (context, _) {
         TeacherDashboardProvider provider = context
             .watch<TeacherDashboardProvider>();
         return PopScope(
-          canPop: false,
-          onPopInvokedWithResult: (_,_){
-            provider.onChangeTab(0);
+          // Back goes to the first tab, and only from there may it leave the app
+          // (canPop: false used to trap the user on the dashboard).
+          canPop: provider.currentTab == 0,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) provider.onChangeTab(0);
           },
           child: Directionality(
             textDirection: Helpers.pageDirection,
@@ -105,11 +120,15 @@ class _State extends State<TeacherDashboardScreen> {
                 // select: rebuild the dashboard only when the NUMBER changes,
                 // not on every loading/processing notification of the providers.
                 final pending =
-                        context.select<TeacherDeviceRequestsProvider, int>(
-                              (p) => p.items.length,
-                        );
+                context.select<TeacherDeviceRequestsProvider, int>(
+                      (p) => p.items.length,
+                );
+                final complaints =
+                context.select<ComplaintProvider, int>((p) => p.count);
+                // Profile tab hosts both the device-switch requests and the help center.
                 for (final item in dashboardItems) {
-                  item.badge = item.label == 'my_profile' ? pending : 0;
+                  item.badge =
+                  item.label == 'my_profile' ? pending + complaints : 0;
                 }
 
                 final w = constraints.maxWidth;

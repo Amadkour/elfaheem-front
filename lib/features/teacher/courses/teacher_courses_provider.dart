@@ -17,6 +17,13 @@
 // teacher home dashboard its stats/preview are stale — without this
 // provider holding a hard reference to `TeacherHomeProvider`. See
 // `TeacherCoursesScreen.initState` for how it's wired.
+//
+// INFINITE SCROLL
+// ─────────────────────────────────────────────────────────────────────────
+// The list is cumulative (same model as the admin lists): [refresh] loads the
+// first page and REPLACES the list, [loadMore] APPENDS the next page. The
+// screen shows "Showing {loadedCount} of {totalCount}" with a progress bar
+// (PagedCountCard) and calls [loadMore] when the scroll nears the end.
 // ─────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
@@ -41,41 +48,40 @@ class TeacherCoursesProvider extends BaseProvider {
   List<TeacherCourse> _allCourses = [];
   TeacherCourseStatus _activeFilter = TeacherCourseStatus.all;
 
-  /// Pages already fetched for the CURRENT search query, keyed by page
-  /// index, so going back to a page you've already seen is instant — no
-  /// spinner, no request. Cleared whenever the query changes (a different
-  /// search has a different result set) and re-synced after any mutation
-  /// (create/update/publish/unpublish/delete), since those can shift which
-  /// course falls on which page.
-  final Map<int, List<TeacherCourse>> _pageCache = {};
+  /// How many courses each request asks for (first page and every append).
+  static const int pageSize = 12;
 
-  /// Page size used by [goToNextPage]/[goToPreviousPage]/[fetchPage]. The
-  /// screen's footer paginates in units of this.
-  static const int pageSize = 10;
-
-  int _currentPage = 0;
+  /// Only used before the server has reported a total (legacy list response):
+  /// "did the last page come back full".
   bool _hasMore = true;
 
-  /// Total number of courses matching the current filter/search, as
-  /// reported by the server alongside each page — not just how many are
-  /// loaded on this page.
+  /// Total number of courses matching the current search, as reported by the
+  /// server alongside each page — not just how many are loaded so far.
   int _totalCount = 0;
 
-  int get currentPage => _currentPage;
+  bool _loadingMore = false;
+
+  /// The last [loadMore] failed (or returned nothing new). Automatic loading
+  /// pauses until the user scrolls again — prevents hammering a broken server.
+  bool _loadMoreFailed = false;
+
+  /// Bumped by every [refresh]; a response that belongs to an older value is
+  /// dropped (e.g. an append that was in flight when the search text changed).
+  int _generation = 0;
+
   int get totalCount => _totalCount;
 
-  /// Total number of pages at [pageSize], at least 1 so an empty result
-  /// still reads as "page 1 of 1" rather than "of 0".
-  int get totalPages =>
-      _totalCount == 0 ? 1 : (_totalCount / pageSize).ceil();
+  /// Courses loaded so far (for the progress card).
+  int get loadedCount => _allCourses.length;
 
-  /// Whether a page after the current one exists. Uses [_totalCount] once
-  /// the server has reported one; falls back to "did the last page come back
-  /// full" only before the first fetch completes.
+  bool get loadingMore => _loadingMore;
+  bool get loadMoreFailed => _loadMoreFailed;
+
+  /// Whether more courses exist on the server than are loaded. Uses
+  /// [_totalCount] once the server has reported one; falls back to "did the
+  /// last page come back full" for a legacy list-only response.
   bool get hasMore =>
-      _totalCount > 0 ? (_currentPage + 1) * pageSize < _totalCount : _hasMore;
-
-  bool get hasPreviousPage => _currentPage > 0;
+      _totalCount > 0 ? _allCourses.length < _totalCount : _hasMore;
 
   // ── Search (server-side; debounced so we don't fire on every keystroke) ──
 
@@ -84,16 +90,13 @@ class TeacherCoursesProvider extends BaseProvider {
 
   String get query => _query;
 
-  /// Re-fetches page 1 with the new query shortly after the user stops
-  /// typing, rather than filtering the (partial) loaded page on the client.
+  /// Re-fetches the first page with the new query shortly after the user
+  /// stops typing, rather than filtering the (partial) loaded list.
   void setQuery(String q) {
     if (_query == q) return;
     _query = q;
-    _pageCache.clear(); // a different search has a different result set
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 350), () {
-      fetchPage(0, force: true);
-    });
+    _searchDebounce = Timer(const Duration(milliseconds: 350), refresh);
   }
 
   @override
@@ -121,73 +124,94 @@ class TeacherCoursesProvider extends BaseProvider {
   // Fetch
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Returns true when the page came back and [_allCourses] was updated —
-  /// callers use this to know whether it's safe to cache the result.
-  Future<bool> fetchMyCourses({int skip = 0, int limit = pageSize}) async {
+  Map<String, dynamic> _params(int skip) => {
+    'skip': skip,
+    'limit': pageSize,
+    if (_query.trim().isNotEmpty) 'search': _query.trim(),
+  };
+
+  /// New shape: {"items": [...], "total": N}. A bare List is kept working for
+  /// as long as an older server is still deployed (total is then unknown).
+  /// Returns null when the response is not one of the two shapes.
+  ({List<TeacherCourse> items, int? total})? _parse(dynamic result) {
+    if (result is Map && result['items'] is List) {
+      return (
+      items: (result['items'] as List)
+          .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: (result['total'] as num?)?.toInt(),
+      );
+    }
+    if (result is List) {
+      return (
+      items: result
+          .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      total: null,
+      );
+    }
+    return null;
+  }
+
+  /// Loads the first page and replaces the list (initial load, pull-to-refresh,
+  /// and every search change).
+  Future<void> refresh() async {
+    final gen = ++_generation;
+    _loadMoreFailed = false;
     final result = await run(() => _api.get(
       '/api/v1/my-courses',
-      queryParams: {
-        'skip': skip,
-        'limit': limit,
-        if (_query.trim().isNotEmpty) 'search': _query.trim(),
-      },
+      queryParams: _params(0),
     ));
-    // New shape: {"items": [...], "total": N}. A bare List is kept working
-    // for as long as an older server is still deployed — total then falls
-    // back to page-length guessing, same as before this change.
-    if (result is Map && result['items'] is List) {
-      _allCourses = (result['items'] as List)
-          .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
-          .toList();
-      _totalCount = (result['total'] as num?)?.toInt() ?? _allCourses.length;
-      _hasMore = _allCourses.length == limit;
-      notifyListeners();
-      return true;
-    } else if (result is List) {
-      _allCourses = result
-          .map((e) => TeacherCourse.fromJson(e as Map<String, dynamic>))
-          .toList();
-      _totalCount = 0; // unknown — legacy server response
-      _hasMore = result.length == limit;
-      notifyListeners();
-      return true;
-    }
-    return false;
+    if (gen != _generation) return; // a newer refresh superseded this one
+    final page = _parse(result);
+    if (page == null) return; // error state already set by run()
+    _allCourses = page.items;
+    _totalCount = page.total ?? 0; // 0 = unknown (legacy server response)
+    _hasMore = page.items.length == pageSize;
+    notifyListeners();
   }
 
-  /// Fetches a specific page (0-based) using [pageSize], and updates
-  /// [currentPage] so the footer reflects where we are.
-  ///
-  /// A page already seen for the current search is served from
-  /// [_pageCache] instantly — no spinner, no request — so paging back and
-  /// forth (e.g. next → previous) feels immediate. Pass [force]: true to
-  /// bypass that and re-fetch anyway (pull-to-refresh).
-  Future<void> fetchPage(int page, {bool force = false}) async {
-    if (page < 0 || isLoading) return;
-    _currentPage = page;
+  /// Appends the next page. Safe to call as often as the scroll fires: it does
+  /// nothing while a load is running, when everything is loaded, or after a
+  /// failure (until [retry] is true — i.e. the user scrolled again).
+  Future<void> loadMore({bool retry = false}) async {
+    if (_loadingMore || isLoading || !hasMore) return;
+    if (_loadMoreFailed && !retry) return;
 
-    if (!force) {
-      final cached = _pageCache[page];
-      if (cached != null) {
-        _allCourses = cached;
-        notifyListeners();
+    final gen = _generation;
+    _loadingMore = true;
+    _loadMoreFailed = false;
+    notifyListeners();
+    try {
+      final result = await _api.get(
+        '/api/v1/my-courses',
+        queryParams: _params(_allCourses.length),
+      );
+      if (gen != _generation) return; // list was reset while we were loading
+      final page = _parse(result);
+      if (page == null) {
+        _loadMoreFailed = true;
         return;
       }
+      final seen = _allCourses.map((c) => c.id).toSet();
+      final fresh = page.items.where((c) => seen.add(c.id)).toList();
+      _allCourses = [..._allCourses, ...fresh];
+      if (page.total != null) _totalCount = page.total!;
+      _hasMore = page.items.length == pageSize;
+      // Nothing new although the server says more exist → stop auto-loading.
+      if (fresh.isEmpty) _loadMoreFailed = true;
+    } catch (_) {
+      _loadMoreFailed = true;
+    } finally {
+      _loadingMore = false;
+      notifyListeners();
     }
-
-    final ok = await fetchMyCourses(skip: page * pageSize, limit: pageSize);
-    if (ok) _pageCache[page] = _allCourses;
   }
 
-  Future<void> goToNextPage() async {
-    if (!_hasMore || isLoading) return;
-    await fetchPage(_currentPage + 1);
-  }
-
-  Future<void> goToPreviousPage() async {
-    if (!hasPreviousPage || isLoading) return;
-    await fetchPage(_currentPage - 1);
-  }
+  /// Kept for callers written against the old page-based API: page 0 reloads
+  /// the list, any other page appends the next one.
+  Future<void> fetchPage(int page, {bool force = false}) =>
+      page == 0 ? refresh() : loadMore(retry: true);
 
   Future<TeacherCourse?> fetchCourseById(int courseId) async {
     final result = await run(() => _api.get('/api/v1/courses/$courseId'));
@@ -204,8 +228,8 @@ class TeacherCoursesProvider extends BaseProvider {
   /// Prepend a newly created course to the list.
   void onCourseCreated(TeacherCourse course) {
     _allCourses = [course, ..._allCourses];
+    _bumpTotal(1);
     notifyListeners();
-    _syncCacheAfterMutation();
     onCoursesChanged?.call();
   }
 
@@ -214,12 +238,12 @@ class TeacherCoursesProvider extends BaseProvider {
     _allCourses =
         _allCourses.map((c) => c.id == course.id ? course : c).toList();
     notifyListeners();
-    _syncCacheAfterMutation();
     onCoursesChanged?.call();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Filter
+  // Filter (client-side on the loaded courses — the screen keeps loading
+  // pages in the background while a filter is active so it sees them all)
   // ─────────────────────────────────────────────────────────────────────────
 
   void setFilter(TeacherCourseStatus status) {
@@ -261,8 +285,8 @@ class TeacherCoursesProvider extends BaseProvider {
     ));
     if (state == ProviderState.success) {
       _allCourses = _allCourses.where((c) => c.id != courseId).toList();
+      _bumpTotal(-1);
       notifyListeners();
-      _syncCacheAfterMutation();
       onCoursesChanged?.call();
       return true;
     }
@@ -279,17 +303,15 @@ class TeacherCoursesProvider extends BaseProvider {
     c.id == courseId ? c.copyWith(isPublished: isPublished) : c)
         .toList();
     notifyListeners();
-    _syncCacheAfterMutation();
   }
 
-  /// A mutation can shift which course falls on which page (a new course
-  /// pushes everything else down a slot, a delete pulls everything after it
-  /// up one), so cached pages OTHER than the one we're already viewing can
-  /// no longer be trusted. Keep just the current page (already updated
-  /// in-place above) and let the others be re-fetched on demand.
-  void _syncCacheAfterMutation() {
-    _pageCache
-      ..clear()
-      ..[_currentPage] = _allCourses;
+  /// Keeps the server-reported total in step with local create/delete so the
+  /// progress card and [hasMore] stay correct without a refetch. The list is
+  /// offset-based (skip = loaded count), so a prepend/removal here matches the
+  /// server's own shift and the next page still lines up.
+  void _bumpTotal(int delta) {
+    if (_totalCount > 0 || (delta > 0 && _allCourses.length == 1)) {
+      _totalCount = (_totalCount + delta).clamp(0, 1 << 30);
+    }
   }
 }

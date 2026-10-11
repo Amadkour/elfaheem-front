@@ -12,7 +12,6 @@
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -119,8 +118,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     _items = [
       DashboardItem(
-        Icons.dashboard_outlined,
-        Icons.dashboard_rounded,
+        Icons.space_dashboard_outlined,
+        Icons.space_dashboard_rounded,
         'admin_overview_2',
             () => _refreshTab(0),
         _AdminTab(
@@ -143,8 +142,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       DashboardItem(
-        Icons.menu_book_outlined,
-        Icons.menu_book_rounded,
+        Icons.auto_stories_outlined,
+        Icons.auto_stories_rounded,
         'courses',
             () => _refreshTab(2),
         _AdminTab(
@@ -155,8 +154,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       DashboardItem(
-        Icons.person_pin_rounded,
-        Icons.person_pin_rounded,
+        Icons.co_present_outlined,
+        Icons.co_present_rounded,
         'teachers',
             () => _refreshTab(3),
         _AdminTab(
@@ -167,8 +166,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       DashboardItem(
-        Icons.apps_outlined,
-        Icons.apps_rounded,
+        Icons.grid_view_outlined,
+        Icons.grid_view_rounded,
         _moreLabel,
         null, // the "More" page has no refresh button
         const _AdminTab(titleKey: _moreLabel, child: _MorePage()),
@@ -378,6 +377,7 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
                     title: 'admin_group_people'.tr,
+                    icon: Icons.groups_rounded,
                     children: [
                       SettingsTile(
                         icon: Icons.campaign_rounded,
@@ -388,14 +388,14 @@ class _MorePageState extends State<_MorePage> {
                       ),
                       if (isSuperNow(context))
                         SettingsTile(
-                          icon: Icons.visibility_rounded,
+                          icon: Icons.switch_account_rounded,
                           iconBg: c.warning.withAlpha(50),
                           iconColor: c.warning,
                           label: 'view_as_user'.tr,
                           onTap: () => _push(const AdminViewAsPage()),
                         ),
                       SettingsTile(
-                        icon: Icons.person_pin_rounded,
+                        icon: Icons.co_present_rounded,
                         iconBg: c.danger.withAlpha(50),
                         iconColor: c.danger,
                         label: 'teachers'.tr,
@@ -428,6 +428,7 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
                     title: 'admin_group_finance'.tr,
+                    icon: Icons.account_balance_rounded,
                     children: [
                       // Pending payout requests — same overlay as the teacher's
                       // "enrollment requests" tile.
@@ -436,7 +437,7 @@ class _MorePageState extends State<_MorePage> {
                               (p) => p.count,
                         ),
                         child: SettingsTile(
-                          icon: Icons.account_balance_wallet_rounded,
+                          icon: Icons.payments_rounded,
                           iconBg: c.danger.withAlpha(50),
                           iconColor: c.danger,
                           label: 'payout'.tr,
@@ -456,7 +457,7 @@ class _MorePageState extends State<_MorePage> {
                                 (p) => p.total,
                           ),
                           child: SettingsTile(
-                            icon: Icons.account_balance_wallet_rounded,
+                            icon: Icons.how_to_reg_rounded,
                             iconBg: c.successTint,
                             iconColor: c.success,
                             label: 'enrollment_requests'.tr,
@@ -466,7 +467,7 @@ class _MorePageState extends State<_MorePage> {
                       ),
 
                       SettingsTile(
-                        icon: Icons.card_membership_rounded,
+                        icon: Icons.workspace_premium_rounded,
                         iconBg: c.warning.withAlpha(50),
                         iconColor: c.warning,
                         label: 'subscriptions'.tr,
@@ -475,7 +476,7 @@ class _MorePageState extends State<_MorePage> {
                       ParentComponent(
                         featureKey: 'profile.payment',
                         child: SettingsTile(
-                          icon: CupertinoIcons.creditcard,
+                          icon: Icons.credit_card_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
                           label: 'apm_title'.tr,
@@ -485,10 +486,10 @@ class _MorePageState extends State<_MorePage> {
                       ParentComponent(
                         featureKey: 'profile.historical_payment',
                         child: SettingsTile(
-                          icon: CupertinoIcons.doc_text_fill,
+                          icon: Icons.receipt_long_rounded,
                           iconBg: c.successTint,
                           iconColor: c.success,
-                          label: 'apm_title'.tr,
+                          label: 'admin_payments'.tr,
                           onTap: () => _push(const AdminFinancePage()),
                         ),
                       ),
@@ -501,6 +502,7 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
                     title: 'help'.tr,
+                    icon: Icons.help_center_rounded,
                     children: [
                       // New / unopened complaints — same overlay as the payout
                       // and enrollment-request tiles.
@@ -522,7 +524,7 @@ class _MorePageState extends State<_MorePage> {
                             // read / replied / status changed in there → recount
                             complaints.refreshCount();
                           },
-                          icon: Icons.headset_mic_rounded,
+                          icon: Icons.support_agent_rounded,
                           iconBg: c.primaryTint,
                           iconColor: c.primary,
                           label: 'help_center'.tr,
@@ -545,6 +547,7 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
                     title: 'admin_group_config'.tr,
+                    icon: Icons.tune_rounded,
                     children: [
                       SettingsTile(
                         icon: Icons.palette_rounded,
@@ -554,21 +557,21 @@ class _MorePageState extends State<_MorePage> {
                         onTap: () => _push(const AdminThemePage()),
                       ),
                       SettingsTile(
-                        icon: Icons.toggle_on_rounded,
+                        icon: Icons.auto_awesome_rounded,
                         iconBg: c.primary.withAlpha(50),
                         iconColor: c.primary,
                         label: 'features'.tr,
                         onTap: () => _push(const AdminFeaturesPage()),
                       ),
                       SettingsTile(
-                        icon: Icons.system_update_rounded,
+                        icon: Icons.rocket_launch_rounded,
                         iconBg: c.warning.withAlpha(50),
                         iconColor: c.warning,
                         label: 'versions'.tr,
                         onTap: () => _push(const AdminVersionsPage()),
                       ),
                       SettingsTile(
-                        icon: Icons.gavel_rounded,
+                        icon: Icons.policy_rounded,
                         iconBg: c.danger.withAlpha(50),
                         iconColor: c.danger,
                         label: 'terms_and_conditions'.tr,
@@ -584,6 +587,7 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: SettingsGroup(
                     title: 'settings'.tr,
+                    icon: Icons.settings_rounded,
                     children: [
                       SettingsTile(
                         icon: Icons.manage_accounts_rounded,
@@ -625,11 +629,12 @@ class _MorePageState extends State<_MorePage> {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: SettingsGroup(
                     title: 'exit'.tr,
+                    icon: Icons.exit_to_app_rounded,
                     itemBackground: c.danger.withAlpha(30),
                     children: [
                       SettingsTile(
                         key: const ValueKey('profile.logout'),
-                        icon: Icons.logout,
+                        icon: Icons.logout_rounded,
                         iconBg: c.dangerTint,
                         iconColor: c.danger,
                         label: 'logout'.tr,

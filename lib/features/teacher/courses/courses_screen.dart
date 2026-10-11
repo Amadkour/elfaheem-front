@@ -1,6 +1,5 @@
 library;
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +8,7 @@ import 'package:flutter_education_app/features/teacher/courses/teacher_courses_p
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
     show TeacherCourseStatus, TeacherCourse;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/app_theme.dart';
@@ -41,10 +41,10 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     // marks the home dashboard's stats + course preview stale, so it
     // refetches next time it's shown — without a hard dependency between
     // the two providers.
-    courses.onCoursesChanged =
-        () => context.read<TeacherHomeProvider>().refreshSilently();
+    courses.onCoursesChanged = () =>
+        context.read<TeacherHomeProvider>().refreshSilently();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (courses.allCourses.isEmpty) courses.fetchPage(0);
+      if (courses.allCourses.isEmpty) courses.refresh();
     });
   }
 
@@ -61,31 +61,98 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
     return BasePage(
       key: const ValueKey('teacher_courses'),
       useWebCard: true,
-      appBar: ScreenAppBar(
-        title: '${'my_courses'.tr} '
-            '${p.totalCount > 0 ? p.totalCount : p.filteredCourses.length}',
-        showBack: !kIsWeb,
-      ),
+      appBar: ScreenAppBar(title: 'my_courses'.tr, showBack: !kIsWeb),
       floatingActionButton: context.showSidebar
           ? null
-          : ParentComponent(featureKey: 'teacher_courses.add', child: _FloatingAddBtn()),
+          : ParentComponent(
+              featureKey: 'teacher_courses.add',
+              child: _FloatingAddBtn(),
+            ),
       child: SafeArea(
         bottom: false,
         child: p.isLoading && p.allCourses.isEmpty
             ? Center(child: AppLoadingIndicator())
             : Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const SizedBox(height: 4),
-            ParentComponent(featureKey: 'teacher_courses.search', child: _CourseSearchBar(controller: _searchCtrl, p: p)),
-            const SizedBox(height: 10),
-            ParentComponent(featureKey: 'teacher_courses.filters', child: _FilterTabs(p: p)),
-            const SizedBox(height: 10),
-            Expanded(child: _CourseList(p: p)),
-            ParentComponent(featureKey: 'teacher_courses.pagination', child: _PaginationFooter(p: p)),
-          ],
-        ),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Search + filters + progress share one centred, width-capped
+                  // block so they line up with the list on wide screens.
+                  _Centered(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 4),
+                        ParentComponent(
+                          featureKey: 'teacher_courses.filters',
+                          child: _FilterTabs(p: p),
+                        ),
+                        const SizedBox(height: 10),
+                        ParentComponent(
+                          featureKey: 'teacher_courses.search',
+                          child: _CourseSearchBar(
+                            controller: _searchCtrl,
+                            p: p,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        // Pinned above the list: "Showing 24 of 134" + progress bar.
+                        if (p.totalCount > 12)
+                          ParentComponent(
+                            featureKey: 'teacher_courses.pagination',
+                            child: _CoursesProgress(p: p),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Expanded(child: _CourseList(p: p)),
+                ],
+              ),
       ),
+    );
+  }
+}
+
+/// Centres [child] and caps it at the app's content width.
+class _Centered extends StatelessWidget {
+  const _Centered({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Align(
+    alignment: Alignment.topCenter,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+      child: child,
+    ),
+  );
+}
+
+/// Progress card (same widget the admin lists use). With "All" it reads
+/// loaded / total from the server; with a filter it counts what that filter
+/// shows (the screen keeps loading in the background until it has them all).
+class _CoursesProgress extends StatelessWidget {
+  const _CoursesProgress({required this.p});
+
+  final TeacherCoursesProvider p;
+
+  @override
+  Widget build(BuildContext context) {
+    final shown = p.filteredCourses.length;
+    final done = !p.hasMore;
+    if (shown == 0 && done) return const SizedBox.shrink();
+
+    final all = p.activeFilter == TeacherCourseStatus.all;
+    final total = all && p.totalCount > shown ? p.totalCount : shown;
+
+    return PagedCountCard(
+      loaded: shown,
+      total: total,
+      loadingMore: p.loadingMore || p.isLoading,
+      done: done,
+      icon: Icons.menu_book_rounded,
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
     );
   }
 }
@@ -198,13 +265,9 @@ class _AddCourseButton extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Filter tabs
-// ═══════════════════════════════════════════════════════════════════════════════
-
-// ═══════════════════════════════════════════════════════════════════════════════
 //  Search bar — server-side search by course name/description, debounced in
-//  TeacherCoursesProvider.setQuery so it re-fetches page 1 shortly after the
-//  teacher stops typing rather than filtering the (partial) loaded page.
+//  TeacherCoursesProvider.setQuery so it re-fetches the first page shortly
+//  after the teacher stops typing. Glows with the primary colour on focus.
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _CourseSearchBar extends StatefulWidget {
@@ -218,64 +281,101 @@ class _CourseSearchBar extends StatefulWidget {
 }
 
 class _CourseSearchBarState extends State<_CourseSearchBar> {
+  final _focus = FocusNode();
+
   @override
   void initState() {
     super.initState();
-    // Local listener (independent of provider rebuilds) so the clear "×"
-    // button appears/disappears immediately as the teacher types, rather
-    // than waiting for the search debounce to fire.
-    widget.controller.addListener(_onTextChanged);
+    // Local listeners (independent of provider rebuilds) so the clear "×"
+    // button and the focus glow react immediately as the teacher types.
+    widget.controller.addListener(_refresh);
+    _focus.addListener(_refresh);
   }
 
-  void _onTextChanged() {
+  void _refresh() {
     if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(_onTextChanged);
+    widget.controller.removeListener(_refresh);
+    _focus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final controller = widget.controller;
     final p = widget.p;
+    final focused = _focus.hasFocus;
+    bool isAr=AppConfig.lang == 'ar';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        height: 52,
+        padding: const EdgeInsetsDirectional.only(start: 8, end: 10),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(14),
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: focused ? c.primary : c.primary.withValues(alpha: 0.10),
+            width: focused ? 1.6 : 1,
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+              color: c.primary.withValues(alpha: focused ? 0.20 : 0.06),
+              blurRadius: focused ? 18 : 10,
+              offset: Offset(0, focused ? 6 : 3),
             ),
           ],
         ),
         child: Row(
           children: [
-            Icon(Icons.search_rounded, size: 19, color: context.colors.textLight),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: controller,
-                onChanged: (v) => p.setQuery(v),
-                textInputAction: TextInputAction.search,
-                style: context.colors.label.copyWith(color: context.colors.textDark),
-                decoration: InputDecoration(
-                  isDense: true,
-                  border: InputBorder.none,
-                  hintText: 'search_course_by_name_description'.tr,
-                  hintStyle: context.colors.label.copyWith(
-                    color: context.colors.textLight,
-                  ),
-                ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                gradient: focused ? c.primaryGradient : null,
+                color: focused ? null : c.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(12),
               ),
+              child: Icon(
+                Icons.search_rounded,
+                size: 20,
+                color: focused ? Colors.white : c.primary,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(child:
+            TextField(
+              controller: controller,
+              focusNode: _focus,
+              onChanged: (v) => p.setQuery(v),
+              textInputAction: TextInputAction.search,
+              textDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+              textAlign: isAr ? TextAlign.right : TextAlign.left,
+              style: c.label.copyWith(color: c.textDark),
+              decoration: InputDecoration(
+                isDense: false,
+                filled: false,
+                fillColor: Colors.transparent,
+                focusColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                hintText: 'search_course_by_name_description'.tr,
+                hintStyle: c.label.copyWith(color: c.textLight),
+                hintTextDirection: isAr ? TextDirection.rtl : TextDirection.ltr,
+              ),
+            ),
             ),
             if (controller.text.isNotEmpty)
               GestureDetector(
@@ -283,10 +383,18 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
                   controller.clear();
                   p.setQuery('');
                 },
-                child: Icon(
-                  Icons.close_rounded,
-                  size: 18,
-                  color: context.colors.textLight,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: c.textLight.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.close_rounded,
+                    size: 15,
+                    color: c.textMedium,
+                  ),
                 ),
               ),
           ],
@@ -295,87 +403,113 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Filter tabs — segmented control with a gradient pill that slides to the
+//  selected segment (RTL-safe: AlignmentDirectional follows the text direction).
+// ═══════════════════════════════════════════════════════════════════════════════
 
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs({required this.p});
 
   final TeacherCoursesProvider p;
   static const _tabs = [
-    (TeacherCourseStatus.all, 'filter_all', Icons.apps_rounded),
+    (TeacherCourseStatus.all, 'filter_all', Icons.grid_view_rounded),
     (TeacherCourseStatus.published, 'filter_published', Icons.public_rounded),
-    (TeacherCourseStatus.draft, 'filter_drafts', Icons.drafts_rounded),
+    (TeacherCourseStatus.draft, 'filter_drafts', Icons.edit_note_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final index = _tabs.indexWhere((t) => t.$1 == p.activeFilter);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        height: 46,
+        height: 50,
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(14),
+          color: c.cardBg,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: c.primary.withValues(alpha: 0.10)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: c.primary.withValues(alpha: 0.06),
               blurRadius: 10,
-              offset: const Offset(0, 2),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Row(
-          children: _tabs.map((t) {
-            final (status, labelKey, icon) = t;
-            final active = p.activeFilter == status;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => context.read<TeacherCoursesProvider>().setFilter(status),
-                child: Container(
-                  //  duration: const Duration(milliseconds: 220),
+        child: Stack(
+          children: [
+            // Sliding selection pill
+            AnimatedAlign(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              alignment: AlignmentDirectional(index - 1.0, 0),
+              child: FractionallySizedBox(
+                widthFactor: 1 / _tabs.length,
+                heightFactor: 1,
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    // gradient: active ? context.colors.primaryGradient : null,
-                    border: active
-                        ? Border(
-                      bottom: BorderSide(
-                        color: context.colors.primary,
-                        width: 1,
+                    gradient: c.primaryGradient,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: c.primary.withValues(alpha: 0.30),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
                       ),
-                    )
-                        : null,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          icon,
-                          size: 13,
-                          color: active
-                              ? context.colors.primary
-                              : context.colors.textLight,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          labelKey.tr,
-                          style: context.colors.label.copyWith(
-                            color: active
-                                ? context.colors.primary
-                                : context.colors.textLight,
-                            fontWeight: active
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
                 ),
               ),
-            );
-          }).toList(),
+            ),
+            Row(
+              children: _tabs.map((t) {
+                final (status, labelKey, icon) = t;
+                final active = p.activeFilter == status;
+                return Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => context
+                        .read<TeacherCoursesProvider>()
+                        .setFilter(status),
+                    child: Center(
+                      child: TweenAnimationBuilder<Color?>(
+                        tween: ColorTween(
+                          end: active ? Colors.white : c.textMedium,
+                        ),
+                        duration: const Duration(milliseconds: 260),
+                        builder: (_, col, __) => Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(icon, size: 15, color: col),
+                            const SizedBox(width: 5),
+                            Flexible(
+                              child: Text(
+                                labelKey.tr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: c.label.copyWith(
+                                  color: col,
+                                  fontWeight: active
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  fontSize: 12.5,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ),
       ),
     );
@@ -383,44 +517,116 @@ class _FilterTabs extends StatelessWidget {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  Course list
-//  Web → _TwoColumnMasonry (self-sizing, no childAspectRatio)
-//  Mobile → plain ListView
+//  Course list — infinite scroll (same model as the admin lists)
+//  • loads the next page when the scroll nears the end
+//  • while a filter is active it keeps loading until every course is loaded,
+//    because the filter runs on the loaded courses
+//  • Web → _TwoColumnMasonry (self-sizing, no childAspectRatio)
+//  • Mobile → plain ListView
+//  • last row: PagedListFooter ("Loading more…" / "All loaded")
 // ═══════════════════════════════════════════════════════════════════════════════
 
-class _CourseList extends StatelessWidget {
+class _CourseList extends StatefulWidget {
   const _CourseList({required this.p});
 
   final TeacherCoursesProvider p;
 
   @override
+  State<_CourseList> createState() => _CourseListState();
+}
+
+class _CourseListState extends State<_CourseList> {
+  final _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// [userInitiated] = the user scrolled, so a previously failed load is retried.
+  void _maybeLoadMore({bool userInitiated = false}) {
+    final p = widget.p;
+    if (!p.hasMore || p.isLoading || p.loadingMore) return;
+
+    // Not scrollable yet (page too short to fill the screen) counts as
+    // "near the end", so the list keeps filling itself until it scrolls.
+    final nearEnd = !_scroll.hasClients || _scroll.position.extentAfter < 600;
+    final needEverything = p.activeFilter != TeacherCourseStatus.all;
+    if (nearEnd || needEverything) p.loadMore(retry: userInitiated);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final p = widget.p;
     final isWide = context.showSidebar;
+
+    // Runs after every rebuild — each finished load notifies, which chains
+    // the next page until the screen is filled (or everything is loaded).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _maybeLoadMore();
+    });
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
       return Center(child: AppLoadingIndicator());
     }
 
     final courses = p.filteredCourses;
-    if (courses.isEmpty) return const _EmptyState();
+    if (courses.isEmpty) {
+      // Still looking through further pages for this filter.
+      if (p.hasMore && !p.loadMoreFailed) {
+        return Center(child: AppLoadingIndicator());
+      }
+      return _EmptyState(
+        searching:
+            p.query.trim().isNotEmpty ||
+            p.activeFilter != TeacherCourseStatus.all,
+      );
+    }
+
+    final footer = PagedListFooter(
+      loadingMore: p.loadingMore,
+      hasMore: p.hasMore,
+    );
 
     return RefreshIndicator(
       color: context.colors.primary,
-      // force: true — pull-to-refresh means "get me the latest", not
-      // "show me what I last saw", so it must bypass the page cache.
-      onRefresh: () => p.fetchPage(p.currentPage, force: true),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-          child: isWide
-              ? _TwoColumnMasonry(courses: courses)
-              : ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-            physics: const BouncingScrollPhysics(),
-            itemCount: courses.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 14),
-            itemBuilder: (_, i) => _CourseCard(course: courses[i]),
+      // Pull-to-refresh means "get me the latest": reload the first page.
+      onRefresh: p.refresh,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (n) {
+          if (n.depth == 0 &&
+              (n is ScrollUpdateNotification || n is OverscrollNotification)) {
+            _maybeLoadMore(userInitiated: true);
+          }
+          return false;
+        },
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
+            child: isWide
+                ? _TwoColumnMasonry(
+                    courses: courses,
+                    controller: _scroll,
+                    footer: footer,
+                  )
+                : ListView.separated(
+                    controller: _scroll,
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    itemCount: courses.length + 1,
+                    separatorBuilder: (_, i) =>
+                        SizedBox(height: i < courses.length - 1 ? 14 : 0),
+                    itemBuilder: (_, i) => i == courses.length
+                        ? footer
+                        : _CourseCard(
+                            key: ValueKey(courses[i].id),
+                            course: courses[i],
+                          ),
+                  ),
           ),
         ),
       ),
@@ -432,8 +638,14 @@ class _CourseList extends StatelessWidget {
 /// sizes itself naturally — no fixed childAspectRatio, no overflow.
 class _TwoColumnMasonry extends StatelessWidget {
   final List<TeacherCourse> courses;
+  final ScrollController controller;
+  final Widget footer;
 
-  const _TwoColumnMasonry({required this.courses});
+  const _TwoColumnMasonry({
+    required this.courses,
+    required this.controller,
+    required this.footer,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -443,37 +655,32 @@ class _TwoColumnMasonry extends StatelessWidget {
       (i.isEven ? left : right).add(courses[i]);
     }
 
+    Widget column(List<TeacherCourse> items) => Expanded(
+      child: Column(
+        children: items
+            .map(
+              (c) => Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _CourseCard(key: ValueKey(c.id), course: c),
+              ),
+            )
+            .toList(),
+      ),
+    );
+
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
+      controller: controller,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
         children: [
-          Expanded(
-            child: Column(
-              children: left
-                  .map(
-                    (c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _CourseCard(course: c),
-                ),
-              )
-                  .toList(),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [column(left), const SizedBox(width: 14), column(right)],
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              children: right
-                  .map(
-                    (c) => Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: _CourseCard(course: c),
-                ),
-              )
-                  .toList(),
-            ),
-          ),
+          footer,
         ],
       ),
     );
@@ -485,7 +692,11 @@ class _TwoColumnMasonry extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({this.searching = false});
+
+  /// A search or filter is active: "nothing matches" instead of the
+  /// "add your first course" call to action.
+  final bool searching;
 
   @override
   Widget build(BuildContext context) => Center(
@@ -509,51 +720,56 @@ class _EmptyState extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             child: Icon(
-              Icons.school_outlined,
+              searching ? Icons.search_off_rounded : Icons.school_outlined,
               size: 40,
               color: context.colors.primary,
             ),
           ),
           const SizedBox(height: 18),
           Text(
-            'no_courses_section'.tr,
+            searching ? 'admin_no_courses_found'.tr : 'no_courses_section'.tr,
             style: context.colors.body.copyWith(
               fontWeight: FontWeight.w600,
               fontSize: 15,
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 6),
-          Text(
-            'add_first_course_hint'.tr,
-            style: context.colors.caption.copyWith(
-              color: context.colors.textLight,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 22),
-          GestureDetector(
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: context.colors.primaryShadow,
+          if (!searching) ...[
+            const SizedBox(height: 6),
+            Text(
+              'add_first_course_hint'.tr,
+              style: context.colors.caption.copyWith(
+                color: context.colors.textLight,
               ),
-              child: Text(
-                'add_new_course'.tr,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: 'bahji',
-                  fontSize: 14,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 22),
+            GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CourseFormScreen()),
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
+                decoration: BoxDecoration(
+                  gradient: context.colors.primaryGradient,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: context.colors.primaryShadow,
+                ),
+                child: Text(
+                  'add_new_course'.tr,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'bahji',
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     ),
@@ -567,7 +783,7 @@ class _EmptyState extends StatelessWidget {
 class _CourseCard extends StatefulWidget {
   final TeacherCourse course;
 
-  const _CourseCard({required this.course});
+  const _CourseCard({required this.course, super.key});
 
   @override
   State<_CourseCard> createState() => _CourseCardState();
@@ -594,7 +810,7 @@ class _CourseCardState extends State<_CourseCard> {
             ),
           ),
           content: Text(
-            '${'delete_course_confirm'.tr} "${(AppConfig.lang=='ar'? widget.course.titleAr:widget.course.titleEn)??''}"؟',
+            '${'delete_course_confirm'.tr} "${(AppConfig.lang == 'ar' ? widget.course.titleAr : widget.course.titleEn) ?? ''}"؟',
             style: const TextStyle(fontFamily: 'bahji'),
           ),
           actions: [
@@ -662,14 +878,18 @@ class _CourseCardState extends State<_CourseCard> {
   Widget build(BuildContext context) {
     final c = widget.course;
     final isDraft = !c.isPublished;
-    final statusColor =
-    isDraft ? const Color(0xFFf59e0b) : context.colors.accent2;
+    final statusColor = isDraft
+        ? const Color(0xFFf59e0b)
+        : context.colors.accent2;
 
     return Container(
       decoration: BoxDecoration(
         color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: statusColor.withValues(alpha: 0.32), width: 1.2),
+        border: Border.all(
+          color: statusColor.withValues(alpha: 0.32),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: statusColor.withValues(alpha: 0.16),
@@ -731,7 +951,9 @@ class _CourseCardState extends State<_CourseCard> {
                 top: 10,
                 right: 10,
                 child: _GlassChip(
-                  icon: isDraft ? Icons.drafts_rounded : Icons.public_rounded,
+                  icon: isDraft
+                      ? Icons.edit_note_rounded
+                      : Icons.public_rounded,
                   label: isDraft ? 'status_draft'.tr : 'status_published'.tr,
                   color: statusColor,
                 ),
@@ -768,7 +990,7 @@ class _CourseCardState extends State<_CourseCard> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
+                    (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
                     style: context.colors.h3.copyWith(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
@@ -778,7 +1000,10 @@ class _CourseCardState extends State<_CourseCard> {
                   ),
                   const SizedBox(height: 10),
                   // 2×2 stats grid — deterministic height, no Wrap
-                  ParentComponent(featureKey: 'teacher_courses.card_stats', child: _StatsGrid(course: c)),
+                  ParentComponent(
+                    featureKey: 'teacher_courses.card_stats',
+                    child: _StatsGrid(course: c),
+                  ),
                 ],
               ),
             ),
@@ -786,36 +1011,40 @@ class _CourseCardState extends State<_CourseCard> {
 
           // ── Expand toggle ────────────────────────────────────────────
           ParentComponent(
-              featureKey: 'teacher_courses.card_details',
-              child: InkWell(
-                onTap: () {
-                  if (mounted) setState(() => _expanded = !_expanded);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  child: Row(
-                    children: [
-                      Text(
-                        _expanded ? 'hide_details'.tr : 'show_details'.tr,
-                        style: context.colors.label.copyWith(
-                          color: context.colors.primary,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 220),
-                        child: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 16,
-                          color: context.colors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
+            featureKey: 'teacher_courses.card_details',
+            child: InkWell(
+              onTap: () {
+                if (mounted) setState(() => _expanded = !_expanded);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
                 ),
-              )),
+                child: Row(
+                  children: [
+                    Text(
+                      _expanded ? 'hide_details'.tr : 'show_details'.tr,
+                      style: context.colors.label.copyWith(
+                        color: context.colors.primary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 16,
+                        color: context.colors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
 
           // ── Expandable extras ────────────────────────────────────────
           AnimatedSize(
@@ -823,15 +1052,15 @@ class _CourseCardState extends State<_CourseCard> {
             curve: Curves.easeInOut,
             child: _expanded
                 ? Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Divider(
-                  height: 1,
-                  color: Colors.black.withValues(alpha: 0.07),
-                ),
-                _ExtrasPanel(course: c),
-              ],
-            )
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Divider(
+                        height: 1,
+                        color: Colors.black.withValues(alpha: 0.07),
+                      ),
+                      _ExtrasPanel(course: c),
+                    ],
+                  )
                 : const SizedBox.shrink(),
           ),
 
@@ -844,42 +1073,47 @@ class _CourseCardState extends State<_CourseCard> {
               children: [
                 Expanded(
                   child: ParentComponent(
-                      featureKey: 'teacher_courses.edit',
-                      child: _ToolbarAction(
-                        icon: Icons.edit_rounded,
-                        label: 'edit'.tr,
-                        color: context.colors.primary,
-                        onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => CourseFormScreen(course: c),
-                          ),
+                    featureKey: 'teacher_courses.edit',
+                    child: _ToolbarAction(
+                      icon: Icons.edit_rounded,
+                      label: 'edit'.tr,
+                      color: context.colors.primary,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => CourseFormScreen(course: c),
                         ),
-                      )),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   flex: 2,
                   child: ParentComponent(
-                      featureKey: 'teacher_courses.publish',
-                      child: _ToolbarAction(
-                        icon: isDraft
-                            ? Icons.upload_rounded
-                            : Icons.visibility_off_rounded,
-                        label: isDraft ? 'publish_course'.tr : 'unpublish_course'.tr,
-                        color: statusColor,
-                        filled: true,
-                        onTap: _togglePublish,
-                      )),
+                    featureKey: 'teacher_courses.publish',
+                    child: _ToolbarAction(
+                      icon: isDraft
+                          ? Icons.upload_rounded
+                          : Icons.visibility_off_rounded,
+                      label: isDraft
+                          ? 'publish_course'.tr
+                          : 'unpublish_course'.tr,
+                      color: statusColor,
+                      filled: true,
+                      onTap: _togglePublish,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 ParentComponent(
-                    featureKey: 'teacher_courses.delete',
-                    child: _ToolbarAction(
-                      icon: Icons.delete_rounded,
-                      color: Colors.red,
-                      onTap: _confirmDelete,
-                      iconOnly: true,
-                    )),
+                  featureKey: 'teacher_courses.delete',
+                  child: _ToolbarAction(
+                    icon: Icons.delete_rounded,
+                    color: context.colors.danger,
+                    onTap: _confirmDelete,
+                    iconOnly: true,
+                  ),
+                ),
               ],
             ),
           ),
@@ -904,26 +1138,26 @@ class _StatsGrid extends StatelessWidget {
     final rows = [
       [
         (
-        Icons.people_alt_rounded,
-        '${c.studentsCount} ${'student'.tr}',
-        context.colors.primary,
+          Icons.people_alt_rounded,
+          '${c.studentsCount} ${'student'.tr}',
+          context.colors.primary,
         ),
         (
-        Icons.video_library_rounded,
-        '${c.sessionsCount} ${'session'.tr}',
-        const Color(0xFF185FA5),
+          Icons.video_library_rounded,
+          '${c.sessionsCount} ${'session'.tr}',
+          const Color(0xFF185FA5),
         ),
       ],
       [
         (
-        Icons.access_time_rounded,
-        '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
-        const Color(0xFFBA7517),
+          Icons.access_time_rounded,
+          '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
+          const Color(0xFFBA7517),
         ),
         (
-        Icons.star_rounded,
-        c.rateSummary?.average.toStringAsFixed(1),
-        context.colors.accent,
+          Icons.star_rounded,
+          c.rateSummary?.average.toStringAsFixed(1),
+          context.colors.accent,
         ),
       ],
     ];
@@ -1009,7 +1243,9 @@ class _GlassChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
-        color: dark ? Colors.black.withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.94),
+        color: dark
+            ? Colors.black.withValues(alpha: 0.45)
+            : Colors.white.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.withValues(alpha: dark ? 0.55 : 0.35)),
       ),
@@ -1056,11 +1292,14 @@ class _ToolbarAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = filled ? Colors.white : color;
+    final radius = BorderRadius.circular(14);
+
     final content = Row(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 17, color: filled ? Colors.white : color),
+        Icon(icon, size: 18, color: fg),
         if (!iconOnly && label != null) ...[
           const SizedBox(width: 6),
           Flexible(
@@ -1071,8 +1310,8 @@ class _ToolbarAction extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: filled ? Colors.white : color,
+                fontWeight: FontWeight.w800,
+                color: fg,
               ),
             ),
           ),
@@ -1080,19 +1319,45 @@ class _ToolbarAction extends StatelessWidget {
       ],
     );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 42,
-        width: iconOnly ? 42 : null,
-        padding: iconOnly ? null : const EdgeInsets.symmetric(horizontal: 10),
+    return Material(
+      color: Colors.transparent,
+      child: Ink(
+        height: 44,
+        width: iconOnly ? 44 : null,
         decoration: BoxDecoration(
-          color: filled ? color : color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: filled ? null : Border.all(color: color.withValues(alpha: 0.35)),
+          // Primary action gets a soft gradient + glow; the rest are tonal.
+          gradient: filled
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [color, Color.lerp(color, Colors.black, 0.18)!],
+                )
+              : null,
+          color: filled ? null : color.withValues(alpha: 0.10),
+          borderRadius: radius,
+          border: filled
+              ? null
+              : Border.all(color: color.withValues(alpha: 0.30)),
+          boxShadow: filled
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.35),
+                    blurRadius: 12,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
         ),
-        alignment: Alignment.center,
-        child: content,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Padding(
+            padding: iconOnly
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(horizontal: 12),
+            child: Center(child: content),
+          ),
+        ),
       ),
     );
   }
@@ -1111,9 +1376,9 @@ class _ExtrasPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasContent =
         course.schedules.isNotEmpty ||
-            course.certificates.isNotEmpty ||
-            course.tools.isNotEmpty ||
-            course.prerequisites.isNotEmpty;
+        course.certificates.isNotEmpty ||
+        course.tools.isNotEmpty ||
+        course.prerequisites.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -1213,7 +1478,7 @@ class _ExtRow extends StatelessWidget {
             ),
             if (onTap != null)
               Icon(
-                CupertinoIcons.settings,
+                Icons.edit_calendar_rounded,
                 size: 16,
                 color: context.colors.primary,
               ),
@@ -1224,27 +1489,27 @@ class _ExtRow extends StatelessWidget {
             .take(3)
             .map(
               (item) => Padding(
-            padding: const EdgeInsets.only(right: 29, bottom: 3),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 5),
-                  child: Container(
-                    width: 5,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: context.colors.textLight,
-                      shape: BoxShape.circle,
+                padding: const EdgeInsets.only(right: 29, bottom: 3),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: context.colors.textLight,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 7),
+                    Expanded(child: Text(item, style: context.colors.caption)),
+                  ],
                 ),
-                const SizedBox(width: 7),
-                Expanded(child: Text(item, style: context.colors.caption)),
-              ],
+              ),
             ),
-          ),
-        ),
         if (items.length > 3)
           Padding(
             padding: const EdgeInsets.only(right: 29, top: 2),
@@ -1257,182 +1522,6 @@ class _ExtRow extends StatelessWidget {
             ),
           ),
       ],
-    ),
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Pagination footer — page arrows + indicator, shared by web and mobile
-// ═══════════════════════════════════════════════════════════════════════════════
-//
-// The `/api/v1/my-courses` endpoint takes skip/limit but returns a plain
-// list with no total-count field, so "is there a next page" is inferred
-// from whether the last fetch returned a full page (see
-// TeacherCoursesProvider.hasMore). That's enough to drive simple
-// prev/next arrows without over-claiming a page count we don't have.
-
-class _PaginationFooter extends StatelessWidget {
-  const _PaginationFooter({required this.p});
-
-  final TeacherCoursesProvider p;
-
-  @override
-  Widget build(BuildContext context) {
-    // Nothing to paginate yet (empty first page, still on page 0, no more
-    // to come) — skip the footer entirely rather than showing dead arrows.
-    // Once the server has reported a total (totalCount > 0) this is exact;
-    // otherwise it falls back to the previous "was the last page empty"
-    // heuristic, kept for a not-yet-updated server (see fetchMyCourses).
-    final noPages = p.totalCount > 0 ? p.totalPages <= 1 && p.allCourses.isEmpty
-        : (p.currentPage == 0 && !p.hasMore && p.allCourses.isEmpty);
-    if (noPages) {
-      return const SizedBox.shrink();
-    }
-
-    final busy = p.isLoading;
-    final isFirst = p.currentPage == 0;
-    final isLast = !p.hasMore;
-
-    return SafeArea(
-      top: false,
-      child: Align(
-        alignment: Alignment.center,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
-            child: Container(
-              height: 58,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: context.colors.cardBg,
-                borderRadius: BorderRadius.circular(29),
-                border: Border.all(
-                  color: context.colors.primary.withValues(alpha: 0.14),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: context.colors.primary.withValues(alpha: 0.14),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  _PageArrow(
-                    icon: Icons.chevron_left_rounded,
-                    enabled: !isFirst && !busy,
-                    onTap: () => p.goToPreviousPage(),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: busy
-                          ? SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.2,
-                          color: context.colors.primary,
-                        ),
-                      )
-                          : _PagePill(
-                        page: p.currentPage,
-                        totalPages: p.totalCount > 0 ? p.totalPages : null,
-                      ),
-                    ),
-                  ),
-                  _PageArrow(
-                    icon: Icons.chevron_right_rounded,
-                    enabled: !isLast && !busy,
-                    onTap: () => p.goToNextPage(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PagePill extends StatelessWidget {
-  const _PagePill({required this.page, this.totalPages});
-
-  final int page;
-
-  /// Total number of pages, from the server's total count. Null while that
-  /// isn't known yet (e.g. a not-yet-updated server) — shows just the
-  /// current page number in that case, same as before this change.
-  final int? totalPages;
-
-  @override
-  Widget build(BuildContext context) {
-    final total = totalPages;
-    final label = total != null
-        ? '${'page_word'.tr} ${page + 1} ${'of_word'.tr} $total'
-        : '${'page_word'.tr} ${page + 1}';
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.30),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: Colors.white,
-          fontFamily: 'bahji',
-          fontSize: 13,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _PageArrow extends StatelessWidget {
-  const _PageArrow({
-    required this.icon,
-    required this.enabled,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final bool enabled;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: enabled ? onTap : null,
-    child: AnimatedOpacity(
-      duration: const Duration(milliseconds: 180),
-      opacity: enabled ? 1 : 0.35,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          color: context.colors.primary.withValues(alpha: 0.08),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: context.colors.primary.withValues(alpha: 0.25),
-          ),
-        ),
-        child: Icon(icon, size: 22, color: context.colors.primary),
-      ),
     ),
   );
 }
