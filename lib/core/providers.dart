@@ -4,7 +4,6 @@ import 'package:flutter_education_app/features/student/analysis/student_analytic
 import 'package:flutter_education_app/features/student/attendance/attendance_provider.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
-import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';

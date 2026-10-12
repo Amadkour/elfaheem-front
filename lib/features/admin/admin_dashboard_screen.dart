@@ -39,7 +39,6 @@ import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
 import '../shared/profile/compalints/complaints_screen.dart';
 import '../shared/profile/components/setting_group.dart';
-import '../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import 'admin_admins_page.dart';
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
@@ -181,8 +180,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin)
+      if (mounted && _isAdmin) {
         context.read<TeacherTransfersProvider>().ensureLoaded();
+      }
     });
   }
 
@@ -307,7 +307,7 @@ class _AdminTab extends StatelessWidget {
           ? child
           : ValueListenableBuilder<int>(
         valueListenable: epoch!,
-        builder: (_, e, __) =>
+        builder: (_, e, _) =>
             KeyedSubtree(key: ValueKey(e), child: child),
       ),
     );

@@ -154,7 +154,7 @@ class _RecommendedCoursesPicker extends StatefulWidget {
 }
 
 class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
-  late Set<int> _local = Set.of(widget.selectedIds);
+  late final Set<int> _local = Set.of(widget.selectedIds);
 
   @override
   Widget build(BuildContext context) {

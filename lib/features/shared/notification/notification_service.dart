@@ -361,8 +361,9 @@ class NotificationService {
     final ctx = navigatorKey.currentContext;
     if (ctx == null ||
         !ctx.mounted ||
-        !ctx.read<AuthProvider>().isAuthenticated)
+        !ctx.read<AuthProvider>().isAuthenticated) {
       return;
+    }
     _pendingPush = null;
     AppNavigator.openFromPush(data);
   }

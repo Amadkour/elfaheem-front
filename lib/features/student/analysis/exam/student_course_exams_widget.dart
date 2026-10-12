@@ -5,7 +5,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../../../utils/widget/app_loading_indicator.dart';
 import '../../../shared/passcode/passcode_screen.dart';
-import 'passcode_screen.dart';
 import 'student_exam_api.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';

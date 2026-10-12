@@ -72,7 +72,7 @@ class PagedCountCard extends StatelessWidget {
                 TweenAnimationBuilder<double>(
                   tween: Tween(end: loaded.toDouble()),
                   duration: const Duration(milliseconds: 350),
-                  builder: (_, v, __) => Text(
+                  builder: (_, v, _) => Text(
                     _label(v.round(), total),
                     style: TextStyle(
                       fontFamily: 'tajawal',
@@ -89,7 +89,7 @@ class PagedCountCard extends StatelessWidget {
                     tween: Tween(end: progress),
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOutCubic,
-                    builder: (_, v, __) => LinearProgressIndicator(
+                    builder: (_, v, _) => LinearProgressIndicator(
                       value: v,
                       minHeight: 6,
                       backgroundColor: c.primary.withValues(alpha: 0.12),

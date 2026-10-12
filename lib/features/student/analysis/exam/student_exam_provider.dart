@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../shared/models/exam_model.dart';
-import '../../courses/details/course_detail_provider.dart';
 import 'student_exam_api.dart';
 import 'exam_tr.dart';
 

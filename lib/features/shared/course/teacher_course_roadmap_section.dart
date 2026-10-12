@@ -20,7 +20,6 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../student/models.dart';
-import 'studend_course_roadmap_section.dart';
 
 const _kPickGold = Color(0xFFC9971F);
 const _kPickGoldBg = Color(0xFFFFF6DF);
@@ -134,7 +133,7 @@ class CourseRecommendationsSection extends StatelessWidget {
                     controller: controller,
                     scrollDirection: Axis.horizontal,
                     itemCount: recommendedCourses.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (_, i) => RecommendCourseCard(
                       course: recommendedCourses[i],
                       onTap: () => onTapOwnCourse(recommendedCourses[i]),
@@ -171,7 +170,7 @@ class CourseRecommendationsSection extends StatelessWidget {
                     controller: controller2,
                     scrollDirection: Axis.horizontal,
                     itemCount: similarCourses.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
                     itemBuilder: (_, i) => RecommendCourseCard(
                       course: similarCourses[i],
                       onTap: () => onTapSuggestedCourse(similarCourses[i]),

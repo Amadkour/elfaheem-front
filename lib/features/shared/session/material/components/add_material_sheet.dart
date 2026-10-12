@@ -16,7 +16,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';

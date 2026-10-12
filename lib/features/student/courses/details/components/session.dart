@@ -5,7 +5,6 @@ import '../../../analysis/exam/student_course_exams_widget.dart'
     show openStudentExam;
 import '../../../analysis/exam/student_exam_provider.dart';
 import '../../../../../config/app_config.dart';
-import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../shared/session/material/components/session_progress_section.dart';
 import '../../../../shared/session/material/session_material_widget.dart';

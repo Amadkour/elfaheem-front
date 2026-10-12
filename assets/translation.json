@@ -8136,5 +8136,117 @@
   "no_network_banner": {
     "en": "No internet connection. Check your network and try again.",
     "ar": "لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى."
+  },
+  "dl_title": {
+    "ar": "التحميلات",
+    "en": "Downloads"
+  },
+  "dl_offline_info": {
+    "ar": "أنت غير متصل بالإنترنت — يمكنك مشاهدة الفيديوهات المحمّلة",
+    "en": "You are offline — you can watch your downloaded videos"
+  },
+  "dl_back_online": {
+    "ar": "عاد الاتصال بالإنترنت",
+    "en": "You are back online"
+  },
+  "dl_retry_connection": {
+    "ar": "إعادة محاولة الاتصال",
+    "en": "Retry connection"
+  },
+  "dl_go_home": {
+    "ar": "العودة للرئيسية",
+    "en": "Back to home"
+  },
+  "dl_empty_title": {
+    "ar": "لا توجد فيديوهات محمّلة",
+    "en": "No downloaded videos"
+  },
+  "dl_empty_body": {
+    "ar": "حمّل الفيديوهات من داخل المشغّل لمشاهدتها بدون إنترنت",
+    "en": "Download videos from the player to watch them without internet"
+  },
+  "dl_videos_count": {
+    "ar": "فيديو",
+    "en": "videos"
+  },
+  "dl_storage_used": {
+    "ar": "المساحة المستخدمة",
+    "en": "Storage used"
+  },
+  "dl_delete_title": {
+    "ar": "حذف التحميل",
+    "en": "Delete download"
+  },
+  "dl_delete_body": {
+    "ar": "سيتم حذف الفيديو من جهازك، ويمكنك تحميله مرة أخرى لاحقاً.",
+    "en": "The video will be removed from your device. You can download it again later."
+  },
+  "dl_delete_all": {
+    "ar": "حذف الكل",
+    "en": "Delete all"
+  },
+  "dl_delete_all_title": {
+    "ar": "حذف جميع التحميلات؟",
+    "en": "Delete all downloads?"
+  },
+  "dl_expires_in_days": {
+    "ar": "ينتهي خلال {n} يوم",
+    "en": "Expires in {n} days"
+  },
+  "dl_expires_today": {
+    "ar": "ينتهي اليوم",
+    "en": "Expires today"
+  },
+  "dl_started": {
+    "ar": "بدأ التحميل…",
+    "en": "Download started…"
+  },
+  "dl_done": {
+    "ar": "تم التحميل — متاح بدون إنترنت",
+    "en": "Downloaded — available offline"
+  },
+  "dl_failed": {
+    "ar": "فشل التحميل، حاول مرة أخرى",
+    "en": "Download failed, please try again"
+  },
+  "dl_tooltip_download": {
+    "ar": "تحميل للمشاهدة بدون إنترنت",
+    "en": "Download to watch offline"
+  },
+  "dl_on_device": {
+    "ar": "محمّل على الجهاز",
+    "en": "Downloaded on device"
+  },
+  "dl_minimize": {
+    "ar": "تصغير",
+    "en": "Minimize"
+  },
+  "dl_pip_unsupported": {
+    "ar": "النافذة المصغرة غير مدعومة على هذا الجهاز",
+    "en": "Picture-in-picture is not supported on this device"
+  },
+  "dl_pip_failed": {
+    "ar": "تعذّر تشغيل النافذة المصغرة",
+    "en": "Could not start picture-in-picture"
+  },
+  "dl_rotation_auto": {
+    "ar": "التدوير التلقائي: مفعّل",
+    "en": "Auto-rotate: on"
+  },
+  "dl_rotation_locked": {
+    "ar": "تم قفل التدوير",
+    "en": "Rotation locked"
+  },
+  "dl_views_left": {
+    "ar": "المشاهدات المتبقية هذا الشهر: {n}",
+    "en": "Views left this month: {n}"
+  },
+  "dl_views_ended": {
+    "ar": "انتهت المشاهدات",
+    "en": "No views left"
+  },
+  "dl_ok": {
+    "ar": "حسناً",
+    "en": "OK"
   }
 }

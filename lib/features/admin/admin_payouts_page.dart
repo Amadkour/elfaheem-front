@@ -300,8 +300,9 @@ class _RequestCard extends StatelessWidget {
                         title: 'rejection_reason_title'.tr,
                         multiline: true,
                       );
-                      if (reason != null && reason.isNotEmpty)
+                      if (reason != null && reason.isNotEmpty) {
                         await p.reject(w.id, reason);
+                      }
                     },
                     icon: Icons.close_rounded,
                   ),
@@ -568,7 +569,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   }
 
   Widget _preview(PlatformFile f) {
-    Widget broken(BuildContext _, Object __, StackTrace? ___) =>
+    Widget broken(BuildContext _, Object _, StackTrace? _) =>
         const Center(child: Icon(Icons.broken_image_rounded, size: 40));
     if (kIsWeb) {
       return Image.memory(

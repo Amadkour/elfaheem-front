@@ -3,12 +3,10 @@
 // Hero banner at the top of the course-detail screen.
 // Reads nothing from any provider — all data passed in as constructor params.
 // ─────────────────────────────────────────────────────────────────────────────
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 
-import '../../../../../utils/widget/refresh_button.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/course/private_flag.dart';
 import '../../../shared/course/topbar.dart';

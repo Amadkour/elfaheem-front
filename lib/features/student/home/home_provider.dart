@@ -135,13 +135,13 @@ class HomeProvider extends BaseProvider {
     //   notifyListeners();
     //
     // }
-    List<Map<String, dynamic>> _asMapList(dynamic v) {
+    List<Map<String, dynamic>> asMapList(dynamic v) {
       if (v is List && v.isNotEmpty && v.first is List) v = v.first; // [[...], total]
       return v is List ? v.whereType<Map<String, dynamic>>().toList() : const [];
     }
 
-    myCourses = _asMapList(result['enrolled_courses']).map(CourseModel.fromJson).toList();
-    otherCourses = _asMapList(result['other_courses']).map(CourseModel.fromJson).toList();
+    myCourses = asMapList(result['enrolled_courses']).map(CourseModel.fromJson).toList();
+    otherCourses = asMapList(result['other_courses']).map(CourseModel.fromJson).toList();
 
     if (result['best_teachers'] is Map &&
         result['best_teachers']['items'] is List) {

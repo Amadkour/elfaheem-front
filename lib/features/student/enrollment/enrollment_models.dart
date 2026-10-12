@@ -2,6 +2,7 @@
 ///
 /// Plain models for the enrollment / payment API. The server is the single
 /// source of truth for fees — nothing here calculates money.
+library;
 
 Map<String, dynamic>? asJsonMap(Object? raw) =>
     raw is Map ? Map<String, dynamic>.from(raw) : null;

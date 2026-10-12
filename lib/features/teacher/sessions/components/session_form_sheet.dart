@@ -5,7 +5,6 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
-import '../../../auth/auth_widgets.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';
 

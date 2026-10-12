@@ -50,7 +50,8 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:label="flutter_education_app"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:allowBackup="false">
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
@@ -73,6 +74,8 @@
 
         <activity
             android:name=".MainActivity"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
             android:hardwareAccelerated="true"

@@ -37,7 +37,7 @@ class TopRouteObserver extends NavigatorObserver {
     Route<dynamic>? newRoute,
     Route<dynamic>? oldRoute,
   }) {
-    this.previousRoute = oldRoute;
+    previousRoute = oldRoute;
     currentRoute = newRoute;
   }
 

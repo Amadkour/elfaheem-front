@@ -399,8 +399,8 @@ class CourseFormProvider extends BaseProvider {
       if (isPrivate && (accessCode ?? '').trim().isNotEmpty)
       'access_code': accessCode!.trim(),
       'fees': fees,
-      if (priceMonthly != null) 'price_monthly': priceMonthly,
-      if (priceSixMonths != null) 'price_six_months': priceSixMonths,
+      'price_monthly': ?priceMonthly,
+      'price_six_months': ?priceSixMonths,
       'default_price_plan_index': defaultPlanIndex,
       'currency': selectedCurrency.code,
       if (selectedSpecialization?['id'] != null)
@@ -408,9 +408,8 @@ class CourseFormProvider extends BaseProvider {
       'hours': ?totalHours,
       'next_course_ids': selectedNextCourses.map((c) => c['id']).toList(),
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
-      if (discountPercentage != null)
-      'discount_percentage': discountPercentage,
-      if (discountDays != null) 'discount_days': discountDays,
+      'discount_percentage': ?discountPercentage,
+      'discount_days': ?discountDays,
       },
       ),
     );
@@ -510,9 +509,8 @@ class CourseFormProvider extends BaseProvider {
       'recommended_course_ids': selectedRecommendedCourseIds.toList(),
       if (clearDiscount)
       'discount_percentage': null
-      else if (discountPercentage != null)
-      'discount_percentage': discountPercentage,
-      if (discountDays != null) 'discount_days': discountDays,
+      else 'discount_percentage': ?discountPercentage,
+      'discount_days': ?discountDays,
       },
       ),
     );

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/theme/app_theme.dart';
 import '../../../../config/app_config.dart' as Helpers;
 import '../../../../utils/widget/app_network_image.dart';
 import '../../../../utils/widget/app_bar.dart';

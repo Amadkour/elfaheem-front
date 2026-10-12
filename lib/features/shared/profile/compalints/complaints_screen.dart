@@ -914,8 +914,7 @@ class _FilterChip extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
-    this.color,
-  });
+  }) : color = null;
 
   final String label;
   final bool selected;

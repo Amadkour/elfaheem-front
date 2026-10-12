@@ -1,14 +1,11 @@
 /// courses/details/course_detail_provider.dart
 library;
 
-import 'package:flutter/cupertino.dart';
 
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../../utils/helpers.dart';
-import '../../../shared/session/material/session_material_model.dart'
-    show SessionMaterialModel;
 import '../../models.dart';
 import 'components/issued_certificate.dart';
 import 'session_exam_gate.dart';

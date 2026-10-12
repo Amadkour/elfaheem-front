@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/password_text_field.dart';
 import '../../../../utils/widget/primary_button.dart';

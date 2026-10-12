@@ -4,7 +4,6 @@ import 'dart:developer';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1020,7 +1019,7 @@ class _RoomPageState extends State<RoomPage>
   String _activeSpeakerName() {
     final local = widget.room.localParticipant;
     final all = <Participant>[
-      if (local != null) local,
+      ?local,
       ...widget.room.remoteParticipants.values,
     ];
     final speaking = all.where((p) => p.isSpeaking).toList()
@@ -3874,7 +3873,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
                   Image.asset(
                     'assets/images/app_icon.png',
                     height: 28,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
                   const SizedBox(width: 10),
                 ],

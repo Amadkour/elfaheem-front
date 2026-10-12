@@ -44,13 +44,10 @@ import 'package:flutter_education_app/features/teacher/home/teacher_home_provide
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/helpers.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Parses 'HH:MM' from [session] fields and combines with [session.scheduledDate]

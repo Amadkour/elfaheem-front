@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/shared/course/topbar.dart';
-import 'package:path/path.dart';
 
 import '../../../../../utils/helpers.dart';
 import '../../../../shared/course/private_flag.dart';
@@ -438,7 +437,6 @@ class _Pill extends StatelessWidget {
     this.icon,
     this.dark = false,
   });
-
   final String text;
   final Color color;
   final IconData? icon;

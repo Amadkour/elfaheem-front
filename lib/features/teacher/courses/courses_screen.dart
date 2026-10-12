@@ -11,7 +11,6 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
@@ -482,7 +481,7 @@ class _FilterTabs extends StatelessWidget {
                           end: active ? Colors.white : c.textMedium,
                         ),
                         duration: const Duration(milliseconds: 260),
-                        builder: (_, col, __) => Row(
+                        builder: (_, col, _) => Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(icon, size: 15, color: col),

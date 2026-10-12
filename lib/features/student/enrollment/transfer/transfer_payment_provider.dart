@@ -6,11 +6,9 @@
 ///   POST /api/v1/payments/transfer                      -> submit proof (multipart)
 library;
 
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
-import 'package:path/path.dart';
 
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';

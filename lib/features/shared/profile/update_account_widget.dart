@@ -10,7 +10,6 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart' as Helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/editable_image.dart';
 import '../../../../utils/widget/primary_button.dart';

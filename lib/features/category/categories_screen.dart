@@ -311,8 +311,8 @@ class _CategoryChipsRow extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         itemCount: 6,
-        separatorBuilder: (_, __) => const SizedBox(width: 14),
-        itemBuilder: (_, __) => const _ShimmerCircle(),
+        separatorBuilder: (_, _) => const SizedBox(width: 14),
+        itemBuilder: (_, _) => const _ShimmerCircle(),
       );
     }
 
@@ -350,8 +350,8 @@ class _CategorySideList extends StatelessWidget {
     if (provider.isLoadingCategory && categories.isEmpty) {
       return ListView.separated(
         itemCount: 6,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (_, __) => const _ShimmerRow(),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (_, _) => const _ShimmerRow(),
       );
     }
 
@@ -363,7 +363,7 @@ class _CategorySideList extends StatelessWidget {
 
     return ListView.separated(
       itemCount: categories.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 6),
+      separatorBuilder: (_, _) => const SizedBox(height: 6),
       itemBuilder: (_, i) {
         final cat = categories[i];
         final isSelected = provider.selectedCategoryId == cat.id;
@@ -604,7 +604,7 @@ class _CoursesSliver extends StatelessWidget {
             childAspectRatio: 0.72,
           ),
           delegate: SliverChildBuilderDelegate(
-            (_, __) => const _ShimmerCard(),
+            (_, _) => const _ShimmerCard(),
             childCount: crossAxisCount * 2,
           ),
         ),
@@ -846,7 +846,7 @@ class _ShimmerBaseState extends State<_ShimmerBase>
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) =>
+      builder: (_, _) =>
           Opacity(opacity: 0.4 + (_ctrl.value * 0.35), child: widget.child),
     );
   }

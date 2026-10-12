@@ -11,7 +11,6 @@ import '../../../config/app_config.dart';
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../category/categories_provider.dart';
-import '../../shared/course/discount_info.dart';
 import '../courses/component/teacher_stats.dart';
 
 export '../../shared/course/discount_info.dart';

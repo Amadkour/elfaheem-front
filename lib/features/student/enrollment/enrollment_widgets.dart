@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../../config/app_config.dart' as helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../utils/widget/app_bar.dart';

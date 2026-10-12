@@ -1,0 +1,2433 @@
+/// lib/screens/video_player/video_player_screen.dart
+library;
+
+import 'dart:async';
+import 'dart:ui';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:floating/floating.dart';
+import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
+import 'package:screen_protector/screen_protector.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import '../../../config/app_config.dart';
+import '../../../core/offline/offline_strings.dart';
+import '../../../utils/helpers.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+import '../../student/courses/details/course_detail_provider.dart';
+import '../../student/courses/security/device_blocked_dialog.dart';
+import '../../student/courses/security/device_id_service.dart';
+import '../../student/courses/security/device_security_provider.dart';
+
+// ════════════════════════════════════════════════════════════════════════════
+// VideoPlayerScreen
+// ════════════════════════════════════════════════════════════════════════════
+// API (unchanged):
+//   material: SessionMaterialModel  -> reads videoVariants / audioVariants
+//   VideoPlayerScreen.fromLegacy(...) keeps old call-sites working.
+//
+// UX highlights:
+//   • Double-tap left/right = -10s / +10s (accumulates: 10 → 20 → 30 …)
+//   • Press & hold the right half = temporary 2× speed
+//   • Custom seek bar (buffer + progress + scrub-time bubble)
+//   • Controls lock, quality/audio picker, speed picker, fullscreen
+//   • Always LTR layout for the player chrome (so left/right gestures are
+//     correct even when the app is RTL / Arabic)
+// ════════════════════════════════════════════════════════════════════════════
+
+class VideoPlayerScreen extends StatefulWidget {
+  const VideoPlayerScreen({
+    super.key,
+    required this.material,
+    this.autoPlay = true,
+    this.startFullScreen = false,
+  });
+
+  final SessionMaterialModel material;
+  final bool autoPlay;
+  final bool startFullScreen;
+
+  /// Legacy factory — wraps plain URL list so old call-sites keep working.
+  factory VideoPlayerScreen.fromLegacy({
+    Key? key,
+    required List<({String label, String url})> qualities,
+    required String title,
+    String? subtitle,
+    String? audioUrl,
+    bool autoPlay = true,
+    bool startFullScreen = false,
+  }) {
+    final variants = qualities
+        .map((e) => _LegacyHelper.variantFromLabel(
+      label: e.label,
+      url: e.url,
+    ))
+        .toList();
+
+    final model = _LegacyHelper.buildModel(
+      title: title,
+      subtitle: subtitle,
+      variants: variants,
+      audioUrl: audioUrl,
+    );
+
+    return VideoPlayerScreen(
+      key: key,
+      material: model,
+      autoPlay: autoPlay,
+      startFullScreen: startFullScreen,
+    );
+  }
+
+  @override
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+}
+
+// ── Legacy helper (keeps old callers working) ─────────────────────────────────
+class _LegacyHelper {
+  static MaterialVariant variantFromLabel(
+      {required String label, required String url}) {
+    QualityTier tier;
+    if (label.contains('1080') || label.toLowerCase() == 'high') {
+      tier = QualityTier.high;
+    } else if (label.contains('720') || label.toLowerCase() == 'medium') {
+      tier = QualityTier.medium;
+    } else {
+      tier = QualityTier.low;
+    }
+    return MaterialVariant(url: url, tier: tier, isAudio: false);
+  }
+
+  static SessionMaterialModel buildModel({
+    required String title,
+    String? subtitle,
+    required List<MaterialVariant> variants,
+    String? audioUrl,
+  }) {
+    final high = variants.where((v) => v.tier == QualityTier.high).firstOrNull;
+    final medium =
+        variants.where((v) => v.tier == QualityTier.medium).firstOrNull;
+    final low = variants.where((v) => v.tier == QualityTier.low).firstOrNull;
+
+    return SessionMaterialModel(
+      id: 0,
+      sessionId: 0,
+      name: title,
+      description: subtitle,
+      type: SessionMaterialType.video,
+      order: 0,
+      createdAt: DateTime.now(),
+      completed: false,
+      urlHigh: high?.url,
+      urlMedium: medium?.url,
+      urlLow: low?.url,
+      rawUrlHigh: high?.url,
+      rawUrlMedium: medium?.url,
+      rawUrlLow: low?.url,
+      audioUrl: audioUrl,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _VideoPlayerScreenState extends State<VideoPlayerScreen>
+    with SingleTickerProviderStateMixin {
+  // ── Active stream ─────────────────────────────────────────────────────────
+  late MaterialVariant _activeVariant;
+
+  // ── Controllers ───────────────────────────────────────────────────────────
+  VideoPlayerController? _vc;
+  bool _vcReady = false;
+  bool _isLoading = true;
+  bool _hasError = false;
+
+  /// Incremented on every _initPlayer call so a slow, superseded init
+  /// (e.g. the user tapped two qualities quickly) can never win the race.
+  int _initToken = 0;
+
+  // ── UI state ──────────────────────────────────────────────────────────────
+  bool _isFullScreen = false;
+  bool _isLocked = false;
+  bool _lockHint = false;
+  bool _controlsShown = true;
+  bool _isSeeking = false;
+  double _seekFraction = 0;
+  double _speed = 1.0;
+
+  // Press-and-hold 2× boost
+  bool _boosting = false;
+
+  // ── Orientation / Picture-in-Picture ──────────────────────────────────────
+  /// true  = the sensor decides (rotate the phone left/right/portrait)
+  /// false = locked by the user via the fullscreen / rotation buttons
+  bool _autoRotate = true;
+
+  static const _allOrientations = <DeviceOrientation>[
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+  static const _landscapes = <DeviceOrientation>[
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ];
+
+  final Floating _floating = Floating();
+  bool _pipAvailable = false;
+  bool _inPip = false;
+  StreamSubscription<PiPStatus>? _pipSub;
+
+  // ── Offline (encrypted local copy) ────────────────────────────────────────
+  bool _isOffline = false; // currently playing from the local encrypted file
+  bool _downloaded = false; // an offline copy exists
+  bool get _canDownload => !kIsWeb && !_isAudioMode && _mat.id != 0;
+
+  static const _speedOptions = <double>[0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
+  // ── Seek flash (accumulating) ─────────────────────────────────────────────
+  bool _flashRewind = false;
+  bool _flashForward = false;
+  int _seekAccum = 0;
+  Timer? _flashTimer;
+
+  // ── Animations / timers ───────────────────────────────────────────────────
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulseAnim;
+  Timer? _hideTimer;
+  Timer? _lockHintTimer;
+
+  // Last-seen controller flags (so the listener only reacts to *changes*)
+  bool _wasPlaying = false;
+  bool _wasEnded = false;
+
+  // ── Getters ───────────────────────────────────────────────────────────────
+  bool get _isAudioMode => _activeVariant.isAudio;
+
+  // URLs come from POST .../play when the list endpoint hid them.
+  SessionMaterialModel? _resolved;
+  SessionMaterialModel get _mat => _resolved ?? widget.material;
+  String? _viewsNote; // e.g. "المشاهدات المتبقية هذا الشهر: 2"
+
+  // Watch-progress
+  CourseDetailProvider? _progressProvider;
+  bool _completionSent = false;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  void initState() {
+    super.initState();
+
+    _activeVariant = _mat.defaultVideoVariant;
+
+    _pulseCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+    _pulseAnim = Tween(begin: 0.92, end: 1.08)
+        .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+
+    WakelockPlus.enable().ignore();
+    _protectScreen(true);
+    _initOrientationAndPip();
+    _startPlayback();
+
+    if (widget.startFullScreen) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _enterFullScreen());
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The player may be opened from places that have no CourseDetailProvider
+    // (legacy callers). context.read would throw there, so guard it.
+    if (_progressProvider == null) {
+      try {
+        _progressProvider = context.read<CourseDetailProvider>();
+      } catch (_) {}
+    }
+    // Fires on every orientation change (MediaQuery dependency).
+    _syncWithOrientation();
+  }
+
+  /// Blocks screenshots / screen recording while the player is open
+  /// (Android FLAG_SECURE, iOS blur in app switcher + screenshot prevention).
+  Future<void> _protectScreen(bool on) async {
+    if (kIsWeb) return;
+    try {
+      if (on) {
+        await ScreenProtector.preventScreenshotOn();
+        await ScreenProtector.protectDataLeakageWithBlur();
+      } else {
+        await ScreenProtector.preventScreenshotOff();
+        await ScreenProtector.protectDataLeakageWithBlurOff();
+      }
+    } catch (_) {}
+  }
+
+  /// Asks the server for the video URLs (this is what counts a view), then plays.
+  Future<void> _startPlayback() async {
+    // Downloaded copy? Play it from the encrypted local file. This works
+    // offline and does NOT call /play, so no monthly view is consumed.
+    if (!kIsWeb && widget.material.id != 0) {
+      try {
+        final local = await OfflineVideoService.instance
+            .localVariant(widget.material.sessionId, widget.material.id);
+        if (!mounted) return;
+        if (local != null) {
+          setState(() {
+            _isOffline = true;
+            _downloaded = true;
+            _activeVariant = local;
+          });
+          await _initPlayer(local, autoPlay: widget.autoPlay);
+          return;
+        }
+      } catch (_) {
+        // fall through to normal streaming
+      }
+    }
+
+    if (widget.material.requiresPlay && widget.material.id != 0) {
+      try {
+        final r = await ApiClient().post(
+          '/api/v1/sessions/${widget.material.sessionId}/materials/${widget.material.id}/play',
+        );
+        if (r is! Map<String, dynamic>) throw StateError('bad play response');
+        final resolved = widget.material.withPlayData(r);
+        if (!mounted) return;
+        final left = r['views_left'];
+        setState(() {
+          _resolved = resolved;
+          _viewsNote =
+          left == null
+              ? null
+              : offlineT('dl_views_left').replaceAll('{n}', '$left');
+          _activeVariant = resolved.defaultVideoVariant;
+        });
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        await _handlePlayError(e);
+        return;
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+            _hasError = true;
+          });
+        }
+        return;
+      }
+    }
+    if (!mounted) return;
+    await _initPlayer(_activeVariant, autoPlay: widget.autoPlay);
+  }
+
+  Future<void> _handlePlayError(ApiException e) async {
+    if (e.isDeviceBlocked) {
+      final p = DeviceSecurityProvider();
+      await p.check();
+      if (mounted) {
+        await showDeviceBlockedDialog(
+          context,
+          p,
+          courseId: int.tryParse(_progressProvider?.course.id.toString() ?? ''),
+        );
+      }
+    } else if (e.isViewLimit) {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text(offlineT('dl_views_ended')),
+            content: Text(e.message),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(offlineT('dl_ok')))
+            ],
+          ),
+        ),
+      );
+    } else {
+      Helpers.showMessage(e.message);
+    }
+    if (mounted) Navigator.of(context).maybePop();
+  }
+
+  @override
+  void dispose() {
+    // NOTE: the old code called _checkWatchThreshold() here. That could notify
+    // the provider while the widget tree is being torn down (setState during
+    // unmount). The listener already handles completion while playing.
+    _initToken++; // cancel any in-flight init
+    _hideTimer?.cancel();
+    _flashTimer?.cancel();
+    _lockHintTimer?.cancel();
+    _pipSub?.cancel();
+    _floating.dispose();
+    _pulseCtrl.dispose();
+    _vc?.removeListener(_onVcUpdate);
+    _vc?.dispose();
+    WakelockPlus.disable().ignore();
+    _protectScreen(false);
+    _restoreSystemUI();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Player init
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> _initPlayer(
+      MaterialVariant variant, {
+        Duration seekTo = Duration.zero,
+        bool autoPlay = true,
+      }) async {
+    if (!mounted) return;
+    final token = ++_initToken;
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+
+    if (variant.url == null || variant.url!.isEmpty) {
+      Helpers.showMessage('video_not_available'.tr);
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+      return;
+    }
+
+    // Mobile: stream links only work together with this device's id header.
+    // Web: a <video> element can't send headers; the server's link already
+    // carries the id as ?d=..., so send none.
+    final next = VideoPlayerController.networkUrl(
+      Uri.parse(variant.url!),
+      httpHeaders: (kIsWeb || variant.url!.startsWith('http://127.0.0.1'))
+          ? const <String, String>{}
+          : await DeviceIdService.instance.headers(),
+      // Keep playing (sound) in background. iOS also needs
+      // UIBackgroundModes=audio in Info.plist. Ignored on web.
+      videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: true),
+    );
+
+    try {
+      await next.initialize();
+
+      // A newer init started (or the screen closed) while we were waiting.
+      if (token != _initToken || !mounted) {
+        await next.dispose();
+        return;
+      }
+
+      if (seekTo > Duration.zero) await next.seekTo(seekTo);
+      await next.setPlaybackSpeed(_speed);
+      next.addListener(_onVcUpdate);
+
+      final old = _vc;
+      _wasPlaying = false;
+      _wasEnded = false;
+
+      setState(() {
+        _vc = next;
+        _vcReady = true;
+        _isLoading = false;
+        _activeVariant = variant;
+      });
+      old?.removeListener(_onVcUpdate);
+      await old?.dispose();
+
+      if (autoPlay && mounted && token == _initToken) {
+        await next.play();
+        _startHideTimer();
+      }
+      _syncPulse();
+    } catch (_) {
+      await next.dispose();
+      if (mounted && token == _initToken) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  /// Retry after an error — resumes from where playback stopped.
+  void _retry() {
+    final pos = _vc?.value.position ?? Duration.zero;
+    _initPlayer(_activeVariant, seekTo: pos, autoPlay: true);
+  }
+
+  /// Controller listener. It does NOT rebuild the screen on every tick any more
+  /// (the controls use a ValueListenableBuilder); it only reacts to changes.
+  void _onVcUpdate() {
+    final vc = _vc;
+    if (vc == null || !mounted) return;
+    final v = vc.value;
+
+    _checkWatchThreshold();
+
+    if (v.hasError && !_hasError) {
+      setState(() {
+        _hasError = true;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final playing = v.isPlaying;
+    if (playing != _wasPlaying) {
+      _wasPlaying = playing;
+      _syncPulse();
+      if (playing) {
+        _startHideTimer();
+      } else {
+        _hideTimer?.cancel();
+      }
+    }
+
+    final ended = v.isInitialized &&
+        v.duration > Duration.zero &&
+        !v.isPlaying &&
+        v.position >= v.duration - const Duration(milliseconds: 300);
+    if (ended && !_wasEnded) {
+      _wasEnded = true;
+      _showControls(); // always reveal the replay button at the end
+    } else if (!ended) {
+      _wasEnded = false;
+    }
+  }
+
+  /// Pulse animation only runs while audio is actually playing.
+  void _syncPulse() {
+    if (!mounted) return;
+    final shouldRun = _isAudioMode && (_vc?.value.isPlaying ?? false);
+    if (shouldRun && !_pulseCtrl.isAnimating) {
+      _pulseCtrl.repeat(reverse: true);
+    } else if (!shouldRun && _pulseCtrl.isAnimating) {
+      _pulseCtrl.stop();
+    }
+  }
+
+  /// Marks the material complete once the student has watched ~75% of it.
+  void _checkWatchThreshold() {
+    if (_completionSent) return;
+    final vc = _vc;
+    if (vc == null || !vc.value.isInitialized) return;
+
+    final dur = vc.value.duration;
+    if (dur <= Duration.zero) return;
+
+    final watched = vc.value.position.inMilliseconds / dur.inMilliseconds;
+    if (watched >= 0.75) {
+      _completionSent = true;
+      final provider = _progressProvider;
+      if (provider != null) {
+        unawaited(provider.markMaterialComplete(_mat.sessionId, _mat.id));
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Stream switching
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> _switchVariant(MaterialVariant v) async {
+    if (v.url == _activeVariant.url) return;
+    final wasPlaying = _vc?.value.isPlaying ?? false;
+    // Same content, different stream: always keep the position (the old code
+    // reset to 0 when switching to audio, which lost the student's place).
+    final pos = _vc?.value.position ?? Duration.zero;
+    await _initPlayer(v, seekTo: pos, autoPlay: wasPlaying);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Controls visibility
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _showControls() {
+    if (!mounted) return;
+    if (!_controlsShown) setState(() => _controlsShown = true);
+    _startHideTimer();
+  }
+
+  void _hideControls() {
+    if (!mounted || !_controlsShown) return;
+    setState(() => _controlsShown = false);
+  }
+
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    if (_vcReady && !_isSeeking && (_vc?.value.isPlaying ?? false)) {
+      _hideTimer = Timer(const Duration(seconds: 4), _hideControls);
+    }
+  }
+
+  void _toggleControls() => _controlsShown ? _hideControls() : _showControls();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Playback
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _togglePlayPause() {
+    final vc = _vc;
+    if (vc == null) return;
+    HapticFeedback.lightImpact();
+    if (vc.value.isPlaying) {
+      vc.pause();
+      _hideTimer?.cancel();
+      _showControls();
+    } else {
+      vc.play();
+      _startHideTimer();
+    }
+  }
+
+  void _replay() {
+    _vc?.seekTo(Duration.zero);
+    _vc?.play();
+    _startHideTimer();
+  }
+
+  void _seekRelative(int seconds, {required bool forward}) {
+    final vc = _vc;
+    if (vc == null || !_vcReady) return;
+    final dur = vc.value.duration;
+
+    // FIX: the old code always ADDED the seconds, so "rewind" jumped forward.
+    var pos = vc.value.position + Duration(seconds: forward ? seconds : -seconds);
+    if (pos < Duration.zero) pos = Duration.zero;
+    if (pos > dur) pos = dur;
+    vc.seekTo(pos);
+
+    HapticFeedback.selectionClick();
+
+    setState(() {
+      // Switching direction restarts the accumulator.
+      if ((forward && _flashRewind) || (!forward && _flashForward)) {
+        _seekAccum = 0;
+      }
+      _seekAccum += seconds;
+      _flashForward = forward;
+      _flashRewind = !forward;
+    });
+
+    _flashTimer?.cancel();
+    _flashTimer = Timer(const Duration(milliseconds: 700), () {
+      if (!mounted) return;
+      setState(() {
+        _flashForward = false;
+        _flashRewind = false;
+        _seekAccum = 0;
+      });
+    });
+    _showControls();
+  }
+
+  void _setSpeed(double s) {
+    setState(() => _speed = s);
+    _vc?.setPlaybackSpeed(s);
+  }
+
+  // Press & hold → temporary 2× (YouTube-style)
+  void _startBoost() {
+    final vc = _vc;
+    if (vc == null || !_vcReady || !vc.value.isPlaying) return;
+    HapticFeedback.mediumImpact();
+    vc.setPlaybackSpeed(2.0);
+    setState(() => _boosting = true);
+  }
+
+  void _stopBoost() {
+    if (!_boosting) return;
+    _vc?.setPlaybackSpeed(_speed);
+    if (mounted) setState(() => _boosting = false);
+  }
+
+  // ── Seek-bar callbacks ────────────────────────────────────────────────────
+
+  void _onSeekStart(double f) {
+    _hideTimer?.cancel();
+    setState(() {
+      _isSeeking = true;
+      _seekFraction = f;
+    });
+  }
+
+  void _onSeekUpdate(double f) => setState(() => _seekFraction = f);
+
+  void _onSeekEnd() {
+    final vc = _vc;
+    if (vc != null && vc.value.isInitialized) {
+      final ms = (_seekFraction * vc.value.duration.inMilliseconds).round();
+      // Keep showing the scrub position until the seek really completes,
+      // otherwise the thumb flickers back to the old position for a moment.
+      vc.seekTo(Duration(milliseconds: ms)).whenComplete(() {
+        if (mounted) setState(() => _isSeeking = false);
+      });
+    } else {
+      setState(() => _isSeeking = false);
+    }
+    _startHideTimer();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Lock
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _lock() {
+    HapticFeedback.mediumImpact();
+    setState(() {
+      _isLocked = true;
+      _controlsShown = false;
+    });
+    _pokeLockHint();
+  }
+
+  void _unlock() {
+    HapticFeedback.mediumImpact();
+    _lockHintTimer?.cancel();
+    setState(() {
+      _isLocked = false;
+      _lockHint = false;
+      _controlsShown = true;
+    });
+    _startHideTimer();
+  }
+
+  void _pokeLockHint() {
+    _lockHintTimer?.cancel();
+    setState(() => _lockHint = true);
+    _lockHintTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _lockHint = false);
+    });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Full-screen
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /// Player allows sensor rotation (portrait / landscape-left / landscape-right)
+  /// and sets up Picture-in-Picture (Android only).
+  void _initOrientationAndPip() {
+    if (kIsWeb) return;
+    SystemChrome.setPreferredOrientations(_allOrientations);
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      _floating.isPipAvailable.then((ok) {
+        if (mounted) setState(() => _pipAvailable = ok);
+      });
+      _pipSub = _floating.pipStatus$.listen((s) {
+        if (!mounted) return;
+        final inPip = s == PiPStatus.enabled;
+        setState(() => _inPip = inPip);
+        if (inPip) {
+          _hideTimer?.cancel();
+        } else {
+          _showControls();
+        }
+      });
+    }
+  }
+
+  /// Auto mode: turning the phone sideways (left OR right) enters fullscreen,
+  /// turning it back to portrait exits. Called from didChangeDependencies,
+  /// so no setState is needed — the build that follows picks the value up.
+  void _syncWithOrientation() {
+    if (kIsWeb || !_autoRotate || _inPip) return;
+    final mq = MediaQuery.of(context);
+    if (mq.size.shortestSide >= 600) return; // tablets: don't force fullscreen
+    final landscape = mq.orientation == Orientation.landscape;
+    if (landscape == _isFullScreen) return;
+    _isFullScreen = landscape;
+    SystemChrome.setEnabledSystemUIMode(
+        landscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
+  }
+
+  /// Button → landscape. Both landscape sides stay allowed, so physically
+  /// flipping the phone left/right still rotates the picture. Portrait is
+  /// blocked until the user exits fullscreen or turns auto-rotate back on.
+  void _enterFullScreen() {
+    if (kIsWeb) return;
+    _autoRotate = false;
+    SystemChrome.setPreferredOrientations(_landscapes);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    setState(() => _isFullScreen = true);
+  }
+
+  /// Button → portrait (locked until auto-rotate is turned on again).
+  void _exitFullScreen() {
+    if (kIsWeb) return;
+    _autoRotate = false;
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setState(() => _isFullScreen = false);
+  }
+
+  /// Rotation lock / auto-rotate toggle.
+  void _toggleAutoRotate() {
+    if (kIsWeb) return;
+    HapticFeedback.selectionClick();
+    final on = !_autoRotate;
+    setState(() => _autoRotate = on);
+    if (on) {
+      SystemChrome.setPreferredOrientations(_allOrientations);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(_syncWithOrientation);
+      });
+    } else {
+      SystemChrome.setPreferredOrientations(
+          _isFullScreen ? _landscapes : [DeviceOrientation.portraitUp]);
+    }
+    Helpers.showMessage(
+        offlineT(on ? 'dl_rotation_auto' : 'dl_rotation_locked'));
+  }
+
+  // ── Offline download ──────────────────────────────────────────────────────
+
+  Widget _buildDownloadBtn() {
+    final svc = OfflineVideoService.instance;
+    final id = svc.idOf(_mat.sessionId, _mat.id);
+    return ValueListenableBuilder<Map<String, double>>(
+      valueListenable: svc.downloading,
+      builder: (_, map, _) {
+        final p = map[id];
+        if (p != null) return _ProgressIconBtn(progress: p);
+        return _GlassIconBtn(
+          icon: _downloaded
+              ? Icons.download_done_rounded
+              : Icons.download_rounded,
+          tooltip: offlineT(
+              _downloaded ? 'dl_delete_title' : 'dl_tooltip_download'),
+          onTap: _onDownloadTap,
+        );
+      },
+    );
+  }
+
+  Future<void> _onDownloadTap() async {
+    final svc = OfflineVideoService.instance;
+    final sid = _mat.sessionId;
+    final mid = _mat.id;
+
+    // Already downloaded → offer to delete.
+    if (_downloaded) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            title: Text(offlineT('dl_delete_title')),
+            content: Text(offlineT('dl_delete_body')),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('cancel'.tr)),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text('delete'.tr)),
+            ],
+          ),
+        ),
+      ) ??
+          false;
+      if (!ok || !mounted) return;
+      await svc.delete(sid, mid);
+      if (!mounted) return;
+      if (_isOffline) {
+        // We are playing that very file — close the player.
+        Navigator.of(context).maybePop();
+      } else {
+        setState(() => _downloaded = false);
+      }
+      return;
+    }
+
+    // Download the stream that is currently playing.
+    final url = _activeVariant.url;
+    if (url == null || url.isEmpty) {
+      Helpers.showMessage('video_not_available'.tr);
+      return;
+    }
+    Helpers.showMessage(offlineT('dl_started'));
+    try {
+      await svc.download(
+        sessionId: sid,
+        materialId: mid,
+        title: _mat.name,
+        description: _mat.description,
+        variant: _activeVariant,
+      );
+      if (!mounted) return;
+      setState(() => _downloaded = true);
+      Helpers.showMessage(offlineT('dl_done'));
+    } catch (_) {
+      Helpers.showMessage(offlineT('dl_failed'));
+    }
+  }
+
+  /// Minimize → system Picture-in-Picture window (Android 8+).
+  Future<void> _enterPip() async {
+    if (!_pipAvailable) {
+      Helpers.showMessage(offlineT('dl_pip_unsupported'));
+      return;
+    }
+    HapticFeedback.selectionClick();
+    try {
+      // await _floating.enable(ImmediatePiP(aspectRatio: Rational.landscape()));
+      await _floating.enable();
+    } catch (_) {
+      Helpers.showMessage(offlineT('dl_pip_failed'));
+    }
+  }
+
+  void _toggleFullScreen() {
+    HapticFeedback.selectionClick();
+    _isFullScreen ? _exitFullScreen() : _enterFullScreen();
+  }
+
+  void _restoreSystemUI() {
+    if (kIsWeb) return;
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Sheets
+  // ─────────────────────────────────────────────────────────────────────────
+
+  void _openStreamPicker() {
+    _hideTimer?.cancel();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _StreamPickerSheet(
+        material: _mat,
+        activeVariant: _activeVariant,
+        onSelect: (v) {
+          Navigator.pop(context);
+          _switchVariant(v);
+        },
+      ),
+    ).whenComplete(_startHideTimer);
+  }
+
+  void _openSpeedSheet() {
+    _hideTimer?.cancel();
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _SpeedSheet(
+        speeds: _speedOptions,
+        current: _speed,
+        onSelect: (s) {
+          Navigator.pop(context);
+          _setSpeed(s);
+        },
+      ),
+    ).whenComplete(_startHideTimer);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────────
+
+  String _fmt(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
+  }
+
+  /// Rebuilds only the wrapped subtree when the controller value changes.
+  Widget _withVc(Widget Function(VideoPlayerValue v) builder) {
+    final vc = _vc;
+    if (vc == null) return builder(const VideoPlayerValue.uninitialized());
+    return ValueListenableBuilder<VideoPlayerValue>(
+      valueListenable: vc,
+      builder: (_, v, _) => builder(v),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isFullScreen,
+      onPopInvokedWithResult: (popped, _) {
+        if (!popped && _isFullScreen) _exitFullScreen();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: _buildBody(),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    // The player chrome is always LTR so "left = rewind / right = forward"
+    // and the seek bar direction are correct in RTL (Arabic) too. Text that
+    // should follow the app direction (titles) gets it back explicitly.
+    final appDir = Directionality.of(context);
+
+    // Picture-in-Picture window: video only, no controls.
+    if (_inPip) {
+      return Directionality(
+        textDirection: TextDirection.ltr,
+        child: Container(color: Colors.black, child: _buildBackground()),
+      );
+    }
+
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildBackground(),
+          if (_isLocked) _buildLockCatcher() else _buildGestureZones(),
+          _buildSeekFlash(),
+          _buildBoostPill(),
+          _withVc((v) => _buildOverlay(v, appDir)),
+          if (_isLocked) _buildLockPill(),
+          if (_isLoading) IgnorePointer(child: _buildLoadingState()),
+          if (_hasError) _buildErrorState(),
+        ],
+      ),
+    );
+  }
+
+  // ── Overlay (controls + mini progress + buffering) ────────────────────────
+
+  Widget _buildOverlay(VideoPlayerValue v, TextDirection appDir) {
+    final ready = _vcReady && v.isInitialized;
+    final dur = ready ? v.duration : Duration.zero;
+    final pos = ready ? v.position : Duration.zero;
+
+    final fraction = dur.inMilliseconds > 0
+        ? (_isSeeking ? _seekFraction : pos.inMilliseconds / dur.inMilliseconds)
+        .clamp(0.0, 1.0)
+        .toDouble()
+        : 0.0;
+
+    double buffered = 0;
+    if (ready && v.buffered.isNotEmpty && dur.inMilliseconds > 0) {
+      buffered = (v.buffered.last.end.inMilliseconds / dur.inMilliseconds)
+          .clamp(0.0, 1.0)
+          .toDouble();
+    }
+
+    final isPlaying = ready && v.isPlaying;
+    final buffering = ready && v.isBuffering && !_isLoading;
+    final finished = ready &&
+        !v.isPlaying &&
+        dur > Duration.zero &&
+        pos >= dur - const Duration(milliseconds: 300);
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        if (!_isLocked)
+          IgnorePointer(
+            ignoring: !_controlsShown,
+            child: AnimatedOpacity(
+              opacity: _controlsShown ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 240),
+              child: _buildFullControls(
+                appDir: appDir,
+                isPlaying: isPlaying,
+                finished: finished,
+                buffering: buffering,
+                fraction: fraction,
+                buffered: buffered,
+                pos: pos,
+                dur: dur,
+              ),
+            ),
+          ),
+        // Thin progress line when controls are hidden
+        if (!_controlsShown && !_isLocked)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: IgnorePointer(
+              child: Container(
+                height: 2.5,
+                color: Colors.white.withValues(alpha: 0.12),
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: fraction,
+                  child: Container(color: context.colors.primary),
+                ),
+              ),
+            ),
+          ),
+        // Standalone buffering spinner while controls are hidden
+        if (buffering && !_controlsShown)
+          const IgnorePointer(
+            child: Center(
+              child: SizedBox(
+                width: 46,
+                height: 46,
+                child: CircularProgressIndicator(
+                    strokeWidth: 3, color: Colors.white),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Background ────────────────────────────────────────────────────────────
+
+  Widget _buildBackground() {
+    if (_vcReady && _vc != null && !_isAudioMode) {
+      final ar = _vc!.value.aspectRatio;
+      return Center(
+        child: AspectRatio(
+          aspectRatio: ar > 0 ? ar : 16 / 9,
+          child: VideoPlayer(_vc!),
+        ),
+      );
+    }
+    return _buildAudioOnlyBg();
+  }
+
+  Widget _buildAudioOnlyBg() {
+    final c = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.topCenter,
+          radius: 1.6,
+          colors: [c.primaryDark.withValues(alpha: 0.6), Colors.black],
+        ),
+      ),
+      child: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          ScaleTransition(
+            scale: _pulseAnim,
+            child: Container(
+              width: 150,
+              height: 150,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: c.primary.withValues(alpha: 0.10),
+                border: Border.all(
+                    color: c.primary.withValues(alpha: 0.25), width: 2),
+                boxShadow: [
+                  BoxShadow(
+                      color: c.primary.withValues(alpha: 0.25),
+                      blurRadius: 50,
+                      spreadRadius: 4),
+                ],
+              ),
+              child: Container(
+                margin: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: c.primary.withValues(alpha: 0.18),
+                ),
+                child:
+                Icon(Icons.music_note_rounded, size: 56, color: c.primary),
+              ),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 52),
+            child: Text(_mat.name,
+                style: c.h3.copyWith(color: Colors.white),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+          ),
+          if (_mat.description != null) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 52),
+              child: Text(_mat.description!,
+                  style: c.body.copyWith(color: Colors.white54),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis),
+            ),
+          ],
+          const SizedBox(height: 16),
+          _GlassPill(
+            label: _activeVariant.fullLabel,
+            icon: Icons.headphones_rounded,
+            color: c.primary,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ── Gesture zones ─────────────────────────────────────────────────────────
+
+  Widget _buildGestureZones() {
+    Widget zone({required bool forward}) => Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _toggleControls,
+        onDoubleTap: () => _seekRelative(10, forward: forward),
+        onLongPressStart: forward ? (_) => _startBoost() : null,
+        onLongPressEnd: forward ? (_) => _stopBoost() : null,
+        onLongPressCancel: forward ? _stopBoost : null,
+      ),
+    );
+    return Row(children: [zone(forward: false), zone(forward: true)]);
+  }
+
+  /// While locked: swallow all touches, tapping only reveals the unlock pill.
+  Widget _buildLockCatcher() => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: _pokeLockHint,
+  );
+
+  // ── Seek flash ────────────────────────────────────────────────────────────
+
+  Widget _buildSeekFlash() {
+    Widget half({required bool active, required bool forward}) => Expanded(
+      child: AnimatedOpacity(
+        opacity: active ? 1 : 0,
+        duration: const Duration(milliseconds: 160),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              // FIX: glow now comes from the screen edge the user tapped
+              center: forward ? Alignment.centerRight : Alignment.centerLeft,
+              radius: 1.2,
+              colors: [
+                Colors.white.withValues(alpha: 0.16),
+                Colors.transparent
+              ],
+            ),
+          ),
+          child: Center(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Icon(
+                forward
+                    ? Icons.fast_forward_rounded
+                    : Icons.fast_rewind_rounded,
+                color: Colors.white,
+                size: 44,
+              ),
+              const SizedBox(height: 4),
+              Text(forward ? '+${_seekAccum}s' : '-${_seekAccum}s',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      fontFamily: 'tajawal')),
+            ]),
+          ),
+        ),
+      ),
+    );
+
+    return IgnorePointer(
+      child: Row(children: [
+        half(active: _flashRewind, forward: false),
+        half(active: _flashForward, forward: true),
+      ]),
+    );
+  }
+
+  Widget _buildBoostPill() {
+    final c = context.colors;
+    return IgnorePointer(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Padding(
+          padding: EdgeInsets.only(
+              top: (_isFullScreen ? 14 : MediaQuery.of(context).padding.top) + 12),
+          child: AnimatedOpacity(
+            opacity: _boosting ? 1 : 0,
+            duration: const Duration(milliseconds: 160),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: c.primary.withValues(alpha: 0.6)),
+              ),
+              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(Icons.fast_forward_rounded, color: Colors.white, size: 16),
+                SizedBox(width: 6),
+                Text('2×',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        fontFamily: 'tajawal')),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Full controls ─────────────────────────────────────────────────────────
+
+  Widget _buildFullControls({
+    required TextDirection appDir,
+    required bool isPlaying,
+    required bool finished,
+    required bool buffering,
+    required double fraction,
+    required double buffered,
+    required Duration pos,
+    required Duration dur,
+  }) {
+    return Column(children: [
+      _buildTopBar(appDir),
+      Expanded(
+        child: _buildCenterRow(
+            isPlaying: isPlaying, finished: finished, buffering: buffering),
+      ),
+      _buildBottomPanel(
+          fraction: fraction, buffered: buffered, pos: pos, dur: dur),
+    ]);
+  }
+
+  // ── Top bar ───────────────────────────────────────────────────────────────
+
+  Widget _buildTopBar(TextDirection appDir) {
+    final c = context.colors;
+    final mq = MediaQuery.of(context).padding;
+    final top = _isFullScreen ? 10.0 : mq.top;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black.withValues(alpha: 0.78), Colors.transparent],
+        ),
+      ),
+      // Respect notch / camera cut-out in landscape.
+      padding: EdgeInsets.fromLTRB(6 + mq.left, top, 10 + mq.right, 24),
+      child: Row(children: [
+        IconButton(
+          onPressed: () =>
+          _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Colors.white, size: 20),
+        ),
+        Expanded(
+          // Titles follow the app language direction (Arabic = right aligned).
+          child: Directionality(
+            textDirection: appDir,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_mat.name,
+                    style: c.h4.copyWith(color: Colors.white),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                if (_mat.description != null)
+                  Text(_mat.description!,
+                      style: c.caption.copyWith(color: Colors.white54),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                if (_isOffline)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: _InfoChip(
+                        icon: Icons.offline_pin_rounded,
+                        label: offlineT('dl_on_device')),
+                  ),
+                // FIX: _viewsNote was computed but never shown anywhere.
+                if (_viewsNote != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: _InfoChip(
+                        icon: Icons.visibility_outlined, label: _viewsNote!),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        _ActiveStreamBadge(variant: _activeVariant),
+        const SizedBox(width: 6),
+        if (_canDownload) ...[
+          _buildDownloadBtn(),
+          const SizedBox(width: 6),
+        ],
+        if (_pipAvailable && !_isAudioMode) ...[
+          _GlassIconBtn(
+            icon: Icons.picture_in_picture_alt_rounded,
+            tooltip: offlineT('dl_minimize'),
+            onTap: _enterPip,
+          ),
+          const SizedBox(width: 6),
+        ],
+        _GlassIconBtn(
+          icon: Icons.lock_open_rounded,
+          tooltip: 'lock_controls'.tr,
+          onTap: _lock,
+        ),
+      ]),
+    );
+  }
+
+  // ── Center play row ───────────────────────────────────────────────────────
+
+  Widget _buildCenterRow({
+    required bool isPlaying,
+    required bool finished,
+    required bool buffering,
+  }) {
+    final c = context.colors;
+    return Center(
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        _CircleCtrlBtn(
+          icon: Icons.replay_10_rounded,
+          size: 32,
+          onTap: () => _seekRelative(10, forward: false),
+        ),
+        const SizedBox(width: 28),
+        _PressScale(
+          onTap: finished ? _replay : _togglePlayPause,
+          child: Container(
+            width: 78,
+            height: 78,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: c.primary.withValues(alpha: 0.92),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+              boxShadow: [
+                ...c.primaryShadow,
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.4), blurRadius: 24),
+              ],
+            ),
+            child: buffering
+                ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: CircularProgressIndicator(
+                  strokeWidth: 3, color: Colors.white),
+            )
+                : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Icon(
+                finished
+                    ? Icons.replay_rounded
+                    : (isPlaying
+                    ? Icons.pause_rounded
+                    : Icons.play_arrow_rounded),
+                key: ValueKey('$finished$isPlaying'),
+                color: Colors.white,
+                size: 44,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 28),
+        _CircleCtrlBtn(
+          icon: Icons.forward_10_rounded,
+          size: 32,
+          onTap: () => _seekRelative(10, forward: true),
+        ),
+      ]),
+    );
+  }
+
+  // ── Bottom panel ──────────────────────────────────────────────────────────
+
+  Widget _buildBottomPanel({
+    required double fraction,
+    required double buffered,
+    required Duration pos,
+    required Duration dur,
+  }) {
+    final c = context.colors;
+    final mq = MediaQuery.of(context).padding;
+    final bot = _isFullScreen ? 10.0 : mq.bottom + 4;
+
+    final scrubLabel = _fmt(
+        Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()));
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [Colors.black.withValues(alpha: 0.88), Colors.transparent],
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(16 + mq.left, 28, 16 + mq.right, bot),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // ── Seek bar ──────────────────────────────────────────────────────
+        _SeekBar(
+          fraction: fraction,
+          buffered: buffered,
+          dragging: _isSeeking,
+          accent: c.primary,
+          previewLabel: scrubLabel,
+          onStart: _onSeekStart,
+          onUpdate: _onSeekUpdate,
+          onEnd: _onSeekEnd,
+        ),
+
+        const SizedBox(height: 2),
+
+        // ── Controls row ──────────────────────────────────────────────────
+        Row(children: [
+          Text(
+              '${_fmt(_isSeeking ? Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()) : pos)} / ${_fmt(dur)}',
+              style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11.5,
+                  fontFamily: 'tajawal',
+                  fontWeight: FontWeight.w500)),
+          const SizedBox(width: 8),
+          // FittedBox: the right-hand group scales down instead of
+          // overflowing on narrow phones.
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                // Only when the material really has more than one stream.
+                if (_mat.availableVariants.length > 1) ...[
+                  _ControlChip(
+                    icon: _isAudioMode
+                        ? Icons.headphones_rounded
+                        : Icons.hd_rounded,
+                    label: _activeVariant.label,
+                    active: _isAudioMode,
+                    onTap: _openStreamPicker,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+
+                _ControlChip(
+                  icon: Icons.speed_rounded,
+                  label: _speed == 1.0 ? 'normal_speed'.tr : '$_speed×',
+                  active: _speed != 1.0,
+                  onTap: _openSpeedSheet,
+                ),
+                const SizedBox(width: 10),
+
+                // Rotation: auto (sensor, left/right/portrait) vs locked.
+                if (!kIsWeb) ...[
+                  _PressScale(
+                    onTap: _toggleAutoRotate,
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        _autoRotate
+                            ? Icons.screen_rotation_rounded
+                            : Icons.screen_lock_rotation_rounded,
+                        color: _autoRotate ? Colors.white : c.primary,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+
+                // Fullscreen: forces landscape / back to portrait.
+                _PressScale(
+                  onTap: _toggleFullScreen,
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      _isFullScreen
+                          ? Icons.fullscreen_exit_rounded
+                          : Icons.fullscreen_rounded,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ]),
+      ]),
+    );
+  }
+
+  // ── Lock pill ─────────────────────────────────────────────────────────────
+
+  Widget _buildLockPill() {
+    final mq = MediaQuery.of(context).padding;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Padding(
+        padding: EdgeInsets.only(right: 20 + mq.right),
+        child: IgnorePointer(
+          ignoring: !_lockHint,
+          child: AnimatedOpacity(
+            opacity: _lockHint ? 1 : 0,
+            duration: const Duration(milliseconds: 220),
+            child: GestureDetector(
+              onTap: _unlock,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                  child: Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.24)),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.lock_rounded,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text('unlock_controls'.tr,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontFamily: 'tajawal',
+                              fontWeight: FontWeight.w700)),
+                    ]),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Loading / Error ───────────────────────────────────────────────────────
+
+  Widget _buildLoadingState() {
+    return Container(
+      // Dim the last frame while switching quality so the change is obvious.
+      color: _vcReady ? Colors.black.withValues(alpha: 0.45) : Colors.transparent,
+      child: Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const SizedBox(width: 44, height: 44, child: AppLoadingIndicator()),
+          const SizedBox(height: 14),
+          Text('loading_video'.tr,
+              style: const TextStyle(
+                  color: Colors.white60, fontSize: 13, fontFamily: 'tajawal')),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    final c = context.colors;
+    return Container(
+      color: Colors.black.withValues(alpha: 0.88),
+      child: SafeArea(
+        child: Stack(children: [
+          // Back button always reachable on the error screen.
+          Align(
+            alignment: Alignment.topLeft,
+            child: IconButton(
+              onPressed: () => _isFullScreen
+                  ? _exitFullScreen()
+                  : Navigator.maybePop(context),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: c.danger.withValues(alpha: 0.14)),
+                  child: Icon(Icons.error_outline_rounded,
+                      color: c.danger, size: 44),
+                ),
+                const SizedBox(height: 20),
+                Text('video_load_error'.tr,
+                    style: c.h4.copyWith(color: Colors.white),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 28),
+                _PressScale(
+                  onTap: _retry,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 14),
+                    decoration: BoxDecoration(
+                        color: c.primary,
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: c.primaryShadow),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.refresh_rounded,
+                          color: Colors.white, size: 18),
+                      const SizedBox(width: 8),
+                      Text('retry'.tr,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontFamily: 'tajawal',
+                              fontSize: 14)),
+                    ]),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// _SeekBar — custom: aligned buffer + progress + thumb + scrub-time bubble
+// ════════════════════════════════════════════════════════════════════════════
+
+class _SeekBar extends StatelessWidget {
+  const _SeekBar({
+    required this.fraction,
+    required this.buffered,
+    required this.dragging,
+    required this.accent,
+    required this.previewLabel,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+  });
+
+  final double fraction;
+  final double buffered;
+  final bool dragging;
+  final Color accent;
+  final String previewLabel;
+  final void Function(double) onStart;
+  final void Function(double) onUpdate;
+  final VoidCallback onEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, cons) {
+      final w = cons.maxWidth;
+      double toFrac(Offset p) =>
+          w <= 0 ? 0.0 : (p.dx / w).clamp(0.0, 1.0).toDouble();
+
+      final trackH = dragging ? 6.0 : 4.0;
+      final thumb = dragging ? 18.0 : 12.0;
+      final x = (fraction * w).clamp(0.0, w).toDouble();
+      const dur = Duration(milliseconds: 120);
+
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (d) {
+          onStart(toFrac(d.localPosition));
+          onEnd();
+        },
+        onHorizontalDragStart: (d) => onStart(toFrac(d.localPosition)),
+        onHorizontalDragUpdate: (d) => onUpdate(toFrac(d.localPosition)),
+        onHorizontalDragEnd: (_) => onEnd(),
+        onHorizontalDragCancel: onEnd,
+        child: SizedBox(
+          height: 34,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerLeft,
+            children: [
+              // track
+              AnimatedContainer(
+                duration: dur,
+                height: trackH,
+                width: w,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              // buffered
+              AnimatedContainer(
+                duration: dur,
+                height: trackH,
+                width: w * buffered,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.34),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              // played
+              AnimatedContainer(
+                duration: dur,
+                height: trackH,
+                width: x,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              // thumb
+              Positioned(
+                left: x - thumb / 2,
+                child: AnimatedContainer(
+                  duration: dur,
+                  width: thumb,
+                  height: thumb,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(
+                          color: accent.withValues(alpha: 0.55),
+                          blurRadius: dragging ? 12 : 6),
+                    ],
+                  ),
+                ),
+              ),
+              // scrub-time bubble
+              if (dragging)
+                Positioned(
+                  top: -30,
+                  left: (x - 30).clamp(0.0, (w - 60).clamp(0.0, w)).toDouble(),
+                  child: Container(
+                    width: 60,
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: accent.withValues(alpha: 0.6)),
+                    ),
+                    child: Text(previewLabel,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'tajawal')),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Bottom sheets
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Shared sheet shell: rounded card, handle, scrollable (so it never overflows
+/// in landscape) and width-limited (so it doesn't stretch across a tablet).
+class _SheetFrame extends StatelessWidget {
+  const _SheetFrame({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final mq = MediaQuery.of(context);
+    return Align(
+      alignment: Alignment.bottomCenter,
+      heightFactor: 1.0,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 520,
+          maxHeight: mq.size.height * 0.88,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.fromLTRB(24, 12, 24, mq.padding.bottom + 24),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: c.divider, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 18),
+            Flexible(child: SingleChildScrollView(child: child)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _StreamPickerSheet extends StatelessWidget {
+  const _StreamPickerSheet({
+    required this.material,
+    required this.activeVariant,
+    required this.onSelect,
+  });
+
+  final SessionMaterialModel material;
+  final MaterialVariant activeVariant;
+  final void Function(MaterialVariant) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final videoVariants = material.videoVariants;
+    final audioVariants = material.audioVariants;
+    final hasAudio = audioVariants.isNotEmpty;
+
+    return _SheetFrame(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          Icon(Icons.tune_rounded, color: c.primary, size: 20),
+          const SizedBox(width: 8),
+          Text('stream_quality'.tr, style: c.h3),
+        ]),
+        const SizedBox(height: 20),
+        _SectionHeader(
+          icon: Icons.videocam_rounded,
+          label: 'video'.tr,
+          color: c.primary,
+        ),
+        const SizedBox(height: 8),
+        ...videoVariants.map((v) => _VariantTile(
+          variant: v,
+          selected: v.url == activeVariant.url,
+          onTap: () => onSelect(v),
+        )),
+        if (hasAudio) ...[
+          const SizedBox(height: 16),
+          _SectionHeader(
+            icon: Icons.headphones_rounded,
+            label: 'audio_only'.tr,
+            color: Colors.tealAccent.shade400,
+          ),
+          const SizedBox(height: 8),
+          ...audioVariants.map((v) => _VariantTile(
+            variant: v,
+            selected: v.url == activeVariant.url,
+            onTap: () => onSelect(v),
+          )),
+        ],
+      ]),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(
+      {required this.icon, required this.label, required this.color});
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(children: [
+      Container(
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color, size: 14),
+      ),
+      const SizedBox(width: 8),
+      Text(label,
+          style: c.caption.copyWith(
+              color: c.textMedium,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8)),
+      const SizedBox(width: 8),
+      Expanded(child: Divider(color: c.divider, height: 1)),
+    ]);
+  }
+}
+
+class _VariantTile extends StatelessWidget {
+  const _VariantTile(
+      {required this.variant, required this.selected, required this.onTap});
+
+  final MaterialVariant variant;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final accentColor =
+    variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected
+              ? accentColor.withValues(alpha: 0.10)
+              : c.inputBg.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected
+                ? accentColor.withValues(alpha: 0.45)
+                : c.divider.withValues(alpha: 0.5),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: selected
+                  ? accentColor.withValues(alpha: 0.15)
+                  : c.divider.withValues(alpha: 0.3),
+            ),
+            child: Icon(
+              variant.isAudio
+                  ? Icons.headphones_rounded
+                  : _videoIcon(variant.tier),
+              size: 18,
+              color: selected ? accentColor : c.textLight,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  variant.fullLabel,
+                  style: c.bodyBold.copyWith(
+                    color: selected ? accentColor : c.textDark,
+                    fontSize: 13,
+                  ),
+                ),
+                if (variant.sizeLabel.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(variant.sizeLabel,
+                      style:
+                      c.caption.copyWith(color: c.textLight, fontSize: 11)),
+                ],
+              ],
+            ),
+          ),
+          if (!variant.isOriginal)
+            _QualityBadge(
+                variant: variant, selected: selected, accent: accentColor),
+          const SizedBox(width: 8),
+          AnimatedOpacity(
+            opacity: selected ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 180),
+            child:
+            Icon(Icons.check_circle_rounded, color: accentColor, size: 20),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  IconData _videoIcon(QualityTier tier) {
+    switch (tier) {
+      case QualityTier.high:
+        return Icons.hd_rounded;
+      case QualityTier.medium:
+        return Icons.sd_rounded;
+      case QualityTier.low:
+        return Icons.video_settings_rounded;
+    }
+  }
+}
+
+class _QualityBadge extends StatelessWidget {
+  const _QualityBadge(
+      {required this.variant, required this.selected, required this.accent});
+
+  final MaterialVariant variant;
+  final bool selected;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final badgeText = variant.isAudio
+        ? (variant.tier == QualityTier.high ? 'HQ' : 'MQ')
+        : variant.tier.label;
+
+    final tierColor = variant.isAudio
+        ? accent
+        : switch (variant.tier) {
+      QualityTier.high => const Color(0xFFFFB300),
+      QualityTier.medium => const Color(0xFF4CAF50),
+      QualityTier.low => c.textLight,
+    };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: tierColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+            color: tierColor.withValues(alpha: selected ? 0.50 : 0.25)),
+      ),
+      child: Text(
+        badgeText,
+        style: TextStyle(
+          color: tierColor,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          fontFamily: 'tajawal',
+          letterSpacing: 0.4,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActiveStreamBadge extends StatelessWidget {
+  const _ActiveStreamBadge({required this.variant});
+
+  final MaterialVariant variant;
+
+  @override
+  Widget build(BuildContext context) {
+    if (variant.isOriginal) return const SizedBox.shrink();
+    final c = context.colors;
+    final color = variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+            variant.isAudio
+                ? Icons.headphones_rounded
+                : Icons.play_circle_outline_rounded,
+            size: 11,
+            color: color),
+        const SizedBox(width: 4),
+        Text(variant.label,
+            style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'tajawal')),
+      ]),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Reusable micro-widgets
+// ════════════════════════════════════════════════════════════════════════════
+
+/// Download-in-progress indicator that matches [_GlassIconBtn].
+class _ProgressIconBtn extends StatelessWidget {
+  const _ProgressIconBtn({required this.progress});
+
+  final double progress;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 38,
+    height: 38,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: 0.10),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+    ),
+    alignment: Alignment.center,
+    child: Stack(alignment: Alignment.center, children: [
+      SizedBox(
+        width: 24,
+        height: 24,
+        child: CircularProgressIndicator(
+          // 0 → indeterminate until the first bytes arrive
+          value: progress > 0 ? progress : null,
+          strokeWidth: 2.5,
+          color: Colors.white,
+          backgroundColor: Colors.white24,
+        ),
+      ),
+      const Icon(Icons.arrow_downward_rounded,
+          size: 11, color: Colors.white),
+    ]),
+  );
+}
+
+/// Subtle press-down scale for every tappable control (premium feel).
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.child, required this.onTap});
+
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: _down ? 0.92 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _CircleCtrlBtn extends StatelessWidget {
+  const _CircleCtrlBtn(
+      {required this.icon, required this.size, required this.onTap});
+
+  final IconData icon;
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => _PressScale(
+    onTap: onTap,
+    child: Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: 0.12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+      ),
+      child: Icon(icon, color: Colors.white, size: size),
+    ),
+  );
+}
+
+class _GlassIconBtn extends StatelessWidget {
+  const _GlassIconBtn({required this.icon, required this.onTap, this.tooltip});
+
+  final IconData icon;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip ?? '',
+    child: _PressScale(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.10),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        ),
+        child: Icon(icon, color: Colors.white70, size: 18),
+      ),
+    ),
+  );
+}
+
+class _ControlChip extends StatelessWidget {
+  const _ControlChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return _PressScale(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: active
+              ? c.primary.withValues(alpha: 0.90)
+              : Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: active
+                  ? c.primary.withValues(alpha: 0.60)
+                  : Colors.white.withValues(alpha: 0.20)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 13, color: active ? Colors.white : Colors.white70),
+          const SizedBox(width: 4),
+          Text(label,
+              style: TextStyle(
+                  color: active ? Colors.white : Colors.white70,
+                  fontSize: 11,
+                  fontFamily: 'tajawal',
+                  fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 11, color: Colors.white70),
+      const SizedBox(width: 4),
+      Flexible(
+        child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'tajawal')),
+      ),
+    ]),
+  );
+}
+
+class _GlassPill extends StatelessWidget {
+  const _GlassPill(
+      {required this.label, required this.icon, required this.color});
+
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.16),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: color.withValues(alpha: 0.35)),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: color, size: 14),
+      const SizedBox(width: 6),
+      Text(label,
+          style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontFamily: 'tajawal',
+              fontWeight: FontWeight.w700)),
+    ]),
+  );
+}
+
+// ── Speed sheet ───────────────────────────────────────────────────────────────
+
+class _SpeedSheet extends StatelessWidget {
+  const _SpeedSheet(
+      {required this.speeds, required this.current, required this.onSelect});
+
+  final List<double> speeds;
+  final double current;
+  final void Function(double) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return _SheetFrame(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('select_speed'.tr, style: c.h3),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          alignment: WrapAlignment.center,
+          children: speeds.map((s) {
+            final sel = s == current;
+            final label = s == 1.0 ? 'normal_speed'.tr : '$s×';
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onSelect(s);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 80,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: sel ? c.primary : c.inputBg,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: sel ? c.primaryShadow : [],
+                ),
+                alignment: Alignment.center,
+                child: Text(label,
+                    style: c.bodyBold.copyWith(
+                        color: sel ? Colors.white : c.textMedium,
+                        fontSize: 13)),
+              ),
+            );
+          }).toList(),
+        ),
+      ]),
+    );
+  }
+}

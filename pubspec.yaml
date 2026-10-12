@@ -65,6 +65,16 @@ dependencies:
   android_id: ^0.5.2+1
   screen_protector: ^1.5.3
   file_saver: ^0.4.0
+  # Picture-in-Picture (minimize) for the video player — Android only.
+  floating: ^2.0.0
+  # AES-CTR for the encrypted offline downloads.
+  pointycastle:
+  crypto: any
+  http_parser: any
+  package_info_plus: any
+  http: any
+  device_info_plus: any
+  uuid: any
 dependency_overrides:
   flutter_webrtc:
     git:

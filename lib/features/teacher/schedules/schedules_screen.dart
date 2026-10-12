@@ -8,7 +8,6 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart' show TeacherCourse, CourseSchedule, ScheduleSession;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';

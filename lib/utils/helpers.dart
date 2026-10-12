@@ -3,12 +3,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
-import 'package:provider/provider.dart';
 import '../config/app_config.dart';
-import '../config/theme/app_theme.dart';
 import '../config/theme/theme_config_provider.dart';
 import '../features/student/models.dart';
-import '../features/teacher/home/teacher_models.dart';
 import '../features/teacher/sessions/components/session_form_sheet.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';

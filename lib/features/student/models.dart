@@ -7,7 +7,6 @@ import 'package:flutter_education_app/features/category/categories_provider.dart
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../category/model.dart';
-import '../shared/course/discount_info.dart';
 import '../teacher/home/teacher_models.dart';
 
 export '../shared/course/discount_info.dart';

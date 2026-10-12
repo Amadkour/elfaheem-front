@@ -17,7 +17,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
-import '../shared/profile/profile_provider.dart';
 
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -260,7 +259,7 @@ class SheetHeader extends StatelessWidget {
                   fontSize: 18,
                   color: c.textDark)),
         ),
-        if (trailing != null) trailing!,
+        ?trailing,
         IconButton(
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.close_rounded, color: c.textMedium)),
@@ -323,7 +322,7 @@ class Section extends StatelessWidget {
                         fontSize: 15,
                         color: c.textDark)),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ]),
             const SizedBox(height: 10),
             child,

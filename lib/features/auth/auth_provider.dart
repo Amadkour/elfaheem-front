@@ -1,6 +1,5 @@
 library;
 
-import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';

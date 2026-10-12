@@ -499,7 +499,7 @@ class _StudentsPane extends StatelessWidget {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: provider.students.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (_, i) {
         final s = provider.students[i];
         final issued = provider.isIssued(s.id);

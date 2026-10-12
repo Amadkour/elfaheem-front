@@ -7,7 +7,6 @@ import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';

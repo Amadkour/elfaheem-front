@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -25,7 +27,6 @@ import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'config/app_config.dart';
-import 'config/theme/app_theme.dart';
 import 'config/storage_service.dart';
 import 'config/theme/theme_config_provider.dart';
 import 'core/providers.dart';
@@ -38,7 +39,6 @@ import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/shared/profile/change_password_widget.dart';
-import 'features/shared/profile/profile_screen.dart';
 import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
@@ -89,6 +89,12 @@ Future<void> _initCore() async {
     _safe('notifications', () => NotificationService.instance.init());
   } else {
     await _safe('notifications', () => NotificationService.instance.init());
+  }
+
+  // Offline (encrypted) videos: purge expired copies and load the list, so the
+  // start route below can be chosen synchronously.
+  if (!kIsWeb) {
+    await _safe('offlineVideos', () => OfflineVideoService.instance.init());
   }
 }
 
@@ -201,9 +207,16 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     }
 
     final auth = context.read<AuthProvider>();
-    final String initialRoute = auth.isAuthenticated
-        ? auth.homeRoute
-        : '/login';
+    // Offline at start-up + the user has downloaded videos → open the
+    // Downloads page so they can keep watching. (If there are no downloads,
+    // behave exactly as before.)
+    final bool offlineStart = !kIsWeb &&
+        auth.isAuthenticated &&
+        tc.serverUnreachable &&
+        OfflineVideoService.instance.downloadedIds.value.isNotEmpty;
+    final String initialRoute = !auth.isAuthenticated
+        ? '/login'
+        : (offlineStart ? '/downloads' : auth.homeRoute);
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
@@ -307,6 +320,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
         return _fade(const _Guard(child: EditAccountScreen()), settings);
       case '/change-password':
         return _fade(const _Guard(child: ChangePasswordScreen()), settings);
+      case '/downloads':
+        return _fade(const _Guard(child: DownloadsScreen()), settings);
       case '/course-detail':
         final course = settings.arguments;
         if (course is! CourseModel) {

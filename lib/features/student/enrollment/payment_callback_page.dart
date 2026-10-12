@@ -36,14 +36,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../utils/widget/base_page.dart';
-import '../../auth/auth_provider.dart';
 
 class PaymentCallbackPage extends StatefulWidget {
   const PaymentCallbackPage({super.key});
