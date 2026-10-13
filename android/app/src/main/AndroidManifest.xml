@@ -132,6 +132,11 @@
             android:name="flutterEmbedding"
             android:value="2" />
 
+        <!-- Google Pay API (used by Paymob's native SDK on Android) -->
+        <meta-data
+            android:name="com.google.android.gms.wallet.api.enabled"
+            android:value="true" />
+
     </application>
 
     <queries>

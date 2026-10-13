@@ -8245,8 +8245,24 @@
     "ar": "انتهت المشاهدات",
     "en": "No views left"
   },
-  "dl_ok": {
-    "ar": "حسناً",
-    "en": "OK"
+  "email_or_phone": {
+    "ar": "البريد الإلكتروني أو الهاتف",
+    "en": "Email or phone"
+  },
+  "phone_with_country_code": {
+    "ar": "الهاتف (مع رمز الدولة)",
+    "en": "Phone (with country code)"
+  },
+  "phone_required": {
+    "ar": "رقم الهاتف مطلوب",
+    "en": "Phone number is required"
+  },
+  "verification_code_sent_sms": {
+    "ar": "أرسلنا رمزاً برسالة نصية إلى",
+    "en": "We sent a code by SMS to"
+  },
+  "verification_code_sent_whatsapp": {
+    "ar": "أرسلنا رمزاً عبر واتساب إلى",
+    "en": "We sent a code on WhatsApp to"
   }
 }

@@ -1,5 +1,6 @@
 library;
 
+import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
@@ -78,6 +79,43 @@ class UserModel {
 class AuthProvider extends BaseProvider {
   final ApiClient _api;
   final StorageService _storage;
+
+  // ── Admin-controlled auth policy (GET /auth/policy) ────────────────────────
+  /// email | phone | both  — what a new account must verify.
+  String verificationMethod = 'email';
+  /// email | phone | either — what the login form accepts.
+  String loginIdentifier = 'email';
+  /// sms | whatsapp — how phone codes are delivered.
+  String otpPhoneChannel = 'sms';
+  bool policyLoaded = false;
+
+  bool get verifyByPhone => verificationMethod != 'email';
+  bool get loginAllowsEmail => loginIdentifier != 'phone';
+  bool get loginAllowsPhone => loginIdentifier != 'email';
+
+  /// Filled by register/login/verify: channels still to verify ("email"/"phone")
+  /// and the data the OTP screen needs.
+  List<String> pendingChannels = const ['email'];
+  String? pendingGmail;
+  String? pendingPhoneMasked;
+
+  Future<void> loadPolicy() async {
+    try {
+      final r = await _api.get('/api/v1/auth/policy', auth: false);
+      if (r is Map) {
+        verificationMethod = (r['verification_method'] ?? 'email').toString();
+        loginIdentifier = (r['login_identifier'] ?? 'email').toString();
+        otpPhoneChannel = (r['otp_phone_channel'] ?? 'sms').toString();
+        policyLoaded = true;
+        notifyListeners();
+      }
+    } catch (e) {
+      log('loadPolicy failed: $e'); // keep defaults (email / email)
+    }
+  }
+
+  List<String> _channelsFrom(dynamic v, List<String> fallback) =>
+      v is List ? v.map((e) => e.toString()).toList() : fallback;
 
   AuthProvider({ApiClient? api, required StorageService storage})
       : _api = api ?? ApiClient(),
@@ -183,6 +221,14 @@ class AuthProvider extends BaseProvider {
       ),
     );
 
+    if (result is Map) {
+      pendingGmail = result['gmail']?.toString() ?? gmail;
+      pendingChannels = _channelsFrom(result['pending_channels'], const ['email']);
+      pendingPhoneMasked = phone;
+      if (result['otp_phone_channel'] != null) {
+        otpPhoneChannel = result['otp_phone_channel'].toString();
+      }
+    }
     isLoadingRegistration = false;
     notifyListeners();
     return result != null;
@@ -193,16 +239,23 @@ class AuthProvider extends BaseProvider {
   /// On success the server returns the same shape as login:
   ///   { registration_step, ... }
   /// We save the user here so teachers know they need step 3.
-  Future<bool> verifyOtp({required String gmail, required String code}) async {
+  /// [channel] = "email" | "phone". After a success, [pendingChannels] holds what is
+  /// still left (e.g. ["phone"] when the admin requires both) — empty = fully verified.
+  Future<bool> verifyOtp({
+    required String gmail,
+    required String code,
+    String? channel,
+  }) async {
     final result = await run(
           () => _api.post(
         '/api/v1/auth/verify-otp',
-        body: {'gmail': gmail, 'code': code},
+        body: {'gmail': gmail, 'code': code, 'channel': ?channel},
         auth: false,
       ),
     );
 
     if (result != null && result is Map) {
+      pendingChannels = _channelsFrom(result['pending_channels'], const []);
       // The verify-otp response does NOT return tokens — the user still
       // needs to log in (or the server returns tokens — adapt if needed).
       // If your server returns user data here, save it:
@@ -219,11 +272,11 @@ class AuthProvider extends BaseProvider {
 
   // ── Resend OTP ────────────────────────────────────────────────────────────────
 
-  Future<bool> resendOtp(String gmail, {bool reset = false}) async {
+  Future<bool> resendOtp(String gmail, {bool reset = false, String? channel}) async {
     final result = await run(
           () => _api.post(
         reset ? '/api/v1/auth/forgot-password' : '/api/v1/auth/resend-otp',
-        body: {'gmail': gmail},
+        body: {'gmail': gmail, if (!reset) 'channel': ?channel},
         auth: false,
       ),
     );
@@ -334,6 +387,7 @@ class AuthProvider extends BaseProvider {
   // ── Login ─────────────────────────────────────────────────────────────────────
 
   /// Authenticates the user, saves tokens + user object to disk.
+  /// [gmail] is the e-mail OR the phone number, depending on the admin's login policy.
   Future<bool> login({required String gmail, required String password}) async {
     isLoadingLogin = true;
     // Reset from any previous attempt, otherwise a stale flag from an earlier
@@ -363,7 +417,15 @@ class AuthProvider extends BaseProvider {
           needsVerification = true;
           final b = ApiException.asMap(e.body);
           final d = b?['detail'];
-          if (d is Map) pendingRole = d['role']?.toString();
+          if (d is Map) {
+            pendingRole = d['role']?.toString();
+            pendingGmail = d['gmail']?.toString();
+            pendingChannels = _channelsFrom(d['pending_channels'], const ['email']);
+            pendingPhoneMasked = d['phone_masked']?.toString();
+            if (d['otp_phone_channel'] != null) {
+              otpPhoneChannel = d['otp_phone_channel'].toString();
+            }
+          }
         }
         rethrow;
       }

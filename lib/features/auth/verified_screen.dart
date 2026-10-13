@@ -7,6 +7,7 @@ import 'package:flutter_education_app/features/auth/login_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
+import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
@@ -21,8 +22,13 @@ class OtpVerificationScreen extends StatefulWidget {
   final String role;
   final OtpFlowEnum flow;
 
+  /// Channels still to verify, in order: "email" and/or "phone". Registration/login
+  /// pass AuthProvider.pendingChannels; forget-password ignores it.
+  final List<String> channels;
+
   const OtpVerificationScreen({
     super.key,
+    this.channels = const ['email'],
     this.phoneNumber,
     required this.email,
     this.flow = OtpFlowEnum.registration,
@@ -52,10 +58,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Timer? _resendTimer;
   bool _isLoading = false;
   bool _hasError = false;
+  late List<String> _pending;
+
+  /// The channel being verified right now (registration flow only).
+  String get _channel => _pending.isEmpty ? 'email' : _pending.first;
 
   @override
   void initState() {
     super.initState();
+    _pending = widget.channels.isEmpty ? ['email'] : List.of(widget.channels);
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -126,10 +137,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       if(mounted) if(mounted) setState(() => _isLoading = true);
       final auth = context.read<AuthProvider>();
       final success = widget.flow == OtpFlowEnum.registration
-          ? await auth.verifyOtp(gmail: widget.email, code: _fullOtp)
+          ? await auth.verifyOtp(gmail: widget.email, code: _fullOtp, channel: _channel)
           : await auth.verifyResetOtp(gmail: widget.email, code: _fullOtp);
       if(mounted) if(mounted) setState(() => _isLoading = false);
 
+      // Admin requires BOTH e-mail and phone: after the first code, ask for the next.
+      if (success && mounted && widget.flow == OtpFlowEnum.registration &&
+          auth.pendingChannels.isNotEmpty) {
+        setState(() {
+          _pending = List.of(auth.pendingChannels);
+          _hasError = false;
+        });
+        for (final c in _controllers) {
+          c.clear();
+        }
+        _startResendTimer();
+        _focusNodes[0].requestFocus();
+        return;
+      }
       if (success && mounted) {
         if (widget.flow == OtpFlowEnum.registration) {
           Navigator.of(context).pushReplacement(
@@ -168,7 +193,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if(mounted) if(mounted) setState(() => _hasError = false);
     _startResendTimer();
     _focusNodes[0].requestFocus();
-    final success = await context.read<AuthProvider>().resendOtp(widget.email, reset: widget.flow != OtpFlowEnum.registration);
+    final success = await context.read<AuthProvider>().resendOtp(
+      widget.email,
+      reset: widget.flow != OtpFlowEnum.registration,
+      channel: widget.flow == OtpFlowEnum.registration ? _channel : null,
+    );
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -219,6 +248,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ),
     );
   }
+  bool get _isPhoneStep {
+    if (widget.flow == OtpFlowEnum.registration) return _channel == 'phone';
+    return !widget.email.contains('@'); // forget-password by phone number
+  }
+
+  String get _destination => _isPhoneStep
+      ? (widget.phoneNumber ??
+          context.read<AuthProvider>().pendingPhoneMasked ??
+          widget.email)
+      : widget.email;
+
+  String get _sentToHint {
+    if (!_isPhoneStep) return 'verification_code_sent'.tr;
+    return context.read<AuthProvider>().otpPhoneChannel == 'whatsapp'
+        ? 'verification_code_sent_whatsapp'.tr
+        : 'verification_code_sent_sms'.tr;
+  }
+
   Widget form (bool isWeb) {
     Widget main=Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -233,12 +280,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         ),
         const SizedBox(height: 8),
         Text(
-          'verification_code_sent'.tr,
+          _sentToHint,
           style: context.colors.body,
         ),
         const SizedBox(height: 8),
         Text(
-          widget.email,
+          _destination,
           style:  TextStyle(
             fontWeight: FontWeight.w700,
             color: context.colors.textDark,

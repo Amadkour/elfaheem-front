@@ -4,6 +4,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
+import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
@@ -25,7 +26,9 @@ class _ForgetScreenState extends State<ForgetScreen> {
   @override
   void initState() {
     super.initState();
-    // _emailController.text = 'ahmed@gmail.com';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AuthProvider>().loadPolicy();
+    });
   }
 
   @override
@@ -149,12 +152,16 @@ class _ForgetScreenState extends State<ForgetScreen> {
           ),
           const SizedBox(height: 50),
 
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
+          Builder(builder: (context) {
+            final a = context.watch<AuthProvider>();
+            final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
+            return IconTextField(
+              controller: _emailController,
+              label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
+              icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
+              keyboard: phoneOk ? TextInputType.text : TextInputType.emailAddress,
+            );
+          }),
           const SizedBox(height: 12),
 
           // Hint

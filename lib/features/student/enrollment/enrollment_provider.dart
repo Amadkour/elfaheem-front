@@ -15,6 +15,8 @@
 /// quote TOTAL (plan price + platform fee + VAT + that method's gateway fee).
 library;
 
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
@@ -26,8 +28,12 @@ import '../../student/models.dart';
 import 'checkout_pages.dart';
 import 'enrollment_models.dart';
 import 'payment_flow_provider.dart';
+import 'paymob_native_sdk.dart';
 
 export 'payment_flow_provider.dart' show EnrollStep;
+
+/// Shown on the Apple Pay sheet / Paymob SDK. Change to your app's display name.
+const _kWalletAppName = 'Education App';
 
 class EnrollmentProvider extends PaymentFlowProvider {
   EnrollmentProvider(this.course, {super.api});
@@ -80,6 +86,24 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   SavedPaymentMethod? get selectedCard => _selectedCard;
 
+  // ── Wallets (Apple Pay / Google Pay) — mobile only ────────────────────────
+  String? _selectedWallet; // "apple_pay" | "google_pay" | null
+  String? get selectedWallet => _selectedWallet;
+
+  /// Wallets the student can actually use on THIS device: switched on by the admin, supported by the
+  /// active gateway (both decided by the server), Apple Pay on iOS, Google Pay on Android.
+  /// Web uses the hosted page, which offers the wallets itself.
+  List<PaymentMethodOption> get availableWallets {
+    final g = gateway;
+    if (g == null || kIsWeb) return const [];
+    return [
+      for (final w in g.enabledWallets)
+        if ((w.type == 'apple_pay' && Platform.isIOS) || (w.type == 'google_pay' && Platform.isAndroid)) w,
+    ];
+  }
+
+  bool _walletStillOpen(String w) => availableWallets.any((o) => o.type == w);
+
   /// Saved-card charging is Moyasar-only on the backend.
   bool get supportsSavedCards => gateway?.provider == 'moyasar';
 
@@ -97,6 +121,8 @@ class EnrollmentProvider extends PaymentFlowProvider {
     if (isFree) return true;
     final g = gateway;
     if (g == null) return false;
+    final wallet = _selectedWallet;
+    if (wallet != null) return _walletStillOpen(wallet);
     final manual = _selectedManualMethod;
     return manual != null ? g.isEnabled(manual) : g.cardEnabled;
   }
@@ -107,6 +133,8 @@ class EnrollmentProvider extends PaymentFlowProvider {
   /// manual transfer → that method (admin-managed fee, 0 by default) ·
   /// saved card → that card's brand · Moyasar SDK → mada · hosted checkout → creditcard.
   String get _quoteMethod {
+    final wallet = _selectedWallet;
+    if (wallet != null) return wallet; // wallets have their own admin-managed fee
     final manual = _selectedManualMethod;
     if (manual != null) return manual;
     final card = _selectedCard;
@@ -172,7 +200,10 @@ class EnrollmentProvider extends PaymentFlowProvider {
     if (g == null) return;
     final manual = _selectedManualMethod;
     final card = _selectedCard;
-    final stillOpen = manual != null
+    final wallet = _selectedWallet;
+    final stillOpen = wallet != null
+        ? _walletStillOpen(wallet)
+        : manual != null
         ? g.isEnabled(manual)
         : card != null
         ? g.cardEnabled && supportsSavedCards && _savedCards.any((c) => c.id == card.id)
@@ -180,6 +211,8 @@ class EnrollmentProvider extends PaymentFlowProvider {
     if (stillOpen) return;
 
     _selectedCard = null;
+    _selectedWallet = null;
+    final wallets = availableWallets;
     _selectedManualMethod = g.cardEnabled
         ? null // new card
         : g.instapayEnabled
@@ -187,6 +220,9 @@ class EnrollmentProvider extends PaymentFlowProvider {
         : g.bankTransferEnabled
         ? 'bank_transfer'
         : null;
+    if (!g.cardEnabled && _selectedManualMethod == null && wallets.isNotEmpty) {
+      _selectedWallet = wallets.first.type;
+    }
   }
 
   /// GET /api/v1/payments/price-options — the plans this course sells.
@@ -302,6 +338,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void selectSavedCard(SavedPaymentMethod card) {
     _selectedCard = card;
     _selectedManualMethod = null;
+    _selectedWallet = null;
     safeNotify();
     ensureQuote();
   }
@@ -309,6 +346,7 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void selectNewCard() {
     _selectedCard = null;
     _selectedManualMethod = null; // otherwise confirm() would still go to the transfer flow
+    _selectedWallet = null;
     safeNotify();
     ensureQuote();
   }
@@ -321,14 +359,27 @@ class EnrollmentProvider extends PaymentFlowProvider {
   void selectManualMethod(String method) {
     _selectedManualMethod = method;
     _selectedCard = null;
+    _selectedWallet = null;
     safeNotify();
     ensureQuote(); // price it under THIS method's own (admin-managed) fee
+  }
+
+  void selectWallet(String wallet) {
+    if (!_walletStillOpen(wallet)) return;
+    _selectedWallet = wallet;
+    _selectedCard = null;
+    _selectedManualMethod = null;
+    safeNotify();
+    ensureQuote(); // priced under the wallet's own (admin-managed) fee
   }
 
   Future<void> confirm(BuildContext context) async {
     if (isLoading || !_optionsLoaded) return;
     if (isFree) return _enrollFree();
     if (!canConfirm) return; // nothing selectable (e.g. the admin just closed the chosen method)
+
+    final wallet = _selectedWallet;
+    if (wallet != null) return _payWithWallet(context, wallet);
 
     final manual = _selectedManualMethod;
     if (manual != null) return _startManualTransfer(context, manual);
@@ -410,14 +461,14 @@ class EnrollmentProvider extends PaymentFlowProvider {
     ));
   }
 
-  void _handleSdkResult(dynamic result) {
+  void _handleSdkResult(dynamic result, {String? wallet}) {
     if (result is! PaymentResponse) {
       setStep(EnrollStep.failed, reason: 'payment_unexpected_gateway_response'.tr);
       return;
     }
     switch (result.status.name.toLowerCase()) {
       case 'paid' || 'authorized' || 'captured':
-        _recordSdkPayment(result.id);
+        _recordSdkPayment(result.id, wallet: wallet);
       case 'failed':
         setStep(EnrollStep.failed,
             reason: (result.source as dynamic)?.message as String? ??
@@ -429,11 +480,16 @@ class EnrollmentProvider extends PaymentFlowProvider {
 
   /// The backend re-fetches the payment from the gateway with its SECRET key,
   /// checks the amount, then activates the enrollment.
-  Future<void> _recordSdkPayment(String gatewayPaymentId) async {
+  Future<void> _recordSdkPayment(String gatewayPaymentId, {String? wallet}) async {
     setStep(EnrollStep.verifying);
     final r = asJsonMap(await run(() async => api.post(
       '/api/v1/payments/record-sdk-payment',
-      body: {'course_id': course.id, 'moyasar_payment_id': gatewayPaymentId, 'plan': _plan},
+      body: {
+        'course_id': course.id,
+        'moyasar_payment_id': gatewayPaymentId,
+        'plan': _plan,
+        if (wallet != null) 'wallet': wallet, // priced with the wallet's own fee on the server
+      },
     )));
     if (r?['status'] == 'completed') {
       setStep(EnrollStep.success);
@@ -441,6 +497,116 @@ class EnrollmentProvider extends PaymentFlowProvider {
       // The card WAS charged but verification didn't complete — don't say "failed".
       setStep(EnrollStep.pending);
     }
+  }
+
+  // ── Wallets: Apple Pay / Google Pay ──────────────────────────────────────
+
+  Future<void> _payWithWallet(BuildContext context, String wallet) async {
+    final g = gateway;
+    if (g == null || !_walletStillOpen(wallet)) {
+      await prepareMethodStep(); // the admin may have just closed it
+      return;
+    }
+    switch (g.walletFlow) {
+      case 'moyasar_sdk':
+        return _startMoyasarApplePay(context);
+      case 'intention':
+        return _startPaymobWallet(context, wallet);
+      default:
+        return _openHostedCheckout(context);
+    }
+  }
+
+  /// Moyasar: Apple Pay inside the Moyasar SDK, then the same server-side verification as a card.
+  Future<void> _startMoyasarApplePay(BuildContext context) async {
+    final g = gateway;
+    final merchantId = g?.applePayMerchantId;
+    final key = g?.publishableKey;
+    if (key == null || key.isEmpty || merchantId == null || merchantId.isEmpty) {
+      return _openHostedCheckout(context); // not configured on the server → hosted page
+    }
+    final fees = await ensureQuote();
+    if (fees == null) {
+      setStep(EnrollStep.failed, reason: 'payment_fees_load_failed'.tr);
+      return;
+    }
+    if (!context.mounted) return;
+
+    final config = PaymentConfig(
+      publishableApiKey: key,
+      amount: fees.amountMinor,
+      description: '${'course'.tr} : ${(AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? ''}',
+      metadata: {'course_id': course.id.toString(), 'plan': _plan},
+      applePay: ApplePayConfig(merchantId: merchantId, label: _kWalletAppName, manual: false, saveCard: false),
+    );
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => MoyasarApplePayScreen(
+        config: config,
+        onPaymentResult: (result) {
+          Navigator.of(context).pop();
+          _handleSdkResult(result, wallet: 'apple_pay');
+        },
+      ),
+    ));
+  }
+
+  /// Paymob: the server opens an intention for this wallet and returns client_secret + public_key;
+  /// Paymob's native SDK pays; Paymob's webhook completes the payment on the server, so we poll it.
+  Future<void> _startPaymobWallet(BuildContext context, String wallet) async {
+    final session = asJsonMap(await run(() async => api.post(
+      '/api/v1/payments/create-wallet-session',
+      body: {'course_id': course.id, 'wallet': wallet, 'plan': _plan},
+    )));
+    if (session == null) {
+      setStep(EnrollStep.failed, reason: 'payment_session_create_failed'.tr);
+      return;
+    }
+    if (session['already_paid'] == true || session['status'] == 'enrolled') {
+      setStep(EnrollStep.success);
+      return;
+    }
+    final secret = session['client_secret'] as String?;
+    final publicKey = session['public_key'] as String?;
+    final paymentId = (session['payment_id'] as num?)?.toInt();
+    if (secret == null || publicKey == null || paymentId == null) {
+      return _openHostedCheckout(context);
+    }
+
+    final result = await PaymobNativeSdk.pay(
+      publicKey: publicKey,
+      clientSecret: secret,
+      appName: _kWalletAppName,
+    );
+    switch (result) {
+      case PaymobSdkResult.unavailable:
+        return _openHostedCheckout(context); // native SDK not installed in this build → hosted page
+      case PaymobSdkResult.rejected:
+        setStep(EnrollStep.failed, reason: 'payment_failed_try_again'.tr);
+      case PaymobSdkResult.cancelled:
+        setStep(EnrollStep.method);
+      case PaymobSdkResult.success || PaymobSdkResult.pending:
+        await _pollPayment(paymentId);
+    }
+  }
+
+  /// The webhook can land a few seconds after the SDK reports success.
+  Future<void> _pollPayment(int paymentId) async {
+    setStep(EnrollStep.verifying);
+    for (var attempt = 0; attempt < 15 && !isDisposed; attempt++) {
+      await Future.delayed(const Duration(seconds: 4));
+      if (isDisposed) return;
+      final r = asJsonMap(await run(() async => api.get('/api/v1/payments/$paymentId')));
+      final status = (r?['status'] as String?)?.toLowerCase();
+      if (status == 'completed' || status == 'paid') {
+        setStep(EnrollStep.success);
+        return;
+      }
+      if (status == 'failed') {
+        setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
+        return;
+      }
+    }
+    setStep(EnrollStep.pending); // charged but not confirmed yet — never say "failed"
   }
 
   // ── Saved card (Moyasar) ──────────────────────────────────────────────────
