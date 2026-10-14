@@ -10,6 +10,7 @@ import '../courses/teacher_courses_provider.dart';
 import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
+import 'flags/teacher_read_flags_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class TeacherAnalyticsHubScreen extends StatefulWidget {
@@ -357,6 +358,30 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          // Read-flag bank (questions many students keep failing)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+            child: ParentComponent(
+                featureKey: 'analytics_hub.read_flags',
+                child: _ActionButton(
+                  icon: Icons.flag_rounded,
+                  label: 'tflag_btn'.tr,
+                  sublabel: 'tflag_btn_sub'.tr,
+                  color: Colors.redAccent,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TeacherReadFlagsScreen(
+                        courseId: course.id,
+                        courseTitle: (AppConfig.lang == 'ar'
+                            ? course.titleAr
+                            : course.titleEn) ??
+                            '',
+                      ),
+                    ),
+                  ),
+                )),
           ),
         ],
       ),

@@ -627,6 +627,8 @@ class _QuestionCard extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(width: 6),
+              _ReviewFlagButton(question: question),
             ],
           ),
           const SizedBox(height: 14),
@@ -640,6 +642,66 @@ class _QuestionCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Review-flag (bookmark) button ─────────────────────────────────────────────
+
+class _ReviewFlagButton extends StatelessWidget {
+  final Question question;
+  const _ReviewFlagButton({required this.question});
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.watch<StudentExamProvider>();
+    if (!prov.reviewFlagsEnabled) return const SizedBox.shrink();
+    final flagged = prov.isReviewFlagged(question.id);
+    final color = flagged ? Colors.deepOrange : Colors.grey;
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: prov.flagBusy
+          ? null
+          : () async {
+        final messenger = ScaffoldMessenger.maybeOf(context);
+        final wasFlagged = flagged;
+        final err = await prov.toggleReviewFlag(question);
+        messenger?.hideCurrentSnackBar();
+        messenger?.showSnackBar(SnackBar(
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          content: Text(
+            err ??
+                (wasFlagged
+                    ? tx('flag_review_removed')
+                    : tx('flag_review_added')),
+            style: const TextStyle(fontFamily: 'bahji'),
+          ),
+        ));
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .12),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(
+            flagged ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+            size: 15,
+            color: color,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            flagged ? tx('flag_review_marked') : tx('flag_review_mark'),
+            style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color),
+          ),
+        ]),
       ),
     );
   }

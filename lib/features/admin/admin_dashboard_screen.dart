@@ -47,6 +47,7 @@ import 'admin_content_page.dart';
 import 'admin_courses_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_flags_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_overview_page.dart';
 import 'admin_payment_page.dart';
@@ -580,6 +581,13 @@ class _MorePageState extends State<_MorePage> {
                         iconColor: c.primary,
                         label: 'features'.tr,
                         onTap: () => _push(const AdminFeaturesPage()),
+                      ),
+                      SettingsTile(
+                        icon: Icons.bookmark_rounded,
+                        iconBg: c.danger.withAlpha(50),
+                        iconColor: c.danger,
+                        label: 'admin_flags_title'.tr,
+                        onTap: () => _push(const AdminFlagsSettingsPage()),
                       ),
                       SettingsTile(
                         icon: Icons.rocket_launch_rounded,

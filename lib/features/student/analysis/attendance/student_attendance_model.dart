@@ -2,6 +2,8 @@
 // ── Enrolled course summary (for the hub screen) ──────────────────────────────
 // Derived from CourseModel, carries only what the analytics hub needs.
 
+import 'package:flutter_education_app/config/app_config.dart';
+
 class EnrolledCourse {
   final int id;
   final String title;
@@ -26,7 +28,7 @@ class EnrolledCourse {
   ) =>
       EnrolledCourse(
         id: int.parse(course['id'].toString()),
-        title: course['course_name'] as String? ?? '',
+        title: course['name_${AppConfig.lang}'] as String? ?? '',
         imageUrl: course['image_url'] as String?,
         teacherName: course['course_teacher_name'] as String?,
 

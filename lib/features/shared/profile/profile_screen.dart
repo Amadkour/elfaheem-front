@@ -23,6 +23,8 @@ import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
+import '../../student/certificates/my_certificates_screen.dart';
+import '../../teacher/certificates/certificate_requests_screen.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
@@ -169,6 +171,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             ParentComponent(
+                              featureKey: 'profile.certificate_requests',
+                              child: SettingsTile(
+                                icon: Icons.workspace_premium_rounded,
+                                iconBg: c.primaryTint,
+                                iconColor: c.primary,
+                                label: 'certificate_requests'.tr,
+                                onTap: () => _push(const CertificateRequestsScreen()),
+                              ),
+                            ),
+                            ParentComponent(
                               featureKey: 'profile.payout',
                               child: SettingsTile(
                                 icon: Icons.payments_rounded,
@@ -194,6 +206,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ] else ...[
+                            ParentComponent(
+                              featureKey: 'profile.my_certificates',
+                              child: SettingsTile(
+                                icon: Icons.workspace_premium_rounded,
+                                iconBg: c.primaryTint,
+                                iconColor: c.primary,
+                                label: 'my_certificates'.tr,
+                                onTap: () => _push(const MyCertificatesScreen()),
+                              ),
+                            ),
                             ParentComponent(
                               featureKey: 'profile.my_favorite',
                               child: SettingsTile(

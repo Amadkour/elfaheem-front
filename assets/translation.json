@@ -8264,5 +8264,385 @@
   "verification_code_sent_whatsapp": {
     "ar": "أرسلنا رمزاً عبر واتساب إلى",
     "en": "We sent a code on WhatsApp to"
+  },
+  "my_certificates": {
+    "ar": "شهاداتي",
+    "en": "My certificates"
+  },
+  "my_certificates_empty": {
+    "ar": "لا توجد شهادات متاحة لدوراتك حتى الآن",
+    "en": "No certificates in your courses yet"
+  },
+  "certificates_load_failed": {
+    "ar": "تعذّر تحميل الشهادات",
+    "en": "Couldn't load certificates"
+  },
+  "certificates_earned": {
+    "ar": "الشهادات التي حصلت عليها",
+    "en": "Certificates earned"
+  },
+  "cert_state_issued": {
+    "ar": "تم إصدارها",
+    "en": "Issued"
+  },
+  "cert_state_pending": {
+    "ar": "بانتظار موافقة المعلم",
+    "en": "Waiting for teacher approval"
+  },
+  "cert_state_ready_soon": {
+    "ar": "قيد التجهيز",
+    "en": "Being prepared"
+  },
+  "cert_state_rejected": {
+    "ar": "مرفوضة",
+    "en": "Declined"
+  },
+  "cert_state_available": {
+    "ar": "لم تكتمل الدورة بعد",
+    "en": "Course not completed"
+  },
+  "certificate_being_prepared": {
+    "ar": "يجري إصدار شهادتك، وسيتم إشعارك عند جاهزيتها",
+    "en": "Your certificate is being generated; you'll be notified"
+  },
+  "certificate_rejected_reason": {
+    "ar": "سبب الرفض",
+    "en": "Reason"
+  },
+  "request_certificate": {
+    "ar": "طلب إصدار الشهادة",
+    "en": "Request certificate"
+  },
+  "request_certificate_hint": {
+    "ar": "لم تُكمل الدورة بعد. يمكنك إرسال طلب إلى المعلم لمراجعته، وستُصدر الشهادة تلقائيًا عند الموافقة على الطلب.",
+    "en": "You haven't finished the course. The teacher will review your request and the certificate is sent automatically once approved."
+  },
+  "certificate_request_note_hint": {
+    "ar": "رسالة إلى المعلم (اختياري)",
+    "en": "Message to the teacher (optional)"
+  },
+  "certificate_request_sent": {
+    "ar": "تم إرسال طلب الشهادة إلى المعلم",
+    "en": "Request sent to the teacher"
+  },
+  "certificate_issued_now": {
+    "ar": "تم إصدار شهادتك بنجاح",
+    "en": "Your certificate is ready"
+  },
+  "cancel_certificate_request": {
+    "ar": "إلغاء طلب الشهادة",
+    "en": "Cancel request"
+  },
+  "certificate_request_cancelled": {
+    "ar": "تم إلغاء طلب الشهادة",
+    "en": "Request cancelled"
+  },
+  "download_certificate": {
+    "ar": "تنزيل الشهادة",
+    "en": "Download certificate"
+  },
+  "certificate_saved": {
+    "ar": "تم حفظ الشهادة على جهازك",
+    "en": "Certificate saved to your device"
+  },
+  "certificate_other_language": {
+    "ar": "لغة أخرى",
+    "en": "Other language"
+  },
+  "certificate_action_failed": {
+    "ar": "حدث خطأ، يُرجى المحاولة مرة أخرى",
+    "en": "Something went wrong, try again"
+  },
+  "certificate_requests": {
+    "ar": "طلبات إصدار الشهادات",
+    "en": "Certificate requests"
+  },
+  "no_certificate_requests": {
+    "ar": "لا توجد طلبات لإصدار الشهادات",
+    "en": "No certificate requests"
+  },
+  "approve_and_send": {
+    "ar": "الموافقة وإرسال الشهادة",
+    "en": "Approve & send"
+  },
+  "reject_certificate_request": {
+    "ar": "رفض طلب الشهادة",
+    "en": "Decline request"
+  },
+  "rejection_reason_optional": {
+    "ar": "سبب الرفض (اختياري)",
+    "en": "Reason (optional)"
+  },
+  "certificate_request_approved": {
+    "ar": "تمت الموافقة على الطلب وإرسال الشهادة إلى الطالب",
+    "en": "Certificate sent to the student"
+  },
+  "certificate_request_rejected": {
+    "ar": "تم رفض طلب الشهادة",
+    "en": "Request declined"
+  },
+  "flag_review_bank": {
+    "en": "Review bank",
+    "ar": "بنك المراجعة"
+  },
+  "flag_read_bank": {
+    "en": "Read flags",
+    "ar": "أسئلة للقراءة"
+  },
+  "flag_review_mark": {
+    "en": "Review",
+    "ar": "مراجعة"
+  },
+  "flag_review_marked": {
+    "en": "Marked",
+    "ar": "تمت الإضافة"
+  },
+  "flag_review_added": {
+    "en": "Added to your review bank",
+    "ar": "تمت الإضافة إلى بنك المراجعة"
+  },
+  "flag_review_removed": {
+    "en": "Removed from your review bank",
+    "ar": "تمت الإزالة من بنك المراجعة"
+  },
+  "flag_limit_exam": {
+    "en": "You reached the limit of {n} review flags for this exam. Remove one to add another.",
+    "ar": "وصلت للحد الأقصى ({n}) من علامات المراجعة لهذا الاختبار. احذف واحدة لإضافة أخرى."
+  },
+  "flag_limit_course": {
+    "en": "You reached the limit of {n} review flags for this course. Remove one to add another.",
+    "ar": "وصلت للحد الأقصى ({n}) من علامات المراجعة لهذه الدورة. احذف واحدة لإضافة أخرى."
+  },
+  "flag_empty_review": {
+    "en": "No review questions yet. Tap \"Review\" on a question while taking an exam.",
+    "ar": "لا توجد أسئلة للمراجعة بعد. اضغط \"مراجعة\" على أي سؤال أثناء الاختبار."
+  },
+  "flag_empty_read": {
+    "en": "Great! No wrong answers to read.",
+    "ar": "رائع! لا توجد إجابات خاطئة للقراءة."
+  },
+  "flag_disabled": {
+    "en": "This feature is turned off by the administration.",
+    "ar": "هذه الميزة متوقفة من قبل الإدارة."
+  },
+  "flag_remove": {
+    "en": "Remove",
+    "ar": "إزالة"
+  },
+  "flag_wrong_times": {
+    "en": "Wrong × {n}",
+    "ar": "خطأ × {n}"
+  },
+  "flag_score": {
+    "en": "Score {n}",
+    "ar": "النقاط {n}"
+  },
+  "flag_total_wrong": {
+    "en": "Wrong answers",
+    "ar": "الإجابات الخاطئة"
+  },
+  "flag_total_score": {
+    "en": "Total score",
+    "ar": "إجمالي النقاط"
+  },
+  "flag_correct_answer": {
+    "en": "Correct answer",
+    "ar": "الإجابة الصحيحة"
+  },
+  "flag_your_wrong_answer": {
+    "en": "Your answer",
+    "ar": "إجابتك"
+  },
+  "tflag_btn": {
+    "en": "Read flags",
+    "ar": "بنك أسئلة القراءة"
+  },
+  "tflag_btn_sub": {
+    "en": "Questions students keep failing",
+    "ar": "أسئلة يتعثر فيها الطلاب"
+  },
+  "tflag_thresholds": {
+    "en": "Shown when at least {students} students each have {tries}+ wrong tries on a question.",
+    "ar": "تظهر الأسئلة عندما يخطئ فيها {students} طلاب على الأقل، كل منهم {tries} محاولات خاطئة أو أكثر."
+  },
+  "tflag_empty": {
+    "en": "No question has reached the thresholds yet.",
+    "ar": "لم يصل أي سؤال إلى الحد المطلوب بعد."
+  },
+  "tflag_students_failed": {
+    "en": "{n} students failed",
+    "ar": "{n} طالب أخطأوا"
+  },
+  "tflag_max_tries": {
+    "en": "Max tries {n}",
+    "ar": "أكثر محاولات {n}"
+  },
+  "tflag_avg_tries": {
+    "en": "Avg tries {n}",
+    "ar": "متوسط المحاولات {n}"
+  },
+  "tflag_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "admin_flags_title": {
+    "en": "Review & read flags",
+    "ar": "علامات المراجعة والقراءة"
+  },
+  "admin_flags_students_section": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "admin_flags_allow_review": {
+    "en": "Allow review flags",
+    "ar": "السماح بعلامات المراجعة"
+  },
+  "admin_flags_allow_read": {
+    "en": "Allow read flags (wrong answers)",
+    "ar": "السماح بأسئلة القراءة (الإجابات الخاطئة)"
+  },
+  "admin_flags_limit_exam": {
+    "en": "Review flags per exam (0 = unlimited)",
+    "ar": "حد علامات المراجعة لكل اختبار (0 = بلا حد)"
+  },
+  "admin_flags_limit_course": {
+    "en": "Review flags per course (0 = unlimited)",
+    "ar": "حد علامات المراجعة لكل دورة (0 = بلا حد)"
+  },
+  "admin_flags_limit_hint": {
+    "en": "Limits count the student's active flags; removing a flag frees a slot.",
+    "ar": "الحدود تحسب العلامات الحالية للطالب، وحذف علامة يحرر مكانًا."
+  },
+  "admin_flags_teacher_section": {
+    "en": "Teacher read-flag bank",
+    "ar": "بنك القراءة للمعلم"
+  },
+  "admin_flags_min_students": {
+    "en": "Minimum students who failed the question",
+    "ar": "أقل عدد طلاب أخطأوا في السؤال"
+  },
+  "admin_flags_min_tries": {
+    "en": "Minimum wrong tries per student",
+    "ar": "أقل عدد محاولات خاطئة لكل طالب"
+  },
+  "admin_flags_teacher_hint": {
+    "en": "A question reaches the teacher when this many students each have at least this many wrong tries.",
+    "ar": "يصل السؤال للمعلم عندما يكون عدد الطلاب هذا قد أخطأ كل منهم بهذا العدد من المحاولات على الأقل."
+  },
+  "admin_flags_save": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "sa_report_title": {
+    "en": "Academic performance report",
+    "ar": "تقرير الأداء الأكاديمي"
+  },
+  "sa_level_excellent": {
+    "en": "Excellent performance",
+    "ar": "أداء ممتاز"
+  },
+  "sa_level_very_good": {
+    "en": "Very good performance",
+    "ar": "أداء جيد جداً"
+  },
+  "sa_level_good": {
+    "en": "Good performance",
+    "ar": "أداء جيد"
+  },
+  "sa_level_needs_follow_up": {
+    "en": "Needs follow-up",
+    "ar": "يحتاج إلى متابعة"
+  },
+  "sa_overall_hint": {
+    "en": "The overall score combines the attendance rate and the average exam results in this course.",
+    "ar": "الدرجة الكلية تجمع بين نسبة الحضور ومتوسط نتائج الاختبارات في هذا الكورس."
+  },
+  "sa_passed_exams": {
+    "en": "Exams passed",
+    "ar": "اختبارات ناجحة"
+  },
+  "sa_avg_score": {
+    "en": "Average score",
+    "ar": "متوسط الدرجات"
+  },
+  "sa_tab_overview": {
+    "en": "Overview",
+    "ar": "نظرة عامة"
+  },
+  "sa_sessions_attended": {
+    "en": "Sessions attended",
+    "ar": "محاضرات حضرها"
+  },
+  "sa_sessions_missed": {
+    "en": "Sessions missed",
+    "ar": "محاضرات غاب عنها"
+  },
+  "sa_parent_summary": {
+    "en": "Parent summary",
+    "ar": "ملخص لولي الأمر"
+  },
+  "sa_exam_results": {
+    "en": "Exam results",
+    "ar": "نتائج الاختبارات"
+  },
+  "sa_passed_label": {
+    "en": "Passed",
+    "ar": "ناجح"
+  },
+  "sa_ins_att_excellent": {
+    "en": "Excellent attendance: attended {present} of {total} sessions.",
+    "ar": "التزام ممتاز بالحضور، حضر {present} من {total} محاضرة."
+  },
+  "sa_ins_att_fair": {
+    "en": "Attendance is acceptable, with {absent} sessions missed. More regularity is recommended.",
+    "ar": "نسبة الحضور مقبولة، وقد غاب {absent} محاضرة. يُفضّل الانتظام أكثر."
+  },
+  "sa_ins_att_low": {
+    "en": "Absences are high ({absent} sessions). We recommend following up with the student.",
+    "ar": "الغياب مرتفع ({absent} محاضرة). ننصح بالمتابعة مع الطالب."
+  },
+  "sa_ins_exam_all_passed": {
+    "en": "Passed every exam taken ({n}).",
+    "ar": "اجتاز جميع الاختبارات التي أداها ({n})."
+  },
+  "sa_ins_exam_some": {
+    "en": "Passed {passed} of {attempted} exams and did not pass {failed}.",
+    "ar": "اجتاز {passed} من {attempted} اختبار، ولم يجتز {failed}."
+  },
+  "sa_ins_best": {
+    "en": "Best result: {name} with {pct}%.",
+    "ar": "أعلى نتيجة: {name} بنسبة {pct}%."
+  },
+  "sa_ins_pending": {
+    "en": "{n} exams have not been taken yet.",
+    "ar": "يوجد {n} اختبار لم يؤدّه الطالب بعد."
+  },
+  "sa_no_sessions_yet": {
+    "en": "No sessions yet",
+    "ar": "لا توجد محاضرات بعد"
+  },
+  "sa_search_session": {
+    "en": "Search for a session...",
+    "ar": "ابحث عن محاضرة"
+  },
+  "sa_total_attendance": {
+    "en": "Total attendance",
+    "ar": "إجمالي الحضور"
+  },
+  "sa_exam_not_taken_yet": {
+    "en": "This exam has not been taken yet",
+    "ar": "لم يتم أداء هذا الاختبار بعد"
+  },
+  "exam_sending_answers": {
+    "en": "Submitting your answers…",
+    "ar": "جارٍ إرسال إجاباتك..."
+  },
+  "exam_submit_partial_error": {
+    "en": "Some answers could not be sent: {error}",
+    "ar": "تعذّر إرسال بعض الإجابات: {error}"
+  },
+  "exam_answers_count": {
+    "en": "{answered} / {total} answers",
+    "ar": "{answered} / {total} إجابة"
   }
 }
