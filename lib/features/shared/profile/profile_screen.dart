@@ -21,6 +21,7 @@ import '../../../core/offline/offline_strings.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
+import '../../parent/student_link_code_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../student/certificates/my_certificates_screen.dart';
@@ -206,6 +207,18 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ] else ...[
+                            // Student: temporary code to link a parent account
+                            if (context.read<AuthProvider>().currentUser?.role == 'student')
+                              ParentComponent(
+                                featureKey: 'profile.parent_link',
+                                child: SettingsTile(
+                                  icon: Icons.family_restroom_rounded,
+                                  iconBg: c.successTint,
+                                  iconColor: c.success,
+                                  label: 'pl_link_code_title'.tr,
+                                  onTap: () => _push(const StudentLinkCodeScreen()),
+                                ),
+                              ),
                             ParentComponent(
                               featureKey: 'profile.my_certificates',
                               child: SettingsTile(

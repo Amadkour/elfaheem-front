@@ -46,7 +46,13 @@ class AboutTermsProvider extends BaseProvider {
     final locale = Localizations.localeOf(context);
     return locale.languageCode == 'en' ? 'en' : 'ar';
   }
-
+ void clear(){
+    int length=(_terms?.sections.length)??0;
+    for(int i=0;i<length;i++){
+      _terms?.sections[i].accept=false;
+    }
+    notifyListeners();
+ }
   // ── Fetch About ───────────────────────────────────────────────────────────
   Future<void> loadAbout(BuildContext context,
       {bool forceRefresh = false}) async {

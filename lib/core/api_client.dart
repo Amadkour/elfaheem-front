@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/main.dart';
+import '../features/shared/guest/guest_state.dart';
 import '../features/student/courses/security/device_blocked_dialog.dart';
 import '../features/student/courses/security/device_id_service.dart';
 import '../features/student/courses/security/device_security_provider.dart';
@@ -230,6 +231,8 @@ class ApiException implements Exception {
     // text; if the server sent a readable message, it is shown instead.
     final message = type == ApiErrorType.server
         ? ApiMessages.server
+        : (type == ApiErrorType.unauthorized && GuestState.active)
+        ? translate('guest_login_required') // guest hit something that needs an account
         : (type == ApiErrorType.forbidden && ViewAsState.active)
         ? translate('admin_view_as_readonly') // every write is refused by the server in view-as: say so clearly
         : (type == ApiErrorType.forbidden && code == null && serverMsg == null)
@@ -842,7 +845,33 @@ class ApiClient {
   Interceptor _authInterceptor() => InterceptorsWrapper(
     // ── Inject Bearer token ────────────────────────────────────────────────
     onRequest: (options, handler) async {
-      if (options.extra['auth'] != false) {
+      // ── GUEST MODE: strictly read-only ─────────────────────────────────
+      // Only GETs (and the /auth/* endpoints) leave the device. Any other call is refused HERE,
+      // before it reaches the server, and the "log in to continue" sheet opens.
+      // The server is still the real guard: a guest has no token, so it answers 401 anyway.
+      if (GuestState.active) {
+        final readOnly = options.method.toUpperCase() == 'GET' ||
+            options.path.contains('/api/v1/auth/');
+        if (!readOnly) {
+          GuestGuard.promptLogin();
+          return handler.reject(
+            DioException(
+              requestOptions: options,
+              type: DioExceptionType.unknown,
+              error: ApiException(
+                statusCode: 0,
+                type: ApiErrorType.forbidden,
+                message: translate('guest_login_required'),
+                code: 'GUEST_RESTRICTED',
+              ),
+            ),
+            false,
+          );
+        }
+      }
+
+      // A guest never sends a token (and never X-View-As).
+      if (options.extra['auth'] != false && !GuestState.active) {
         final token = await _storage.accessToken;
         final viewAs = ViewAsState.targetId;
         if (viewAs != null) options.headers['X-View-As'] = viewAs.toString();
@@ -879,6 +908,10 @@ class ApiClient {
 
     // ── 401 → refresh once → retry; 403 → device dialog or friendly message ─
     onError: (error, handler) async {
+      // Guest: no refresh, no "session expired → login" redirect, no device dialog, no paywall.
+      // The screen shows the (friendly) error; writes were already refused in onRequest.
+      if (GuestState.active) return handler.next(error);
+
       final req = error.requestOptions;
       final status = error.response?.statusCode;
       final needsAuth = req.extra['auth'] != false;
@@ -1063,6 +1096,7 @@ class ApiClient {
   bool _redirecting = false;
 
   Future<void> _redirectToLogin() async {
+    if (GuestState.active) return; // a guest has no session to lose
     if (_redirecting) return;
     _redirecting = true;
 

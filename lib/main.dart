@@ -34,6 +34,7 @@ import 'features/admin/admin_view_as_page.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
+import 'features/shared/guest/guest_state.dart';
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
@@ -45,6 +46,7 @@ import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
+import 'features/parent/parent_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
 
@@ -254,17 +256,20 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
           ],
           // ViewAsBanner shows the "View only: <name> · Back to admin" bar above EVERY screen while a
           // super-admin is in view-as mode (it renders nothing otherwise).
-          builder: (_, child) => ViewAsBanner(
-            child: _OfflineThemeBanner(
-              child: ResponsiveBreakpoints.builder(
-                breakpoints: [
-                  const Breakpoint(start: 0, end: 450, name: MOBILE),
-                  const Breakpoint(start: 451, end: 800, name: TABLET),
-                  const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-                  const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-                ],
-                useShortestSide: true,
-                child: child!,
+          // GuestBanner is the same idea for a guest ("Browsing as guest · Login").
+          builder: (_, child) => GuestBanner(
+            child: ViewAsBanner(
+              child: _OfflineThemeBanner(
+                child: ResponsiveBreakpoints.builder(
+                  breakpoints: [
+                    const Breakpoint(start: 0, end: 450, name: MOBILE),
+                    const Breakpoint(start: 451, end: 800, name: TABLET),
+                    const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+                    const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+                  ],
+                  useShortestSide: true,
+                  child: child!,
+                ),
               ),
             ),
           ),
@@ -307,13 +312,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       case '/forgot-password':
         return _fade(const ForgetScreen(), settings);
       case '/home':
-        return _fade(const _Guard(child: HomeScreen()), settings);
+        return _fade(const _Guard(guestOk: true, child: HomeScreen()), settings);
       case '/dashboard':
-        return _fade(const _Guard(child: DashboardScreen()), settings);
+        return _fade(const _Guard(guestOk: true, child: DashboardScreen()), settings);
       case '/teacher_dashboard':
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/admin_dashboard':
         return _fade(const _Guard(child: AdminDashboardScreen()), settings);
+      case '/parent_dashboard':
+        return _fade(const _Guard(child: ParentDashboardScreen()), settings);
       case '/subscription':
         return _fade(const _Guard(child: SubscriptionScreen()), settings);
       case '/profile':
@@ -329,7 +336,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
           return _fade(const _Guard(child: _RedirectHome()), settings);
         }
         return _fade(
-          _Guard(child: CourseDetailScreen(course: course)),
+          _Guard(guestOk: true, child: CourseDetailScreen(course: course)),
           settings,
         );
       case '/notifications':
@@ -493,7 +500,10 @@ class _SplashBody extends StatelessWidget {
 
 class _Guard extends StatefulWidget {
   final Widget child;
-  const _Guard({required this.child});
+
+  /// Student catalogue screens a GUEST may open (read-only). Everything else still needs a login.
+  final bool guestOk;
+  const _Guard({required this.child, this.guestOk = false});
   @override State<_Guard> createState() => _GuardState();
 }
 class _GuardState extends State<_Guard> {
@@ -501,6 +511,7 @@ class _GuardState extends State<_Guard> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (widget.guestOk && GuestState.active) return; // guest: no pending links / admin dialogs / pushes
       if (!context.read<AuthProvider>().isAuthenticated) {
         Navigator.of(context).pushReplacementNamed('/login');
         return;
@@ -514,7 +525,9 @@ class _GuardState extends State<_Guard> {
     });
   }
   @override Widget build(BuildContext context) =>
-      context.read<AuthProvider>().isAuthenticated ? widget.child : const SizedBox.shrink();
+      (context.read<AuthProvider>().isAuthenticated || (widget.guestOk && GuestState.active))
+          ? widget.child
+          : const SizedBox.shrink();
 }
 
 /// Sends the user to their own home screen (used when a route has no usable arguments).

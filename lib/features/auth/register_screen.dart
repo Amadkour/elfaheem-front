@@ -27,6 +27,7 @@ import '../shared/profile/change_password_widget.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_widgets.dart';
+import 'verify_way.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
@@ -54,6 +55,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   /// Whether the user has ticked the "I accept" checkbox after reading terms.
   bool _termsAccepted = false;
+
+  /// The verification way the student picked (null = the first one the admin allows).
+  VerifyWay? _pickedWay;
 
   DateTime selectedDate = DateTime.now().subtract(
     const Duration(days: 360 * 20),
@@ -154,9 +158,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     if (!mounted) return;
     if (success) {
+      // Open the verification page on the way the student chose (they can still switch there).
+      final pendingWays = verifyWaysForChannels(authProvider, authProvider.pendingChannels);
+      final chosen = pendingWays.contains(_pickedWay) ? _pickedWay : null;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => OtpVerificationScreen(
+            initialWay: chosen,
             channels: authProvider.pendingChannels,
             phoneNumber: _phoneController.text.trim(),
             email: _emailController.text.trim(),
@@ -213,6 +221,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildForm(AuthProvider provider) {
     final c = context.colors;
+    // Every verification way the admin allows, and the one currently selected.
+    final ways = provider.policyLoaded
+        ? verifyWaysForChannels(provider, policyChannels(provider))
+        : const <VerifyWay>[];
+    final selectedWay = ways.contains(_pickedWay)
+        ? _pickedWay
+        : (ways.isEmpty ? null : ways.first);
     return Form(
       key: _formKey,
       child: Column(
@@ -303,6 +318,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ? phoneField
                 : ParentComponent(featureKey: 'register.phone', child: phoneField);
           }),
+
+          // Verification way — everything the admin allows; the student picks one here
+          // and can still switch on the verification page.
+          AnimatedSize(
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: ways.isEmpty
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: VerifyWayPicker(
+                ways: ways,
+                selected: selectedWay,
+                provider: provider,
+                requireAll: provider.verificationMethod == 'both',
+                onChanged: (w) => setState(() => _pickedWay = w),
+              ),
+            ),
+          ),
 
           // Date of birth
           ParentComponent(featureKey: 'register.dob', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'dob'.tr),

@@ -8,6 +8,7 @@ import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/primary_button.dart';
+import '../shared/guest/guest_state.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
@@ -33,8 +34,8 @@ class _LoginScreenState extends State<LoginScreen> {
     //   _emailController.text = 'super@c.c';
     //   _passwordController.text = 'Aa@@aA2291996';
     // } else {
-      _emailController.clear();
-      _passwordController.clear();
+    _emailController.clear();
+    _passwordController.clear();
     // }
     // Which identifiers the admin allows (email / phone / either).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -215,18 +216,18 @@ class _LoginScreenState extends State<LoginScreen> {
               label: phoneOnly
                   ? 'phone'.tr
                   : both
-                      ? 'email_or_phone'.tr
-                      : 'email'.tr,
+                  ? 'email_or_phone'.tr
+                  : 'email'.tr,
               icon: phoneOnly
                   ? Icons.phone_outlined
                   : both
-                      ? Icons.person_outline
-                      : Icons.email_outlined,
+                  ? Icons.person_outline
+                  : Icons.email_outlined,
               keyboard: phoneOnly
                   ? TextInputType.phone
                   : both
-                      ? TextInputType.text
-                      : TextInputType.emailAddress,
+                  ? TextInputType.text
+                  : TextInputType.emailAddress,
             );
           }),
           const SizedBox(height: 20),
@@ -275,6 +276,29 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
             ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
+          // Browse without an account (read-only). The admin can switch it off with
+          // the feature key `guest_mode` (same disableList the tabs use).
+          if (!AppConfig.disableList.contains('guest_mode')) ...[
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => startGuest(Navigator.of(context)),
+                icon: Icon(
+                  Icons.explore_outlined,
+                  size: 18,
+                  color: context.colors.primary,
+                ),
+                label: Text(
+                  'continue_as_guest'.tr,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontWeight: FontWeight.w700,
+                    color: context.colors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
           SizedBox(height: context.height / 50),
 
           Row(
@@ -293,8 +317,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     borderRadius: BorderRadius.circular(40),
                     gradient: provider.darkMode
                         ? const LinearGradient(
-                            colors: [Color(0xff0F172A), Color(0xff1E293B)],
-                          )
+                      colors: [Color(0xff0F172A), Color(0xff1E293B)],
+                    )
                         : context.colors.accentGradient,
                   ),
                   child: Stack(

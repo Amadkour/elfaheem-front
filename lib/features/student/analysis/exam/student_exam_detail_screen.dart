@@ -1,20 +1,21 @@
-// student_exam_detail_screen.dart — Premium redesign
+// student_exam_detail_screen.dart — Premium redesign (analytics style)
 //
 // Entry gate: shows exam info, score history, then launches quiz.
-// NEW: shows "Try Again" when maxSubmissions allows more rounds.
+// Shows "Try Again" when maxSubmissions allows more rounds.
 library;
 
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'student_exam_frozen_screen.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../../../utils/widget/base_page.dart';
+import 'exam_tr.dart';
+import 'exam_ui.dart';
 import 'student_exam_api.dart';
+import 'student_exam_frozen_screen.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_quiz_screen.dart';
-import 'exam_tr.dart';
 
 class StudentExamDetailScreen extends StatefulWidget {
   final StudentExamListItem exam;
@@ -26,29 +27,9 @@ class StudentExamDetailScreen extends StatefulWidget {
       _StudentExamDetailScreenState();
 }
 
-class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
-    with SingleTickerProviderStateMixin {
+class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
   bool _starting = false;
   String? _entryError;
-  late AnimationController _heroCtrl;
-  late Animation<double> _heroAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _heroCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _heroAnim = CurvedAnimation(parent: _heroCtrl, curve: Curves.elasticOut);
-    _heroCtrl.forward();
-  }
-
-  @override
-  void dispose() {
-    _heroCtrl.dispose();
-    super.dispose();
-  }
 
   Future<void> _start() async {
     setState(() {
@@ -58,15 +39,10 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
     final prov = context.read<StudentExamProvider>();
     final ok = await prov.startExam(widget.exam);
     if (!mounted) return;
-    if (mounted) if (mounted) setState(() => _starting = false);
+    setState(() => _starting = false);
     if (!ok) {
-      if (mounted)
-        if (mounted) {
-          setState(
-            () => _entryError =
-                prov.questionsError ?? tx('exam_load_questions_failed'),
-          );
-        }
+      setState(() => _entryError =
+          prov.questionsError ?? tx('exam_load_questions_failed'));
       return;
     }
     Navigator.pushReplacement(
@@ -79,6 +55,9 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
       ),
     );
   }
+
+  String _fmtDate(DateTime d) =>
+      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
@@ -96,360 +75,224 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen>
     final isScheduled =
         exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
 
-    // Accent colour based on state
     final Color accent;
     if (isDone) {
-      accent = exam.passed == true ? c.success : Colors.redAccent;
+      accent = exam.passed == true ? c.success : kDanger;
     } else if (isScheduled) {
-      accent = Colors.orange;
+      accent = kAmber;
     } else {
       accent = c.primary;
     }
 
-    return Directionality(
-      textDirection: Directionality.of(context),
-      child: Scaffold(
-        backgroundColor: c.background,
-        body: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Gradient App Bar ─────────────────────────────────────────────
-            SliverAppBar(
-              expandedHeight: 220,
-              pinned: true,
-              backgroundColor: accent,
-              leading: IconButton(
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
-                onPressed: () => Navigator.pop(context),
+    final heroColors = isDone || isScheduled
+        ? [Color.lerp(accent, Colors.black, .35)!, accent]
+        : [kDeep, c.primary];
+
+    final remaining = exam.computedRemainingSubmissions ?? 0;
+
+    return BasePage( useWebCard: true,maxWith: 1100, child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: Column(children: [
+          // ── Hero ────────────────────────────────────────────────────────
+          ExamHero(
+            colors: heroColors,
+            child: Column(children: [
+              ExamHeroBar(
+                title: exam.courseName ?? tx('exam_exams'),
+                subtitle: tx('exam_n_questions', {'n': exam.questionCount}),
               ),
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
+              const SizedBox(height: 22),
+              if (isDone && exam.percentage != null)
+                ExamRing(
+                  value: exam.percentage!,
+                  size: 128,
+                  stroke: 10,
+                  center: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${exam.percentage!.toStringAsFixed(0)}%',
+                        style:
+                        examT(30, w: FontWeight.w800, c: Colors.white)),
+                    Text(
+                        exam.passed == true
+                            ? tx('exam_passed_mark')
+                            : tx('exam_failed_mark'),
+                        style: examT(12, c: Colors.white70)),
+                  ]),
+                )
+              else
+                Container(
+                  width: 92,
+                  height: 92,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [accent, accent.withValues(alpha: .7)],
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
-                    ),
+                    color: Colors.white.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30, width: 2),
                   ),
-                  child: SafeArea(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 8),
-                        ScaleTransition(
-                          scale: _heroAnim,
-                          child: Container(
-                            width: 78,
-                            height: 78,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .2),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: .4),
-                                width: 2,
-                              ),
-                            ),
-                            child: Icon(
-                              isDone
-                                  ? (exam.passed == true
-                                        ? Icons.emoji_events_rounded
-                                        : Icons.replay_rounded)
-                                  : isScheduled
-                                  ? Icons.schedule_rounded
-                                  : Icons.quiz_rounded,
-                              color: Colors.white,
-                              size: 38,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            exam.name,
-                            style: const TextStyle(
-                              fontFamily: 'bahji',
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (exam.courseName != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            exam.courseName!,
-                            style: const TextStyle(
-                              fontFamily: 'bahji',
-                              fontSize: 13,
-                              color: Colors.white70,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                  child: Icon(
+                    isScheduled ? Icons.schedule_rounded : Icons.quiz_rounded,
+                    color: Colors.white,
+                    size: 44,
                   ),
                 ),
-              ),
-              title: Text(
-                exam.name,
-                style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+              const SizedBox(height: 16),
+              Text(exam.name,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: examT(19, w: FontWeight.w800, c: Colors.white, h: 1.4)),
+              if (exam.description != null && exam.description!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(exam.description!,
+                    textAlign: TextAlign.center,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: examT(12.5, c: Colors.white70, h: 1.6)),
+              ],
+              const SizedBox(height: 18),
+              Row(children: [
+                HeroStat(
+                  icon: Icons.timer_outlined,
+                  color: const Color(0xFF80D8FF),
+                  value: tx('exam_n_minutes', {'n': exam.duration ?? 0}),
+                  label: tx('exam_duration'),
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+                if (exam.passingScore != null) ...[
+                  const SizedBox(width: 10),
+                  HeroStat(
+                    icon: Icons.star_rounded,
+                    color: const Color(0xFFFFD740),
+                    value: '${exam.passingScore!.toInt()}%',
+                    label: tx('exam_passing_score'),
+                  ),
+                ],
+                if (exam.totalMarks != null) ...[
+                  const SizedBox(width: 10),
+                  HeroStat(
+                    icon: Icons.grade_rounded,
+                    color: const Color(0xFF69F0AE),
+                    value: '${exam.totalMarks!.toInt()}',
+                    label: tx('exam_total_marks'),
+                  ),
+                ],
+              ]),
+            ]),
+          ),
 
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // ── Description ──────────────────────────────────────────
-                  if (exam.description != null &&
-                      exam.description!.isNotEmpty) ...[
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: .06),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: accent.withValues(alpha: .15),
-                        ),
-                      ),
-                      child: Text(
-                        exam.description!,
-                        style: TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 13,
-                          color: c.textMedium,
-                          height: 1.6,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
+          // ── Body ────────────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+            child: Column(children: [
+              if (isDone) ...[
+                _ScoreCard(exam: exam),
+                const SizedBox(height: 16),
+              ],
+              if (isScheduled && !isDone) ...[
+                _CountdownCard(target: exam.startDate!),
+                const SizedBox(height: 16),
+              ],
 
-                  // ── Info card ─────────────────────────────────────────────
-                  _InfoCard(
-                    accent: accent,
-                    children: [
-                      _InfoRow(
-                        Icons.help_outline_rounded,
-                        tx('exam_question_count'),
-                        tx('exam_n_questions', {'n': exam.questionCount}),
-                        c.primary,
+              // Schedule & attempts
+              if (exam.startDate != null ||
+                  exam.endDate != null ||
+                  (exam.maxSubmissions != null && exam.maxSubmissions! > 0))
+                ExamCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(children: [
+                    if (exam.startDate != null)
+                      ExamInfoRow(Icons.schedule_rounded,
+                          tx('exam_start_time'), _fmtDate(exam.startDate!), kAmber),
+                    if (exam.endDate != null) ...[
+                      if (exam.startDate != null) const _Gap(),
+                      ExamInfoRow(
+                        Icons.hourglass_bottom_rounded,
+                        tx('exam_deadline'),
+                        _fmtDate(exam.endDate!),
+                        exam.isDeadlineFrozen ? kDanger : kAmber,
                       ),
-                      _InfoRow(
-                        Icons.timer_outlined,
-                        tx('exam_duration'),
-                        tx('exam_n_minutes', {'n': exam.duration ?? 0}),
-                        Colors.teal,
-                      ),
-                      if (exam.passingScore != null)
-                        _InfoRow(
-                          Icons.star_outline_rounded,
-                          tx('exam_passing_score'),
-                          '${exam.passingScore!.toInt()}%',
-                          Colors.amber.shade700,
-                        ),
-                      if (exam.totalMarks != null)
-                        _InfoRow(
-                          Icons.grade_outlined,
-                          tx('exam_total_marks'),
-                          tx('exam_n_marks', {'n': exam.totalMarks!.toInt()}),
-                          Colors.purple,
-                        ),
-                      if (exam.startDate != null)
-                        _InfoRow(
-                          Icons.schedule_rounded,
-                          tx('exam_start_time'),
-                          _fmtDate(exam.startDate!),
-                          Colors.orange,
-                        ),
-                      if (exam.endDate != null)
-                        _InfoRow(
-                          Icons.hourglass_bottom_rounded,
-                          tx('exam_deadline'),
-                          _fmtDate(exam.endDate!),
-                          exam.isDeadlineFrozen
-                              ? Colors.redAccent
-                              : Colors.orange,
-                        ),
-                      // Submissions counter
-                      if (exam.maxSubmissions != null &&
-                          exam.maxSubmissions! > 0) ...[
-                        _InfoRow(
+                    ],
+                    if (exam.maxSubmissions != null &&
+                        exam.maxSubmissions! > 0) ...[
+                      if (exam.startDate != null || exam.endDate != null)
+                        const _Gap(),
+                      ExamInfoRow(
                           Icons.repeat_rounded,
                           tx('exam_used_attempts'),
                           '${exam.submissionCount} / ${exam.maxSubmissions}',
-                          Colors.purple,
-                        ),
-                        _InfoRow(
-                          Icons.replay_circle_filled_rounded,
-                          tx('exam_remaining_attempts'),
-                          '${exam.computedRemainingSubmissions ?? 0}',
-                          (exam.computedRemainingSubmissions ?? 0) > 0
-                              ? Colors.green
-                              : Colors.redAccent,
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // ── Best score card ───────────────────────────────────────
-                  if (isDone) ...[
-                    _ScoreCard(exam: exam, canRetry: canRetry),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // ── Countdown (scheduled) ─────────────────────────────────
-                  if (isScheduled && !isDone) ...[
-                    _CountdownCard(target: exam.startDate!),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // ── Error banner ──────────────────────────────────────────
-                  if (_entryError != null) ...[
-                    _ErrorBanner(message: _entryError!),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // ── Warning notice ────────────────────────────────────────
-                  if (!isDone && !isScheduled || canRetry) ...[
-                    _WarningNotice(),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // ── Action buttons ────────────────────────────────────────
-                  if (!isScheduled) ...[
-                    if (!isDone)
-                      _ActionButton(
-                        loading: _starting,
-                        label: tx('exam_start_now'),
-                        icon: Icons.play_arrow_rounded,
-                        color: c.primary,
-                        onPressed: _start,
-                      )
-                    else ...[
-                      if (canRetry)
-                        _ActionButton(
-                          loading: _starting,
-                          label: tx('exam_retry'),
-                          icon: Icons.replay_rounded,
-                          color: const Color(0xFF6C5CE7),
-                          onPressed: _start,
-                          subtitle: tx('exam_n_attempts_left', {
-                            'n': exam.computedRemainingSubmissions,
-                          }),
-                        ),
-                      const SizedBox(height: 12),
-                      _OutlineBtn(
-                        label: tx('exam_back'),
-                        onPressed: () => Navigator.pop(context),
+                          kViolet),
+                      const _Gap(),
+                      ExamInfoRow(
+                        Icons.replay_circle_filled_rounded,
+                        tx('exam_remaining_attempts'),
+                        '$remaining',
+                        remaining > 0 ? c.success : kDanger,
                       ),
                     ],
+                  ]),
+                ),
+              if (exam.startDate != null ||
+                  exam.endDate != null ||
+                  (exam.maxSubmissions != null && exam.maxSubmissions! > 0))
+                const SizedBox(height: 16),
+
+              if (_entryError != null) ...[
+                ExamBanner(
+                    icon: Icons.error_outline_rounded,
+                    color: kDanger,
+                    text: _entryError!),
+                const SizedBox(height: 16),
+              ],
+
+              if ((!isDone && !isScheduled) || canRetry) ...[
+                ExamBanner(
+                    icon: Icons.warning_amber_rounded,
+                    color: kAmber,
+                    text: tx('exam_start_warning')),
+                const SizedBox(height: 18),
+              ],
+
+              if (!isScheduled) ...[
+                if (!isDone)
+                  GradientButton(
+                    loading: _starting,
+                    loader: const SizedBox(
+                        width: 26, height: 26, child: AppLoadingIndicator()),
+                    label: tx('exam_start_now'),
+                    icon: Icons.play_arrow_rounded,
+                    onTap: _start,
+                  )
+                else ...[
+                  if (canRetry) ...[
+                    GradientButton(
+                      loading: _starting,
+                      label: tx('exam_retry'),
+                      icon: Icons.replay_rounded,
+                      color: kViolet,
+                      subtitle: tx('exam_n_attempts_left', {'n': remaining}),
+                      onTap: _start,
+                    ),
+                    const SizedBox(height: 12),
                   ],
-                ]),
-              ),
-            ),
-          ],
-        ),
+                  SoftButton(
+                    label: tx('exam_back'),
+                    onTap: () => Navigator.pop(context),
+                  ),
+                ],
+              ],
+            ]),
+          ),
+        ]),
       ),
     );
   }
-
-  String _fmtDate(DateTime d) =>
-      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-// ── Info card ─────────────────────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-  final Color accent;
-
-  const _InfoCard({required this.children, required this.accent});
+class _Gap extends StatelessWidget {
+  const _Gap();
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: context.colors.cardBg,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: context.colors.cardShadow,
-      border: Border.all(color: accent.withValues(alpha: .10)),
-    ),
-    child: Column(
-      children: children
-          .asMap()
-          .entries
-          .map(
-            (e) => Column(
-              children: [
-                e.value,
-                if (e.key < children.length - 1)
-                  Divider(height: 18, color: Colors.grey.shade100),
-              ],
-            ),
-          )
-          .toList(),
-    ),
-  );
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final Color color;
-
-  const _InfoRow(this.icon, this.label, this.value, this.color);
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Icon(icon, color: color, size: 17),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 13,
-            color: Colors.grey,
-          ),
-        ),
-      ),
-      Text(
-        value,
-        style: TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
-      ),
-    ],
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Divider(
+        height: 1, color: context.colors.divider.withValues(alpha: 0.6)),
   );
 }
 
@@ -457,343 +300,55 @@ class _InfoRow extends StatelessWidget {
 
 class _ScoreCard extends StatelessWidget {
   final StudentExamListItem exam;
-  final bool canRetry;
-
-  const _ScoreCard({required this.exam, required this.canRetry});
-
-  Color get _color => exam.passed == true ? AppTheme.success : Colors.redAccent;
+  const _ScoreCard({required this.exam});
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+    final color = exam.passed == true ? c.success : kDanger;
     final pct = exam.percentage ?? 0;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _color.withValues(alpha: .10),
-            _color.withValues(alpha: .04),
-          ],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _color.withValues(alpha: .3)),
+
+    return ExamSectionCard(
+      icon: Icons.emoji_events_rounded,
+      accent: color,
+      title: tx('exam_best_score'),
+      trailing: ExamBadge(
+        exam.passed == true ? tx('exam_passed_mark') : tx('exam_failed_mark'),
+        color,
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _color.withValues(alpha: .12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.emoji_events_rounded, size: 14, color: _color),
-                    const SizedBox(width: 4),
-                    Text(
-                      tx('exam_best_score'),
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _color,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Text(
-                exam.passed == true
-                    ? tx('exam_passed_mark')
-                    : tx('exam_failed_mark'),
-                style: TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: _color,
-                ),
-              ),
-            ],
+      child: Column(children: [
+        ExamBar(pct: pct, color: color, height: 9),
+        const SizedBox(height: 14),
+        Row(children: [
+          ExamStatBox('${pct.toStringAsFixed(1)}%', tx('exam_percentage'), color),
+          const SizedBox(width: 10),
+          ExamStatBox(
+            '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / ${exam.totalMarks?.toStringAsFixed(0) ?? 0}',
+            tx('exam_grade'),
+            c.primary,
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _ScoreStat(
-                '${pct.toStringAsFixed(1)}%',
-                tx('exam_percentage'),
-                _color,
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: _color.withValues(alpha: .2),
-              ),
-              _ScoreStat(
-                '${exam.marksObtained?.toStringAsFixed(0) ?? 0} / ${exam.totalMarks?.toStringAsFixed(0) ?? 0}',
-                tx('exam_grade'),
-                _color,
-              ),
-              Container(
-                width: 1,
-                height: 40,
-                color: _color.withValues(alpha: .2),
-              ),
-              _ScoreStat(
-                '${exam.answeredCount} / ${exam.questionCount}',
-                tx('exam_you_answered'),
-                Colors.grey,
-              ),
-            ],
-          ),
-          if (exam.submissionCount > 0) ...[
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.repeat_rounded,
-                  size: 13,
-                  color: Colors.grey.shade500,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  tx('exam_submitted_n_times', {'n': exam.submissionCount}),
-                  style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 12,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-              ],
-            ),
-          ],
+          const SizedBox(width: 10),
+          ExamStatBox('${exam.answeredCount} / ${exam.questionCount}',
+              tx('exam_you_answered'), Colors.blueGrey),
+        ]),
+        if (exam.submissionCount > 0) ...[
+          const SizedBox(height: 12),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.repeat_rounded, size: 14, color: c.textMedium),
+            const SizedBox(width: 5),
+            Text(tx('exam_submitted_n_times', {'n': exam.submissionCount}),
+                style: examT(12, c: c.textMedium)),
+          ]),
         ],
-      ),
+      ]),
     );
   }
-}
-
-class _ScoreStat extends StatelessWidget {
-  final String value, label;
-  final Color color;
-
-  const _ScoreStat(this.value, this.label, this.color);
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text(
-        value,
-        style: TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-          color: color,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 11,
-          color: Colors.grey,
-        ),
-      ),
-    ],
-  );
-}
-
-// ── Action buttons ────────────────────────────────────────────────────────────
-
-class _ActionButton extends StatelessWidget {
-  final bool loading;
-  final String label;
-  final String? subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
-
-  const _ActionButton({
-    required this.loading,
-    required this.label,
-    required this.icon,
-    required this.color,
-    required this.onPressed,
-    this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: loading ? null : onPressed,
-    child: Container(
-      height: subtitle != null ? 66 : 58,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color, color.withValues(alpha: .8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: .38),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Center(
-        child: loading
-            ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: AppLoadingIndicator(),
-              )
-            : Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(icon, color: Colors.white, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: const TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 11,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-      ),
-    ),
-  );
-}
-
-class _OutlineBtn extends StatelessWidget {
-  final String label;
-  final VoidCallback onPressed;
-
-  const _OutlineBtn({required this.label, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onPressed,
-    child: Container(
-      height: 50,
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Center(
-        child: Text(
-          label,
-          style: TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _ErrorBanner extends StatelessWidget {
-  final String message;
-
-  const _ErrorBanner({required this.message});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.red.shade50,
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.red.shade200),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            message,
-            style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 13,
-              color: Colors.red,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-class _WarningNotice extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.orange.withValues(alpha: .06),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.orange.withValues(alpha: .25)),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            tx('exam_start_warning'),
-            style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 12,
-              color: Colors.orange,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 // ── Countdown card ────────────────────────────────────────────────────────────
 
 class _CountdownCard extends StatefulWidget {
   final DateTime target;
-
   const _CountdownCard({required this.target});
 
   @override
@@ -801,7 +356,7 @@ class _CountdownCard extends StatefulWidget {
 }
 
 class _CountdownCardState extends State<_CountdownCard> {
-  late Timer _timer;
+  late final Timer _timer;
   Duration _remaining = Duration.zero;
 
   @override
@@ -814,10 +369,7 @@ class _CountdownCardState extends State<_CountdownCard> {
   void _tick() {
     if (!mounted) return;
     final r = widget.target.difference(DateTime.now());
-    if (mounted)
-      if (mounted) {
-        setState(() => _remaining = r.isNegative ? Duration.zero : r);
-      }
+    setState(() => _remaining = r.isNegative ? Duration.zero : r);
   }
 
   @override
@@ -827,104 +379,56 @@ class _CountdownCardState extends State<_CountdownCard> {
   }
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(20),
-    decoration: BoxDecoration(
-      color: Colors.orange.withValues(alpha: .06),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.orange.withValues(alpha: .25)),
-    ),
-    child: Column(
-      children: [
-        Text(
-          tx('exam_starts_in'),
-          style: const TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 13,
-            color: Colors.orange,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _TimeBox(
-              _remaining.inHours.toString().padLeft(2, '0'),
-              tx('exam_hours'),
-            ),
-            const _Colon(),
-            _TimeBox(
-              (_remaining.inMinutes % 60).toString().padLeft(2, '0'),
-              tx('exam_minutes'),
-            ),
-            const _Colon(),
-            _TimeBox(
-              (_remaining.inSeconds % 60).toString().padLeft(2, '0'),
-              tx('exam_seconds'),
-            ),
-          ],
-        ),
-      ],
-    ),
+  Widget build(BuildContext context) => ExamSectionCard(
+    icon: Icons.hourglass_top_rounded,
+    accent: kAmber,
+    title: tx('exam_starts_in'),
+    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      _TimeBox(_remaining.inHours.toString().padLeft(2, '0'),
+          tx('exam_hours')),
+      const _Colon(),
+      _TimeBox((_remaining.inMinutes % 60).toString().padLeft(2, '0'),
+          tx('exam_minutes')),
+      const _Colon(),
+      _TimeBox((_remaining.inSeconds % 60).toString().padLeft(2, '0'),
+          tx('exam_seconds')),
+    ]),
   );
 }
 
 class _TimeBox extends StatelessWidget {
   final String value, label;
-
   const _TimeBox(this.value, this.label);
 
   @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: .10),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.orange.withValues(alpha: .2)),
+  Widget build(BuildContext context) => Column(children: [
+    Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [kAmber.withValues(alpha: 0.22), kAmber.withValues(alpha: 0.08)],
         ),
-        child: Center(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-              color: Colors.orange,
-            ),
-          ),
-        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kAmber.withValues(alpha: 0.25)),
       ),
-      const SizedBox(height: 5),
-      Text(
-        label,
-        style: const TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 11,
-          color: Colors.grey,
-        ),
+      child: Center(
+        child: Text(value, style: examT(25, w: FontWeight.w900, c: kAmber)),
       ),
-    ],
-  );
+    ),
+    const SizedBox(height: 6),
+    Text(label, style: examT(11, c: context.colors.textMedium)),
+  ]);
 }
 
 class _Colon extends StatelessWidget {
   const _Colon();
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.symmetric(horizontal: 8),
-    child: Text(
-      ':',
-      style: TextStyle(
-        fontSize: 26,
-        fontWeight: FontWeight.w900,
-        color: Colors.orange,
-      ),
-    ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 22),
+    child: Text(':', style: examT(26, w: FontWeight.w900, c: kAmber)),
   );
 }

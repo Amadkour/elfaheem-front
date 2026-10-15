@@ -6,6 +6,7 @@ import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import '../../../../utils/helpers.dart';
+import '../../../shared/guest/guest_state.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
 import 'session_exam_gate.dart';
@@ -137,7 +138,10 @@ class CourseDetailProvider extends BaseProvider {
     try {
       final result = await run(
             () => _api.get(
-          '/api/v1/courses/$courseId/sessions',
+          // Guest: the public outline (titles / order only, never any media URL).
+          GuestState.active
+              ? '/api/v1/courses/$courseId/sessions/public'
+              : '/api/v1/courses/$courseId/sessions',
           queryParams: {'skip': _sessionsSkip, 'limit': _sessionsPageSize},
         ),
       );
@@ -197,7 +201,9 @@ class CourseDetailProvider extends BaseProvider {
           ? sessions.length
           : _sessionsPageSize;
       final result = await _api.get(
-        '/api/v1/courses/${course.id}/sessions',
+        GuestState.active
+            ? '/api/v1/courses/${course.id}/sessions/public'
+            : '/api/v1/courses/${course.id}/sessions',
         queryParams: {'skip': 0, 'limit': limit},
       );
       if (result is Map && result['items'] is List) {
@@ -330,6 +336,7 @@ class CourseDetailProvider extends BaseProvider {
   }
 
   Future<void> toggleFavorite() async {
+    if (GuestState.active) return; // the UI already showed the login sheet
     if (ViewAsState.active) return; // read-only: the server would refuse it and the heart would flicker back
     final was = course.isFavorite;
     course = course.copyWith(isFavorite: !was);
@@ -344,6 +351,7 @@ class CourseDetailProvider extends BaseProvider {
   }
 
   Future<void> enroll(CourseModel c) async {
+    if (GuestState.active) return;
     if (ViewAsState.active || c.isEnrolled) return; // an admin viewing a student must never enrol them
     notifyListeners();
     final r = await run(() => _api.post('/api/v1/courses/${course.id}/enroll'));

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../auth/auth_provider.dart';
+import '../../../shared/guest/guest_state.dart';
 import '../../dashboard/dashboard_screen.dart';
 
 class TopBar extends StatelessWidget {
@@ -14,7 +15,9 @@ class TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthProvider provider = context.watch<AuthProvider>();
     final unread = context.watch<NotificationsProvider>().unreadCount;
-    final name = provider.currentUser?.name ?? 'sir'.tr;
+    final name = GuestState.active
+        ? 'guest_name'.tr
+        : (provider.currentUser?.name ?? 'sir'.tr);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
@@ -23,10 +26,10 @@ class TopBar extends StatelessWidget {
         children: [
           // Gradient avatar with glow
           if(provider.currentUser!=null)
-          UserChipButton(
-            user: provider.currentUser!,
-            showLabel: false,
-          ),
+            UserChipButton(
+              user: provider.currentUser!,
+              showLabel: false,
+            ),
           // Greeting + name
           SizedBox(width:5),
           Expanded(
@@ -52,7 +55,8 @@ class TopBar extends StatelessWidget {
             ),
           ),
 
-          NotificationIcon(unreadCount: unread ),
+          // A guest has no inbox.
+          if (!GuestState.active) NotificationIcon(unreadCount: unread),
 
         ],
       ),

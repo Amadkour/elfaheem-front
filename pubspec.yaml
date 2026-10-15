@@ -82,6 +82,7 @@ dependencies:
   http: any
   device_info_plus: any
   uuid: any
+  qr_flutter: ^4.1.0
 dependency_overrides:
   flutter_webrtc:
     git:

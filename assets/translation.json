@@ -8644,5 +8644,1393 @@
   "exam_answers_count": {
     "en": "{answered} / {total} answers",
     "ar": "{answered} / {total} إجابة"
+  },
+  "phone_link_title": {
+    "en": "Verify your phone number",
+    "ar": "تأكيد رقم هاتفك"
+  },
+  "phone_link_hint": {
+    "en": "Tap a button below and send us a message from your phone number. We detect it automatically.",
+    "ar": "اضغط أحد الأزرار بالأسفل وأرسل لنا رسالة من رقم هاتفك. سنتعرف عليها تلقائياً."
+  },
+  "phone_link_telegram": {
+    "en": "Continue with Telegram",
+    "ar": "المتابعة عبر تيليجرام"
+  },
+  "phone_link_whatsapp": {
+    "en": "Continue with WhatsApp",
+    "ar": "المتابعة عبر واتساب"
+  },
+  "phone_link_telegram_short": {
+    "en": "Telegram",
+    "ar": "تيليجرام"
+  },
+  "phone_link_whatsapp_short": {
+    "en": "WhatsApp",
+    "ar": "واتساب"
+  },
+  "phone_link_or": {
+    "en": "or",
+    "ar": "أو"
+  },
+  "phone_link_tg_steps": {
+    "en": "In Telegram press Start, then “Share my number”.",
+    "ar": "في تيليجرام اضغط Start ثم «مشاركة رقمي»."
+  },
+  "phone_link_wa_steps": {
+    "en": "In WhatsApp just press Send on the ready-made message.",
+    "ar": "في واتساب فقط اضغط إرسال على الرسالة الجاهزة."
+  },
+  "phone_link_same_number": {
+    "en": "Use the same phone number you registered with.",
+    "ar": "استخدم نفس رقم الهاتف الذي سجلت به."
+  },
+  "phone_link_waiting": {
+    "en": "Waiting for your confirmation…",
+    "ar": "في انتظار تأكيدك…"
+  },
+  "phone_link_expired": {
+    "en": "The link expired. Get a new one.",
+    "ar": "انتهت صلاحية الرابط. احصل على رابط جديد."
+  },
+  "phone_link_new": {
+    "en": "Get a new link",
+    "ar": "رابط جديد"
+  },
+  "could_not_open_link": {
+    "en": "Could not open the app",
+    "ar": "تعذر فتح التطبيق"
+  },
+  "phone_link_open_on_phone": {
+    "en": "or continue on your phone",
+    "ar": "أو أكمل من هاتفك"
+  },
+  "phone_link_scan": {
+    "en": "Scan this code with your phone camera. It opens Telegram or WhatsApp on your phone, and this page continues by itself.",
+    "ar": "امسح الكود بكاميرا هاتفك ليفتح تيليجرام أو واتساب على هاتفك، وستكمل هذه الصفحة تلقائياً."
+  },
+  "phone_link_copy": {
+    "en": "Copy link",
+    "ar": "نسخ الرابط"
+  },
+  "phone_link_copied": {
+    "en": "Link copied",
+    "ar": "تم نسخ الرابط"
+  },
+  "verify_way_title": {
+    "en": "How would you like to verify?",
+    "ar": "كيف تحب تأكيد حسابك؟"
+  },
+  "verify_way_subtitle": {
+    "en": "Choose what is easiest for you. You can switch on the next screen.",
+    "ar": "اختر الطريقة الأسهل لك. تستطيع تغييرها في الشاشة التالية."
+  },
+  "verify_way_single_subtitle": {
+    "en": "Your account will be verified this way.",
+    "ar": "سيتم تأكيد حسابك بهذه الطريقة."
+  },
+  "verify_way_both_hint": {
+    "en": "Both e-mail and phone are required. Choose which one to start with.",
+    "ar": "التأكيد مطلوب بالبريد والهاتف معاً. اختر بأيهما تبدأ."
+  },
+  "verify_way_email": {
+    "en": "E-mail",
+    "ar": "البريد"
+  },
+  "verify_way_email_sub": {
+    "en": "We send a 4-digit code to your inbox.",
+    "ar": "نرسل كوداً من 4 أرقام إلى بريدك الإلكتروني."
+  },
+  "verify_way_telegram": {
+    "en": "Telegram",
+    "ar": "تيليجرام"
+  },
+  "verify_way_telegram_sub": {
+    "en": "Tap once and share your number. No code to type.",
+    "ar": "اضغط مرة واحدة وشارك رقمك. بدون كتابة كود."
+  },
+  "verify_way_whatsapp": {
+    "en": "WhatsApp",
+    "ar": "واتساب"
+  },
+  "verify_way_whatsapp_link_sub": {
+    "en": "Press Send on a ready message. No code to type.",
+    "ar": "اضغط إرسال على رسالة جاهزة. بدون كتابة كود."
+  },
+  "verify_way_whatsapp_code_sub": {
+    "en": "We send a 4-digit code to your WhatsApp.",
+    "ar": "نرسل كوداً من 4 أرقام على واتساب."
+  },
+  "verify_way_sms": {
+    "en": "SMS",
+    "ar": "رسالة"
+  },
+  "verify_way_sms_sub": {
+    "en": "We send a 4-digit code by text message.",
+    "ar": "نرسل كوداً من 4 أرقام برسالة نصية."
+  },
+  "verify_way_badge_fast": {
+    "en": "Fastest",
+    "ar": "الأسرع"
+  },
+  "verify_way_switch_title": {
+    "en": "Verify with",
+    "ar": "التأكيد عبر"
+  },
+  "exam_cannot_publish_empty": {
+    "en": "You can't publish an exam without questions",
+    "ar": "لا يمكن نشر اختبار بدون أسئلة"
+  },
+  "guest_banner": {
+    "en": "You're browsing as a guest",
+    "ar": "أنت تتصفح كضيف"
+  },
+  "continue_as_guest": {
+    "en": "Continue as guest",
+    "ar": "المتابعة كضيف"
+  },
+  "guest_login_required": {
+    "en": "Log in to continue",
+    "ar": "سجّل الدخول للمتابعة"
+  },
+  "guest_keep_browsing": {
+    "en": "Keep browsing",
+    "ar": "متابعة التصفح"
+  },
+  "guest_reason_generic": {
+    "en": "This action needs an account. Log in or create one in seconds.",
+    "ar": "هذا الإجراء يحتاج إلى حساب. سجّل الدخول أو أنشئ حسابًا في ثوانٍ."
+  },
+  "guest_reason_enroll": {
+    "en": "Log in to enroll in this course.",
+    "ar": "سجّل الدخول للاشتراك في هذه الدورة."
+  },
+  "guest_reason_favorite": {
+    "en": "Log in to save courses to your favorites.",
+    "ar": "سجّل الدخول لإضافة الدورات إلى المفضلة."
+  },
+  "guest_reason_support": {
+    "en": "Log in to contact support about this course.",
+    "ar": "سجّل الدخول للتواصل مع الدعم بخصوص هذه الدورة."
+  },
+  "guest_locked_title": {
+    "en": "Available after you log in",
+    "ar": "متاح بعد تسجيل الدخول"
+  },
+  "guest_locked_my_courses": {
+    "en": "Your enrolled courses and progress appear here.",
+    "ar": "ستظهر هنا دوراتك المشترك بها وتقدمك."
+  },
+  "guest_locked_schedule": {
+    "en": "Your weekly sessions and reminders appear here.",
+    "ar": "ستظهر هنا حصصك الأسبوعية وتنبيهاتك."
+  },
+  "guest_locked_analysis": {
+    "en": "Your attendance and exam results appear here.",
+    "ar": "ستظهر هنا نتائج حضورك واختباراتك."
+  },
+  "guest_locked_profile": {
+    "en": "Manage your account, theme and settings here.",
+    "ar": "أدر حسابك والمظهر والإعدادات من هنا."
+  },
+  "guest_promo_title": {
+    "en": "Join Al-Faheem",
+    "ar": "انضم إلى الفهيم"
+  },
+  "guest_promo_sub": {
+    "en": "Create a free account to enroll, track progress and join live sessions.",
+    "ar": "أنشئ حسابًا مجانيًا للاشتراك وتتبّع تقدمك وحضور الحصص المباشرة."
+  },
+  "guest_name": {
+    "en": "Guest",
+    "ar": "ضيف"
+  },
+  "guest_reason_rate": {
+    "en": "Log in to rate this course.",
+    "ar": "سجّل الدخول لتقييم هذه الدورة."
+  },
+  "guest_reason_private": {
+    "en": "This course is private. Log in to enter its access code.",
+    "ar": "هذه الدورة خاصة. سجّل الدخول لإدخال رمز الوصول."
+  },
+  "pl_retry": {
+    "en": "Retry",
+    "ar": "إعادة المحاولة"
+  },
+  "pl_cancel": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
+  "pl_confirm": {
+    "en": "Confirm",
+    "ar": "تأكيد"
+  },
+  "pl_loading": {
+    "en": "Loading…",
+    "ar": "جارٍ التحميل…"
+  },
+  "pl_min": {
+    "en": "min",
+    "ar": "د"
+  },
+  "pl_h": {
+    "en": "h",
+    "ar": "س"
+  },
+  "pl_save": {
+    "en": "Save",
+    "ar": "حفظ"
+  },
+  "pl_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "pl_add": {
+    "en": "Add",
+    "ar": "إضافة"
+  },
+  "pl_none": {
+    "en": "None",
+    "ar": "لا يوجد"
+  },
+  "pl_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "pl_required": {
+    "en": "Required",
+    "ar": "إجباري"
+  },
+  "pl_optional": {
+    "en": "Optional",
+    "ar": "اختياري"
+  },
+  "pl_status_pending": {
+    "en": "Pending",
+    "ar": "قيد المراجعة"
+  },
+  "pl_status_approved": {
+    "en": "Approved",
+    "ar": "تمت الموافقة"
+  },
+  "pl_status_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوض"
+  },
+  "pl_status_failed": {
+    "en": "Failed",
+    "ar": "فشل التحقق"
+  },
+  "pl_status_cancelled": {
+    "en": "Cancelled",
+    "ar": "ملغي"
+  },
+  "pl_mode_easy": {
+    "en": "Easy",
+    "ar": "سهل"
+  },
+  "pl_mode_advanced": {
+    "en": "Advanced",
+    "ar": "متقدم"
+  },
+  "pl_mode_external": {
+    "en": "External API",
+    "ar": "خدمة خارجية"
+  },
+  "pl_mode_desc_easy": {
+    "en": "A valid code links the parent automatically.",
+    "ar": "الكود الصحيح يربط ولي الأمر تلقائياً."
+  },
+  "pl_mode_desc_advanced": {
+    "en": "Code + data + documents; stays Pending until an admin approves.",
+    "ar": "الكود + البيانات + المستندات، وتبقى الحالة قيد المراجعة حتى موافقة الأدمن."
+  },
+  "pl_mode_desc_external": {
+    "en": "Code + data verified by an external service; linked only if it confirms.",
+    "ar": "الكود + البيانات يتم التحقق منها عبر خدمة خارجية ولا يتم الربط إلا إذا أكدتها."
+  },
+  "pl_mode_hint_easy": {
+    "en": "Enter the code your child created in the app.",
+    "ar": "أدخل الكود الذي أنشأه ابنك من التطبيق."
+  },
+  "pl_mode_hint_advanced": {
+    "en": "Enter the code, fill the data and attach the required documents. An admin will review your request.",
+    "ar": "أدخل الكود واملأ البيانات وأرفق المستندات المطلوبة، وسيراجع الأدمن طلبك."
+  },
+  "pl_mode_hint_external": {
+    "en": "Enter the code and the data below. The link is made only after the verification succeeds.",
+    "ar": "أدخل الكود والبيانات التالية، ولا يتم الربط إلا بعد نجاح التحقق."
+  },
+  "pl_link_code_title": {
+    "en": "Parent link code",
+    "ar": "كود ربط ولي الأمر"
+  },
+  "pl_link_code_hint": {
+    "en": "Create a temporary code and give it to your parent. It works once and expires soon.",
+    "ar": "أنشئ كوداً مؤقتاً وأعطه لولي أمرك. يعمل مرة واحدة فقط وينتهي قريباً."
+  },
+  "pl_expires_in": {
+    "en": "Expires in",
+    "ar": "ينتهي خلال"
+  },
+  "pl_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "pl_copied": {
+    "en": "Code copied",
+    "ar": "تم نسخ الكود"
+  },
+  "pl_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "pl_share_text": {
+    "en": "My ElFaheem parent link code:",
+    "ar": "كود ربط ولي الأمر في الفهيم:"
+  },
+  "pl_code_hidden": {
+    "en": "A code is active but is shown only once. Create a new one to see it.",
+    "ar": "يوجد كود فعّال لكنه يظهر مرة واحدة فقط. أنشئ كوداً جديداً لعرضه."
+  },
+  "pl_no_active_code": {
+    "en": "No active code.",
+    "ar": "لا يوجد كود فعّال."
+  },
+  "pl_new_code": {
+    "en": "New code",
+    "ar": "كود جديد"
+  },
+  "pl_generate_code": {
+    "en": "Create code",
+    "ar": "إنشاء كود"
+  },
+  "pl_code_once": {
+    "en": "A new code cancels the previous one.",
+    "ar": "الكود الجديد يلغي الكود السابق."
+  },
+  "pl_linked_parents": {
+    "en": "Linked parents",
+    "ar": "أولياء الأمور المرتبطون"
+  },
+  "pl_no_parents": {
+    "en": "No parent is linked yet.",
+    "ar": "لا يوجد ولي أمر مرتبط حتى الآن."
+  },
+  "pl_unlink": {
+    "en": "Unlink",
+    "ar": "إلغاء الربط"
+  },
+  "pl_tab_children": {
+    "en": "Children",
+    "ar": "الأبناء"
+  },
+  "pl_tab_reports": {
+    "en": "Reports",
+    "ar": "التقارير"
+  },
+  "pl_tab_link": {
+    "en": "Link",
+    "ar": "الربط"
+  },
+  "pl_tab_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "pl_parents_only": {
+    "en": "This area is for parent accounts only.",
+    "ar": "هذه الصفحة لحسابات أولياء الأمور فقط."
+  },
+  "pl_no_children": {
+    "en": "No linked children yet.",
+    "ar": "لا يوجد أبناء مرتبطون بعد."
+  },
+  "pl_link_child": {
+    "en": "Link a child",
+    "ar": "ربط ابن"
+  },
+  "pl_linked_at": {
+    "en": "Linked",
+    "ar": "تاريخ الربط"
+  },
+  "pl_student_code": {
+    "en": "Student code",
+    "ar": "كود الطالب"
+  },
+  "pl_enter_code": {
+    "en": "Enter the student's code",
+    "ar": "أدخل كود الطالب"
+  },
+  "pl_field_required": {
+    "en": "Required field",
+    "ar": "حقل إجباري"
+  },
+  "pl_doc_required": {
+    "en": "Required document",
+    "ar": "مستند إجباري"
+  },
+  "pl_documents": {
+    "en": "Documents",
+    "ar": "المستندات"
+  },
+  "pl_doc_hint": {
+    "en": "JPG / PNG / WEBP / PDF, max 8 MB",
+    "ar": "JPG / PNG / WEBP / PDF بحد أقصى 8 ميجا"
+  },
+  "pl_choose": {
+    "en": "Choose",
+    "ar": "اختيار"
+  },
+  "pl_change": {
+    "en": "Change",
+    "ar": "تغيير"
+  },
+  "pl_file_too_big": {
+    "en": "File is larger than 8 MB",
+    "ar": "حجم الملف أكبر من 8 ميجا"
+  },
+  "pl_submit_request": {
+    "en": "Submit request",
+    "ar": "إرسال الطلب"
+  },
+  "pl_link_now": {
+    "en": "Link now",
+    "ar": "ربط الآن"
+  },
+  "pl_linked_ok": {
+    "en": "Linked successfully",
+    "ar": "تم الربط بنجاح"
+  },
+  "pl_submitted_pending": {
+    "en": "Request sent — waiting for admin review",
+    "ar": "تم إرسال الطلب وبانتظار مراجعة الأدمن"
+  },
+  "pl_my_requests": {
+    "en": "My requests",
+    "ar": "طلباتي"
+  },
+  "pl_no_requests": {
+    "en": "No requests",
+    "ar": "لا توجد طلبات"
+  },
+  "pl_admin_note": {
+    "en": "Note",
+    "ar": "ملاحظة"
+  },
+  "pl_cancel_request": {
+    "en": "Cancel request",
+    "ar": "إلغاء الطلب"
+  },
+  "pl_opt_father": {
+    "en": "Father",
+    "ar": "الأب"
+  },
+  "pl_opt_mother": {
+    "en": "Mother",
+    "ar": "الأم"
+  },
+  "pl_opt_guardian": {
+    "en": "Legal guardian",
+    "ar": "وصي قانوني"
+  },
+  "pl_period_daily": {
+    "en": "Daily",
+    "ar": "يومي"
+  },
+  "pl_period_weekly": {
+    "en": "Weekly",
+    "ar": "أسبوعي"
+  },
+  "pl_period_monthly": {
+    "en": "Monthly",
+    "ar": "شهري"
+  },
+  "pl_no_activity": {
+    "en": "No activity in this period.",
+    "ar": "لا يوجد نشاط في هذه الفترة."
+  },
+  "pl_s_sessions": {
+    "en": "Sessions attended",
+    "ar": "الحصص المحضورة"
+  },
+  "pl_s_time": {
+    "en": "Study time",
+    "ar": "وقت الدراسة"
+  },
+  "pl_s_materials": {
+    "en": "Materials completed",
+    "ar": "مواد مكتملة"
+  },
+  "pl_s_exams": {
+    "en": "Exams · average",
+    "ar": "الاختبارات · المتوسط"
+  },
+  "pl_s_assignments": {
+    "en": "Assignments",
+    "ar": "الواجبات"
+  },
+  "pl_s_active_days": {
+    "en": "Active days",
+    "ar": "أيام النشاط"
+  },
+  "pl_s_certificates": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "pl_s_weak": {
+    "en": "Questions to review",
+    "ar": "أسئلة تحتاج مراجعة"
+  },
+  "pl_vs_previous": {
+    "en": "▲▼ compared with the previous period",
+    "ar": "▲▼ مقارنة بالفترة السابقة"
+  },
+  "pl_activity_by_day": {
+    "en": "Activity by day",
+    "ar": "النشاط حسب اليوم"
+  },
+  "pl_courses_progress": {
+    "en": "Course progress",
+    "ar": "تقدم الكورسات"
+  },
+  "pl_exams_list": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "pl_attendance_list": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "pl_assignments_list": {
+    "en": "Assignments",
+    "ar": "الواجبات"
+  },
+  "pl_settings_title": {
+    "en": "Parent link settings",
+    "ar": "إعدادات ربط ولي الأمر"
+  },
+  "pl_not_retroactive": {
+    "en": "Changes apply to new requests only. Requests already submitted keep the rules they were made under.",
+    "ar": "التغييرات تسري على الطلبات الجديدة فقط، والطلبات السابقة تحتفظ بالقواعد التي قُدّمت بها."
+  },
+  "pl_active_mode": {
+    "en": "Active mode",
+    "ar": "الوضع النشط"
+  },
+  "pl_code_ttl": {
+    "en": "Code validity (minutes)",
+    "ar": "مدة صلاحية الكود (بالدقائق)"
+  },
+  "pl_code_ttl_hint": {
+    "en": "1 – 1440",
+    "ar": "من 1 إلى 1440"
+  },
+  "pl_fields": {
+    "en": "Fields",
+    "ar": "الحقول"
+  },
+  "pl_edit_field": {
+    "en": "Field",
+    "ar": "حقل"
+  },
+  "pl_edit_document": {
+    "en": "Document",
+    "ar": "مستند"
+  },
+  "pl_key": {
+    "en": "Key",
+    "ar": "المعرّف"
+  },
+  "pl_label_ar": {
+    "en": "Arabic label",
+    "ar": "الاسم بالعربية"
+  },
+  "pl_label_en": {
+    "en": "English label",
+    "ar": "الاسم بالإنجليزية"
+  },
+  "pl_type": {
+    "en": "Type",
+    "ar": "النوع"
+  },
+  "pl_type_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "pl_type_number": {
+    "en": "Number",
+    "ar": "رقم"
+  },
+  "pl_type_phone": {
+    "en": "Phone",
+    "ar": "هاتف"
+  },
+  "pl_type_date": {
+    "en": "Date",
+    "ar": "تاريخ"
+  },
+  "pl_type_select": {
+    "en": "Choice",
+    "ar": "اختيار"
+  },
+  "pl_options": {
+    "en": "Options",
+    "ar": "الخيارات"
+  },
+  "pl_provider_name": {
+    "en": "Service name",
+    "ar": "اسم الخدمة"
+  },
+  "pl_api_url": {
+    "en": "API URL",
+    "ar": "رابط الـ API"
+  },
+  "pl_api_url_hint": {
+    "en": "https only; must be a public address",
+    "ar": "https فقط ويجب أن يكون عنواناً عاماً"
+  },
+  "pl_method": {
+    "en": "Method",
+    "ar": "الطريقة"
+  },
+  "pl_auth": {
+    "en": "Authentication",
+    "ar": "المصادقة"
+  },
+  "pl_auth_none": {
+    "en": "None",
+    "ar": "بدون"
+  },
+  "pl_auth_bearer": {
+    "en": "Bearer token",
+    "ar": "Bearer token"
+  },
+  "pl_auth_header": {
+    "en": "Header",
+    "ar": "Header مخصص"
+  },
+  "pl_api_secret": {
+    "en": "API secret",
+    "ar": "مفتاح الـ API"
+  },
+  "pl_secret_saved": {
+    "en": "A secret is saved. Leave empty to keep it.",
+    "ar": "يوجد مفتاح محفوظ. اتركه فارغاً للإبقاء عليه."
+  },
+  "pl_secret_hint": {
+    "en": "Stored encrypted; never shown again.",
+    "ar": "يُحفظ مشفراً ولا يظهر مرة أخرى."
+  },
+  "pl_clear_secret": {
+    "en": "Remove the saved secret",
+    "ar": "حذف المفتاح المحفوظ"
+  },
+  "pl_timeout": {
+    "en": "Timeout (seconds)",
+    "ar": "المهلة (بالثواني)"
+  },
+  "pl_body_template": {
+    "en": "Request body (JSON)",
+    "ar": "محتوى الطلب (JSON)"
+  },
+  "pl_template_hint": {
+    "en": "Placeholders: {{code}} {{student_id}} {{student_name}} {{student_email}} {{student_phone}} {{parent_id}} {{parent_name}} {{parent_email}} {{parent_phone}} {{field.key}}",
+    "ar": "المتغيرات: {{code}} {{student_id}} {{student_name}} {{student_email}} {{student_phone}} {{parent_id}} {{parent_name}} {{parent_email}} {{parent_phone}} {{field.key}}"
+  },
+  "pl_success_path": {
+    "en": "Success path in the response",
+    "ar": "مسار النجاح في الرد"
+  },
+  "pl_success_path_hint": {
+    "en": "e.g. data.verified — the link is made only when this value equals the expected one; an HTTP 200 alone is not enough.",
+    "ar": "مثال: data.verified — لا يتم الربط إلا إذا تساوت هذه القيمة مع المتوقعة، ونجاح الاتصال (200) وحده لا يكفي."
+  },
+  "pl_success_value": {
+    "en": "Expected value",
+    "ar": "القيمة المتوقعة"
+  },
+  "pl_bad_json": {
+    "en": "The request body is not valid JSON",
+    "ar": "محتوى الطلب ليس JSON صحيحاً"
+  },
+  "pl_requests_title": {
+    "en": "Parent link requests",
+    "ar": "طلبات ربط أولياء الأمور"
+  },
+  "pl_search_hint": {
+    "en": "Search parent or student",
+    "ar": "ابحث باسم ولي الأمر أو الطالب"
+  },
+  "pl_request_details": {
+    "en": "Request details",
+    "ar": "تفاصيل الطلب"
+  },
+  "pl_parent": {
+    "en": "Parent",
+    "ar": "ولي الأمر"
+  },
+  "pl_student": {
+    "en": "Student",
+    "ar": "الطالب"
+  },
+  "pl_name": {
+    "en": "Name",
+    "ar": "الاسم"
+  },
+  "pl_phone": {
+    "en": "Phone",
+    "ar": "الهاتف"
+  },
+  "pl_answers": {
+    "en": "Submitted data",
+    "ar": "البيانات المُدخلة"
+  },
+  "pl_verification": {
+    "en": "External verification",
+    "ar": "التحقق الخارجي"
+  },
+  "pl_verified": {
+    "en": "Verified",
+    "ar": "تم التحقق"
+  },
+  "pl_reason": {
+    "en": "Reason",
+    "ar": "السبب"
+  },
+  "pl_decision": {
+    "en": "Decision",
+    "ar": "القرار"
+  },
+  "pl_by": {
+    "en": "By",
+    "ar": "بواسطة"
+  },
+  "pl_at": {
+    "en": "At",
+    "ar": "في"
+  },
+  "pl_approve": {
+    "en": "Approve",
+    "ar": "موافقة"
+  },
+  "pl_reject": {
+    "en": "Reject",
+    "ar": "رفض"
+  },
+  "pl_note_optional": {
+    "en": "Note (optional)",
+    "ar": "ملاحظة (اختيارية)"
+  },
+  "pl_reject_reason": {
+    "en": "Reason for rejection",
+    "ar": "سبب الرفض"
+  },
+  "pl_decision_saved": {
+    "en": "Decision recorded",
+    "ar": "تم تسجيل القرار"
+  },
+  "pl_file_load_failed": {
+    "en": "Could not load the file",
+    "ar": "تعذر تحميل الملف"
+  },
+  "parent": {
+    "en": "Parent",
+    "ar": "ولي أمر"
+  },
+  "pl_tier_excellent": {
+    "en": "Excellent",
+    "ar": "ممتاز"
+  },
+  "pl_tier_good": {
+    "en": "Good",
+    "ar": "جيد"
+  },
+  "pl_tier_fair": {
+    "en": "Needs a push",
+    "ar": "يحتاج دفعة"
+  },
+  "pl_tier_attention": {
+    "en": "Needs attention",
+    "ar": "يحتاج اهتمام"
+  },
+  "pl_tier_inactive": {
+    "en": "No activity",
+    "ar": "لا يوجد نشاط"
+  },
+  "pl_tier_desc_excellent": {
+    "en": "Attends, studies regularly and performs very well. Keep encouraging this routine.",
+    "ar": "منتظم في الحضور والمذاكرة ومستواه ممتاز. شجّعه على الاستمرار."
+  },
+  "pl_tier_desc_good": {
+    "en": "A good routine with some room to improve. See what stands out below.",
+    "ar": "روتين جيد مع مجال للتحسن. شاهد النقاط البارزة بالأسفل."
+  },
+  "pl_tier_desc_fair": {
+    "en": "Some activity, but attendance, regularity or results are below the target.",
+    "ar": "هناك نشاط لكن الحضور أو الانتظام أو النتائج أقل من المطلوب."
+  },
+  "pl_tier_desc_attention": {
+    "en": "Low engagement in this period. A talk with your child may help.",
+    "ar": "المشاركة ضعيفة في هذه الفترة. قد يفيد الحديث مع ابنك."
+  },
+  "pl_tier_desc_inactive": {
+    "en": "Nothing was recorded in this period.",
+    "ar": "لم يتم تسجيل أي نشاط في هذه الفترة."
+  },
+  "pl_score_how": {
+    "en": "How is this score calculated?",
+    "ar": "كيف يُحسب هذا التقييم؟"
+  },
+  "pl_score_explain": {
+    "en": "The score (0–100) combines four things. If one of them has no data in this period (for example no exams), it is left out and the rest are re-weighted.",
+    "ar": "التقييم (من 0 إلى 100) يجمع أربعة عوامل. لو أحدها بلا بيانات في الفترة (مثل عدم وجود اختبارات) يُستبعد ويُعاد توزيع الأوزان."
+  },
+  "pl_score_note": {
+    "en": "It is a guide to engagement, not an official grade.",
+    "ar": "هو مؤشر للمشاركة وليس درجة رسمية."
+  },
+  "pl_comp_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "pl_comp_consistency": {
+    "en": "Regularity",
+    "ar": "الانتظام"
+  },
+  "pl_comp_performance": {
+    "en": "Exam results",
+    "ar": "نتائج الاختبارات"
+  },
+  "pl_comp_homework": {
+    "en": "Homework",
+    "ar": "الواجبات"
+  },
+  "pl_comp_desc_attendance": {
+    "en": "share of scheduled sessions he/she attended",
+    "ar": "نسبة الحصص المجدولة التي حضرها"
+  },
+  "pl_comp_desc_consistency": {
+    "en": "how many days he/she studied compared with a healthy target",
+    "ar": "عدد أيام المذاكرة مقارنة بالهدف الصحي"
+  },
+  "pl_comp_desc_performance": {
+    "en": "average percentage in exams",
+    "ar": "متوسط النسبة المئوية في الاختبارات"
+  },
+  "pl_comp_desc_homework": {
+    "en": "assignments handed in before the deadline",
+    "ar": "الواجبات المسلّمة قبل الموعد النهائي"
+  },
+  "pl_sec_insights": {
+    "en": "What stands out",
+    "ar": "أهم الملاحظات"
+  },
+  "pl_sec_insights_hint": {
+    "en": "Plain-language findings about behaviour — green is good, orange needs attention.",
+    "ar": "ملاحظات مبسطة عن سلوكه الدراسي — الأخضر جيد والبرتقالي يحتاج انتباه."
+  },
+  "pl_sec_trend": {
+    "en": "Progress over time",
+    "ar": "التطور عبر الوقت"
+  },
+  "pl_sec_trend_hint_day": {
+    "en": "The last 7 days. The dark bar is the selected day.",
+    "ar": "آخر 7 أيام. العمود الداكن هو اليوم المحدد."
+  },
+  "pl_sec_trend_hint_week": {
+    "en": "The last 6 weeks. The dark bar is the selected week.",
+    "ar": "آخر 6 أسابيع. العمود الداكن هو الأسبوع المحدد."
+  },
+  "pl_sec_trend_hint_month": {
+    "en": "The last 6 months. The dark bar is the selected month.",
+    "ar": "آخر 6 شهور. العمود الداكن هو الشهر المحدد."
+  },
+  "pl_trend_minutes": {
+    "en": "Study time",
+    "ar": "وقت المذاكرة"
+  },
+  "pl_trend_activities": {
+    "en": "Activities",
+    "ar": "الأنشطة"
+  },
+  "pl_trend_exam_avg": {
+    "en": "Exam average",
+    "ar": "متوسط الاختبارات"
+  },
+  "pl_sec_attendance": {
+    "en": "Attendance & punctuality",
+    "ar": "الحضور والالتزام بالمواعيد"
+  },
+  "pl_sec_attendance_hint": {
+    "en": "Compares the live sessions that were scheduled with the ones actually attended, and how on time he/she was.",
+    "ar": "مقارنة بين الحصص المجدولة والحصص التي حضرها فعلاً، ومدى التزامه بالمواعيد."
+  },
+  "pl_att_none": {
+    "en": "No scheduled sessions in this period.",
+    "ar": "لا توجد حصص مجدولة في هذه الفترة."
+  },
+  "pl_att_none_short": {
+    "en": "no sessions scheduled",
+    "ar": "لا حصص مجدولة"
+  },
+  "pl_att_attended": {
+    "en": "Attended {a} of {b} scheduled sessions.",
+    "ar": "حضر {a} من {b} حصة مجدولة."
+  },
+  "pl_att_late": {
+    "en": "Arrived late {n} time(s), by about {m} minutes on average.",
+    "ar": "تأخر في الحضور {n} مرة، بمتوسط {m} دقيقة."
+  },
+  "pl_att_on_time": {
+    "en": "Always arrived on time.",
+    "ar": "كان يحضر في الموعد دائماً."
+  },
+  "pl_att_short": {
+    "en": "Left {n} session(s) before half of the time had passed.",
+    "ar": "غادر {n} حصة قبل مرور نصف وقتها."
+  },
+  "pl_att_presence": {
+    "en": "Stayed {p}% of the session time on average.",
+    "ar": "يبقى في الحصة {p}% من وقتها في المتوسط."
+  },
+  "pl_att_missed_title": {
+    "en": "Missed sessions",
+    "ar": "الحصص التي فاتته"
+  },
+  "pl_sec_homework": {
+    "en": "Homework",
+    "ar": "الواجبات"
+  },
+  "pl_sec_homework_hint": {
+    "en": "Assignments whose deadline fell in this period.",
+    "ar": "الواجبات التي حلّ موعد تسليمها في هذه الفترة."
+  },
+  "pl_hw_on_time": {
+    "en": "On time",
+    "ar": "في الموعد"
+  },
+  "pl_hw_late": {
+    "en": "Late",
+    "ar": "متأخر"
+  },
+  "pl_hw_missing": {
+    "en": "Not handed in",
+    "ar": "لم يُسلَّم"
+  },
+  "pl_sec_habits": {
+    "en": "Study habits",
+    "ar": "عادات المذاكرة"
+  },
+  "pl_sec_habits_hint": {
+    "en": "When he/she studies and how regular it is. It helps you choose a good time to follow up.",
+    "ar": "متى يذاكر ومدى انتظامه. يساعدك على اختيار وقت مناسب للمتابعة."
+  },
+  "pl_habits_time": {
+    "en": "Favourite time of day",
+    "ar": "الوقت المفضل في اليوم"
+  },
+  "pl_habits_days": {
+    "en": "Activity by day of the week",
+    "ar": "النشاط حسب أيام الأسبوع"
+  },
+  "pl_slot_morning": {
+    "en": "Morning",
+    "ar": "صباحاً"
+  },
+  "pl_slot_afternoon": {
+    "en": "Afternoon",
+    "ar": "ظهراً/عصراً"
+  },
+  "pl_slot_evening": {
+    "en": "Evening",
+    "ar": "مساءً"
+  },
+  "pl_slot_night": {
+    "en": "Night",
+    "ar": "ليلاً"
+  },
+  "pl_streak_now": {
+    "en": "Days in a row",
+    "ar": "أيام متتالية"
+  },
+  "pl_streak_best": {
+    "en": "Best streak",
+    "ar": "أفضل تتابع"
+  },
+  "pl_last_active": {
+    "en": "Days since last activity",
+    "ar": "أيام منذ آخر نشاط"
+  },
+  "pl_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "pl_sec_courses": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "pl_sec_courses_hint": {
+    "en": "The ring is the course completion. Icons: sessions attended · study time · exam average · missed sessions.",
+    "ar": "الدائرة هي نسبة إتمام الكورس. الأيقونات: الحصص المحضورة · وقت المذاكرة · متوسط الاختبارات · الحصص الفائتة."
+  },
+  "pl_k_study": {
+    "en": "Study time",
+    "ar": "وقت المذاكرة"
+  },
+  "pl_k_study_sub": {
+    "en": "Live sessions + recorded videos",
+    "ar": "الحصص المباشرة + الفيديوهات المسجلة"
+  },
+  "pl_k_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "pl_k_attendance_sub": {
+    "en": "{a} of {b} sessions",
+    "ar": "{a} من {b} حصة"
+  },
+  "pl_k_active_days": {
+    "en": "Active days",
+    "ar": "أيام النشاط"
+  },
+  "pl_k_streak_sub": {
+    "en": "{n} in a row now",
+    "ar": "{n} متتالية حالياً"
+  },
+  "pl_k_exams": {
+    "en": "Exam average",
+    "ar": "متوسط الاختبارات"
+  },
+  "pl_k_exams_none": {
+    "en": "no exams taken",
+    "ar": "لم يختبر"
+  },
+  "pl_k_exams_sub": {
+    "en": "{a} taken · {b} passed",
+    "ar": "{a} اختبار · نجح في {b}"
+  },
+  "pl_k_homework": {
+    "en": "Homework",
+    "ar": "الواجبات"
+  },
+  "pl_k_homework_sub": {
+    "en": "handed in on time",
+    "ar": "سُلّمت في الموعد"
+  },
+  "pl_k_homework_sent": {
+    "en": "assignments handed in",
+    "ar": "واجبات تم تسليمها"
+  },
+  "pl_k_content": {
+    "en": "Lessons done",
+    "ar": "دروس مكتملة"
+  },
+  "pl_k_content_sub": {
+    "en": "videos & materials completed",
+    "ar": "فيديوهات ومواد تم إنهاؤها"
+  },
+  "pl_k_weak": {
+    "en": "To review",
+    "ar": "للمراجعة"
+  },
+  "pl_k_weak_sub": {
+    "en": "wrong answers saved for revision",
+    "ar": "أسئلة أخطأ فيها محفوظة للمراجعة"
+  },
+  "pl_k_certs": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "pl_k_certs_sub": {
+    "en": "earned in this period",
+    "ar": "حصل عليها في هذه الفترة"
+  },
+  "pl_ins_no_activity": {
+    "en": "No study activity was recorded in this period.",
+    "ar": "لم يتم تسجيل أي نشاط دراسي في هذه الفترة."
+  },
+  "pl_ins_inactive_for": {
+    "en": "No activity for {days} days. A gentle reminder may help.",
+    "ar": "لا يوجد نشاط منذ {days} أيام. تذكير لطيف قد يفيد."
+  },
+  "pl_ins_streak": {
+    "en": "Studied {days} days in a row — great consistency!",
+    "ar": "ذاكر {days} أيام متتالية — انتظام رائع!"
+  },
+  "pl_ins_great_attendance": {
+    "en": "Excellent attendance: {attended} of {scheduled} sessions ({rate}%).",
+    "ar": "حضور ممتاز: {attended} من {scheduled} حصة ({rate}%)."
+  },
+  "pl_ins_low_attendance": {
+    "en": "Low attendance: missed {missed} of {scheduled} sessions ({rate}% attended).",
+    "ar": "حضور ضعيف: فاتته {missed} من {scheduled} حصة (حضر {rate}%)."
+  },
+  "pl_ins_missed_sessions": {
+    "en": "Missed {missed} session(s). Recordings may help him/her catch up.",
+    "ar": "فاتته {missed} حصة. التسجيلات قد تساعده على التعويض."
+  },
+  "pl_ins_often_late": {
+    "en": "Often joins late ({count} times, about {minutes} min).",
+    "ar": "يتأخر كثيراً في الانضمام ({count} مرات بمتوسط {minutes} دقيقة)."
+  },
+  "pl_ins_leaves_early": {
+    "en": "Left {count} sessions early — he/she may lose focus or have a connection problem.",
+    "ar": "غادر {count} حصص مبكراً — قد يفقد التركيز أو تكون هناك مشكلة اتصال."
+  },
+  "pl_ins_stays_full": {
+    "en": "Stays in sessions almost to the end ({pct}% of the time).",
+    "ar": "يظل في الحصص تقريباً حتى النهاية ({pct}% من وقتها)."
+  },
+  "pl_ins_exam_up": {
+    "en": "Exam average improved by {delta} points (now {avg}%).",
+    "ar": "متوسط الاختبارات تحسن بمقدار {delta} نقطة (الآن {avg}%)."
+  },
+  "pl_ins_exam_down": {
+    "en": "Exam average dropped by {delta} points (now {avg}%).",
+    "ar": "متوسط الاختبارات انخفض بمقدار {delta} نقطة (الآن {avg}%)."
+  },
+  "pl_ins_failed_exams": {
+    "en": "Did not pass {count} exam(s). Reviewing the mistakes can help.",
+    "ar": "لم ينجح في {count} اختبار. مراجعة الأخطاء قد تساعده."
+  },
+  "pl_ins_excellent_exams": {
+    "en": "Very strong exam results ({avg}% average).",
+    "ar": "نتائج اختبارات قوية جداً (المتوسط {avg}%)."
+  },
+  "pl_ins_late_homework": {
+    "en": "Handed in {count} assignment(s) after the deadline.",
+    "ar": "سلّم {count} واجب بعد الموعد النهائي."
+  },
+  "pl_ins_missing_homework": {
+    "en": "{count} assignment(s) were not handed in.",
+    "ar": "{count} واجب لم يتم تسليمه."
+  },
+  "pl_ins_homework_on_time": {
+    "en": "All {count} assignments were handed in on time.",
+    "ar": "سلّم كل الواجبات ({count}) في الموعد."
+  },
+  "pl_ins_review_weak": {
+    "en": "{count} new questions need revision.",
+    "ar": "{count} سؤال جديد يحتاج مراجعة."
+  },
+  "pl_ins_time_up": {
+    "en": "Study time is up {pct}% compared with the previous period.",
+    "ar": "وقت المذاكرة زاد {pct}% عن الفترة السابقة."
+  },
+  "pl_ins_time_down": {
+    "en": "Study time is down {pct}% compared with the previous period.",
+    "ar": "وقت المذاكرة قلّ {pct}% عن الفترة السابقة."
+  },
+  "pl_ins_peak_time": {
+    "en": "Studies mostly in the {slot}.",
+    "ar": "يذاكر غالباً في فترة: {slot}."
+  },
+  "pl_period_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "pl_tab_alerts": {
+    "en": "Alerts",
+    "ar": "التنبيهات"
+  },
+  "pl_prio_high": {
+    "en": "High",
+    "ar": "عاجل"
+  },
+  "pl_prio_medium": {
+    "en": "Medium",
+    "ar": "متوسط"
+  },
+  "pl_prio_low": {
+    "en": "Low",
+    "ar": "منخفض"
+  },
+  "pl_sort_priority": {
+    "en": "Priority",
+    "ar": "الأولوية"
+  },
+  "pl_sort_date": {
+    "en": "Newest",
+    "ar": "الأحدث"
+  },
+  "pl_all_children": {
+    "en": "All children",
+    "ar": "كل الأبناء"
+  },
+  "pl_mark_all_read": {
+    "en": "Mark all as read",
+    "ar": "تحديد الكل كمقروء"
+  },
+  "pl_show_dismissed": {
+    "en": "Show dismissed",
+    "ar": "عرض المُستبعدة"
+  },
+  "pl_hide_dismissed": {
+    "en": "Hide dismissed",
+    "ar": "إخفاء المُستبعدة"
+  },
+  "pl_mark_read": {
+    "en": "Mark as read",
+    "ar": "تحديد كمقروء"
+  },
+  "pl_mark_unread": {
+    "en": "Mark as unread",
+    "ar": "تحديد كغير مقروء"
+  },
+  "pl_dismiss": {
+    "en": "Dismiss",
+    "ar": "استبعاد"
+  },
+  "pl_alert_dismissed": {
+    "en": "Alert dismissed",
+    "ar": "تم استبعاد التنبيه"
+  },
+  "pl_undo": {
+    "en": "Undo",
+    "ar": "تراجع"
+  },
+  "pl_view_report": {
+    "en": "View report",
+    "ar": "عرض التقرير"
+  },
+  "pl_alerts_empty": {
+    "en": "No alerts — everything looks fine.",
+    "ar": "لا توجد تنبيهات — كل شيء على ما يرام."
+  },
+  "pl_alerts_empty_filter": {
+    "en": "No alerts match this filter.",
+    "ar": "لا توجد تنبيهات تطابق هذا الفلتر."
+  },
+  "pl_alerts_hint": {
+    "en": "Ordered by priority, then newest first. Covers the last {d} days. Swipe to dismiss.",
+    "ar": "مرتبة حسب الأولوية ثم الأحدث، وتغطي آخر {d} يوماً. اسحب لاستبعاد التنبيه."
+  },
+  "pl_just_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "pl_hours_ago": {
+    "en": "{n} h ago",
+    "ar": "منذ {n} ساعة"
+  },
+  "pl_yesterday": {
+    "en": "yesterday",
+    "ar": "أمس"
+  },
+  "pl_days_ago": {
+    "en": "{n} days ago",
+    "ar": "منذ {n} يوماً"
+  },
+  "pl_in_hours": {
+    "en": "in {n} h",
+    "ar": "بعد {n} ساعة"
+  },
+  "pl_in_days": {
+    "en": "in {n} days",
+    "ar": "بعد {n} يوماً"
+  },
+  "pl_alert_title_failed_exam": {
+    "en": "Failed an exam",
+    "ar": "رسب في اختبار"
+  },
+  "pl_alert_title_missed_session": {
+    "en": "Missed a live session",
+    "ar": "فاتته حصة مباشرة"
+  },
+  "pl_alert_title_missing_homework": {
+    "en": "Homework not handed in",
+    "ar": "واجب لم يُسلَّم"
+  },
+  "pl_alert_title_low_attendance": {
+    "en": "Low attendance this week",
+    "ar": "حضور ضعيف هذا الأسبوع"
+  },
+  "pl_alert_title_inactive_long": {
+    "en": "No activity for days",
+    "ar": "لا يوجد نشاط منذ أيام"
+  },
+  "pl_alert_title_inactive": {
+    "en": "Activity has slowed down",
+    "ar": "النشاط تباطأ"
+  },
+  "pl_alert_title_score_drop": {
+    "en": "Exam score dropped",
+    "ar": "انخفاض في درجة اختبار"
+  },
+  "pl_alert_title_late_homework": {
+    "en": "Homework handed in late",
+    "ar": "واجب سُلّم متأخراً"
+  },
+  "pl_alert_title_left_early": {
+    "en": "Left a session early",
+    "ar": "غادر حصة مبكراً"
+  },
+  "pl_alert_title_late_arrival": {
+    "en": "Joined a session late",
+    "ar": "تأخر في دخول حصة"
+  },
+  "pl_alert_title_homework_due_soon": {
+    "en": "Homework due soon",
+    "ar": "واجب يقترب موعده"
+  },
+  "pl_alert_title_course_expiring": {
+    "en": "Course access ending",
+    "ar": "اشتراك كورس على وشك الانتهاء"
+  },
+  "pl_alert_title_weak_backlog": {
+    "en": "Questions piling up for revision",
+    "ar": "أسئلة تتراكم للمراجعة"
+  },
+  "pl_alert_text_failed_exam": {
+    "en": "Scored {pct}% in “{exam}” ({course}) and did not pass.",
+    "ar": "حصل على {pct}% في «{exam}» ({course}) ولم ينجح."
+  },
+  "pl_alert_text_missed_session": {
+    "en": "“{session}” ({course}) was not attended and its recording was not finished.",
+    "ar": "لم يحضر «{session}» ({course}) ولم يكمل مشاهدة تسجيلها."
+  },
+  "pl_alert_text_missing_homework": {
+    "en": "“{title}” ({course}) passed its deadline without a submission.",
+    "ar": "انتهى موعد «{title}» ({course}) دون تسليم."
+  },
+  "pl_alert_text_low_attendance": {
+    "en": "Attended only {rate}% of this week's sessions (missed {missed} of {scheduled}).",
+    "ar": "حضر {rate}% فقط من حصص هذا الأسبوع (فاتته {missed} من {scheduled})."
+  },
+  "pl_alert_text_inactive_long": {
+    "en": "No study activity for {days} days. It is worth checking in.",
+    "ar": "لا يوجد أي نشاط دراسي منذ {days} أيام. يُفضّل الاطمئنان عليه."
+  },
+  "pl_alert_text_inactive": {
+    "en": "No study activity for {days} days.",
+    "ar": "لا يوجد نشاط دراسي منذ {days} أيام."
+  },
+  "pl_alert_text_score_drop": {
+    "en": "Scored {pct}% in “{exam}” ({course}), well below the earlier average of {avg}%.",
+    "ar": "حصل على {pct}% في «{exam}» ({course}) وهي أقل بكثير من متوسطه السابق {avg}%."
+  },
+  "pl_alert_text_late_homework": {
+    "en": "“{title}” ({course}) was handed in after the deadline.",
+    "ar": "سلّم «{title}» ({course}) بعد الموعد النهائي."
+  },
+  "pl_alert_text_left_early": {
+    "en": "Stayed only {pct}% of “{session}” ({course}).",
+    "ar": "بقي {pct}% فقط من وقت «{session}» ({course})."
+  },
+  "pl_alert_text_late_arrival": {
+    "en": "Joined “{session}” ({course}) {minutes} minutes late.",
+    "ar": "دخل «{session}» ({course}) متأخراً {minutes} دقيقة."
+  },
+  "pl_alert_text_homework_due_soon": {
+    "en": "“{title}” ({course}) is due in about {hours} h and nothing was submitted yet.",
+    "ar": "موعد تسليم «{title}» ({course}) بعد حوالي {hours} ساعة ولم يُسلَّم بعد."
+  },
+  "pl_alert_text_course_expiring": {
+    "en": "Access to {course} ends in about {days} day(s).",
+    "ar": "ينتهي الاشتراك في {course} بعد حوالي {days} يوم."
+  },
+  "pl_alert_text_weak_backlog": {
+    "en": "{count} wrong answers are saved and waiting for revision.",
+    "ar": "{count} سؤالاً أخطأ فيها محفوظة في انتظار المراجعة."
   }
 }

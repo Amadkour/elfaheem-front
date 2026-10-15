@@ -74,6 +74,46 @@ class UserModel {
   };
 }
 
+/// A phone-verification-by-link session (Telegram / WhatsApp), from POST /auth/phone-link/start.
+class PhoneLinkSession {
+  final String token;
+  final bool verified;
+
+  /// Methods the admin allowed and the server configured, highest priority first
+  /// ("telegram" always comes before "whatsapp").
+  final List<String> methods;
+  final int expiresIn;
+  final String? telegramUrl; // https://t.me/<bot>?start=<token>
+  final String? telegramAppUrl; // tg://resolve?... (opens the app directly)
+  final String? whatsappUrl; // https://wa.me/<number>?text=...
+
+  const PhoneLinkSession({
+    required this.token,
+    required this.verified,
+    required this.methods,
+    required this.expiresIn,
+    this.telegramUrl,
+    this.telegramAppUrl,
+    this.whatsappUrl,
+  });
+
+  factory PhoneLinkSession.fromJson(Map j) {
+    final tg = j['telegram'] is Map ? j['telegram'] as Map : const {};
+    final wa = j['whatsapp'] is Map ? j['whatsapp'] as Map : const {};
+    return PhoneLinkSession(
+      token: (j['token'] ?? '').toString(),
+      verified: j['verified'] == true,
+      methods: j['methods'] is List
+          ? (j['methods'] as List).map((e) => e.toString()).toList()
+          : const [],
+      expiresIn: (j['expires_in'] as num?)?.toInt() ?? 600,
+      telegramUrl: tg['url']?.toString(),
+      telegramAppUrl: tg['app_url']?.toString(),
+      whatsappUrl: wa['url']?.toString(),
+    );
+  }
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 class AuthProvider extends BaseProvider {
@@ -85,9 +125,21 @@ class AuthProvider extends BaseProvider {
   String verificationMethod = 'email';
   /// email | phone | either — what the login form accepts.
   String loginIdentifier = 'email';
-  /// sms | whatsapp — how phone codes are delivered.
+  /// sms | whatsapp | telegram | whatsapp_link | telegram_whatsapp — how the phone is verified.
+  /// sms / whatsapp send a code; the others make the student message us through a link.
   String otpPhoneChannel = 'sms';
   bool policyLoaded = false;
+
+  /// True when the phone is verified by a Telegram / WhatsApp link instead of a typed code.
+  bool get phoneUsesLink => const {
+    'telegram',
+    'whatsapp_link',
+    'telegram_whatsapp',
+  }.contains(otpPhoneChannel);
+
+  /// Where a password-reset code really went when the student asked by phone number
+  /// but phone verification is link-based (the code goes to the e-mail). Null otherwise.
+  String? resetEmailMasked;
 
   bool get verifyByPhone => verificationMethod != 'email';
   bool get loginAllowsEmail => loginIdentifier != 'phone';
@@ -146,6 +198,7 @@ class AuthProvider extends BaseProvider {
   List<Map<String, String>> roles = [
     {'text': 'student'},
     {'text': 'teacher'},
+    {'text': 'parent'},
   ];
   late List<Map<String, dynamic>> specializations;
   Map<String, dynamic>? selectedTeachingType;
@@ -168,7 +221,13 @@ class AuthProvider extends BaseProvider {
 
   bool get selectedRoleIsStudent => selectedRole!['text'] == 'student';
 
+  /// Teacher-only registration extras (specialization, teaching type …) must key off THIS,
+  /// not off `!selectedRoleIsStudent`, now that a third role (parent) exists.
+  bool get selectedRoleIsTeacher => selectedRole!['text'] == 'teacher';
+
   bool get isTeacher => currentUser?.role == 'teacher';
+
+  bool get isParent => currentUser?.role == 'parent';
 
   bool get isAdmin => currentUser?.role == 'admin';
 
@@ -181,6 +240,7 @@ class AuthProvider extends BaseProvider {
     'super-admin' => '/admin_dashboard',
     'developer' => '/admin_dashboard',
     'teacher' => '/teacher_dashboard',
+    'parent' => '/parent_dashboard',
     _ => '/dashboard',
   };
 
@@ -268,6 +328,45 @@ class AuthProvider extends BaseProvider {
       return true;
     }
     return false;
+  }
+
+  // ── Phone verification by Telegram / WhatsApp link ──────────────────────────
+
+  /// Creates a link session for [gmail] (e-mail or phone). Null on error (see errorMessage).
+  Future<PhoneLinkSession?> startPhoneLink(String gmail) async {
+    final result = await run(
+          () => _api.post(
+        '/api/v1/auth/phone-link/start',
+        body: {'gmail': gmail},
+        auth: false,
+      ),
+    );
+    if (result is Map) return PhoneLinkSession.fromJson(result);
+    return null;
+  }
+
+  /// Polls a link session: 'pending' | 'verified' | 'expired' | 'error'.
+  /// On 'verified', [pendingChannels] holds what is still left (e.g. ["email"]).
+  /// Deliberately not wrapped in run(): it fires every 2 seconds and must stay silent.
+  Future<String> checkPhoneLink(String token) async {
+    try {
+      final r = await _api.get(
+        '/api/v1/auth/phone-link/status?token=${Uri.encodeQueryComponent(token)}',
+        auth: false,
+      );
+      if (r is Map) {
+        final state = (r['state'] ?? 'pending').toString();
+        if (state == 'verified') {
+          pendingChannels = _channelsFrom(r['pending_channels'], const []);
+          notifyListeners();
+        }
+        return state;
+      }
+    } catch (e) {
+      log('checkPhoneLink failed: $e');
+      if (e is ApiException && e.statusCode == 404) return 'expired';
+    }
+    return 'error';
   }
 
   // ── Resend OTP ────────────────────────────────────────────────────────────────
@@ -531,6 +630,7 @@ class AuthProvider extends BaseProvider {
 
   Future<bool> forgotPassword(String gmail) async {
     isLoadingForget = true;
+    resetEmailMasked = null;
     notifyListeners();
     final result = await run(
           () => _api.post(
@@ -539,6 +639,9 @@ class AuthProvider extends BaseProvider {
         auth: false,
       ),
     );
+    if (result is Map && result['sent_via'] == 'email' && !gmail.contains('@')) {
+      resetEmailMasked = result['email_masked']?.toString();
+    }
     isLoadingForget = false;
     notifyListeners();
     return result != null;

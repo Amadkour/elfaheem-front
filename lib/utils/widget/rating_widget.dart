@@ -6,6 +6,8 @@ import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../core/api_client.dart'; // adjust import path as needed
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+
+import '../../features/shared/guest/guest_state.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -19,21 +21,21 @@ enum RateType {
   String get value => name.toUpperCase(); // 'course' | 'session' | 'material' | 'doctor'
 
   String get label => switch (this) {
-        RateType.course => 'Course',
-        RateType.session => 'Session',
-        RateType.material => 'Material',
-        RateType.doctor => 'Doctor',
-      };
+    RateType.course => 'Course',
+    RateType.session => 'Session',
+    RateType.material => 'Material',
+    RateType.doctor => 'Doctor',
+  };
 
   /// The GET endpoint for fetching summary + ratings list
   String ratingPath(String sourceId) => switch (this) {
-        RateType.course => '/api/v1/courses/$sourceId/ratings',
-        RateType.session => '/api/v1/sessions/$sourceId/ratings',
-        // material & doctor use the generic session endpoint pattern —
-        // adjust to your actual backend paths if they differ
-        RateType.material => '/api/v1/materials/$sourceId/ratings',
-        RateType.doctor => '/api/v1/doctors/$sourceId/ratings',
-      };
+    RateType.course => '/api/v1/courses/$sourceId/ratings',
+    RateType.session => '/api/v1/sessions/$sourceId/ratings',
+  // material & doctor use the generic session endpoint pattern —
+  // adjust to your actual backend paths if they differ
+    RateType.material => '/api/v1/materials/$sourceId/ratings',
+    RateType.doctor => '/api/v1/doctors/$sourceId/ratings',
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -60,14 +62,14 @@ class RateResponse {
   });
 
   factory RateResponse.fromJson(Map<String, dynamic> j) => RateResponse(
-        id: j['id'] as int,
-        studentId: j['student_id'] as int,
-        sourceId: j['source_id'] as int,
-        type: RateType.values.firstWhere((e) => e.value == j['type']),
-        value: j['value'] as int,
-        review: j['review'] as String?,
-        createdAt: (j['created_at'] as String).toLocalSaTime,
-      );
+    id: j['id'] as int,
+    studentId: j['student_id'] as int,
+    sourceId: j['source_id'] as int,
+    type: RateType.values.firstWhere((e) => e.value == j['type']),
+    value: j['value'] as int,
+    review: j['review'] as String?,
+    createdAt: (j['created_at'] as String).toLocalSaTime,
+  );
 }
 
 class RatingSummary {
@@ -82,12 +84,12 @@ class RatingSummary {
   });
 
   factory RatingSummary.fromJson(Map<String, dynamic> j) => RatingSummary(
-        ratings: (j['ratings'] as List)
-            .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        total: (j['total'] as int)+200,
-        average:( (j['average'] as num).toDouble())+4,
-      );
+    ratings: (j['ratings'] as List)
+        .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    total: (j['total'] as int)+200,
+    average:( (j['average'] as num).toDouble())+4,
+  );
 
   /// Distribution: how many ratings per star value (1–5)
   Map<int, int> get distribution {
@@ -235,7 +237,7 @@ class _RatingWidgetState extends State<RatingWidget>
       if (studentId != null) {
         try {
           mine = summary.ratings.firstWhere(
-              (r) => r.studentId == studentId);
+                  (r) => r.studentId == studentId);
         } catch (_) {}
       } else if (summary.ratings.isNotEmpty) {
         // If only one rating is returned (user-scoped endpoint), use it
@@ -258,6 +260,7 @@ class _RatingWidgetState extends State<RatingWidget>
 
   Future<void> _submit() async {
     if (_selected == 0 || _submitting) return;
+    if (!GuestGuard.ensure(context, reasonKey: 'guest_reason_rate')) return;
     if(mounted) setState(() => _submitting = true);
     try {
       final result = await _service.submitRate(
@@ -295,13 +298,13 @@ class _RatingWidgetState extends State<RatingWidget>
   int get _displayValue => _hovered > 0 ? _hovered : _selected;
 
   String _starLabel(int v) => switch (v) {
-        1 => 'Poor',
-        2 => 'Fair',
-        3 => 'Good',
-        4 => 'Very Good',
-        5 => 'Excellent',
-        _ => '',
-      };
+    1 => 'Poor',
+    2 => 'Fair',
+    3 => 'Good',
+    4 => 'Very Good',
+    5 => 'Excellent',
+    _ => '',
+  };
 
   // ══════════════════════════════════════════════
   //  BUILD
@@ -334,11 +337,11 @@ class _RatingWidgetState extends State<RatingWidget>
           onHover: (v) { if(mounted) setState(() => _hovered = v);},
           onTap: widget.canEdit
               ? (v) {
-                  setState(() {
-                    _selected = v;
-                    _showReview = true;
-                  });
-                }
+            setState(() {
+              _selected = v;
+              _showReview = true;
+            });
+          }
               : null,
         ),
         const SizedBox(width: 6),
@@ -550,21 +553,21 @@ class _RatingWidgetState extends State<RatingWidget>
               curve: Curves.easeInOutCubic,
               child: _showReview
                   ? Padding(
-                      padding: const EdgeInsets.only(top: 14),
-                      child: Column(
-                        children: [
-                          _ReviewField(
-                            controller: _reviewController,
-                            focusNode: _reviewFocus,
-                          ),
-                          const SizedBox(height: 12),
-                          _SubmitButton(
-                            onTap: _submit,
-                            loading: _submitting,
-                          ),
-                        ],
-                      ),
-                    )
+                padding: const EdgeInsets.only(top: 14),
+                child: Column(
+                  children: [
+                    _ReviewField(
+                      controller: _reviewController,
+                      focusNode: _reviewFocus,
+                    ),
+                    const SizedBox(height: 12),
+                    _SubmitButton(
+                      onTap: _submit,
+                      loading: _submitting,
+                    ),
+                  ],
+                ),
+              )
                   : const SizedBox.shrink(),
             ),
           ],
@@ -574,10 +577,10 @@ class _RatingWidgetState extends State<RatingWidget>
   }
 
   Color _starColor(int v) => switch (v) {
-        1 || 2 => AppTheme.danger,
-        3 => AppTheme.warning,
-        _ => AppTheme.primary,
-      };
+    1 || 2 => AppTheme.danger,
+    3 => AppTheme.warning,
+    _ => AppTheme.primary,
+  };
 }
 
 // ══════════════════════════════════════════════
@@ -635,8 +638,8 @@ class _StarRow extends StatelessWidget {
                   color: active
                       ? AppTheme.primary
                       : Theme.of(context).brightness == Brightness.dark
-                          ? AppTheme.darkTextLight
-                          : AppTheme.textLight,
+                      ? AppTheme.darkTextLight
+                      : AppTheme.textLight,
                 ),
               ),
             ),
@@ -693,7 +696,7 @@ class _DistributionBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         gradient: LinearGradient(colors:[AppTheme.primary,Colors.white]),
 
-                      borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
                   ),
@@ -744,7 +747,7 @@ class _ReviewField extends StatelessWidget {
         filled: true,
         fillColor: c.inputBg,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
           borderSide: BorderSide(color: c.divider),
@@ -789,7 +792,7 @@ class _SubmitButton extends StatelessWidget {
           gradient: loading
               ? AppTheme.disableGradient
               : AppTheme.accentGradient,
-             shape: BoxShape.circle,
+          shape: BoxShape.circle,
           boxShadow: loading ? null : AppTheme.primaryShadow,
         ),
         child: Row(
@@ -797,17 +800,17 @@ class _SubmitButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: loading
               ? [
-                  SizedBox(
-                    width: compact ? 14 : 18,
-                    height: compact ? 14 : 18,
-                    child: const AppLoadingIndicator(),
-                  ),
-                ]
+            SizedBox(
+              width: compact ? 14 : 18,
+              height: compact ? 14 : 18,
+              child: const AppLoadingIndicator(),
+            ),
+          ]
               : [
-                  Icon(Icons.send_rounded,
-                      color: Colors.white, size: compact ? 14 : 16),
+            Icon(Icons.send_rounded,
+                color: Colors.white, size: compact ? 14 : 16),
 
-                ],
+          ],
         ),
       ),
     );
@@ -859,7 +862,7 @@ class _SkeletonState extends State<_Skeleton>
             mainAxisSize: MainAxisSize.min,
             children: List.generate(
               5,
-              (_) => Padding(
+                  (_) => Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 2),
                 child: Container(
                   width: 16, height: 16,
@@ -948,7 +951,7 @@ class _ErrorState extends StatelessWidget {
             onTap: onRetry,
             child: Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: c.danger.withValues(alpha:0.12),
                 borderRadius: BorderRadius.circular(8),

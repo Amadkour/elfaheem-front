@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import '../../../core/api_client.dart';
 import '../../category/categories_provider.dart';
+import '../../shared/guest/guest_state.dart';
 import '../models.dart';
 
 // ── Simple models ─────────────────────────────────────────────────────────────
@@ -107,7 +108,8 @@ class HomeProvider extends BaseProvider {
     final result = await run(
           () => api.get(
         '/api/v1/teacher/student-dashboard',
-        auth: true,
+        // Guest: no token at all → the server answers with the public catalogue.
+        auth: !GuestState.active,
       ),
     );
     // Request failed → run() already holds the error. This used to throw "operator [] on null" here.

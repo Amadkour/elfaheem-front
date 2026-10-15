@@ -1,8 +1,7 @@
-
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exam_api.dart';
 
+import '../../../../config/app_config.dart';
 import '../../../../core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
 import 'exam_files.dart';
@@ -176,7 +175,7 @@ class TeacherExamProvider extends ChangeNotifier {
   /// Returns null on success, error string on failure.
   Future<String?> togglePublish(ExamModel exam) async {
     if (!exam.isPublished && exam.questionCount == 0) {
-      return 'لا يمكن نشر اختبار بدون أسئلة';
+      return 'exam_cannot_publish_empty'.tr;
     }
     try {
       final updated = exam.isPublished

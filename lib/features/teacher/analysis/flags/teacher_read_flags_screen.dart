@@ -11,6 +11,9 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
+import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
+
+import '../../../../utils/widget/base_page.dart';
 
 // ── models ────────────────────────────────────────────────────────────────────
 
@@ -148,100 +151,110 @@ class TeacherReadFlagsScreen extends StatelessWidget {
   );
 }
 
+const _flagHero = [Color(0xFF7F1D1D), kDanger];
+
 class _View extends StatelessWidget {
   final String courseTitle;
   const _View({required this.courseTitle});
+
+  Widget _hero(TeacherReadFlagsProvider p) {
+    final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
+    final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
+    return ExamHero(
+      colors: _flagHero,
+      child: Column(children: [
+        ExamHeroBar(
+          title: courseTitle,
+          subtitle: 'tflag_btn_sub'.tr,
+          actions: [GlassIcon(icon: Icons.refresh_rounded, onTap: p.load)],
+        ),
+        const SizedBox(height: 18),
+        Row(children: [
+          HeroStat(
+            icon: Icons.flag_rounded,
+            color: const Color(0xFFFFD740),
+            value: '${p.items.length}',
+            label: 'tflag_btn'.tr,
+          ),
+          const SizedBox(width: 10),
+          HeroStat(
+            icon: Icons.groups_rounded,
+            color: const Color(0xFF80D8FF),
+            value: '$failed',
+            label: 'tflag_students'.tr,
+          ),
+          const SizedBox(width: 10),
+          HeroStat(
+            icon: Icons.close_rounded,
+            color: const Color(0xFFFF8A80),
+            value: '$wrong',
+            label: 'flag_total_wrong'.tr,
+          ),
+        ]),
+      ]),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.watch<TeacherReadFlagsProvider>();
-    return Directionality(
-      textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
-        appBar: AppBar(
-          backgroundColor: c.primary,
-          foregroundColor: Colors.white,
-          title: Text(courseTitle,
-              style: const TextStyle(
-                  fontFamily: 'bahji', fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis),
-          actions: [
-            IconButton(
-                icon: const Icon(Icons.refresh_rounded), onPressed: p.load),
+
+    final Widget body;
+    if (p.loading) {
+      body = Column(children: [
+        _hero(p),
+        const Expanded(child: Center(child: AppLoadingIndicator())),
+      ]);
+    } else if (p.error != null) {
+      body = Column(children: [
+        _hero(p),
+        Expanded(
+          child: ExamError(
+              message: p.error!, retryLabel: 'retry'.tr, onRetry: p.load),
+        ),
+      ]);
+    } else {
+      body = RefreshIndicator(
+        onRefresh: p.load,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
+          children: [
+            _hero(p),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(children: [
+                ExamBanner(
+                  icon: Icons.flag_rounded,
+                  color: c.primary,
+                  text: tx('tflag_thresholds', {
+                    'students': p.minStudents,
+                    'tries': p.minTries,
+                  }),
+                ),
+                const SizedBox(height: 16),
+                if (p.items.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 48),
+                    child: ExamEmpty(
+                        icon: Icons.task_alt_rounded, text: 'tflag_empty'.tr),
+                  ),
+                for (final it in p.items) ...[
+                  _FlagCard(item: it),
+                  const SizedBox(height: 12),
+                ],
+              ]),
+            ),
           ],
         ),
-        body: p.loading
-            ? const Center(child: AppLoadingIndicator())
-            : p.error != null
-            ? Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Text(p.error!,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontFamily: 'bahji', color: Colors.grey)),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                    onPressed: p.load,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text('retry'.tr)),
-              ]),
-            ))
-            : RefreshIndicator(
-          onRefresh: p.load,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: c.primary.withValues(alpha: .07),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(children: [
-                  Icon(Icons.flag_rounded, color: c.primary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      tx('tflag_thresholds', {
-                        'students': p.minStudents,
-                        'tries': p.minTries,
-                      }),
-                      style: const TextStyle(
-                          fontFamily: 'bahji', fontSize: 12, height: 1.6),
-                    ),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 14),
-              if (p.items.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 60),
-                  child: Column(children: [
-                    Icon(Icons.task_alt_rounded,
-                        size: 72, color: Colors.grey.shade300),
-                    const SizedBox(height: 12),
-                    Text('tflag_empty'.tr,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 15,
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w600)),
-                  ]),
-                ),
-              for (final it in p.items) ...[
-                _FlagCard(item: it),
-                const SizedBox(height: 12),
-              ],
-            ],
-          ),
-        ),
-      ),
+      );
+    }
+
+    return Directionality(
+      textDirection: Helpers.pageDirection,
+      child: BasePage( useWebCard: true,maxWith: 1100, child: body),
     );
   }
 }
@@ -253,119 +266,103 @@ class _FlagCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
+    return ExamCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: c.cardShadow,
-      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(item.examName,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 11,
-                color: c.primary,
-                fontWeight: FontWeight.w700)),
-        const SizedBox(height: 6),
-        Text(item.title,
-            textDirection: Helpers.textDirOf(item.title),
-            style: c.h3.copyWith(fontSize: 15, height: 1.6)),
-        const SizedBox(height: 10),
-        Wrap(spacing: 8, runSpacing: 6, children: [
-          _Chip(
-              icon: Icons.groups_rounded,
-              text: tx('tflag_students_failed', {'n': item.studentsFailed}),
-              color: c.danger),
-          _Chip(
-              icon: Icons.repeat_rounded,
-              text: tx('tflag_max_tries', {'n': item.maxWrongTries}),
-              color: Colors.purple),
-          _Chip(
-              icon: Icons.functions_rounded,
-              text: tx('tflag_avg_tries',
-                  {'n': item.avgWrongTries.toStringAsFixed(1)}),
-              color: Colors.teal),
-          _Chip(
-              icon: Icons.star_rounded,
-              text: tx('flag_score', {'n': item.score.toStringAsFixed(1)}),
-              color: Colors.amber.shade800),
-        ]),
-        if (item.correctAnswer != null) ...[
-          const SizedBox(height: 10),
+        Row(children: [
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: c.success.withValues(alpha: .08),
+              color: c.primary.withValues(alpha: .10),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(
-                '${'flag_correct_answer'.tr}: ${item.correctAnswer}',
-                textDirection: Helpers.textDirOf(item.correctAnswer!),
-                style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 13,
-                    color: c.success,
-                    fontWeight: FontWeight.w700)),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(Icons.quiz_rounded, size: 12, color: c.primary),
+              const SizedBox(width: 5),
+              Text(item.examName,
+                  style: examT(11, w: FontWeight.w700, c: c.primary)),
+            ]),
+          ),
+          const Spacer(),
+          ExamBadge(tx('flag_score', {'n': item.score.toStringAsFixed(1)}), kAmber),
+        ]),
+        const SizedBox(height: 12),
+        Text(item.title,
+            textDirection: Helpers.textDirOf(item.title),
+            style: examT(15, w: FontWeight.w700, c: c.textDark, h: 1.7)),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          ExamChip(Icons.groups_rounded,
+              tx('tflag_students_failed', {'n': item.studentsFailed}), kDanger),
+          ExamChip(Icons.repeat_rounded,
+              tx('tflag_max_tries', {'n': item.maxWrongTries}), kViolet),
+          ExamChip(Icons.functions_rounded,
+              tx('tflag_avg_tries', {'n': item.avgWrongTries.toStringAsFixed(1)}),
+              Colors.teal),
+        ]),
+        if (item.correctAnswer != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: c.success.withValues(alpha: .08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.success.withValues(alpha: .25)),
+            ),
+            child: Row(children: [
+              Icon(Icons.check_circle_rounded, size: 18, color: c.success),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                    '${'flag_correct_answer'.tr}: ${item.correctAnswer}',
+                    textDirection: Helpers.textDirOf(item.correctAnswer!),
+                    style: examT(13, w: FontWeight.w700, c: c.success, h: 1.5)),
+              ),
+            ]),
           ),
         ],
         if (item.students.isNotEmpty)
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              title: Text('tflag_students'.tr,
-                  style: const TextStyle(
-                      fontFamily: 'bahji',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700)),
-              children: [
-                for (final s in item.students)
-                  ListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(s.name,
-                        style: const TextStyle(
-                            fontFamily: 'bahji', fontSize: 13)),
-                    trailing: Text(tx('flag_wrong_times', {'n': s.wrongCount}),
-                        style: TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 12,
-                            color: c.danger,
-                            fontWeight: FontWeight.w700)),
-                  ),
-              ],
+          Material(
+            type: MaterialType.transparency,
+            child: Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                iconColor: c.primary,
+                collapsedIconColor: c.textMedium,
+                title: Row(children: [
+                  Icon(Icons.groups_rounded, size: 18, color: c.primary),
+                  const SizedBox(width: 8),
+                  Text('tflag_students'.tr,
+                      style: examT(13, w: FontWeight.w800, c: c.textDark)),
+                ]),
+                children: [
+                  for (final s in item.students)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 5),
+                      child: Row(children: [
+                        CircleAvatar(
+                          radius: 15,
+                          backgroundColor: kDanger.withValues(alpha: .10),
+                          child: Text(s.name.isEmpty ? '?' : s.name[0],
+                              style: examT(12, w: FontWeight.w800, c: kDanger)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(s.name,
+                              style: examT(13, c: c.textDark)),
+                        ),
+                        ExamBadge(
+                            tx('flag_wrong_times', {'n': s.wrongCount}), kDanger),
+                      ]),
+                    ),
+                ],
+              ),
             ),
           ),
       ]),
     );
   }
-}
-
-class _Chip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final Color color;
-  const _Chip({required this.icon, required this.text, required this.color});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .09),
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: color.withValues(alpha: .25)),
-    ),
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 13, color: color),
-      const SizedBox(width: 4),
-      Text(text,
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color)),
-    ]),
-  );
 }

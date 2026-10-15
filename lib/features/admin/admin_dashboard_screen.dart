@@ -51,6 +51,8 @@ import 'admin_flags_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_overview_page.dart';
 import 'admin_payment_page.dart';
+import 'admin_parent_link_settings_page.dart';
+import 'admin_parent_requests_page.dart';
 import 'admin_payouts_page.dart';
 import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
@@ -421,6 +423,23 @@ class _MorePageState extends State<_MorePage> {
                         label: 'categories'.tr,
                         onTap: () => _push(const AdminCategoriesPage()),
                       ),
+                      // Parent ⇄ student link requests (admins + super-admin)
+                      SettingsTile(
+                        icon: Icons.family_restroom_rounded,
+                        iconBg: c.success.withAlpha(50),
+                        iconColor: c.success,
+                        label: 'pl_requests_title'.tr,
+                        onTap: () => _push(const AdminParentRequestsPage()),
+                      ),
+                      // Super-admin only: choose the linking mode + its settings.
+                      if (isSuperNow(context))
+                        SettingsTile(
+                          icon: Icons.rule_rounded,
+                          iconBg: c.warning.withAlpha(50),
+                          iconColor: c.warning,
+                          label: 'pl_settings_title'.tr,
+                          onTap: () => _push(const AdminParentLinkSettingsPage()),
+                        ),
                     ],
                   ),
                 ),

@@ -86,43 +86,52 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
-              _group(
-                'Verify new accounts by',
-                'What a user must confirm with a code after registering.',
-                _verification,
-                const {
-                  'email': 'Email',
-                  'phone': 'Phone',
-                  'both': 'Both (email and phone)',
-                },
-                (v) => setState(() => _verification = v),
-              ),
-              _group(
-                'Login with',
-                'What the login form accepts.',
-                _login,
-                const {
-                  'email': 'Email only',
-                  'phone': 'Phone only',
-                  'either': 'Email or phone',
-                },
-                (v) => setState(() => _login = v),
-              ),
-              _group(
-                'Send phone codes by',
-                'Used when phone verification is on. The provider (Twilio / WhatsApp Cloud) is set in the server .env.',
-                _channel,
-                const {'sms': 'SMS', 'whatsapp': 'WhatsApp'},
-                (v) => setState(() => _channel = v),
-              ),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Save'),
-              ),
-            ]),
+        _group(
+          'Verify new accounts by',
+          'What a user must confirm with a code after registering.',
+          _verification,
+          const {
+            'email': 'Email',
+            'phone': 'Phone',
+            'both': 'Both (email and phone)',
+          },
+              (v) => setState(() => _verification = v),
+        ),
+        _group(
+          'Login with',
+          'What the login form accepts.',
+          _login,
+          const {
+            'email': 'Email only',
+            'phone': 'Phone only',
+            'either': 'Email or phone',
+          },
+              (v) => setState(() => _login = v),
+        ),
+        _group(
+          'Verify phone numbers by',
+          'Used when phone verification is on. Telegram / WhatsApp link: the student taps a '
+              'link and messages us from their own number, so no SMS is paid for. With both '
+              'enabled, Telegram is offered first (WhatsApp when the student has no Telegram). '
+              'Bots, numbers and providers are set in the server .env.',
+          _channel,
+          const {
+            'telegram_whatsapp': 'Telegram + WhatsApp link (Telegram first, free)',
+            'telegram': 'Telegram only (free)',
+            'whatsapp_link': 'WhatsApp link only (free)',
+            'sms': 'SMS code (paid provider)',
+            'whatsapp': 'WhatsApp code (paid provider)',
+          },
+              (v) => setState(() => _channel = v),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+              width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('Save'),
+        ),
+      ]),
     );
   }
 }

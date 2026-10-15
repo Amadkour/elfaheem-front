@@ -15,6 +15,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/count_badge.dart';
 import '../../../utils/widget/refresh_button.dart';
+import '../../shared/guest/guest_state.dart';
 import '../analysis/student_analytics_provider.dart';
 import '../analysis/student_analytics_screen.dart';
 import '../../auth/auth_widgets.dart';
@@ -69,7 +70,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     AppNavigator.requestedTab.addListener(_onTabRequested);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _onTabRequested(); // a request made BEFORE this screen existed (cold start from a dialog / push)
-      await context.read<NotificationsProvider>().fetchNotifications();
+      // A guest has no account → no notifications request (it would 401).
+      if (!GuestState.active) {
+        await context.read<NotificationsProvider>().fetchNotifications();
+      }
     });
     dashboardItems.clear();
     dashboardItems.addAll([
@@ -85,28 +89,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
         CupertinoIcons.book_fill,
         'my_courses',
         context.read<MyCoursesProvider>().fetchMyEnrollments,
-        MyCoursesScreen(courses: context.read<HomeProvider>().myCourses),
+        GuestGate(
+          icon: CupertinoIcons.book_fill,
+          messageKey: 'guest_locked_my_courses',
+          child: MyCoursesScreen(courses: context.read<HomeProvider>().myCourses),
+        ),
       ),
       DashboardItem(
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
         'my_schedule',
         context.read<StudentSchedulesProvider>().fetch,
-        const StudentScheduleTab(),
+        const GuestGate(
+          icon: Icons.calendar_month_rounded,
+          messageKey: 'guest_locked_schedule',
+          child: StudentScheduleTab(),
+        ),
       ),
       DashboardItem(
         Icons.analytics_outlined,
         Icons.analytics,
         'analysis',
         context.read<StudentAnalyticsProvider>().loadCourses,
-        const StudentAnalyticsScreen(),
+        const GuestGate(
+          icon: Icons.analytics,
+          messageKey: 'guest_locked_analysis',
+          child: StudentAnalyticsScreen(),
+        ),
       ),
       DashboardItem(
         CupertinoIcons.person,
         CupertinoIcons.person_alt,
         'my_profile',
         null,
-        const ProfileScreen(),
+        const GuestGate(
+          icon: CupertinoIcons.person_alt,
+          messageKey: 'guest_locked_profile',
+          child: ProfileScreen(),
+        ),
       ),
     ]);
     dashboardItems.removeWhere(

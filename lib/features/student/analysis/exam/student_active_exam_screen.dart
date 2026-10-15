@@ -2,16 +2,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
+import '../../../../utils/widget/base_page.dart';
 import '../../../shared/models/exam_model.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'exam_ui.dart';
 
-String _fmt(String key, Map<String, Object?> params) {
-  var out = key.tr;
-  params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
-  return out;
-}
+String _fmt(String key, Map<String, Object?> params) =>
+    examFill(key.tr, params);
 
 // ── Entry point: passcode gate ───────────────────────────────────────────────
 class StudentExamEntryScreen extends StatefulWidget {
@@ -33,11 +32,11 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
 
   Future<void> _enter() async {
     if (_needsPasscode && _passcodeCtrl.text.trim().isEmpty) {
-      if(mounted) setState(() => _error = 'passcode_required'.tr);
+      if (mounted) setState(() => _error = 'passcode_required'.tr);
       return;
     }
     if (_needsPasscode && _passcodeCtrl.text.trim() != widget.exam.passcode) {
-      if(mounted) setState(() => _error = 'wrong_passcode'.tr);
+      if (mounted) setState(() => _error = 'wrong_passcode'.tr);
       return;
     }
 
@@ -87,199 +86,150 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
     super.dispose();
   }
 
+  String _fmtDate(DateTime d) =>
+      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final exam = widget.exam;
     final isScheduled =
         exam.startDate != null && exam.startDate!.isAfter(DateTime.now());
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: context.colors.background,
-        appBar: AppBar(
-          backgroundColor: context.colors.primary,
-          foregroundColor: Colors.white,
-          title: Text('enter_exam'.tr,
-              style:
-              const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-          leading: IconButton(
-              icon: const Icon(Icons.arrow_forward_ios),
-              onPressed: () => Navigator.pop(context)),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+      child: BasePage( useWebCard: true,maxWith: 1100, child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(children: [
-            const SizedBox(height: 20),
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [context.colors.primary, Colors.deepPurple],
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: context.colors.primary.withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 6))
-                ],
-              ),
-              child:
-              const Icon(Icons.quiz_rounded, color: Colors.white, size: 42),
-            ),
-            const SizedBox(height: 20),
-            Text(exam.name,
-                style: const TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800),
-                textAlign: TextAlign.center),
-            if (exam.description != null) ...[
-              const SizedBox(height: 8),
-              Text(exam.description!,
-                  style: const TextStyle(
-                      fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
-                  textAlign: TextAlign.center),
-            ],
-            const SizedBox(height: 24),
-            _InfoCard(children: [
-              _InfoRow(Icons.timer_outlined, 'exam_exam_duration'.tr,
-                  _fmt('exam_n_minutes', {'n': exam.duration ?? 0}), Colors.teal),
-              _InfoRow(Icons.star_outline_rounded, 'exam_passing_score'.tr,
-                  '${exam.passingScore?.toInt() ?? 0}%', Colors.amber.shade700),
-              _InfoRow(Icons.help_outline_rounded, 'exam_question_count'.tr,
-                  _fmt('exam_n_questions', {'n': exam.questionCount}), context.colors.primary),
-              if (exam.startDate != null)
-                _InfoRow(Icons.schedule_rounded, 'exam_start_time'.tr,
-                    _fmtDate(exam.startDate!), Colors.orange),
-            ]),
-            const SizedBox(height: 20),
-            if (isScheduled)
-              _CountdownBanner(target: exam.startDate!)
-            else ...[
-              if (_needsPasscode) ...[
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text('exam_passcode'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _passcodeCtrl,
-                  textAlign: TextAlign.center,
-                  obscureText: true,
-                  style: const TextStyle(
-                      fontFamily: 'bahji', fontSize: 18, letterSpacing: 4),
-                  decoration: InputDecoration(
-                    hintText: '••••••',
-                    errorText: _error,
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: Colors.grey.shade300)),
-                    enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: Colors.grey.shade200)),
-                    prefixIcon: const Icon(Icons.lock_outline_rounded,
-                        color: Colors.grey),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  onSubmitted: (_) => _enter(),
-                ),
+            ExamHero(
+              child: Column(children: [
+                ExamHeroBar(title: 'enter_exam'.tr),
                 const SizedBox(height: 20),
-              ],
-              if (_error != null && !_needsPasscode) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  width: 88,
+                  height: 88,
                   decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.shade200),
+                    color: Colors.white.withValues(alpha: 0.16),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white30, width: 2),
                   ),
-                  child: Row(children: [
-                    const Icon(Icons.error_outline_rounded,
-                        color: Colors.red, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: Text(_error!,
-                            style: const TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 13,
-                                color: Colors.red))),
-                  ]),
+                  child: const Icon(Icons.quiz_rounded,
+                      color: Colors.white, size: 42),
                 ),
-                const SizedBox(height: 16),
-              ],
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _enter,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
-                    elevation: 0,
+                const SizedBox(height: 14),
+                Text(exam.name,
+                    textAlign: TextAlign.center,
+                    style:
+                    examT(20, w: FontWeight.w800, c: Colors.white, h: 1.4)),
+                if (exam.description != null) ...[
+                  const SizedBox(height: 8),
+                  Text(exam.description!,
+                      textAlign: TextAlign.center,
+                      style: examT(12.5, c: Colors.white70, h: 1.6)),
+                ],
+                const SizedBox(height: 18),
+                Row(children: [
+                  HeroStat(
+                    icon: Icons.timer_outlined,
+                    color: const Color(0xFF80D8FF),
+                    value: _fmt('exam_n_minutes', {'n': exam.duration ?? 0}),
+                    label: 'exam_exam_duration'.tr,
                   ),
-                  child: _loading
-                      ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: AppLoadingIndicator())
-                      : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.play_arrow_rounded, size: 22),
-                        const SizedBox(width: 8),
-                        Text('exam_start_now'.tr,
-                            style: const TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700)),
-                      ]),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                  Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Colors.orange, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: Text(
-                        'exam_warning'.tr,
-                        style: const TextStyle(
-                            fontFamily: 'bahji',
-                            fontSize: 12,
-                            color: Colors.orange),
-                      )),
+                  const SizedBox(width: 10),
+                  HeroStat(
+                    icon: Icons.star_rounded,
+                    color: const Color(0xFFFFD740),
+                    value: '${exam.passingScore?.toInt() ?? 0}%',
+                    label: 'exam_passing_score'.tr,
+                  ),
+                  const SizedBox(width: 10),
+                  HeroStat(
+                    icon: Icons.help_outline_rounded,
+                    color: const Color(0xFF69F0AE),
+                    value: '${exam.questionCount}',
+                    label: 'exam_question_count'.tr,
+                  ),
                 ]),
-              ),
-            ],
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+              child: Column(children: [
+                if (exam.startDate != null) ...[
+                  ExamCard(
+                    padding: const EdgeInsets.all(16),
+                    child: ExamInfoRow(Icons.schedule_rounded,
+                        'exam_start_time'.tr, _fmtDate(exam.startDate!), kAmber),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                if (isScheduled)
+                  _CountdownBanner(target: exam.startDate!)
+                else ...[
+                  if (_needsPasscode) ...[
+                    ExamSectionCard(
+                      icon: Icons.lock_outline_rounded,
+                      title: 'exam_passcode'.tr,
+                      child: TextField(
+                        controller: _passcodeCtrl,
+                        textAlign: TextAlign.center,
+                        obscureText: true,
+                        style: examT(20, w: FontWeight.w700, c: c.textDark)
+                            .copyWith(letterSpacing: 6),
+                        decoration: InputDecoration(
+                          hintText: '••••••',
+                          errorText: _error,
+                          filled: true,
+                          fillColor: c.primary.withValues(alpha: 0.05),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                  color: c.divider.withValues(alpha: 0.8))),
+                          focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide:
+                              BorderSide(color: c.primary, width: 1.6)),
+                          prefixIcon: Icon(Icons.lock_outline_rounded,
+                              color: c.textMedium),
+                          contentPadding:
+                          const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onSubmitted: (_) => _enter(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                  if (_error != null && !_needsPasscode) ...[
+                    ExamBanner(
+                        icon: Icons.error_outline_rounded,
+                        color: kDanger,
+                        text: _error!),
+                    const SizedBox(height: 16),
+                  ],
+                  ExamBanner(
+                      icon: Icons.warning_amber_rounded,
+                      color: kAmber,
+                      text: 'exam_warning'.tr),
+                  const SizedBox(height: 18),
+                  GradientButton(
+                    loading: _loading,
+                    loader: const SizedBox(
+                        width: 24, height: 24, child: AppLoadingIndicator()),
+                    label: 'exam_start_now'.tr,
+                    icon: Icons.play_arrow_rounded,
+                    onTap: _enter,
+                  ),
+                ],
+              ]),
+            ),
           ]),
         ),
       ),
     );
   }
-
-  String _fmtDate(DateTime d) =>
-      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
 // ── Live Quiz Screen ─────────────────────────────────────────────────────────
@@ -317,7 +267,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
       if (_secondsLeft <= 0) {
         _submitExam();
       } else {
-        if(mounted) setState(() => _secondsLeft--);
+        if (mounted) setState(() => _secondsLeft--);
       }
     });
   }
@@ -369,11 +319,13 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   }
 
   void _next() {
-    if (_current < widget.questions.length - 1) if(mounted) setState(() => _current++);
+    if (_current < widget.questions.length - 1 && mounted) {
+      setState(() => _current++);
+    }
   }
 
   void _prev() {
-    if (_current > 0) if(mounted) setState(() => _current--);
+    if (_current > 0 && mounted) setState(() => _current--);
   }
 
   String get _timerDisplay {
@@ -383,26 +335,28 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   }
 
   Color get _timerColor => _secondsLeft < 120
-      ? Colors.redAccent
+      ? kDanger
       : _secondsLeft < 300
-      ? Colors.orange
-      : context.colors.success;
+      ? kAmber
+      : context.colors.primary;
 
   int get _answeredCount => _answers.values.where((v) => v != null).length;
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
+
     if (_submitting) {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
-          backgroundColor: context.colors.background,
+          backgroundColor: c.background,
           body: Center(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               const AppLoadingIndicator(),
               const SizedBox(height: 20),
               Text('exam_sending_answers'.tr,
-                  style: const TextStyle(fontFamily: 'bahji', fontSize: 16)),
+                  style: examT(15, w: FontWeight.w700, c: c.textMedium)),
             ]),
           ),
         ),
@@ -412,251 +366,247 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
 
     final q = widget.questions[_current];
     final opts = q.options;
+    final total = widget.questions.length;
+    final progress = total == 0 ? 0.0 : _answeredCount / total;
 
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: context.colors.background,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          title: Text(widget.exam.name,
-              style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87),
-              overflow: TextOverflow.ellipsis),
-          actions: [
-            Container(
-              margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: _timerColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _timerColor.withValues(alpha: 0.4)),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.timer_rounded, size: 16, color: _timerColor),
-                const SizedBox(width: 6),
-                Text(_timerDisplay,
-                    style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: _timerColor)),
-              ]),
-            ),
-          ],
-        ),
+        backgroundColor: c.background,
         body: Column(children: [
-          // Progress bar
+          // ── Header ────────────────────────────────────────────────────
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Column(children: [
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text(_fmt('exam_quiz_counter', {'current': _current + 1, 'total': widget.questions.length}),
-                    style: const TextStyle(
-                        fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
-                Text(_fmt('exam_quiz_answered_progress', {'answered': _answeredCount, 'total': widget.questions.length}),
-                    style: const TextStyle(
-                        fontFamily: 'bahji', fontSize: 12, color: Colors.grey)),
-              ]),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: (_current + 1) / widget.questions.length,
-                  backgroundColor: Colors.grey.shade100,
-                  color: context.colors.primary,
-                  minHeight: 6,
-                ),
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius:
+              const BorderRadius.vertical(bottom: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6)),
+              ],
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                child: Column(children: [
+                  Row(children: [
+                    Expanded(
+                      child: Text(widget.exam.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: examT(15, w: FontWeight.w800, c: c.textDark)),
+                    ),
+                    const SizedBox(width: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: _timerColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: _timerColor.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.timer_rounded, size: 17, color: _timerColor),
+                        const SizedBox(width: 6),
+                        Text(_timerDisplay,
+                            style: examT(15,
+                                w: FontWeight.w800, c: _timerColor)),
+                      ]),
+                    ),
+                  ]),
+                  const SizedBox(height: 14),
+                  ExamBar(pct: progress * 100, color: c.primary, height: 8),
+                  const SizedBox(height: 6),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                            _fmt('exam_quiz_counter',
+                                {'current': _current + 1, 'total': total}),
+                            style: examT(11, c: c.textMedium)),
+                        Text(
+                            _fmt('exam_quiz_answered_progress', {
+                              'answered': _answeredCount,
+                              'total': total
+                            }),
+                            style: examT(11, c: c.textMedium)),
+                      ]),
+                ]),
               ),
-            ]),
+            ),
           ),
 
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Question card
-                    Container(
-                      width: double.infinity,
+                    ExamCard(
+                      radius: 22,
+                      borderColor: c.primary.withValues(alpha: 0.16),
                       padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10)
-                        ],
-                      ),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                  color:
-                                  context.colors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(8)),
-                              child: Text(_fmt('exam_n_marks', {'n': q.marks.toInt()}),
-                                  style: TextStyle(
-                                      fontFamily: 'bahji',
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: context.colors.primary)),
-                            ),
-                            const SizedBox(height: 12),
+                            ExamChip(
+                                Icons.grade_rounded,
+                                _fmt('exam_n_marks',
+                                    {'n': q.marks.toInt()}),
+                                kAmber),
+                            const SizedBox(height: 14),
                             Text(q.title,
-                                style: const TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w600,
-                                    height: 1.5)),
+                                textDirection: Helpers.textDirOf(q.title),
+                                style: examT(17,
+                                    w: FontWeight.w700,
+                                    c: c.textDark,
+                                    h: 1.7)),
                           ]),
                     ),
                     const SizedBox(height: 16),
 
-                    // MCQ options or free-text input
                     if (opts.isNotEmpty)
                       ...List.generate(opts.length, (i) {
                         final opt = opts[i];
                         final selected = _answers[_current] == opt;
                         return GestureDetector(
-                          onTap: () { if(mounted) setState(() => _answers[_current] = opt);},
+                          onTap: () {
+                            if (mounted) {
+                              setState(() => _answers[_current] = opt);
+                            }
+                          },
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
+                            duration: const Duration(milliseconds: 200),
                             margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? context.colors.primary.withValues(alpha: 0.08)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(14),
+                                  ? c.primary.withValues(alpha: 0.07)
+                                  : c.cardBg,
+                              borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: selected
-                                    ? context.colors.primary
-                                    : Colors.grey.shade200,
+                                    ? c.primary
+                                    : c.divider.withValues(alpha: 0.7),
                                 width: selected ? 2 : 1,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2))
+                                    color: selected
+                                        ? c.primary.withValues(alpha: 0.16)
+                                        : Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: selected ? 14 : 10,
+                                    offset: const Offset(0, 4)),
                               ],
                             ),
                             child: Row(children: [
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 180),
-                                width: 22,
-                                height: 22,
+                                duration: const Duration(milliseconds: 200),
+                                width: 36,
+                                height: 36,
                                 decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
+                                  gradient: selected
+                                      ? LinearGradient(
+                                      colors: [kDeep, c.primary])
+                                      : null,
                                   color: selected
-                                      ? context.colors.primary
-                                      : Colors.transparent,
-                                  border: Border.all(
-                                      color: selected
-                                          ? context.colors.primary
-                                          : Colors.grey.shade300,
-                                      width: 2),
+                                      ? null
+                                      : c.divider.withValues(alpha: 0.45),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: selected
-                                    ? const Icon(Icons.check_rounded,
-                                    color: Colors.white, size: 14)
-                                    : null,
+                                child: Center(
+                                  child: Text('${i + 1}',
+                                      style: examT(14,
+                                          w: FontWeight.w800,
+                                          c: selected
+                                              ? Colors.white
+                                              : c.textMedium)),
+                                ),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
                                   child: Text(opt,
-                                      style: TextStyle(
-                                          fontFamily: 'bahji',
-                                          fontSize: 15,
-                                          fontWeight: selected
-                                              ? FontWeight.w600
-                                              : FontWeight.w400,
-                                          color: selected
-                                              ? context.colors.primary
-                                              : Colors.black87))),
+                                      textDirection: Helpers.textDirOf(opt),
+                                      style: examT(14.5,
+                                          w: selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          c: selected
+                                              ? c.primary
+                                              : c.textDark,
+                                          h: 1.55))),
                             ]),
                           ),
                         );
                       })
                     else
-                    // Open-ended text field
-                      TextField(
-                        textDirection: Helpers.pageDirection,
-                        maxLines: 4,
-                        onChanged: (v) => _answers[_current] =
-                        v.trim().isEmpty ? null : v.trim(),
-                        decoration: InputDecoration(
-                          hintText: 'exam_quiz_answer_hint'.tr,
-                          hintStyle: const TextStyle(
-                              fontFamily: 'bahji', color: Colors.grey),
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide:
-                              BorderSide(color: Colors.grey.shade200)),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide:
-                              BorderSide(color: Colors.grey.shade200)),
-                          contentPadding: const EdgeInsets.all(16),
+                      ExamCard(
+                        radius: 18,
+                        child: TextField(
+                          key: ValueKey(_current),
+                          controller:
+                          TextEditingController(text: _answers[_current]),
+                          maxLines: 5,
+                          onChanged: (v) => _answers[_current] =
+                          v.trim().isEmpty ? null : v.trim(),
+                          style: examT(14.5, c: c.textDark, h: 1.7),
+                          decoration: InputDecoration(
+                            hintText: 'exam_quiz_answer_hint'.tr,
+                            hintStyle: examT(14, c: c.textMedium),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.all(18),
+                          ),
                         ),
                       ),
 
                     // Navigator dots
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: List.generate(widget.questions.length, (i) {
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(total, (i) {
                         final answered = _answers[i] != null;
                         final isCurrent = i == _current;
                         return GestureDetector(
-                          onTap: () { if(mounted) setState(() => _current = i);},
+                          onTap: () {
+                            if (mounted) setState(() => _current = i);
+                          },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
-                            width: 34,
-                            height: 34,
+                            width: 36,
+                            height: 36,
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                              gradient: isCurrent
+                                  ? LinearGradient(colors: [kDeep, c.primary])
+                                  : null,
                               color: isCurrent
-                                  ? context.colors.primary
+                                  ? null
                                   : answered
-                                  ? context.colors.success.withValues(alpha: 0.12)
-                                  : Colors.white,
+                                  ? c.success.withValues(alpha: 0.13)
+                                  : c.divider.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(12),
                               border: Border.all(
                                 color: isCurrent
-                                    ? context.colors.primary
+                                    ? c.primary
                                     : answered
-                                    ? context.colors.success
-                                    : Colors.grey.shade300,
-                                width: isCurrent ? 2 : 1,
+                                    ? c.success
+                                    : c.divider,
                               ),
                             ),
                             child: Center(
                                 child: Text('${i + 1}',
-                                    style: TextStyle(
-                                        fontFamily: 'bahji',
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w700,
-                                        color: isCurrent
+                                    style: examT(12,
+                                        w: FontWeight.w700,
+                                        c: isCurrent
                                             ? Colors.white
                                             : answered
-                                            ? context.colors.success
-                                            : Colors.grey))),
+                                            ? c.success
+                                            : c.textMedium))),
                           ),
                         );
                       }),
@@ -667,55 +617,45 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
 
           // Navigation bar
           Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
-            child: Row(children: [
-              if (_current > 0)
-                OutlinedButton.icon(
-                  onPressed: _prev,
-                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                  label: Text('previous_question'.tr,
-                      style: const TextStyle(fontFamily: 'bahji')),
-                  style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey,
-                      side: BorderSide(color: Colors.grey.shade300),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12)),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            decoration: BoxDecoration(
+              color: c.cardBg,
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.07),
+                    blurRadius: 18,
+                    offset: const Offset(0, -4)),
+              ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Row(children: [
+                if (_current > 0) ...[
+                  SizedBox(
+                    width: 120,
+                    child: SoftButton(
+                        label: 'previous_question'.tr, onTap: _prev),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: _current < total - 1
+                      ? GradientButton(
+                      label: 'next_question'.tr,
+                      icon: Icons.arrow_forward_ios_rounded,
+                      height: 50,
+                      onTap: _next)
+                      : GradientButton(
+                      label: 'submit_exam'.tr,
+                      icon: Icons.send_rounded,
+                      color: c.success,
+                      height: 50,
+                      onTap: _showSubmitDialog),
                 ),
-              const Spacer(),
-              if (_current < widget.questions.length - 1)
-                ElevatedButton.icon(
-                  onPressed: _next,
-                  icon: Text('next_question'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-                  label: const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: context.colors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12)),
-                )
-              else
-                ElevatedButton.icon(
-                  onPressed: () => _showSubmitDialog(),
-                  icon: const Icon(Icons.send_rounded, size: 16),
-                  label: Text('submit_exam'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: context.colors.success,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12)),
-                ),
-            ]),
+              ]),
+            ),
           ),
         ]),
       ),
@@ -725,45 +665,70 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   void _showSubmitDialog() {
     showDialog(
       context: context,
-      builder: (_) => Directionality(
+      builder: (dctx) => Directionality(
         textDirection: Helpers.pageDirection,
-        child: AlertDialog(
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-          title: Text('submit_exam'.tr,
-              style:
-              const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
-          content: Text(
-            _answeredCount < widget.questions.length
-                ? _fmt('exam_quiz_unanswered_msg', {'count': widget.questions.length - _answeredCount})
-                : 'submit_confirm_all_answered'.tr,
-            style: const TextStyle(fontFamily: 'bahji'),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child:
-                Text('exam_cancel'.tr, style: const TextStyle(fontFamily: 'bahji'))),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _submitExam();
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: context.colors.success,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10))),
-              child: Text('confirm_submit'.tr,
-                  style: const TextStyle(
-                      fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+        child: Dialog(
+          backgroundColor: dctx.colors.cardBg,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
+              padding: const EdgeInsets.all(26),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                IconTile(
+                  _answeredCount < widget.questions.length
+                      ? Icons.warning_amber_rounded
+                      : Icons.check_circle_outline_rounded,
+                  _answeredCount < widget.questions.length
+                      ? kAmber
+                      : dctx.colors.success,
+                  size: 68,
+                ),
+                const SizedBox(height: 18),
+                Text('submit_exam'.tr,
+                    style: examT(18,
+                        w: FontWeight.w800, c: dctx.colors.textDark)),
+                const SizedBox(height: 10),
+                Text(
+                  _answeredCount < widget.questions.length
+                      ? _fmt('exam_quiz_unanswered_msg', {
+                    'count': widget.questions.length - _answeredCount
+                  })
+                      : 'submit_confirm_all_answered'.tr,
+                  textAlign: TextAlign.center,
+                  style: examT(13, c: dctx.colors.textMedium, h: 1.7),
+                ),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: SoftButton(
+                        label: 'exam_cancel'.tr,
+                        onTap: () => Navigator.pop(dctx)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: GradientButton(
+                      label: 'confirm_submit'.tr,
+                      height: 50,
+                      color: dctx.colors.success,
+                      onTap: () {
+                        Navigator.pop(dctx);
+                        _submitExam();
+                      },
+                    ),
+                  ),
+                ]),
+              ]),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildResultScreen() {
+    final c = context.colors;
     // Use server result if available; fallback to local calculation
     final pct = (_serverResult?['percentage'] as num?)?.toDouble() ??
         (_answeredCount == 0
@@ -775,225 +740,102 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     (_serverResult?['marks_obtained'] as num?)?.toDouble();
     final totalMarks = (_serverResult?['total_marks'] as num?)?.toDouble() ??
         widget.questions.fold(0.0, (s, q) => (s ?? 0) + q.marks);
+    final accent = passed ? c.success : kDanger;
 
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Scaffold(
-        backgroundColor: context.colors.background,
-        appBar: AppBar(
-          backgroundColor: passed ? context.colors.success : Colors.redAccent,
-          automaticallyImplyLeading: false,
-          title: Text('exam_result'.tr,
-              style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white)),
-        ),
-        body: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child:
-            Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              // Error banner if submission had an error
-              if (_submitError != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: Row(children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.orange, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                        child: Text(
-                          _fmt('exam_submit_partial_error', {'error': _submitError}),
-                          style: const TextStyle(
-                              fontFamily: 'bahji',
-                              fontSize: 12,
-                              color: Colors.orange),
-                        )),
+        backgroundColor: c.background,
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(children: [
+            ExamHero(
+              colors: [Color.lerp(accent, Colors.black, .35)!, accent],
+              child: Column(children: [
+                ExamHeroBar(title: 'exam_result'.tr, showBack: false),
+                const SizedBox(height: 22),
+                ExamRing(
+                  value: pct,
+                  size: 140,
+                  center: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Text('${pct.toStringAsFixed(0)}%',
+                        style: examT(32, w: FontWeight.w800, c: Colors.white)),
+                    Text(
+                        passed
+                            ? 'exam_passed_mark'.tr
+                            : 'exam_failed_mark'.tr,
+                        style: examT(13, c: Colors.white70)),
                   ]),
                 ),
-              ],
-
-              // Animated score ring
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: pct / 100),
-                duration: const Duration(milliseconds: 1200),
-                curve: Curves.easeOut,
-                builder: (_, v, _) =>
-                    Stack(alignment: Alignment.center, children: [
-                      SizedBox(
-                        width: 160,
-                        height: 160,
-                        child: AppLoadingIndicator(),
-                      ),
-                      Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text('${(v * 100).toStringAsFixed(0)}%',
-                            style: TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 36,
-                                fontWeight: FontWeight.w900,
-                                color:
-                                passed ? context.colors.success : Colors.redAccent)),
-                        Text(passed ? 'exam_passed_mark'.tr : 'exam_failed_mark'.tr,
-                            style: TextStyle(
-                                fontFamily: 'bahji',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color:
-                                passed ? context.colors.success : Colors.redAccent)),
-                      ]),
-                    ]),
-              ),
-              const SizedBox(height: 28),
-              Text(
-                passed
-                    ? 'congratulations_passed'.tr
-                    : 'sorry_failed'.tr,
-                style: TextStyle(
-                    fontFamily: 'bahji',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: passed ? context.colors.success : Colors.redAccent),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10)
-                  ],
+                const SizedBox(height: 16),
+                Text(
+                  passed ? 'congratulations_passed'.tr : 'sorry_failed'.tr,
+                  textAlign: TextAlign.center,
+                  style: examT(17, w: FontWeight.w800, c: Colors.white, h: 1.5),
                 ),
-                child: Column(children: [
-                  _ResultRow(
-                    'your_score'.tr,
-                    marksObtained != null
-                        ? '${marksObtained.toStringAsFixed(0)} / ${totalMarks?.toStringAsFixed(0)}'
-                        : _fmt('exam_answers_count', {'answered': _answeredCount, 'total': widget.questions.length}),
-                    context.colors.primary,
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
+              child: Column(children: [
+                if (_submitError != null) ...[
+                  ExamBanner(
+                    icon: Icons.warning_amber_rounded,
+                    color: kAmber,
+                    text: _fmt('exam_submit_partial_error',
+                        {'error': _submitError}),
                   ),
-                  const Divider(height: 20),
-                  _ResultRow(
-                      'questions_answered'.tr,
-                      '$_answeredCount / ${widget.questions.length}',
-                      Colors.teal),
-                  const Divider(height: 20),
-                  _ResultRow(
-                      'exam_passing_score'.tr,
-                      '${widget.exam.passingScore?.toInt() ?? 60}%',
-                      Colors.orange),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () =>
-                      Navigator.popUntil(context, (r) => r.isFirst),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: context.colors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: Text('back_to_home'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'bahji',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 16),
+                ],
+                ExamCard(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(children: [
+                    ExamInfoRow(
+                      Icons.grade_rounded,
+                      'your_score'.tr,
+                      marksObtained != null
+                          ? '${marksObtained.toStringAsFixed(0)} / ${totalMarks?.toStringAsFixed(0)}'
+                          : _fmt('exam_answers_count', {
+                        'answered': _answeredCount,
+                        'total': widget.questions.length
+                      }),
+                      c.primary,
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Divider(
+                          height: 1, color: c.divider.withValues(alpha: 0.6)),
+                    ),
+                    ExamInfoRow(
+                        Icons.task_alt_rounded,
+                        'questions_answered'.tr,
+                        '$_answeredCount / ${widget.questions.length}',
+                        Colors.teal),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Divider(
+                          height: 1, color: c.divider.withValues(alpha: 0.6)),
+                    ),
+                    ExamInfoRow(
+                        Icons.star_rounded,
+                        'exam_passing_score'.tr,
+                        '${widget.exam.passingScore?.toInt() ?? 60}%',
+                        kAmber),
+                  ]),
                 ),
-              ),
-            ]),
-          ),
+                const SizedBox(height: 22),
+                GradientButton(
+                  label: 'back_to_home'.tr,
+                  icon: Icons.home_rounded,
+                  onTap: () => Navigator.popUntil(context, (r) => r.isFirst),
+                ),
+              ]),
+            ),
+          ]),
         ),
       ),
     );
   }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  final List<Widget> children;
-
-  const _InfoCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)
-      ],
-    ),
-    child: Column(
-        children: children
-            .map((c) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4), child: c))
-            .toList()),
-  );
-}
-
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label, value;
-  final Color color;
-
-  const _InfoRow(this.icon, this.label, this.value, this.color);
-
-  @override
-  Widget build(BuildContext context) => Row(children: [
-    Icon(icon, color: color, size: 18),
-    const SizedBox(width: 10),
-    Text(label,
-        style: const TextStyle(
-            fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
-    const Spacer(),
-    Text(value,
-        style: TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: color)),
-  ]);
-}
-
-class _ResultRow extends StatelessWidget {
-  final String label, value;
-  final Color color;
-
-  const _ResultRow(this.label, this.value, this.color);
-
-  @override
-  Widget build(BuildContext context) => Row(children: [
-    Text(label,
-        style: const TextStyle(
-            fontFamily: 'bahji', fontSize: 14, color: Colors.grey)),
-    const Spacer(),
-    Text(value,
-        style: TextStyle(
-            fontFamily: 'bahji',
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: color)),
-  ]);
 }
 
 class _CountdownBanner extends StatefulWidget {
@@ -1006,7 +848,7 @@ class _CountdownBanner extends StatefulWidget {
 }
 
 class _CountdownBannerState extends State<_CountdownBanner> {
-  late Timer _timer;
+  late final Timer _timer;
   Duration _remaining = Duration.zero;
 
   @override
@@ -1019,7 +861,7 @@ class _CountdownBannerState extends State<_CountdownBanner> {
   void _update() {
     if (!mounted) return;
     final r = widget.target.difference(DateTime.now());
-    if(mounted) setState(() => _remaining = r.isNegative ? Duration.zero : r);
+    setState(() => _remaining = r.isNegative ? Duration.zero : r);
   }
 
   @override
@@ -1028,72 +870,41 @@ class _CountdownBannerState extends State<_CountdownBanner> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.orange.withValues(alpha: 0.08),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+  Widget _box(String v, String label) => Column(children: [
+    Container(
+      width: 62,
+      height: 62,
+      decoration: BoxDecoration(
+        color: kAmber.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: kAmber.withValues(alpha: 0.25)),
+      ),
+      child: Center(
+          child: Text(v, style: examT(24, w: FontWeight.w900, c: kAmber))),
     ),
-    child: Column(children: [
-      Text('exam_starts_in'.tr,
-          style: const TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 14,
-              color: Colors.orange,
-              fontWeight: FontWeight.w600)),
-      const SizedBox(height: 10),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        _TimeBox(_remaining.inHours.toString().padLeft(2, '0'), 'exam_hours'.tr),
-        const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text(':',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.orange))),
-        _TimeBox(((_remaining.inMinutes) % 60).toString().padLeft(2, '0'),
-            'exam_minutes'.tr),
-        const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Text(':',
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.orange))),
-        _TimeBox(((_remaining.inSeconds) % 60).toString().padLeft(2, '0'),
-            'exam_seconds'.tr),
-      ]),
+    const SizedBox(height: 6),
+    Text(label, style: examT(11, c: context.colors.textMedium)),
+  ]);
+
+  Widget get _colon => Padding(
+    padding: const EdgeInsets.only(left: 8, right: 8, bottom: 22),
+    child: Text(':', style: examT(26, w: FontWeight.w900, c: kAmber)),
+  );
+
+  @override
+  Widget build(BuildContext context) => ExamSectionCard(
+    icon: Icons.hourglass_top_rounded,
+    accent: kAmber,
+    title: 'exam_starts_in'.tr,
+    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+      _box(_remaining.inHours.toString().padLeft(2, '0'),
+          'exam_hours'.tr),
+      _colon,
+      _box((_remaining.inMinutes % 60).toString().padLeft(2, '0'),
+          'exam_minutes'.tr),
+      _colon,
+      _box((_remaining.inSeconds % 60).toString().padLeft(2, '0'),
+          'exam_seconds'.tr),
     ]),
   );
-}
-
-class _TimeBox extends StatelessWidget {
-  final String value, label;
-
-  const _TimeBox(this.value, this.label);
-
-  @override
-  Widget build(BuildContext context) => Column(children: [
-    Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-          color: Colors.orange.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(12)),
-      child: Center(
-          child: Text(value,
-              style: const TextStyle(
-                  fontFamily: 'bahji',
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.orange))),
-    ),
-    const SizedBox(height: 4),
-    Text(label,
-        style: const TextStyle(
-            fontFamily: 'bahji', fontSize: 11, color: Colors.grey)),
-  ]);
 }
