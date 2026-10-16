@@ -27,6 +27,7 @@ import '../shared/profile/change_password_widget.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_widgets.dart';
+import 'google_auth_flow.dart';
 import 'verify_way.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -67,8 +68,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().loadSpecialization(context);
-      context.read<AuthProvider>().loadPolicy();
+      context.read<MyAuthProvider>().loadSpecialization(context);
+      context.read<MyAuthProvider>().loadPolicy();
       context.read<AboutTermsProvider>().loadTerms(context);
     });
   }
@@ -124,7 +125,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     if (authProvider.selectedRole == null) {
       Fluttertoast.showToast(
         msg: 'please select your role',
@@ -184,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
-    return Consumer<AuthProvider>(
+    return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
         return Scaffold(
           body: BasePage(key: const ValueKey('register'), child: isWide
@@ -196,7 +197,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildWideLayout(AuthProvider provider) => Row(
+  Widget _buildWideLayout(MyAuthProvider provider) => Row(
     children: [
       AuthSidebar(),
       Expanded(
@@ -210,7 +211,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ],
   );
 
-  Widget _buildNarrowLayout(AuthProvider provider) => Center(
+  Widget _buildNarrowLayout(MyAuthProvider provider) => Center(
     child: SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
@@ -219,7 +220,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     ),
   );
 
-  Widget _buildForm(AuthProvider provider) {
+  Widget _buildForm(MyAuthProvider provider) {
     final c = context.colors;
     // Every verification way the admin allows, and the one currently selected.
     final ways = provider.policyLoaded
@@ -279,6 +280,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 28),
 
+          // Join with Google: role sheet -> account created -> signed in
+          const GoogleAuthSection(joining: true),
+
           // Full name
           IconTextField(
             controller: _fullNameController,
@@ -305,7 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 IconTextField(
                   controller: _phoneController,
-                  label: context.read<AuthProvider>().verifyByPhone
+                  label: context.read<MyAuthProvider>().verifyByPhone
                       ? 'phone_with_country_code'.tr
                       : 'phone'.tr,
                   icon: Icons.phone_outlined,
@@ -314,7 +318,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
               ],
             );
-            return context.watch<AuthProvider>().verifyByPhone
+            return context.watch<MyAuthProvider>().verifyByPhone
                 ? phoneField
                 : ParentComponent(featureKey: 'register.phone', child: phoneField);
           }),

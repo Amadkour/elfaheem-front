@@ -18,7 +18,7 @@ import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
 import '../../../../student/models.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
-import '../../video_player_screen.dart';
+import '../../video/video_player_screen.dart';
 import '../session_material_model.dart';
 import 'material_file_style.dart';
 import 'session_exam_tile.dart';
@@ -160,11 +160,12 @@ class SessionMaterialGrid extends StatelessWidget {
 
     if (columns == 1) {
       return Column(
-          children: materials
-              .asMap()
-              .entries
-              .map((entry) => _buildTile(context, entry.value, entry.key+1))
-              .toList());
+        children: materials
+            .asMap()
+            .entries
+            .map((entry) => _buildTile(context, entry.value, entry.key + 1))
+            .toList(),
+      );
     }
 
     // Multi-column layout
@@ -178,7 +179,7 @@ class SessionMaterialGrid extends StatelessWidget {
           children: [
             for (int j = 0; j < rowItems.length; j++) ...[
               if (j > 0) const SizedBox(width: 12),
-              Expanded(child: _buildTile(context, rowItems[j],i+j+1)),
+              Expanded(child: _buildTile(context, rowItems[j], i + j + 1)),
             ],
             if (rowItems.length < columns) ...[
               const SizedBox(width: 12),
@@ -195,11 +196,11 @@ class SessionMaterialGrid extends StatelessWidget {
   // ── Tile ───────────────────────────────────────────────────────────────────
 
   Widget _buildTile(
-      BuildContext context,
-      SessionMaterialModel m,
-      int index, {
-        int? dragIndex,
-      }) {
+    BuildContext context,
+    SessionMaterialModel m,
+    int index, {
+    int? dragIndex,
+  }) {
     final isRecording = m.type == SessionMaterialType.recording;
     final isRecorded = m.type == SessionMaterialType.recorded;
 
@@ -217,13 +218,15 @@ class SessionMaterialGrid extends StatelessWidget {
     // For recording / recorded, surface the creation date as part of the title.
     final String displayName = isRecording
         ? 'recording_in_progress'
-        .tr // hardcoded "Recording in progress…"
+              .tr // hardcoded "Recording in progress…"
         : (isRecorded ? '${m.name}  •  ${_formatDate(m.createdAt)}' : m.name);
 
-    return  Directionality(
+    return Directionality(
       textDirection: Helpers.textDirOf(displayName),
       child: GestureDetector(
-        onTap: isRecording ? null : () => _onTapMaterial(context, m, isCompleted),
+        onTap: isRecording
+            ? null
+            : () => _onTapMaterial(context, m, isCompleted),
         child: Container(
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
@@ -259,17 +262,16 @@ class SessionMaterialGrid extends StatelessWidget {
                       ),
                     ),
                   )
-                else
-                  if (isRecording)
+                else if (isRecording)
                   // Pulsing red strip for active recording
-                    Container(
-                      height: 3,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [color, color.withValues(alpha: 0.4)],
-                        ),
+                  Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [color, color.withValues(alpha: 0.4)],
                       ),
                     ),
+                  ),
 
                 Padding(
                   padding: const EdgeInsets.symmetric(
@@ -282,9 +284,9 @@ class SessionMaterialGrid extends StatelessWidget {
                       // ── Leading icon ────────────────────────────────────────
                       Container(
                         decoration: BoxDecoration(
-                            shape: BoxShape.rectangle,
-                            borderRadius: BorderRadius.circular(10),
-                            border: BoxBorder.all(color: context.colors.primary)
+                          shape: BoxShape.rectangle,
+                          borderRadius: BorderRadius.circular(10),
+                          border: BoxBorder.all(color: context.colors.primary),
                         ),
                         child: Column(
                           children: [
@@ -293,23 +295,23 @@ class SessionMaterialGrid extends StatelessWidget {
                               alignment: Alignment.bottomCenter,
 
                               child: Text(
-                                (index < 10 ? '0' : '') +
-                                    index.toString(),
+                                (index < 10 ? '0' : '') + index.toString(),
                                 textAlign: TextAlign.center,
 
                                 style: context.colors.h4.copyWith(
-                                    color: context.colors.primary),
+                                  color: context.colors.primary,
+                                ),
                               ),
                             ),
                             isRecording
                                 ? _RecordingSpinnerIcon(color: color)
                                 : MaterialIconWidget(
-                              icon: icon,
-                              color: color,
-                              isCompleted: isCompleted,
-                              badge: fileStyle?.badge,
-                              badgeTextColor: fileStyle?.badgeTextColor,
-                            ),
+                                    icon: icon,
+                                    color: color,
+                                    isCompleted: isCompleted,
+                                    badge: fileStyle?.badge,
+                                    badgeTextColor: fileStyle?.badgeTextColor,
+                                  ),
                           ],
                         ),
                       ),
@@ -352,26 +354,25 @@ class SessionMaterialGrid extends StatelessWidget {
                                     // For recording, show a live dot instead of age
                                     if (isRecording)
                                       _LiveDotBadge(color: color)
-                                    else
-                                      if (isRecorded)
+                                    else if (isRecorded)
                                       // Show formatted date for recorded items
-                                        Text(
-                                          _formatDate(m.createdAt),
-                                          style: context.colors.caption.copyWith(
-                                            fontSize: 10,
-                                            color: color.withValues(alpha: 0.8),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        )
-                                      else
-                                        Text(
-                                          m.createdAt.age,
-                                          style: context.colors
-                                              .navLabelUnselected,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                      Text(
+                                        _formatDate(m.createdAt),
+                                        style: context.colors.caption.copyWith(
+                                          fontSize: 10,
+                                          color: color.withValues(alpha: 0.8),
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      )
+                                    else
+                                      Text(
+                                        m.createdAt.age,
+                                        style:
+                                            context.colors.navLabelUnselected,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                   ],
                                 ),
                               ],
@@ -379,7 +380,10 @@ class SessionMaterialGrid extends StatelessWidget {
                             const SizedBox(height: 3),
                             Row(
                               children: [
-                                SessionPill(fileStyle?.label ?? labelKey.tr, color),
+                                SessionPill(
+                                  fileStyle?.label ?? labelKey.tr,
+                                  color,
+                                ),
                                 if (m.sizeLabel.isNotEmpty && !isRecording) ...[
                                   const SizedBox(width: 6),
                                   Text(
@@ -389,7 +393,8 @@ class SessionMaterialGrid extends StatelessWidget {
                                     ),
                                   ),
                                 ],
-                                if (m.durationLabel.isNotEmpty && !isRecording) ...[
+                                if (m.durationLabel.isNotEmpty &&
+                                    !isRecording) ...[
                                   const SizedBox(width: 8),
                                   Icon(
                                     Icons.schedule_rounded,
@@ -424,8 +429,9 @@ class SessionMaterialGrid extends StatelessWidget {
                               ReorderableDragStartListener(
                                 index: dragIndex,
                                 child: Padding(
-                                  padding:
-                                  const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   child: Icon(
                                     Icons.menu,
                                     size: 23,
@@ -447,45 +453,47 @@ class SessionMaterialGrid extends StatelessWidget {
                             ),
                           ],
                         )
-                      else
-                        if (!isRecording)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (m.type == SessionMaterialType.video ||
-                                  m.type == SessionMaterialType.recorded)
-                                _OfflineBadge(
-                                    sessionId: m.sessionId, materialId: m.id),
-                              AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 300),
-                                transitionBuilder: (child, anim) =>
-                                    ScaleTransition(
-                                      scale: anim,
-                                      child: FadeTransition(
-                                        opacity: anim,
-                                        child: child,
-                                      ),
+                      else if (!isRecording)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (m.type == SessionMaterialType.video ||
+                                m.type == SessionMaterialType.recorded)
+                              _OfflineBadge(
+                                sessionId: m.sessionId,
+                                materialId: m.id,
+                              ),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 300),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(
+                                    scale: anim,
+                                    child: FadeTransition(
+                                      opacity: anim,
+                                      child: child,
                                     ),
-                                child: isCompleted
-                                    ? const Padding(
-                                  key: ValueKey('check'),
-                                  padding: EdgeInsets.only(right: 5),
-                                  child: Icon(
-                                    Icons.check_circle_rounded,
-                                    size: 15,
-                                    color: Color(0xFF00C48C),
                                   ),
-                                )
-                                    : const SizedBox.shrink(
-                                    key: ValueKey('empty')),
-                              ),
-                              Icon(
-                                Icons.open_in_new_rounded,
-                                size: 16,
-                                color: context.colors.textLight,
-                              ),
-                            ],
-                          ),
+                              child: isCompleted
+                                  ? const Padding(
+                                      key: ValueKey('check'),
+                                      padding: EdgeInsets.only(right: 5),
+                                      child: Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 15,
+                                        color: Color(0xFF00C48C),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(
+                                      key: ValueKey('empty'),
+                                    ),
+                            ),
+                            Icon(
+                              Icons.open_in_new_rounded,
+                              size: 16,
+                              color: context.colors.textLight,
+                            ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -520,9 +528,11 @@ class SessionMaterialGrid extends StatelessWidget {
 
   // ── Tap handler ────────────────────────────────────────────────────────────
 
-  Future<void> _onTapMaterial(BuildContext context,
-      SessionMaterialModel m,
-      bool isCompleted,) async {
+  Future<void> _onTapMaterial(
+    BuildContext context,
+    SessionMaterialModel m,
+    bool isCompleted,
+  ) async {
     // Belt-and-braces: the card that hosts this grid already blocks
     // expansion for a locked session, but guard the actual open action too
     // in case this grid is ever reached another way.
@@ -550,12 +560,11 @@ class SessionMaterialGrid extends StatelessWidget {
     ].contains(m.type)) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) =>
-              VideoPlayerScreen(
-                autoPlay: true,
-                startFullScreen: false,
-                material: m,
-              ),
+          builder: (_) => VideoPlayerScreen(
+            autoPlay: true,
+            startFullScreen: false,
+            material: m,
+          ),
         ),
       );
     } else if (m.type == SessionMaterialType.image) {
@@ -589,14 +598,13 @@ class SessionMaterialGrid extends StatelessWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
-  }) =>
-      GestureDetector(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(icon, size: 23, color: color),
-        ),
-      );
+  }) => GestureDetector(
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(icon, size: 23, color: color),
+    ),
+  );
 
   // ── Teacher dialogs ────────────────────────────────────────────────────────
 
@@ -608,75 +616,67 @@ class SessionMaterialGrid extends StatelessWidget {
 
     showDialog(
       context: context,
-      builder: (_) =>
-          RtlDialog(
-            title: 'edit_material'.tr,
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
-                  const SizedBox(height: 12),
-                  SessionField(
-                      ctrl: descCtrl, label: 'description_optional'.tr),
-                  const SizedBox(height: 12),
-                  SessionField(
-                    ctrl: orderCtrl,
-                    label: 'order_label'.tr, // add key: "الترتيب" / "Order"
-                    keyboardType: TextInputType.number,
-                  ),
-                  if (m.type == SessionMaterialType.link) ...[
-                    const SizedBox(height: 12),
-                    SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
-                  ],
-                ],
+      builder: (_) => RtlDialog(
+        title: 'edit_material'.tr,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SessionField(ctrl: nameCtrl, label: 'name_label'.tr),
+              const SizedBox(height: 12),
+              SessionField(ctrl: descCtrl, label: 'description_optional'.tr),
+              const SizedBox(height: 12),
+              SessionField(
+                ctrl: orderCtrl,
+                label: 'order_label'.tr, // add key: "الترتيب" / "Order"
+                keyboardType: TextInputType.number,
               ),
-            ),
-            onCancel: () => Navigator.pop(context),
-            onConfirm: () async {
-              Navigator.pop(context);
-              await context.read<TeacherCourseScreenProvider>().updateMaterial(
-                session.id,
-                m.id,
-                name: nameCtrl.text.trim().isEmpty
-                    ? m.name
-                    : nameCtrl.text.trim(),
-                order: int.tryParse(orderCtrl.text.trim()) ?? m.order,
-                description: descCtrl.text
-                    .trim()
-                    .isEmpty
-                    ? null
-                    : descCtrl.text.trim(),
-                url: m.type == SessionMaterialType.link
-                    ? urlCtrl.text.trim()
-                    : null,
-              );
-            },
-            confirmLabel: 'save'.tr,
-            confirmColor: context.colors.primary,
+              if (m.type == SessionMaterialType.link) ...[
+                const SizedBox(height: 12),
+                SessionField(ctrl: urlCtrl, label: 'url_label'.tr),
+              ],
+            ],
           ),
+        ),
+        onCancel: () => Navigator.pop(context),
+        onConfirm: () async {
+          Navigator.pop(context);
+          await context.read<TeacherCourseScreenProvider>().updateMaterial(
+            session.id,
+            m.id,
+            name: nameCtrl.text.trim().isEmpty ? m.name : nameCtrl.text.trim(),
+            order: int.tryParse(orderCtrl.text.trim()) ?? m.order,
+            description: descCtrl.text.trim().isEmpty
+                ? null
+                : descCtrl.text.trim(),
+            url: m.type == SessionMaterialType.link
+                ? urlCtrl.text.trim()
+                : null,
+          );
+        },
+        confirmLabel: 'save'.tr,
+        confirmColor: context.colors.primary,
+      ),
     );
   }
 
   void _showDeleteDialog(BuildContext context, SessionMaterialModel m) {
     showDialog(
       context: context,
-      builder: (_) =>
-          RtlDialog(
-            title: 'delete_material'.tr,
-            content: Text(
-                'delete_confirm_message'.tr, style: context.colors.body),
-            onCancel: () => Navigator.pop(context),
-            onConfirm: () async {
-              Navigator.pop(context);
-              await context.read<TeacherCourseScreenProvider>().deleteMaterial(
-                session.id,
-                m.id,
-              );
-            },
-            confirmLabel: 'delete'.tr,
-            confirmColor: context.colors.danger,
-          ),
+      builder: (_) => RtlDialog(
+        title: 'delete_material'.tr,
+        content: Text('delete_confirm_message'.tr, style: context.colors.body),
+        onCancel: () => Navigator.pop(context),
+        onConfirm: () async {
+          Navigator.pop(context);
+          await context.read<TeacherCourseScreenProvider>().deleteMaterial(
+            session.id,
+            m.id,
+          );
+        },
+        confirmLabel: 'delete'.tr,
+        confirmColor: context.colors.danger,
+      ),
     );
   }
 }
@@ -704,8 +704,7 @@ class _RecordingSpinnerIconState extends State<_RecordingSpinnerIcon>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )
-      ..repeat();
+    )..repeat();
   }
 
   @override
@@ -766,8 +765,7 @@ class _LiveDotBadgeState extends State<_LiveDotBadge>
     _ctrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )
-      ..repeat(reverse: true);
+    )..repeat(reverse: true);
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
   }
 
@@ -850,44 +848,44 @@ class MaterialIconWidget extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: isCompleted
                 ? const LinearGradient(
-              colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            )
+                    colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
                 : null,
             color: isCompleted
                 ? null
                 : (badge != null
-                ? effectiveColor
-                : effectiveColor.withValues(alpha: 0.12)),
+                      ? effectiveColor
+                      : effectiveColor.withValues(alpha: 0.12)),
             borderRadius: BorderRadius.circular(10),
             boxShadow: isCompleted
                 ? [
-              BoxShadow(
-                color: const Color(0xFF00C48C).withValues(alpha: 0.30),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ]
+                    BoxShadow(
+                      color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
                 : null,
           ),
           child: (badge != null && !isCompleted)
               ? Center(
-            child: Text(
-              badge!,
-              style: TextStyle(
-                color: badgeTextColor ?? Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: badge!.length > 2 ? 11 : 18,
-                letterSpacing: 0.3,
-              ),
-            ),
-          )
+                  child: Text(
+                    badge!,
+                    style: TextStyle(
+                      color: badgeTextColor ?? Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: badge!.length > 2 ? 11 : 18,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                )
               : Icon(
-            isCompleted ? Icons.check_rounded : icon,
-            color: isCompleted ? Colors.white : effectiveColor,
-            size: 20,
-          ),
+                  isCompleted ? Icons.check_rounded : icon,
+                  color: isCompleted ? Colors.white : effectiveColor,
+                  size: 20,
+                ),
         ),
         if (isCompleted)
           Positioned.fill(
@@ -978,12 +976,10 @@ class MaterialImageViewerDialog extends StatelessWidget {
               child: Image.network(
                 url,
                 fit: BoxFit.contain,
-                loadingBuilder: (_, child, progress) =>
-                progress == null
+                loadingBuilder: (_, child, progress) => progress == null
                     ? child
                     : const Center(child: AppLoadingIndicator()),
-                errorBuilder: (_, _, _) =>
-                const Icon(
+                errorBuilder: (_, _, _) => const Icon(
                   Icons.broken_image_rounded,
                   color: Colors.white54,
                   size: 64,
@@ -1004,10 +1000,7 @@ class MaterialImageViewerDialog extends StatelessWidget {
                 ),
               ),
               padding: EdgeInsets.only(
-                top: MediaQuery
-                    .of(context)
-                    .padding
-                    .top + 8,
+                top: MediaQuery.of(context).padding.top + 8,
                 left: 12,
                 right: 12,
                 bottom: 20,
@@ -1093,10 +1086,13 @@ class _OfflineBadge extends StatelessWidget {
           valueListenable: svc.downloadedIds,
           builder: (_, ids, _) => ids.contains(id)
               ? Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Icon(Icons.offline_pin_rounded,
-                size: 16, color: primary),
-          )
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    Icons.offline_pin_rounded,
+                    size: 16,
+                    color: primary,
+                  ),
+                )
               : const SizedBox.shrink(),
         );
       },

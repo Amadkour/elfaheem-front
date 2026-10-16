@@ -3,6 +3,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -10,7 +11,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
-import 'package:flutter_education_app/features/shared/session/video_player_screen.dart';
+import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../core/offline/offline_strings.dart';
@@ -97,7 +98,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   void _goHome() {
     Navigator.of(context)
-        .pushReplacementNamed(context.read<AuthProvider>().homeRoute);
+        .pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
   }
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -126,8 +127,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
     return Directionality(
       textDirection: Helpers.pageDirection,
-      child: Scaffold(
-        backgroundColor: c.background,
+      child: BasePage(
+
         appBar: AppBar(
           backgroundColor: c.cardBg,
           elevation: 0,
@@ -151,7 +152,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               ),
           ],
         ),
-        body: _loading
+        child: _loading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,

@@ -194,7 +194,7 @@ class WideShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    AuthProvider provider = context.watch<AuthProvider>();
+    MyAuthProvider provider = context.watch<MyAuthProvider>();
     return BasePage(
       child: Row(
         children: [
@@ -380,7 +380,7 @@ class UserChipButton extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child:
-                context.read<AuthProvider>().currentUser!.imageUrl != null
+                context.read<MyAuthProvider>().currentUser!.imageUrl != null
                     ? Container(
                   width: 35,
                   height: 35,
@@ -395,7 +395,7 @@ class UserChipButton extends StatelessWidget {
                   child: ClipOval(
                     child: AppNetworkImage(
                       url: context
-                          .read<AuthProvider>()
+                          .read<MyAuthProvider>()
                           .currentUser!
                           .imageUrl!,
                       enableFullscreen: false,
@@ -668,7 +668,7 @@ class RailShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    AuthProvider provider = context.watch<AuthProvider>();
+    MyAuthProvider provider = context.watch<MyAuthProvider>();
     return BasePage(
       child: Row(
         children: [
@@ -720,7 +720,7 @@ class RailShell extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (context.watch<AuthProvider>().currentUser != null)
+                if (context.watch<MyAuthProvider>().currentUser != null)
                   UserChipButton(
                     user: provider.currentUser!,
                     showLabel: false,

@@ -64,7 +64,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   final _epochs = List.generate(4, (_) => ValueNotifier<int>(0));
   late final List<DashboardItem> _items;
 
-  bool get _isParent => (context.read<AuthProvider>().currentUser?.role ?? '') == 'parent';
+  bool get _isParent => (context.read<MyAuthProvider>().currentUser?.role ?? '') == 'parent';
 
   Future<void> _refresh(int i) async {
     _epochs[i].value++;
@@ -221,7 +221,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      context.read<ProfileProvider>().initData(context.read<AuthProvider>().currentUser);
+      context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
     });
   }
 
@@ -254,7 +254,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                       onTap: () async {
                         await _push(const EditAccountScreen(isTeacher: false));
                         if (mounted) {
-                          context.read<ProfileProvider>().initData(context.read<AuthProvider>().currentUser);
+                          context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
                         }
                       },
                     ),

@@ -60,7 +60,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   Future<void> _submitProfile({required String email}) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     final docProvider = context.read<TeacherDocumentProvider>();
 
     final success = await auth.completeTeacherProfile(
@@ -114,7 +114,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     final isWide = MediaQuery.of(context).size.width > 800;
-    return Consumer2<AuthProvider, TeacherDocumentProvider>(
+    return Consumer2<MyAuthProvider, TeacherDocumentProvider>(
       builder: (context, auth, docs, _) {
         final content = isWide
             ? _buildWideLayout(auth, docs)
@@ -124,7 +124,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     );
   }
 
-  Widget _buildWideLayout(AuthProvider auth, TeacherDocumentProvider docs) {
+  Widget _buildWideLayout(MyAuthProvider auth, TeacherDocumentProvider docs) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -141,7 +141,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     );
   }
 
-  Widget _buildNarrowLayout(AuthProvider auth, TeacherDocumentProvider docs) {
+  Widget _buildNarrowLayout(MyAuthProvider auth, TeacherDocumentProvider docs) {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
@@ -150,7 +150,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     );
   }
 
-  Widget _buildForm(AuthProvider auth, TeacherDocumentProvider docs) {
+  Widget _buildForm(MyAuthProvider auth, TeacherDocumentProvider docs) {
     final c = context.colors;
     return Container(
       width: context.width > 800 ? 560 : double.infinity,

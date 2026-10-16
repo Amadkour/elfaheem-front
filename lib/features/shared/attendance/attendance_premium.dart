@@ -134,6 +134,7 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (widget.live) ...[
                   const _Dot(),

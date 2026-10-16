@@ -151,7 +151,7 @@ class GuestBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // A real login (from the banner / sheet) ends guest mode by itself.
-    final signedIn = context.select<AuthProvider, bool>((a) => a.isAuthenticated);
+    final signedIn = context.select<MyAuthProvider, bool>((a) => a.isAuthenticated);
     if (signedIn && GuestState.active) {
       WidgetsBinding.instance.addPostFrameCallback((_) => GuestState.instance.stop());
     }

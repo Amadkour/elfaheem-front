@@ -16,17 +16,18 @@ import 'package:video_player/video_player.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../../config/app_config.dart';
+import '../../../../core/offline/offline_strings.dart';
+import '../../../../utils/helpers.dart';
+import '../../../student/courses/details/course_detail_provider.dart';
+import '../../../student/courses/security/device_blocked_dialog.dart';
+import '../../../student/courses/security/device_id_service.dart';
+import '../../../student/courses/security/device_security_provider.dart';
+import 'fullscreen_stub.dart'
+if (dart.library.js_interop) 'fullscreen_web.dart' as webfs;
+
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import '../../../config/app_config.dart';
-import '../../../core/offline/offline_strings.dart';
-import '../../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-
-import '../../student/courses/details/course_detail_provider.dart';
-import '../../student/courses/security/device_blocked_dialog.dart';
-import '../../student/courses/security/device_id_service.dart';
-import '../../student/courses/security/device_security_provider.dart';
-
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -179,6 +180,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   static const _landscapes = <DeviceOrientation>[
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
+  ];
+
+  /// Fullscreen on the web: the browser refused the orientation lock (iOS Safari
+  /// never allows it), so the player rotates itself 90° while the phone is portrait.
+  bool _webForceRotate = false;
+  void Function()? _webFsUnlisten;
+
+  static const _landscapeOnly = <DeviceOrientation>[
+    DeviceOrientation.landscapeLeft,
   ];
 
   final Floating _floating = Floating();
@@ -379,12 +389,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _flashTimer?.cancel();
     _lockHintTimer?.cancel();
     _pipSub?.cancel();
-    _floating.dispose();
+    _floating.cancelOnLeavePiP();
     _pulseCtrl.dispose();
     _vc?.removeListener(_onVcUpdate);
     _vc?.dispose();
     WakelockPlus.disable().ignore();
     _protectScreen(false);
+    if (kIsWeb) {
+      _webFsUnlisten?.call();
+      if (_isFullScreen) webfs.exitLandscapeFullscreen();
+    }
     _restoreSystemUI();
     super.dispose();
   }
@@ -736,7 +750,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       _floating.isPipAvailable.then((ok) {
         if (mounted) setState(() => _pipAvailable = ok);
       });
-      _pipSub = _floating.pipStatus$.listen((s) {
+      _pipSub = _floating.pipStatusStream.listen((s) {
         if (!mounted) return;
         final inPip = s == PiPStatus.enabled;
         setState(() => _inPip = inPip);
@@ -767,20 +781,51 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   /// flipping the phone left/right still rotates the picture. Portrait is
   /// blocked until the user exits fullscreen or turns auto-rotate back on.
   void _enterFullScreen() {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      _enterWebFullScreen();
+      return;
+    }
+    if (_isFullScreen) return;
     _autoRotate = false;
-    SystemChrome.setPreferredOrientations(_landscapes);
+    // ONE landscape side only → the sensor can no longer flip or un-rotate it.
+    SystemChrome.setPreferredOrientations(_landscapeOnly);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     setState(() => _isFullScreen = true);
   }
 
   /// Button → portrait (locked until auto-rotate is turned on again).
   void _exitFullScreen() {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      webfs.exitLandscapeFullscreen();
+      setState(() {
+        _isFullScreen = false;
+        _webForceRotate = false;
+      });
+      return;
+    }
     _autoRotate = false;
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     setState(() => _isFullScreen = false);
+  }
+
+  /// Web: real fullscreen + landscape lock where the browser allows it
+  /// (Chrome / Android), otherwise the player rotates itself (iOS Safari).
+  Future<void> _enterWebFullScreen() async {
+    if (_isFullScreen) return;
+    setState(() => _isFullScreen = true);
+    final locked = await webfs.enterLandscapeFullscreen();
+    if (!mounted) return;
+    _webFsUnlisten ??= webfs.onFullscreenExit(() {
+      // Esc / system back gesture left fullscreen → leave our fullscreen UI too.
+      if (!mounted || !_isFullScreen) return;
+      webfs.exitLandscapeFullscreen();
+      setState(() {
+        _isFullScreen = false;
+        _webForceRotate = false;
+      });
+    });
+    setState(() => _webForceRotate = !locked);
   }
 
   /// Rotation lock / auto-rotate toggle.
@@ -893,8 +938,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
     HapticFeedback.selectionClick();
     try {
-      // await _floating.enable(ImmediatePiP(aspectRatio: Rational.landscape()));
-      await _floating.enable();
+      await _floating.enable(ImmediatePiP(aspectRatio: Rational.landscape()));
+      // await _floating.enable();
     } catch (_) {
       Helpers.showMessage(offlineT('dl_pip_failed'));
     }
@@ -989,6 +1034,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   Widget _buildBody() {
+    final body = _buildPlayerBody();
+    final mq = MediaQuery.of(context);
+    if (kIsWeb &&
+        _isFullScreen &&
+        _webForceRotate &&
+        mq.orientation == Orientation.portrait) {
+      return RotatedBox(
+        quarterTurns: 1,
+        child: MediaQuery(
+          data: mq.copyWith(
+            size: Size(mq.size.height, mq.size.width),
+            padding: EdgeInsets.zero,
+            viewPadding: EdgeInsets.zero,
+            viewInsets: EdgeInsets.zero,
+          ),
+          child: body,
+        ),
+      );
+    }
+    return body;
+  }
+
+  Widget _buildPlayerBody() {
     // The player chrome is always LTR so "left = rewind / right = forward"
     // and the seek bar direction are correct in RTL (Arabic) too. Text that
     // should follow the app direction (titles) gets it back explicitly.
@@ -1554,19 +1622,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   const SizedBox(width: 10),
                 ],
 
-                // Fullscreen: forces landscape / back to portrait.
-                _PressScale(
+                // Fullscreen: locks landscape (sensor ignored) / back to portrait.
+                _FullscreenButton(
+                  active: _isFullScreen,
+                  accent: c.primary,
                   onTap: _toggleFullScreen,
-                  child: Padding(
-                    padding: const EdgeInsets.all(2),
-                    child: Icon(
-                      _isFullScreen
-                          ? Icons.fullscreen_exit_rounded
-                          : Icons.fullscreen_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
                 ),
               ]),
             ),
@@ -2246,6 +2306,79 @@ class _CircleCtrlBtn extends StatelessWidget {
       child: Icon(icon, color: Colors.white, size: size),
     ),
   );
+}
+
+/// Premium fullscreen toggle: glass tile that lights up in the accent colour
+/// (with a soft glow) while fullscreen is on; the icon rotates + scales on swap.
+class _FullscreenButton extends StatelessWidget {
+  const _FullscreenButton({
+    required this.active,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final bool active;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final deep = HSLColor.fromColor(accent)
+        .withLightness(
+        (HSLColor.fromColor(accent).lightness - 0.12).clamp(0.0, 1.0))
+        .toColor();
+    return _PressScale(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+        width: 42,
+        height: 42,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: active
+                ? [accent, deep]
+                : [
+              Colors.white.withValues(alpha: 0.18),
+              Colors.white.withValues(alpha: 0.06),
+            ],
+          ),
+          border: Border.all(
+            color: active
+                ? Colors.white.withValues(alpha: 0.35)
+                : Colors.white.withValues(alpha: 0.22),
+          ),
+          boxShadow: active
+              ? [
+            BoxShadow(
+              color: accent.withValues(alpha: 0.45),
+              blurRadius: 16,
+              spreadRadius: 1,
+            ),
+          ]
+              : const [],
+        ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          transitionBuilder: (child, anim) => RotationTransition(
+            turns: Tween(begin: 0.85, end: 1.0).animate(anim),
+            child: ScaleTransition(scale: anim, child: child),
+          ),
+          child: Icon(
+            active
+                ? Icons.fullscreen_exit_rounded
+                : Icons.fullscreen_rounded,
+            key: ValueKey(active),
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _GlassIconBtn extends StatelessWidget {

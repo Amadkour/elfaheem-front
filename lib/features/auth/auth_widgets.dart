@@ -526,7 +526,7 @@ class ProgressBar extends StatelessWidget {
 
 // ── 9. Role picker card ───────────────────────────────────────────────────────
 class RolePicker extends StatelessWidget {
-  final AuthProvider provider;
+  final MyAuthProvider provider;
   final ExpansibleController rolController;
 
   const RolePicker({

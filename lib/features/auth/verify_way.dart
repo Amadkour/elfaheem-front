@@ -52,7 +52,7 @@ extension VerifyWayX on VerifyWay {
       };
 
   /// One-line explanation. WhatsApp is a tap-to-send link or a sent code, by admin setting.
-  String subtitleKey(AuthProvider a) => switch (this) {
+  String subtitleKey(MyAuthProvider a) => switch (this) {
         VerifyWay.email => 'verify_way_email_sub',
         VerifyWay.telegram => 'verify_way_telegram_sub',
         VerifyWay.whatsapp =>
@@ -62,14 +62,14 @@ extension VerifyWayX on VerifyWay {
 }
 
 /// The channels a NEW account must verify, from the admin policy.
-List<String> policyChannels(AuthProvider a) => switch (a.verificationMethod) {
+List<String> policyChannels(MyAuthProvider a) => switch (a.verificationMethod) {
       'both' => const ['email', 'phone'],
       'phone' => const ['phone'],
       _ => const ['email'],
     };
 
 /// Every way the admin allows for [channels], in priority order (Telegram first).
-List<VerifyWay> verifyWaysForChannels(AuthProvider a, Iterable<String> channels) {
+List<VerifyWay> verifyWaysForChannels(MyAuthProvider a, Iterable<String> channels) {
   final out = <VerifyWay>[];
   for (final ch in channels) {
     if (ch == 'email') {
@@ -204,7 +204,7 @@ class VerifyWayPicker extends StatelessWidget {
   final List<VerifyWay> ways;
   final VerifyWay? selected;
   final ValueChanged<VerifyWay> onChanged;
-  final AuthProvider provider;
+  final MyAuthProvider provider;
 
   /// The admin requires BOTH e-mail and phone: the choice is only which to start with.
   final bool requireAll;

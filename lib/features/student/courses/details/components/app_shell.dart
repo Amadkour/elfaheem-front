@@ -127,7 +127,7 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
+    final user = context.watch<MyAuthProvider>().currentUser;
     final name = user?.name ?? 'student'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
 

@@ -347,7 +347,7 @@ class NotificationService {
   void _openOrQueue(Map<String, dynamic> data) {
     final ctx = navigatorKey.currentContext;
     final ready =
-        ctx != null && ctx.mounted && ctx.read<AuthProvider>().isAuthenticated;
+        ctx != null && ctx.mounted && ctx.read<MyAuthProvider>().isAuthenticated;
     if (!ready) {
       _pendingPush = data;
       return;
@@ -361,7 +361,7 @@ class NotificationService {
     final ctx = navigatorKey.currentContext;
     if (ctx == null ||
         !ctx.mounted ||
-        !ctx.read<AuthProvider>().isAuthenticated) {
+        !ctx.read<MyAuthProvider>().isAuthenticated) {
       return;
     }
     _pendingPush = null;

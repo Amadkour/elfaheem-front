@@ -233,7 +233,7 @@ class _RatingWidgetState extends State<RatingWidget>
       final summary = await _service.fetchSummary(widget.type, widget.sourceId);
       // Try to find current user's existing rating
       RateResponse? mine;
-      int? studentId=context.read<AuthProvider>().currentUser?.id;
+      int? studentId=context.read<MyAuthProvider>().currentUser?.id;
       if (studentId != null) {
         try {
           mine = summary.ratings.firstWhere(

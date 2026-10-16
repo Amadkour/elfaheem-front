@@ -67,7 +67,7 @@ class DeepLinkService {
   /// Returns true when the link was copied instead of shared.
   static Future<bool> shareCourse({required int courseId, required String courseName}) async {
     final ctx = navigatorKey.currentContext;
-    final uid = ctx?.read<AuthProvider>().currentUser?.id;
+    final uid = ctx?.read<MyAuthProvider>().currentUser?.id;
     final link = buildLink(courseId, uid);
     try {
       // ignore: deprecated_member_use

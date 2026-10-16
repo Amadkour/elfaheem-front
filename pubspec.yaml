@@ -42,10 +42,10 @@ dependencies:
   # Paymob's OFFICIAL native SDK bridge (Apple Pay / Google Pay / cards on-device, Egypt).
   # Android SDK is bundled inside the plugin; iOS xcframework too. Pin `ref` to a commit hash
   # once you have tested a build, so a later push to `main` can't change your payment screen.
-  flutter_paymob_sdk:
-    git:
-      url: https://github.com/PaymobAccept/flutter_sdk.git
-      ref: main
+  #  flutter_paymob_sdk:
+  #    git:
+  #      url: https://github.com/PaymobAccept/flutter_sdk.git
+  #      ref: main
   path: any
   cross_file: any
   timeago: ^3.7.1
@@ -73,7 +73,7 @@ dependencies:
   screen_protector: ^1.5.3
   file_saver: ^0.4.0
   # Picture-in-Picture (minimize) for the video player — Android only.
-  floating: ^2.0.0
+  floating: ^6.0.0
   # AES-CTR for the encrypted offline downloads.
   pointycastle:
   crypto: any
@@ -88,6 +88,7 @@ dependencies:
   nearby_connections: ^4.0.0
   # One online/offline answer for the app (pinned in dependency_overrides below).
   connectivity_plus: any
+  firebase_auth: ^6.7.0
 dependency_overrides:
   flutter_webrtc:
     git:

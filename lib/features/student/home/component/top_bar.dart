@@ -13,7 +13,7 @@ class TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final AuthProvider provider = context.watch<AuthProvider>();
+    final MyAuthProvider provider = context.watch<MyAuthProvider>();
     final unread = context.watch<NotificationsProvider>().unreadCount;
     final name = GuestState.active
         ? 'guest_name'.tr

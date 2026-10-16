@@ -139,7 +139,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Future<void> _resetPassword() async {
     if (!_canSubmit) return;
 
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     setState(() => _busy = true);
     // Send the same trimmed value that the validation rules checked.
     final success = await authProvider.changePassword(

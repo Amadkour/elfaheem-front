@@ -114,7 +114,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'admin',
     'super-admin',
     'developer',
-  ].contains(context.read<AuthProvider>().currentUser?.role ?? '');
+  ].contains(context.read<MyAuthProvider>().currentUser?.role ?? '');
 
   @override
   void initState() {
@@ -351,7 +351,7 @@ class _MorePageState extends State<_MorePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ProfileProvider>().initData(
-        context.read<AuthProvider>().currentUser,
+        context.read<MyAuthProvider>().currentUser,
       );
     });
   }

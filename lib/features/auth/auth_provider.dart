@@ -114,9 +114,23 @@ class PhoneLinkSession {
   }
 }
 
+/// Outcome of [MyAuthProvider.googleAuth].
+enum GoogleAuthResult {
+  /// Signed in (account created first when the e-mail was new).
+  success,
+
+  /// New e-mail: the app must ask for a role, then call again with it.
+  roleRequired,
+
+  /// Account exists but a channel (usually the phone) still needs verifying.
+  needsVerification,
+
+  failed,
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-class AuthProvider extends BaseProvider {
+class MyAuthProvider extends BaseProvider {
   final ApiClient _api;
   final StorageService _storage;
 
@@ -169,7 +183,7 @@ class AuthProvider extends BaseProvider {
   List<String> _channelsFrom(dynamic v, List<String> fallback) =>
       v is List ? v.map((e) => e.toString()).toList() : fallback;
 
-  AuthProvider({ApiClient? api, required StorageService storage})
+  MyAuthProvider({ApiClient? api, required StorageService storage})
       : _api = api ?? ApiClient(),
         _storage = storage {
     // Restore the user from disk immediately so role/isTeacher are ready
@@ -548,6 +562,83 @@ class AuthProvider extends BaseProvider {
     notifyListeners();
     return false;
   }
+  // ── Google sign-in / sign-up ──────────────────────────────────────────────────
+
+  bool isLoadingGoogle = false;
+
+  /// Filled when the server answers "new account, pick a role" (shown in the role sheet).
+  String? googleName;
+  String? googleEmail;
+
+  void setGoogleBusy(bool v) {
+    if (isLoadingGoogle == v) return;
+    isLoadingGoogle = v;
+    notifyListeners();
+  }
+
+  /// [idToken] is the Firebase ID token of a Google sign-in. [role] is only needed for a
+  /// brand-new account; [phone] only when the admin verifies accounts by phone.
+  /// Same session handling as [login] (tokens + cached user + push token).
+  Future<GoogleAuthResult> googleAuth({
+    required String idToken,
+    String? role,
+    String? phone,
+  }) async {
+    isLoadingGoogle = true;
+    needsVerification = false;
+    pendingRole = null;
+    var roleRequired = false;
+    notifyListeners();
+
+    final result = await run(() async {
+      try {
+        return await _api.post(
+          '/api/v1/auth/google',
+          body: {'id_token': idToken, 'role': ?role, 'phone': ?phone},
+          auth: false,
+        );
+      } on ApiException catch (e) {
+        final d = ApiException.asMap(e.body)?['detail'];
+        if (e.statusCode == 409 && e.code == 'GOOGLE_ROLE_REQUIRED') {
+          roleRequired = true;
+          if (d is Map) {
+            googleName = d['name']?.toString();
+            googleEmail = d['gmail']?.toString();
+          }
+        } else if (e.statusCode == 403 && e.code == 'ACCOUNT_NOT_VERIFIED') {
+          needsVerification = true;
+          if (d is Map) {
+            pendingRole = d['role']?.toString();
+            pendingGmail = d['gmail']?.toString();
+            pendingChannels = _channelsFrom(d['pending_channels'], const ['email']);
+            pendingPhoneMasked = d['phone_masked']?.toString();
+            if (d['otp_phone_channel'] != null) {
+              otpPhoneChannel = d['otp_phone_channel'].toString();
+            }
+          }
+        }
+        rethrow;
+      }
+    });
+
+    if (result != null && result is Map) {
+      await _persistTokens(result);
+      final userJson = result['user'] as Map<String, dynamic>;
+      _currentUser = UserModel.fromJson(userJson);
+      await _storage.saveUser(userJson);
+      await NotificationService.instance.registerWithBackend(_api);
+      isLoadingGoogle = false;
+      notifyListeners();
+      return GoogleAuthResult.success;
+    }
+
+    isLoadingGoogle = false;
+    notifyListeners();
+    if (roleRequired) return GoogleAuthResult.roleRequired;
+    if (needsVerification) return GoogleAuthResult.needsVerification;
+    return GoogleAuthResult.failed;
+  }
+
   // ── Refresh Token ─────────────────────────────────────────────────────────────
 
   Future<bool> refreshToken(String refreshToken) async {

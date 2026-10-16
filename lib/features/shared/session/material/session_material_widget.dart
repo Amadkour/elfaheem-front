@@ -75,7 +75,8 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
   TeacherSessionItem get _session => widget.session;
 
   /// Attendance only makes sense for courses that meet in a room / live (not pure recorded).
-  bool get _hasAttendance => widget.course.type != 'recorded';
+  // bool get _hasAttendance => widget.course.type != 'recorded';
+  bool get _hasAttendance => true;
 
   /// Locking only ever applies to students — teachers always keep full
   /// access to manage their own sessions.

@@ -53,7 +53,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   void initState() {
     super.initState();
     _p = context.read<ProfileProvider>();
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _nameCtrl.text = _p.name;
@@ -103,7 +103,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // ── Has anything changed? ─────────────────────────────────────────────────
   bool get _teacherExtrasChanged {
     if (!widget.isTeacher) return false;
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     final experience = int.tryParse(_experienceCtrl.text.trim());
     return experience != auth.teacherExperienceYears ||
         auth.selectedSpecialization?['id'] != auth.teacherSpecializationId ||
@@ -129,7 +129,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       if (_p.imageFile != null) {
         final updated = await _p.uploadImage();
         if (updated != null && mounted) {
-          await context.read<AuthProvider>().saveUserLocally(updated);
+          await context.read<MyAuthProvider>().saveUserLocally(updated);
         }
       }
 
@@ -148,14 +148,14 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           bio: _bioCtrl.text.trim(),
         );
         if (user != null && mounted) {
-          await context.read<AuthProvider>().saveUserLocally(user);
-          _p.initData(context.read<AuthProvider>().currentUser);
+          await context.read<MyAuthProvider>().saveUserLocally(user);
+          _p.initData(context.read<MyAuthProvider>().currentUser);
         }
       }
 
       // 3. Update teacher-only registration fields (if changed)
       if (_teacherExtrasChanged) {
-        final auth = context.read<AuthProvider>();
+        final auth = context.read<MyAuthProvider>();
         await auth.updateTeacherProfileExtras(
           experienceYears: int.tryParse(_experienceCtrl.text.trim()),
           specializationId: auth.selectedSpecialization?['id'] as int?,
@@ -898,7 +898,7 @@ class _FormCard extends StatelessWidget {
             const SizedBox(height: 24),
             _SectionHeader(label: 'teaching_details_section'.tr, c: c),
             const SizedBox(height: 16),
-            Consumer<AuthProvider>(
+            Consumer<MyAuthProvider>(
               builder: (context, auth, _) {
                 if (auth.isLoadingTeacherExtras) {
                   return const Padding(

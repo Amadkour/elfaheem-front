@@ -35,7 +35,7 @@ class AppNavigator {
     final ctx = navigatorKey.currentContext;
     if (nav == null || ctx == null || !ctx.mounted) return;
     // Not logged in (or an admin is only LOOKING at a user's app): never navigate on that user's behalf.
-    if (!ctx.read<AuthProvider>().isAuthenticated || ViewAsState.active) return;
+    if (!ctx.read<MyAuthProvider>().isAuthenticated || ViewAsState.active) return;
     switch (module) {
       case 'course':
         if (targetId != null) {
@@ -88,6 +88,6 @@ class AppNavigator {
 
   static String get homeRoute {
     final ctx = navigatorKey.currentContext;
-    return ctx == null ? '/login' : ctx.read<AuthProvider>().homeRoute;
+    return ctx == null ? '/login' : ctx.read<MyAuthProvider>().homeRoute;
   }
 }

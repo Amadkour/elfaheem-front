@@ -138,7 +138,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                                 .map((e) => e.toCourseModel)
                                 .toList(),
                             isTeacher: context
-                                .read<AuthProvider>()
+                                .read<MyAuthProvider>()
                                 .isTeacher,
                             onTap: (CourseModel c) {
                               Navigator.push(
@@ -205,7 +205,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 class _WebTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
+    final name = context.watch<MyAuthProvider>().currentUser?.name ?? 'sir'.tr;
     return Container(
       height: 56,
       color: context.colors.background,
@@ -229,7 +229,7 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final unread = context.watch<NotificationsProvider>().unreadCount;
 
-    final name = context.watch<AuthProvider>().currentUser?.name ?? 'sir'.tr;
+    final name = context.watch<MyAuthProvider>().currentUser?.name ?? 'sir'.tr;
     final initial = name.isNotEmpty ? name[0] : '؟';
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),

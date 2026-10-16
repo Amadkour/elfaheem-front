@@ -40,8 +40,8 @@ List<SingleChildWidget> appProviders({
   ),
   // Auth — receives the shared storage instance so it can restore
   // the user from disk in its constructor without an async gap.
-  ChangeNotifierProvider<AuthProvider>(
-    create: (_) => AuthProvider(storage: storage),
+  ChangeNotifierProvider<MyAuthProvider>(
+    create: (_) => MyAuthProvider(storage: storage),
   ),
 
   // Language (keep however your app initialises this)

@@ -134,7 +134,7 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
     // keeps it mounted across tab switches), and without this check the
     // countdown crossing a session's start time would still fire an
     // authenticated-only API call with no valid session.
-    if (!context.read<AuthProvider>().isAuthenticated) {
+    if (!context.read<MyAuthProvider>().isAuthenticated) {
       _ticker.cancel();
       return;
     }
@@ -618,8 +618,8 @@ class _InlineStartButton extends StatelessWidget {
             maxStudents: session.maxStudents,
             isTeacher: true,
             userName:
-            context.read<AuthProvider>().currentUser?.name ?? 'Teacher',
-            userId: context.read<AuthProvider>().currentUser?.id ?? 0,
+            context.read<MyAuthProvider>().currentUser?.name ?? 'Teacher',
+            userId: context.read<MyAuthProvider>().currentUser?.id ?? 0,
             onStart: () async {
               log(
                 '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',

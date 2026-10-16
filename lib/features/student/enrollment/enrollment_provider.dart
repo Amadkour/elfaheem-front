@@ -572,21 +572,21 @@ class EnrollmentProvider extends PaymentFlowProvider {
       return _openHostedCheckout(context);
     }
 
-    final result = await PaymobNativeSdk.pay(
-      publicKey: publicKey,
-      clientSecret: secret,
-      appName: _kWalletAppName,
-    );
-    switch (result) {
-      case PaymobSdkResult.unavailable:
-        return _openHostedCheckout(context); // native SDK not installed in this build → hosted page
-      case PaymobSdkResult.rejected:
-        setStep(EnrollStep.failed, reason: 'payment_failed_try_again'.tr);
-      case PaymobSdkResult.cancelled:
-        setStep(EnrollStep.method);
-      case PaymobSdkResult.success || PaymobSdkResult.pending:
-        await _pollPayment(paymentId);
-    }
+    // final result = await PaymobNativeSdk.pay(
+    //   publicKey: publicKey,
+    //   clientSecret: secret,
+    //   appName: _kWalletAppName,
+    // );
+    // switch (result) {
+    //   case PaymobSdkResult.unavailable:
+    //     return _openHostedCheckout(context); // native SDK not installed in this build → hosted page
+    //   case PaymobSdkResult.rejected:
+    //     setStep(EnrollStep.failed, reason: 'payment_failed_try_again'.tr);
+    //   case PaymobSdkResult.cancelled:
+    //     setStep(EnrollStep.method);
+    //   case PaymobSdkResult.success || PaymobSdkResult.pending:
+    //     await _pollPayment(paymentId);
+    // }
   }
 
   /// The webhook can land a few seconds after the SDK reports success.

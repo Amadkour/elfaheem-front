@@ -421,7 +421,7 @@ class ViewAsBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Logging out while in view-as left the mode ON (every later request kept sending X-View-As).
-    final signedIn = context.select<AuthProvider, bool>(
+    final signedIn = context.select<MyAuthProvider, bool>(
       (a) => a.isAuthenticated,
     );
     if (!signedIn && ViewAsState.active) {

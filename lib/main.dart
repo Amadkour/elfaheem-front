@@ -23,7 +23,6 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
-import 'package:flutter_web_plugins/flutter_web_plugins.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -50,12 +49,13 @@ import 'features/admin/admin_dashboard_screen.dart';
 import 'features/parent/parent_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
-
+import 'url_strategy_stub.dart'
+if (dart.library.js_interop) 'url_strategy_web.dart';
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
-  usePathUrlStrategy();
+  configureUrlStrategy();
   if (!kIsWeb) {
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
@@ -166,7 +166,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     ViewAsBanner.onExit = () {
       // /auth/me returned the VIEWED user while view-as was on → put the admin's own profile back first,
       // otherwise the admin dashboard answers "admins only".
-      context.read<AuthProvider>().restoreOwnUser();
+      context.read<MyAuthProvider>().restoreOwnUser();
       navigatorKey.currentState
           ?.pushNamedAndRemoveUntil('/admin_dashboard', (r) => false);
     };
@@ -201,7 +201,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed &&
-        context.read<AuthProvider>().isAuthenticated &&
+        context.read<MyAuthProvider>().isAuthenticated &&
         !ViewAsState.active) {   // never pop the VIEWED user's admin dialogs while an admin is looking around
       AdminMessageDialogs.checkPending();
     }
@@ -231,7 +231,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       );
     }
 
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     // Offline at start-up + the user has downloaded videos → open the
     // Downloads page so they can keep watching. (If there are no downloads,
     // behave exactly as before.)
@@ -309,7 +309,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   Route<dynamic>? _router(RouteSettings settings) {
     final link = DeepLinkService.parse(settings.name);              // /c/12?ref=5
     if (link != null) {
-      if (!context.read<AuthProvider>().isAuthenticated) {          // open it right after login
+      if (!context.read<MyAuthProvider>().isAuthenticated) {          // open it right after login
         DeepLinkService.instance.setPending(link);
         return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
       }
@@ -535,7 +535,7 @@ class _GuardState extends State<_Guard> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (widget.guestOk && GuestState.active) return; // guest: no pending links / admin dialogs / pushes
-      if (!context.read<AuthProvider>().isAuthenticated) {
+      if (!context.read<MyAuthProvider>().isAuthenticated) {
         Navigator.of(context).pushReplacementNamed('/login');
         return;
       }
@@ -548,7 +548,7 @@ class _GuardState extends State<_Guard> {
     });
   }
   @override Widget build(BuildContext context) =>
-      (context.read<AuthProvider>().isAuthenticated || (widget.guestOk && GuestState.active))
+      (context.read<MyAuthProvider>().isAuthenticated || (widget.guestOk && GuestState.active))
           ? widget.child
           : const SizedBox.shrink();
 }
@@ -567,7 +567,7 @@ class _RedirectHomeState extends State<_RedirectHome> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       Navigator.of(context)
-          .pushReplacementNamed(context.read<AuthProvider>().homeRoute);
+          .pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
     });
   }
 
@@ -616,7 +616,7 @@ class _NotFoundScreen extends StatelessWidget {
             TextButton(
               onPressed: () => Navigator.of(
                 context,
-              ).pushReplacementNamed(context.read<AuthProvider>().homeRoute),
+              ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute),
               child: Text(
                 'home'.tr,
                 style: TextStyle(

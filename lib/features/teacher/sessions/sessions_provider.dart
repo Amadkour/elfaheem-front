@@ -697,7 +697,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       int maxParticipants,
       bool liveNow,
       ) async {
-    final AuthProvider provider = context.read<AuthProvider>();
+    final MyAuthProvider provider = context.read<MyAuthProvider>();
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PreJoinPage(

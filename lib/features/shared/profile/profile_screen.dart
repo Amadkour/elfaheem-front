@@ -63,7 +63,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
   void _refresh(BuildContext context) {
     context.read<ProfileProvider>().initData(
-      context.read<AuthProvider>().currentUser,
+      context.read<MyAuthProvider>().currentUser,
     );
   }
 
@@ -149,7 +149,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 onTap: () => _push(const DownloadsScreen()),
                               ),
                             ),
-                          if (context.read<AuthProvider>().isTeacher) ...[
+                          if (context.read<MyAuthProvider>().isTeacher) ...[
                             ParentComponent(
                               featureKey: 'profile.teacher_profile',
                               child: SettingsTile(
@@ -208,7 +208,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ] else ...[
                             // Student: temporary code to link a parent account
-                            if (context.read<AuthProvider>().currentUser?.role == 'student')
+                            if (context.read<MyAuthProvider>().currentUser?.role == 'student')
                               ParentComponent(
                                 featureKey: 'profile.parent_link',
                                 child: SettingsTile(

@@ -76,7 +76,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       context.read<ProfileProvider>().initData(
-        context.read<AuthProvider>().currentUser,
+        context.read<MyAuthProvider>().currentUser,
       );
     });
     _load();
@@ -166,7 +166,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
     if (!_form.currentState!.validate()) return;
 
     final p = context.read<ProfileProvider>();
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     final body = _changedFields();
     final hasImage = p.imageByte != null;
 

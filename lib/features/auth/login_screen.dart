@@ -12,6 +12,7 @@ import '../shared/guest/guest_state.dart';
 import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
+import 'google_auth_flow.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,7 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // }
     // Which identifiers the admin allows (email / phone / either).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AuthProvider>().loadPolicy();
+      if (mounted) context.read<MyAuthProvider>().loadPolicy();
     });
   }
 
@@ -52,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     final success = await authProvider.login(
       gmail: _emailController.text.trim(),
       password: _passwordController.text,
@@ -208,7 +209,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
           // Email / phone / either — controlled by the admin (login_identifier)
           Builder(builder: (context) {
-            final a = context.watch<AuthProvider>();
+            final a = context.watch<MyAuthProvider>();
             final phoneOnly = !a.loginAllowsEmail;
             final both = a.loginAllowsEmail && a.loginAllowsPhone;
             return IconTextField(
@@ -261,11 +262,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
           // Login button
           PrimaryButton(
-            isLoading: context.watch<AuthProvider>().isLoadingLogin,
+            isLoading: context.watch<MyAuthProvider>().isLoadingLogin,
             label: 'login'.tr,
             icon: Icons.arrow_forward_rounded,
             onPressed: _login,
           ),
+          const SizedBox(height: 20),
+
+          // Continue with Google (new e-mail -> role sheet -> account -> signed in)
+          const GoogleAuthSection(joining: true,smallIcon: true,),
           const SizedBox(height: 24),
 
           // Register link

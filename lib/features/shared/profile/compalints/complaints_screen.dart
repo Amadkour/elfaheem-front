@@ -217,7 +217,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ComplaintProvider>();
-    final auth = context.watch<AuthProvider>();
+    final auth = context.watch<MyAuthProvider>();
     final staff = !auth.isStudent;
     final myId = auth.currentUser?.id ?? 0;
     final swipeable =
@@ -1269,7 +1269,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
   Widget build(BuildContext context) {
     final p = context.watch<ComplaintProvider>();
     final c = context.colors;
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     final complaint = p.selected;
     log(' persona is===========> ${auth.isStudent}');
     return BasePage(child: SafeArea(

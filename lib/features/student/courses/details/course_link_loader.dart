@@ -58,7 +58,7 @@ class _CourseLinkLoaderState extends State<CourseLinkLoader> {
       final json = await api.get('/api/v1/courses/${widget.courseId}');
       if (json is! Map<String, dynamic> || !mounted) return;
 
-      final role = context.read<AuthProvider>().currentUser?.role;
+      final role = context.read<MyAuthProvider>().currentUser?.role;
       final teacherView = (role == 'teacher' || role == 'admin' || role == 'super-admin') &&
           AppNavigator.teacherCourseBuilder != null;
       final model = CourseModel.fromJson(json);

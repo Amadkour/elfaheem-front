@@ -34,7 +34,7 @@ TextDirection get dir => Helpers.pageDirection;
 /// While viewing as an admin the server treats the session as that admin, so
 /// the super-only UI (Admins, view-as buttons) must disappear too.
 bool isSuperNow(BuildContext context) =>
-    context.read<AuthProvider>().isSuper &&
+    context.read<MyAuthProvider>().isSuper &&
         !(ViewAsState.active && ViewAsState.instance.role == 'admin');
 
 // ── toast ────────────────────────────────────────────────────────────────────

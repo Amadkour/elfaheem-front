@@ -27,7 +27,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AuthProvider>().loadPolicy();
+      if (mounted) context.read<MyAuthProvider>().loadPolicy();
     });
   }
 
@@ -39,7 +39,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final authProvider = context.read<AuthProvider>();
+    final authProvider = context.read<MyAuthProvider>();
     final success = await authProvider.forgotPassword(
       _emailController.text.trim(),
     );
@@ -153,7 +153,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
           const SizedBox(height: 50),
 
           Builder(builder: (context) {
-            final a = context.watch<AuthProvider>();
+            final a = context.watch<MyAuthProvider>();
             final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
             return IconTextField(
               controller: _emailController,
@@ -185,7 +185,7 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
           PrimaryButton(
             isLoading: context
-                .watch<AuthProvider>()
+                .watch<MyAuthProvider>()
                 .isLoadingForget,
             label: 'send_reset_link'.tr,
             icon: Icons.send_rounded,

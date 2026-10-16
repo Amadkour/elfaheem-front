@@ -96,7 +96,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   List<VerifyWay> get _visibleWays {
     if (widget.flow != OtpFlowEnum.registration) return const [];
     final offered = _link?.methods;
-    final linkMode = context.read<AuthProvider>().phoneUsesLink;
+    final linkMode = context.read<MyAuthProvider>().phoneUsesLink;
     return _allWays.where((w) {
       final isLinkWay = w == VerifyWay.telegram || w == VerifyWay.whatsapp;
       if (linkMode && isLinkWay && offered != null) return offered.contains(w.name);
@@ -108,14 +108,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   bool get _useLink =>
       widget.flow == OtpFlowEnum.registration &&
           _channel == 'phone' &&
-          context.read<AuthProvider>().phoneUsesLink;
+          context.read<MyAuthProvider>().phoneUsesLink;
 
   @override
   void initState() {
     super.initState();
     _pending = widget.channels.isEmpty ? ['email'] : List.of(widget.channels);
     if (widget.flow == OtpFlowEnum.registration) {
-      _allWays = verifyWaysForChannels(context.read<AuthProvider>(), _pending);
+      _allWays = verifyWaysForChannels(context.read<MyAuthProvider>(), _pending);
       final picked = widget.initialWay;
       _way = (picked != null && _allWays.contains(picked))
           ? picked
@@ -178,7 +178,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   Future<void> _startLink() async {
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     setState(() {
       _linkLoading = true;
       _linkError = null;
@@ -217,7 +217,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Future<void> _pollLink() async {
     final link = _link;
     if (link == null || _polling || !mounted) return;
-    final auth = context.read<AuthProvider>();
+    final auth = context.read<MyAuthProvider>();
     _polling = true;
     final state = await auth.checkPhoneLink(link.token);
     _polling = false;
@@ -378,7 +378,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Future<void> _onConfirm() async {
     if (_isOtpComplete) {
       if(mounted) if(mounted) setState(() => _isLoading = true);
-      final auth = context.read<AuthProvider>();
+      final auth = context.read<MyAuthProvider>();
       final success = widget.flow == OtpFlowEnum.registration
           ? await auth.verifyOtp(gmail: widget.email, code: _fullOtp, channel: _channel)
           : await auth.verifyResetOtp(gmail: widget.email, code: _fullOtp);
@@ -402,7 +402,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   /// A channel was verified (by code or by link). Admin requires BOTH e-mail and
   /// phone: after the first one, move on to the next; otherwise leave the screen.
-  void _afterVerified(AuthProvider auth) {
+  void _afterVerified(MyAuthProvider auth) {
     if (widget.flow == OtpFlowEnum.registration && auth.pendingChannels.isNotEmpty) {
       setState(() {
         _pending = List.of(auth.pendingChannels);
@@ -460,7 +460,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if(mounted) if(mounted) setState(() => _hasError = false);
     _startResendTimer();
     _focusNodes[0].requestFocus();
-    final success = await context.read<AuthProvider>().resendOtp(
+    final success = await context.read<MyAuthProvider>().resendOtp(
       widget.email,
       reset: widget.flow != OtpFlowEnum.registration,
       channel: widget.flow == OtpFlowEnum.registration ? _channel : null,
@@ -524,24 +524,24 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if (widget.flow == OtpFlowEnum.registration) return _channel == 'phone';
     // forget-password by phone number. With link verification the reset code is
     // e-mailed instead (the server says so), so it is not a "phone" step.
-    return !widget.email.contains('@') && !context.read<AuthProvider>().phoneUsesLink;
+    return !widget.email.contains('@') && !context.read<MyAuthProvider>().phoneUsesLink;
   }
 
   String get _destination {
     if (_isPhoneStep) {
       return widget.phoneNumber ??
-          context.read<AuthProvider>().pendingPhoneMasked ??
+          context.read<MyAuthProvider>().pendingPhoneMasked ??
           widget.email;
     }
     if (widget.flow != OtpFlowEnum.registration && !widget.email.contains('@')) {
-      return context.read<AuthProvider>().resetEmailMasked ?? widget.email;
+      return context.read<MyAuthProvider>().resetEmailMasked ?? widget.email;
     }
     return widget.email;
   }
 
   String get _sentToHint {
     if (!_isPhoneStep) return 'verification_code_sent'.tr;
-    return context.read<AuthProvider>().otpPhoneChannel == 'whatsapp'
+    return context.read<MyAuthProvider>().otpPhoneChannel == 'whatsapp'
         ? 'verification_code_sent_whatsapp'.tr
         : 'verification_code_sent_sms'.tr;
   }
