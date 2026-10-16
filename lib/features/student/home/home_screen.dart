@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/category/categories_provider.dart';
-import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +9,8 @@ import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/parent_component.dart';
+import '../../shared/category/categories_provider.dart';
+import '../../shared/category/categories_screen.dart';
 import '../../shared/course/course_access.dart';
 import '../../shared/guest/guest_state.dart';
 import '../../teacher/home/home_screen.dart';

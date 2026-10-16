@@ -38,6 +38,9 @@ class LiveEvents {
   static const payments = 'payments_updated';
   static const payouts = 'payouts_updated';
 
+  /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
+  static const connectivity = 'connectivity_changed';
+
   static const silentTypes = {complaints, transfers, payments, payouts};
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge

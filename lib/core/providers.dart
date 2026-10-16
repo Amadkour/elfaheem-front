@@ -9,7 +9,8 @@ import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';
 import '../features/auth/auth_provider.dart';
 import '../features/auth/teacher_document_provider.dart';
-import '../features/category/categories_provider.dart';
+import '../features/shared/attendance/relay_host_provider.dart';
+import '../features/shared/category/categories_provider.dart';
 import '../features/shared/notification/notifications_provider.dart';
 import '../features/shared/profile/about/about_terms_provider.dart';
 import '../features/shared/profile/profile_provider.dart';
@@ -106,6 +107,8 @@ List<SingleChildWidget> appProviders({
   ChangeNotifierProvider<StudentAttendanceProvider>(
     create: (_) => StudentAttendanceProvider(),
   ),
+  // Online students who agree to relay offline classmates' attendance (opt-in, Android).
+  ChangeNotifierProvider<RelayHostProvider>(create: (_) => RelayHostProvider()..init()),
   ChangeNotifierProvider<NotificationsProvider>(
     create: (_) => NotificationsProvider(),
   ),

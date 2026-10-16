@@ -16,8 +16,8 @@ import 'dart:async';
 
 import 'package:flutter_education_app/config/app_config.dart';
 
-import '../../core/api_client.dart';
-import '../../core/base_provider.dart';
+import '../../../core/api_client.dart';
+import '../../../core/base_provider.dart';
 import 'model.dart';
 
 // ── CategoryModel ─────────────────────────────────────────────────────────────

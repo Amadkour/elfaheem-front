@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../category/categories_provider.dart';
+import '../../shared/category/categories_provider.dart';
 import '../../student/models.dart'
     show AppCurrency, AppCurrencyX, CourseStatus, CourseStatusX;
 import '../home/teacher_models.dart';

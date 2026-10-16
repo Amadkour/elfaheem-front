@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
@@ -93,6 +94,10 @@ Future<void> _initCore() async {
     await _safe('notifications', () => NotificationService.instance.init());
   }
 
+  // One online/offline answer for the whole app; the route observer switches screens with it.
+  await _safe('connectivity', () => AppConnectivity.instance.init());
+  topRouteObserver.bindConnectivity();
+
   // Offline (encrypted) videos: purge expired copies and load the list, so the
   // start route below can be chosen synchronously.
   if (!kIsWeb) {
@@ -175,6 +180,13 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       context.read<ThemeConfigProvider>().load();
 
+      // When the network link returns, AppConnectivity asks the server before it says "online".
+      AppConnectivity.instance.serverProbe = () async {
+        final t = context.read<ThemeConfigProvider>();
+        await t.reload();
+        return !t.serverUnreachable;
+      };
+
       // ── Version check – blocks launch if a force-update is required ──────────
       await VersionCheckService.instance.checkOnStartup();
     });
@@ -195,9 +207,20 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     }
   }
 
+  bool? _lastServerOk;
+
   @override
   Widget build(BuildContext context) {
     final tc = context.watch<ThemeConfigProvider>();
+
+    // Feed the server-reachability signal to AppConnectivity (after this frame: its listeners
+    // rebuild widgets, which is not allowed in the middle of a build).
+    final serverOk = !tc.serverUnreachable;
+    if (_lastServerOk != serverOk) {
+      _lastServerOk = serverOk;
+      WidgetsBinding.instance.addPostFrameCallback(
+              (_) => AppConnectivity.instance.reportServerReachable(serverOk));
+    }
 
     // Block on the theme response before rendering the real app so every
     // screen paints with the correct palette from the very first frame.

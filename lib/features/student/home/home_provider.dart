@@ -12,7 +12,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 import '../../../core/api_client.dart';
-import '../../category/categories_provider.dart';
+import '../../shared/category/categories_provider.dart';
 import '../../shared/guest/guest_state.dart';
 import '../models.dart';
 

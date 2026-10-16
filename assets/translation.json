@@ -9437,6 +9437,222 @@
     "en": "Parent",
     "ar": "ولي أمر"
   },
+  "att_btn_checkin": {
+    "en": "Check in",
+    "ar": "تسجيل الحضور"
+  },
+  "att_sheet_title": {
+    "en": "Lesson attendance",
+    "ar": "تسجيل حضور المحاضرة"
+  },
+  "att_sheet_sub": {
+    "en": "Enter the code shown on the teacher's screen in the hall",
+    "ar": "اكتب الكود الظاهر على شاشة المعلّم داخل القاعة"
+  },
+  "att_code_hint": {
+    "en": "6-digit code",
+    "ar": "الكود المكوّن من 6 أرقام"
+  },
+  "att_submit": {
+    "en": "Confirm attendance",
+    "ar": "تأكيد الحضور"
+  },
+  "att_retry": {
+    "en": "Try again",
+    "ar": "حاول مرة أخرى"
+  },
+  "att_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "att_stage_net": {
+    "en": "Checking internet",
+    "ar": "فحص الاتصال بالإنترنت"
+  },
+  "att_stage_perm": {
+    "en": "Bluetooth & nearby permissions",
+    "ar": "أذونات البلوتوث والأجهزة القريبة"
+  },
+  "att_stage_relay": {
+    "en": "Looking for a connected classmate",
+    "ar": "البحث عن زميل متصل بالإنترنت"
+  },
+  "att_stage_send": {
+    "en": "Sending the request via your classmate",
+    "ar": "إرسال الطلب عبر الزميل"
+  },
+  "att_stage_server": {
+    "en": "Server confirmation",
+    "ar": "تأكيد الخادم"
+  },
+  "att_online_direct": {
+    "en": "You are online — sending directly",
+    "ar": "أنت متصل — يتم الإرسال مباشرة"
+  },
+  "att_offline_relay": {
+    "en": "You are offline — we will use a nearby classmate who is online",
+    "ar": "أنت غير متصل — سنستخدم زميلاً قريباً متصلاً بالإنترنت"
+  },
+  "att_ok_title": {
+    "en": "You are marked present",
+    "ar": "تم تسجيل حضورك"
+  },
+  "att_ok_body": {
+    "en": "The server confirmed your attendance at {time}",
+    "ar": "أكّد الخادم حضورك في {time}"
+  },
+  "att_ok_via": {
+    "en": "via your classmate",
+    "ar": "عبر زميلك"
+  },
+  "att_rej_title": {
+    "en": "Attendance was not accepted",
+    "ar": "لم يتم قبول الحضور"
+  },
+  "att_reason_wrong_code": {
+    "en": "The code is wrong or has expired. Enter the current code from the teacher's screen.",
+    "ar": "الكود غير صحيح أو انتهت صلاحيته. اكتب الكود الحالي من شاشة المعلّم."
+  },
+  "att_reason_session_closed": {
+    "en": "The attendance window is closed",
+    "ar": "أُغلقت جلسة الحضور"
+  },
+  "att_reason_not_enrolled": {
+    "en": "You are not enrolled in this course",
+    "ar": "أنت غير مسجّل في هذا الكورس"
+  },
+  "att_pending_title": {
+    "en": "Request saved, waiting for confirmation",
+    "ar": "الطلب محفوظ بانتظار التأكيد"
+  },
+  "att_pending_body": {
+    "en": "We have not received the server's answer yet. The same request is re-sent automatically when you are online, without a duplicate record. You are NOT counted present until the server confirms.",
+    "ar": "لم يصلنا ردّ الخادم بعد. سيُعاد إرسال نفس الطلب تلقائياً عند توفر الإنترنت دون تسجيل مكرّر. لن يُعتبر حضورك مسجّلاً قبل تأكيد الخادم."
+  },
+  "att_err_code_format": {
+    "en": "Enter 6 digits",
+    "ar": "اكتب 6 أرقام"
+  },
+  "att_err_no_key": {
+    "en": "Open the app while online at least once, then try again",
+    "ar": "افتح التطبيق وأنت متصل بالإنترنت مرة واحدة على الأقل ثم أعد المحاولة"
+  },
+  "att_err_no_window": {
+    "en": "There is no open attendance window for this lesson right now",
+    "ar": "لا توجد جلسة حضور مفتوحة لهذه المحاضرة الآن"
+  },
+  "att_err_unsupported": {
+    "en": "Relay check-in is not available on this device. Connect to the internet and check in directly.",
+    "ar": "تسجيل الحضور عبر زميل غير متاح على هذا الجهاز. اتصل بالإنترنت وسجّل مباشرة."
+  },
+  "att_err_perm": {
+    "en": "We need the \"Nearby devices / Bluetooth\" permission to find a connected classmate",
+    "ar": "نحتاج إذن \"الأجهزة القريبة/البلوتوث\" لإيجاد زميل متصل"
+  },
+  "att_err_perm_settings": {
+    "en": "Open settings",
+    "ar": "فتح الإعدادات"
+  },
+  "att_err_bluetooth": {
+    "en": "Turn Bluetooth on (and Location on older phones), then try again. The app cannot switch it on for you.",
+    "ar": "شغّل البلوتوث (والموقع في الأجهزة القديمة) ثم أعد المحاولة. لا يمكن للتطبيق تشغيله نيابةً عنك."
+  },
+  "att_err_no_relay": {
+    "en": "No connected classmate found nearby. Ask a classmate to open the app and turn on \"Help classmates\".",
+    "ar": "لم نجد زميلاً متصلاً بالإنترنت قريباً منك. اطلب من زميل أن يفتح التطبيق ويفعّل \"ساعد زملاءك\"."
+  },
+  "att_err_forged": {
+    "en": "Untrusted reply: the server signature did not verify, so attendance is NOT counted.",
+    "ar": "ردّ غير موثوق: لم يتم التحقق من توقيع الخادم، لذلك لن يُعتبر الحضور مسجّلاً."
+  },
+  "att_err_generic": {
+    "en": "Something went wrong, please try again",
+    "ar": "حدث خطأ، حاول مرة أخرى"
+  },
+  "att_err_invalid_signature": {
+    "en": "Your device could not be verified. Sign in while online and try again.",
+    "ar": "تعذّر التحقق من جهازك. سجّل الدخول وأنت متصل ثم أعد المحاولة."
+  },
+  "att_err_relay_not_allowed": {
+    "en": "That classmate is not enrolled in this course. Try another one.",
+    "ar": "الزميل الوسيط غير مسجّل في هذا الكورس. جرّب زميلاً آخر."
+  },
+  "att_relay_title": {
+    "en": "Help classmates",
+    "ar": "ساعد زملاءك"
+  },
+  "att_relay_sub": {
+    "en": "Let offline classmates check in through your phone. We cannot read their data or change their result.",
+    "ar": "اسمح لزملائك غير المتصلين بتسجيل حضورهم عبر هاتفك. لا نقرأ بياناتهم ولا نستطيع تغيير نتيجتهم."
+  },
+  "att_relay_on": {
+    "en": "Your phone is ready to help classmates",
+    "ar": "هاتفك جاهز لمساعدة زملائك"
+  },
+  "att_relay_helped": {
+    "en": "You helped {n} classmates",
+    "ar": "ساعدت {n} زميلاً"
+  },
+  "att_relay_need_online": {
+    "en": "Internet connection required",
+    "ar": "يلزم اتصال بالإنترنت"
+  },
+  "att_t_btn": {
+    "en": "Start attendance",
+    "ar": "بدء تسجيل الحضور"
+  },
+  "att_t_title": {
+    "en": "Lesson attendance",
+    "ar": "حضور المحاضرة"
+  },
+  "att_t_duration": {
+    "en": "Open for",
+    "ar": "مدة فتح التسجيل"
+  },
+  "att_t_minutes": {
+    "en": "{n} min",
+    "ar": "{n} دقيقة"
+  },
+  "att_t_start": {
+    "en": "Open attendance",
+    "ar": "فتح التسجيل"
+  },
+  "att_t_show": {
+    "en": "Show this screen inside the hall only — the code rotates and is useless elsewhere.",
+    "ar": "اعرض هذه الشاشة داخل القاعة فقط — الكود يتغيّر تلقائياً ولا يصلح خارجها."
+  },
+  "att_t_present": {
+    "en": "Present",
+    "ar": "الحاضرون"
+  },
+  "att_t_next_code": {
+    "en": "Code changes in {n}s",
+    "ar": "يتغيّر الكود خلال {n} ث"
+  },
+  "att_t_close": {
+    "en": "Close attendance",
+    "ar": "إغلاق التسجيل"
+  },
+  "att_t_closed": {
+    "en": "Attendance closed",
+    "ar": "تم إغلاق التسجيل"
+  },
+  "att_t_expired": {
+    "en": "The attendance window has ended",
+    "ar": "انتهت مدة التسجيل"
+  },
+  "att_btn_checkin_now": {
+    "en": "Check in now",
+    "ar": "سجّل حضورك الآن"
+  },
+  "att_btn_checkin_offline": {
+    "en": "Check in via classmate",
+    "ar": "حضور عبر زميل"
+  },
+  "att_btn_live": {
+    "en": "OPEN",
+    "ar": "مفتوح"
+  },
   "pl_tier_excellent": {
     "en": "Excellent",
     "ar": "ممتاز"

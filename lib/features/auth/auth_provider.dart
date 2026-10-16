@@ -10,7 +10,7 @@ import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
-import '../category/categories_provider.dart';
+import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────

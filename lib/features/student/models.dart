@@ -2,11 +2,10 @@
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/category/categories_provider.dart';
-
 import '../../../utils/helpers.dart';
 import '../../../utils/widget/rating_widget.dart';
-import '../category/model.dart';
+import '../shared/category/categories_provider.dart';
+import '../shared/category/model.dart';
 import '../teacher/home/teacher_models.dart';
 
 export '../shared/course/discount_info.dart';

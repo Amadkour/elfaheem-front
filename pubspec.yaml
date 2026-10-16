@@ -83,6 +83,11 @@ dependencies:
   device_info_plus: any
   uuid: any
   qr_flutter: ^4.1.0
+  # Relay-based offline attendance: short-range link (BLE + Wi-Fi Direct) between an offline
+  # student and an online classmate. Android only; needs Google Play services.
+  nearby_connections: ^4.0.0
+  # One online/offline answer for the app (pinned in dependency_overrides below).
+  connectivity_plus: any
 dependency_overrides:
   flutter_webrtc:
     git:

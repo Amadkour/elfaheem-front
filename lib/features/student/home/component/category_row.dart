@@ -1,13 +1,13 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/category/categories_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import '../../../category/categories_provider.dart';
+import '../../../shared/category/categories_provider.dart';
+import '../../../shared/category/categories_screen.dart';
 
 class CategoriesRow extends StatelessWidget {
   const CategoriesRow({super.key});
