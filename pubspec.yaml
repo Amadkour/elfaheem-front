@@ -70,7 +70,9 @@ dependencies:
   # pub.dev package and both are needed.
   cryptography: ^2.7.0
   android_id: ^0.6.0
-  screen_protector: ^1.5.3
+  # Pinned: 1.5.2+ applies kotlin-android only on AGP < 9, so with
+  # android.builtInKotlin=false its Kotlin code is never compiled.
+  screen_protector: 1.5.1
   file_saver: ^0.7.0
   # Picture-in-Picture (minimize) for the video player — Android only.
   floating: ^6.0.0

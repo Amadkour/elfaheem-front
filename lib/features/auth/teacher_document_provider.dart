@@ -6,6 +6,7 @@ import 'dart:developer';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api_client.dart';
@@ -104,7 +105,7 @@ class TeacherDocumentProvider extends BaseProvider {
         _publicDocs = (res)
             .map(
               (e) => TeacherDocumentModel.fromJson(e as Map<String, dynamic>),
-            )
+        )
             .toList();
       }
     } catch (e) {
@@ -146,14 +147,14 @@ class TeacherDocumentProvider extends BaseProvider {
       final res = await _api.post(
         '/api/v1/auth/teacher-documents',
         body: {
-          'email': email,
-          'file_url': uploadRes['file_url'],
-          'file_name': uploadRes['file_name'],
-          'file_type': uploadRes['file_type'],
-          'file_size': uploadRes['file_size'],
-          'required_document_type_id': ?requiredTypeId,
-          'custom_title': ?customTitle,
-        },
+      'email': email,
+      'file_url': uploadRes['file_url'],
+      'file_name': uploadRes['file_name'],
+      'file_type': uploadRes['file_type'],
+      'file_size': uploadRes['file_size'],
+      'required_document_type_id': ?requiredTypeId,
+      'custom_title': ?customTitle,
+      },
       );
       if (res == null) return false;
 
@@ -204,24 +205,24 @@ class TeacherDocumentProvider extends BaseProvider {
   // Uses file_picker so the teacher can browse their files, not just the
   // camera roll — needed for scanned PDFs (IDs, certificates, etc.).
   Future<void> pickAndUploadRequiredFile(
-    int requiredTypeId, {
-    required String email,
-  }) async {
-    // FilePicker.pickFiles(...) is not a valid call — pickFiles lives on
-    // the FilePicker.platform singleton, not as a static method.
-    final result = await FilePicker.pickFiles(
+      int requiredTypeId, {
+        required String email,
+      }) async {
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    // The old `withData` flag is gone — bytes are read via readAsBytes().
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: kDocumentAllowedExtensions,
-      withData: true, // ensures bytes are available on web too
     );
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
+    if (f == null) return;
+
+    final bytes = await f.readAsBytes(); // works on web and mobile
 
     await _uploadThenAttach(
       key: 'req_$requiredTypeId',
       fileName: f.name,
-      filePath: f.path,
-      fileBytes: f.bytes,
+      filePath: kIsWeb ? null : f.path, // no real file path on web
+      fileBytes: bytes,
       requiredTypeId: requiredTypeId,
       email: email,
     );
@@ -247,9 +248,9 @@ class TeacherDocumentProvider extends BaseProvider {
 
   // ── Custom document: quick camera/gallery photo ─────────────────────────
   Future<void> pickAndUploadCustom(
-    int entryIndex, {
-    required String email,
-  }) async {
+      int entryIndex, {
+        required String email,
+      }) async {
     if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
     final entry = _customEntries[entryIndex];
     if (entry.title.trim().isEmpty) return; // guard: title must be set first
@@ -274,26 +275,26 @@ class TeacherDocumentProvider extends BaseProvider {
 
   // ── Custom document: any image OR a PDF, via file_picker ──────────────────
   Future<void> pickAndUploadCustomFile(
-    int entryIndex, {
-    required String email,
-  }) async {
+      int entryIndex, {
+        required String email,
+      }) async {
     if (entryIndex < 0 || entryIndex >= _customEntries.length) return;
     final entry = _customEntries[entryIndex];
     if (entry.title.trim().isEmpty) return; // guard: title must be set first
 
-    final result = await FilePicker.pickFiles(
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: kDocumentAllowedExtensions,
-      withData: true,
     );
-    if (result == null || result.files.isEmpty) return;
-    final f = result.files.first;
+    if (f == null) return;
+
+    final bytes = await f.readAsBytes();
 
     final ok = await _uploadThenAttach(
       key: 'custom_$entryIndex',
       fileName: f.name,
-      filePath: f.path,
-      fileBytes: f.bytes,
+      filePath: kIsWeb ? null : f.path,
+      fileBytes: bytes,
       customTitle: entry.title.trim(),
       email: email,
     );
@@ -351,5 +352,5 @@ class TeacherDocumentProvider extends BaseProvider {
 // ── Local form model for an in-progress custom document entry ────────────────
 class _CustomDocEntry {
   String title = '';
-  // Could extend with a picked XFile preview, but we upload immediately on pick.
+// Could extend with a picked XFile preview, but we upload immediately on pick.
 }

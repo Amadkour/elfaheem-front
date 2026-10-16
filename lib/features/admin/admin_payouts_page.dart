@@ -539,6 +539,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   static const _maxBytes = 10 * 1024 * 1024;
   final _ref = TextEditingController();
   PlatformFile? _file;
+  Uint8List? _bytes; // web only (no file path there)
 
   @override
   void dispose() {
@@ -549,23 +550,37 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
   bool get _isPdf => (_file?.extension ?? '').toLowerCase() == 'pdf';
 
   Future<void> _pick() async {
-    final res = await FilePicker.pickFiles(
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-      withData:
-      kIsWeb, // web has no file path — the bytes are the only way to read it
     );
-    final f = res?.files.single;
     if (f == null) return;
-    if (kIsWeb ? f.bytes == null : f.path == null) {
+
+    // Web has no file path — the bytes are the only way to read it.
+    Uint8List? bytes;
+    if (kIsWeb) {
+      try {
+        bytes = await f.readAsBytes();
+      } catch (_) {
+        bytes = null;
+      }
+    }
+    if (kIsWeb ? bytes == null : f.path == null) {
       toast('admin_receipt_read_failed'.tr, error: true);
       return;
     }
-    if (f.size > _maxBytes) {
+
+    // PlatformFile.size was removed in v12 — length is now a method.
+    final size = bytes?.length ?? f.lengthSync() ?? await f.length() ?? 0;
+    if (size > _maxBytes) {
       toast('admin_receipt_too_large'.tr, error: true);
       return;
     }
-    setState(() => _file = f);
+    setState(() {
+      _file = f;
+      _bytes = bytes;
+    });
   }
 
   Widget _preview(PlatformFile f) {
@@ -573,7 +588,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
         const Center(child: Icon(Icons.broken_image_rounded, size: 40));
     if (kIsWeb) {
       return Image.memory(
-        f.bytes!,
+        _bytes!,
         fit: BoxFit.cover,
         cacheWidth: 600,
         errorBuilder: broken,
@@ -600,7 +615,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
     Navigator.pop(
       context,
       kIsWeb
-          ? _PaidInput(_ref.text.trim(), f.name, bytes: f.bytes)
+          ? _PaidInput(_ref.text.trim(), f.name, bytes: _bytes)
           : _PaidInput(_ref.text.trim(), f.name, filePath: f.path),
     );
   }

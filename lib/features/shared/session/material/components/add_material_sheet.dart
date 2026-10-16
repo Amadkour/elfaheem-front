@@ -128,6 +128,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   int _mode = 0; // 0 = file, 1 = link
   int _fileTypeIdx = 0;
   PlatformFile? _pickedFile;
+  int _pickedSize = 0; // PlatformFile.size was removed in file_picker v12
   bool _saving = false;
 
   String? _nameError;
@@ -193,23 +194,23 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 
   Future<void> _pickFile() async {
     final opt = _fileTypeOptions[_fileTypeIdx];
-    final result = await FilePicker.pickFiles(
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    // Nothing is buffered here — mobile streams from disk via the background
+    // upload queue (see _submit); on web the bytes are read in _submit.
+    final f = await FilePicker.pickFile(
       type: opt.fileType,
       allowedExtensions: opt.fileType == FileType.custom
           ? _documentExtensions
           : null,
-      // EVERY file type (video, pdf, image, document) is streamed straight
-      // from disk by the background upload queue (see _submit) — no need to
-      // buffer the whole file into memory just to pick it. On web,
-      // file_picker only ever exposes bytes (no real filesystem path), so
-      // kIsWeb still asks for them there.
-      withData: kIsWeb,
     );
+    if (f == null) return;
+    final size = f.lengthSync() ?? await f.length() ?? 0;
 
-    if (result != null && result.files.isNotEmpty && mounted) {
+    if (mounted) {
       setState(() {
-        _pickedFile = result.files.first;
-        final title = _prettifyFileName(result.files.first.name);
+        _pickedFile = f;
+        _pickedSize = size;
+        final title = _prettifyFileName(f.name);
         _nameCtrl.text=title;
         _descCtrl.text = '${opt.fileType.name} about $title';
         _fileError = null;
@@ -302,8 +303,16 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
 
     if (_mode == 0) {
       final isVideo = _fileTypeOptions[_fileTypeIdx].fileType == FileType.video;
-      final path = _pickedFile!.path;
-      final Uint8List? bytes = _pickedFile?.bytes;
+      // `path` is only valid on mobile / desktop; on web read the bytes.
+      final path = kIsWeb ? null : _pickedFile!.path;
+      Uint8List? bytes;
+      if (kIsWeb) {
+        try {
+          bytes = await _pickedFile!.readAsBytes();
+        } catch (_) {
+          bytes = null;
+        }
+      }
 
       // `kIsWeb` is the reliable platform check — file_picker can hand back
       // a non-null `.path` on web too (a blob reference, not a filesystem
@@ -437,6 +446,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                     const SizedBox(height: 14),
                     _FilePickerZone(
                       pickedFile: _pickedFile,
+                      pickedSize: _pickedSize,
                       color: _fileTypeOptions[_fileTypeIdx].color,
                       icon: _fileTypeOptions[_fileTypeIdx].icon,
                       errorText: _fileError,
@@ -755,6 +765,7 @@ class _FileTypeSelector extends StatelessWidget {
 
 class _FilePickerZone extends StatelessWidget {
   final PlatformFile? pickedFile;
+  final int pickedSize;
   final Color color;
   final IconData icon;
   final String? errorText;
@@ -763,6 +774,7 @@ class _FilePickerZone extends StatelessWidget {
 
   const _FilePickerZone({
     required this.pickedFile,
+    required this.pickedSize,
     required this.color,
     required this.icon,
     required this.onTap,
@@ -809,7 +821,7 @@ class _FilePickerZone extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _humanFileSize(pickedFile!.size),
+                    _humanFileSize(pickedSize),
                     style: context.colors.body.copyWith(
                       fontSize: 11,
                       color: context.colors.textLight,

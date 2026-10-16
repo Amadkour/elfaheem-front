@@ -104,10 +104,10 @@ class ParentLinkProvider extends BaseProvider {
 
   /// Returns the request (status approved | pending) or null (errorMessage holds the reason).
   Future<Map<String, dynamic>?> redeem(
-    String code,
-    Map<String, String> fieldValues,
-    Map<String, PlatformFile> docs,
-  ) async {
+      String code,
+      Map<String, String> fieldValues,
+      Map<String, PlatformFile> docs,
+      ) async {
     final res = await run(() async {
       if (mode != 'advanced') {
         return await _api.post('/api/v1/parent/link/redeem',
@@ -118,7 +118,13 @@ class ParentLinkProvider extends BaseProvider {
         ..add(MapEntry('code', code))
         ..add(MapEntry('fields', jsonEncode(fieldValues)));
       for (final e in docs.entries) {
-        final bytes = e.value.bytes;
+        // file_picker v12+: bytes are read from the PlatformFile (no `withData`).
+        List<int>? bytes;
+        try {
+          bytes = await e.value.readAsBytes();
+        } catch (_) {
+          bytes = null;
+        }
         if (bytes == null) continue;
         form.files.add(MapEntry('doc_${e.key}', MultipartFile.fromBytes(bytes, filename: e.value.name)));
       }
@@ -229,7 +235,7 @@ class ParentAlertsProvider extends BaseProvider {
 
   Future<void> load({bool silent = false}) async {
     final r = await run(
-      () => _api.get('/api/v1/parent/alerts', queryParams: {
+          () => _api.get('/api/v1/parent/alerts', queryParams: {
         'sort': sort,
         'days': days,
         if (childId != null) 'child_id': childId,
@@ -265,7 +271,7 @@ class ParentAlertsProvider extends BaseProvider {
     _recount();
     notifyListeners();
     final r = await run(
-        () => _api.post('/api/v1/parent/alerts/state', body: {'keys': keys, 'status': status}),
+            () => _api.post('/api/v1/parent/alerts/state', body: {'keys': keys, 'status': status}),
         makLoading: false);
     if (r == null) await load(silent: true);
   }
@@ -340,7 +346,7 @@ class AdminParentLinkProvider extends BaseProvider {
   Future<void> loadRequests({bool reset = true}) async {
     if (reset) page = 1;
     final r = await run(
-      () => _api.get('/api/v1/admin/parent-link/requests', queryParams: {
+          () => _api.get('/api/v1/admin/parent-link/requests', queryParams: {
         if (status.isNotEmpty) 'status': status,
         if (mode.isNotEmpty) 'mode': mode,
         if (search.trim().isNotEmpty) 'search': search.trim(),

@@ -138,7 +138,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                   if (q == null)
                     const SizedBox(
                       height: 20,
-                      child: AppLoadingIndicator(showLogo: false,),
+                      child: AppLoadingIndicator(showLogo: false),
                     )
                   else ...[
                     Text(
@@ -425,7 +425,8 @@ class _PaymentResultViewState extends State<PaymentResultView>
             const SizedBox(height: 44),
             PrimaryButton(
               label: widget.primaryLabel,
-              onPressed: widget.onPrimary, isLoading: false,
+              onPressed: widget.onPrimary,
+              isLoading: false,
             ),
             if (widget.secondaryLabel != null &&
                 widget.onSecondary != null) ...[
@@ -621,10 +622,12 @@ class EnrollScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      useWebCard: true,
-      maxWith:900,
-        child: SafeArea(
+    return SafeArea(
+      child: BasePage(
+        useWebCard: true,
+        maxWith: 900,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 380),
             transitionBuilder: (child, anim) => FadeTransition(
@@ -640,6 +643,7 @@ class EnrollScaffold extends StatelessWidget {
             child: child,
           ),
         ),
+      ),
     );
   }
 }

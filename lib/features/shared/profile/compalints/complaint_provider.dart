@@ -5,6 +5,7 @@
 import 'dart:developer';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 
 import 'package:flutter_education_app/core/api_client.dart';
@@ -161,16 +162,21 @@ class ComplaintProvider extends BaseProvider {
 
   /// Converts a file_picker result into a PendingAttachment, working both
   /// on platforms with a real file path and on web (bytes only).
-  PendingAttachment? _pendingFromPlatformFile(PlatformFile f) {
-    if (f.path != null) {
-      final file = XFile(f.path!, name: f.name);
-      return PendingAttachment(file: file, localPreviewUrl: f.path!);
+  Future<PendingAttachment?> _pendingFromPlatformFile(PlatformFile f) async {
+    // No real file path on web — only read `path` on mobile / desktop.
+    final path = kIsWeb ? null : f.path;
+    if (path != null) {
+      final file = XFile(path, name: f.name);
+      return PendingAttachment(file: file, localPreviewUrl: path);
     }
-    if (f.bytes != null) {
-      final file = XFile.fromData(f.bytes!, name: f.name);
+    try {
+      // file_picker v12+: bytes come from readAsBytes(), not `withData`.
+      final bytes = await f.readAsBytes();
+      final file = XFile.fromData(bytes, name: f.name);
       return PendingAttachment(file: file, localPreviewUrl: f.name);
+    } catch (_) {
+      return null;
     }
-    return null;
   }
 
   Future<void> pickComplaintImages() async {
@@ -205,17 +211,17 @@ class ComplaintProvider extends BaseProvider {
   /// invoices, etc.) — not limited to the camera roll like the pickers above.
   Future<void> pickComplaintFile() async {
     if (_pendingAttachments.length >= _maxImages) return;
-    final result = await FilePicker.pickFiles(
+    // file_picker v12+: pickFiles() returns a List (empty if cancelled) and
+    // already allows multiple selection.
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: _allowedAttachmentExtensions,
-      withData: true,
-      allowMultiple: true,
     );
-    if (result == null || result.files.isEmpty) return;
+    if (files.isEmpty) return;
 
     final remaining = _maxImages - _pendingAttachments.length;
-    for (final f in result.files.take(remaining)) {
-      final pending = _pendingFromPlatformFile(f);
+    for (final f in files.take(remaining)) {
+      final pending = await _pendingFromPlatformFile(f);
       if (pending != null) _pendingAttachments.add(pending);
     }
     notifyListeners();
@@ -265,17 +271,17 @@ class ComplaintProvider extends BaseProvider {
   /// Same as pickComplaintFile() but for a reply — any image or a PDF.
   Future<void> pickReplyFile() async {
     if (_pendingReplyAttachments.length >= _maxImages) return;
-    final result = await FilePicker.pickFiles(
+    // file_picker v12+: pickFiles() returns a List (empty if cancelled) and
+    // already allows multiple selection.
+    final files = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: _allowedAttachmentExtensions,
-      withData: true,
-      allowMultiple: true,
     );
-    if (result == null || result.files.isEmpty) return;
+    if (files.isEmpty) return;
 
     final remaining = _maxImages - _pendingReplyAttachments.length;
-    for (final f in result.files.take(remaining)) {
-      final pending = _pendingFromPlatformFile(f);
+    for (final f in files.take(remaining)) {
+      final pending = await _pendingFromPlatformFile(f);
       if (pending != null) _pendingReplyAttachments.add(pending);
     }
     notifyListeners();

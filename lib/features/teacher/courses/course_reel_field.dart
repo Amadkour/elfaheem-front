@@ -73,13 +73,23 @@ class CourseReelController extends ChangeNotifier {
 
   Future<void> pick() async {
     error = null;
-    final res = await FilePicker.pickFiles(
-      type: FileType.video,
-      withData: true,
-    );
-    if (res == null || res.files.isEmpty) return;
-    final f = res.files.first;
-    final bytes = f.bytes;
+    final f = await FilePicker.pickFile(type: FileType.video);
+    if (f == null) return;
+
+    // Check the size BEFORE loading the video into memory.
+    final size = f.lengthSync() ?? await f.length();
+    if (size != null && size > maxBytes) {
+      error = 'course_reel_too_large'.tr;
+      notifyListeners();
+      return;
+    }
+
+    Uint8List? bytes;
+    try {
+      bytes = await f.readAsBytes();
+    } catch (_) {
+      bytes = null;
+    }
     if (bytes == null || bytes.isEmpty) {
       error = 'course_reel_upload_failed'.tr;
     } else if (bytes.length > maxBytes) {

@@ -63,14 +63,16 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
   }
 
   Future<void> _pick(String key) async {
-    final res = await FilePicker.pickFiles(
+    // file_picker v12+: pickFile() returns PlatformFile? (null if cancelled).
+    // The bytes are read later, when the request is submitted.
+    final f = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'pdf'],
-      withData: true, // bytes are needed on web / to upload
     );
-    final f = res?.files.single;
     if (f == null) return;
-    if (f.size > 8 * 1024 * 1024) {
+    // PlatformFile.size was removed in v12 — length is now a method.
+    final size = f.lengthSync() ?? await f.length() ?? 0;
+    if (size > 8 * 1024 * 1024) {
       plToast('pl_file_too_big'.tr);
       return;
     }
@@ -164,8 +166,8 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
             keyboardType: f['type'] == 'number'
                 ? TextInputType.number
                 : f['type'] == 'phone'
-                    ? TextInputType.phone
-                    : TextInputType.text,
+                ? TextInputType.phone
+                : TextInputType.text,
             decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
           ),
         );

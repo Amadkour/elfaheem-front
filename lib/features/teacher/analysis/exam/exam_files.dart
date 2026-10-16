@@ -7,8 +7,8 @@
 //   • pickQuestionsFile / saveExamFile   pick an upload / save a download
 //
 // pubspec.yaml needs:
-//   file_picker: ^8.1.2
-//   file_saver:  ^0.3.1   (uses `fileExtension`; 0.2.x used `ext`)
+//   file_picker: ^13.1.0   (pickFile() / readAsBytes(); no withData flag)
+//   file_saver:  ^0.7.0    (uses `fileExtension`; 0.2.x used `ext`)
 
 import 'dart:typed_data';
 
@@ -81,14 +81,14 @@ class ImportResult {
 
 /// Lets the teacher pick an .xlsx / .csv file. Returns null if cancelled.
 Future<ExamFile?> pickQuestionsFile() async {
-  final res = await FilePicker.pickFiles(
+  final f = await FilePicker.pickFile(
     type: FileType.custom,
     allowedExtensions: const ['xlsx', 'csv'],
-    withData: true, // we upload the bytes, so they must be loaded
   );
-  final f = res?.files.single;
-  if (f == null || f.bytes == null) return null;
-  return ExamFile(f.name, f.bytes!);
+  if (f == null) return null;
+  // We upload the bytes, so read them from the picked file (v12+ API).
+  final bytes = await f.readAsBytes();
+  return ExamFile(f.name, bytes);
 }
 
 /// Saves a downloaded file (Downloads / share sheet / browser download).

@@ -44,7 +44,7 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,
-          title: 'my_calender'.tr,
+          title: 'my_schedule'.tr,
           emptyMessage: 'empty_calender'.tr,
           getLastFetched: () => _prov.lastFetched,
         )));

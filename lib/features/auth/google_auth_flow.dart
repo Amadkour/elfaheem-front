@@ -123,7 +123,7 @@ Future<void> continueWithGoogle(
 
   GoogleRoleChoice? choice;
   if (askRoleFirst) {
-    choice = await showGoogleRoleSheet(context, needPhone: auth.verifyByPhone);
+    choice = await showGoogleRoleSheet(context, needPhone: false);
     if (choice == null || !context.mounted || stale()) return; // sheet dismissed
   }
 
@@ -146,7 +146,7 @@ Future<void> continueWithGoogle(
       fc.busy.value = false; // no spinner while the sheet is open
       choice = await showGoogleRoleSheet(
         context,
-        needPhone: auth.verifyByPhone,
+        needPhone: false,
         name: auth.googleName,
         email: auth.googleEmail,
       );

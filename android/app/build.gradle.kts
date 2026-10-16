@@ -5,12 +5,15 @@ plugins {
     id("com.google.gms.google-services")
     // END: FlutterFire Configuration
     id("com.android.application")
+    // AGP 9 built-in Kotlin is switched OFF (android.builtInKotlin=false) because
+    // several plugins (floating, ...) still apply kotlin-android themselves.
+    id("org.jetbrains.kotlin.android")
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.firebase.crashlytics")          // ← NEW: Crashlytics
 }
 android {
     namespace = "com.example.flutter_education_app"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // permission_handler_android 14 needs API 37 (AGP 9.1.1 supports it)
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -22,7 +25,7 @@ android {
     defaultConfig {
         applicationId = "com.example.flutter_education_app"
         minSdk = flutter.minSdkVersion
-        targetSdk = 34
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -30,6 +33,10 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+            )
 
             // ── Crashlytics ───────────────────────────────────────────────────
             // Uploads mapping file so Crashlytics can deobfuscate stack traces.
