@@ -114,6 +114,15 @@ class PhoneLinkSession {
   }
 }
 
+/// A way a password-reset code can be sent by, with the masked destination
+/// (from POST /auth/forgot-password -> `ways`).
+class ResetWay {
+  final String way; // email | whatsapp | sms
+  final String? masked;
+
+  const ResetWay(this.way, this.masked);
+}
+
 /// Outcome of [MyAuthProvider.googleAuth].
 enum GoogleAuthResult {
   /// Signed in (account created first when the e-mail was new).
@@ -144,20 +153,48 @@ class MyAuthProvider extends BaseProvider {
   String otpPhoneChannel = 'sms';
   bool policyLoaded = false;
 
-  /// True when the phone is verified by a Telegram / WhatsApp link instead of a typed code.
-  bool get phoneUsesLink => const {
-    'telegram',
-    'whatsapp_link',
-    'telegram_whatsapp',
-  }.contains(otpPhoneChannel);
+  /// Every way the admin allows AND the server can send, in offering order
+  /// (Telegram > E-mail > WhatsApp > SMS, or the admin's default first).
+  List<String> verificationWays = const ['email'];
+
+  /// The way offered first.
+  String defaultWay = 'email';
+
+  /// E-mail AND phone must both be verified (otherwise any one way is enough).
+  bool requireAll = false;
+
+  /// What the login form accepts: any of "email" / "phone".
+  List<String> loginIdentifiers = const ['email'];
+
+  /// How WhatsApp is verified: "link" (student messages us) or "code" (we send a code).
+  String whatsappDelivery = 'link';
+
+  /// True when [way] ("telegram" | "whatsapp" | "email" | "sms") is verified by a link, not a code.
+  bool wayIsLink(String way) =>
+      way == 'telegram' || (way == 'whatsapp' && whatsappDelivery == 'link');
+
+  bool get hasPhoneWays => verificationWays.any((w) => w != 'email');
+
+  /// True when at least one phone way is verified by a Telegram / WhatsApp link.
+  bool get phoneUsesLink =>
+      verificationWays.any((w) => w != 'email' && wayIsLink(w));
+
+  /// Password-reset ways of the account that is resetting (filled by [forgotPassword]).
+  List<ResetWay> resetWays = const [];
+
+  /// The way the reset code was sent by.
+  String? resetSentVia;
 
   /// Where a password-reset code really went when the student asked by phone number
   /// but phone verification is link-based (the code goes to the e-mail). Null otherwise.
   String? resetEmailMasked;
 
-  bool get verifyByPhone => verificationMethod != 'email';
-  bool get loginAllowsEmail => loginIdentifier != 'phone';
-  bool get loginAllowsPhone => loginIdentifier != 'email';
+  /// A phone is ALWAYS required to register (e-mail is not a way, or both are required).
+  /// When it is only needed for the picked way, the register screen decides.
+  bool get verifyByPhone =>
+      hasPhoneWays && (requireAll || !verificationWays.contains('email'));
+  bool get loginAllowsEmail => loginIdentifiers.contains('email');
+  bool get loginAllowsPhone => loginIdentifiers.contains('phone');
 
   /// Filled by register/login/verify: channels still to verify ("email"/"phone")
   /// and the data the OTP screen needs.
@@ -172,6 +209,38 @@ class MyAuthProvider extends BaseProvider {
         verificationMethod = (r['verification_method'] ?? 'email').toString();
         loginIdentifier = (r['login_identifier'] ?? 'email').toString();
         otpPhoneChannel = (r['otp_phone_channel'] ?? 'sms').toString();
+        // New checkbox policy (an older server only sends the three values above).
+        if (r['verification_ways'] is List &&
+            (r['verification_ways'] as List).isNotEmpty) {
+          verificationWays =
+              (r['verification_ways'] as List).map((e) => e.toString()).toList();
+          defaultWay = (r['default_way'] ?? verificationWays.first).toString();
+          requireAll = r['require_all'] == true;
+          whatsappDelivery = (r['whatsapp_delivery'] ?? 'link').toString();
+        } else {
+          final both = verificationMethod == 'both';
+          final phone = verificationMethod != 'email';
+          verificationWays = [
+            if (verificationMethod != 'phone') 'email',
+            if (phone)
+              ...switch (otpPhoneChannel) {
+                'telegram' => ['telegram'],
+                'whatsapp_link' || 'whatsapp' => ['whatsapp'],
+                'telegram_whatsapp' => ['telegram', 'whatsapp'],
+                _ => ['sms'],
+              },
+          ];
+          defaultWay = verificationWays.first;
+          requireAll = both;
+          whatsappDelivery = otpPhoneChannel == 'whatsapp' ? 'code' : 'link';
+        }
+        loginIdentifiers = r['login_identifiers'] is List
+            ? (r['login_identifiers'] as List).map((e) => e.toString()).toList()
+            : switch (loginIdentifier) {
+                'phone' => ['phone'],
+                'either' => ['email', 'phone'],
+                _ => ['email'],
+              };
         policyLoaded = true;
         notifyListeners();
       }
@@ -276,6 +345,7 @@ class MyAuthProvider extends BaseProvider {
     String? phone,
     String? country,
     String? dob,
+    String? way,
   }) async {
     isLoadingRegistration = true;
     notifyListeners();
@@ -290,6 +360,7 @@ class MyAuthProvider extends BaseProvider {
       'phone': ?phone,
       'country': ?country,
       'dob': ?dob,
+      'way': ?way,
       },
         auth: false,
       ),
@@ -319,11 +390,12 @@ class MyAuthProvider extends BaseProvider {
     required String gmail,
     required String code,
     String? channel,
+    String? way,
   }) async {
     final result = await run(
           () => _api.post(
         '/api/v1/auth/verify-otp',
-        body: {'gmail': gmail, 'code': code, 'channel': ?channel},
+        body: {'gmail': gmail, 'code': code, 'channel': ?channel, 'way': ?way},
         auth: false,
       ),
     );
@@ -385,14 +457,22 @@ class MyAuthProvider extends BaseProvider {
 
   // ── Resend OTP ────────────────────────────────────────────────────────────────
 
-  Future<bool> resendOtp(String gmail, {bool reset = false, String? channel}) async {
+  /// Sends a code again. [way] = email | telegram | whatsapp | sms | null (the server picks).
+  /// For a password reset ([reset] = true) it hits forgot-password with the chosen way.
+  Future<bool> resendOtp(
+      String gmail, {
+        bool reset = false,
+        String? channel,
+        String? way,
+      }) async {
     final result = await run(
           () => _api.post(
         reset ? '/api/v1/auth/forgot-password' : '/api/v1/auth/resend-otp',
-        body: {'gmail': gmail, if (!reset) 'channel': ?channel},
+        body: {'gmail': gmail, if (!reset) 'channel': ?channel, 'way': ?way},
         auth: false,
       ),
     );
+    if (reset && result is Map) _readResetInfo(result);
     return result != null;
   }
 
@@ -719,23 +799,38 @@ class MyAuthProvider extends BaseProvider {
   // ── Forgot Password ───────────────────────────────────────────────────────────
   bool isLoadingForget = false;
 
-  Future<bool> forgotPassword(String gmail) async {
+  Future<bool> forgotPassword(String gmail, {String? way}) async {
     isLoadingForget = true;
     resetEmailMasked = null;
+    resetWays = const [];
+    resetSentVia = null;
     notifyListeners();
     final result = await run(
           () => _api.post(
         '/api/v1/auth/forgot-password',
-        body: {'gmail': gmail},
+        body: {'gmail': gmail, 'way': ?way},
         auth: false,
       ),
     );
-    if (result is Map && result['sent_via'] == 'email' && !gmail.contains('@')) {
-      resetEmailMasked = result['email_masked']?.toString();
-    }
+    if (result is Map) _readResetInfo(result, typed: gmail);
     isLoadingForget = false;
     notifyListeners();
     return result != null;
+  }
+
+  /// Reads `sent_via` + `ways` of a forgot-password answer.
+  void _readResetInfo(Map result, {String? typed}) {
+    resetSentVia = result['sent_via']?.toString();
+    if (result['ways'] is List) {
+      resetWays = (result['ways'] as List)
+          .whereType<Map>()
+          .map((m) => ResetWay(m['way'].toString(), m['masked']?.toString()))
+          .toList();
+    }
+    if (resetSentVia == 'email' && typed != null && !typed.contains('@')) {
+      resetEmailMasked = result['email_masked']?.toString();
+    }
+    notifyListeners();
   }
 
   // ── Reset Password ────────────────────────────────────────────────────────────

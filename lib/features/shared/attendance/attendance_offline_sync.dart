@@ -37,7 +37,7 @@ class AttendanceOfflineSync {
   static const _warmEvery = Duration(minutes: 2);
 
   /// Online only. Stores the key and (if open) the window of [sessionId]. Returns the window.
-  Future<OpenWindow?> warm({int? sessionId, bool force = false}) async {
+  Future<OpenWindow?> warm({int? sessionId, int? courseId, bool force = false}) async {
     try {
       await _store.saveKey(await _repo.fetchKey());
       await _store.touchOnline();
@@ -46,20 +46,29 @@ class AttendanceOfflineSync {
     } catch (_) {
       return null;
     }
-    if (sessionId == null) return null;
+    final lookup = sessionId ?? (courseId == null ? null : -courseId);
+    if (lookup == null) return null;
 
-    final last = _lastWarm[sessionId];
+    final last = _lastWarm[lookup];
     if (!force && last != null && DateTime.now().difference(last) < _warmEvery) {
-      return _store.window(sessionId);
+      return sessionId != null ? _store.window(sessionId) : _store.windowForCourse(courseId!);
     }
-    _lastWarm[sessionId] = DateTime.now();
+    _lastWarm[lookup] = DateTime.now();
     try {
-      final w = await _repo.openWindow(sessionId);
+      final w = await _repo.openWindow(sessionId: sessionId, courseId: courseId);
       await _store.saveWindow(w);
       return w;
     } on ApiException {
       return null; // no open window right now (404) — that is a normal answer
     }
+  }
+
+  /// Online: store every enrolled course (+ lessons) so the offline Attendance tab can list them.
+  Future<void> warmCourses() async {
+    try {
+      await _store.saveCourses(await _repo.myLessons());
+      await _store.touchOnline();
+    } catch (_) {/* offline / signed out: keep what we already have */}
   }
 
   /// Re-sends saved requests; returns the ones the server answered with a VERIFIED signature.
@@ -101,6 +110,7 @@ class AttendanceOfflineSync {
   /// The phone just got its connection back.
   Future<void> onReconnect() async {
     try {
+      await warmCourses();
       final flushed = await flushPending();
       if (flushed.isNotEmpty) debugPrint('attendance: settled ${flushed.length} saved request(s)');
       for (final id in await _store.cachedSessionIds()) {

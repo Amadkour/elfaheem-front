@@ -25,6 +25,19 @@ extension VerifyWayX on VerifyWay {
   /// The server channel this way belongs to: "email" or "phone".
   String get channel => this == VerifyWay.email ? 'email' : 'phone';
 
+  bool get isPhone => this != VerifyWay.email;
+
+  /// Verified by a link (the student messages us) instead of a typed code?
+  /// Telegram always is; WhatsApp follows the admin's delivery (link / code).
+  bool isLink(MyAuthProvider a) => a.wayIsLink(name);
+
+  static VerifyWay? fromName(String? n) {
+    for (final w in VerifyWay.values) {
+      if (w.name == n) return w;
+    }
+    return null;
+  }
+
   IconData get icon => switch (this) {
         VerifyWay.email => Icons.mail_rounded,
         VerifyWay.telegram => Icons.send_rounded,
@@ -56,40 +69,30 @@ extension VerifyWayX on VerifyWay {
         VerifyWay.email => 'verify_way_email_sub',
         VerifyWay.telegram => 'verify_way_telegram_sub',
         VerifyWay.whatsapp =>
-          a.phoneUsesLink ? 'verify_way_whatsapp_link_sub' : 'verify_way_whatsapp_code_sub',
+          a.wayIsLink('whatsapp') ? 'verify_way_whatsapp_link_sub' : 'verify_way_whatsapp_code_sub',
         VerifyWay.sms => 'verify_way_sms_sub',
       };
 }
 
-/// The channels a NEW account must verify, from the admin policy.
-List<String> policyChannels(MyAuthProvider a) => switch (a.verificationMethod) {
-      'both' => const ['email', 'phone'],
-      'phone' => const ['phone'],
-      _ => const ['email'],
-    };
+/// Every way the admin allows (and the server can send), in offering order:
+/// Telegram > E-mail > WhatsApp > SMS, or the admin's default way first.
+List<VerifyWay> policyWays(MyAuthProvider a) => [
+      for (final n in a.verificationWays)
+        if (VerifyWayX.fromName(n) != null) VerifyWayX.fromName(n)!,
+    ];
 
-/// Every way the admin allows for [channels], in priority order (Telegram first).
-List<VerifyWay> verifyWaysForChannels(MyAuthProvider a, Iterable<String> channels) {
-  final out = <VerifyWay>[];
-  for (final ch in channels) {
-    if (ch == 'email') {
-      out.add(VerifyWay.email);
-    } else if (ch == 'phone') {
-      switch (a.otpPhoneChannel) {
-        case 'telegram':
-          out.add(VerifyWay.telegram);
-        case 'whatsapp_link':
-        case 'whatsapp':
-          out.add(VerifyWay.whatsapp);
-        case 'telegram_whatsapp':
-          out.addAll(const [VerifyWay.telegram, VerifyWay.whatsapp]);
-        default:
-          out.add(VerifyWay.sms);
-      }
-    }
+/// The channels a NEW account may verify ("email" / "phone"), in offering order.
+List<String> policyChannels(MyAuthProvider a) {
+  final out = <String>[];
+  for (final w in policyWays(a)) {
+    if (!out.contains(w.channel)) out.add(w.channel);
   }
-  return out;
+  return out.isEmpty ? const ['email'] : out;
 }
+
+/// Every allowed way that belongs to one of [channels], keeping the offering order.
+List<VerifyWay> verifyWaysForChannels(MyAuthProvider a, Iterable<String> channels) =>
+    policyWays(a).where((w) => channels.contains(w.channel)).toList();
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Shared bits
@@ -306,7 +309,7 @@ class VerifyWayPicker extends StatelessWidget {
                         subtitle: ways[i].subtitleKey(provider).tr,
                         selected: ways[i] == selected,
                         interactive: interactive,
-                        recommended: ways[i] == VerifyWay.telegram && ways.contains(VerifyWay.whatsapp),
+                        recommended: i == 0 && ways.length > 1,
                         onTap: () {
                           HapticFeedback.selectionClick();
                           onChanged(ways[i]);
@@ -406,7 +409,13 @@ class _WayCard extends StatelessWidget {
                             ),
                             if (recommended) ...[
                               const SizedBox(width: 8),
-                              _Pill(label: 'verify_way_badge_fast'.tr, color: brand),
+                              _Pill(
+                                  label: (way == VerifyWay.telegram
+                                          ? 'verify_way_badge_fast'
+                                          : 'verify_way_badge_recommended')
+                                      .tr,
+                                  color: brand,
+                                ),
                             ],
                           ],
                         ),
@@ -512,18 +521,20 @@ class VerifyWaySwitcher extends StatelessWidget {
           ),
           child: Row(
             children: [
-              for (final w in ways)
+              for (var i = 0; i < ways.length; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
                 Expanded(
                   child: _SwitchItem(
-                    way: w,
-                    selected: w == selected,
-                    done: verified.contains(w),
+                    way: ways[i],
+                    selected: ways[i] == selected,
+                    done: verified.contains(ways[i]),
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      onChanged(w);
+                      onChanged(ways[i]);
                     },
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -552,11 +563,9 @@ class _SwitchItem extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
-      height: 48,
+      height: 66,
       decoration: BoxDecoration(
-        gradient: selected
-            ? LinearGradient(colors: [way.brand, way.brandDark])
-            : null,
+        gradient: selected ? LinearGradient(colors: [way.brand, way.brandDark]) : null,
         borderRadius: BorderRadius.circular(16),
         boxShadow: selected
             ? [
@@ -574,23 +583,29 @@ class _SwitchItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           onTap: (selected || done) ? null : onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: Row(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(done ? Icons.check_circle_rounded : way.icon, size: 18, color: fg),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    way.titleKey.tr,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 13,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: fg,
-                    ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: Icon(
+                    done ? Icons.check_circle_rounded : way.icon,
+                    key: ValueKey(done),
+                    size: 22,
+                    color: fg,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  way.titleKey.tr,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 11.5,
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: fg,
                   ),
                 ),
               ],
@@ -711,5 +726,193 @@ class VerifyWayStatusPill extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  4) Verification page extras: hero badge, destination chip, step tracker
+// ══════════════════════════════════════════════════════════════════════════════
+
+/// Large badge of the way being verified; softly pulses and morphs when the way changes.
+class VerifyWayHero extends StatefulWidget {
+  const VerifyWayHero({super.key, required this.way, this.size = 84});
+
+  final VerifyWay way;
+  final double size;
+
+  @override
+  State<VerifyWayHero> createState() => _VerifyWayHeroState();
+}
+
+class _VerifyWayHeroState extends State<VerifyWayHero>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2200),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final way = widget.way;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 320),
+      switchInCurve: Curves.easeOutBack,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(scale: anim, child: child),
+      ),
+      child: AnimatedBuilder(
+        key: ValueKey(way),
+        animation: _pulse,
+        builder: (_, _) {
+          final t = Curves.easeInOut.transform(_pulse.value);
+          return Container(
+            width: widget.size,
+            height: widget.size,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [way.brand, way.brandDark],
+              ),
+              borderRadius: BorderRadius.circular(widget.size * 0.32),
+              boxShadow: [
+                BoxShadow(
+                  color: way.brand.withValues(alpha: 0.30 + 0.12 * t),
+                  blurRadius: 18 + 14 * t,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Icon(way.icon, color: Colors.white, size: widget.size * 0.46),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// "Code sent to  e•••@mail.com" — the destination in a soft brand-tinted capsule.
+class VerifyDestinationChip extends StatelessWidget {
+  const VerifyDestinationChip({super.key, required this.way, required this.text});
+
+  final VerifyWay way;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: way.brand.withValues(alpha: c.isDark ? 0.16 : 0.09),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: way.brand.withValues(alpha: 0.30)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(way.icon, size: 16, color: way.brand),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              text,
+              textDirection: TextDirection.ltr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
+                color: c.textDark,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the admin requires BOTH e-mail and phone: which of them is done / current.
+class VerifyStepTracker extends StatelessWidget {
+  const VerifyStepTracker({
+    super.key,
+    required this.channels,
+    required this.pending,
+    required this.current,
+  });
+
+  /// Every channel to verify, in order ("email" / "phone").
+  final List<String> channels;
+
+  /// Channels not verified yet.
+  final List<String> pending;
+
+  /// The channel being verified now.
+  final String current;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final items = <Widget>[];
+    for (var i = 0; i < channels.length; i++) {
+      final ch = channels[i];
+      final done = !pending.contains(ch);
+      final active = ch == current && !done;
+      final color = done ? c.success : (active ? c.primary : c.divider);
+      if (i > 0) {
+        items.add(Expanded(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 2.5,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: done ? c.success : c.divider,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ));
+      }
+      items.add(Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: done ? c.success : (active ? c.primary : Colors.transparent),
+              border: Border.all(color: color, width: 2),
+            ),
+            child: Icon(
+              done
+                  ? Icons.check_rounded
+                  : (ch == 'email' ? Icons.mail_rounded : Icons.phone_iphone_rounded),
+              size: 17,
+              color: (done || active) ? Colors.white : c.textLight,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            (ch == 'email' ? 'verify_channel_email' : 'verify_channel_phone').tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 11.5,
+              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+              color: done ? c.success : (active ? c.textDark : c.textLight),
+            ),
+          ),
+        ],
+      ));
+    }
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: items);
   }
 }

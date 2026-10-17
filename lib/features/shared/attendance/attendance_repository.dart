@@ -18,19 +18,34 @@ class AttendanceRepository {
   // ── student / relay ───────────────────────────────────────────────────
   Future<StudentKey> fetchKey() async => StudentKey.fromJson(_m(await _api.get('$_base/my-key')));
 
-  Future<OpenWindow> openWindow(int sessionId) async => OpenWindow.fromJson(
-      _m(await _api.get('$_base/sessions/open', queryParams: {'session_id': sessionId})));
+  /// The open window of one lesson, or (with [courseId]) of any lesson of that course.
+  Future<OpenWindow> openWindow({int? sessionId, int? courseId}) async => OpenWindow.fromJson(
+      _m(await _api.get('$_base/sessions/open', queryParams: {
+        if (sessionId != null) 'session_id': sessionId,
+        if (courseId != null) 'course_id': courseId,
+      })));
+
+  /// Every enrolled course (+ lessons) — stored on the phone for offline check-in.
+  Future<List<CachedCourse>> myLessons() async {
+    final d = await _api.get('$_base/my-lessons');
+    return [
+      for (final c in (d is List ? d : const []))
+        CachedCourse.fromJson(Map<String, dynamic>.from(c as Map)),
+    ];
+  }
 
   /// POST /submit. The caller may be the student themselves (online) or a relay.
   Future<Map<String, dynamic>> submit(Map<String, dynamic> body) async =>
       _m(await _api.post('$_base/submit', body: body));
 
   // ── teacher ───────────────────────────────────────────────────────────
-  Future<TeacherWindow> open(int sessionId, {required int minutes, required int rotation}) async =>
+  Future<TeacherWindow> open(int sessionId,
+          {required int minutes, required int rotation, int witnesses = 0}) async =>
       TeacherWindow.fromJson(_m(await _api.post('$_base/sessions', body: {
         'session_id': sessionId,
         'duration_minutes': minutes,
         'rotation_seconds': rotation,
+        'required_witnesses': witnesses,
       })));
 
   Future<TeacherCode> code(int attId) async =>

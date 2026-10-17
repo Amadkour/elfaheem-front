@@ -25,12 +25,16 @@ class OpenWindow {
   final int rotationSeconds;
   final String expiresAt; // ISO, naive UTC (as sent by the server)
 
+  /// Classmates that must "see" the student nearby (Bluetooth) — set by the teacher. 0 = none.
+  final int requiredWitnesses;
+
   const OpenWindow({
     required this.attendanceSessionId,
     required this.courseId,
     required this.sessionId,
     required this.rotationSeconds,
     required this.expiresAt,
+    this.requiredWitnesses = 0,
   });
 
   factory OpenWindow.fromJson(Map<String, dynamic> j) => OpenWindow(
@@ -39,6 +43,7 @@ class OpenWindow {
         sessionId: (j['session_id'] as num).toInt(),
         rotationSeconds: (j['rotation_seconds'] as num).toInt(),
         expiresAt: j['expires_at'].toString(),
+        requiredWitnesses: (j['required_witnesses'] as num?)?.toInt() ?? 0,
       );
 
   Map<String, dynamic> toJson() => {
@@ -47,12 +52,14 @@ class OpenWindow {
         'session_id': sessionId,
         'rotation_seconds': rotationSeconds,
         'expires_at': expiresAt,
+        'required_witnesses': requiredWitnesses,
       };
 
   /// Expiry is only a UX hint — the server is the only authority.
   bool get looksExpired {
     final t = DateTime.tryParse('${expiresAt}Z');
-    return t != null && DateTime.now().toUtc().isAfter(t);
+    // 30 s of slack: the server grants its own grace, and phone clocks drift.
+    return t != null && DateTime.now().toUtc().isAfter(t.add(const Duration(seconds: 30)));
   }
 }
 
@@ -68,6 +75,9 @@ class PendingAttendance {
   final String signature;
   final int createdAtMs;
 
+  /// Signed "I saw this student" tokens from nearby classmates: [{user_id, ts, sig}].
+  final List<Map<String, dynamic>> witnesses;
+
   const PendingAttendance({
     required this.requestId,
     required this.sessionId,
@@ -76,6 +86,7 @@ class PendingAttendance {
     required this.code,
     required this.signature,
     required this.createdAtMs,
+    this.witnesses = const [],
   });
 
   factory PendingAttendance.fromJson(Map<String, dynamic> j) => PendingAttendance(
@@ -86,6 +97,10 @@ class PendingAttendance {
         code: j['code'].toString(),
         signature: j['signature'].toString(),
         createdAtMs: (j['created_at_ms'] as num).toInt(),
+        witnesses: [
+          for (final w in (j['witnesses'] as List? ?? const []))
+            Map<String, dynamic>.from(w as Map),
+        ],
       );
 
   Map<String, dynamic> toJson() => {
@@ -96,6 +111,7 @@ class PendingAttendance {
         'code': code,
         'signature': signature,
         'created_at_ms': createdAtMs,
+        'witnesses': witnesses,
       };
 
   /// Body of POST /api/v1/attendance/submit (also what travels over the relay link).
@@ -105,6 +121,7 @@ class PendingAttendance {
         'student_id': studentId,
         'code': code,
         'signature': signature,
+        'witnesses': witnesses,
       };
 
   static String encodeList(List<PendingAttendance> l) =>
@@ -120,6 +137,37 @@ class PendingAttendance {
       return [];
     }
   }
+}
+
+/// A course stored on the phone while online, so it can be listed offline.
+class CachedCourse {
+  const CachedCourse({required this.courseId, this.nameAr, this.nameEn, this.lessons = const []});
+  final int courseId;
+  final String? nameAr;
+  final String? nameEn;
+  final List<({int id, String name})> lessons;
+
+  String nameFor(String lang) {
+    final v = lang == 'ar' ? (nameAr ?? nameEn) : (nameEn ?? nameAr);
+    return (v == null || v.isEmpty) ? '#$courseId' : v;
+  }
+
+  factory CachedCourse.fromJson(Map<String, dynamic> j) => CachedCourse(
+        courseId: (j['course_id'] as num).toInt(),
+        nameAr: j['name_ar']?.toString(),
+        nameEn: j['name_en']?.toString(),
+        lessons: [
+          for (final l in (j['lessons'] as List? ?? const []))
+            (id: ((l as Map)['id'] as num).toInt(), name: l['name'].toString()),
+        ],
+      );
+
+  Map<String, dynamic> toJson() => {
+        'course_id': courseId,
+        'name_ar': nameAr,
+        'name_en': nameEn,
+        'lessons': [for (final l in lessons) {'id': l.id, 'name': l.name}],
+      };
 }
 
 /// The server's answer to a submit (signed with the student's key).
@@ -168,6 +216,7 @@ class TeacherWindow {
   final int rotationSeconds;
   final String expiresAt;
   final String? closedAt;
+  final int requiredWitnesses;
 
   const TeacherWindow({
     required this.id,
@@ -175,6 +224,7 @@ class TeacherWindow {
     required this.rotationSeconds,
     required this.expiresAt,
     this.closedAt,
+    this.requiredWitnesses = 0,
   });
 
   factory TeacherWindow.fromJson(Map<String, dynamic> j) => TeacherWindow(
@@ -183,6 +233,7 @@ class TeacherWindow {
         rotationSeconds: (j['rotation_seconds'] as num).toInt(),
         expiresAt: j['expires_at'].toString(),
         closedAt: j['closed_at']?.toString(),
+        requiredWitnesses: (j['required_witnesses'] as num?)?.toInt() ?? 0,
       );
 }
 

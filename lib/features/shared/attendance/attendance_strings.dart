@@ -87,8 +87,8 @@ const Map<String, (String, String)> _fallback = {
     'Turn Bluetooth on (and Location on older phones), then try again. The app cannot switch it on for you.'
   ),
   'att_err_no_relay': (
-    'لم نجد زميلاً متصلاً بالإنترنت قريباً منك. اطلب من زميل أن يفتح التطبيق ويفعّل "ساعد زملاءك".',
-    'No connected classmate found nearby. Ask a classmate to open the app and turn on "Help classmates".'
+    'لم نجد زميلاً متصلاً بالإنترنت قريباً منك. اطلب من زميل متصل أن يفتح شاشة تسجيل الحضور (أو يفعّل "ساعد زملاءك") وتأكد من تشغيل الموقع والبلوتوث في الجهازين.',
+    'No connected classmate found nearby. Ask an online classmate to open the attendance sheet (or turn on "Help classmates"), and make sure Bluetooth and Location are on for both phones.'
   ),
   'att_err_forged': (
     'ردّ غير موثوق: لم يتم التحقق من توقيع الخادم، لذلك لن يُعتبر الحضور مسجّلاً.',
@@ -129,4 +129,41 @@ const Map<String, (String, String)> _fallback = {
   'att_t_close': ('إغلاق التسجيل', 'Close attendance'),
   'att_t_closed': ('تم إغلاق التسجيل', 'Attendance closed'),
   'att_t_expired': ('انتهت مدة التسجيل', 'The attendance window has ended'),
+  // ── classmate signals / launcher / offline tab ────────────────────────
+  'att_stage_witness': ('إشارات الزملاء القريبين', 'Signals from nearby classmates'),
+  'att_witness_progress': ('إشارات الزملاء: {x} من {n}', 'Classmate signals: {x} of {n}'),
+  'att_need_mates': (
+    'المعلّم يطلب إشارة من {n} زميل قريب. اطلب منهم فتح التطبيق وتفعيل "ساعد زملاءك".',
+    'Your teacher requires signals from {n} nearby classmate(s). Ask them to open the app with "Help classmates" on.'
+  ),
+  'att_err_witnesses': (
+    'لم نجد العدد المطلوب من الزملاء القريبين. اقتربوا من بعضكم وأعد المحاولة.',
+    'Not enough nearby classmates answered. Move closer together and try again.'
+  ),
+  'att_reason_not_enough_witnesses': (
+    'عدد إشارات الزملاء غير كافٍ', 'Not enough classmate signals'),
+  'att_t_witnesses': ('عدد الزملاء المطلوبين لكل طالب', 'Classmates required per student'),
+  'att_t_witnesses_hint': (
+    'الافتراضي 0 = بدون إشارات زملاء', 'Default 0 = no classmate signals'),
+  'att_visible_yes': ('هاتفك ظاهر للزملاء القريبين', 'Your phone is visible to nearby classmates'),
+  'att_visible_no': ('هاتفك غير ظاهر للزملاء حالياً', 'Your phone is not visible to classmates right now'),
+  'att_t_relay_on': (
+    'هاتفك يستقبل حضور الطلاب غير المتصلين القريبين ويرسله للخادم',
+    'Your phone is receiving check-ins from nearby offline students and sending them to the server'
+  ),
+  'att_t_relay_off': (
+    'هاتفك غير ظاهر للطلاب غير المتصلين (فعّل البلوتوث والموقع)',
+    'Your phone is not visible to offline students (turn on Bluetooth and Location)'
+  ),
+  'att_launch_btn': ('بدء أخذ الحضور', 'Start attendance'),
+  'att_launch_title': ('اختر المحاضرة', 'Choose the lesson'),
+  'att_launch_empty': ('لا توجد محاضرات بعد', 'No lessons yet'),
+  'att_tab_downloads': ('التنزيلات', 'Downloads'),
+  'att_tab_attendance': ('الحضور', 'Attendance'),
+  'att_courses_title': ('كورساتك للحضور', 'Your courses for attendance'),
+  'att_courses_empty': (
+    'لا توجد كورسات محفوظة. افتح التطبيق مرة واحدة وأنت متصل لتظهر هنا.',
+    'No saved courses yet. Open the app once while online and they will appear here.'
+  ),
+  'att_course_tap': ('اضغط لإدخال كود الحضور', 'Tap to enter the attendance code'),
 };

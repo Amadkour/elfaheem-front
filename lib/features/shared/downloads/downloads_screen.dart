@@ -15,6 +15,8 @@ import 'package:flutter_education_app/features/shared/session/video/video_player
 import 'package:flutter_education_app/utils/helpers.dart';
 
 import '../../../core/offline/offline_strings.dart';
+import '../attendance/attendance_strings.dart';
+import '../attendance/offline_attendance_tab.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -35,6 +37,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   final OfflineVideoService _svc = OfflineVideoService.instance;
   List<OfflineItem> _items = const [];
   bool _loading = true;
+  int _tab = 0; // 0 = Downloads, 1 = Attendance (works offline, courses stored locally)
 
   @override
   void initState() {
@@ -144,7 +147,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 ),
           title: Text(offlineT('dl_title'), style: c.h3),
           actions: [
-            if (_items.isNotEmpty)
+            if (_items.isNotEmpty && _tab == 0)
               IconButton(
                 tooltip: offlineT('dl_delete_all'),
                 icon: Icon(Icons.delete_sweep_rounded, color: c.danger),
@@ -152,7 +155,32 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               ),
           ],
         ),
-        child: _loading
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: SizedBox(
+              width: double.infinity,
+              child: SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                      value: 0,
+                      icon: const Icon(Icons.download_done_rounded, size: 18),
+                      label: Text(attT('att_tab_downloads'))),
+                  ButtonSegment(
+                      value: 1,
+                      icon: const Icon(Icons.how_to_reg_rounded, size: 18),
+                      label: Text(attT('att_tab_attendance'))),
+                ],
+                selected: {_tab},
+                onSelectionChanged: (v) => setState(() => _tab = v.first),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _tab == 1
+                ? const OfflineAttendanceTab()
+                : _loading
             ? const Center(child: CircularProgressIndicator())
             : RefreshIndicator(
                 onRefresh: _load,
@@ -200,6 +228,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ],
                 ),
               ),
+          ),
+        ]),
       ),
     );
   }

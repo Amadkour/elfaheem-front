@@ -1,4 +1,25 @@
+// features/auth/verified_screen.dart
+// ─────────────────────────────────────────────────────────────────────────────
+// ONE verification page for every flow:
+//   registration · login of an unverified account · Google sign-up · forgot password
+//   · change password.
+//
+// It shows every way the admin allows AND the server can send — Telegram, E-mail,
+// WhatsApp, SMS — in this priority order (the admin may put another way first):
+//   Telegram > E-mail > WhatsApp > SMS
+// The student can switch between them at any time:
+//   • code ways   (E-mail, SMS, WhatsApp code)  -> 4 code boxes, paste / auto-fill,
+//                                                  auto-submit, a resend timer PER way
+//   • link ways   (Telegram, WhatsApp link)     -> brand button, QR code on the web,
+//                                                  live status while we wait for the message
+// A way that was not used yet is sent automatically the first time it is selected.
+// When the admin requires E-mail AND phone, a step tracker shows what is done.
+// Forgot / change password offers the ways a reset CODE can reach (E-mail, WhatsApp
+// code, SMS); links cannot carry a code, so they never appear there.
+// ─────────────────────────────────────────────────────────────────────────────
 import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -30,8 +51,7 @@ class OtpVerificationScreen extends StatefulWidget {
   /// pass AuthProvider.pendingChannels; forget-password ignores it.
   final List<String> channels;
 
-  /// The way the student picked on the registration page (null = choose automatically:
-  /// Telegram first when it is allowed and installed).
+  /// The way picked on the registration page (null = the first way of the priority list).
   final VerifyWay? initialWay;
 
   const OtpVerificationScreen({
@@ -58,18 +78,31 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   final List<FocusNode> _focusNodes =
   List.generate(otpLength, (_) => FocusNode());
 
-  late AnimationController _shakeController;
-  late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _shakeAnimation;
+  late final AnimationController _shakeController;
+  late final AnimationController _fadeController;
+  late final Animation<double> _fadeAnimation;
 
-  int _remainingSeconds = resendSeconds;
-  Timer? _resendTimer;
+  // ── state ────────────────────────────────────────────────────────────────
   bool _isLoading = false;
   bool _hasError = false;
-  late List<String> _pending;
+  bool _sending = false; // a code is being requested right now
+  late List<String> _pending; // channels still to verify
+  late final List<String> _allChannels; // every channel of this flow (step tracker)
 
-  // ── Phone verification by Telegram / WhatsApp link (admin: otp_phone_channel) ──
+  /// Every way of the channels that were pending when this screen opened.
+  List<VerifyWay> _allWays = const [];
+
+  /// The way selected right now.
+  VerifyWay? _way;
+
+  /// Ways a code was already requested for (the server sent the first one itself).
+  final Set<VerifyWay> _sent = {};
+
+  /// Seconds left before a code can be requested again — one timer per way.
+  final Map<VerifyWay, int> _cooldown = {};
+  Timer? _ticker;
+
+  // ── Telegram / WhatsApp link ─────────────────────────────────────────────
   PhoneLinkSession? _link;
   Timer? _pollTimer;
   bool _linkLoading = false;
@@ -77,14 +110,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   String? _linkError;
   bool? _telegramInstalled; // null = not checked yet
 
-  // ── Verification ways allowed by the admin (registration flow) ───────────────
-  /// Every way of the channels that were pending when this screen opened.
-  List<VerifyWay> _allWays = const [];
+  // ── helpers ──────────────────────────────────────────────────────────────
+  bool get _isReg => widget.flow == OtpFlowEnum.registration;
 
-  /// The way selected right now; the student can switch it with the switcher.
-  VerifyWay? _way;
+  MyAuthProvider get _auth => context.read<MyAuthProvider>();
 
-  /// The channel being verified right now (registration flow only).
+  /// The channel being verified right now (registration).
   String get _channel {
     if (_pending.isEmpty) return 'email';
     final w = _way;
@@ -92,81 +123,289 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return _pending.first;
   }
 
-  /// Ways shown in the switcher. Telegram / WhatsApp the server did not configure are hidden.
+  /// Verified with a Telegram / WhatsApp link instead of a typed code.
+  bool get _useLink => _isReg && _way != null && _way!.isLink(_auth);
+
+  /// Ways shown in the switcher. A Telegram / WhatsApp link the server did not
+  /// configure (not in the link session) is hidden.
   List<VerifyWay> get _visibleWays {
-    if (widget.flow != OtpFlowEnum.registration) return const [];
     final offered = _link?.methods;
-    final linkMode = context.read<MyAuthProvider>().phoneUsesLink;
+    final auth = _auth;
     return _allWays.where((w) {
-      final isLinkWay = w == VerifyWay.telegram || w == VerifyWay.whatsapp;
-      if (linkMode && isLinkWay && offered != null) return offered.contains(w.name);
+      if (_isReg && w.isLink(auth) && offered != null) return offered.contains(w.name);
       return true;
     }).toList();
   }
 
-  /// The phone step is done with a Telegram / WhatsApp link instead of typing a code.
-  bool get _useLink =>
-      widget.flow == OtpFlowEnum.registration &&
-          _channel == 'phone' &&
-          context.read<MyAuthProvider>().phoneUsesLink;
+  String get _fullOtp => _controllers.map((c) => c.text).join();
+
+  bool get _isOtpComplete => _fullOtp.length == otpLength;
+
+  String get _timerText {
+    final s = _cooldown[_way] ?? 0;
+    final m = (s ~/ 60).toString().padLeft(2, '0');
+    final r = (s % 60).toString().padLeft(2, '0');
+    return '$m:$r';
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Lifecycle
+  // ═══════════════════════════════════════════════════════════════════════
 
   @override
   void initState() {
     super.initState();
     _pending = widget.channels.isEmpty ? ['email'] : List.of(widget.channels);
-    if (widget.flow == OtpFlowEnum.registration) {
-      _allWays = verifyWaysForChannels(context.read<MyAuthProvider>(), _pending);
-      final picked = widget.initialWay;
-      _way = (picked != null && _allWays.contains(picked))
-          ? picked
-          : (_allWays.isEmpty ? null : _allWays.first);
-    }
+    _allChannels = List.of(_pending);
+    _computeWays();
+
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeOut,
-    );
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
     _fadeController.forward();
 
     _shakeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _shakeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn),
-    );
+
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      var ticked = false;
+      _cooldown.updateAll((_, v) {
+        if (v > 0) ticked = true;
+        return v > 0 ? v - 1 : 0;
+      });
+      if (ticked) setState(() {});
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      // Nothing was picked and both Telegram and WhatsApp are allowed: Telegram has the
-      // priority, but only when the student has it (otherwise WhatsApp goes first).
-      if (widget.initialWay == null &&
+      final auth = _auth;
+      if (!auth.policyLoaded) {
+        await auth.loadPolicy(); // opened straight from a deep link / Google: policy not read yet
+        if (!mounted) return;
+        setState(_computeWays);
+      }
+      // Telegram has the priority, but only when the student really has it.
+      if (_isReg &&
+          widget.initialWay == null &&
           _way == VerifyWay.telegram &&
-          _allWays.contains(VerifyWay.whatsapp)) {
+          _allWays.length > 1) {
         _telegramInstalled = await _detectTelegram();
         if (!mounted) return;
-        if (_telegramInstalled == false) setState(() => _way = VerifyWay.whatsapp);
+        if (_telegramInstalled == false) {
+          setState(() => _way = _allWays.firstWhere((w) => w != VerifyWay.telegram));
+        }
       }
-      _prepareChannel();
+      _prepare();
     });
   }
 
-  /// Sets up the step for the channel being verified: the link flow for phone
-  /// (when the admin chose Telegram / WhatsApp), the code boxes otherwise.
-  void _prepareChannel() {
+  /// Builds the list of ways and picks the first one. Registration: the allowed ways of the
+  /// pending channels. Reset: the ways the server said a code can reach.
+  void _computeWays() {
+    final auth = _auth;
+    if (_isReg) {
+      _allWays = verifyWaysForChannels(auth, _pending);
+      if (_allWays.isEmpty) _allWays = const [VerifyWay.email];
+      final picked = widget.initialWay;
+      _way = (picked != null && _allWays.contains(picked)) ? picked : _allWays.first;
+    } else {
+      _allWays = [
+        for (final r in auth.resetWays)
+          if (VerifyWayX.fromName(r.way) != null) VerifyWayX.fromName(r.way)!,
+      ];
+      if (_allWays.isEmpty) _allWays = const [VerifyWay.email];
+      final sentVia = VerifyWayX.fromName(auth.resetSentVia);
+      _way = (sentVia != null && _allWays.contains(sentVia)) ? sentVia : _allWays.first;
+    }
+    _sent
+      ..clear()
+      ..addAll(_way == null ? const [] : [_way!]); // the server already sent / prepared it
+  }
+
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    _pollTimer?.cancel();
+    _fadeController.dispose();
+    _shakeController.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Step preparation / way switching
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /// Sets the page up for the selected way: the link flow, or the code boxes
+  /// (requesting a code first when this way has not been sent yet).
+  void _prepare() {
     _pollTimer?.cancel();
     _link = null;
     _linkError = null;
+    final w = _way;
+    if (w == null) return;
     if (_useLink) {
       _startLink();
-    } else {
-      _startResendTimer();
-      _focusNodes[0].requestFocus();
+      return;
+    }
+    _ensureSent(w);
+    _cooldown.putIfAbsent(w, () => resendSeconds);
+    if (mounted) setState(() {});
+    _focusNodes[0].requestFocus();
+  }
+
+  /// First time a code way is selected: ask the server to send it.
+  Future<void> _ensureSent(VerifyWay w) async {
+    if (_sent.contains(w)) return;
+    _sent.add(w);
+    _cooldown[w] = resendSeconds;
+    setState(() => _sending = true);
+    final ok = await _auth.resendOtp(
+      widget.email,
+      reset: !_isReg,
+      channel: _isReg ? w.channel : null,
+      way: w.name,
+    );
+    if (!mounted) return;
+    setState(() => _sending = false);
+    if (!ok) {
+      _sent.remove(w); // allow a manual retry right away
+      setState(() => _cooldown[w] = 0);
     }
   }
+
+  void _selectWay(VerifyWay w) {
+    if (w == _way) return;
+    // Telegram <-> WhatsApp share one link session: only the selected way changes.
+    final stayOnLink = _link != null && w.isLink(_auth) && (_way?.isLink(_auth) ?? false);
+    setState(() {
+      _way = w;
+      _hasError = false;
+    });
+    if (stayOnLink) return;
+    for (final c in _controllers) {
+      c.clear();
+    }
+    _prepare();
+  }
+
+  void _clearBoxes() {
+    for (final c in _controllers) {
+      c.clear();
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Code ways
+  // ═══════════════════════════════════════════════════════════════════════
+
+  void _onOtpChanged(int index, String value) {
+    setState(() => _hasError = false);
+    if (value.length > 2) {
+      _distribute(value); // the whole code was pasted / auto-filled into one box
+      return;
+    }
+    if (value.length == 2) {
+      // typed over a filled box: keep the new digit
+      _controllers[index].text = value.substring(1);
+      _controllers[index].selection = const TextSelection.collapsed(offset: 1);
+    }
+    final v = _controllers[index].text;
+    if (v.isNotEmpty && index < otpLength - 1) {
+      _focusNodes[index + 1].requestFocus();
+    } else if (v.isEmpty && index > 0) {
+      _focusNodes[index - 1].requestFocus();
+    }
+    if (_isOtpComplete) _onConfirm();
+  }
+
+  void _distribute(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    for (var i = 0; i < otpLength; i++) {
+      _controllers[i].text = i < digits.length ? digits[i] : '';
+    }
+    final next = math.min(digits.length, otpLength - 1);
+    _focusNodes[next].requestFocus();
+    setState(() {});
+    if (_isOtpComplete) _onConfirm();
+  }
+
+  KeyEventResult _onKeyEvent(int index, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace &&
+        _controllers[index].text.isEmpty &&
+        index > 0) {
+      _focusNodes[index - 1].requestFocus();
+      _controllers[index - 1].clear();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Future<void> _onConfirm() async {
+    if (!_isOtpComplete || _isLoading) return;
+    setState(() => _isLoading = true);
+    final auth = _auth;
+    final success = _isReg
+        ? await auth.verifyOtp(
+      gmail: widget.email,
+      code: _fullOtp,
+      channel: _channel,
+      way: _way?.name,
+    )
+        : await auth.verifyResetOtp(gmail: widget.email, code: _fullOtp);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      HapticFeedback.mediumImpact();
+      _afterVerified(auth);
+    } else {
+      HapticFeedback.heavyImpact();
+      setState(() => _hasError = true);
+      _shakeController.forward(from: 0);
+      _clearBoxes();
+      _focusNodes[0].requestFocus();
+      _snack('invalid_otp'.tr, error: true);
+    }
+  }
+
+  Future<void> _onResend() async {
+    final w = _way;
+    if (w == null || (_cooldown[w] ?? 0) > 0) return;
+    _clearBoxes();
+    setState(() {
+      _hasError = false;
+      _cooldown[w] = resendSeconds;
+    });
+    _focusNodes[0].requestFocus();
+    final ok = await _auth.resendOtp(
+      widget.email,
+      reset: !_isReg,
+      channel: _isReg ? w.channel : null,
+      way: w.name,
+    );
+    if (!mounted) return;
+    if (ok) {
+      _snack('otp_resent'.tr);
+    } else {
+      setState(() => _cooldown[w] = 0);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Link ways (Telegram / WhatsApp)
+  // ═══════════════════════════════════════════════════════════════════════
 
   Future<bool> _detectTelegram() async {
     if (kIsWeb) return true; // a browser cannot tell; the t.me link handles both cases
@@ -178,7 +417,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   }
 
   Future<void> _startLink() async {
-    final auth = context.read<MyAuthProvider>();
+    final auth = _auth;
     setState(() {
       _linkLoading = true;
       _linkError = null;
@@ -202,13 +441,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     setState(() {
       _link = session;
       _linkLoading = false;
-      // the selected way is not offered by the server: fall back to one that is
-      final wanted = _way?.name;
-      if (wanted != null &&
-          (_way == VerifyWay.telegram || _way == VerifyWay.whatsapp) &&
-          !session.methods.contains(wanted)) {
-        final fallback = _allWays.where((w) => session.methods.contains(w.name));
-        if (fallback.isNotEmpty) _way = fallback.first;
+      // the selected link way is not offered by the server: fall back to one that is
+      final w = _way;
+      if (w != null && w.isLink(auth) && !session.methods.contains(w.name)) {
+        final fb = _allWays.where((x) => x.isLink(auth) && session.methods.contains(x.name));
+        if (fb.isNotEmpty) _way = fb.first;
       }
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollLink());
@@ -217,13 +454,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Future<void> _pollLink() async {
     final link = _link;
     if (link == null || _polling || !mounted) return;
-    final auth = context.read<MyAuthProvider>();
+    final auth = _auth;
     _polling = true;
     final state = await auth.checkPhoneLink(link.token);
     _polling = false;
     if (!mounted) return;
     if (state == 'verified') {
       _pollTimer?.cancel();
+      HapticFeedback.mediumImpact();
       _afterVerified(auth);
     } else if (state == 'expired') {
       _pollTimer?.cancel();
@@ -238,15 +476,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     try {
       if (await launchUrl(uri, mode: LaunchMode.externalApplication)) return;
     } catch (_) {}
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('could_not_open_link'.tr),
-          backgroundColor: context.colors.danger,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    if (mounted) _snack('could_not_open_link'.tr, error: true);
   }
 
   Future<void> _openTelegram(PhoneLinkSession s) async {
@@ -270,13 +500,500 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Future<void> _copyLink(String url) async {
     await Clipboard.setData(ClipboardData(text: url));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('phone_link_copied'.tr),
-        behavior: SnackBarBehavior.floating,
+    if (mounted) _snack('phone_link_copied'.tr);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  Done
+  // ═══════════════════════════════════════════════════════════════════════
+
+  /// A channel was verified (by code or by link). More channels pending (the admin requires
+  /// E-mail AND phone) -> move on to the next one; otherwise leave the screen.
+  void _afterVerified(MyAuthProvider auth) {
+    if (_isReg && auth.pendingChannels.isNotEmpty) {
+      setState(() {
+        _pending = List.of(auth.pendingChannels);
+        _hasError = false;
+        final left = _allWays.where((w) => _pending.contains(w.channel)).toList();
+        _way = left.isEmpty ? null : (left.contains(_way) ? _way : left.first);
+      });
+      _snack('verify_step_done'.tr);
+      _clearBoxes();
+      _prepare();
+      return;
+    }
+    if (_isReg) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          // Only teachers have the extra profile step; students AND parents go straight to login.
+          builder: (_) => widget.role == 'teacher'
+              ? AdditionalRegisterScreen(email: widget.email)
+              : const LoginScreen(),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => ChangePasswordScreen(
+            email: widget.email,
+            fromProfile: false,
+            code: _fullOtp,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _snack(String msg, {bool error = false}) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          backgroundColor: error ? context.colors.danger : context.colors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  UI
+  // ═══════════════════════════════════════════════════════════════════════
+
+  @override
+  Widget build(BuildContext context) {
+    final isWeb = MediaQuery.of(context).size.width > 800;
+    return BasePage(
+      appBar: isWeb ? null : ScreenAppBar(title: 'verification'.tr),
+      child: SafeArea(
+        child: isWeb
+            ? Row(children: [AuthSidebar(), _webCard()])
+            : Column(
+          children: [
+            ProgressBar(currentStep: 1, totalSteps: 3),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(20, math.max(16, context.height / 40), 20, 24),
+                child: FadeTransition(opacity: _fadeAnimation, child: _content()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _webCard() {
+    final c = context.colors;
+    return Expanded(
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(c.radiusXL),
+                child: ColoredBox(
+                  color: c.isDark ? c.primaryDark : c.primary.withAlpha(30),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        ProgressBar(currentStep: 1, totalSteps: 3),
+                        const SizedBox(height: 24),
+                        _content(),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Where the code goes / was sent to, for the selected way.
+  String get _destination {
+    final w = _way ?? VerifyWay.email;
+    final auth = _auth;
+    if (!_isReg) {
+      for (final r in auth.resetWays) {
+        if (r.way == w.name && r.masked != null) return r.masked!;
+      }
+      return widget.email;
+    }
+    if (w.isPhone) return widget.phoneNumber ?? auth.pendingPhoneMasked ?? widget.email;
+    return widget.email;
+  }
+
+  String get _sentHint => switch (_way) {
+    VerifyWay.sms => 'verification_code_sent_sms'.tr,
+    VerifyWay.whatsapp => 'verification_code_sent_whatsapp'.tr,
+    _ => 'verification_code_sent'.tr,
+  };
+
+  Widget _content() {
+    final c = context.colors;
+    final way = _way ?? VerifyWay.email;
+    final ways = _visibleWays;
+    final link = _useLink;
+    final showSteps = _isReg && _allChannels.length > 1 && _auth.requireAll;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showSteps) ...[
+          VerifyStepTracker(channels: _allChannels, pending: _pending, current: _channel),
+          const SizedBox(height: 24),
+        ],
+        Center(child: VerifyWayHero(way: way)),
+        const SizedBox(height: 20),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: Column(
+            key: ValueKey('head-${way.name}-$link'),
+            children: [
+              Text(
+                link ? 'phone_link_title'.tr : 'enter_verification_code'.tr,
+                textAlign: TextAlign.center,
+                style: c.h1,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                link ? 'phone_link_hint'.tr : _sentHint,
+                textAlign: TextAlign.center,
+                style: c.body,
+              ),
+              const SizedBox(height: 14),
+              VerifyDestinationChip(way: way, text: _destination),
+            ],
+          ),
+        ),
+        const SizedBox(height: 26),
+        if (ways.length > 1) ...[
+          VerifyWaySwitcher(
+            ways: ways,
+            selected: _way,
+            verified: {
+              for (final w in _allWays)
+                if (_isReg && !_pending.contains(w.channel)) w,
+            },
+            onChanged: _selectWay,
+          ),
+          const SizedBox(height: 26),
+        ],
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
+                    .animate(anim),
+                child: child,
+              ),
+            ),
+            child: Column(
+              key: ValueKey('panel-${way.name}-$link'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: link ? _buildLinkSection() : _buildCodeSection(),
+            ),
+          ),
+        ),
+        if (ways.length > 1) ...[
+          const SizedBox(height: 22),
+          Text(
+            'verify_try_another_way'.tr,
+            textAlign: TextAlign.center,
+            style: c.body.copyWith(fontSize: 12.5),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ── code ways ────────────────────────────────────────────────────────────
+
+  List<Widget> _buildCodeSection() => [
+    AnimatedSize(
+      duration: const Duration(milliseconds: 200),
+      child: _sending
+          ? Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: VerifyWayStatusPill(
+          way: _way ?? VerifyWay.email,
+          label: 'verify_sending'.tr,
+        ),
+      )
+          : const SizedBox(width: double.infinity),
+    ),
+    _buildOtpFields(),
+    const SizedBox(height: 22),
+    _buildResendRow(),
+    const SizedBox(height: 26),
+    _buildConfirmButton(),
+  ];
+
+  Widget _buildOtpFields() {
+    return AnimatedBuilder(
+      animation: _shakeController,
+      builder: (context, child) {
+        final t = _shakeController.value;
+        final dx = math.sin(t * math.pi * 6) * 10 * (1 - t);
+        return Transform.translate(offset: Offset(dx, 0), child: child);
+      },
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: List.generate(otpLength, _buildSingleBox),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSingleBox(int index) {
+    final c = context.colors;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: ListenableBuilder(
+          listenable: Listenable.merge([_focusNodes[index], _controllers[index]]),
+          builder: (context, _) {
+            final isFocused = _focusNodes[index].hasFocus;
+            final isFilled = _controllers[index].text.isNotEmpty;
+            final Color border;
+            final Color bg;
+            if (_hasError) {
+              border = c.danger;
+              bg = c.danger.withValues(alpha: 0.06);
+            } else if (isFocused) {
+              border = c.primary;
+              bg = c.background;
+            } else if (isFilled) {
+              border = c.primary.withValues(alpha: 0.5);
+              bg = c.background;
+            } else {
+              border = c.divider;
+              bg = c.inputBg;
+            }
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(c.radiusMedium),
+                border: Border.all(color: border, width: isFocused ? 2 : 1),
+                boxShadow: isFocused
+                    ? [
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: 0.14),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                    : null,
+              ),
+              child: Focus(
+                onKeyEvent: (_, e) => _onKeyEvent(index, e),
+                child: TextField(
+                  controller: _controllers[index],
+                  focusNode: _focusNodes[index],
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  autofillHints: index == 0 ? const [AutofillHints.oneTimeCode] : null,
+                  style: TextStyle(
+                    fontSize: 28,
+                    height: 2.2,
+                    fontWeight: FontWeight.w800,
+                    color: c.textDark,
+                  ),
+                  cursorColor: c.primary,
+                  decoration: const InputDecoration(
+                    constraints: BoxConstraints(minHeight: 66),
+                    counterText: '',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  onChanged: (value) => _onOtpChanged(index, value),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResendRow() {
+    final c = context.colors;
+    final w = _way;
+    final left = _cooldown[w] ?? 0;
+    final canResend = left == 0;
+    return Center(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: canResend
+            ? TextButton.icon(
+          key: const ValueKey('resend'),
+          onPressed: _onResend,
+          icon: Icon(Icons.refresh_rounded, size: 18, color: c.primary),
+          label: Text(
+            'resend'.tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: c.primary,
+            ),
+          ),
+        )
+            : Row(
+          key: const ValueKey('timer'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                value: left / resendSeconds,
+                strokeWidth: 2.4,
+                color: (w ?? VerifyWay.email).brand,
+                backgroundColor: c.divider,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'resend_in'.tr + _timerText,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
+                color: c.textLight,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirmButton() {
+    final c = context.colors;
+    final enabled = _isOtpComplete && !_isLoading;
+    final radius = BorderRadius.circular(c.radiusMedium);
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: enabled || _isLoading ? 1 : 0.55,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: c.primaryGradient,
+          borderRadius: radius,
+          boxShadow: enabled ? c.primaryShadow : const [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: radius,
+            onTap: enabled ? _onConfirm : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 17),
+              child: Center(
+                child: _isLoading
+                    ? const SizedBox(width: 24, height: 24, child: AppLoadingIndicator())
+                    : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'confirm'.tr,
+                      style: const TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── link ways ────────────────────────────────────────────────────────────
+
+  /// The Telegram / WhatsApp step for the selected way. The other way (when the admin
+  /// allows both) is one tap away in the switcher.
+  List<Widget> _buildLinkSection() {
+    if (_linkLoading) {
+      return const [Center(child: AppLoadingIndicator())];
+    }
+    final s = _link;
+    if (s == null) {
+      return [
+        if (_linkError != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Text(
+              _linkError!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600),
+            ),
+          ),
+        OutlinedButton.icon(
+          onPressed: _startLink,
+          icon: const Icon(Icons.refresh_rounded),
+          label: Text('phone_link_new'.tr),
+        ),
+      ];
+    }
+
+    var method = _way == VerifyWay.whatsapp ? 'whatsapp' : 'telegram';
+    if (!s.methods.contains(method)) {
+      if (s.methods.isEmpty) {
+        return [Text('generic_error'.tr, textAlign: TextAlign.center, style: context.colors.body)];
+      }
+      method = s.methods.first;
+    }
+    final way = method == 'telegram' ? VerifyWay.telegram : VerifyWay.whatsapp;
+    return [
+      VerifyWayButton(
+        way: way,
+        label: (way == VerifyWay.telegram ? 'phone_link_telegram' : 'phone_link_whatsapp').tr,
+        onPressed: () => way == VerifyWay.telegram ? _openTelegram(s) : _openWhatsapp(s),
+      ),
+      if (kIsWeb) ..._buildQrSection(s, way),
+      const SizedBox(height: 20),
+      Text(
+        (way == VerifyWay.telegram ? 'phone_link_tg_steps' : 'phone_link_wa_steps').tr,
+        textAlign: TextAlign.center,
+        style: context.colors.body,
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'phone_link_same_number'.tr,
+        textAlign: TextAlign.center,
+        style: context.colors.body,
+      ),
+      const SizedBox(height: 20),
+      VerifyWayStatusPill(way: way, label: 'phone_link_waiting'.tr),
+    ];
   }
 
   /// Flutter web only: a laptop usually has no Telegram / WhatsApp, so let the student
@@ -332,512 +1049,5 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         ),
       ),
     ];
-  }
-
-  void _startResendTimer() {
-    _resendTimer?.cancel();
-    if(mounted) if(mounted) setState(() => _remainingSeconds = resendSeconds);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds <= 0) {
-        timer.cancel();
-      } else {
-        if(mounted) if(mounted) setState(() => _remainingSeconds--);
-      }
-    });
-  }
-
-  String get _timerText {
-    final minutes = (_remainingSeconds ~/ 60).toString().padLeft(2, '0');
-    final seconds = (_remainingSeconds % 60).toString().padLeft(2, '0');
-    return '$minutes:$seconds';
-  }
-
-  String get _fullOtp => _controllers.map((c) => c.text).join();
-
-  bool get _isOtpComplete => _fullOtp.length == otpLength;
-
-  void _onOtpChanged(int index, String value) {
-    if(mounted) if(mounted) setState(() => _hasError = false);
-    if (value.isNotEmpty && index < otpLength - 1) {
-      _focusNodes[index + 1].requestFocus();
-    } else if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-  }
-
-  void _onKeyEvent(int index, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.backspace &&
-        _controllers[index].text.isEmpty &&
-        index > 0) {
-      _focusNodes[index - 1].requestFocus();
-      _controllers[index - 1].clear();
-    }
-  }
-
-  Future<void> _onConfirm() async {
-    if (_isOtpComplete) {
-      if(mounted) if(mounted) setState(() => _isLoading = true);
-      final auth = context.read<MyAuthProvider>();
-      final success = widget.flow == OtpFlowEnum.registration
-          ? await auth.verifyOtp(gmail: widget.email, code: _fullOtp, channel: _channel)
-          : await auth.verifyResetOtp(gmail: widget.email, code: _fullOtp);
-      if(mounted) if(mounted) setState(() => _isLoading = false);
-
-      if (success && mounted) {
-        _afterVerified(auth);
-      } else if (mounted) {
-        if(mounted) if(mounted) setState(() => _hasError = true);
-        _shakeController.forward(from: 0);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('invalid_otp'.tr),
-            backgroundColor: context.colors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
-  /// A channel was verified (by code or by link). Admin requires BOTH e-mail and
-  /// phone: after the first one, move on to the next; otherwise leave the screen.
-  void _afterVerified(MyAuthProvider auth) {
-    if (widget.flow == OtpFlowEnum.registration && auth.pendingChannels.isNotEmpty) {
-      setState(() {
-        _pending = List.of(auth.pendingChannels);
-        _hasError = false;
-        // move the selection to a way of a channel that is still pending
-        final left = _allWays.where((w) => _pending.contains(w.channel)).toList();
-        _way = left.isEmpty ? null : (left.contains(_way) ? _way : left.first);
-      });
-      for (final c in _controllers) {
-        c.clear();
-      }
-      _prepareChannel();
-      return;
-    }
-    if (widget.flow == OtpFlowEnum.registration) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          // Only teachers have the extra profile step; students AND parents go straight to login.
-          builder: (_) => widget.role == 'teacher'
-              ? AdditionalRegisterScreen(email: widget.email)
-              : const LoginScreen(),
-        ),
-      );
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => ChangePasswordScreen(email: widget.email, fromProfile: false, code: _fullOtp),
-        ),
-      );
-    }
-  }
-
-  /// The student switched the verification way in the switcher.
-  void _selectWay(VerifyWay w) {
-    if (w == _way) return;
-    final channelChanged = w.channel != _channel;
-    setState(() {
-      _way = w;
-      _hasError = false;
-    });
-    if (channelChanged) {
-      for (final c in _controllers) {
-        c.clear();
-      }
-      _prepareChannel(); // e-mail code boxes <-> phone step
-    }
-    // Telegram <-> WhatsApp stay on the same link session: only the selected way changes.
-  }
-
-  Future<void> _onResend() async {
-    if (_remainingSeconds > 0) return;
-    for (final c in _controllers) {
-      c.clear();
-    }
-    if(mounted) if(mounted) setState(() => _hasError = false);
-    _startResendTimer();
-    _focusNodes[0].requestFocus();
-    final success = await context.read<MyAuthProvider>().resendOtp(
-      widget.email,
-      reset: widget.flow != OtpFlowEnum.registration,
-      channel: widget.flow == OtpFlowEnum.registration ? _channel : null,
-    );
-    if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('otp_resent'.tr),
-          backgroundColor: context.colors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _resendTimer?.cancel();
-    _pollTimer?.cancel();
-    _fadeController.dispose();
-    _shakeController.dispose();
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    bool isWeb=MediaQuery.of(context).size.width > 800;
-    return BasePage(
-      appBar:isWeb?null: ScreenAppBar(title: 'verification'.tr),
-      child:  SafeArea(
-        child: (isWeb)?
-        Row(
-          children: [
-            AuthSidebar(),
-            form(true)
-          ],
-        ):Column(
-          children: [
-            ProgressBar(currentStep: 1, totalSteps:3),
-
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, context.height / 12, 20, 24),
-                  child: form(false),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  bool get _isPhoneStep {
-    if (widget.flow == OtpFlowEnum.registration) return _channel == 'phone';
-    // forget-password by phone number. With link verification the reset code is
-    // e-mailed instead (the server says so), so it is not a "phone" step.
-    return !widget.email.contains('@') && !context.read<MyAuthProvider>().phoneUsesLink;
-  }
-
-  String get _destination {
-    if (_isPhoneStep) {
-      return widget.phoneNumber ??
-          context.read<MyAuthProvider>().pendingPhoneMasked ??
-          widget.email;
-    }
-    if (widget.flow != OtpFlowEnum.registration && !widget.email.contains('@')) {
-      return context.read<MyAuthProvider>().resetEmailMasked ?? widget.email;
-    }
-    return widget.email;
-  }
-
-  String get _sentToHint {
-    if (!_isPhoneStep) return 'verification_code_sent'.tr;
-    return context.read<MyAuthProvider>().otpPhoneChannel == 'whatsapp'
-        ? 'verification_code_sent_whatsapp'.tr
-        : 'verification_code_sent_sms'.tr;
-  }
-
-  Widget form (bool isWeb) {
-    Widget main=Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if(isWeb)
-          ProgressBar(currentStep: 1, totalSteps:3),
-        const SizedBox(height: 28),
-
-        // Every way the admin allows; the student can switch at any time.
-        if (_visibleWays.length > 1) ...[
-          VerifyWaySwitcher(
-            ways: _visibleWays,
-            selected: _way,
-            verified: {
-              for (final w in _allWays)
-                if (!_pending.contains(w.channel)) w,
-            },
-            onChanged: _selectWay,
-          ),
-          const SizedBox(height: 28),
-        ],
-
-        Text(
-          _useLink ? 'phone_link_title'.tr : 'enter_verification_code'.tr,
-          style: context.colors.h1,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _useLink ? 'phone_link_hint'.tr : _sentToHint,
-          style: context.colors.body,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          _destination,
-          textDirection: TextDirection.ltr,
-          style:  TextStyle(
-            fontWeight: FontWeight.w700,
-            color: context.colors.textDark,
-          ),
-        ),
-        const SizedBox(height: 32),
-        if (_useLink)
-          ..._buildLinkSection()
-        else ...[
-          _buildOtpFields(),
-          const SizedBox(height: 24),
-          _buildResendRow(),
-          const SizedBox(height: 32),
-          _buildConfirmButton(),
-        ],
-      ],
-    );
-    if(isWeb) {
-      return Expanded(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  ),
-                  color: context.colors.cardBg,
-                  child: ColoredBox(
-                    color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
-                    child: Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: main
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-    return main;
-  }
-  /// The Telegram / WhatsApp step for the selected way. The other way (when the admin
-  /// allows both) is one tap away in the switcher at the top of the screen.
-  List<Widget> _buildLinkSection() {
-    if (_linkLoading) {
-      return const [Center(child: AppLoadingIndicator())];
-    }
-    final s = _link;
-    if (s == null) {
-      return [
-        if (_linkError != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              _linkError!,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600),
-            ),
-          ),
-        OutlinedButton.icon(
-          onPressed: _startLink,
-          icon: const Icon(Icons.refresh_rounded),
-          label: Text('phone_link_new'.tr),
-        ),
-      ];
-    }
-
-    var method = _way == VerifyWay.whatsapp ? 'whatsapp' : 'telegram';
-    if (!s.methods.contains(method)) {
-      if (s.methods.isEmpty) {
-        return [
-          Text('generic_error'.tr, textAlign: TextAlign.center, style: context.colors.body),
-        ];
-      }
-      method = s.methods.first;
-    }
-    final way = method == 'telegram' ? VerifyWay.telegram : VerifyWay.whatsapp;
-    return [
-      VerifyWayButton(
-        way: way,
-        label: (way == VerifyWay.telegram ? 'phone_link_telegram' : 'phone_link_whatsapp').tr,
-        onPressed: () => way == VerifyWay.telegram ? _openTelegram(s) : _openWhatsapp(s),
-      ),
-      if (kIsWeb) ..._buildQrSection(s, way),
-      const SizedBox(height: 20),
-      Text(
-        (way == VerifyWay.telegram ? 'phone_link_tg_steps' : 'phone_link_wa_steps').tr,
-        textAlign: TextAlign.center,
-        style: context.colors.body,
-      ),
-      const SizedBox(height: 4),
-      Text(
-        'phone_link_same_number'.tr,
-        textAlign: TextAlign.center,
-        style: context.colors.body,
-      ),
-      const SizedBox(height: 20),
-      VerifyWayStatusPill(way: way, label: 'phone_link_waiting'.tr),
-    ];
-  }
-
-  Widget _buildOtpFields() {
-    return AnimatedBuilder(
-      animation: _shakeAnimation,
-      builder: (context, child) {
-        final shake = (_shakeAnimation.value * 4 * 3.14159).abs() < 0.01
-            ? 0.0
-            : 10 *
-            (0.5 - (_shakeAnimation.value - 0.5).abs()) *
-            (_shakeAnimation.value > 0.5 ? 1 : -1);
-        return Transform.translate(
-          offset: Offset(shake, 0),
-          child: child,
-        );
-      },
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(otpLength, (index) {
-            return _buildSingleBox(index);
-          }),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSingleBox(int index) {
-    final isFocused = _focusNodes[index].hasFocus;
-    final isFilled = _controllers[index].text.isNotEmpty;
-    Color borderColor;
-    Color bgColor;
-
-    if (_hasError) {
-      borderColor = context.colors.danger;
-      bgColor = context.colors.danger.withValues(alpha: 0.05);
-    } else if (isFocused) {
-      borderColor = context.colors.primary;
-      bgColor = context.colors.background;
-    } else if (isFilled) {
-      borderColor = context.colors.primary.withValues(alpha: 0.5);
-      bgColor = context.colors.background;
-    } else {
-      borderColor = context.colors.divider;
-      bgColor = context.colors.inputBg;
-    }
-
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-            border: Border.all(color: borderColor, width: isFocused ? 2 : 1),
-            boxShadow: isFocused
-                ? [
-              BoxShadow(
-                color: context.colors.primary.withValues(alpha: 0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ]
-                : null,
-          ),
-          child: KeyboardListener(
-            focusNode: FocusNode(),
-            onKeyEvent: (event) => _onKeyEvent(index, event),
-            child: TextField(
-              controller: _controllers[index],
-              focusNode: _focusNodes[index],
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              maxLength: 1,
-              style:  TextStyle(
-                fontSize: 28,
-                height: 2.7,
-                fontWeight: FontWeight.w800,
-                color: context.colors.textDark,
-              ),
-              decoration:  InputDecoration(
-                constraints: BoxConstraints(minHeight: 70),
-                focusColor:  context.colors.cardBg,
-                counterText: '',
-                border: InputBorder.none,
-                fillColor: context.colors.cardBg,
-                contentPadding: EdgeInsets.zero,
-                focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-                ),
-                enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-                ),
-                disabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(context.colors.radiusMedium)
-                ),
-              ),
-
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              onChanged: (value) => _onOtpChanged(index, value),
-              cursorColor: context.colors.primary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildResendRow() {
-    final canResend = _remainingSeconds == 0;
-    return Center(
-      child: GestureDetector(
-        onTap: canResend ? _onResend : null,
-        child: Text(
-          canResend ? 'resend'.tr : 'resend_in'.tr + _timerText,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: canResend ? context.colors.primary : context.colors.textLight,
-            decoration:
-            canResend ? TextDecoration.underline : TextDecoration.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmButton() {
-    return ElevatedButton(
-      onPressed: _isOtpComplete && !_isLoading ? _onConfirm : null,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: context.colors.primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        ),
-      ),
-      child: _isLoading
-          ? const SizedBox(
-          width: 24,
-          height: 24,
-          child: AppLoadingIndicator())
-          : Text('confirm'.tr,
-          style:
-          const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-    );
   }
 }

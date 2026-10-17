@@ -40,7 +40,8 @@ Future<PermissionOutcome> ensureNearbyPermissions({required bool advertise}) asy
       if (advertise) Permission.bluetoothAdvertise,
     ],
     if (sdk >= 33) Permission.nearbyWifiDevices,
-    if (sdk <= 32) Permission.locationWhenInUse,
+    // Needed on ALL versions: without it BLE scanning returns no phones on Android 13+.
+    Permission.locationWhenInUse,
   ];
 
   final result = await wanted.request();

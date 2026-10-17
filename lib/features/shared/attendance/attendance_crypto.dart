@@ -24,6 +24,11 @@ String signRequest(String studentKey, String requestId, int attId, String code) 
 String signResult(String studentKey, String requestId, String status, String confirmedAt) =>
     _hmac(studentKey, 'res|$requestId|$status|$confirmedAt');
 
+/// A classmate vouches "student [studentId] was next to me at [ts]" (seconds since epoch, UTC).
+/// Signed with the CLASSMATE'S own key; the server checks it, so it cannot be forged.
+String signWitness(String witnessKey, int attId, int studentId, int ts) =>
+    _hmac(witnessKey, 'wit|$attId|$studentId|$ts');
+
 /// Constant-time comparison.
 bool _safeEquals(String a, String b) {
   if (a.length != b.length) return false;

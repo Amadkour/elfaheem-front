@@ -142,7 +142,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    if (authProvider.verifyByPhone && _phoneController.text.trim().isEmpty) {
+    // The way the student picked (or the first one of the priority list).
+    final allWays = verifyWaysForChannels(authProvider, policyChannels(authProvider));
+    final pickedWay = allWays.contains(_pickedWay)
+        ? _pickedWay
+        : (allWays.isEmpty ? null : allWays.first);
+    // A phone is needed when the picked way uses it, or when the admin requires it anyway.
+    final mustPhone = authProvider.verifyByPhone || (pickedWay?.isPhone ?? false);
+    if (mustPhone && _phoneController.text.trim().isEmpty) {
       Fluttertoast.showToast(
         msg: 'phone_required'.tr,
         timeInSecForIosWeb: 3,
@@ -156,6 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       dob: _dobController.text.trim(),
       password: _passwordController.text,
       name: _fullNameController.text.trim(),
+      way: pickedWay?.name,
     );
     if (!mounted) return;
     if (success) {
@@ -309,7 +317,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               children: [
                 IconTextField(
                   controller: _phoneController,
-                  label: context.read<MyAuthProvider>().verifyByPhone
+                  label: (provider.verifyByPhone || (selectedWay?.isPhone ?? false))
                       ? 'phone_with_country_code'.tr
                       : 'phone'.tr,
                   icon: Icons.phone_outlined,
@@ -318,7 +326,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
               ],
             );
-            return context.watch<MyAuthProvider>().verifyByPhone
+            // shown whenever a phone way is allowed (required only when the picked way needs it)
+            return provider.hasPhoneWays
                 ? phoneField
                 : ParentComponent(featureKey: 'register.phone', child: phoneField);
           }),
@@ -337,7 +346,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ways: ways,
                 selected: selectedWay,
                 provider: provider,
-                requireAll: provider.verificationMethod == 'both',
+                requireAll: provider.requireAll,
                 onChanged: (w) => setState(() => _pickedWay = w),
               ),
             ),

@@ -12,6 +12,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'attendance_crypto.dart';
 import 'attendance_permissions.dart';
 import 'attendance_repository.dart';
 import 'attendance_store.dart';
@@ -37,6 +38,7 @@ class RelayHostProvider extends ChangeNotifier {
 
   bool get supported => relayLinkSupported;
   bool get running => _host.running;
+  String? get hostError => _host.lastError;
 
   /// Call once after login (e.g. from the home screen's initState).
   Future<void> init() async {
@@ -94,8 +96,33 @@ class RelayHostProvider extends ChangeNotifier {
     try {
       switch (req['t']) {
         case 'hello':
-          final w = await _repo.openWindow((req['session_id'] as num).toInt());
+          final w = await _repo.openWindow(
+            sessionId: (req['session_id'] as num?)?.toInt(),
+            courseId: (req['course_id'] as num?)?.toInt(),
+          );
           return {'t': 'window', ...w.toJson()};
+        case 'witness':
+          // A teacher phone forwards check-ins but is not a classmate: it gives no signal.
+          if (_teacherMode) return {'t': 'error', 'code': 'not_classmate', 'message': 'teacher'};
+          // "I saw student X next to me" — signed with THIS phone's own key. Needs no internet.
+          var me = await _store.readKey();
+          if (me == null) {
+            // never opened the sheet on this phone: fetch the key now (this phone is online)
+            try {
+              me = await _repo.fetchKey();
+              await _store.saveKey(me);
+            } catch (_) {}
+          }
+          if (me == null) return {'t': 'error', 'code': 'no_key', 'message': 'no key'};
+          final ts = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+          final att = (req['att'] as num).toInt();
+          final student = (req['student_id'] as num).toInt();
+          return {
+            't': 'witness',
+            'user_id': me.userId,
+            'ts': ts,
+            'sig': signWitness(me.key, att, student, ts),
+          };
         case 'submit':
           final body = <String, dynamic>{
             'request_id': req['request_id'],
@@ -113,6 +140,34 @@ class RelayHostProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return {'t': 'error', 'code': e.code ?? 'server_${e.statusCode}', 'message': e.message};
     }
+  }
+
+  // ── temporary hosting while a check-in sheet is open ─────────────────────
+  // Classmates must be reachable at the moment a student checks in, so the phone advertises
+  // while the sheet is open — even if the user never switched "Help classmates" on.
+  bool _temporary = false;
+  bool _teacherMode = false;
+
+  /// [asTeacher]: the teacher's phone serves offline students (forwards their check-ins to the
+  /// server) but never vouches as a classmate.
+  Future<void> holdForCheckIn({bool asTeacher = false}) async {
+    if (asTeacher) _teacherMode = true;
+    if (!supported || _host.running) return;
+    final perm = await ensureNearbyPermissions(advertise: true);
+    if (perm != PermissionOutcome.granted) {
+      _host.lastError = 'permission $perm';
+      notifyListeners();
+      return;
+    }
+    if (await _host.start(handler: _handle)) _temporary = true;
+    notifyListeners();
+  }
+
+  Future<void> releaseCheckIn() async {
+    if (_temporary && !enabled) await _host.stop();
+    _temporary = false;
+    _teacherMode = false;
+    notifyListeners();
   }
 
   @override

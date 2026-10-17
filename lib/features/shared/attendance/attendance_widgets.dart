@@ -28,15 +28,16 @@ const _warn = Color(0xFFE0A030);
 
 /// Put this on a lesson card (e.g. inside the lessons / live tab item).
 class AttendanceStudentButton extends StatelessWidget {
-  const AttendanceStudentButton({super.key, required this.sessionId, this.compact = false});
-  final int sessionId;
+  const AttendanceStudentButton({super.key, this.sessionId, this.courseId, this.compact = false});
+  final int? sessionId;
+  final int? courseId;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors.primary;
     return TextButton.icon(
-      onPressed: () => showStudentCheckInSheet(context, sessionId),
+      onPressed: () => showStudentCheckInSheet(context, sessionId: sessionId, courseId: courseId),
       style: TextButton.styleFrom(
         foregroundColor: c,
         backgroundColor: c.withValues(alpha: 0.10),
@@ -50,15 +51,21 @@ class AttendanceStudentButton extends StatelessWidget {
   }
 }
 
-Future<void> showStudentCheckInSheet(BuildContext context, int sessionId) {
+/// Code-entry sheet. Give a lesson ([sessionId]) or a whole course ([courseId]).
+Future<void> showStudentCheckInSheet(BuildContext context, {int? sessionId, int? courseId, String? title}) {
+  RelayHostProvider? host;
+  try {
+    host = context.read<RelayHostProvider>();
+  } catch (_) {}
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
     builder: (_) => ChangeNotifierProvider(
-      create: (_) => StudentCheckInProvider(sessionId: sessionId)..warmUp(),
-      child: const _StudentSheet(),
+      create: (_) =>
+          StudentCheckInProvider(sessionId: sessionId, courseId: courseId, host: host)..warmUp(),
+      child: _StudentSheet(title: title),
     ),
   );
 }
@@ -92,7 +99,8 @@ class _SheetFrame extends StatelessWidget {
 }
 
 class _StudentSheet extends StatefulWidget {
-  const _StudentSheet();
+  const _StudentSheet({this.title});
+  final String? title;
   @override
   State<_StudentSheet> createState() => _StudentSheetState();
 }
@@ -117,7 +125,8 @@ class _StudentSheetState extends State<_StudentSheet> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(CupertinoIcons.dot_radiowaves_left_right, size: 34, color: primary),
         const SizedBox(height: 8),
-        Text(attT('att_sheet_title'),
+        Text(widget.title ?? attT('att_sheet_title'),
+            textAlign: TextAlign.center,
             style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Text(attT('att_sheet_sub'),
@@ -130,6 +139,14 @@ class _StudentSheetState extends State<_StudentSheet> {
             text: attT(p.online! ? 'att_online_direct' : 'att_offline_relay'),
             color: p.online! ? _ok : _warn,
           ),
+        if (p.witnessesNeeded > 0) ...[
+          const SizedBox(height: 8),
+          _Banner(
+              icon: CupertinoIcons.person_2_fill,
+              text: attT('att_need_mates', args: {'n': '${p.witnessesNeeded}'}),
+              color: primary),
+        ],
+        if (p.online == true && p.host != null) _VisibleBanner(host: p.host!),
         if (p.online == true && !p.busy && o == null) const RelayHostTile(),
         if (!finished) ...[
           const SizedBox(height: 14),
@@ -218,9 +235,19 @@ class _StageRow extends StatelessWidget {
     Stage.network: 'att_stage_net',
     Stage.permissions: 'att_stage_perm',
     Stage.relay: 'att_stage_relay',
+    Stage.witness: 'att_stage_witness',
     Stage.send: 'att_stage_send',
     Stage.server: 'att_stage_server',
   };
+
+  String _text(BuildContext context) {
+    if (stage == Stage.witness && state != StageState.waiting) {
+      final p = context.read<StudentCheckInProvider>();
+      return attT('att_witness_progress',
+          args: {'x': '${p.witnessesFound}', 'n': '${p.witnessesNeeded}'});
+    }
+    return attT(_labels[stage]!);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +262,7 @@ class _StageRow extends StatelessWidget {
       child: Row(children: [
         icon,
         const SizedBox(width: 10),
-        Text(attT(_labels[stage]!),
+        Text(_text(context),
             style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 13,
@@ -302,6 +329,11 @@ class _OutcomeCard extends StatelessWidget {
             if (body != null) ...[
               const SizedBox(height: 4),
               Text(body, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5, height: 1.45)),
+            ],
+            if (outcome.detail != null && outcome.detail!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              SelectableText(outcome.detail!,
+                  style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600)),
             ],
           ]),
         ),
@@ -403,18 +435,23 @@ class AttendanceTeacherButton extends StatelessWidget {
   }
 }
 
-Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId) =>
-    showModalBottomSheet(
+Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId) {
+  RelayHostProvider? host;
+  try {
+    host = context.read<RelayHostProvider>();
+  } catch (_) {}
+  return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       isDismissible: false, // closing the sheet must not silently leave the window open
       backgroundColor: Colors.transparent,
       builder: (_) => ChangeNotifierProvider(
-        create: (_) => TeacherAttendanceProvider(sessionId: sessionId),
+        create: (_) => TeacherAttendanceProvider(sessionId: sessionId, host: host),
         child: const _TeacherSheet(),
       ),
     );
+}
 
 class _TeacherSheet extends StatelessWidget {
   const _TeacherSheet();
@@ -452,6 +489,27 @@ class _TeacherSheet extends StatelessWidget {
                 onSelected: (_) => p.setMinutes(m),
               ),
           ]),
+          const SizedBox(height: 14),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(attT('att_t_witnesses'),
+                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(height: 2),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(attT('att_t_witnesses_hint'),
+                style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+          ),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, children: [
+            for (final n in TeacherAttendanceProvider.witnessOptions)
+              ChoiceChip(
+                label: Text('$n'),
+                selected: p.requiredWitnesses == n,
+                onSelected: (_) => p.setWitnesses(n),
+              ),
+          ]),
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
@@ -470,6 +528,10 @@ class _TeacherSheet extends StatelessWidget {
         ] else ...[
           const SizedBox(height: 6),
           _CodeDisplay(p: p),
+          if (p.host != null && p.isOpen) ...[
+            const SizedBox(height: 12),
+            _TeacherRelayBanner(host: p.host!),
+          ],
           const SizedBox(height: 14),
           Text(attT('att_t_show'),
               textAlign: TextAlign.center,
@@ -521,7 +583,20 @@ class _CodeDisplay extends StatelessWidget {
       SizedBox(
         width: 190,
         height: 190,
-        child: Stack(alignment: Alignment.center, children: [
+        child: Stack(alignment: Alignment.center, clipBehavior: Clip.none, children: [
+          PositionedDirectional(
+            top: -6,
+            end: -6,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: _ok, shape: BoxShape.circle),
+              child: Text('${p.code?.presentCount ?? 0}',
+                  style: const TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+            ),
+          ),
           SizedBox(
             width: 190,
             height: 190,
@@ -559,4 +634,82 @@ class _CodeDisplay extends StatelessWidget {
       ),
     ]);
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════
+//  COURSE PROFILE BUTTON (student)
+// ════════════════════════════════════════════════════════════════════════════
+
+/// "Record attendance" button for the course profile. Opens the code sheet for the course's
+/// currently open attendance window. Online students ask the server; the sheet then collects the
+/// teacher-required number of classmate signals before submitting.
+class AttendanceCourseButton extends StatelessWidget {
+  const AttendanceCourseButton({super.key, required this.courseId, this.title});
+  final int courseId;
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors.primary;
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: () => showStudentCheckInSheet(context, courseId: courseId, title: title),
+        style: TextButton.styleFrom(
+          foregroundColor: c,
+          backgroundColor: c.withValues(alpha: 0.10),
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: const Icon(CupertinoIcons.person_crop_circle_badge_checkmark, size: 18),
+        label: Text(attT('att_btn_checkin'),
+            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13.5)),
+      ),
+    );
+  }
+}
+
+
+/// Shows whether THIS phone is currently advertising to nearby classmates.
+class _VisibleBanner extends StatelessWidget {
+  const _VisibleBanner({required this.host});
+  final RelayHostProvider host;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: host,
+        builder: (_, _) {
+          final on = host.running;
+          return Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: _Banner(
+              icon: on ? CupertinoIcons.dot_radiowaves_right : CupertinoIcons.eye_slash,
+              text: on
+                  ? attT('att_visible_yes')
+                  : '${attT('att_visible_no')}${host.hostError == null ? '' : ' (${host.hostError})'}',
+              color: on ? _ok : _warn,
+            ),
+          );
+        },
+      );
+}
+
+
+/// Teacher side: shows that this phone is receiving check-ins from nearby offline students.
+class _TeacherRelayBanner extends StatelessWidget {
+  const _TeacherRelayBanner({required this.host});
+  final RelayHostProvider host;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: host,
+        builder: (_, _) => _Banner(
+          icon: host.running ? CupertinoIcons.dot_radiowaves_right : CupertinoIcons.eye_slash,
+          text: host.running
+              ? '${attT('att_t_relay_on')}${host.helped > 0 ? ' • ${host.helped}' : ''}'
+              : '${attT('att_t_relay_off')}${host.hostError == null ? '' : ' (${host.hostError})'}',
+          color: host.running ? _ok : _warn,
+        ),
+      );
 }

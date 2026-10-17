@@ -10248,5 +10248,29 @@
   "pl_alert_text_weak_backlog": {
     "en": "{count} wrong answers are saved and waiting for revision.",
     "ar": "{count} سؤالاً أخطأ فيها محفوظة في انتظار المراجعة."
+  },
+  "verify_way_badge_recommended": {
+    "en": "Recommended",
+    "ar": "موصى به"
+  },
+  "verify_channel_email": {
+    "en": "Email",
+    "ar": "البريد"
+  },
+  "verify_channel_phone": {
+    "en": "Phone",
+    "ar": "الهاتف"
+  },
+  "verify_step_done": {
+    "en": "Verified ✓ — one more step",
+    "ar": "تم التأكيد ✓ — خطوة أخيرة"
+  },
+  "verify_try_another_way": {
+    "en": "Didn't get it? Switch to another way above.",
+    "ar": "لم يصلك؟ جرّب طريقة أخرى من الأعلى."
+  },
+  "verify_sending": {
+    "en": "Sending the code…",
+    "ar": "جارٍ إرسال الرمز…"
   }
 }

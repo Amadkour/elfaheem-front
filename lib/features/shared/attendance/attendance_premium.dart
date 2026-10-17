@@ -134,7 +134,6 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 if (widget.live) ...[
                   const _Dot(),
@@ -244,7 +243,7 @@ class _AttendanceStudentActionState extends State<AttendanceStudentAction> {
           live: _open,
           badge: _open ? attT('att_btn_live') : null,
           onTap: () async {
-            await showStudentCheckInSheet(context, widget.sessionId);
+            await showStudentCheckInSheet(context, sessionId: widget.sessionId);
             if (mounted) _refresh();
           },
         );

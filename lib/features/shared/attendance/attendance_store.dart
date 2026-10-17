@@ -23,6 +23,7 @@ class AttendanceStore {
   static const _kWindows = 'attendance_windows_v1';
   static const _kHelped = 'attendance_helped_v1';
   static const _kLastOnline = 'attendance_last_online_v1';
+  static const _kCourses = 'attendance_courses_v1';
 
   /// Pending requests older than this are dropped (the code is long dead by then).
   static const _pendingMaxAge = Duration(hours: 12);
@@ -70,6 +71,45 @@ class AttendanceStore {
     all['${w.sessionId}'] = w.toJson();
     final p = await SharedPreferences.getInstance();
     await p.setString(_kWindows, jsonEncode(all));
+  }
+
+  // ── courses stored for the offline "Attendance" tab ───────────────────
+  List<CachedCourse> _courses = const [];
+
+  /// Synchronous on purpose: main.dart decides the start route before the first frame.
+  bool get hasCachedCourses => _courses.isNotEmpty;
+  List<CachedCourse> get cachedCourses => _courses;
+
+  /// Call once at start-up (main.dart) so [hasCachedCourses] is accurate immediately.
+  Future<void> preload() async {
+    final raw = (await SharedPreferences.getInstance()).getString(_kCourses);
+    if (raw == null) return;
+    try {
+      _courses = [
+        for (final c in jsonDecode(raw) as List)
+          CachedCourse.fromJson(Map<String, dynamic>.from(c as Map)),
+      ];
+    } catch (_) {}
+  }
+
+  Future<void> saveCourses(List<CachedCourse> l) async {
+    _courses = l;
+    await (await SharedPreferences.getInstance())
+        .setString(_kCourses, jsonEncode([for (final c in l) c.toJson()]));
+  }
+
+  /// Newest cached open window of any lesson of [courseId].
+  Future<OpenWindow?> windowForCourse(int courseId) async {
+    OpenWindow? best;
+    for (final j in (await _windows()).values) {
+      if (j is! Map) continue;
+      final w = OpenWindow.fromJson(Map<String, dynamic>.from(j));
+      if (w.courseId == courseId && !w.looksExpired &&
+          (best == null || w.attendanceSessionId > best.attendanceSessionId)) {
+        best = w;
+      }
+    }
+    return best;
   }
 
   /// Lessons whose open window is cached on this phone.
@@ -128,5 +168,7 @@ class AttendanceStore {
     await p.remove(_kWindows);
     await p.remove(_kHelped);
     await p.remove(_kLastOnline);
+    await p.remove(_kCourses);
+    _courses = const [];
   }
 }
