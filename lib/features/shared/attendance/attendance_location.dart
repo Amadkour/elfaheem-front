@@ -21,7 +21,7 @@ import 'attendance_models.dart';
 class LocationEvidenceService {
   /// Returns {lat, lng, bssid} with whatever could be read, or null when nothing was available.
   Future<Map<String, dynamic>?> collect(OpenWindow w) async {
-    if (!w.needsLocation || kIsWeb) return null;
+    if (!w.needsLocation) return null;
     final out = <String, dynamic>{};
 
     if (w.needsGps) {
@@ -39,7 +39,8 @@ class LocationEvidenceService {
       } catch (_) {/* fall through to the next factor */}
     }
 
-    if (w.needsWifi || out.isEmpty) {
+    // A browser cannot read the Wi-Fi network; only GPS works on the web.
+    if (!kIsWeb && (w.needsWifi || out.isEmpty)) {
       try {
         final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
         // Android returns this placeholder when it may not read the real value.
@@ -65,10 +66,12 @@ class LocationEvidenceService {
         lng = double.parse(pos.longitude.toStringAsFixed(5));
       }
     } catch (_) {}
-    try {
-      final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
-      if (b != null && b.isNotEmpty && b != '02:00:00:00:00:00') bssid = b;
-    } catch (_) {}
+    if (!kIsWeb) {
+      try {
+        final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
+        if (b != null && b.isNotEmpty && b != '02:00:00:00:00:00') bssid = b;
+      } catch (_) {}
+    }
     return (lat: lat, lng: lng, bssid: bssid);
   }
 }

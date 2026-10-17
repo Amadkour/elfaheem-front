@@ -46,6 +46,16 @@ class TeacherAttendanceController extends ChangeNotifier {
   bool useLocation = false;
   int radiusM = 100;
 
+  /// Where the classroom point comes from. Mobile: always this phone. Web: 'browser' (this
+  /// browser's rough location) or 'mobile' (shared earlier from the teacher's phone).
+  String webLocationSource = 'mobile';
+
+  /// Set after a successful "share from mobile" (mobile) or "found shared location" (web).
+  bool sharedFromMobile = false;
+
+  static const minRadius = 20;
+  static const maxRadius = 1000;
+
   static const options = [10, 15, 30, 60];
   static const witnessOptions = [1, 2, 3, 4, 5];
   static const graceOptions = [0, 5, 10, 20, 30];
@@ -70,6 +80,16 @@ class TeacherAttendanceController extends ChangeNotifier {
 
   bool get isOpen => window != null && !closed && (code?.isOpen ?? true);
   bool get isClosing => closed && closingLeft > 0;
+  /// Time left to register (until the window expires), not the code rotation.
+  Duration get registrationLeft {
+    final w = window;
+    if (w == null || closed) return Duration.zero;
+    final end = DateTime.tryParse('${w.expiresAt}Z');
+    if (end == null) return Duration.zero;
+    final d = end.difference(DateTime.now().toUtc());
+    return d.isNegative ? Duration.zero : d;
+  }
+
   bool get usesCode => method != 'witnesses';
   bool get usesWitnesses => method != 'code';
 
@@ -101,7 +121,41 @@ class TeacherAttendanceController extends ChangeNotifier {
   void setGrace(int s) => _set(() => graceSeconds = s.clamp(0, 60));
   void setAllowWeb(bool v) => _set(() => allowWeb = v);
   void setUseLocation(bool v) => _set(() => useLocation = v);
-  void setRadius(int m) => _set(() => radiusM = m);
+  void setRadius(int m) => _set(() => radiusM = m.clamp(minRadius, maxRadius));
+  void setWebSource(String s) => _set(() => webLocationSource = s);
+
+  /// MOBILE: records this phone's position + Wi-Fi so the web app can use it for 10 minutes.
+  Future<bool> shareLocationForWeb() async {
+    error = null;
+    final here = await _loc.here();
+    if (here.lat == null && here.bssid == null) {
+      error = 'att_err_teacher_location';
+      notifyListeners();
+      return false;
+    }
+    try {
+      await _repo.shareLocation(lat: here.lat, lng: here.lng, bssid: here.bssid);
+      sharedFromMobile = true;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      error = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// WEB: is there a point shared from the phone (last 10 minutes)?
+  Future<bool> checkSharedLocation() async {
+    try {
+      await _repo.sharedLocation();
+      sharedFromMobile = true;
+    } on ApiException {
+      sharedFromMobile = false;
+    }
+    notifyListeners();
+    return sharedFromMobile;
+  }
 
   void _set(VoidCallback f) {
     f();
@@ -118,7 +172,9 @@ class TeacherAttendanceController extends ChangeNotifier {
       double? lat, lng;
       String? bssid;
       if (useLocation) {
-        final here = await _loc.here();
+        final here = (kIsWeb && webLocationSource == 'mobile')
+            ? await _repo.sharedLocation()
+            : await _loc.here();
         lat = here.lat;
         lng = here.lng;
         bssid = here.bssid;
@@ -146,7 +202,7 @@ class TeacherAttendanceController extends ChangeNotifier {
       await _sync();
       _startTicker();
     } on ApiException catch (e) {
-      error = e.message;
+      error = e.code == 'no_shared_location' ? 'att_err_no_shared_location' : e.message;
     } catch (e) {
       error = e.toString();
     }

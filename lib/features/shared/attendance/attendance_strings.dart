@@ -227,4 +227,42 @@ const Map<String, (String, String)> _fallback = {
     'هذا الجهاز لا يدعم الاتصال بالأجهزة القريبة حالياً',
     'This device cannot connect to nearby phones right now'
   ),
+  // ── distance, web location, full screen ─────────────────────────────────
+  'att_t_distance': ('أقصى مسافة مسموحة من المعلّم', 'Maximum distance from the teacher'),
+  'att_t_distance_hint': (
+    'الـ GPS داخل القاعات قد يخطئ 10–50 متراً، فلا تجعل المسافة صغيرة جداً',
+    'Indoor GPS can be off by 10–50 m, so do not set the distance too small'
+  ),
+  'att_t_location_hint_web': (
+    'على الويب الموقع تقريبي. يمكنك استخدام موقع المتصفح أو موقع مشارَك من الموبايل.',
+    'On the web the location is rough. Use the browser location or one shared from your phone.'
+  ),
+  'att_t_web_loc_title': ('من أين نأخذ موقع القاعة؟', 'Where should the classroom location come from?'),
+  'att_t_web_loc_body': (
+    'المتصفح يعطي موقعاً تقريبياً (قد يخطئ بمئات الأمتار). الأدق أن تشارك موقعك من تطبيق الموبايل ثم تعود هنا.',
+    'The browser gives a rough location (it can be off by hundreds of metres). It is more accurate to share your position from the mobile app and come back here.'
+  ),
+  'att_t_web_loc_browser': ('استخدم موقع المتصفح', 'Use browser location'),
+  'att_t_web_loc_mobile': ('موقع مشارَك من الموبايل', 'Location shared from mobile'),
+  'att_t_shared_found': ('تم العثور على موقع مشارَك من الموبايل', 'A location shared from your phone was found'),
+  'att_t_shared_missing': (
+    'لا يوجد موقع مشارَك. افتح التطبيق على الموبايل واضغط «مشاركة الموقع للويب».',
+    'Nothing shared yet. Open the mobile app and tap "Share location for web".'
+  ),
+  'att_t_shared_check': ('تحقّق', 'Check'),
+  'att_t_share_for_web': ('مشاركة الموقع للويب', 'Share location for web'),
+  'att_t_shared_done': ('تمت المشاركة (صالحة 10 دقائق)', 'Shared (valid for 10 minutes)'),
+  'att_err_no_shared_location': (
+    'لا يوجد موقع مشارَك من الموبايل. شاركه من التطبيق أو استخدم موقع المتصفح.',
+    'No location shared from mobile. Share it from the app or use the browser location.'
+  ),
+  'att_t_fullscreen': ('عرض الكود بملء الشاشة', 'Show code full screen'),
+  'att_t_minimize': ('تصغير', 'Minimize'),
+  'att_t_reg_left': ('الوقت المتبقي للتسجيل', 'Registration closes in'),
+  'att_t_close_confirm': ('إغلاق التسجيل؟', 'Close registration?'),
+  'att_t_close_confirm_body': (
+    'سيُغلق التسجيل الآن، مع قبول الطلبات المتأخرة لمدة {n} ثانية.',
+    'Registration closes now; late requests are still accepted for {n} s.'
+  ),
+  'att_cancel': ('إلغاء', 'Cancel'),
 };

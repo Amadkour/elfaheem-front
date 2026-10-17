@@ -12,8 +12,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'attendance_strings.dart';
-import 'attendance_widgets.dart';
+import 'attendance_live_screen.dart';
 import 'teacher_attendance_controller.dart';
+
+String _mmss(Duration d) =>
+    '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
 class AttendanceTeacherBanner extends StatelessWidget {
   const AttendanceTeacherBanner({super.key, required this.navigatorKey, required this.child});
@@ -50,8 +53,7 @@ class AttendanceTeacherBanner extends StatelessWidget {
           child: InkWell(
             onTap: () {
               final nav = navigatorKey.currentState?.overlay?.context; // a context BELOW the Navigator
-              final id = t.sessionId;
-              if (nav != null && id != null) showTeacherAttendanceSheet(nav, id);
+              if (nav != null) openAttendanceLive(nav);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -82,10 +84,13 @@ class AttendanceTeacherBanner extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text('${t.code?.presentCount ?? 0}',
                     style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 15)),
-                if (!closing && t.usesCode) ...[
+                if (!closing) ...[
                   const SizedBox(width: 10),
-                  Text('${t.secondsLeft}s',
-                      style: TextStyle(fontSize: 11.5, color: Colors.white.withValues(alpha: 0.85))),
+                  const Icon(Icons.timer_outlined, color: Colors.white, size: 16),
+                  const SizedBox(width: 3),
+                  Text(_mmss(t.registrationLeft),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
                 ],
                 if (!closing)
                   IconButton(

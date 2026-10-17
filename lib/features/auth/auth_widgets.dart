@@ -77,17 +77,17 @@ class AuthSidebar extends StatelessWidget {
                         ),
                         child: id.logoUrl != null
                             ? Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: AppNetworkImage(
-                            url: id.logoUrl!,
-                            fit: BoxFit.contain,
-                          ),
-                        )
+                                padding: const EdgeInsets.all(6),
+                                child: AppNetworkImage(
+                                  url: id.logoUrl!,
+                                  fit: BoxFit.contain,
+                                ),
+                              )
                             : const Icon(
-                          Icons.layers_rounded,
-                          color: Colors.white,
-                          size: 22,
-                        ),
+                                Icons.layers_rounded,
+                                color: Colors.white,
+                                size: 22,
+                              ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -106,7 +106,9 @@ class AuthSidebar extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              id.tagline.isNotEmpty ? id.tagline : 'learning_platform'.tr,
+                              id.tagline.isNotEmpty
+                                  ? id.tagline
+                                  : 'learning_platform'.tr,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -137,7 +139,9 @@ class AuthSidebar extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    id.mission.isNotEmpty ? id.mission : 'join_students_hint'.tr,
+                    id.mission.isNotEmpty
+                        ? id.mission
+                        : 'join_students_hint'.tr,
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -174,7 +178,8 @@ class AuthSidebar extends StatelessWidget {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        for (final st in id.stats.take(4)) _SidebarStat(value: st.value, label: st.label),
+                        for (final st in id.stats.take(4))
+                          _SidebarStat(value: st.value, label: st.label),
                       ],
                     )
                   else
@@ -314,7 +319,7 @@ class _TrustBadge extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration:  BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: context.colors.primary.withAlpha(100),
           ),
@@ -426,6 +431,7 @@ class IconPasswordField extends StatefulWidget {
   final String label;
   final bool? obscure;
   final VoidCallback? onToggle;
+  final ValueChanged<String>? onChange;
 
   const IconPasswordField({
     super.key,
@@ -433,6 +439,7 @@ class IconPasswordField extends StatefulWidget {
     required this.label,
     this.obscure,
     this.onToggle,
+    this.onChange,
   });
 
   @override
@@ -458,6 +465,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
         TextFormField(
           controller: widget.controller,
           obscureText: _obscure,
+          onChanged: widget.onChange,
           style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 16,
@@ -630,60 +638,51 @@ class RolePicker extends StatelessWidget {
               provider.roles.indexOf(role),
               rolController,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: EdgeInsets.only(
-                  right: role == provider.roles.last ? 0 : 10,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              decoration: BoxDecoration(
+                color: context.colors.inputBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isSelected ? context.colors.primary : _kBorder,
+                  width: isSelected ? 2 : 1.5,
                 ),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: context.colors.inputBg,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected ? context.colors.primary : _kBorder,
-                    width: isSelected ? 2 : 1.5,
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? context.colors.primary.withValues(alpha: 0.15)
+                          : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      role['text'] == 'teacher'
+                          ? Icons.cast_for_education_outlined
+                          : Icons.school_outlined,
+                      color: isSelected ? context.colors.primary : _kMuted,
+                      size: 20,
+                    ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? context.colors.primary.withValues(alpha: 0.15)
-                            : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        role['text'] == 'teacher'
-                            ? Icons.cast_for_education_outlined
-                            : Icons.school_outlined,
-                        color: isSelected
-                            ? context.colors.primary
-                            : _kMuted,
-                        size: 20,
-                      ),
+                  const SizedBox(height: 8),
+                  Text(
+                    role['text'].toString().tr,
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isSelected
+                          ? context.colors.primary
+                          : context.colors.textDark,
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      role['text'].toString().tr,
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: isSelected
-                            ? context.colors.primary
-                            : context.colors.textDark,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

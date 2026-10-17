@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
-import '../../config/theme/theme_config_provider.dart';
+import '../../utils/helpers.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
-import '../../utils/helpers.dart';
-import 'register_screen.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import 'register_screen.dart';
 
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
@@ -46,10 +43,13 @@ class _ForgetScreenState extends State<ForgetScreen> {
     if (!mounted) return;
     if (success) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) =>
-            OtpVerificationScreen(email: _emailController.text.trim(),
-              flow: OtpFlowEnum.forget,
-              role: 'student',)),
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationScreen(
+            email: _emailController.text.trim(),
+            flow: OtpFlowEnum.forget,
+            role: 'student',
+          ),
+        ),
       );
     } else {
       Helpers.showMessage(
@@ -61,160 +61,71 @@ class _ForgetScreenState extends State<ForgetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery
-        .of(context)
-        .size
-        .width > 800;
-
-    return  BasePage(
-        appBar: isWide ?null:ScreenAppBar(title: 'forget_password'.tr),
-        child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
-    );
+    return AuthScaffold(
+        title: 'forget'.tr,
+        builder: (context, isWide) => _buildForm());
   }
 
-  Widget _buildWideLayout() {
-    return Row(
-      children: [
-        AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 440),
-                child: _buildForm(true),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildForm() {
+    final heightUnit = context.height / 100;
 
-  Widget _buildNarrowLayout() {
-    return Center(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-          child: _buildForm(false),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildForm(bool isWeb) {
-    Widget form=Form(
+    return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Back button
-          if(isWeb)
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  'login'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: context.colors.textDark,
-                  ),
-                ),
-              ],
-            ),
+          // ── Top bar: back + logo + switches ──────────────────────────────
+          const AuthTopBar(showBack: false,),
+          SizedBox(height: heightUnit*2),
+
+          // ── Title block ──────────────────────────────────────────────────
+          AuthHeader(
+            title: 'forget'.tr,
+            subtitle: 'forget_welcome'.tr,
           ),
-          const SizedBox(height: 50),
+          SizedBox(height: heightUnit * 3.5),
 
-
-          Text(
-            'forget'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: context.colors.textDark,),
+          // ── Email / phone ────────────────────────────────────────────────
+          Builder(
+            builder: (context) {
+              final a = context.watch<MyAuthProvider>();
+              final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
+              return IconTextField(
+                controller: _emailController,
+                label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
+                icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
+                keyboard: phoneOk
+                    ? TextInputType.text
+                    : TextInputType.emailAddress,
+              );
+            },
           ),
-          const SizedBox(height: 6),
-          Text(
-            'forget_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              color: context.colors.secondText,
-              height: 1.6,
-            ),
-          ),
-          const SizedBox(height: 50),
+          SizedBox(height: heightUnit * 1.5),
 
-          Builder(builder: (context) {
-            final a = context.watch<MyAuthProvider>();
-            final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
-            return IconTextField(
-              controller: _emailController,
-              label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
-              icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
-              keyboard: phoneOk ? TextInputType.text : TextInputType.emailAddress,
-            );
-          }),
-          const SizedBox(height: 12),
+          // ── Hint ─────────────────────────────────────────────────────────
+          AuthInfoBanner(text: 'reset_link_hint'.tr),
+          SizedBox(height: heightUnit * 4),
 
-          // Hint
-          Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 13,
-                color: context.colors.primary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'reset_link_hint'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 12,
-                  color: context.colors.primary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 100),
-
+          // ── Send button ──────────────────────────────────────────────────
           PrimaryButton(
-            isLoading: context
-                .watch<MyAuthProvider>()
-                .isLoadingForget,
+            isLoading: context.watch<MyAuthProvider>().isLoadingForget,
             label: 'send_reset_link'.tr,
             icon: Icons.send_rounded,
             onPressed: _submit,
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: heightUnit * 2.5),
 
+          // ── Register link ────────────────────────────────────────────────
           LinkRow(
             message: "doesn't_have_account".tr,
             linkText: 'register'.tr,
-            onTap: () =>
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                ),
+            onTap: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
         ],
-      ),);
-    if (isWeb) {
-      return Container(
-      width: context.width > 800 ? 500 : context.width,
-      padding: const EdgeInsets.all(20.0),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(context.colors.radiusXL),
-        color:context.colors.isDark?context.colors.primaryDark: context.colors.primary.withAlpha(30),
       ),
-      child: form
     );
-    }
-
-    return form;
   }
 }

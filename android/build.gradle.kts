@@ -25,7 +25,7 @@ subprojects {
 // Raise compileSdk for every plugin module. This block MUST stay before the
 // evaluationDependsOn block below (afterEvaluate can't be added once evaluated).
 subprojects {
-    if (name != "app") {
+    if (name != "app" && name != "bluetooth_low_energy_android") {
         afterEvaluate {
             extensions.findByName("android")?.withGroovyBuilder {
                 "compileSdkVersion"(37)

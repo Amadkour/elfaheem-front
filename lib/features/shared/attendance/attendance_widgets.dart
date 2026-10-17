@@ -7,11 +7,13 @@
 library;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
+import 'attendance_live_screen.dart';
 import 'attendance_permissions.dart';
 import 'attendance_strings.dart';
 import 'relay_host_provider.dart';
@@ -542,24 +544,7 @@ class _TeacherSheet extends StatelessWidget {
               subtitle: Text(attT('att_t_allow_web_hint'),
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
             ),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              value: p.useLocation,
-              onChanged: p.setUseLocation,
-              title: Text(attT('att_t_location'),
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-              subtitle: Text(attT('att_t_location_hint'),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
-            ),
-            if (p.useLocation)
-              Wrap(spacing: 8, children: [
-                for (final r in TeacherAttendanceController.radiusOptions)
-                  ChoiceChip(
-                    label: Text(attT('att_t_meters', args: {'n': '$r'})),
-                    selected: p.radiusM == r,
-                    onSelected: (_) => p.setRadius(r),
-                  ),
-              ]),
+            _LocationSetup(p: p),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -578,6 +563,16 @@ class _TeacherSheet extends StatelessWidget {
           ] else ...[
             const SizedBox(height: 6),
             _CodeDisplay(p: p),
+            if (p.isOpen)
+              TextButton.icon(
+                onPressed: () {
+                  final nav = Navigator.of(context);
+                  nav.pop(); // close the sheet, then show the full-screen view
+                  openAttendanceLiveOn(nav);
+                },
+                icon: const Icon(CupertinoIcons.fullscreen),
+                label: Text(attT('att_t_fullscreen'), style: const TextStyle(fontFamily: 'tajawal')),
+              ),
             if (p.host != null && (p.isOpen || p.isClosing)) ...[
               const SizedBox(height: 12),
               _TeacherRelayBanner(host: p.host!),
@@ -632,6 +627,100 @@ class _TeacherSheet extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+/// Location check setup: on/off, allowed distance, and (web) where the classroom point comes from.
+class _LocationSetup extends StatelessWidget {
+  const _LocationSetup({required this.p});
+  final TeacherAttendanceController p;
+
+  Future<void> _toggle(BuildContext context, bool on) async {
+    if (!on) return p.setUseLocation(false);
+    if (!kIsWeb) return p.setUseLocation(true);
+    // WEB: the browser's location is rough and Wi-Fi is unreadable, so ask where to take it from.
+    final pick = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(attT('att_t_web_loc_title'), style: const TextStyle(fontFamily: 'tajawal')),
+        content: Text(attT('att_t_web_loc_body'), style: const TextStyle(fontFamily: 'tajawal')),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, 'browser'),
+              child: Text(attT('att_t_web_loc_browser'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'mobile'),
+              child: Text(attT('att_t_web_loc_mobile'))),
+        ],
+      ),
+    );
+    if (pick == null) return;
+    p.setWebSource(pick);
+    p.setUseLocation(true);
+    if (pick == 'mobile') await p.checkSharedLocation();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final grey = TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600);
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        value: p.useLocation,
+        onChanged: (v) => _toggle(context, v),
+        title: Text(attT('att_t_location'),
+            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+        subtitle: Text(attT(kIsWeb ? 'att_t_location_hint_web' : 'att_t_location_hint'), style: grey),
+      ),
+      if (p.useLocation) ...[
+        Row(children: [
+          Expanded(
+            child: Text(attT('att_t_distance'),
+                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+          ),
+          Text(attT('att_t_meters', args: {'n': '${p.radiusM}'}),
+              style: const TextStyle(fontWeight: FontWeight.w800)),
+        ]),
+        Slider(
+          value: p.radiusM.toDouble(),
+          min: TeacherAttendanceController.minRadius.toDouble(),
+          max: TeacherAttendanceController.maxRadius.toDouble(),
+          divisions: (TeacherAttendanceController.maxRadius - TeacherAttendanceController.minRadius) ~/ 10,
+          label: '${p.radiusM} m',
+          onChanged: (v) => p.setRadius((v / 10).round() * 10),
+        ),
+        Text(attT('att_t_distance_hint'), style: grey),
+        if (kIsWeb && p.webLocationSource == 'mobile')
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Row(children: [
+              Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.info,
+                  size: 18, color: p.sharedFromMobile ? _ok : _warn),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(attT(p.sharedFromMobile ? 'att_t_shared_found' : 'att_t_shared_missing'),
+                    style: grey),
+              ),
+              TextButton(onPressed: p.checkSharedLocation, child: Text(attT('att_t_shared_check'))),
+            ]),
+          ),
+        if (!kIsWeb)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: () async {
+                final ok = await p.shareLocationForWeb();
+                if (ok && context.mounted) {
+                  ScaffoldMessenger.maybeOf(context)
+                      ?.showSnackBar(SnackBar(content: Text(attT('att_t_shared_done'))));
+                }
+              },
+              icon: Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.share, size: 18),
+              label: Text(attT('att_t_share_for_web'), style: const TextStyle(fontFamily: 'tajawal')),
+            ),
+          ),
+      ],
+    ]);
   }
 }
 

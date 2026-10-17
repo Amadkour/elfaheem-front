@@ -90,7 +90,7 @@ class TopRouteObserver extends NavigatorObserver {
   // on their own is never moved.
 
   /// Screens where an automatic jump makes no sense.
-  static const _neverInterrupt = {'/login', '/register', '/splash', '/downloads'};
+  static const _neverInterrupt = {'/login', '/register', '/splash', '/downloads', '/attendance-live'};
 
   bool _bound = false;
   bool _awaitingAutoRoute = false; // pushed, didPush not seen yet

@@ -26,18 +26,12 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final bool _obscurePassword = true;
 
   @override
   void initState() {
     super.initState();
-    // if (AppConfig.testMode) {
-    //   _emailController.text = 'super@c.c';
-    //   _passwordController.text = 'Aa@@aA2291996';
-    // } else {
     _emailController.clear();
     _passwordController.clear();
-    // }
     // Which identifiers the admin allows (email / phone / either).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<MyAuthProvider>().loadPolicy();
@@ -86,75 +80,60 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // ── Language switch ──────────────────────────────────────────────────────
+  bool get _isArabic => AppConfig.lang == 'ar';
+
+  Future<void> _toggleLang() async {
+    await context.read<LangProvider>().changeLang(_isArabic ? 'en' : 'ar');
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-
     return Consumer<LangProvider>(
       builder: (context, l, _) {
-        return BasePage(
-          child: isWide ? _buildWideLayout() : _buildNarrowLayout(),
+        return SafeArea(
+          child: BasePage(
+            child: MediaQuery.of(context).size.width > 800
+                ? _buildWideLayout()
+                : _buildNarrowLayout(),
+          ),
         );
       },
     );
   }
 
-  // ── Wide (web) layout: sidebar + form panel ──────────────────────────────
+  // ── Wide (web) layout: sidebar + centered form panel ─────────────────────
   Widget _buildWideLayout() {
     return Row(
       children: [
-        // Left sidebar
         AuthSidebar(),
-        // Right form panel
         Expanded(
-          child: Row(
-            children: [
-              Spacer(),
-              Container(
-                constraints: const BoxConstraints(maxWidth: 600),
-                margin: EdgeInsets.symmetric(vertical: 10),
-                padding: const EdgeInsets.all(0.0),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(context.colors.radiusXL),
-                  color: context.colors.isDark
-                      ? context.colors.cardBg
-                      : context.colors.background,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadiusGeometry.circular(
-                    context.colors.radiusXL,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 40,
+                    vertical: 32,
                   ),
-                  child: ColoredBox(
-                    color: context.colors.isDark
-                        ? context.colors.cardBg
-                        : context.colors.primary.withAlpha(30),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 48,
-                        vertical: 40,
-                      ),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 440),
-                        child: _buildFormCard(),
-                      ),
-                    ),
-                  ),
+                  child: _buildFormCard(),
                 ),
               ),
-              Spacer(),
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
-  // ── Narrow (mobile) layout ────────────────────────────────────────────────
+  // ── Narrow (mobile) layout ───────────────────────────────────────────────
   Widget _buildNarrowLayout() {
     return Center(
       child: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _buildFormCard(),
         ),
       ),
@@ -162,118 +141,139 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFormCard() {
-    ProfileProvider provider = context.read<ProfileProvider>();
+    final c = context.colors;
+    final provider = context.read<ProfileProvider>();
+    final heightUnit = context.height / 100;
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // Lang row
+          // ── Top bar: logo on the start side, both switches on the end ────
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               AppNetworkImage(
                 url: 'assets/images/logo.png',
-                width: 100,
-                height: 100,
+                width: 130,
+                height: 130,
                 heroTag: "logo-login",
                 fit: BoxFit.scaleDown,
-                color: context.colors.background,
+                color: c.background,
               ),
-              LangDropdown(),
-
-              // Screen icon + title
+              const Spacer(),
+              Column(
+                children: [
+                  _langSwitch(provider),
+                  const SizedBox(height: 10),
+                  _themeSwitch(provider),
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 16),
+
+          // ── Title block ──────────────────────────────────────────────────
+          Container(
+            width: 100,
+            height: 5,
+            decoration: BoxDecoration(
+              gradient: c.accentGradient,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          const SizedBox(height: 14),
           Text(
             'login'.tr,
             style: TextStyle(
               fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: context.colors.textDark,
+              fontSize: 30,
+              height: 1.2,
+              fontWeight: FontWeight.w800,
+              color: c.textDark,
             ),
           ),
+          const SizedBox(height: 6),
           Text(
             'login_welcome'.tr,
             style: TextStyle(
               fontFamily: 'tajawal',
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: context.colors.secondText,
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w500,
+              color: c.secondText,
             ),
           ),
+          SizedBox(height: heightUnit * 2.5),
 
-          const SizedBox(height: 32),
+          // ── Email / phone / either — controlled by the admin ─────────────
+          Builder(
+            builder: (context) {
+              final a = context.watch<MyAuthProvider>();
+              final phoneOnly = !a.loginAllowsEmail;
+              final both = a.loginAllowsEmail && a.loginAllowsPhone;
+              return IconTextField(
+                controller: _emailController,
+                label: phoneOnly
+                    ? 'phone'.tr
+                    : both
+                    ? 'email_or_phone'.tr
+                    : 'email'.tr,
+                icon: phoneOnly
+                    ? Icons.phone_outlined
+                    : both
+                    ? Icons.person_outline
+                    : Icons.email_outlined,
+                keyboard: phoneOnly
+                    ? TextInputType.phone
+                    : both
+                    ? TextInputType.text
+                    : TextInputType.emailAddress,
+              );
+            },
+          ),
+          SizedBox(height: heightUnit),
 
-          // Email / phone / either — controlled by the admin (login_identifier)
-          Builder(builder: (context) {
-            final a = context.watch<MyAuthProvider>();
-            final phoneOnly = !a.loginAllowsEmail;
-            final both = a.loginAllowsEmail && a.loginAllowsPhone;
-            return IconTextField(
-              controller: _emailController,
-              label: phoneOnly
-                  ? 'phone'.tr
-                  : both
-                  ? 'email_or_phone'.tr
-                  : 'email'.tr,
-              icon: phoneOnly
-                  ? Icons.phone_outlined
-                  : both
-                  ? Icons.person_outline
-                  : Icons.email_outlined,
-              keyboard: phoneOnly
-                  ? TextInputType.phone
-                  : both
-                  ? TextInputType.text
-                  : TextInputType.emailAddress,
-            );
-          }),
-          const SizedBox(height: 20),
-
-          // Password
+          // ── Password ─────────────────────────────────────────────────────
           IconPasswordField(
             controller: _passwordController,
             label: 'password'.tr,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
 
-          // Forgot
+          // ── Forgot password (end aligned) ────────────────────────────────
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: GestureDetector(
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
               onTap: () => Navigator.of(
                 context,
               ).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
-              child: Text(
-                'forget_password'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  color: context.colors.primary,
-                  fontWeight: FontWeight.w500,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: Text(
+                  'forget_password'.tr,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 13.5,
+                    color: c.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
           ),
-          SizedBox(height: context.height / 10),
+          SizedBox(height: heightUnit * 3),
 
-          // Login button
+          // ── Login button ─────────────────────────────────────────────────
           PrimaryButton(
             isLoading: context.watch<MyAuthProvider>().isLoadingLogin,
             label: 'login'.tr,
             icon: Icons.arrow_forward_rounded,
             onPressed: _login,
           ),
-          const SizedBox(height: 20),
 
-          // Continue with Google (new e-mail -> role sheet -> account -> signed in)
-          const GoogleAuthSection(joining: true,smallIcon: true,),
-          const SizedBox(height: 24),
-
-          // Register link
+          SizedBox(height: heightUnit * 2),
           LinkRow(
             message: "doesn't_have_account".tr,
             linkText: 'register'.tr,
@@ -281,94 +281,202 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
             ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
-          // Browse without an account (read-only). The admin can switch it off with
-          // the feature key `guest_mode` (same disableList the tabs use).
-          if (!AppConfig.disableList.contains('guest_mode')) ...[
-            const SizedBox(height: 12),
-            Center(
-              child: TextButton.icon(
-                onPressed: () => startGuest(Navigator.of(context)),
-                icon: Icon(
-                  Icons.explore_outlined,
-                  size: 18,
-                  color: context.colors.primary,
-                ),
-                label: Text(
-                  'continue_as_guest'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w700,
-                    color: context.colors.primary,
-                  ),
-                ),
-              ),
-            ),
-          ],
-          SizedBox(height: context.height / 50),
+          SizedBox(height: heightUnit * 1.5),
 
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          // ── Continue with Google ─────────────────────────────────────────
+          const GoogleAuthSection(joining: true, smallIcon: true),
+          SizedBox(height: heightUnit * 1.5),
+
+          // ── Register + guest on ONE row (saves a full row of height) ─────
+          Center(
+            child: Builder(
+              builder: (context) {
+                final guestEnabled = !AppConfig.disableList.contains(
+                  'guest_mode',
+                );
+                if (!guestEnabled) return SizedBox.shrink();
+                return _guestButton();
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _orDivider() {
+    final c = context.colors;
+    final line = Expanded(
+      child: Container(height: 1, color: c.secondText.withAlpha(50)),
+    );
+    return Row(
+      children: [
+        line,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Text(
+            'or'.tr,
+            style: TextStyle(
+              fontFamily: 'tajawal',
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: c.secondText,
+            ),
+          ),
+        ),
+        line,
+      ],
+    );
+  }
+
+  Widget _guestButton() {
+    final c = context.colors;
+    return Material(
+      color: c.primary.withAlpha(c.isDark ? 28 : 18),
+      borderRadius: BorderRadius.circular(40),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(40),
+        onTap: () => startGuest(Navigator.of(context)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              GestureDetector(
-                onTap: () {
-                  provider.changeMode(!provider.darkMode);
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 500),
-                  width: 72,
-                  height: 38,
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(40),
-                    gradient: provider.darkMode
-                        ? const LinearGradient(
-                      colors: [Color(0xff0F172A), Color(0xff1E293B)],
-                    )
-                        : context.colors.accentGradient,
-                  ),
-                  child: Stack(
-                    children: [
-                      AnimatedAlign(
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
-                        alignment: provider.darkMode
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 500),
-                          transitionBuilder: (child, animation) {
-                            return RotationTransition(
-                              turns: animation,
-                              child: child,
-                            );
-                          },
-                          child: Container(
-                            key: ValueKey(provider.darkMode),
-                            width: 30,
-                            height: 30,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              provider.darkMode
-                                  ? Icons.dark_mode_rounded
-                                  : Icons.wb_sunny_rounded,
-                              color: provider.darkMode
-                                  ? Colors.indigo
-                                  : Colors.orange,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              Icon(Icons.explore_outlined, size: 16, color: c.primary),
+              const SizedBox(width: 6),
+              Text(
+                'continue_as_guest'.tr,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: c.primary,
                 ),
               ),
             ],
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  // ── Switches (same look for theme and language) ──────────────────────────
+  Widget _themeSwitch(ProfileProvider provider) {
+    final dark = provider.darkMode;
+    return _PillSwitch(
+      tooltip: dark ? 'Light' : 'Dark',
+      isEnd: dark,
+      dark: dark,
+      gradient: dark
+          ? const LinearGradient(colors: [Color(0xff0F172A), Color(0xff1E293B)])
+          : context.colors.accentGradient,
+      knob: Icon(
+        dark ? Icons.dark_mode_rounded : Icons.wb_sunny_rounded,
+        key: ValueKey(dark),
+        color: dark ? Colors.indigo : Colors.orange,
+        size: 18,
+      ),
+      onTap: () => provider.changeMode(!provider.darkMode),
+    );
+  }
+
+  Widget _langSwitch(ProfileProvider provider) {
+    final ar = _isArabic;
+    final dark = provider.darkMode;
+    return _PillSwitch(
+      tooltip: ar ? 'English' : 'العربية',
+      // Physical positions: EN on the left, AR on the right.
+      isEnd: ar,
+      physical: true,
+      dark: dark,
+      gradient: dark
+          ? const LinearGradient(colors: [Color(0xff0F172A), Color(0xff1E293B)])
+          : context.colors.accentGradient,
+      knob: Text(
+        ar ? 'ع' : 'EN',
+        key: ValueKey(ar),
+        style: TextStyle(
+          fontFamily: 'tajawal',
+          fontSize: ar ? 17 : 12,
+          fontWeight: FontWeight.w800,
+          color: dark ? Colors.indigo : context.colors.primary,
+        ),
+      ),
+      onTap: _toggleLang,
+    );
+  }
+}
+
+/// Animated pill toggle shared by the theme and language switches.
+class _PillSwitch extends StatelessWidget {
+  final bool isEnd;
+  final bool dark;
+  final bool physical;
+  final Gradient gradient;
+  final Widget knob;
+  final VoidCallback onTap;
+  final String tooltip;
+
+  const _PillSwitch({
+    required this.isEnd,
+    required this.dark,
+    required this.gradient,
+    required this.knob,
+    required this.onTap,
+    required this.tooltip,
+    this.physical = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final alignment = isEnd ? Alignment.centerRight : Alignment.centerLeft;
+
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 400),
+          width: 72,
+          height: 38,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(40),
+            gradient: gradient,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(dark ? 80 : 30),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          // Force LTR inside so the knob always slides the same physical way.
+          child: Directionality(
+            textDirection: TextDirection.ltr,
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+              alignment: alignment,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, animation) =>
+                    ScaleTransition(scale: animation, child: child),
+                child: Container(
+                  key: ValueKey('$isEnd$dark'),
+                  width: 30,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: knob,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

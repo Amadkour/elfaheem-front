@@ -22,6 +22,7 @@ import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/paged_progress.dart';
+import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
@@ -543,11 +544,6 @@ class _AdminFormState extends State<_AdminForm> {
   late final _name = TextEditingController(text: asStr(widget.existing?['name']));
   late final _email = TextEditingController(text: asStr(widget.existing?['gmail']));
   late final _phone = TextEditingController(text: asStr(widget.existing?['phone']));
-  late final _country = TextEditingController(
-    text: asStr(widget.existing?['country']).isEmpty
-        ? 'EG'
-        : asStr(widget.existing?['country']),
-  );
   final _password = TextEditingController();
   late bool _active = asBool(widget.existing?['is_active'], true);
   bool busy = false;
@@ -556,7 +552,7 @@ class _AdminFormState extends State<_AdminForm> {
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _phone, _country, _password]) {
+    for (final c in [_name, _email, _phone, _password]) {
       c.dispose();
     }
     super.dispose();
@@ -566,14 +562,15 @@ class _AdminFormState extends State<_AdminForm> {
     if (!_form.currentState!.validate()) return;
     setState(() => busy = true);
     final phone = _phone.text.trim();
-    final country = _country.text.trim();
     final bool ok;
     if (editing) {
       ok = await widget.provider.update(asInt(widget.existing!['id']), {
         'name': _name.text.trim(),
         'gmail': _email.text.trim(),
         'phone': phone.isEmpty ? null : phone,
-        'country': country.isEmpty ? null : country,
+        'country':  kPhoneCountries
+          .firstWhere((e) => _phone.text.contains(e.dial))
+          .flag,
         'is_active': _active,
         if (_password.text.isNotEmpty) 'password': _password.text,
       });
@@ -584,7 +581,9 @@ class _AdminFormState extends State<_AdminForm> {
         'password': _password.text,
         'role': 'admin',
         'phone': phone.isEmpty ? null : phone,
-        'country': country.isEmpty ? null : country,
+        'country': kPhoneCountries
+          .firstWhere((e) => _phone.text.contains(e.dial))
+          .flag,
       });
     }
     if (!mounted) return;
@@ -623,16 +622,9 @@ class _AdminFormState extends State<_AdminForm> {
                         ? 'admin_invalid_email'.tr
                         : null,
                   ),
-                  Field(
+                  PhoneInputField(
                     controller: _phone,
                     label: 'admin_phone'.tr,
-                    keyboard: TextInputType.phone,
-                    ltr: true,
-                  ),
-                  Field(
-                    controller: _country,
-                    label: 'admin_country_code'.tr,
-                    ltr: true,
                   ),
                   Field(
                     controller: _password,

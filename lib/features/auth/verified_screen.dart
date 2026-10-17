@@ -28,13 +28,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/login_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'verify_way.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -562,56 +561,23 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isWeb = MediaQuery.of(context).size.width > 800;
-    return BasePage(
-      appBar: isWeb ? null : ScreenAppBar(title: 'verification'.tr),
-      child: SafeArea(
-        child: isWeb
-            ? Row(children: [AuthSidebar(), _webCard()])
-            : Column(
+    return AuthScaffold(
+      title: 'verification'.tr,
+      maxWidth: 520,
+      builder: (context, isWide) => FadeTransition(
+        opacity: _fadeAnimation,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ProgressBar(currentStep: 1, totalSteps: 3),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(20, math.max(16, context.height / 40), 20, 24),
-                child: FadeTransition(opacity: _fadeAnimation, child: _content()),
-              ),
-            ),
+            // Top bar: back (when possible) + logo + language / theme switches
+            const AuthTopBar(compact: true),
+            const SizedBox(height: 12),
+            if (_isReg) ...[
+              ProgressBar(currentStep: 1, totalSteps: 3),
+              const SizedBox(height: 22),
+            ],
+            _content(),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _webCard() {
-    final c = context.colors;
-    return Expanded(
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(c.radiusXL),
-                child: ColoredBox(
-                  color: c.isDark ? c.primaryDark : c.primary.withAlpha(30),
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        ProgressBar(currentStep: 1, totalSteps: 3),
-                        const SizedBox(height: 24),
-                        _content(),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ),
       ),
     );

@@ -66,6 +66,23 @@ class AttendanceRepository {
         if (wifiBssid != null && wifiBssid.isNotEmpty) 'wifi_bssid': wifiBssid,
       })));
 
+  /// Mobile teacher: share the classroom reference point so the web app can use it (10 minutes).
+  Future<void> shareLocation({double? lat, double? lng, String? bssid}) async =>
+      _api.post('$_base/teacher-location', body: {
+        if (lat != null && lng != null) ...{'lat': lat, 'lng': lng},
+        if (bssid != null) 'bssid': bssid,
+      });
+
+  /// Web teacher: the reference point shared from the mobile app (404 `no_shared_location` if none).
+  Future<({double? lat, double? lng, String? bssid})> sharedLocation() async {
+    final m = _m(await _api.get('$_base/teacher-location'));
+    return (
+      lat: (m['lat'] as num?)?.toDouble(),
+      lng: (m['lng'] as num?)?.toDouble(),
+      bssid: m['bssid']?.toString(),
+    );
+  }
+
   Future<TeacherCode> code(int attId) async =>
       TeacherCode.fromJson(_m(await _api.get('$_base/sessions/$attId/code')));
 

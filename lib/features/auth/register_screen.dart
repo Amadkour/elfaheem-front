@@ -12,7 +12,6 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/date_picker_widget.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
@@ -20,12 +19,14 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';
 import '../shared/profile/change_password_widget.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'google_auth_flow.dart';
 import 'verify_way.dart';
@@ -98,9 +99,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
     if (mounted &&
-        (context.read<AboutTermsProvider>().terms!.sections.every(
+            (context.read<AboutTermsProvider>().terms!.sections.every(
               (e) => e.accept,
-        )) ||
+            )) ||
         accepted == true) {
       setState(() => _termsAccepted = true);
     }
@@ -143,12 +144,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
     // The way the student picked (or the first one of the priority list).
-    final allWays = verifyWaysForChannels(authProvider, policyChannels(authProvider));
+    final allWays = verifyWaysForChannels(
+      authProvider,
+      policyChannels(authProvider),
+    );
     final pickedWay = allWays.contains(_pickedWay)
         ? _pickedWay
         : (allWays.isEmpty ? null : allWays.first);
     // A phone is needed when the picked way uses it, or when the admin requires it anyway.
-    final mustPhone = authProvider.verifyByPhone || (pickedWay?.isPhone ?? false);
+    final mustPhone =
+        authProvider.verifyByPhone || (pickedWay?.isPhone ?? false);
     if (mustPhone && _phoneController.text.trim().isEmpty) {
       Fluttertoast.showToast(
         msg: 'phone_required'.tr,
@@ -168,7 +173,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!mounted) return;
     if (success) {
       // Open the verification page on the way the student chose (they can still switch there).
-      final pendingWays = verifyWaysForChannels(authProvider, authProvider.pendingChannels);
+      final pendingWays = verifyWaysForChannels(
+        authProvider,
+        authProvider.pendingChannels,
+      );
       final chosen = pendingWays.contains(_pickedWay) ? _pickedWay : null;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -180,7 +188,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             role: authProvider.selectedRole!['text'],
           ),
         ),
-            (route) => false,
+        (route) => false,
       );
     } else {
       Helpers.showMessage(
@@ -192,41 +200,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
     return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
         return Scaffold(
-          body: BasePage(key: const ValueKey('register'), child: isWide
-              ? _buildWideLayout(provider)
-              : _buildNarrowLayout(provider),
+          body: AuthScaffold(
+            title: 'register'.tr,
+            pageKey: const ValueKey('register'),
+            maxWidth: 760,
+            builder: (context, isWide) => _buildForm(provider),
           ),
         );
       },
     );
   }
-
-  Widget _buildWideLayout(MyAuthProvider provider) => Row(
-    children: [
-      AuthSidebar(),
-      Expanded(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-            child: SizedBox(width: 800, child: _buildForm(provider)),
-          ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _buildNarrowLayout(MyAuthProvider provider) => Center(
-    child: SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: _buildForm(provider),
-      ),
-    ),
-  );
 
   Widget _buildForm(MyAuthProvider provider) {
     final c = context.colors;
@@ -243,50 +229,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ProgressBar(currentStep: 0, totalSteps: 3),
-          const SizedBox(height: 28),
-
-          // Back
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.arrow_back_ios_rounded, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  'login'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: c.textDark,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: 22),
+          AuthHeader(
+            title: 'create_account'.tr,
+            subtitle: 'registration_welcome'.tr,
           ),
-          const SizedBox(height: 20),
-
-          Text(
-            'create_account'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: c.textDark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'registration_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              color: c.secondText,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
 
           // Join with Google: role sheet -> account created -> signed in
           const GoogleAuthSection(joining: true),
@@ -310,27 +258,148 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
           // Phone — always shown when the admin verifies accounts by phone,
           // otherwise only if the 'register.phone' feature is enabled.
-          Builder(builder: (context) {
-            final phoneField = Column(
+          Builder(
+            builder: (context) {
+              final needsPhone =
+                  provider.verifyByPhone || (selectedWay?.isPhone ?? false);
+              final phoneField = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PhoneInputField(
+                    controller: _phoneController,
+                    label: needsPhone
+                        ? 'phone_with_country_code'.tr
+                        : 'phone'.tr,
+                    required: needsPhone,
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+              // shown whenever a phone way is allowed (required only when the picked way needs it)
+              return provider.hasPhoneWays
+                  ? phoneField
+                  : ParentComponent(
+                      featureKey: 'register.phone',
+                      child: phoneField,
+                    );
+            },
+          ),
+          // Date of birth
+          ParentComponent(
+            featureKey: 'register.dob',
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                IconTextField(
-                  controller: _phoneController,
-                  label: (provider.verifyByPhone || (selectedWay?.isPhone ?? false))
-                      ? 'phone_with_country_code'.tr
-                      : 'phone'.tr,
-                  icon: Icons.phone_outlined,
-                  keyboard: TextInputType.phone,
+                SectionLabel(label: 'dob'.tr),
+                const SizedBox(height: 8),
+                MyDatePicker(
+                  onChange: (picked) => setState(() {
+                    selectedDate = picked;
+                    _dobController.text = "${selectedDate.toLocal()}".split(
+                      ' ',
+                    )[0];
+                  }),
+                  selectedDate: selectedDate,
+                  controller: _dobController,
+                  label: 'dob'.tr,
                 ),
                 const SizedBox(height: 20),
               ],
-            );
-            // shown whenever a phone way is allowed (required only when the picked way needs it)
-            return provider.hasPhoneWays
-                ? phoneField
-                : ParentComponent(featureKey: 'register.phone', child: phoneField);
-          }),
+            ),
+          ),
+
+          // Role
+          ParentComponent(
+            featureKey: 'register.role',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SectionLabel(label: 'role'.tr),
+                const SizedBox(height: 10),
+                RolePicker(provider: provider, rolController: _rolController),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+
+          // Password
+          IconPasswordField(
+            controller: _passwordController,
+            label: 'password'.tr,
+            obscure: _obscurePassword,
+            onChange: (v) {
+              setState(() {});
+            },
+            onToggle: () =>
+                setState(() => _obscurePassword = !_obscurePassword),
+          ),
+          const SizedBox(height: 20),
+          if (_passwordController.text.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            ParentComponent(
+              featureKey: 'register.password_strength',
+              child: StrengthBar(
+                strength: _strength,
+                strengthColor: _strengthColor(c),
+                strengthLabel: _strengthLabel(),
+                c: c,
+              ),
+            ),
+          ],
+
+          // Confirm password
+          IconPasswordField(
+            controller: _confirmedPasswordController,
+            label: 'confirmed_password'.tr,
+            obscure: _obscureConfirm,
+            onChange: (v){
+              setState(() {
+
+              });
+            },
+            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+          ),
+          ParentComponent(
+            featureKey: 'register.password_requirements',
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: c.inputBg,
+                borderRadius: c.brMedium,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
+                  const SizedBox(height: 10),
+                  PasswordReq(
+                    met: _reqMinLength,
+                    label: '٦ أحرف على الأقل',
+                    c: c,
+                  ),
+                  PasswordReq(
+                    met: _reqUppercase,
+                    label: 'حرف كبير واحد على الأقل (A-Z)',
+                    c: c,
+                  ),
+                  PasswordReq(
+                    met: _reqDigit,
+                    label: 'رقم واحد على الأقل (0-9)',
+                    c: c,
+                  ),
+                  PasswordReq(
+                    met: _reqMatch,
+                    label: 'تطابق كلمة المرور الجديدة',
+                    c: c,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
 
           // Verification way — everything the admin allows; the student picks one here
           // and can still switch on the verification page.
@@ -341,98 +410,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: ways.isEmpty
                 ? const SizedBox(width: double.infinity)
                 : Padding(
-              padding: const EdgeInsets.only(bottom: 24),
-              child: VerifyWayPicker(
-                ways: ways,
-                selected: selectedWay,
-                provider: provider,
-                requireAll: provider.requireAll,
-                onChanged: (w) => setState(() => _pickedWay = w),
-              ),
-            ),
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: VerifyWayPicker(
+                      ways: ways,
+                      selected: selectedWay,
+                      provider: provider,
+                      requireAll: provider.requireAll,
+                      onChanged: (w) => setState(() => _pickedWay = w),
+                    ),
+                  ),
           ),
-
-          // Date of birth
-          ParentComponent(featureKey: 'register.dob', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'dob'.tr),
-            const SizedBox(height: 8),
-            MyDatePicker(
-              onChange: (picked) => setState(() {
-                selectedDate = picked;
-                _dobController.text = "${selectedDate.toLocal()}".split(' ')[0];
-              }),
-              selectedDate: selectedDate,
-              controller: _dobController,
-              label: 'dob'.tr,
-            ),
-            const SizedBox(height: 20)])),
-
-          // Role
-          ParentComponent(featureKey: 'register.role', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'role'.tr),
-            const SizedBox(height: 10),
-            RolePicker(provider: provider, rolController: _rolController),
-            const SizedBox(height: 20)])),
-
-          // Password
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-            obscure: _obscurePassword,
-            onToggle: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-          ),
-          const SizedBox(height: 20),
-          if (_passwordController.text.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            ParentComponent(featureKey: 'register.password_strength', child: StrengthBar(
-              strength: _strength,
-              strengthColor: _strengthColor(c),
-              strengthLabel: _strengthLabel(),
-              c: c,
-            )),
-          ],
-
-          // Confirm password
-          IconPasswordField(
-            controller: _confirmedPasswordController,
-            label: 'confirmed_password'.tr,
-            obscure: _obscureConfirm,
-            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-          ),
-          ParentComponent(featureKey: 'register.password_requirements', child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: c.inputBg,
-              borderRadius: c.brMedium,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
-                const SizedBox(height: 10),
-                PasswordReq(
-                  met: _reqMinLength,
-                  label: '٦ أحرف على الأقل',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqUppercase,
-                  label: 'حرف كبير واحد على الأقل (A-Z)',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqDigit,
-                  label: 'رقم واحد على الأقل (0-9)',
-                  c: c,
-                ),
-                PasswordReq(
-                  met: _reqMatch,
-                  label: 'تطابق كلمة المرور الجديدة',
-                  c: c,
-                ),
-              ],
-            ),
-          )),
-          const SizedBox(height: 24),
 
           // ── Terms acceptance row ─────────────────────────────────────
           _TermsAcceptRow(
@@ -455,11 +442,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 20),
 
-          ParentComponent(featureKey: 'register.login_link', child: LinkRow(
-            message: 'have_account'.tr,
-            linkText: 'login'.tr,
-            onTap: () => Navigator.pop(context),
-          )),
+          ParentComponent(
+            featureKey: 'register.login_link',
+            child: LinkRow(
+              message: 'have_account'.tr,
+              linkText: 'login'.tr,
+              onTap: () => Navigator.pop(context),
+            ),
+          ),
         ],
       ),
     );
@@ -474,7 +464,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _reqMatch =>
       _passwordController.text.isNotEmpty &&
-          _passwordController.text == _confirmedPasswordController.text;
+      _passwordController.text == _confirmedPasswordController.text;
 
   bool get _canSubmit => _reqMinLength && _reqMatch && _termsAccepted;
 
@@ -649,7 +639,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     // Consider "read" when within 48 px of the bottom
     if ((pos.pixels >= pos.maxScrollExtent - 48) ||
         context.read<AboutTermsProvider>().terms!.sections.every(
-              (e) => e.accept,
+          (e) => e.accept,
         )) {
       setState(() => _hasReadAll = true);
     }
@@ -1039,106 +1029,106 @@ class _BottomBar extends StatelessWidget {
         ],
       ),
       child:
-      hasReadAll ||
-          context.read<AboutTermsProvider>().terms!.sections.every(
+          hasReadAll ||
+              context.read<AboutTermsProvider>().terms!.sections.every(
                 (e) => e.accept,
-          )
-      // ── Unlocked: show accept button ─────────────────────────────
+              )
+          // ── Unlocked: show accept button ─────────────────────────────
           ? Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Success hint
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 8,
-            ),
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: c.successTint,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: c.success.withValues(alpha: 0.35),
-              ),
-            ),
-            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.check_circle_outline_rounded,
-                  size: 18,
-                  color: c.success,
+                // Success hint
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: c.successTint,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: c.success.withValues(alpha: 0.35),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.check_circle_outline_rounded,
+                        size: 18,
+                        color: c.success,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
+                          style: TextStyle(
+                            fontFamily: 'tajawal',
+                            fontSize: 12,
+                            color: c.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 12,
-                      color: c.success,
-                      fontWeight: FontWeight.w600,
+                // Accept button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: onAccept,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: c.success,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.verified_outlined,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'أوافق على الشروط والأحكام',
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
               ],
-            ),
-          ),
-          // Accept button
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: onAccept,
-              style: FilledButton.styleFrom(
-                backgroundColor: c.success,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(
-                Icons.verified_outlined,
-                color: Colors.white,
-              ),
-              label: const Text(
-                'أوافق على الشروط والأحكام',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ),
-        ],
-      )
-      // ── Locked: nudge user to scroll ─────────────────────────────
+            )
+          // ── Locked: nudge user to scroll ─────────────────────────────
           : SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
-          onPressed: onScrollToEnd,
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 13),
-            side: BorderSide(color: c.primary, width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onScrollToEnd,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  side: BorderSide(color: c.primary, width: 1.5),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                icon: Icon(
+                  Icons.keyboard_double_arrow_down_rounded,
+                  color: c.primary,
+                ),
+                label: Text(
+                  'انتقل إلى نهاية الشروط',
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: c.primary,
+                  ),
+                ),
+              ),
             ),
-          ),
-          icon: Icon(
-            Icons.keyboard_double_arrow_down_rounded,
-            color: c.primary,
-          ),
-          label: Text(
-            'انتقل إلى نهاية الشروط',
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: c.primary,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -16,9 +16,9 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'login_screen.dart';
 
@@ -113,69 +113,32 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
     return Consumer2<MyAuthProvider, TeacherDocumentProvider>(
       builder: (context, auth, docs, _) {
-        final content = isWide
-            ? _buildWideLayout(auth, docs)
-            : _buildNarrowLayout(auth, docs);
-        return BasePage(key: const ValueKey('additional_register'), child: content);
+        return AuthScaffold(
+          title: 'register'.tr,
+          pageKey: const ValueKey('additional_register'),
+          maxWidth: 680,
+          builder: (context, isWide) => _buildForm(auth, docs),
+        );
       },
-    );
-  }
-
-  Widget _buildWideLayout(MyAuthProvider auth, TeacherDocumentProvider docs) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 40),
-              child: _buildForm(auth, docs),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNarrowLayout(MyAuthProvider auth, TeacherDocumentProvider docs) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
-        child: _buildForm(auth, docs),
-      ),
     );
   }
 
   Widget _buildForm(MyAuthProvider auth, TeacherDocumentProvider docs) {
     final c = context.colors;
-    return Container(
-      width: context.width > 800 ? 560 : double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusXL),
-        boxShadow: c.cardShadow,
-      ),
-      child: Form(
+    return Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ProgressBar(currentStep: 2, totalSteps: 3),
-            const SizedBox(height: 28),
-            ScreenIcon(icon: Icons.badge_outlined),
-            const SizedBox(height: 16),
-            Text('complete_profile'.tr, style: c.h1.copyWith(fontSize: 26)),
-            const SizedBox(height: 6),
-            Text(
-              'additional_registration_welcome'.tr,
-              style: c.caption.copyWith(height: 1.6),
+            const SizedBox(height: 22),
+            AuthHeader(
+              title: 'complete_profile'.tr,
+              subtitle: 'additional_registration_welcome'.tr,
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // ── Profile fields ──────────────────────────────────────────────
             IgnorePointer(
@@ -300,7 +263,6 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
             ),
           ],
         ),
-      ),
     );
   }
 }

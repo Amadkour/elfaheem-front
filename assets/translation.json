@@ -403,6 +403,10 @@
     "en": "Are you sure you want to delete",
     "ar": "هل تريد حذف"
   },
+  "delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
   "course_deleted": {
     "en": "Course deleted successfully",
     "ar": "تم حذف الدورة"
@@ -1350,6 +1354,11 @@
   "you_are_enrolled": {
     "en": "Your Are enrolled",
     "ar": "انت مشترك في الدورة"
+  },
+  "__comment_session_material_card": "─── Keys added for session_material_card.dart ───",
+  "save": {
+    "en": "Save",
+    "ar": "حفظ"
   },
   "description": {
     "en": "Description",
@@ -4836,6 +4845,10 @@
     "en": "Overview",
     "ar": "نظرة عامة"
   },
+  "admin_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
   "devices_and_payments": {
     "en": "Devices & Payments",
     "ar": "الأجهزة والمدفوعات"
@@ -4863,6 +4876,10 @@
   "teachers": {
     "en": "Teachers",
     "ar": "المعلمون"
+  },
+  "terms_and_conditions": {
+    "en": "Terms & Conditions",
+    "ar": "الشروط والأحكام"
   },
   "theme": {
     "en": "Theme",
@@ -7780,6 +7797,10 @@
     "en": "Super admin",
     "ar": "مشرف عام"
   },
+  "admin_my_account": {
+    "en": "My account",
+    "ar": "حسابي الشخصي"
+  },
   "admin_profile_saved": {
     "en": "Profile updated successfully",
     "ar": "تم تحديث الملف الشخصي بنجاح"
@@ -8712,13 +8733,25 @@
     "en": "Both e-mail and phone are required. Choose which one to start with.",
     "ar": "التأكيد مطلوب بالبريد والهاتف معاً. اختر بأيهما تبدأ."
   },
+  "verify_way_email": {
+    "en": "E-mail",
+    "ar": "البريد"
+  },
   "verify_way_email_sub": {
     "en": "We send a 4-digit code to your inbox.",
     "ar": "نرسل كوداً من 4 أرقام إلى بريدك الإلكتروني."
   },
+  "verify_way_telegram": {
+    "en": "Telegram",
+    "ar": "تيليجرام"
+  },
   "verify_way_telegram_sub": {
     "en": "Tap once and share your number. No code to type.",
     "ar": "اضغط مرة واحدة وشارك رقمك. بدون كتابة كود."
+  },
+  "verify_way_whatsapp": {
+    "en": "WhatsApp",
+    "ar": "واتساب"
   },
   "verify_way_whatsapp_link_sub": {
     "en": "Press Send on a ready message. No code to type.",
@@ -8727,6 +8760,10 @@
   "verify_way_whatsapp_code_sub": {
     "en": "We send a 4-digit code to your WhatsApp.",
     "ar": "نرسل كوداً من 4 أرقام على واتساب."
+  },
+  "verify_way_sms": {
+    "en": "SMS",
+    "ar": "رسالة"
   },
   "verify_way_sms_sub": {
     "en": "We send a 4-digit code by text message.",
@@ -10420,7 +10457,82 @@
     "en": "This device cannot connect to nearby phones right now",
     "ar": "هذا الجهاز لا يدعم الاتصال بالأجهزة القريبة حالياً"
   },
-
+  "att_t_distance": {
+    "en": "Maximum distance from the teacher",
+    "ar": "أقصى مسافة مسموحة من المعلّم"
+  },
+  "att_t_distance_hint": {
+    "en": "Indoor GPS can be off by 10–50 m, so do not set the distance too small",
+    "ar": "الـ GPS داخل القاعات قد يخطئ 10–50 متراً، فلا تجعل المسافة صغيرة جداً"
+  },
+  "att_t_location_hint_web": {
+    "en": "On the web the location is rough. Use the browser location or one shared from your phone.",
+    "ar": "على الويب الموقع تقريبي. يمكنك استخدام موقع المتصفح أو موقع مشارَك من الموبايل."
+  },
+  "att_t_web_loc_title": {
+    "en": "Where should the classroom location come from?",
+    "ar": "من أين نأخذ موقع القاعة؟"
+  },
+  "att_t_web_loc_body": {
+    "en": "The browser gives a rough location (it can be off by hundreds of metres). It is more accurate to share your position from the mobile app and come back here.",
+    "ar": "المتصفح يعطي موقعاً تقريبياً (قد يخطئ بمئات الأمتار). الأدق أن تشارك موقعك من تطبيق الموبايل ثم تعود هنا."
+  },
+  "att_t_web_loc_browser": {
+    "en": "Use browser location",
+    "ar": "استخدم موقع المتصفح"
+  },
+  "att_t_web_loc_mobile": {
+    "en": "Location shared from mobile",
+    "ar": "موقع مشارَك من الموبايل"
+  },
+  "att_t_shared_found": {
+    "en": "A location shared from your phone was found",
+    "ar": "تم العثور على موقع مشارَك من الموبايل"
+  },
+  "att_t_shared_missing": {
+    "en": "Nothing shared yet. Open the mobile app and tap \"Share location for web\".",
+    "ar": "لا يوجد موقع مشارَك. افتح التطبيق على الموبايل واضغط «مشاركة الموقع للويب»."
+  },
+  "att_t_shared_check": {
+    "en": "Check",
+    "ar": "تحقّق"
+  },
+  "att_t_share_for_web": {
+    "en": "Share location for web",
+    "ar": "مشاركة الموقع للويب"
+  },
+  "att_t_shared_done": {
+    "en": "Shared (valid for 10 minutes)",
+    "ar": "تمت المشاركة (صالحة 10 دقائق)"
+  },
+  "att_err_no_shared_location": {
+    "en": "No location shared from mobile. Share it from the app or use the browser location.",
+    "ar": "لا يوجد موقع مشارَك من الموبايل. شاركه من التطبيق أو استخدم موقع المتصفح."
+  },
+  "att_t_fullscreen": {
+    "en": "Show code full screen",
+    "ar": "عرض الكود بملء الشاشة"
+  },
+  "att_t_minimize": {
+    "en": "Minimize",
+    "ar": "تصغير"
+  },
+  "att_t_reg_left": {
+    "en": "Registration closes in",
+    "ar": "الوقت المتبقي للتسجيل"
+  },
+  "att_t_close_confirm": {
+    "en": "Close registration?",
+    "ar": "إغلاق التسجيل؟"
+  },
+  "att_t_close_confirm_body": {
+    "en": "Registration closes now; late requests are still accepted for {n} s.",
+    "ar": "سيُغلق التسجيل الآن، مع قبول الطلبات المتأخرة لمدة {n} ثانية."
+  },
+  "att_cancel": {
+    "en": "Cancel",
+    "ar": "إلغاء"
+  },
   "admin_search_subscriptions": {
     "ar": "ابحث بالاسم أو البريد أو الهاتف أو اسم المرسل أو المرجع",
     "en": "Search name, email, phone, sender or reference"
@@ -10893,22 +11005,6 @@
     "ar": "رمز — نحن نرسل الرمز",
     "en": "Code — we send a code"
   },
-  "verify_way_email": {
-    "ar": "البريد الإلكتروني",
-    "en": "Email"
-  },
-  "verify_way_telegram": {
-    "ar": "تيليجرام",
-    "en": "Telegram"
-  },
-  "verify_way_whatsapp": {
-    "ar": "واتساب",
-    "en": "WhatsApp"
-  },
-  "verify_way_sms": {
-    "ar": "رسالة نصية",
-    "en": "SMS"
-  },
   "auth_verify_by": {
     "ar": "التحقق من الحسابات الجديدة عبر",
     "en": "Verify new accounts by"
@@ -11092,22 +11188,6 @@
   "doc_disabled_instead": {
     "ar": "تم تعطيله بدل حذفه لأن معلمين قد رفعوه",
     "en": "Teachers already uploaded it, so it was disabled instead of deleted"
-  },
-  "save": {
-    "ar": "حفظ",
-    "en": "Save"
-  },
-  "delete": {
-    "ar": "حذف",
-    "en": "Delete"
-  },
-  "admin_my_account": {
-    "ar": "حسابي",
-    "en": "My account"
-  },
-  "admin_more": {
-    "ar": "المزيد",
-    "en": "More"
   },
   "content_page_title": {
     "ar": "محتوى التطبيق",
@@ -11600,10 +11680,6 @@
   "about_type_general": {
     "ar": "للتواصل",
     "en": "Contact"
-  },
-  "terms_and_conditions": {
-    "ar": "الشروط والأحكام",
-    "en": "Terms & conditions"
   },
   "terms_intro": {
     "ar": "اقرأها بهدوء — كتبناها لتعرف حقوقك وما نلتزم به تجاهك.",

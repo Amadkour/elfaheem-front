@@ -356,7 +356,7 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
           _OrDivider(
             label: _t('or_continue_with', 'or continue with', 'أو تابع باستخدام'),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 10),
           Center(
             child: ValueListenableBuilder<bool>(
               valueListenable: _flow.busy,
@@ -544,7 +544,7 @@ class _OrDivider extends StatelessWidget {
         height: 1,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [c.divider.withValues(alpha: 0), c.divider],
+            colors: [c.divider.withValues(alpha: 150), c.divider],
           ),
         ),
       ),
@@ -569,7 +569,7 @@ class _OrDivider extends StatelessWidget {
             height: 1,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [c.divider, c.divider.withValues(alpha: 0)],
+                colors: [c.divider, c.divider.withValues(alpha: 150)],
               ),
             ),
           ),
