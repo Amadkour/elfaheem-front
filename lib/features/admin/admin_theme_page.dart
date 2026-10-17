@@ -228,73 +228,32 @@ class _Preview extends StatelessWidget {
         color: background,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            flex: 3,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: card,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    height: 8,
-                    width: 70,
-                    decoration: BoxDecoration(
-                      color: text,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Container(
-                    height: 6,
-                    width: 110,
-                    decoration: BoxDecoration(
-                      color: text.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    height: 24,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [primary, accent2]),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Container(
-                      height: 5,
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(3),
-                      ),
-                    ),
-                  ),
-                ],
+          for (final col in [primary, dark, light, accent1, accent2])
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 3),
+                decoration: BoxDecoration(
+                  color: col,
+                  borderRadius: BorderRadius.circular(5),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                for (final col in [primary, dark, light, accent1, accent2])
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 3),
-                      decoration: BoxDecoration(
-                        color: col,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                  ),
-              ],
+          Container(
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [primary, accent2]),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Container(
+              height: 5,
+              width: 40,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(3),
+              ),
             ),
           ),
         ],

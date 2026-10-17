@@ -12,6 +12,7 @@ import 'admin_common.dart';
 import 'admin_income_breakdown.dart';
 import 'admin_models.dart';
 import 'admin_payouts_page.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 import 'admin_subscriptions_page.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
@@ -36,6 +37,7 @@ class _View extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangProvider>();
     final p = context.watch<AdminOverviewProvider>();
     final c = context.colors;
     final o = p.data;
@@ -61,26 +63,24 @@ class _View extends StatelessWidget {
       required VoidCallback onTap,
     }) => InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: c.cardBg,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: c.divider),
+          boxShadow: c.cardShadow,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
+                ServiceIcon(
+                  icon: icon,
+                  size: 38,
+                  colors: [Color.lerp(color, Colors.white, 0.28)!, color],
                 ),
                 const Spacer(),
                 Icon(
@@ -128,14 +128,25 @@ class _View extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         children: [
           InkWell(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(22),
             onTap: () => open(const AdminSubscriptionsPage()),
             child: Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(18),
               margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
-                borderRadius: BorderRadius.circular(18),
+                gradient: LinearGradient(
+                  begin: AlignmentDirectional.topStart,
+                  end: AlignmentDirectional.bottomEnd,
+                  colors: [c.primary, c.primaryDark],
+                ),
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: 0.30),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
               child: Row(
                 children: [

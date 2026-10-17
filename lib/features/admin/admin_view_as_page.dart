@@ -86,10 +86,10 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
     super.dispose();
   }
 
-  /// Search as you type (350 ms after the last key) — no need to press enter.
+  /// Search as you type (1 s after the last key) — Enter searches at once.
   void _onSearchChanged(String _) {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), _load);
+    _debounce = Timer(kSearchDelay, _load);
   }
 
   /// Near the bottom → fetch the next page automatically.
@@ -277,7 +277,10 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
                 child: TextField(
                   controller: _q,
                   onChanged: _onSearchChanged,
-                  onSubmitted: (_) => _load(),
+                  onSubmitted: (_) {
+                    _debounce?.cancel();
+                    _load();
+                  },
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.search_rounded),
                     hintText: 'admin_search_by_name_or_e_mail'.tr,

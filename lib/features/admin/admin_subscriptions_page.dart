@@ -13,6 +13,8 @@ import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -78,7 +80,14 @@ class _View extends StatelessWidget {
           ),
         ),
       ),
-      const SizedBox(height: 10),
+      const SizedBox(height: 4),
+      AdminFilterBar(
+        host: p,
+        hintKey: 'admin_search_subscriptions',
+        specs: _subSpecs,
+        sort: _subSort,
+        quickKeys: const {'status'},
+      ),
       FilterChips<String>(
         value: p.statusFilter ?? 'all',
         options: {
@@ -108,6 +117,41 @@ class _View extends StatelessWidget {
     );
   }
 }
+
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _subSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'ends_soon': 'admin_sort_ends_soon',
+  'amount_desc': 'admin_sort_amount_desc',
+  'amount_asc': 'admin_sort_amount_asc',
+  'name_asc': 'admin_sort_name_asc',
+});
+
+const _subSpecs = <FilterSpec>[
+  FilterSpec.choice('status', 'admin_filter_status', {
+    'pending': 'admin_pending_4',
+    'active': 'admin_active',
+    'expired': 'admin_expired',
+    'rejected': 'admin_rejected',
+    'cancelled': 'admin_cancelled_2',
+  }),
+  FilterSpec.remoteChoice('plan_code', 'admin_filter_plan', 'plans'),
+  FilterSpec.choice('payment_method', 'admin_filter_payment_method', {
+    'bank_transfer': 'admin_filter_method_bank_transfer',
+    'instapay': 'admin_filter_method_instapay',
+    'card': 'admin_filter_method_card',
+  }),
+  FilterSpec.tri('granted_by_admin', 'admin_filter_granted_by_admin'),
+  FilterSpec.tri('has_receipt', 'admin_filter_has_receipt'),
+  FilterSpec.choice('expiring_in', 'admin_filter_expiring', {
+    '7': 'admin_filter_expiring_7',
+    '14': 'admin_filter_expiring_14',
+    '30': 'admin_filter_expiring_30',
+  }),
+  FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_created'),
+];
 
 class _PlanRow extends StatelessWidget {
   const _PlanRow({required this.plan});

@@ -10,6 +10,8 @@
 //   DELETE /api/v1/admin/users/{id}
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -22,6 +24,8 @@ import '../../utils/widget/base_page.dart';
 import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_list.dart' show RowCard;
 import 'admin_view_as_page.dart' show startViewAs;
 
@@ -30,11 +34,44 @@ class _AdminsApi {
   static String one(int id) => '/api/v1/admin/users/$id';
 }
 
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _adminSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'name_asc': 'admin_sort_name_asc',
+  'name_desc': 'admin_sort_name_desc',
+  'last_login': 'admin_sort_last_login',
+  'most_logins': 'admin_sort_most_logins',
+});
+
+const _adminSpecs = <FilterSpec>[
+  FilterSpec.choice('admin_role', 'admin_filter_admin_role', {
+    'admin': 'admin_filter_role_admin',
+    'super_admin': 'admin_filter_role_super',
+  }),
+  FilterSpec.choice('status', 'admin_filter_status', {
+    'active': 'exam_status_active',
+    'inactive': 'admin_inactive',
+  }),
+  FilterSpec.tri('verified', 'admin_filter_verified'),
+  FilterSpec.tri('has_phone', 'admin_filter_has_phone'),
+  FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_created'),
+  FilterSpec.choice('last_login', 'admin_filter_last_login', {
+    'today': 'admin_filter_today',
+    '7d': 'admin_filter_last_7_days',
+    '30d': 'admin_filter_last_30_days',
+    '90d': 'admin_filter_last_90_days',
+    'inactive_30d': 'admin_filter_inactive_30d',
+    'never': 'admin_filter_never_logged_in',
+  }),
+];
+
 // ═════════════════════════════════════════════════════════════════════════════
 //  Provider
 // ═════════════════════════════════════════════════════════════════════════════
 
-class AdminAdminsProvider extends ChangeNotifier {
+class AdminAdminsProvider extends ChangeNotifier implements AdminQueryHost {
   static const pageSize = 20;
 
   final _api = ApiClient();
@@ -46,24 +83,83 @@ class AdminAdminsProvider extends ChangeNotifier {
   bool hasMore = true;
   int _total = 0;
   int get total => _total;
+  @override
   String search = '';
+  @override
+  final Map<String, Object?> adv = {};
+  @override
+  String? sort;
+  Timer? _debounce;
   bool _disposed = false;
   int _gen = 0; // drops stale responses when the search changes mid-flight
 
   @override
+  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+
+  @override
+  int? get resultCount => (loading && items.isEmpty) || failed ? null : total;
+
+  @override
   void dispose() {
     _disposed = true;
+    _debounce?.cancel();
     super.dispose();
   }
+
+  Map<String, dynamic> get _query => {
+    'role': 'admin',
+    ...encodeFilters(adv),
+    if (search.isNotEmpty) 'search': search,
+    if (sort != null) 'sort': sort,
+  };
 
   void _notify() {
     if (!_disposed) notifyListeners();
   }
 
-  void setSearch(String v) {
-    if (v == search) return;
-    search = v;
-    refresh();
+  /// Debounced: typing fires one request, not one per letter.
+  @override
+  Future<void> setSearch(String v) async {
+    final t = v.trim();
+    if (t == search) return;
+    search = t;
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      if (!_disposed) refresh();
+    });
+  }
+
+  @override
+  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
+    adv
+      ..clear()
+      ..addAll({
+        for (final e in values.entries)
+          if (e.value != null) e.key: e.value,
+      });
+    sort = sortKey;
+    return refresh();
+  }
+
+  @override
+  Future<void> removeAdv(Iterable<String> keys) {
+    keys.forEach(adv.remove);
+    return refresh();
+  }
+
+  @override
+  Future<void> setSort(String? v) {
+    sort = v;
+    return refresh();
+  }
+
+  @override
+  Future<void> clearAll() {
+    _debounce?.cancel();
+    search = '';
+    adv.clear();
+    sort = null;
+    return refresh();
   }
 
   List<Map<String, dynamic>> _rows(dynamic data) {
@@ -75,6 +171,7 @@ class AdminAdminsProvider extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
+    _debounce?.cancel();
     final gen = ++_gen;
     loading = true;
     failed = false;
@@ -82,8 +179,7 @@ class AdminAdminsProvider extends ChangeNotifier {
     _notify();
     try {
       final data = await _api.get(_AdminsApi.list, queryParams: {
-        'role': 'admin',
-        if (search.isNotEmpty) 'search': search,
+        ..._query,
         'page': 1,
         'size': pageSize,
       });
@@ -107,8 +203,7 @@ class AdminAdminsProvider extends ChangeNotifier {
     _notify();
     try {
       final data = await _api.get(_AdminsApi.list, queryParams: {
-        'role': 'admin',
-        if (search.isNotEmpty) 'search': search,
+        ..._query,
         'page': items.length ~/ pageSize + 1,
         'size': pageSize,
       });
@@ -237,12 +332,11 @@ class _AdminsViewState extends State<_AdminsView> {
     final p = context.watch<AdminAdminsProvider>();
     final c = context.colors;
 
-    final search = Padding(
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-      child: SearchBox(
-        hint: 'admin_search_name_email_or_phone'.tr,
-        onChanged: p.setSearch,
-      ),
+    final search = AdminFilterBar(
+      host: p,
+      hintKey: 'admin_search_name_email_or_phone',
+      specs: _adminSpecs,
+      sort: _adminSort,
     );
 
     Widget body;
@@ -254,7 +348,10 @@ class _AdminsViewState extends State<_AdminsView> {
         onRetry: p.refresh,
       );
     } else if (p.items.isEmpty) {
-      body = EmptyState('admin_no_admins_found'.tr, icon: Icons.shield_outlined);
+      body = EmptyState(
+        (p.hasActiveQuery ? 'admin_filter_no_results' : 'admin_no_admins_found').tr,
+        icon: Icons.shield_outlined,
+      );
     } else {
       _fillViewport(p);
       body = RefreshIndicator(

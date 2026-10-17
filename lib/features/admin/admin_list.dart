@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/paged_progress.dart';
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -246,7 +247,7 @@ class RowCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(18);
+    final radius = BorderRadius.circular(c.radiusLarge - 4);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -254,13 +255,7 @@ class RowCard extends StatelessWidget {
           color: c.cardBg,
           borderRadius: radius,
           border: Border.all(color: c.divider),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          boxShadow: c.cardShadow,
         ),
         child: ClipRRect(
           borderRadius: radius,
@@ -299,14 +294,11 @@ class IconBadge extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: 0.13),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: Icon(icon, color: color, size: size * 0.5),
+  Widget build(BuildContext context) => ServiceIcon(
+    icon: icon,
+    size: size,
+    // light → your theme colour (the colour passed in is already a theme colour)
+    colors: AdminPalette.soft(color),
   );
 }
 
@@ -372,6 +364,7 @@ class InfoChip extends StatelessWidget {
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.10),
       borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: 0.22)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,

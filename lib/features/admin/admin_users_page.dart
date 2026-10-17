@@ -12,6 +12,8 @@ import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -51,12 +53,12 @@ class _UsersView extends StatelessWidget {
 
     final header = Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-          child: SearchBox(
-            hint: 'admin_search_name_email_or_phone'.tr,
-            onChanged: p.setSearch,
-          ),
+        AdminFilterBar(
+          host: p,
+          hintKey: 'admin_search_name_email_or_phone',
+          specs: _userSpecs(isStudent),
+          sort: _userSort,
+          quickKeys: const {'status', 'subscribed'},
         ),
         FilterChips<String>(
           value: p.status ?? 'all',
@@ -123,6 +125,56 @@ class _UsersView extends StatelessWidget {
     );
   }
 }
+
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _userSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'name_asc': 'admin_sort_name_asc',
+  'name_desc': 'admin_sort_name_desc',
+  'last_login': 'admin_sort_last_login',
+  'most_logins': 'admin_sort_most_logins',
+});
+
+List<FilterSpec> _userSpecs(bool isStudent) => [
+  const FilterSpec.choice('status', 'admin_filter_status', {
+    'active': 'exam_status_active',
+    'inactive': 'admin_inactive',
+    'pending_deletion': 'admin_pending_deletion',
+  }),
+  if (isStudent) ...[
+    const FilterSpec.tri('subscribed', 'admin_filter_subscription',
+        yesKey: 'admin_subscribed', noKey: 'admin_not_subscribed'),
+    const FilterSpec.choice('subscription_status', 'admin_filter_subscription_status', {
+      'pending': 'admin_pending_4',
+      'active': 'admin_active',
+      'expired': 'admin_expired',
+      'rejected': 'admin_rejected',
+      'cancelled': 'admin_cancelled_2',
+    }),
+    const FilterSpec.lookup('course_id', 'admin_filter_enrolled_in', 'courses'),
+    const FilterSpec.tri('has_enrollments', 'admin_filter_has_enrollments'),
+  ] else ...[
+    const FilterSpec.lookup('course_id', 'admin_filter_teaches', 'courses'),
+    const FilterSpec.tri('has_courses', 'admin_filter_has_courses'),
+  ],
+  const FilterSpec.tri('verified', 'admin_filter_verified'),
+  const FilterSpec.tri('email_verified', 'admin_filter_email_verified'),
+  const FilterSpec.tri('phone_verified', 'admin_filter_phone_verified'),
+  const FilterSpec.tri('has_phone', 'admin_filter_has_phone'),
+  const FilterSpec.lookup('country', 'admin_filter_country', 'countries'),
+  const FilterSpec.remoteChoice('registration_step', 'admin_filter_registration_step', 'registration_steps'),
+  const FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_joined'),
+  const FilterSpec.choice('last_login', 'admin_filter_last_login', {
+    'today': 'admin_filter_today',
+    '7d': 'admin_filter_last_7_days',
+    '30d': 'admin_filter_last_30_days',
+    '90d': 'admin_filter_last_90_days',
+    'inactive_30d': 'admin_filter_inactive_30d',
+    'never': 'admin_filter_never_logged_in',
+  }),
+];
 
 class _UserTile extends StatelessWidget {
   const _UserTile(this.u, {required this.isStudent});

@@ -143,7 +143,7 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
   /// The search box was never connected to the provider — typing did nothing.
   void _onSearchChanged() {
     _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
+    _debounce = Timer(const Duration(seconds: 1), () {
       if (!mounted) return;
       final p = context.read<ComplaintProvider>();
       final q = _searchCtrl.text.trim();

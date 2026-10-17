@@ -8,6 +8,8 @@
 //   • Helpers.showMessage / pageDirection (utils/helpers.dart)
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -17,6 +19,38 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
+import 'admin_premium_widgets.dart';
+
+
+/// How long every admin search box waits after the LAST keystroke before it
+/// sends a request. Change it here to change all of them.
+const Duration kSearchDelay = Duration(seconds: 1);
+
+/// Runs [run] only after [delay] of silence: every new call cancels the pending
+/// one, so typing "ahmed" sends ONE request (1 s after the last letter), not five.
+/// [flush] runs it now (Enter key / clear button); always [dispose] it.
+class Debouncer {
+  Debouncer([this.delay = kSearchDelay]);
+
+  final Duration delay;
+  Timer? _t;
+
+  bool get isPending => _t?.isActive ?? false;
+
+  void run(VoidCallback action) {
+    _t?.cancel();
+    _t = Timer(delay, action);
+  }
+
+  void flush(VoidCallback action) {
+    _t?.cancel();
+    action();
+  }
+
+  void cancel() => _t?.cancel();
+
+  void dispose() => _t?.cancel();
+}
 
 /// Arabic / English inline text (the admin screens ship with both).
 String t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
@@ -55,8 +89,20 @@ void toast(String message, {bool error = false}) {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text(message, style: const TextStyle(fontFamily: 'tajawal')),
-          backgroundColor: error ? Colors.red.shade700 : null,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: (error ? AdminPalette.rose : AdminPalette.green).last,
+          content: Row(children: [
+            Icon(error ? Icons.error_rounded : Icons.check_circle_rounded,
+                color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(message,
+                  style: const TextStyle(
+                      fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w600)),
+            ),
+          ]),
         ),
       );
     return;
@@ -120,22 +166,38 @@ Future<bool> confirm(
     builder: (ctx) => Directionality(
       textDirection: dir,
       child: AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Text(message, style: const TextStyle(fontFamily: 'tajawal')),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        icon: ServiceIcon(
+          icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
+          colors: danger ? AdminPalette.rose : AdminPalette.blue,
+          size: 54,
+        ),
+        content: Text(message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontFamily: 'tajawal', height: 1.5)),
+        actionsAlignment: MainAxisAlignment.center,
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(110, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              side: BorderSide(color: c.divider),
+            ),
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('exam_cancel'.tr,
                 style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
+          FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(110, 44),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               backgroundColor: danger ? c.danger : c.primary,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel ?? 'confirm'.tr,
                 style: const TextStyle(
-                    fontFamily: 'tajawal', color: Colors.white)),
+                    fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -192,12 +254,23 @@ class _AskTextDialogState extends State<_AskTextDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
-        title: Text(widget.title, style: const TextStyle(fontFamily: 'tajawal')),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(widget.title,
+            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
         content: TextField(
           controller: _ctrl,
           autofocus: true,
           maxLines: widget.multiline ? 4 : 1,
-          decoration: InputDecoration(hintText: widget.hint),
+          style: const TextStyle(fontFamily: 'tajawal'),
+          decoration: InputDecoration(
+            hintText: widget.hint,
+            filled: true,
+            fillColor: context.colors.inputBg,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: context.colors.divider),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -229,9 +302,21 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
           decoration: BoxDecoration(
             color: ctx.colors.cardBg,
             borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(24)),
+            const BorderRadius.vertical(top: Radius.circular(28)),
           ),
-          child: builder(ctx),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // grab handle
+            Container(
+              width: 42,
+              height: 5,
+              margin: const EdgeInsets.only(top: 10),
+              decoration: BoxDecoration(
+                color: ctx.colors.divider,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            Flexible(child: builder(ctx)),
+          ]),
         ),
       ),
     ),
@@ -261,8 +346,9 @@ class SheetHeader extends StatelessWidget {
         ),
         ?trailing,
         IconButton(
+            style: IconButton.styleFrom(backgroundColor: c.inputBg),
             onPressed: () => Navigator.pop(context),
-            icon: Icon(Icons.close_rounded, color: c.textMedium)),
+            icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
       ]),
     );
   }
@@ -279,6 +365,7 @@ class StatusChip extends StatelessWidget {
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: color.withValues(alpha: 0.28)),
     ),
     child: Text(label,
         style: TextStyle(
@@ -290,10 +377,21 @@ class StatusChip extends StatelessWidget {
 }
 
 class Section extends StatelessWidget {
-  const Section({super.key, required this.title, required this.child, this.trailing});
+  const Section({
+    super.key,
+    required this.title,
+    required this.child,
+    this.trailing,
+    this.icon,
+    this.colors,
+  });
   final String title;
   final Widget child;
   final Widget? trailing;
+
+  /// Optional gradient icon shown before the title (premium look).
+  final IconData? icon;
+  final List<Color>? colors;
 
   @override
   Widget build(BuildContext context) {
@@ -303,28 +401,36 @@ class Section extends StatelessWidget {
     // between them and the Material ancestor and hides the effects (Flutter asserts).
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: c.cardShadow,
+      ),
       child: Material(
         color: c.cardBg,
         clipBehavior: Clip.antiAlias, // keeps splashes inside the rounded corners
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           side: BorderSide(color: c.divider),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
+              if (icon != null) ...[
+                ServiceIcon(icon: icon!, colors: colors ?? AdminPalette.blue, size: 36),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: Text(title,
                     style: TextStyle(
                         fontFamily: 'tajawal',
                         fontWeight: FontWeight.w800,
-                        fontSize: 15,
+                        fontSize: 15.5,
                         color: c.textDark)),
               ),
               ?trailing,
             ]),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             child,
           ]),
         ),
@@ -375,11 +481,19 @@ class EmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 52, color: c.textLight),
-          const SizedBox(height: 10),
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: c.primary.withValues(alpha: 0.10),
+            ),
+            child: Icon(icon, size: 44, color: c.primary),
+          ),
+          const SizedBox(height: 14),
           Text(message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+              style: TextStyle(fontFamily: 'tajawal', height: 1.5, color: c.textMedium)),
         ]),
       ),
     );
@@ -398,13 +512,25 @@ class ErrorRetry extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.error_outline_rounded, size: 48, color: c.danger),
-          const SizedBox(height: 10),
+          Container(
+            width: 84,
+            height: 84,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: c.danger.withValues(alpha: 0.10),
+            ),
+            child: Icon(Icons.cloud_off_rounded, size: 40, color: c.danger),
+          ),
+          const SizedBox(height: 12),
           Text(message,
               textAlign: TextAlign.center,
               style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
           const SizedBox(height: 12),
-          OutlinedButton.icon(
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: c.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded),
             label: Text('retry'.tr),
@@ -457,15 +583,21 @@ class Field extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          labelStyle: TextStyle(fontFamily: 'tajawal', color: c.textMedium),
           filled: true,
           fillColor: c.inputBg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(color: c.divider),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             borderSide: BorderSide(color: c.divider),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: c.primary, width: 1.6),
           ),
         ),
       ),
@@ -509,9 +641,14 @@ class ChoiceRow<T> extends StatelessWidget {
               label: Text(e.value,
                   style: TextStyle(
                       fontFamily: 'tajawal',
+                      fontWeight: FontWeight.w700,
                       color: e.key == value ? Colors.white : c.textDark)),
               selected: e.key == value,
+              showCheckmark: false,
               selectedColor: c.primary,
+              backgroundColor: c.inputBg,
+              side: BorderSide(color: e.key == value ? c.primary : c.divider),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               onSelected: (_) => onChanged(e.key),
             ),
         ]),
@@ -532,19 +669,26 @@ class SearchBox extends StatefulWidget {
 
 class _SearchBoxState extends State<SearchBox> {
   final _ctrl = TextEditingController();
-  DateTime _last = DateTime.now();
+  final _debounce = Debouncer();
+  String _sent = '';
 
   @override
   void dispose() {
+    _debounce.dispose();
     _ctrl.dispose();
     super.dispose();
   }
 
+  void _send(String v) {
+    final q = v.trim();
+    if (!mounted || q == _sent) return; // nothing new → no request
+    _sent = q;
+    widget.onChanged(q);
+  }
+
   void _changed(String v) {
-    final stamp = _last = DateTime.now();
-    Future.delayed(const Duration(milliseconds: 400), () {
-      if (mounted && stamp == _last) widget.onChanged(v.trim());
-    });
+    setState(() {}); // shows / hides the clear button
+    _debounce.run(() => _send(v));
   }
 
   @override
@@ -553,16 +697,37 @@ class _SearchBoxState extends State<SearchBox> {
     return TextField(
       controller: _ctrl,
       onChanged: _changed,
+      onSubmitted: (v) => _debounce.flush(() => _send(v)),
+      textInputAction: TextInputAction.search,
       style: const TextStyle(fontFamily: 'tajawal'),
       decoration: InputDecoration(
         hintText: widget.hint ?? 'admin_search'.tr,
         prefixIcon: const Icon(Icons.search_rounded),
+        suffixIcon: _ctrl.text.isEmpty
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () {
+                  _ctrl.clear();
+                  _debounce.flush(() => _send(''));
+                  setState(() {});
+                },
+              ),
         filled: true,
         fillColor: c.inputBg,
         isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: c.divider),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: c.divider),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: c.primary, width: 1.6),
         ),
       ),
     );

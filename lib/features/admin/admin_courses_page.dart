@@ -13,6 +13,8 @@ import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
@@ -30,6 +32,35 @@ class AdminCoursesPage extends StatelessWidget {
   );
 }
 
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _courseSort = SortSpec({
+  'newest': 'admin_sort_newest',
+  'oldest': 'admin_sort_oldest',
+  'name_asc': 'admin_sort_name_asc',
+  'name_desc': 'admin_sort_name_desc',
+  'price_asc': 'admin_sort_price_asc',
+  'price_desc': 'admin_sort_price_desc',
+});
+
+const _courseSpecs = <FilterSpec>[
+  FilterSpec.tri('published', 'admin_filter_publish_state', yesKey: 'published', noKey: 'status_draft'),
+  FilterSpec.choice('status', 'admin_filter_status', {
+    'in_progress': 'admin_in_progress',
+    'completed': 'completed',
+  }),
+  FilterSpec.lookup('teacher_id', 'admin_filter_teacher', 'teachers'),
+  FilterSpec.lookup('category_id', 'admin_filter_category', 'categories'),
+  FilterSpec.remoteChoice('type', 'admin_filter_course_type', 'course_types'),
+  FilterSpec.remoteChoice('currency', 'admin_filter_currency', 'currencies'),
+  FilterSpec.numberRange('price_min', 'price_max', 'admin_filter_price'),
+  FilterSpec.tri('is_private', 'admin_filter_private'),
+  FilterSpec.tri('discount_active', 'admin_filter_discount'),
+  FilterSpec.tri('has_students', 'admin_filter_has_students'),
+  FilterSpec.tri('has_pending_payments', 'admin_filter_pending_payments'),
+  FilterSpec.dateRange('created_from', 'created_to', 'admin_filter_created'),
+];
+
 class _CoursesView extends StatelessWidget {
   const _CoursesView({required this.embedded});
 
@@ -42,12 +73,12 @@ class _CoursesView extends StatelessWidget {
 
     final header = Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
-          child: SearchBox(
-            hint: 'admin_search_course_name'.tr,
-            onChanged: p.setSearch,
-          ),
+        AdminFilterBar(
+          host: p,
+          hintKey: 'admin_search_course_name',
+          specs: _courseSpecs,
+          sort: _courseSort,
+          quickKeys: const {'published', 'status'},
         ),
         FilterChips<String>(
           value: p.published == null ? 'all' : (p.published! ? 'pub' : 'draft'),

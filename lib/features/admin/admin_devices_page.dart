@@ -13,8 +13,8 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
-import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 
 class AdminDevicesPage extends StatelessWidget {
@@ -88,6 +88,7 @@ class _ViewState extends State<_View> {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangProvider>();
     final s = context.watch<AdminSettingsProvider>();
     final c = context.colors;
     _fill(s);
@@ -98,8 +99,21 @@ class _ViewState extends State<_View> {
     } else if (s.values.isEmpty) {
       body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
-      body = ListView(padding: const EdgeInsets.all(14), children: [
+      body = ListView(padding: const EdgeInsets.all(16), children: [
+        PremiumHero(
+          icon: Icons.devices_other_rounded,
+          colors: AdminPalette.slate,
+          title: 'admin_devices'.tr,
+          subtitle: 'svc_devices_d'.tr,
+          footer: Wrap(spacing: 8, runSpacing: 6, children: [
+            HeroPill(trp('dev_pill_devices', {'n': s.maxDevices}), icon: Icons.smartphone_rounded),
+            HeroPill(trp('dev_pill_days', {'n': s.switchDays}), icon: Icons.event_repeat_rounded),
+            HeroPill(trp('dev_pill_videos', {'n': s.maxVideos}), icon: Icons.play_circle_rounded),
+          ]),
+        ),
         Section(
+          icon: Icons.phonelink_lock_rounded,
+          colors: AdminPalette.blue,
           title: 'admin_student_devices'.tr,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Field(
@@ -121,21 +135,16 @@ class _ViewState extends State<_View> {
           ]),
         ),
         Section(
+          icon: Icons.autorenew_rounded,
+          colors: AdminPalette.green,
           title: 'admin_resubscribe_section'.tr,
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('admin_global_allow_resubscribe'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal')),
-              subtitle: Text('admin_global_allow_resubscribe_hint'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5)),
-              value: _allowResub,
-              activeTrackColor: c.primary,
-              onChanged: (v) => setState(() => _allowResub = v),
-            ),
-          ]),
+          child: PremiumSwitchRow(
+            title: 'admin_global_allow_resubscribe'.tr,
+            subtitle: 'admin_global_allow_resubscribe_hint'.tr,
+            value: _allowResub,
+            onChanged: (v) => setState(() => _allowResub = v),
+          ),
         ),
-        PrimaryButton(label: 'admin_save_settings'.tr, isLoading: _busy, onPressed: () => _save(s)),
       ]);
     }
 
@@ -143,6 +152,13 @@ class _ViewState extends State<_View> {
       useWebCard: true,
       maxWith: 900,
       appBar: ScreenAppBar(title: 'admin_devices'.tr),
+      bottomNavigationBar: (s.values.isEmpty)
+          ? null
+          : PremiumSaveBar(
+              label: 'admin_save_settings'.tr,
+              loading: _busy,
+              onPressed: () => _save(s),
+            ),
       child: body,
     );
   }

@@ -9,6 +9,7 @@
 // so nothing here has to be added to core/providers.dart.
 library;
 
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
@@ -18,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
 import 'admin_models.dart';
 
 const _base = '/api/v1/admin';
@@ -47,7 +49,7 @@ class AdminBase extends BaseProvider {
 //  Paged list base
 // ═════════════════════════════════════════════════════════════════════════════
 
-abstract class AdminPagedProvider extends AdminBase {
+abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
   final List<Map<String, dynamic>> rows = [];
   int page = 0;
   int pages = 1;
@@ -57,17 +59,106 @@ abstract class AdminPagedProvider extends AdminBase {
   String? error;
   Map<String, dynamic> extra = {};
 
+  // ── premium search / filter / sort (shared by every paged admin list) ─────
+  /// Free-text search. Multi-word, Arabic-aware, also matches phones and `#id`.
+  String search = '';
+
+  /// Active advanced filters: query key -> String | bool | num | DateTime | LookupValue.
+  final Map<String, Object?> adv = {};
+
+  /// Sort key (null = the server default).
+  String? sort;
+
+  Timer? _debounce;
+  bool _disposed = false;
+  int _gen = 0; // drops answers of requests that were replaced meanwhile
+
   String get path;
   Map<String, dynamic> get filters;
 
   bool get hasMore => page < pages;
 
+  @override
+  int? get resultCount => loaded ? total : null;
+
+  /// Anything that narrows the list (search, filters, sort).
+  @override
+  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  /// The search field already waits 1 s after the last key (kSearchDelay), so this
+  /// applies at once — a second delay here would just make the admin wait longer.
+  /// Timer.zero still coalesces several calls in the same frame into one request.
+  Future<void> setSearch(String v) async {
+    final t = v.trim();
+    if (t == search) return;
+    search = t;
+    _debounce?.cancel();
+    _debounce = Timer(Duration.zero, () {
+      if (!_disposed) refresh();
+    });
+  }
+
+  /// Set (or, with null, remove) one filter.
+  Future<void> setAdv(String key, Object? value) {
+    if (value == null) {
+      adv.remove(key);
+    } else {
+      adv[key] = value;
+    }
+    return refresh();
+  }
+
+  /// Replace every advanced filter + the sort at once (the filter sheet's "Apply").
+  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
+    adv
+      ..clear()
+      ..addAll({
+        for (final e in values.entries)
+          if (e.value != null) e.key: e.value,
+      });
+    sort = sortKey;
+    return refresh();
+  }
+
+  /// Removes the given filters (a chip's "x").
+  Future<void> removeAdv(Iterable<String> keys) {
+    keys.forEach(adv.remove);
+    return refresh();
+  }
+
+  Future<void> setSort(String? v) {
+    sort = v;
+    return refresh();
+  }
+
+  /// Search + filters + sort back to the defaults.
+  Future<void> clearAll() {
+    _debounce?.cancel();
+    search = '';
+    adv.clear();
+    sort = null;
+    return refresh();
+  }
+
   Future<void> refresh() async {
+    _debounce?.cancel();
     rows.clear();
     page = 0;
     pages = 1;
     total = 0;
     loaded = false;
+    loadingMore = false;
     error = null;
     await _fetch(1);
   }
@@ -78,18 +169,23 @@ abstract class AdminPagedProvider extends AdminBase {
   }
 
   Future<void> _fetch(int p) async {
+    final gen = p == 1 ? ++_gen : _gen;
     if (p > 1) {
       loadingMore = true;
-      notifyListeners();
+      _notify();
     }
     final query = <String, dynamic>{
       for (final e in filters.entries)
         if (e.value != null && '${e.value}'.isNotEmpty) e.key: e.value,
+      ...encodeFilters(adv),
+      if (search.isNotEmpty) 'search': search,
+      if (sort != null) 'sort': sort,
       'page': p,
       'size': 20,
     };
     final r = await run(() => api.get(path, queryParams: query),
         makLoading: p == 1);
+    if (_disposed || gen != _gen) return; // a newer search / filter replaced this request
     if (r is Map) {
       final d = PageData(Map<String, dynamic>.from(r));
       rows.addAll(d.items);
@@ -103,7 +199,7 @@ abstract class AdminPagedProvider extends AdminBase {
     }
     loaded = true;
     loadingMore = false;
-    notifyListeners();
+    _notify();
   }
 }
 
@@ -135,37 +231,21 @@ class AdminUsersProvider extends AdminPagedProvider {
   AdminUsersProvider(this.role);
   final String role; // student | teacher | admin
 
-  String search = '';
-  String? status; // active | inactive | pending_deletion
-  bool? subscribed;
+  // Live in [adv] so the filter sheet, the chips and these getters never disagree.
+  String? get status => adv['status'] as String?; // active | inactive | pending_deletion
+  bool? get subscribed => adv['subscribed'] as bool?;
 
   @override
   String get path => '$_base/users';
 
   @override
-  Map<String, dynamic> get filters => {
-    'role': role,
-    'search': search,
-    'status': status,
-    'subscribed': subscribed,
-  };
+  Map<String, dynamic> get filters => {'role': role};
 
   List<AdminUser> get users => rows.map(AdminUser.new).toList();
 
-  Future<void> setSearch(String v) {
-    search = v;
-    return refresh();
-  }
+  Future<void> setStatus(String? v) => setAdv('status', v);
 
-  Future<void> setStatus(String? v) {
-    status = v;
-    return refresh();
-  }
-
-  Future<void> setSubscribed(bool? v) {
-    subscribed = v;
-    return refresh();
-  }
+  Future<void> setSubscribed(bool? v) => setAdv('subscribed', v);
 
   Future<UserDetail?> detail(int id) async {
     final r = await run(() => api.get('$_base/users/$id'), makLoading: false);
@@ -257,21 +337,19 @@ class AdminUsersProvider extends AdminPagedProvider {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdminCoursesProvider extends AdminPagedProvider {
-  String search = '';
-  bool? published;
-  String? status;
-  int? teacherId;
+  bool? get published => adv['published'] as bool?;
+  String? get status => adv['status'] as String?;
+  int? get teacherId {
+    final v = adv['teacher_id'];
+    if (v is! LookupValue) return null;
+    return v.id is int ? v.id as int : int.tryParse('${v.id}');
+  }
 
   @override
   String get path => '$_base/courses';
 
   @override
-  Map<String, dynamic> get filters => {
-    'search': search,
-    'published': published,
-    'status': status,
-    'teacher_id': teacherId,
-  };
+  Map<String, dynamic> get filters => const {};
 
   List<AdminCourse> get courses => rows.map(AdminCourse.new).toList();
   double get totalIncome => asDouble(asMap(extra['totals'])['income']);
@@ -280,20 +358,9 @@ class AdminCoursesProvider extends AdminPagedProvider {
   Map<String, double> get incomeByCurrency =>
       asMap(asMap(extra['totals'])['income_by_currency']).map((c, v) => MapEntry(c, asDouble(v)));
 
-  Future<void> setSearch(String v) {
-    search = v;
-    return refresh();
-  }
+  Future<void> setPublished(bool? v) => setAdv('published', v);
 
-  Future<void> setPublished(bool? v) {
-    published = v;
-    return refresh();
-  }
-
-  Future<void> setStatus(String? v) {
-    status = v;
-    return refresh();
-  }
+  Future<void> setStatus(String? v) => setAdv('status', v);
 
   Future<AdminCourse?> detail(int id) async {
     final r = await run(() => api.get('$_base/courses/$id'), makLoading: false);
@@ -356,15 +423,85 @@ class AdminCoursesProvider extends AdminPagedProvider {
 //  Categories
 // ═════════════════════════════════════════════════════════════════════════════
 
-class AdminCategoriesProvider extends AdminBase {
+class AdminCategoriesProvider extends AdminBase implements AdminQueryHost {
   List<AdminCategory> items = [];
   String? error;
 
+  // premium search / filter / sort (same contract as AdminPagedProvider)
+  String search = '';
+  final Map<String, Object?> adv = {};
+  String? sort;
+  Timer? _debounce;
+  bool _disposed = false;
+  int _gen = 0;
+
+  @override
+  bool get hasActiveQuery => search.isNotEmpty || adv.isNotEmpty || sort != null;
+
+  @override
+  int? get resultCount => _loadedOnce ? items.length : null;
+  bool _loadedOnce = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Future<void> setSearch(String v) async {
+    final t = v.trim();
+    if (t == search) return;
+    search = t;
+    _debounce?.cancel();
+    _debounce = Timer(Duration.zero, () {
+      if (!_disposed) load();
+    });
+  }
+
+  Future<void> applyAdv(Map<String, Object?> values, {String? sortKey}) {
+    adv
+      ..clear()
+      ..addAll({
+        for (final e in values.entries)
+          if (e.value != null) e.key: e.value,
+      });
+    sort = sortKey;
+    return load();
+  }
+
+  Future<void> removeAdv(Iterable<String> keys) {
+    keys.forEach(adv.remove);
+    return load();
+  }
+
+  Future<void> setSort(String? v) {
+    sort = v;
+    return load();
+  }
+
+  Future<void> clearAll() {
+    _debounce?.cancel();
+    search = '';
+    adv.clear();
+    sort = null;
+    return load();
+  }
+
   Future<void> load() async {
-    final r = await run(() => api.get('$_base/categories'));
+    _debounce?.cancel();
+    final gen = ++_gen;
+    final r = await run(() => api.get('$_base/categories', queryParams: {
+      ...encodeFilters(adv),
+      if (search.isNotEmpty) 'search': search,
+      if (sort != null) 'sort': sort,
+    }));
+    if (_disposed || gen != _gen) return;
     if (r is Map) {
       items = asMapList(r['items']).map(AdminCategory.new).toList();
       error = null;
+      _loadedOnce = true;
     } else {
       error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
@@ -394,8 +531,11 @@ class AdminCategoriesProvider extends AdminBase {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdminSubscriptionsProvider extends AdminPagedProvider {
-  String? statusFilter = 'pending';
-  String search = '';
+  AdminSubscriptionsProvider() {
+    adv['status'] = 'pending'; // the admin opens the page to review requests
+  }
+
+  String? get statusFilter => adv['status'] as String?;
 
   bool required = false;
   List<Plan> plans = [];
@@ -405,7 +545,7 @@ class AdminSubscriptionsProvider extends AdminPagedProvider {
   String get path => '$_base/subscriptions';
 
   @override
-  Map<String, dynamic> get filters => {'status': statusFilter, 'search': search};
+  Map<String, dynamic> get filters => const {};
 
   List<SubInfo> get requests => rows.map((e) => SubInfo(e)).toList();
 
@@ -424,15 +564,7 @@ class AdminSubscriptionsProvider extends AdminPagedProvider {
     }
   }
 
-  Future<void> setStatusFilter(String? v) {
-    statusFilter = v;
-    return refresh();
-  }
-
-  Future<void> setSearch(String v) {
-    search = v;
-    return refresh();
-  }
+  Future<void> setStatusFilter(String? v) => setAdv('status', v);
 
   Future<bool> setRequired(bool v) async {
     final r = await call(
@@ -1127,19 +1259,13 @@ class AdminPayoutRequestsProvider extends AdminPagedProvider {
 
 /// Per-teacher payout permission.
 class AdminPayoutTeachersProvider extends AdminPagedProvider {
-  String search = '';
   String? only; // allowed | blocked
 
   @override
   String get path => '$_base/payouts/teachers';
 
   @override
-  Map<String, dynamic> get filters => {'search': search, 'only': only};
-
-  Future<void> setSearch(String v) {
-    search = v;
-    return refresh();
-  }
+  Map<String, dynamic> get filters => {'only': only};
 
   Future<void> setOnly(String? v) {
     only = v;

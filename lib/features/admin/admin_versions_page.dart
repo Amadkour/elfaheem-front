@@ -12,6 +12,7 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
@@ -69,7 +70,24 @@ class _View extends StatelessWidget {
         emptyText: 'admin_no_versions_published_yet'.tr,
         emptyIcon: Icons.rocket_launch_rounded,
         onRefresh: p.load,
-        children: [for (final v in p.items) _VersionCard(v)],
+        children: [
+          PremiumHero(
+            icon: Icons.system_update_rounded,
+            colors: AdminPalette.orange,
+            title: 'app_version'.tr,
+            subtitle: 'svc_versions_d'.tr,
+            footer: Wrap(spacing: 8, runSpacing: 6, children: [
+              HeroPill(trp('ver_pill_total', {'n': p.items.length}), icon: Icons.layers_rounded),
+              HeroPill(
+                trp('ver_pill_active', {
+                  'n': p.items.where((v) => asBool(v['is_active'])).length,
+                }),
+                icon: Icons.check_circle_rounded,
+              ),
+            ]),
+          ),
+          for (final v in p.items) _VersionCard(v),
+        ],
       ),
     );
   }
@@ -284,37 +302,22 @@ Future<void> _form(
                       maxLines: 3,
                       ltr: true,
                     ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_force_update'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal'),
-                      ),
-                      subtitle: Text(
-                        'admin_blocks_the_app_until_updated'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 11.5,
-                        ),
-                      ),
+                    PremiumSwitchRow(
+                      icon: Icons.lock_clock_rounded,
+                      title: 'admin_force_update'.tr,
+                      subtitle: 'admin_blocks_the_app_until_updated'.tr,
                       value: force,
                       onChanged: (v) => setS(() => force = v),
                     ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_recommend_update'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal'),
-                      ),
+                    PremiumSwitchRow(
+                      icon: Icons.notifications_active_rounded,
+                      title: 'admin_recommend_update'.tr,
                       value: recommend,
                       onChanged: (v) => setS(() => recommend = v),
                     ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_active_2'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal'),
-                      ),
+                    PremiumSwitchRow(
+                      icon: Icons.check_circle_rounded,
+                      title: 'admin_active_2'.tr,
                       value: active,
                       onChanged: (v) => setS(() => active = v),
                     ),

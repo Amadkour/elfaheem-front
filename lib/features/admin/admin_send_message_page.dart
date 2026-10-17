@@ -11,6 +11,7 @@ import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart';
 import '../../utils/widget/primary_button.dart';
 
 class AdminSendMessagePage extends StatefulWidget {
@@ -206,6 +207,12 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          PremiumHero(
+            icon: Icons.campaign_rounded,
+            colors: AdminPalette.blue,
+            title: 'send_message'.tr,
+            subtitle: 'svc_send_message_d'.tr,
+          ),
           label('admin_send_to'.tr),
           chips<String>(
             [
@@ -397,6 +404,7 @@ class _PickerSheetState extends State<_PickerSheet> {
   bool _failed = false;
   int _req = 0;
   final _q = TextEditingController();
+  final _debounce = Debouncer();
 
   @override
   void initState() {
@@ -406,6 +414,7 @@ class _PickerSheetState extends State<_PickerSheet> {
 
   @override
   void dispose() {
+    _debounce.dispose();
     _q.dispose();
     super.dispose();
   }
@@ -455,12 +464,14 @@ class _PickerSheetState extends State<_PickerSheet> {
             child: TextField(
               controller: _q,
               textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _load(),
+              // 1 s after the last key → one request; Enter = now
+              onChanged: (_) => _debounce.run(_load),
+              onSubmitted: (_) => _debounce.flush(_load),
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search_rounded),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.arrow_forward_rounded),
-                  onPressed: _load,
+                  onPressed: () => _debounce.flush(_load),
                 ),
                 hintText: 'search'.tr,
                 border: const OutlineInputBorder(),

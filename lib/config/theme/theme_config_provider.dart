@@ -374,12 +374,6 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     colors: _model?.gradientDanger ?? AppTheme.dangerGradient.colors,
   );
 
-  LinearGradient get purpleGradient => LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: _model?.gradientPurple ?? AppTheme.purpleGradient.colors,
-  );
-
   LinearGradient get goldCharcoalGradient => LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,

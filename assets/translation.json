@@ -403,10 +403,6 @@
     "en": "Are you sure you want to delete",
     "ar": "هل تريد حذف"
   },
-  "delete": {
-    "en": "Delete",
-    "ar": "حذف"
-  },
   "course_deleted": {
     "en": "Course deleted successfully",
     "ar": "تم حذف الدورة"
@@ -1354,11 +1350,6 @@
   "you_are_enrolled": {
     "en": "Your Are enrolled",
     "ar": "انت مشترك في الدورة"
-  },
-  "__comment_session_material_card": "─── Keys added for session_material_card.dart ───",
-  "save": {
-    "en": "Save",
-    "ar": "حفظ"
   },
   "description": {
     "en": "Description",
@@ -4845,10 +4836,6 @@
     "en": "Overview",
     "ar": "نظرة عامة"
   },
-  "admin_more": {
-    "en": "More",
-    "ar": "المزيد"
-  },
   "devices_and_payments": {
     "en": "Devices & Payments",
     "ar": "الأجهزة والمدفوعات"
@@ -7797,10 +7784,6 @@
     "en": "Super admin",
     "ar": "مشرف عام"
   },
-  "admin_my_account": {
-    "en": "My account",
-    "ar": "حسابي الشخصي"
-  },
   "admin_profile_saved": {
     "en": "Profile updated successfully",
     "ar": "تم تحديث الملف الشخصي بنجاح"
@@ -8733,25 +8716,13 @@
     "en": "Both e-mail and phone are required. Choose which one to start with.",
     "ar": "التأكيد مطلوب بالبريد والهاتف معاً. اختر بأيهما تبدأ."
   },
-  "verify_way_email": {
-    "en": "E-mail",
-    "ar": "البريد"
-  },
   "verify_way_email_sub": {
     "en": "We send a 4-digit code to your inbox.",
     "ar": "نرسل كوداً من 4 أرقام إلى بريدك الإلكتروني."
   },
-  "verify_way_telegram": {
-    "en": "Telegram",
-    "ar": "تيليجرام"
-  },
   "verify_way_telegram_sub": {
     "en": "Tap once and share your number. No code to type.",
     "ar": "اضغط مرة واحدة وشارك رقمك. بدون كتابة كود."
-  },
-  "verify_way_whatsapp": {
-    "en": "WhatsApp",
-    "ar": "واتساب"
   },
   "verify_way_whatsapp_link_sub": {
     "en": "Press Send on a ready message. No code to type.",
@@ -8760,10 +8731,6 @@
   "verify_way_whatsapp_code_sub": {
     "en": "We send a 4-digit code to your WhatsApp.",
     "ar": "نرسل كوداً من 4 أرقام على واتساب."
-  },
-  "verify_way_sms": {
-    "en": "SMS",
-    "ar": "رسالة"
   },
   "verify_way_sms_sub": {
     "en": "We send a 4-digit code by text message.",
@@ -10272,5 +10239,1065 @@
   "verify_sending": {
     "en": "Sending the code…",
     "ar": "جارٍ إرسال الرمز…"
+  },
+  "admin_search_subscriptions": {
+    "ar": "ابحث بالاسم أو البريد أو الهاتف أو اسم المرسل أو المرجع",
+    "en": "Search name, email, phone, sender or reference"
+  },
+  "admin_search_categories": {
+    "ar": "ابحث في التصنيفات",
+    "en": "Search categories"
+  },
+  "admin_results_count": {
+    "ar": "{n} نتيجة",
+    "en": "{n} results"
+  },
+  "admin_filter_title": {
+    "ar": "التصفية والترتيب",
+    "en": "Filter & sort"
+  },
+  "admin_filter_apply": {
+    "ar": "تطبيق",
+    "en": "Apply"
+  },
+  "admin_filter_reset": {
+    "ar": "إعادة ضبط",
+    "en": "Reset"
+  },
+  "admin_filter_clear": {
+    "ar": "مسح",
+    "en": "Clear"
+  },
+  "admin_filter_clear_all": {
+    "ar": "مسح الكل",
+    "en": "Clear all"
+  },
+  "admin_filter_any": {
+    "ar": "الكل",
+    "en": "Any"
+  },
+  "admin_filter_yes": {
+    "ar": "نعم",
+    "en": "Yes"
+  },
+  "admin_filter_no": {
+    "ar": "لا",
+    "en": "No"
+  },
+  "admin_filter_sort": {
+    "ar": "الترتيب",
+    "en": "Sort by"
+  },
+  "admin_filter_from": {
+    "ar": "من",
+    "en": "From"
+  },
+  "admin_filter_to": {
+    "ar": "إلى",
+    "en": "To"
+  },
+  "admin_filter_min": {
+    "ar": "الحد الأدنى",
+    "en": "Min"
+  },
+  "admin_filter_max": {
+    "ar": "الحد الأقصى",
+    "en": "Max"
+  },
+  "admin_filter_pick": {
+    "ar": "اختر",
+    "en": "Choose"
+  },
+  "admin_filter_search_hint": {
+    "ar": "ابحث بالاسم أو الرقم…",
+    "en": "Search by name or number…"
+  },
+  "admin_filter_no_results": {
+    "ar": "لا توجد نتائج مطابقة",
+    "en": "No matching results"
+  },
+  "admin_filter_no_options": {
+    "ar": "لا توجد خيارات",
+    "en": "No options"
+  },
+  "admin_filter_today": {
+    "ar": "اليوم",
+    "en": "Today"
+  },
+  "admin_filter_last_7_days": {
+    "ar": "آخر 7 أيام",
+    "en": "Last 7 days"
+  },
+  "admin_filter_last_30_days": {
+    "ar": "آخر 30 يومًا",
+    "en": "Last 30 days"
+  },
+  "admin_filter_last_90_days": {
+    "ar": "آخر 90 يومًا",
+    "en": "Last 90 days"
+  },
+  "admin_filter_this_month": {
+    "ar": "هذا الشهر",
+    "en": "This month"
+  },
+  "admin_filter_inactive_30d": {
+    "ar": "غير نشط منذ 30 يومًا",
+    "en": "Inactive for 30 days"
+  },
+  "admin_filter_never_logged_in": {
+    "ar": "لم يسجّل الدخول أبدًا",
+    "en": "Never logged in"
+  },
+  "admin_filter_status": {
+    "ar": "الحالة",
+    "en": "Status"
+  },
+  "admin_filter_subscription": {
+    "ar": "الاشتراك",
+    "en": "Subscription"
+  },
+  "admin_filter_subscription_status": {
+    "ar": "حالة طلب الاشتراك",
+    "en": "Subscription request status"
+  },
+  "admin_filter_enrolled_in": {
+    "ar": "مسجّل في دورة",
+    "en": "Enrolled in course"
+  },
+  "admin_filter_has_enrollments": {
+    "ar": "لديه تسجيلات",
+    "en": "Has enrollments"
+  },
+  "admin_filter_teaches": {
+    "ar": "يدرّس دورة",
+    "en": "Teaches course"
+  },
+  "admin_filter_has_courses": {
+    "ar": "لديه دورات",
+    "en": "Has courses"
+  },
+  "admin_filter_verified": {
+    "ar": "الحساب موثّق",
+    "en": "Account verified"
+  },
+  "admin_filter_email_verified": {
+    "ar": "البريد موثّق",
+    "en": "Email verified"
+  },
+  "admin_filter_phone_verified": {
+    "ar": "الهاتف موثّق",
+    "en": "Phone verified"
+  },
+  "admin_filter_has_phone": {
+    "ar": "لديه رقم هاتف",
+    "en": "Has phone number"
+  },
+  "admin_filter_country": {
+    "ar": "الدولة",
+    "en": "Country"
+  },
+  "admin_filter_registration_step": {
+    "ar": "خطوة التسجيل",
+    "en": "Registration step"
+  },
+  "admin_filter_joined": {
+    "ar": "تاريخ الانضمام",
+    "en": "Joined"
+  },
+  "admin_filter_last_login": {
+    "ar": "آخر تسجيل دخول",
+    "en": "Last login"
+  },
+  "admin_filter_created": {
+    "ar": "تاريخ الإنشاء",
+    "en": "Created"
+  },
+  "admin_filter_publish_state": {
+    "ar": "النشر",
+    "en": "Publishing"
+  },
+  "admin_filter_teacher": {
+    "ar": "المعلم",
+    "en": "Teacher"
+  },
+  "admin_filter_category": {
+    "ar": "التصنيف",
+    "en": "Category"
+  },
+  "admin_filter_course_type": {
+    "ar": "نوع الدورة",
+    "en": "Course type"
+  },
+  "admin_filter_currency": {
+    "ar": "العملة",
+    "en": "Currency"
+  },
+  "admin_filter_price": {
+    "ar": "السعر",
+    "en": "Price"
+  },
+  "admin_filter_private": {
+    "ar": "دورة خاصة",
+    "en": "Private course"
+  },
+  "admin_filter_discount": {
+    "ar": "عليها خصم",
+    "en": "Has discount"
+  },
+  "admin_filter_has_students": {
+    "ar": "لديها طلاب",
+    "en": "Has students"
+  },
+  "admin_filter_pending_payments": {
+    "ar": "لديها مدفوعات معلّقة",
+    "en": "Has pending payments"
+  },
+  "admin_filter_plan": {
+    "ar": "الخطة",
+    "en": "Plan"
+  },
+  "admin_filter_payment_method": {
+    "ar": "طريقة الدفع",
+    "en": "Payment method"
+  },
+  "admin_filter_method_bank_transfer": {
+    "ar": "تحويل بنكي",
+    "en": "Bank transfer"
+  },
+  "admin_filter_method_instapay": {
+    "ar": "إنستا باي",
+    "en": "InstaPay"
+  },
+  "admin_filter_method_card": {
+    "ar": "بطاقة",
+    "en": "Card"
+  },
+  "admin_filter_granted_by_admin": {
+    "ar": "منحه المدير",
+    "en": "Granted by admin"
+  },
+  "admin_filter_has_receipt": {
+    "ar": "مرفق إيصال",
+    "en": "Has receipt"
+  },
+  "admin_filter_expiring": {
+    "ar": "ينتهي قريبًا",
+    "en": "Expiring soon"
+  },
+  "admin_filter_expiring_7": {
+    "ar": "خلال 7 أيام",
+    "en": "Within 7 days"
+  },
+  "admin_filter_expiring_14": {
+    "ar": "خلال 14 يومًا",
+    "en": "Within 14 days"
+  },
+  "admin_filter_expiring_30": {
+    "ar": "خلال 30 يومًا",
+    "en": "Within 30 days"
+  },
+  "admin_filter_level": {
+    "ar": "المستوى",
+    "en": "Level"
+  },
+  "admin_filter_level_root": {
+    "ar": "رئيسي",
+    "en": "Main"
+  },
+  "admin_filter_level_sub": {
+    "ar": "فرعي",
+    "en": "Sub-category"
+  },
+  "admin_filter_admin_role": {
+    "ar": "نوع المدير",
+    "en": "Admin type"
+  },
+  "admin_filter_role_admin": {
+    "ar": "مدير",
+    "en": "Admin"
+  },
+  "admin_filter_role_super": {
+    "ar": "مدير عام",
+    "en": "Super admin"
+  },
+  "admin_sort_newest": {
+    "ar": "الأحدث أولًا",
+    "en": "Newest first"
+  },
+  "admin_sort_oldest": {
+    "ar": "الأقدم أولًا",
+    "en": "Oldest first"
+  },
+  "admin_sort_name_asc": {
+    "ar": "الاسم (أ → ي)",
+    "en": "Name (A → Z)"
+  },
+  "admin_sort_name_desc": {
+    "ar": "الاسم (ي → أ)",
+    "en": "Name (Z → A)"
+  },
+  "admin_sort_last_login": {
+    "ar": "آخر دخول",
+    "en": "Last login"
+  },
+  "admin_sort_most_logins": {
+    "ar": "الأكثر دخولًا",
+    "en": "Most logins"
+  },
+  "admin_sort_price_asc": {
+    "ar": "السعر: الأقل أولًا",
+    "en": "Price: low to high"
+  },
+  "admin_sort_price_desc": {
+    "ar": "السعر: الأعلى أولًا",
+    "en": "Price: high to low"
+  },
+  "admin_sort_ends_soon": {
+    "ar": "ينتهي قريبًا أولًا",
+    "en": "Ending soonest"
+  },
+  "admin_sort_amount_desc": {
+    "ar": "المبلغ: الأعلى أولًا",
+    "en": "Amount: high to low"
+  },
+  "admin_sort_amount_asc": {
+    "ar": "المبلغ: الأقل أولًا",
+    "en": "Amount: low to high"
+  },
+  "admin_sort_most_courses": {
+    "ar": "الأكثر دورات",
+    "en": "Most courses"
+  },
+  "admin_group_support": {
+    "ar": "الدعم والأمان",
+    "en": "Support & security"
+  },
+  "svc_group_people_sub": {
+    "ar": "إدارة المستخدمين والتصنيفات وربط أولياء الأمور",
+    "en": "Manage people, categories and parent links"
+  },
+  "svc_group_finance_sub": {
+    "ar": "التحويلات والاشتراكات والتسجيلات والمدفوعات",
+    "en": "Payouts, enrollments, subscriptions and payments"
+  },
+  "svc_group_support_sub": {
+    "ar": "مركز المساعدة والأجهزة وقواعد الدخول ومستندات المعلمين",
+    "en": "Help center, devices, sign-in rules and teacher documents"
+  },
+  "svc_group_config_sub": {
+    "ar": "المظهر والميزات والعلامات والإصدارات والمحتوى القانوني",
+    "en": "Theme, features, flags, versions and legal content"
+  },
+  "svc_count": {
+    "ar": "{n} خدمات",
+    "en": "{n} services"
+  },
+  "svc_pending": {
+    "ar": "{n} قيد الانتظار",
+    "en": "{n} pending"
+  },
+  "svc_send_message_d": {
+    "ar": "أرسل رسالة جماعية للمستخدمين",
+    "en": "Broadcast a message to users"
+  },
+  "svc_view_as_d": {
+    "ar": "شاهد التطبيق كما يراه المستخدم",
+    "en": "See the app exactly as a user does"
+  },
+  "svc_teachers_d": {
+    "ar": "مراجعة المعلمين وقبولهم وإدارتهم",
+    "en": "Review, approve and manage teachers"
+  },
+  "svc_admins_d": {
+    "ar": "إضافة حسابات المشرفين وتعديلها وحذفها",
+    "en": "Add, edit and remove admin accounts"
+  },
+  "svc_categories_d": {
+    "ar": "تنظيم الدورات في تصنيفات",
+    "en": "Organise courses into categories"
+  },
+  "svc_pl_requests_d": {
+    "ar": "الموافقة على طلبات ربط ولي الأمر بالطالب",
+    "en": "Approve parent and student link requests"
+  },
+  "svc_pl_settings_d": {
+    "ar": "اختر طريقة ربط أولياء الأمور بالطلاب",
+    "en": "Choose how parents link to students"
+  },
+  "svc_payout_d": {
+    "ar": "طلبات سحب المعلمين وإيصالات التحويل",
+    "en": "Teacher withdrawal requests and receipts"
+  },
+  "svc_enrollment_d": {
+    "ar": "طلبات تسجيل الطلاب ونقلهم",
+    "en": "Student enrollment and transfer requests"
+  },
+  "svc_subscriptions_d": {
+    "ar": "الخطط والاشتراكات الفعّالة",
+    "en": "Plans and active subscriptions"
+  },
+  "svc_payment_methods_d": {
+    "ar": "إعداد وسائل الدفع المتاحة",
+    "en": "Configure the available payment methods"
+  },
+  "svc_payments_history_d": {
+    "ar": "سجل كل المدفوعات على المنصة",
+    "en": "Every payment made on the platform"
+  },
+  "svc_help_center_d": {
+    "ar": "الشكاوى ومحادثات الدعم",
+    "en": "Complaints and support conversations"
+  },
+  "svc_devices_d": {
+    "ar": "حدود الأجهزة وطلبات تغيير الجهاز",
+    "en": "Device limits and switch requests"
+  },
+  "svc_auth_d": {
+    "ar": "طرق التحقق وخيارات تسجيل الدخول",
+    "en": "Verification ways and login options"
+  },
+  "svc_documents_d": {
+    "ar": "المستندات المطلوب من المعلم رفعها عند التسجيل",
+    "en": "Documents teachers must upload to register"
+  },
+  "svc_theme_d": {
+    "ar": "ألوان التطبيق ومظهره",
+    "en": "Colours and look of the app"
+  },
+  "svc_features_d": {
+    "ar": "إظهار ميزات التطبيق أو إخفاؤها",
+    "en": "Show or hide app features"
+  },
+  "svc_flags_d": {
+    "ar": "حدود علامات المراجعة والقراءة",
+    "en": "Review and read flag limits"
+  },
+  "svc_versions_d": {
+    "ar": "إصدارات التطبيق والتحديث الإجباري",
+    "en": "App versions and forced updates"
+  },
+  "svc_terms_d": {
+    "ar": "الشروط والخصوصية ومحتوى عن التطبيق",
+    "en": "Terms, privacy and about content"
+  },
+  "auth_settings_title": {
+    "ar": "التحقق وتسجيل الدخول",
+    "en": "Verification & login"
+  },
+  "auth_settings_sub": {
+    "ar": "اختر طريقة التحقق من الحسابات الجديدة وما يقبله نموذج تسجيل الدخول.",
+    "en": "Choose how new accounts are verified and what the login form accepts."
+  },
+  "auth_saved": {
+    "ar": "تم الحفظ",
+    "en": "Saved"
+  },
+  "auth_keep_one": {
+    "ar": "يجب إبقاء طريقة واحدة على الأقل",
+    "en": "Keep at least one way"
+  },
+  "auth_not_configured": {
+    "ar": "غير مُعدّة على الخادم — الناقص: {missing}.",
+    "en": "Not configured on the server — missing: {missing}."
+  },
+  "auth_not_offered": {
+    "ar": "لن تظهر للمستخدمين حتى يتم إعدادها.",
+    "en": "It will not be offered to users until this is set."
+  },
+  "auth_delivery_link": {
+    "ar": "رابط — مجاني، المستخدم يراسلنا",
+    "en": "Link — free, the user messages us"
+  },
+  "auth_delivery_code": {
+    "ar": "رمز — نحن نرسل الرمز",
+    "en": "Code — we send a code"
+  },
+  "verify_way_email": {
+    "ar": "البريد الإلكتروني",
+    "en": "Email"
+  },
+  "verify_way_telegram": {
+    "ar": "تيليجرام",
+    "en": "Telegram"
+  },
+  "verify_way_whatsapp": {
+    "ar": "واتساب",
+    "en": "WhatsApp"
+  },
+  "verify_way_sms": {
+    "ar": "رسالة نصية",
+    "en": "SMS"
+  },
+  "auth_verify_by": {
+    "ar": "التحقق من الحسابات الجديدة عبر",
+    "en": "Verify new accounts by"
+  },
+  "auth_verify_by_hint": {
+    "ar": "فعّل كل طريقة يمكن للمستخدم اختيارها. عند تفعيل أكثر من طريقة تُعرض بهذا الترتيب: تيليجرام، البريد، واتساب، رسالة نصية. الإرسال تلقائي لكل طريقة.",
+    "en": "Turn on every way users may choose. When several are on they are offered in this order: Telegram, Email, WhatsApp, SMS. Sending is automatic for each way."
+  },
+  "auth_require_all": {
+    "ar": "اشتراط البريد والهاتف معًا",
+    "en": "Require email AND phone"
+  },
+  "auth_require_all_hint": {
+    "ar": "متوقف: يكفي التحقق بأي طريقة مفعّلة. مفعّل: يجب على المستخدم التحقق من القناة الأخرى أيضًا (البريد + طريقة هاتف واحدة).",
+    "en": "Off: verifying with any one enabled way is enough. On: the user must also verify the other channel (email + one phone way)."
+  },
+  "auth_offer_first": {
+    "ar": "الطريقة المعروضة أولًا",
+    "en": "Offer first"
+  },
+  "auth_offer_first_hint": {
+    "ar": "الطريقة التي تظهر أولًا وتكون محددة افتراضيًا.",
+    "en": "The way shown first and selected by default."
+  },
+  "auth_automatic": {
+    "ar": "تلقائي",
+    "en": "Automatic"
+  },
+  "auth_wa_title": {
+    "ar": "طريقة التحقق عبر واتساب",
+    "en": "How WhatsApp is verified"
+  },
+  "auth_wa_hint": {
+    "ar": "تيليجرام دائمًا رابط، والبريد والرسائل النصية دائمًا رمز. أما واتساب فيمكن أن يكون أيًّا منهما.",
+    "en": "Telegram is always a link, Email and SMS are always a code. WhatsApp can be either."
+  },
+  "auth_wa_auto": {
+    "ar": "تلقائي (موصى به)",
+    "en": "Automatic (recommended)"
+  },
+  "auth_wa_auto_d": {
+    "ar": "رابط عند إعداد webhook واتساب (مجاني)، وإلا فرمز",
+    "en": "Link when the WhatsApp webhook is set up (free), otherwise a code"
+  },
+  "auth_wa_link": {
+    "ar": "رابط (مجاني)",
+    "en": "Link (free)"
+  },
+  "auth_wa_link_d": {
+    "ar": "المستخدم يراسل رقم النشاط التجاري",
+    "en": "The user messages our business number"
+  },
+  "auth_wa_code": {
+    "ar": "رمز (مزوّد مدفوع)",
+    "en": "Code (paid provider)"
+  },
+  "auth_wa_code_d": {
+    "ar": "نرسل رمزًا عبر Twilio / WhatsApp Cloud",
+    "en": "We send a code through Twilio / WhatsApp Cloud"
+  },
+  "auth_login_with": {
+    "ar": "تسجيل الدخول باستخدام",
+    "en": "Login with"
+  },
+  "auth_login_with_hint": {
+    "ar": "ما يقبله نموذج تسجيل الدخول. فعّل واحدًا أو كليهما.",
+    "en": "What the login form accepts. Turn on one or both."
+  },
+  "auth_login_email": {
+    "ar": "البريد الإلكتروني",
+    "en": "Email"
+  },
+  "auth_login_phone": {
+    "ar": "رقم الهاتف",
+    "en": "Phone"
+  },
+  "required_documents_title": {
+    "ar": "المستندات المطلوبة من المعلمين",
+    "en": "Teacher required documents"
+  },
+  "doc_intro": {
+    "ar": "مستندات يجب على كل معلم رفعها عند التسجيل. اسحب لإعادة الترتيب، واضغط على الشارة لتغييرها.",
+    "en": "Documents every teacher must upload when registering. Drag to reorder, tap a badge to switch it."
+  },
+  "doc_count": {
+    "ar": "{n} مستندات",
+    "en": "{n} documents"
+  },
+  "doc_active_count": {
+    "ar": "{n} مفعّلة",
+    "en": "{n} active"
+  },
+  "doc_required_count": {
+    "ar": "{n} إلزامية",
+    "en": "{n} required"
+  },
+  "doc_add": {
+    "ar": "إضافة مستند",
+    "en": "Add document"
+  },
+  "doc_new": {
+    "ar": "مستند جديد",
+    "en": "New document"
+  },
+  "doc_edit": {
+    "ar": "تعديل المستند",
+    "en": "Edit document"
+  },
+  "doc_empty": {
+    "ar": "لا توجد مستندات مطلوبة. يُنهي المعلمون التسجيل مباشرة بعد ملفهم الشخصي.",
+    "en": "No documents required. Teachers finish registration right after their profile."
+  },
+  "doc_quick_add": {
+    "ar": "بداية سريعة",
+    "en": "Quick start"
+  },
+  "doc_title_ar": {
+    "ar": "العنوان (بالعربية) *",
+    "en": "Title (Arabic) *"
+  },
+  "doc_title_en": {
+    "ar": "العنوان (بالإنجليزية)",
+    "en": "Title (English)"
+  },
+  "doc_desc_ar": {
+    "ar": "الوصف (بالعربية)",
+    "en": "Description (Arabic)"
+  },
+  "doc_desc_en": {
+    "ar": "الوصف (بالإنجليزية)",
+    "en": "Description (English)"
+  },
+  "doc_title_required": {
+    "ar": "العنوان بالعربية مطلوب",
+    "en": "The Arabic title is required"
+  },
+  "doc_icon": {
+    "ar": "الأيقونة",
+    "en": "Icon"
+  },
+  "doc_required": {
+    "ar": "إلزامي",
+    "en": "Required"
+  },
+  "doc_optional": {
+    "ar": "اختياري",
+    "en": "Optional"
+  },
+  "doc_required_hint": {
+    "ar": "لا يستطيع المعلم إكمال التسجيل بدونه",
+    "en": "The teacher cannot finish registration without it"
+  },
+  "doc_active": {
+    "ar": "مفعّل",
+    "en": "Active"
+  },
+  "doc_hidden": {
+    "ar": "مخفي",
+    "en": "Hidden"
+  },
+  "doc_active_hint": {
+    "ar": "يظهر للمعلمين في شاشة التسجيل",
+    "en": "Shown to teachers in the registration screen"
+  },
+  "doc_uploads_n": {
+    "ar": "{n} مرفوعات",
+    "en": "{n} uploads"
+  },
+  "doc_delete_confirm": {
+    "ar": "حذف نوع المستند هذا؟ إذا كان المعلمون قد رفعوه من قبل فسيتم تعطيله فقط.",
+    "en": "Delete this document type? If teachers already uploaded it, it is only disabled."
+  },
+  "doc_saved": {
+    "ar": "تم حفظ المستند",
+    "en": "Document saved"
+  },
+  "doc_deleted": {
+    "ar": "تم حذف المستند",
+    "en": "Document deleted"
+  },
+  "doc_disabled_instead": {
+    "ar": "تم تعطيله بدل حذفه لأن معلمين قد رفعوه",
+    "en": "Teachers already uploaded it, so it was disabled instead of deleted"
+  },
+  "save": {
+    "ar": "حفظ",
+    "en": "Save"
+  },
+  "delete": {
+    "ar": "حذف",
+    "en": "Delete"
+  },
+  "admin_my_account": {
+    "ar": "حسابي",
+    "en": "My account"
+  },
+  "admin_more": {
+    "ar": "المزيد",
+    "en": "More"
+  },
+  "content_page_title": {
+    "ar": "محتوى التطبيق",
+    "en": "App content"
+  },
+  "content_tab_about": {
+    "ar": "من نحن",
+    "en": "About us"
+  },
+  "content_tab_terms": {
+    "ar": "الشروط والأحكام",
+    "en": "Terms & conditions"
+  },
+  "content_about_title": {
+    "ar": "صفحة «من نحن»",
+    "en": "About-us page"
+  },
+  "content_about_intro": {
+    "ar": "هوية المنصة ورسالتها وإحصاءاتها وفريقها وطرق التواصل — كل ما يراه المستخدمون. اسحب لإعادة الترتيب.",
+    "en": "Your platform identity, mission, stats, team and contact channels — everything users see. Drag to reorder."
+  },
+  "content_terms_title": {
+    "ar": "الشروط والأحكام",
+    "en": "Terms & conditions"
+  },
+  "content_terms_intro": {
+    "ar": "أضف أقسام الشروط والخصوصية وعدّلها وأخفِها وأعد ترتيبها، وحدّث رقم الإصدار.",
+    "en": "Add, edit, hide and reorder the terms and privacy sections, and keep the version up to date."
+  },
+  "content_n_stats": {
+    "ar": "{n} إحصاءات",
+    "en": "{n} stats"
+  },
+  "content_n_team": {
+    "ar": "{n} أعضاء",
+    "en": "{n} team members"
+  },
+  "content_n_contacts": {
+    "ar": "{n} قنوات تواصل",
+    "en": "{n} contacts"
+  },
+  "content_n_sections": {
+    "ar": "{n} أقسام",
+    "en": "{n} sections"
+  },
+  "content_n_visible": {
+    "ar": "{n} ظاهرة",
+    "en": "{n} visible"
+  },
+  "content_version_n": {
+    "ar": "الإصدار {v}",
+    "en": "Version {v}"
+  },
+  "content_items_n": {
+    "ar": "{n} عناصر",
+    "en": "{n} items"
+  },
+  "content_add": {
+    "ar": "إضافة",
+    "en": "Add"
+  },
+  "content_empty_list": {
+    "ar": "لا توجد عناصر بعد — اضغط لإضافة أول عنصر",
+    "en": "Nothing here yet — tap to add the first one"
+  },
+  "content_visible": {
+    "ar": "ظاهر",
+    "en": "Visible"
+  },
+  "content_hidden": {
+    "ar": "مخفي",
+    "en": "Hidden"
+  },
+  "content_visible_hint": {
+    "ar": "يظهر للمستخدمين في التطبيق",
+    "en": "Shown to users in the app"
+  },
+  "content_required": {
+    "ar": "هذا الحقل مطلوب",
+    "en": "This field is required"
+  },
+  "content_saved": {
+    "ar": "تم الحفظ",
+    "en": "Saved"
+  },
+  "content_deleted": {
+    "ar": "تم الحذف",
+    "en": "Deleted"
+  },
+  "content_not_set": {
+    "ar": "لم يتم الإعداد بعد",
+    "en": "Not set up yet"
+  },
+  "content_quick_start": {
+    "ar": "بداية سريعة",
+    "en": "Quick start"
+  },
+  "content_icon": {
+    "ar": "الأيقونة",
+    "en": "Icon"
+  },
+  "content_identity": {
+    "ar": "هوية المنصة",
+    "en": "Platform identity"
+  },
+  "content_identity_hint": {
+    "ar": "الاسم والشعار والرسالة التي تظهر أعلى صفحة «من نحن».",
+    "en": "The name, logo and mission shown at the top of the About-us page."
+  },
+  "content_mission": {
+    "ar": "رسالتنا",
+    "en": "Our mission"
+  },
+  "content_edit_identity": {
+    "ar": "تعديل الهوية",
+    "en": "Edit identity"
+  },
+  "content_upload_logo": {
+    "ar": "رفع الشعار",
+    "en": "Upload logo"
+  },
+  "content_upload_photo": {
+    "ar": "رفع صورة",
+    "en": "Upload photo"
+  },
+  "content_remove_photo": {
+    "ar": "حذف الصورة",
+    "en": "Remove photo"
+  },
+  "content_photo_saved": {
+    "ar": "تم حفظ الصورة",
+    "en": "Photo saved"
+  },
+  "content_photo_removed": {
+    "ar": "تم حذف الصورة",
+    "en": "Photo removed"
+  },
+  "content_stats": {
+    "ar": "الإحصاءات",
+    "en": "Stats"
+  },
+  "content_stats_hint": {
+    "ar": "أرقام تعرّف بحجم المنصة، مثل عدد الطلاب والمعلمين.",
+    "en": "Numbers that show the size of the platform, like students and teachers."
+  },
+  "content_new_stat": {
+    "ar": "إحصائية جديدة",
+    "en": "New stat"
+  },
+  "content_edit_stat": {
+    "ar": "تعديل الإحصائية",
+    "en": "Edit stat"
+  },
+  "content_delete_stat": {
+    "ar": "حذف هذه الإحصائية؟",
+    "en": "Delete this stat?"
+  },
+  "content_team": {
+    "ar": "فريق العمل",
+    "en": "Team"
+  },
+  "content_team_hint": {
+    "ar": "أعضاء الفريق مع صورهم وأدوارهم. إن لم تُرفع صورة يظهر الرمز التعبيري.",
+    "en": "Team members with photos and roles. Without a photo the emoji is shown."
+  },
+  "content_new_member": {
+    "ar": "عضو جديد",
+    "en": "New member"
+  },
+  "content_edit_member": {
+    "ar": "تعديل العضو",
+    "en": "Edit member"
+  },
+  "content_delete_member": {
+    "ar": "حذف هذا العضو وصورته؟",
+    "en": "Delete this member and their photo?"
+  },
+  "content_contacts": {
+    "ar": "التواصل",
+    "en": "Contact"
+  },
+  "content_contacts_hint": {
+    "ar": "البريد والهاتف وواتساب والموقع وحسابات التواصل الاجتماعي.",
+    "en": "Email, phone, WhatsApp, website and social accounts."
+  },
+  "content_new_contact": {
+    "ar": "وسيلة تواصل جديدة",
+    "en": "New contact"
+  },
+  "content_edit_contact": {
+    "ar": "تعديل وسيلة التواصل",
+    "en": "Edit contact"
+  },
+  "content_delete_contact": {
+    "ar": "حذف وسيلة التواصل هذه؟",
+    "en": "Delete this contact?"
+  },
+  "content_contact_type": {
+    "ar": "النوع",
+    "en": "Type"
+  },
+  "content_type_email": {
+    "ar": "البريد الإلكتروني",
+    "en": "Email"
+  },
+  "content_type_phone": {
+    "ar": "الهاتف",
+    "en": "Phone"
+  },
+  "content_type_whatsapp": {
+    "ar": "واتساب",
+    "en": "WhatsApp"
+  },
+  "content_type_telegram": {
+    "ar": "تيليجرام",
+    "en": "Telegram"
+  },
+  "content_type_website": {
+    "ar": "الموقع",
+    "en": "Website"
+  },
+  "content_type_facebook": {
+    "ar": "فيسبوك",
+    "en": "Facebook"
+  },
+  "content_type_instagram": {
+    "ar": "إنستغرام",
+    "en": "Instagram"
+  },
+  "content_type_youtube": {
+    "ar": "يوتيوب",
+    "en": "YouTube"
+  },
+  "content_type_address": {
+    "ar": "العنوان",
+    "en": "Address"
+  },
+  "content_terms_version": {
+    "ar": "الإصدار وتاريخ التحديث",
+    "en": "Version & last update"
+  },
+  "content_edit_version": {
+    "ar": "تعديل الإصدار",
+    "en": "Edit version"
+  },
+  "content_sections": {
+    "ar": "أقسام الشروط",
+    "en": "Sections"
+  },
+  "content_sections_hint": {
+    "ar": "كل قسم يظهر كعنصر قابل للفتح في شاشة الشروط والأحكام.",
+    "en": "Each section appears as an expandable item on the terms screen."
+  },
+  "content_new_section": {
+    "ar": "قسم جديد",
+    "en": "New section"
+  },
+  "content_edit_section": {
+    "ar": "تعديل القسم",
+    "en": "Edit section"
+  },
+  "content_delete_section": {
+    "ar": "حذف هذا القسم؟",
+    "en": "Delete this section?"
+  },
+  "content_f_name_ar": {
+    "ar": "الاسم (بالعربية) *",
+    "en": "Name (Arabic) *"
+  },
+  "content_f_name_en": {
+    "ar": "الاسم (بالإنجليزية)",
+    "en": "Name (English)"
+  },
+  "content_f_tagline_ar": {
+    "ar": "الشعار النصي (بالعربية)",
+    "en": "Tagline (Arabic)"
+  },
+  "content_f_tagline_en": {
+    "ar": "الشعار النصي (بالإنجليزية)",
+    "en": "Tagline (English)"
+  },
+  "content_f_mission_ar": {
+    "ar": "الرسالة (بالعربية)",
+    "en": "Mission (Arabic)"
+  },
+  "content_f_mission_en": {
+    "ar": "الرسالة (بالإنجليزية)",
+    "en": "Mission (English)"
+  },
+  "content_f_value_ar": {
+    "ar": "القيمة (بالعربية) *",
+    "en": "Value (Arabic) *"
+  },
+  "content_f_value_en": {
+    "ar": "القيمة (بالإنجليزية)",
+    "en": "Value (English)"
+  },
+  "content_f_label_ar": {
+    "ar": "الوصف (بالعربية) *",
+    "en": "Label (Arabic) *"
+  },
+  "content_f_label_en": {
+    "ar": "الوصف (بالإنجليزية)",
+    "en": "Label (English)"
+  },
+  "content_f_title_ar": {
+    "ar": "العنوان (بالعربية) *",
+    "en": "Title (Arabic) *"
+  },
+  "content_f_title_en": {
+    "ar": "العنوان (بالإنجليزية)",
+    "en": "Title (English)"
+  },
+  "content_f_body_ar": {
+    "ar": "النص (بالعربية) *",
+    "en": "Text (Arabic) *"
+  },
+  "content_f_body_en": {
+    "ar": "النص (بالإنجليزية)",
+    "en": "Text (English)"
+  },
+  "content_f_role_ar": {
+    "ar": "الدور (بالعربية) *",
+    "en": "Role (Arabic) *"
+  },
+  "content_f_role_en": {
+    "ar": "الدور (بالإنجليزية)",
+    "en": "Role (English)"
+  },
+  "content_f_emoji": {
+    "ar": "رمز تعبيري (يظهر بدل الصورة)",
+    "en": "Emoji (shown when there is no photo)"
+  },
+  "content_f_value": {
+    "ar": "الرابط أو الرقم *",
+    "en": "Link or number *"
+  },
+  "content_f_version": {
+    "ar": "رقم الإصدار",
+    "en": "Version"
+  },
+  "content_f_updated_ar": {
+    "ar": "آخر تحديث (بالعربية)",
+    "en": "Last updated (Arabic)"
+  },
+  "content_f_updated_en": {
+    "ar": "آخر تحديث (بالإنجليزية)",
+    "en": "Last updated (English)"
+  },
+  "dev_pill_devices": {
+    "ar": "{n} أجهزة",
+    "en": "{n} devices"
+  },
+  "dev_pill_days": {
+    "ar": "{n} يومًا",
+    "en": "{n} days"
+  },
+  "dev_pill_videos": {
+    "ar": "{n} مشاهدة شهريًا",
+    "en": "{n} views/month"
+  },
+  "ver_pill_total": {
+    "ar": "{n} إصدارات",
+    "en": "{n} versions"
+  },
+  "ver_pill_active": {
+    "ar": "{n} مفعّلة",
+    "en": "{n} active"
+  },
+  "cat_pill_total": {
+    "ar": "{n} تصنيفات",
+    "en": "{n} categories"
   }
 }

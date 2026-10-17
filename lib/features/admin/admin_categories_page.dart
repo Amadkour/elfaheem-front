@@ -10,8 +10,11 @@ import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'admin_filter_models.dart';
+import 'admin_filters.dart';
 import 'admin_list.dart';
 import 'admin_models.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 
 class AdminCategoriesPage extends StatelessWidget {
@@ -23,6 +26,24 @@ class AdminCategoriesPage extends StatelessWidget {
     child: const _View(),
   );
 }
+
+// ── premium filters ─────────────────────────────────────────────────────────
+
+const _categorySort = SortSpec({
+  'oldest': 'admin_sort_oldest',
+  'newest': 'admin_sort_newest',
+  'name_asc': 'admin_sort_name_asc',
+  'name_desc': 'admin_sort_name_desc',
+  'most_courses': 'admin_sort_most_courses',
+});
+
+const _categorySpecs = <FilterSpec>[
+  FilterSpec.tri('has_courses', 'admin_filter_has_courses'),
+  FilterSpec.choice('level', 'admin_filter_level', {
+    'root': 'admin_filter_level_root',
+    'sub': 'admin_filter_level_sub',
+  }),
+];
 
 class _View extends StatelessWidget {
   const _View();
@@ -45,14 +66,38 @@ class _View extends StatelessWidget {
         label: Text('admin_add_category'.tr,
             style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
       ),
-      child: AdminSimpleList(
-        loading: p.isLoading,
-        error: p.error,
-        isEmpty: p.items.isEmpty,
-        emptyText: 'admin_no_categories_yet'.tr,
-        onRefresh: p.load,
-        children: [for (final cat in p.items) _CategoryCard(cat)],
-      ),
+      child: Column(children: [
+        AdminFilterBar(
+          host: p,
+          hintKey: 'admin_search_categories',
+          specs: _categorySpecs,
+          sort: _categorySort,
+        ),
+        Expanded(
+          child: AdminSimpleList(
+            loading: p.isLoading,
+            error: p.error,
+            isEmpty: p.items.isEmpty,
+            emptyText: p.hasActiveQuery
+                ? 'admin_filter_no_results'.tr
+                : 'admin_no_categories_yet'.tr,
+            onRefresh: p.load,
+            children: [
+              PremiumHero(
+                icon: Icons.category_rounded,
+                colors: AdminPalette.teal,
+                title: 'categories'.tr,
+                subtitle: 'svc_categories_d'.tr,
+                footer: Wrap(spacing: 8, children: [
+                  HeroPill(trp('cat_pill_total', {'n': p.items.length}),
+                      icon: Icons.folder_special_rounded),
+                ]),
+              ),
+              for (final cat in p.items) _CategoryCard(cat),
+            ],
+          ),
+        ),
+      ]),
     );
   }
 }

@@ -7,6 +7,8 @@
 //   Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminParentRequestsPage()));
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -37,6 +39,15 @@ class _List extends StatefulWidget {
 class _ListState extends State<_List> {
   final _scroll = ScrollController();
   final _search = TextEditingController();
+  Timer? _debounce;
+
+  /// 1 s after the last keystroke (or Enter) → one request.
+  void _runSearch(String v) {
+    final p = context.read<AdminParentLinkProvider>();
+    if (p.search == v.trim()) return;
+    p.search = v.trim();
+    p.loadRequests();
+  }
 
   @override
   void initState() {
@@ -51,6 +62,7 @@ class _ListState extends State<_List> {
   @override
   void dispose() {
     _scroll.dispose();
+    _debounce?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -60,6 +72,8 @@ class _ListState extends State<_List> {
     final p = context.watch<AdminParentLinkProvider>();
     final c = context.colors;
     return BasePage(
+      useWebCard: true,
+maxWith: 1100,
       appBar: ScreenAppBar(title: 'pl_requests_title'.tr),
       child: Column(children: [
         Padding(
@@ -73,9 +87,15 @@ class _ListState extends State<_List> {
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               isDense: true,
             ),
+            onChanged: (v) {
+              _debounce?.cancel();
+              _debounce = Timer(const Duration(seconds: 1), () {
+                if (mounted) _runSearch(v);
+              });
+            },
             onSubmitted: (v) {
-              p.search = v;
-              p.loadRequests();
+              _debounce?.cancel();
+              _runSearch(v);
             },
           ),
         ),

@@ -122,7 +122,7 @@ class _StatsRow extends StatelessWidget {
             label: 'completed_courses'.tr,
             count: p.completedCount,
             icon: Icons.workspace_premium_rounded,
-            gradient: context.colors.purpleGradient,
+            gradient: context.colors.goldCharcoalGradient,
             shadowColor: context.colors.accent2,
           ),
         ],

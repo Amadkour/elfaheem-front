@@ -21,6 +21,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart';
+import 'admin_premium_widgets.dart';
 
 class AdminParentLinkSettingsPage extends StatelessWidget {
   const AdminParentLinkSettingsPage({super.key});
@@ -246,8 +247,12 @@ class _FormState extends State<_Form> {
     final c = context.colors;
     return PlCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(icon, color: c.primary), const SizedBox(width: 8), Text(title, style: c.h2.copyWith(fontSize: 16))]),
-        const SizedBox(height: 12),
+        Row(children: [
+          ServiceIcon(icon: icon, colors: AdminPalette.violet, size: 36),
+          const SizedBox(width: 10),
+          Expanded(child: Text(title, style: c.h2.copyWith(fontSize: 16))),
+        ]),
+        const SizedBox(height: 14),
         ...children,
       ]),
     );
@@ -263,23 +268,39 @@ class _FormState extends State<_Form> {
           keyboardType: number ? TextInputType.number : TextInputType.text,
           textDirection: ltr ? TextDirection.ltr : null,
           style: lines > 1 ? const TextStyle(fontFamily: 'monospace', fontSize: 13) : null,
-          decoration: InputDecoration(labelText: label, helperText: helper, helperMaxLines: 3, border: const OutlineInputBorder()),
+          decoration: InputDecoration(labelText: label, helperText: helper, helperMaxLines: 3, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
         ),
       );
 
   @override
   Widget build(BuildContext context) {
+    context.watch<LangProvider>();
     final c = context.colors;
     final p = context.watch<AdminParentLinkProvider>();
     return BasePage(
+      useWebCard: true,
+      maxWith: 1100,
       appBar: ScreenAppBar(title: 'pl_settings_title'.tr),
       child: !_ready
           ? (p.hasError ? PlError(p.errorMessage ?? '', onRetry: _load) : const Center(child: CircularProgressIndicator()))
           : ListView(padding: const EdgeInsets.all(16), children: [
+              PremiumHero(
+                icon: Icons.family_restroom_rounded,
+                colors: AdminPalette.violet,
+                title: 'pl_settings_title'.tr,
+                subtitle: 'svc_pl_settings_d'.tr,
+                footer: Wrap(spacing: 8, children: [
+                  HeroPill('pl_mode_$_mode'.tr, icon: Icons.tune_rounded),
+                ]),
+              ),
               Container(
-                padding: const EdgeInsets.all(12),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(color: c.warning.withAlpha(30), borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 14),
+                decoration: BoxDecoration(
+                  color: c.warning.withAlpha(30),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: c.warning.withAlpha(80)),
+                ),
                 child: Row(children: [
                   Icon(Icons.info_outline_rounded, color: c.warning),
                   const SizedBox(width: 8),
@@ -315,7 +336,7 @@ class _FormState extends State<_Form> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: _method,
-                      decoration: InputDecoration(labelText: 'pl_method'.tr, border: const OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'pl_method'.tr, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
                       items: const [DropdownMenuItem(value: 'POST', child: Text('POST')), DropdownMenuItem(value: 'GET', child: Text('GET'))],
                       onChanged: (v) => setState(() => _method = v ?? 'POST'),
                     ),
@@ -324,7 +345,7 @@ class _FormState extends State<_Form> {
                   Expanded(
                     child: DropdownButtonFormField<String>(
                       initialValue: _auth,
-                      decoration: InputDecoration(labelText: 'pl_auth'.tr, border: const OutlineInputBorder()),
+                      decoration: InputDecoration(labelText: 'pl_auth'.tr, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
                       items: [for (final a in ['none', 'bearer', 'header']) DropdownMenuItem(value: a, child: Text('pl_auth_$a'.tr))],
                       onChanged: (v) => setState(() => _auth = v ?? 'none'),
                     ),
@@ -351,8 +372,11 @@ class _FormState extends State<_Form> {
               ]),
               const SizedBox(height: 8),
               SizedBox(
-                height: 50,
+                height: 52,
                 child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))

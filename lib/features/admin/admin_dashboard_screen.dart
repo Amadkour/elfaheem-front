@@ -1,13 +1,19 @@
 // lib/features/admin/admin_dashboard_screen.dart
 //
-// The admin shell — same structure as the teacher dashboard:
-//   • DashboardItem tabs rendered by WideShell / RailShell / MobileShell
-//   • a badge on the last tab ("More") with the number of pending payout
-//     requests, and the same count on the "payout" tile inside it.
+// The admin shell.
 //
-// Tabs: Overview · Students · Courses · More.
-// "More" opens every other control page (teachers, categories, payouts,
-// subscriptions, devices & payments, theme, features, versions, terms).
+//  • Web / wide (sidebar or rail) → 9 tabs:
+//      Overview · Students · Courses · Teachers ·
+//      People · Finance · Support & security · Configuration · My account
+//    The last five are "service hubs" (see admin_services_hub.dart); the
+//    Finance tab carries the pending payouts + enrollment requests badge, the
+//    Support tab carries the complaints badge.
+//
+//  • Phone → 5 tabs: Overview · Students · Courses · Teachers · More
+//    "More" lists the same services as SettingsTiles.
+//
+// Tabs 0-3 are identical in both layouts, so AdminOverviewPage.onOpenTab keeps
+// working whichever layout is showing.
 //
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
@@ -28,43 +34,23 @@ import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboa
     show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
-import '../../utils/widget/parent_component.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
-import '../shared/profile/compalints/complaints_screen.dart';
 import '../shared/profile/components/setting_group.dart';
-import 'admin_admins_page.dart';
-import 'admin_auth_settings_page.dart';
-import 'admin_categories_page.dart';
 import 'admin_common.dart';
-import 'admin_content_page.dart';
 import 'admin_courses_page.dart';
-import 'admin_devices_page.dart';
-import 'admin_features_page.dart';
-import 'admin_flags_settings_page.dart';
-import 'admin_finance_page.dart';
 import 'admin_overview_page.dart';
-import 'admin_payment_page.dart';
-import 'admin_parent_link_settings_page.dart';
-import 'admin_parent_requests_page.dart';
-import 'admin_payouts_page.dart';
+import 'admin_premium_widgets.dart';
 import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
-import 'admin_required_documents_page.dart';
-import 'admin_send_message_page.dart';
-import 'admin_subscriptions_page.dart';
-import 'admin_theme_page.dart';
+import 'admin_services_hub.dart';
 import 'admin_users_page.dart';
-import 'admin_versions_page.dart';
-import 'admin_view_as_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
-import 'enrollment_request/teacher_transfers_screen.dart';
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {
@@ -88,27 +74,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _tabs = AdminDashboardProvider();
   final _payouts = AdminPendingPayoutsProvider();
 
-  // Owned here (like _payouts) and shared with the "More" page + the complaints
+  // Owned here (like _payouts) and shared with the service pages + the complaints
   // screens, so the badge and the list always read the same instance.
   final _complaints = ComplaintProvider();
-  late final List<DashboardItem> _items;
 
-  // One counter per tab. Refreshing bumps it, which re-creates that tab's page
-  // (so it reloads its data) without touching the individual admin pages.
-  final _epochs = List.generate(4, (_) => ValueNotifier<int>(0)); // tabs 0-3
+  late final List<DashboardItem> _mobileItems;
+  late final List<DashboardItem> _wideItems;
+
+  // One counter per data tab (0-3). Refreshing bumps it, which re-creates that
+  // tab's page (so it reloads its data) without touching the admin pages.
+  final _epochs = List.generate(4, (_) => ValueNotifier<int>(0));
+
+  // Labels double as translation keys (the shells translate them).
+  static const _moreLabel = 'admin_more';
+  static const _financeLabel = 'admin_group_finance';
+  static const _supportLabel = 'admin_group_support';
 
   // Returns immediately: RefreshButton hides itself while the returned Future
-  // is pending, so we must not await any network call here. The page that was
-  // re-created shows its own loading state, and the badge updates by itself.
+  // is pending, so we must not await any network call here.
   Future<void> _refreshTab(int i) async {
     _epochs[i].value++;
-    if (!_isAdmin) return;
-    context.read<TeacherTransfersProvider>().ensureLoaded();
-    _payouts.refresh(); // fire-and-forget: updates the "More" badge
-    _complaints.refreshCount();
+    _refreshBadges();
   }
 
-  static const _moreLabel = 'admin_more';
+  Future<void> _refreshBadges() async {
+    if (!_isAdmin) return;
+    context.read<TeacherTransfersProvider>().ensureLoaded();
+    _payouts.refresh(); // fire-and-forget: updates the badges
+    _complaints.refreshCount();
+  }
 
   bool get _isAdmin => [
     'admin',
@@ -120,61 +114,135 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void initState() {
     super.initState();
 
-    _items = [
-      DashboardItem(
+    // ── tabs 0-3: same in every layout ─────────────────────────────────
+    final overview = _AdminTab(
+      titleKey: 'admin_dashboard',
+      epoch: _epochs[0],
+      onRefresh: () => _refreshTab(0),
+      child: AdminOverviewPage(onOpenTab: _tabs.onChangeTab),
+    );
+    final students = _AdminTab(
+      titleKey: 'admin_students',
+      epoch: _epochs[1],
+      onRefresh: () => _refreshTab(1),
+      child: AdminUsersPage(role: 'student', embedded: true),
+    );
+    final courses = _AdminTab(
+      titleKey: 'courses',
+      epoch: _epochs[2],
+      onRefresh: () => _refreshTab(2),
+      child: AdminCoursesPage(embedded: true),
+    );
+    final teachers = _AdminTab(
+      titleKey: 'teachers',
+      epoch: _epochs[3],
+      onRefresh: () => _refreshTab(3),
+      child: AdminUsersPage(role: 'teacher', embedded: true),
+    );
+
+    DashboardItem data(
+      IconData o,
+      IconData a,
+      String label,
+      int i,
+      Widget page,
+    ) => DashboardItem(o, a, label, () => _refreshTab(i), page);
+
+    final head = [
+      data(
         Icons.space_dashboard_outlined,
         Icons.space_dashboard_rounded,
         'admin_overview_2',
-            () => _refreshTab(0),
-        _AdminTab(
-          titleKey: 'admin_dashboard',
-          epoch: _epochs[0],
-          onRefresh: () => _refreshTab(0),
-          child: AdminOverviewPage(onOpenTab: _tabs.onChangeTab),
-        ),
+        0,
+        overview,
       ),
-      DashboardItem(
+      data(
         Icons.school_outlined,
         Icons.school_rounded,
         'admin_students',
-            () => _refreshTab(1),
-        _AdminTab(
-          titleKey: 'admin_students',
-          epoch: _epochs[1],
-          onRefresh: () => _refreshTab(1),
-          child: AdminUsersPage(role: 'student', embedded: true),
-        ),
+        1,
+        students,
       ),
-      DashboardItem(
+      data(
         Icons.auto_stories_outlined,
         Icons.auto_stories_rounded,
         'courses',
-            () => _refreshTab(2),
-        _AdminTab(
-          titleKey: 'courses',
-          epoch: _epochs[2],
-          onRefresh: () => _refreshTab(2),
-          child: AdminCoursesPage(embedded: true),
-        ),
+        2,
+        courses,
       ),
-      DashboardItem(
+      data(
         Icons.co_present_outlined,
         Icons.co_present_rounded,
         'teachers',
-            () => _refreshTab(3),
-        _AdminTab(
-          titleKey: 'teachers',
-          epoch: _epochs[3],
-          onRefresh: () => _refreshTab(3),
-          child: AdminUsersPage(role: 'teacher', embedded: true),
-        ),
+        3,
+        teachers,
       ),
+    ];
+
+    // ── phone: 5 tabs ──────────────────────────────────────────────────
+    _mobileItems = [
+      ...head,
       DashboardItem(
         Icons.grid_view_outlined,
         Icons.grid_view_rounded,
         _moreLabel,
         null, // the "More" page has no refresh button
-        const _AdminTab(titleKey: _moreLabel, child: _MorePage()),
+        const _AdminTab(
+          titleKey: _moreLabel,
+          child: _MorePage(showServices: true),
+        ),
+      ),
+    ];
+
+    // ── web / rail: 9 tabs ─────────────────────────────────────────────
+    DashboardItem hub(IconData o, IconData a, String label, String groupId) =>
+        DashboardItem(
+          o,
+          a,
+          label,
+          null,
+          _AdminTab(
+            titleKey: label,
+            onRefresh: _refreshBadges,
+            child: AdminServicesHub(groupId: groupId),
+          ),
+        );
+
+    _wideItems = [
+      ...head,
+      hub(
+        Icons.groups_outlined,
+        Icons.groups_rounded,
+        'admin_group_people',
+        'people',
+      ),
+      hub(
+        Icons.account_balance_wallet_outlined,
+        Icons.account_balance_wallet_rounded,
+        _financeLabel,
+        'finance',
+      ),
+      hub(
+        Icons.support_agent_outlined,
+        Icons.support_agent_rounded,
+        _supportLabel,
+        'support',
+      ),
+      hub(
+        Icons.settings_suggest_outlined,
+        Icons.settings_suggest_rounded,
+        'admin_group_config',
+        'config',
+      ),
+      DashboardItem(
+        Icons.person_outline_rounded,
+        Icons.person_rounded,
+        'admin_my_account',
+        null,
+        const _AdminTab(
+          titleKey: 'admin_my_account',
+          child: _MorePage(showServices: false),
+        ),
       ),
     ];
 
@@ -182,10 +250,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (mounted && _isAdmin) {
         _payouts.refresh();
         _complaints.refreshCount();
-      }
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isAdmin) {
         context.read<TeacherTransfersProvider>().ensureLoaded();
       }
     });
@@ -204,6 +268,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AdminPalette.attach(context); // icon / hero colours follow YOUR theme
     // Defence in depth: the server enforces roles on every call anyway.
     if (!_isAdmin) {
       return BasePage(
@@ -220,10 +285,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ChangeNotifierProvider<ComplaintProvider>.value(value: _complaints),
       ],
       builder: (context, _) {
+        // Rebuild (and so re-translate the sidebar labels) when the language changes.
+        context.watch<LangProvider>();
         final tabs = context.watch<AdminDashboardProvider>();
+
         return PopScope(
-          // Back goes to the Overview tab first; from the Overview tab it may leave the app
-          // (it used to be blocked completely).
+          // Back goes to the Overview tab first; from the Overview tab it may leave the app.
           canPop: tabs.currentTab == 0,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) tabs.onChangeTab(0);
@@ -233,43 +300,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 // select: rebuild only when the NUMBER changes.
-                final pending =
-                    context.select<AdminPendingPayoutsProvider, int>(
-                          (p) => p.count,
-                    ) +
-                        context.select<TeacherTransfersProvider, int>(
-                              (p) => p.total,
-                        ) +
-                        context.select<ComplaintProvider, int>((p) => p.count);
-                for (final item in _items) {
-                  item.badge = item.label == _moreLabel ? pending : 0;
+                final payouts = context
+                    .select<AdminPendingPayoutsProvider, int>((p) => p.count);
+                final transfers = context.select<TeacherTransfersProvider, int>(
+                  (p) => p.total,
+                );
+                final complaints = context.select<ComplaintProvider, int>(
+                  (p) => p.count,
+                );
+
+                for (final item in _mobileItems) {
+                  item.badge = item.label == _moreLabel
+                      ? payouts + transfers + complaints
+                      : 0;
+                }
+                for (final item in _wideItems) {
+                  if (item.label == _financeLabel) {
+                    item.badge = payouts + transfers;
+                  } else if (item.label == _supportLabel) {
+                    item.badge = complaints;
+                  } else {
+                    item.badge = 0;
+                  }
                 }
 
                 final w = constraints.maxWidth;
+                final isWide = w >= 1000;
+                final isRail = kIsWeb && w >= 600;
+                final items = (isWide || isRail) ? _wideItems : _mobileItems;
+
+                // The two layouts have different tab counts → never point past the end.
+                final current = tabs.currentTab.clamp(0, items.length - 1);
+
                 void onTap(int i) {
                   if (mounted) tabs.onChangeTab(i);
                 }
 
-                if (w >= 1000) {
+                if (isWide) {
                   return WideShell(
-                    currentIndex: tabs.currentTab,
+                    currentIndex: current,
                     onTap: onTap,
-                    dashboardItems: _items,
+                    dashboardItems: items,
                     unreadCount: 0,
                   );
                 }
-                if (kIsWeb && w >= 600) {
+                if (isRail) {
                   return RailShell(
-                    currentIndex: tabs.currentTab,
+                    currentIndex: current,
                     onTap: onTap,
-                    dashboardItems: _items,
+                    dashboardItems: items,
                     unreadCount: 0,
                   );
                 }
                 return MobileShell(
-                  currentIndex: tabs.currentTab,
+                  currentIndex: current,
                   onTap: onTap,
-                  dashboardItems: _items,
+                  dashboardItems: items,
                 );
               },
             ),
@@ -284,9 +370,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 /// tabs which each build their own BasePage.
 ///
 /// • [epoch] changes → the page is re-created, so it reloads its data.
-/// • On wide / rail layouts the refresh button lives in the shell's top bar
-///   (same as the user dashboard). On the phone layout there is no top bar, so
-///   the button is drawn over the app bar here.
+/// • On wide / rail layouts the refresh button lives in the shell's top bar.
+///   On the phone layout there is no top bar, so the button is drawn over the
+///   app bar here.
 class _AdminTab extends StatelessWidget {
   const _AdminTab({
     required this.titleKey,
@@ -311,10 +397,10 @@ class _AdminTab extends StatelessWidget {
       child: epoch == null
           ? child
           : ValueListenableBuilder<int>(
-        valueListenable: epoch!,
-        builder: (_, e, _) =>
-            KeyedSubtree(key: ValueKey(e), child: child),
-      ),
+              valueListenable: epoch!,
+              builder: (_, e, _) =>
+                  KeyedSubtree(key: ValueKey(e), child: child),
+            ),
     );
 
     if (!isMobileShell || onRefresh == null) return page;
@@ -332,9 +418,14 @@ class _AdminTab extends StatelessWidget {
   }
 }
 
-// ── "More" tab (the admin's profile-style page) ──────────────────────────────
+// ── "More" tab (phone) / "My account" tab (web) ──────────────────────────────
 class _MorePage extends StatefulWidget {
-  const _MorePage();
+  const _MorePage({required this.showServices});
+
+  /// true  → phone "More": profile header + every service group + account
+  /// false → web "My account": profile header + account groups only
+  ///         (the services already have their own sidebar tabs)
+  final bool showServices;
 
   @override
   State<_MorePage> createState() => _MorePageState();
@@ -356,10 +447,19 @@ class _MorePageState extends State<_MorePage> {
     });
   }
 
+  Widget _padded(Widget child, {EdgeInsets? padding}) => Padding(
+    padding: padding ?? const EdgeInsets.symmetric(horizontal: 20),
+    child: child,
+  );
+
   @override
   Widget build(BuildContext context) {
+    context.watch<LangProvider>();
     final c = context.colors;
     final p = context.watch<ProfileProvider>();
+    final groups = widget.showServices
+        ? adminServiceGroups(context)
+        : const <AdminServiceGroup>[];
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -371,280 +471,40 @@ class _MorePageState extends State<_MorePage> {
             child: Column(
               children: [
                 const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: ProfileHeader(provider: p),
-                ),
+                _padded(ProfileHeader(provider: p)),
                 const SizedBox(height: 28),
 
-                // ── Admin controls ───────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SettingsGroup(
-                    title: 'admin_group_people'.tr,
-                    icon: Icons.groups_rounded,
-                    children: [
-                      SettingsTile(
-                        icon: Icons.campaign_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'send_message'.tr,
-                        onTap: () => _push(const AdminSendMessagePage()),
-                      ),
-                      if (isSuperNow(context))
-                        SettingsTile(
-                          icon: Icons.switch_account_rounded,
-                          iconBg: c.warning.withAlpha(50),
-                          iconColor: c.warning,
-                          label: 'view_as_user'.tr,
-                          onTap: () => _push(const AdminViewAsPage()),
-                        ),
-                      SettingsTile(
-                        icon: Icons.co_present_rounded,
-                        iconBg: c.danger.withAlpha(50),
-                        iconColor: c.danger,
-                        label: 'teachers'.tr,
-                        onTap: () =>
-                            _push(const AdminUsersPage(role: 'teacher')),
-                      ),
-                      // Super-admin only: manage the admin accounts.
-                      if (isSuperNow(context))
-                        SettingsTile(
-                          icon: Icons.admin_panel_settings_rounded,
-                          iconBg: c.success.withAlpha(50),
-                          iconColor: c.success,
-                          label: 'admin_admins'.tr,
-                          onTap: () => _push(const AdminAdminsPage()),
-                        ),
-                      SettingsTile(
-                        icon: Icons.category_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'categories'.tr,
-                        onTap: () => _push(const AdminCategoriesPage()),
-                      ),
-                      // Parent ⇄ student link requests (admins + super-admin)
-                      SettingsTile(
-                        icon: Icons.family_restroom_rounded,
-                        iconBg: c.success.withAlpha(50),
-                        iconColor: c.success,
-                        label: 'pl_requests_title'.tr,
-                        onTap: () => _push(const AdminParentRequestsPage()),
-                      ),
-                      // Super-admin only: choose the linking mode + its settings.
-                      if (isSuperNow(context))
-                        SettingsTile(
-                          icon: Icons.rule_rounded,
-                          iconBg: c.warning.withAlpha(50),
-                          iconColor: c.warning,
-                          label: 'pl_settings_title'.tr,
-                          onTap: () => _push(const AdminParentLinkSettingsPage()),
-                        ),
-                    ],
+                // ── Service groups (phone only) ──────────────────────────
+                for (final g in groups) ...[
+                  _padded(
+                    SettingsGroup(
+                      title: g.titleKey.tr,
+                      icon: g.icon,
+                      children: [
+                        for (final s in g.visibleServices) adminServiceTile(s),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── Finance  ───────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SettingsGroup(
-                    title: 'admin_group_finance'.tr,
-                    icon: Icons.account_balance_rounded,
-                    children: [
-                      // Pending payout requests — same overlay as the teacher's
-                      // "enrollment requests" tile.
-                      TileCountOverlay(
-                        count: context.select<AdminPendingPayoutsProvider, int>(
-                              (p) => p.count,
-                        ),
-                        child: SettingsTile(
-                          icon: Icons.payments_rounded,
-                          iconBg: c.danger.withAlpha(50),
-                          iconColor: c.danger,
-                          label: 'payout'.tr,
-                          onTap: () async {
-                            final badge = context
-                                .read<AdminPendingPayoutsProvider>();
-                            await _push(const AdminPayoutsPage());
-                            // approve / reject / paid happened in there → recount
-                            badge.refresh();
-                          },
-                        ),
-                      ),
-                      ParentComponent(
-                        featureKey: 'profile.enrollment_request',
-                        child: TileCountOverlay(
-                          count: context.select<TeacherTransfersProvider, int>(
-                                (p) => p.total,
-                          ),
-                          child: SettingsTile(
-                            icon: Icons.how_to_reg_rounded,
-                            iconBg: c.successTint,
-                            iconColor: c.success,
-                            label: 'enrollment_requests'.tr,
-                            onTap: () => _push(const TeacherTransfersScreen()),
-                          ),
-                        ),
-                      ),
-
-                      SettingsTile(
-                        icon: Icons.workspace_premium_rounded,
-                        iconBg: c.warning.withAlpha(50),
-                        iconColor: c.warning,
-                        label: 'subscriptions'.tr,
-                        onTap: () => _push(const AdminSubscriptionsPage()),
-                      ),
-                      ParentComponent(
-                        featureKey: 'profile.payment',
-                        child: SettingsTile(
-                          icon: Icons.credit_card_rounded,
-                          iconBg: c.successTint,
-                          iconColor: c.success,
-                          label: 'apm_title'.tr,
-                          onTap: () => _push(const AdminPaymentsPage()),
-                        ),
-                      ),
-                      ParentComponent(
-                        featureKey: 'profile.historical_payment',
-                        child: SettingsTile(
-                          icon: Icons.receipt_long_rounded,
-                          iconBg: c.successTint,
-                          iconColor: c.success,
-                          label: 'admin_payments'.tr,
-                          onTap: () => _push(const AdminFinancePage()),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                // ──  requests ───────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SettingsGroup(
-                    title: 'help'.tr,
-                    icon: Icons.help_center_rounded,
-                    children: [
-                      // New / unopened complaints — same overlay as the payout
-                      // and enrollment-request tiles.
-                      TileCountOverlay(
-                        count: context.select<ComplaintProvider, int>(
-                              (p) => p.count,
-                        ),
-                        child: SettingsTile(
-                          onTap: () async {
-                            final complaints = context.read<ComplaintProvider>();
-                            // .value, NOT create: `create` would DISPOSE the shared
-                            // provider as soon as the complaints screen is popped.
-                            await _push(
-                              ChangeNotifierProvider<ComplaintProvider>.value(
-                                value: complaints,
-                                child: const ComplaintsScreen(),
-                              ),
-                            );
-                            // read / replied / status changed in there → recount
-                            complaints.refreshCount();
-                          },
-                          icon: Icons.support_agent_rounded,
-                          iconBg: c.primaryTint,
-                          iconColor: c.primary,
-                          label: 'help_center'.tr,
-                        ),
-                      ),
-                      SettingsTile(
-                        icon: Icons.devices_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'admin_devices'.tr,
-                        onTap: () => _push(const AdminDevicesPage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.devices_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'admin_devices'.tr,
-                        onTap: () => _push(const AdminAuthSettingsPage()),
-                      ),
-
-                      SettingsTile(
-                        icon: Icons.devices_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'admin_devices'.tr,
-                        onTap: () => _push(const AdminRequiredDocumentsPage()),
-                      ),
-
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // ── App configuration ────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SettingsGroup(
-                    title: 'admin_group_config'.tr,
-                    icon: Icons.tune_rounded,
-                    children: [
-                      SettingsTile(
-                        icon: Icons.palette_rounded,
-                        iconBg: c.purpleTint,
-                        iconColor: const Color(0xFF8B6FFF),
-                        label: 'theme'.tr,
-                        onTap: () => _push(const AdminThemePage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.auto_awesome_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
-                        label: 'features'.tr,
-                        onTap: () => _push(const AdminFeaturesPage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.bookmark_rounded,
-                        iconBg: c.danger.withAlpha(50),
-                        iconColor: c.danger,
-                        label: 'admin_flags_title'.tr,
-                        onTap: () => _push(const AdminFlagsSettingsPage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.rocket_launch_rounded,
-                        iconBg: c.warning.withAlpha(50),
-                        iconColor: c.warning,
-                        label: 'versions'.tr,
-                        onTap: () => _push(const AdminVersionsPage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.policy_rounded,
-                        iconBg: c.danger.withAlpha(50),
-                        iconColor: c.danger,
-                        label: 'terms_and_conditions'.tr,
-                        onTap: () => _push(const AdminContentPage()),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
+                ],
 
                 // ── Settings ─────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: SettingsGroup(
+                _padded(
+                  SettingsGroup(
                     title: 'settings'.tr,
                     icon: Icons.settings_rounded,
                     children: [
                       SettingsTile(
                         icon: Icons.manage_accounts_rounded,
-                        iconBg: c.primary.withAlpha(50),
-                        iconColor: c.primary,
+                        iconBg: AdminPalette.indigo.last.withAlpha(38),
+                        iconColor: AdminPalette.indigo.last,
                         label: 'admin_my_account'.tr,
                         onTap: () => _push(const AdminProfilePage()),
                       ),
                       SettingsTile(
-                        icon: Icons.language_rounded,
-                        iconBg: c.purpleTint,
-                        iconColor: const Color(0xFF8B6FFF),
+                        icon: Icons.translate_rounded,
+                        iconBg: AdminPalette.violet.last.withAlpha(38),
+                        iconColor: AdminPalette.violet.last,
                         label: 'change_language'.tr,
                         onTap: () => _push(const ChangeLanguageScreen()),
                       ),
@@ -670,9 +530,8 @@ class _MorePageState extends State<_MorePage> {
                 const SizedBox(height: 28),
 
                 // ── Logout ───────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                  child: SettingsGroup(
+                _padded(
+                  SettingsGroup(
                     title: 'exit'.tr,
                     icon: Icons.exit_to_app_rounded,
                     itemBackground: c.danger.withAlpha(30),
@@ -694,6 +553,7 @@ class _MorePageState extends State<_MorePage> {
                       ),
                     ],
                   ),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 ),
               ],
             ),

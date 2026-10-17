@@ -27,6 +27,7 @@ import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import '../student/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart';
 
 class AdminFeeRatesProvider extends BaseProvider {
   AdminFeeRatesProvider({ApiClient? api}) : api = api ?? ApiClient();
@@ -161,6 +162,8 @@ class AdminFeeRatesSection extends StatelessWidget {
             _FeeRateCard(
               title: _t('رسوم المنصة', 'Platform fee'),
               m: p.platform,
+              icon: Icons.account_balance_rounded,
+              colors: AdminPalette.indigo,
               onSave: p.savePlatform,
               provider: p,
               note: _t(
@@ -172,6 +175,8 @@ class AdminFeeRatesSection extends StatelessWidget {
             _FeeRateCard(
               title: _t('ضريبة الطلاب (القيمة المضافة)', 'Student VAT'),
               m: p.vat,
+              icon: Icons.receipt_long_rounded,
+              colors: AdminPalette.orange,
               onSave: ({double? percent, double? fixed, bool reset = false}) =>
                   p.saveVat(percent: percent, reset: reset),
               provider: p,
@@ -183,6 +188,8 @@ class AdminFeeRatesSection extends StatelessWidget {
             _FeeRateCard(
               title: _t('ضريبة المعلّم (القيمة المضافة)', 'Teacher VAT'),
               m: p.teacherVat,
+              icon: Icons.cast_for_education_rounded,
+              colors: AdminPalette.rose,
               onSave: ({double? percent, double? fixed, bool reset = false}) =>
                   p.saveTeacherVat(percent: percent, reset: reset),
               provider: p,
@@ -223,7 +230,11 @@ class _FeeRateCard extends StatelessWidget {
     required this.provider,
     this.hasFixed = true,
     this.note,
+    this.icon = Icons.credit_score_rounded,
+    this.colors,
   });
+  final IconData icon;
+  final List<Color>? colors;
   final String title;
   final Map<String, dynamic> m;
   final _FeeSave onSave;
@@ -237,6 +248,8 @@ class _FeeRateCard extends StatelessWidget {
     final isCustom = m['is_default'] != true;
 
     return Section(
+      icon: icon,
+      colors: colors ?? AdminPalette.teal,
       title: title,
       trailing: isCustom
           ? Container(

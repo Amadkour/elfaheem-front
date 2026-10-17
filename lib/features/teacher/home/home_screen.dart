@@ -625,7 +625,7 @@ class StatsRow extends StatelessWidget {
               value: stats.materialRating.toStringAsFixed(1),
               label: 'materials_rate'.tr,
               icon: Icons.star_rounded,
-              gradient: context.colors.purpleGradient,
+              gradient: context.colors.goldCharcoalGradient,
               shadowColor: context.colors.purple,
             ),
           ],
