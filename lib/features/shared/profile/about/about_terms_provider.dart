@@ -12,6 +12,7 @@
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
@@ -41,11 +42,14 @@ class AboutTermsProvider extends BaseProvider {
   TermsPageModel? get terms => _terms;
 
   // ── Language helper ───────────────────────────────────────────────────────
-  /// Returns 'ar' or 'en' based on the current device locale.
-  static String currentLang(BuildContext context) {
-    final locale = Localizations.localeOf(context);
-    return locale.languageCode == 'en' ? 'en' : 'ar';
-  }
+  /// The APP language ('ar' | 'en').
+  /// (Localizations.localeOf is NOT usable here: the MaterialApp only registers an English
+  /// locale, so it always answered 'en' whatever language the user picked in the app.)
+  static String currentLang(BuildContext context) => AppConfig.lang == 'en' ? 'en' : 'ar';
+
+  /// Language of the data currently held (empty = nothing loaded yet).
+  String get aboutLang => _lastAboutLang;
+  String get termsLang => _lastTermsLang;
  void clear(){
     int length=(_terms?.sections.length)??0;
     for(int i=0;i<length;i++){
@@ -68,6 +72,7 @@ class AboutTermsProvider extends BaseProvider {
     try {
       final res = await _api.get(
         '/api/v1/app-content/about',
+        queryParams: {'lang': lang}, // the server resolves ar/en for us
       );
       if (res != null && res is Map) {
         _about = AboutPageModel.fromJson(res as Map<String, dynamic>);
@@ -107,6 +112,7 @@ class AboutTermsProvider extends BaseProvider {
     try {
       final res = await _api.get(
         '/api/v1/app-content/terms',
+        queryParams: {'lang': lang},
       );
       if (res != null && res is Map) {
         _terms = TermsPageModel.fromJson(res as Map<String, dynamic>);

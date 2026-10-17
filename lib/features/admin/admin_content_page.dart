@@ -86,6 +86,23 @@ const Map<String, IconData> kContactTypes = {
 
 IconData contactIcon(String? type) => kContactTypes[type] ?? Icons.link_rounded;
 
+/// Gradient pairs (light → base) taken from the APP THEME, so the admin pages follow the
+/// colours set in the dashboard instead of a fixed rainbow.
+class _Pal {
+  _Pal(ThemeConfigProvider c)
+      : primary = [c.primaryLight, c.primary],
+        gold = [Color.lerp(c.accent2, Colors.white, 0.25)!, c.accent2],
+        green = [Color.lerp(c.success, Colors.white, 0.25)!, c.success],
+        purple = [Color.lerp(c.purple, Colors.white, 0.25)!, c.purple],
+        warm = [Color.lerp(c.warning, Colors.white, 0.25)!, c.warning];
+
+  final List<Color> primary, gold, green, purple, warm;
+
+  List<List<Color>> get all => [primary, gold, green, purple, warm];
+}
+
+_Pal _pal(BuildContext context) => _Pal(context.colors);
+
 class _Preset {
   const _Preset(this.ar, this.en, this.icon);
 
@@ -282,7 +299,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
     if (_tab == 0) {
       return PremiumHero(
         icon: Icons.info_rounded,
-        colors: AdminPalette.indigo,
+        colors: _pal(context).primary,
         title: 'content_about_title'.tr,
         subtitle: 'content_about_intro'.tr,
         footer: Wrap(spacing: 8, runSpacing: 6, children: [
@@ -296,7 +313,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
     final version = asStr(_meta?['version']);
     return PremiumHero(
       icon: Icons.gavel_rounded,
-      colors: AdminPalette.orange,
+      colors: _pal(context).gold,
       title: 'content_terms_title'.tr,
       subtitle: 'content_terms_intro'.tr,
       footer: Wrap(spacing: 8, runSpacing: 6, children: [
@@ -549,7 +566,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                   _pill(
                     label: active ? 'content_visible'.tr : 'content_hidden'.tr,
                     icon: active ? Icons.check_circle_rounded : Icons.visibility_off_rounded,
-                    color: AdminPalette.green.last,
+                    color: _pal(context).green.last,
                     on: active,
                     onTap: () => _toggleActive(path, data),
                   ),
@@ -610,7 +627,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.4)))
           : logo.isNotEmpty
           ? _networkImage(logo, 74, Icon(Icons.broken_image_rounded, color: c.textLight), radius: 22)
-          : ServiceIcon(icon: Icons.school_rounded, colors: AdminPalette.indigo, size: 74),
+          : ServiceIcon(icon: Icons.school_rounded, colors: _pal(context).primary, size: 74),
     );
 
     return Container(
@@ -627,7 +644,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           padding: const EdgeInsets.all(16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              ServiceIcon(icon: Icons.badge_rounded, colors: AdminPalette.indigo, size: 40),
+              ServiceIcon(icon: Icons.badge_rounded, colors: _pal(context).primary, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Text('content_identity'.tr,
@@ -723,7 +740,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       // stats ----------------------------------------------------------------
       _block(
         icon: Icons.bar_chart_rounded,
-        colors: AdminPalette.green,
+        colors: _pal(context).green,
         titleKey: 'content_stats',
         hintKey: 'content_stats_hint',
         addKey: 'content_add',
@@ -741,7 +758,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             constraints: const BoxConstraints(minWidth: 60),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: AdminPalette.green),
+              gradient: LinearGradient(colors: _pal(context).green),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(_loc(s, 'value'),
@@ -761,7 +778,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       // team -------------------------------------------------------------------
       _block(
         icon: Icons.groups_rounded,
-        colors: AdminPalette.blue,
+        colors: _pal(context).purple,
         titleKey: 'content_team',
         hintKey: 'content_team_hint',
         addKey: 'content_add',
@@ -778,7 +795,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             height: 50,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: AdminPalette.blue),
+              gradient: LinearGradient(colors: _pal(context).purple),
               borderRadius: BorderRadius.circular(16),
             ),
             child: emoji.isNotEmpty
@@ -824,7 +841,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       // contacts ---------------------------------------------------------------
       _block(
         icon: Icons.alternate_email_rounded,
-        colors: AdminPalette.teal,
+        colors: _pal(context).gold,
         titleKey: 'content_contacts',
         hintKey: 'content_contacts_hint',
         addKey: 'content_add',
@@ -839,7 +856,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           deleteKey: 'content_delete_contact',
           onEdit: () => _form(_contactCfg, item: k, path: '/about/contacts'),
           leading: ServiceIcon(
-              icon: contactIcon(k['type'] as String?), colors: AdminPalette.teal, size: 46),
+              icon: contactIcon(k['type'] as String?), colors: _pal(context).gold, size: 46),
           title: _loc(k, 'label').isEmpty ? 'content_type_${asStr(k['type'])}'.tr : _loc(k, 'label'),
           subtitle: asStr(k['value']),
         ),
@@ -873,7 +890,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             padding: const EdgeInsets.all(16),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                ServiceIcon(icon: Icons.update_rounded, colors: AdminPalette.orange, size: 40),
+                ServiceIcon(icon: Icons.update_rounded, colors: _pal(context).gold, size: 40),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text('content_terms_version'.tr,
@@ -892,8 +909,8 @@ class _AdminContentPageState extends State<AdminContentPage> {
               else
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   StatusChip(trp('content_version_n', {'v': asStr(meta['version'], '—')}),
-                      AdminPalette.orange.last),
-                  if (date.isNotEmpty) StatusChip(date, AdminPalette.blue.last),
+                      _pal(context).gold.last),
+                  if (date.isNotEmpty) StatusChip(date, _pal(context).purple.last),
                 ]),
             ]),
           ),
@@ -901,7 +918,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
       ),
       _block(
         icon: Icons.view_agenda_rounded,
-        colors: AdminPalette.rose,
+        colors: _pal(context).warm,
         titleKey: 'content_sections',
         hintKey: 'content_sections_hint',
         addKey: 'content_add',
@@ -917,7 +934,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           onEdit: () => _form(_sectionCfg, item: s, path: '/terms/sections'),
           leading: ServiceIcon(
               icon: contentIcon(s['icon_name'] as String?),
-              colors: AdminPalette.all[asInt(s['id']) % AdminPalette.all.length],
+              colors: _pal(context).all[asInt(s['id']) % _pal(context).all.length],
               size: 46),
           title: _loc(s, 'title'),
           subtitle: _other(s, 'title'),

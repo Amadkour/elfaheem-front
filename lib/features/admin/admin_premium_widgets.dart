@@ -58,7 +58,7 @@ class AdminPalette {
       _of(_t?.dangerGradient.colors, const Color(0xFFF0435F));
 
   static List<Color> get teal =>
-      _of([_t!.accent, _t!.accent2], const Color(0xFFC9A227));
+      _of([_t!.accent2, _t!.primary], const Color(0xFFC9A227));
 
   static List<Color> get orange => soft(_t?.warning ?? const Color(0xFFF2A93B));
 

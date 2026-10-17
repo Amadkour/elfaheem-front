@@ -30,7 +30,6 @@ import '../../../teacher/analysis/attendance/teacher_attendance_screen.dart';
 import '../../../teacher/analysis/exam/teacher_exam_hub_screen.dart';
 import '../../../teacher/home/teacher_models.dart';
 import '../../../teacher/sessions/sessions_provider.dart';
-import '../../attendance/attendance_premium.dart';
 import '../../course/studend_course_roadmap_section.dart';
 import 'components/add_material_sheet.dart';
 import 'components/session_material_grid.dart';
@@ -74,9 +73,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
 
   TeacherSessionItem get _session => widget.session;
 
-  /// Attendance only makes sense for courses that meet in a room / live (not pure recorded).
-  // bool get _hasAttendance => widget.course.type != 'recorded';
-  bool get _hasAttendance => true;
 
   /// Locking only ever applies to students — teachers always keep full
   /// access to manage their own sessions.
@@ -315,8 +311,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                 : context.colors.success,
             onTap: prov.startSessionId != -1 ? null : _toggleLive,
           ),
-          // Live attendance: rotating code + live counter (relay-based offline check-in).
-          if (_hasAttendance) AttendanceTeacherAction(sessionId: _session.id),
           SessionActionBtn(
             icon: Icons.how_to_reg_rounded,
             label: 'attendance'.tr,
@@ -340,9 +334,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           ),
 
         ],
-        // Student check-in: online = direct, offline = through a nearby classmate.
-        if (!widget.isTeacher && !_isLocked && _hasAttendance)
-          AttendanceStudentAction(sessionId: _session.id),
         if (!widget.isTeacher && !_isLocked)
           SessionExamButton(
             courseId: _session.courseId,

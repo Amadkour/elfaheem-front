@@ -22,6 +22,7 @@ import '../../../../../utils/helpers.dart';
 import '../../../../shared/course/private_flag.dart';
 import '../../../../teacher/sessions/components/course_reel_player.dart';
 import '../../../models.dart';
+import '../../../../shared/attendance/attendance_course_entry.dart';
 // NOTE: add the same import your other screens use for the `.tr` String extension.
 
 class StudentCourseHero extends StatelessWidget {
@@ -62,9 +63,10 @@ class StudentCourseHero extends StatelessWidget {
             ? box.maxWidth
             : MediaQuery.of(context).size.width;
         final wide = w >= 800;
-        final h = (wide ? w * 0.48 : w * 1.0)
-            .clamp(wide ? 300.0 : 330.0, wide ? 420.0 : 430.0)
-            .toDouble();
+        final h = ((wide ? w * 0.48 : w * 1.0)
+                .clamp(wide ? 300.0 : 330.0, wide ? 420.0 : 430.0)
+                .toDouble()) +
+            (_showAttendance ? 62.0 : 0.0); // room for the attendance entry
         final pad = wide ? 24.0 : 16.0;
 
         final pills = <Widget>[
@@ -190,6 +192,12 @@ class StudentCourseHero extends StatelessWidget {
                               ],
                               const SizedBox(height: 14),
                               ParentComponent(featureKey: 'course_hero.stats', child: _statsStrip()),
+                              if (_showAttendance) ...[
+                                const SizedBox(height: 10),
+                                ParentComponent(
+                                    featureKey: 'course_hero.attendance',
+                                    child: _attendanceButton(context)),
+                              ],
                             ],
                           ),
                         ),
@@ -204,6 +212,16 @@ class StudentCourseHero extends StatelessWidget {
       },
     );
   }
+
+  // ── Attendance ────────────────────────────────────────────────────────────
+
+  int? get _courseId => int.tryParse(course.id.toString());
+  bool get _showAttendance => course.isEnrolled && _courseId != null;
+
+  Widget _attendanceButton(BuildContext context) => AttendanceCourseEntry(
+      courseId: _courseId!, title: (ar ? course.titleAr : course.titleEn) ?? '');
+
+  bool get ar => AppConfig.lang == 'ar';
 
   // ── Background ────────────────────────────────────────────────────────────
 

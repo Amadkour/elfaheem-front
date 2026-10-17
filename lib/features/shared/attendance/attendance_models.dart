@@ -28,6 +28,27 @@ class OpenWindow {
   /// Classmates that must "see" the student nearby (Bluetooth) — set by the teacher. 0 = none.
   final int requiredWitnesses;
 
+  /// How the teacher identifies students: 'code' | 'witnesses' | 'both'.
+  final String method;
+
+  /// Teacher switch: may students check in from the WEB app (mobile only when false).
+  final bool allowWeb;
+
+  /// Seconds the server keeps accepting after the window ends / is closed.
+  final int closeGraceSeconds;
+
+  /// Optional location policy (GPS circle and/or classroom Wi-Fi BSSID).
+  final double? geoLat;
+  final double? geoLng;
+  final int? geoRadiusM;
+  final String? wifiBssid;
+
+  bool get needsCode => method != 'witnesses';
+  bool get needsWitnesses => method != 'code' && requiredWitnesses > 0;
+  bool get needsGps => geoLat != null && geoLng != null;
+  bool get needsWifi => (wifiBssid ?? '').isNotEmpty;
+  bool get needsLocation => needsGps || needsWifi;
+
   const OpenWindow({
     required this.attendanceSessionId,
     required this.courseId,
@@ -35,6 +56,13 @@ class OpenWindow {
     required this.rotationSeconds,
     required this.expiresAt,
     this.requiredWitnesses = 0,
+    this.method = 'code',
+    this.allowWeb = false,
+    this.closeGraceSeconds = 5,
+    this.geoLat,
+    this.geoLng,
+    this.geoRadiusM,
+    this.wifiBssid,
   });
 
   factory OpenWindow.fromJson(Map<String, dynamic> j) => OpenWindow(
@@ -44,6 +72,13 @@ class OpenWindow {
         rotationSeconds: (j['rotation_seconds'] as num).toInt(),
         expiresAt: j['expires_at'].toString(),
         requiredWitnesses: (j['required_witnesses'] as num?)?.toInt() ?? 0,
+        method: j['method']?.toString() ?? 'code',
+        allowWeb: j['allow_web'] == true,
+        closeGraceSeconds: (j['close_grace_seconds'] as num?)?.toInt() ?? 5,
+        geoLat: (j['geo_lat'] as num?)?.toDouble(),
+        geoLng: (j['geo_lng'] as num?)?.toDouble(),
+        geoRadiusM: (j['geo_radius_m'] as num?)?.toInt(),
+        wifiBssid: j['wifi_bssid']?.toString(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -53,6 +88,13 @@ class OpenWindow {
         'rotation_seconds': rotationSeconds,
         'expires_at': expiresAt,
         'required_witnesses': requiredWitnesses,
+        'method': method,
+        'allow_web': allowWeb,
+        'close_grace_seconds': closeGraceSeconds,
+        'geo_lat': geoLat,
+        'geo_lng': geoLng,
+        'geo_radius_m': geoRadiusM,
+        'wifi_bssid': wifiBssid,
       };
 
   /// Expiry is only a UX hint — the server is the only authority.
@@ -78,6 +120,9 @@ class PendingAttendance {
   /// Signed "I saw this student" tokens from nearby classmates: [{user_id, ts, sig}].
   final List<Map<String, dynamic>> witnesses;
 
+  /// Signed location evidence {lat, lng, bssid} (null when the session has no location policy).
+  final Map<String, dynamic>? evidence;
+
   const PendingAttendance({
     required this.requestId,
     required this.sessionId,
@@ -87,6 +132,7 @@ class PendingAttendance {
     required this.signature,
     required this.createdAtMs,
     this.witnesses = const [],
+    this.evidence,
   });
 
   factory PendingAttendance.fromJson(Map<String, dynamic> j) => PendingAttendance(
@@ -101,6 +147,7 @@ class PendingAttendance {
           for (final w in (j['witnesses'] as List? ?? const []))
             Map<String, dynamic>.from(w as Map),
         ],
+        evidence: j['evidence'] is Map ? Map<String, dynamic>.from(j['evidence'] as Map) : null,
       );
 
   Map<String, dynamic> toJson() => {
@@ -112,6 +159,7 @@ class PendingAttendance {
         'signature': signature,
         'created_at_ms': createdAtMs,
         'witnesses': witnesses,
+        'evidence': evidence,
       };
 
   /// Body of POST /api/v1/attendance/submit (also what travels over the relay link).
@@ -122,6 +170,7 @@ class PendingAttendance {
         'code': code,
         'signature': signature,
         'witnesses': witnesses,
+        if (evidence != null) 'evidence': evidence,
       };
 
   static String encodeList(List<PendingAttendance> l) =>
@@ -217,6 +266,9 @@ class TeacherWindow {
   final String expiresAt;
   final String? closedAt;
   final int requiredWitnesses;
+  final String method;
+  final bool allowWeb;
+  final int closeGraceSeconds;
 
   const TeacherWindow({
     required this.id,
@@ -225,6 +277,9 @@ class TeacherWindow {
     required this.expiresAt,
     this.closedAt,
     this.requiredWitnesses = 0,
+    this.method = 'code',
+    this.allowWeb = false,
+    this.closeGraceSeconds = 5,
   });
 
   factory TeacherWindow.fromJson(Map<String, dynamic> j) => TeacherWindow(
@@ -234,6 +289,9 @@ class TeacherWindow {
         expiresAt: j['expires_at'].toString(),
         closedAt: j['closed_at']?.toString(),
         requiredWitnesses: (j['required_witnesses'] as num?)?.toInt() ?? 0,
+        method: j['method']?.toString() ?? 'code',
+        allowWeb: j['allow_web'] == true,
+        closeGraceSeconds: (j['close_grace_seconds'] as num?)?.toInt() ?? 5,
       );
 }
 

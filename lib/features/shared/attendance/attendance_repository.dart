@@ -40,12 +40,30 @@ class AttendanceRepository {
 
   // ── teacher ───────────────────────────────────────────────────────────
   Future<TeacherWindow> open(int sessionId,
-          {required int minutes, required int rotation, int witnesses = 0}) async =>
+          {required int minutes,
+          required int rotation,
+          int witnesses = 0,
+          String method = 'code',
+          bool allowWeb = false,
+          int graceSeconds = 5,
+          double? geoLat,
+          double? geoLng,
+          int? geoRadiusM,
+          String? wifiBssid}) async =>
       TeacherWindow.fromJson(_m(await _api.post('$_base/sessions', body: {
         'session_id': sessionId,
         'duration_minutes': minutes,
         'rotation_seconds': rotation,
         'required_witnesses': witnesses,
+        'method': method,
+        'allow_web': allowWeb,
+        'close_grace_seconds': graceSeconds,
+        if (geoLat != null && geoLng != null) ...{
+          'geo_lat': geoLat,
+          'geo_lng': geoLng,
+          'geo_radius_m': geoRadiusM ?? 100,
+        },
+        if (wifiBssid != null && wifiBssid.isNotEmpty) 'wifi_bssid': wifiBssid,
       })));
 
   Future<TeacherCode> code(int attId) async =>

@@ -166,4 +166,65 @@ const Map<String, (String, String)> _fallback = {
     'No saved courses yet. Open the app once while online and they will appear here.'
   ),
   'att_course_tap': ('اضغط لإدخال كود الحضور', 'Tap to enter the attendance code'),
+  // ── settings: method / grace / web / location ─────────────────────────
+  'att_sheet_sub_mates': (
+    'ابقَ بجانب زملائك — سيتم التحقق من حضورك عبر الأجهزة القريبة',
+    'Stay next to your classmates — your presence is verified through nearby phones'
+  ),
+  'att_need_location': (
+    'سيتم التحقق من موقعك (GPS / شبكة الواي فاي)',
+    'Your location will be checked (GPS / Wi-Fi)'
+  ),
+  'att_err_web_not_allowed': (
+    'المعلّم لم يسمح بتسجيل الحضور من الويب. استخدم تطبيق الموبايل.',
+    'The teacher did not allow web check-in. Use the mobile app.'
+  ),
+  'att_err_teacher_location': (
+    'تعذّر تحديد موقعك. فعّل الموقع أو اتصل بشبكة الواي فاي ثم حاول مرة أخرى.',
+    'Could not get your location. Turn on location or join the Wi-Fi and try again.'
+  ),
+  'att_reason_wrong_location': (
+    'أنت خارج نطاق القاعة أو لم يمكن التحقق من موقعك',
+    'You are outside the classroom area or your location could not be verified'
+  ),
+  'att_t_method': ('طريقة التحقق من الطلاب', 'How to identify students'),
+  'att_t_method_hint': (
+    'الكود، أو عدد من الزملاء القريبين، أو الاثنان معاً',
+    'The code, a number of nearby classmates, or both'
+  ),
+  'att_method_code': ('الكود', 'Code'),
+  'att_method_witnesses': ('الزملاء', 'Classmates'),
+  'att_method_both': ('الكود + الزملاء', 'Code + classmates'),
+  'att_t_grace': ('مهلة الإغلاق', 'Closing grace'),
+  'att_t_grace_hint': (
+    'بعد الإغلاق يظل النظام يقبل الطلبات المتأخرة لهذه المدة',
+    'After closing, late requests are still accepted for this long'
+  ),
+  'att_t_seconds': ('{n} ث', '{n} s'),
+  'att_t_allow_web': ('السماح بالتسجيل من الويب', 'Allow check-in from the web'),
+  'att_t_allow_web_hint': (
+    'عند الإيقاف: الحضور من تطبيق الموبايل فقط',
+    'When off: students can check in from the mobile app only'
+  ),
+  'att_t_location': ('التحقق من الموقع', 'Check location'),
+  'att_t_location_hint': (
+    'يجب أن يكون الطالب قرب موقعك (GPS) أو على نفس شبكة الواي فاي',
+    'Students must be near you (GPS) or on the same Wi-Fi'
+  ),
+  'att_t_meters': ('{n} م', '{n} m'),
+  'att_t_move_hint': (
+    'يمكنك مغادرة هذه الشاشة — سيبقى الكود ظاهراً في الشريط العلوي',
+    'You can leave this screen — the code stays visible in the top bar'
+  ),
+  'att_t_closing': ('يُغلق خلال {n} ثانية…', 'Closing in {n} s…'),
+  'att_t_new': ('بدء حضور جديد', 'Start a new attendance'),
+  'att_entry_open': ('الحضور مفتوح الآن', 'Attendance is open now'),
+  'att_entry_closed': ('لا يوجد حضور مفتوح', 'No attendance open'),
+  'att_t_running': ('الحضور يعمل الآن', 'Attendance is running'),
+  'att_t_entry_sub': ('ابدأ جلسة حضور لإحدى المحاضرات', 'Start an attendance for a lesson'),
+  'att_banner_tap': ('اضغط للفتح', 'Tap to open'),
+  'att_err_unsupported_ios': (
+    'هذا الجهاز لا يدعم الاتصال بالأجهزة القريبة حالياً',
+    'This device cannot connect to nearby phones right now'
+  ),
 };

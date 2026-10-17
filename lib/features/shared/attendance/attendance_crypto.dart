@@ -1,7 +1,7 @@
 /// features/attendance/attendance_crypto.dart
 ///
 /// Mirrors services/attendance_service.py — the strings MUST stay identical.
-///   request signature : HMAC-SHA256(student_key, "req|<request_id>|<att_id>|<code>")
+///   request signature : HMAC-SHA256(student_key, "req|<request_id>|<att_id>|<code>[|ev:<sha256>]")
 ///   result  signature : HMAC-SHA256(student_key, "res|<request_id>|<status>|<confirmed_at>")
 ///
 /// Why this makes relaying safe:
@@ -18,8 +18,24 @@ import 'package:crypto/crypto.dart';
 String _hmac(String key, String msg) =>
     Hmac(sha256, utf8.encode(key)).convert(utf8.encode(msg)).toString();
 
-String signRequest(String studentKey, String requestId, int attId, String code) =>
-    _hmac(studentKey, 'req|$requestId|$attId|$code');
+/// Canonical text of the location evidence — MUST equal the server's `evidence_canon`
+/// (lat/lng with 5 decimals + lower-case BSSID; empty when there is none).
+String evidenceCanon(Map<String, dynamic>? ev) {
+  if (ev == null) return '';
+  final lat = ev['lat'] is num ? (ev['lat'] as num).toStringAsFixed(5) : '';
+  final lng = ev['lng'] is num ? (ev['lng'] as num).toStringAsFixed(5) : '';
+  final bssid = (ev['bssid'] ?? '').toString().trim().toLowerCase();
+  final hasGeo = lat.isNotEmpty && lng.isNotEmpty;
+  if (!hasGeo && bssid.isEmpty) return '';
+  return '${hasGeo ? lat : ''},${hasGeo ? lng : ''},$bssid';
+}
+
+String signRequest(String studentKey, String requestId, int attId, String code,
+    [Map<String, dynamic>? evidence]) {
+  final canon = evidenceCanon(evidence);
+  final suffix = canon.isEmpty ? '' : '|ev:${sha256.convert(utf8.encode(canon))}';
+  return _hmac(studentKey, 'req|$requestId|$attId|$code$suffix');
+}
 
 String signResult(String studentKey, String requestId, String status, String confirmedAt) =>
     _hmac(studentKey, 'res|$requestId|$status|$confirmedAt');

@@ -61,6 +61,8 @@ import 'components/course_details_section.dart';
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
+import '../../shared/attendance/attendance_course_entry.dart';
+import '../../shared/attendance/teacher_attendance_launcher.dart';
 
 /// Opens one of the teacher's OWN courses (next course / manually
 /// recommended — both are guaranteed by the backend to belong to this
@@ -269,6 +271,10 @@ class _TeacherSessionsView extends StatelessWidget {
                 ),
               ),
 
+              // ── Attendance: ONE premium entry for the whole course (not live-only
+              // courses hide it). Reacts to the sessions list only. ─────────────
+              SliverToBoxAdapter(child: _AttendanceEntrySliver()),
+
               // ── Sessions header + list / loading / empty ──────────────
               // Isolated so its (legitimately broad) rebuilds never touch
               // the hero or details card above.
@@ -326,5 +332,19 @@ class _SessionsSlivers extends StatelessWidget {
         onAdd: onAdd,
       ),
     );
+  }
+}
+
+class _AttendanceEntrySliver extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final p = context.select<TeacherCourseScreenProvider, (String?, int)>(
+        (p) => (p.course.type, p.sessions.length));
+    if (p.$1 == 'recorded' || p.$2 == 0) return const SizedBox.shrink();
+    final sessions = context.read<TeacherCourseScreenProvider>().sessions;
+    return TeacherAttendanceCourseEntry(sessions: [
+      for (var i = 0; i < sessions.length; i++)
+        LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name),
+    ]);
   }
 }

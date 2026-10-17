@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../features/shared/attendance/attendance_offline_sync.dart';
+import '../features/shared/attendance/attendance_store.dart';
 
 class TopRouteObserver extends NavigatorObserver {
   Route<dynamic>? currentRoute;
@@ -18,6 +19,11 @@ class TopRouteObserver extends NavigatorObserver {
       ) {
     this.previousRoute = previousRoute;
     currentRoute = route;
+    // The Downloads page WE opened because the phone went offline.
+    if (_awaitingAutoRoute && route.settings.name == '/downloads') {
+      _autoRoute = route;
+      _awaitingAutoRoute = false;
+    }
   }
 
   @override
@@ -27,6 +33,8 @@ class TopRouteObserver extends NavigatorObserver {
       ) {
     this.previousRoute = route;
     currentRoute = previousRoute;
+    if (identical(route, _autoRoute)) _autoRoute = null;
+    _leaveIfReady();
   }
 
   @override
@@ -36,6 +44,8 @@ class TopRouteObserver extends NavigatorObserver {
       ) {
     this.previousRoute = previousRoute;
     currentRoute = previousRoute;
+    if (identical(route, _autoRoute)) _autoRoute = null;
+    _leaveIfReady();
   }
 
   @override
@@ -71,14 +81,21 @@ class TopRouteObserver extends NavigatorObserver {
   // ───────────────────────────────────────────────────────────────────────────
   // Offline / online switching
   // ───────────────────────────────────────────────────────────────────────────
+  //
+  //  offline  → from ANY screen go to the Downloads page (downloaded videos + the Attendance
+  //             tab with the courses stored on this phone)
+  //  online   → close that page again and land on whatever screen the user came from
+  //
+  // Only the page WE opened is ever closed automatically; a user who went to Downloads
+  // on their own is never moved.
 
-  /// Screens that are only landing pages: going offline there means "nothing useful to do",
-  /// so the user is taken to the Downloads page. Every OTHER screen is left alone — above all
-  /// '/course-detail', where a student may be checking in through a classmate while offline.
-  static const _landingRoutes = {'/home', '/dashboard'};
+  /// Screens where an automatic jump makes no sense.
+  static const _neverInterrupt = {'/login', '/register', '/splash', '/downloads'};
 
   bool _bound = false;
-  bool _openedDownloadsAutomatically = false;
+  bool _awaitingAutoRoute = false; // pushed, didPush not seen yet
+  Route<dynamic>? _autoRoute; // the Downloads route we opened
+  bool _leaveWhenTop = false; // back online, but something is open above Downloads
 
   /// True while the app has no usable connection (see [AppConnectivity]).
   bool get isOffline => !AppConnectivity.instance.isOnline;
@@ -107,11 +124,15 @@ class TopRouteObserver extends NavigatorObserver {
   void _switchToOffline() {
     final nav = navigator;
     if (nav == null || kIsWeb) return;
-    final hasDownloads = OfflineVideoService.instance.downloadedIds.value.isNotEmpty;
-    if (hasDownloads && _landingRoutes.contains(currentRouteName)) {
-      _openedDownloadsAutomatically = true;
-      nav.pushNamed('/downloads');
-    }
+    _leaveWhenTop = false;
+    if (_autoRoute != null || _awaitingAutoRoute) return; // already there
+    final name = currentRouteName;
+    if (name != null && _neverInterrupt.contains(name)) return;
+    final hasOffline = OfflineVideoService.instance.downloadedIds.value.isNotEmpty ||
+        AttendanceStore.instance.hasCachedCourses;
+    if (!hasOffline) return;
+    _awaitingAutoRoute = true;
+    nav.pushNamed('/downloads');
   }
 
   /// Offline -> online.
@@ -120,11 +141,29 @@ class TopRouteObserver extends NavigatorObserver {
     //    requests, refresh of the cached attendance windows).
     AttendanceOfflineSync.instance.onReconnect();
 
-    // 2) Leave the Downloads page only if WE opened it (never yank a user who went there).
-    if (_openedDownloadsAutomatically && currentRouteName == '/downloads') {
-      navigator?.maybePop();
+    // 2) Close the Downloads page only if WE opened it.
+    _awaitingAutoRoute = false;
+    if (_autoRoute == null) return;
+    _leaveWhenTop = true;
+    _leaveIfReady();
+  }
+
+  /// Pops the auto-opened Downloads page once it is the top route (so a video player or a
+  /// check-in sheet opened on top of it is never torn down in the middle of what the user does).
+  void _leaveIfReady() {
+    if (!_leaveWhenTop) return;
+    final r = _autoRoute;
+    if (r == null) {
+      _leaveWhenTop = false;
+      return;
     }
-    _openedDownloadsAutomatically = false;
+    if (identical(currentRoute, r)) {
+      _leaveWhenTop = false;
+      // after the current navigation frame
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (identical(currentRoute, r)) navigator?.pop();
+      });
+    }
   }
 }
 

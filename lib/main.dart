@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/shared/downloads/downloads_screen
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
@@ -80,6 +81,8 @@ Future<void> _initCore() async {
   _storage = await StorageService.getInstance();
 
   await readLanguage();
+  // Name / tagline / logo / stats the admin set + installed version: cache first (instant), refresh in the background.
+  await _safe('identity', () => AppIdentity.instance.init(), seconds: 4);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
@@ -504,15 +507,143 @@ class _PremiumLoadingScreen extends StatelessWidget {
 
 /// Built below the MaterialApp (and the ThemeConfigScope above it), so
 /// context.colors can resolve here.
+///
+/// Branded from the dashboard's "About us" data (AppIdentity: cached from the last launch,
+/// so it is already right on the first frame; before the very first fetch it falls back to
+/// the bundled logo + the remote-config name).
 class _SplashBody extends StatelessWidget {
   const _SplashBody();
 
+  Widget _blob(double size, double alpha) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.white.withValues(alpha: alpha),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.colors.background,
-      // AppLoadingIndicator shows the branded logo with its own fallback.
-      body: const Center(child: AppLoadingIndicator(size: 140)),
+    final c = context.colors;
+    final id = AppIdentity.instance;
+
+    return ListenableBuilder(
+      listenable: id,
+      builder: (context, _) {
+        final name = id.name.isNotEmpty ? id.name : RemoteConfigService.instance.appName;
+        final tagline = id.tagline;
+        final version = id.versionLabel;
+
+        return Directionality(
+          textDirection: pageDirection,
+          child: Scaffold(
+            body: Container(
+              width: double.infinity,
+              height: double.infinity,
+              decoration: BoxDecoration(gradient: c.primaryGradient),
+              child: Stack(
+                children: [
+                  PositionedDirectional(top: -90, end: -90, child: _blob(300, 0.07)),
+                  PositionedDirectional(bottom: -110, start: -70, child: _blob(280, 0.05)),
+                  PositionedDirectional(top: 220, start: -50, child: _blob(150, 0.05)),
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        const Spacer(flex: 3),
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.85, end: 1),
+                          duration: const Duration(milliseconds: 700),
+                          curve: Curves.easeOutBack,
+                          builder: (_, v, child) => Opacity(
+                            opacity: v.clamp(0.0, 1.0),
+                            child: Transform.scale(scale: v, child: child),
+                          ),
+                          child: Container(
+                            width: 132,
+                            height: 132,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(38),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.18),
+                                  blurRadius: 32,
+                                  offset: const Offset(0, 14),
+                                ),
+                              ],
+                            ),
+                            child: AppNetworkImage(
+                              url: id.logoUrl ?? 'assets/images/logo.png',
+                              width: 92,
+                              height: 92,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 26),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            name,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                        ),
+                        if (tagline.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 40),
+                            child: Text(
+                              tagline,
+                              textAlign: TextAlign.center,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 15,
+                                height: 1.5,
+                                color: Colors.white.withValues(alpha: 0.85),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const Spacer(flex: 3),
+                        const SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white70),
+                        ),
+                        const SizedBox(height: 18),
+                        if (version.isNotEmpty)
+                          Text(
+                            'v$version',
+                            style: TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 12,
+                              letterSpacing: 0.6,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        const SizedBox(height: 22),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

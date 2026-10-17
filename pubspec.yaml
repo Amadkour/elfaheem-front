@@ -59,6 +59,7 @@ dependencies:
   wakelock_plus: ^1.2.10
   livekit_client: ^2.8.0
   loading_animation_widget: ^1.3.0
+  bluetooth_low_energy: ^6.0.0
   # Modern replacement for dart:html / dart:js_util (both removed on recent
   # Dart SDKs). Used only inside web_notification_web.dart.
   web: ^1.1.0
@@ -89,8 +90,10 @@ dependencies:
   # student and an online classmate. Android only; needs Google Play services.
   nearby_connections: ^4.0.0
   # One online/offline answer for the app.
-  connectivity_plus: ^7.3.2
   firebase_auth: ^7.0.0
+  geolocator: ^14.0.1
+  connectivity_plus: ^7.3.1
+  network_info_plus: ^8.2.1
 dependency_overrides:
   flutter_webrtc:
     git:
@@ -129,16 +132,24 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  # Pre-composited: logo centered on a solid #D4FEFD square (no alpha —
-  # required for iOS App Store acceptance) and legacy/non-adaptive Android.
-  image_path: "assets/images/app_icon.png"
+  remove_alpha_ios: true
+
+  # Main fallback image
+  image_path: "assets/icon/icon.png"
   min_sdk_android: 21
-  # Adaptive icons (Android 8+) crop the foreground into a circle/square/squircle
-  # mask depending on the device launcher, so the foreground image has generous
-  # transparent padding around the logo (logo ~58% of canvas width) so nothing
-  # gets clipped — this was the root cause of the cropped-icon issue.
   adaptive_icon_background: "#0C1511"
-  adaptive_icon_foreground: "assets/images/adaptive_icon_foreground.png"
+  adaptive_icon_foreground: "assets/icon/adaptive_icon_foreground.png"
+
+  # Explicitly set the paths for web and desktop platforms to stop the fallback error
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Splash screen

@@ -16,7 +16,7 @@ import 'attendance_permissions.dart';
 import 'attendance_strings.dart';
 import 'relay_host_provider.dart';
 import 'student_checkin_provider.dart';
-import 'teacher_attendance_provider.dart';
+import 'teacher_attendance_controller.dart';
 
 const _ok = Color(0xFF2E9E6B);
 const _bad = Color(0xFFD64545);
@@ -129,7 +129,7 @@ class _StudentSheetState extends State<_StudentSheet> {
             textAlign: TextAlign.center,
             style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
-        Text(attT('att_sheet_sub'),
+        Text(attT(p.needsCode ? 'att_sheet_sub' : 'att_sheet_sub_mates'),
             textAlign: TextAlign.center,
             style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.grey.shade600)),
         const SizedBox(height: 16),
@@ -148,7 +148,11 @@ class _StudentSheetState extends State<_StudentSheet> {
         ],
         if (p.online == true && p.host != null) _VisibleBanner(host: p.host!),
         if (p.online == true && !p.busy && o == null) const RelayHostTile(),
-        if (!finished) ...[
+        if (p.needsLocation) ...[
+          const SizedBox(height: 8),
+          _Banner(icon: CupertinoIcons.location_solid, text: attT('att_need_location'), color: primary),
+        ],
+        if (!finished && p.needsCode) ...[
           const SizedBox(height: 14),
           TextField(
             controller: _ctrl,
@@ -440,143 +444,207 @@ Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId) {
   try {
     host = context.read<RelayHostProvider>();
   } catch (_) {}
+  final ctl = TeacherAttendanceController.instance..prepare(sessionId, host);
   return showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      isDismissible: false, // closing the sheet must not silently leave the window open
-      backgroundColor: Colors.transparent,
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) => TeacherAttendanceProvider(sessionId: sessionId, host: host),
-        child: const _TeacherSheet(),
-      ),
-    );
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.transparent,
+    // The window lives in the app-wide controller: closing the sheet leaves it running and the
+    // global banner keeps the code visible while the teacher moves around the app.
+    builder: (_) => ChangeNotifierProvider<TeacherAttendanceController>.value(
+      value: ctl,
+      child: const _TeacherSheet(),
+    ),
+  );
 }
 
 class _TeacherSheet extends StatelessWidget {
   const _TeacherSheet();
 
+  Widget _label(String key, {String? hint}) => Padding(
+        padding: const EdgeInsets.only(top: 14, bottom: 6),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(attT(key), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+            if (hint != null)
+              Text(attT(hint),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+          ]),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<TeacherAttendanceProvider>();
+    final p = context.watch<TeacherAttendanceController>();
     final primary = context.colors.primary;
     final started = p.window != null;
 
     return _SheetFrame(
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Row(children: [
-          Expanded(
-            child: Text(attT('att_t_title'),
-                style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
-          ),
-          IconButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey)),
-        ]),
-        if (!started) ...[
-          const SizedBox(height: 8),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(attT('att_t_duration'),
-                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, children: [
-            for (final m in TeacherAttendanceProvider.options)
-              ChoiceChip(
-                label: Text(attT('att_t_minutes', args: {'n': '$m'})),
-                selected: p.minutes == m,
-                onSelected: (_) => p.setMinutes(m),
-              ),
-          ]),
-          const SizedBox(height: 14),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(attT('att_t_witnesses'),
-                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-          ),
-          const SizedBox(height: 2),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(attT('att_t_witnesses_hint'),
-                style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
-          ),
-          const SizedBox(height: 8),
-          Wrap(spacing: 8, children: [
-            for (final n in TeacherAttendanceProvider.witnessOptions)
-              ChoiceChip(
-                label: Text('$n'),
-                selected: p.requiredWitnesses == n,
-                onSelected: (_) => p.setWitnesses(n),
-              ),
-          ]),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-              onPressed: p.loading ? null : () => p.open(),
-              child: p.loading
-                  ? const SizedBox(
-                      width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                  : Text(attT('att_t_start'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+      child: SingleChildScrollView(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Expanded(
+              child: Text(attT('att_t_title'),
+                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
             ),
-          ),
-        ] else ...[
-          const SizedBox(height: 6),
-          _CodeDisplay(p: p),
-          if (p.host != null && p.isOpen) ...[
-            const SizedBox(height: 12),
-            _TeacherRelayBanner(host: p.host!),
-          ],
-          const SizedBox(height: 14),
-          Text(attT('att_t_show'),
-              textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: Colors.grey.shade600)),
-          const SizedBox(height: 16),
-          if (p.closed || !(p.code?.isOpen ?? true))
-            _Banner(
-                icon: CupertinoIcons.lock_fill,
-                text: attT(p.closed ? 'att_t_closed' : 'att_t_expired'),
-                color: _warn)
-          else
+            IconButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey)),
+          ]),
+          if (!started) ...[
+            _label('att_t_duration'),
+            Wrap(spacing: 8, children: [
+              for (final m in TeacherAttendanceController.options)
+                ChoiceChip(
+                  label: Text(attT('att_t_minutes', args: {'n': '$m'})),
+                  selected: p.minutes == m,
+                  onSelected: (_) => p.setMinutes(m),
+                ),
+            ]),
+            _label('att_t_method', hint: 'att_t_method_hint'),
+            Wrap(spacing: 8, children: [
+              for (final m in TeacherAttendanceController.methods)
+                ChoiceChip(
+                  label: Text(attT('att_method_$m')),
+                  selected: p.method == m,
+                  onSelected: (_) => p.setMethod(m),
+                ),
+            ]),
+            if (p.usesWitnesses) ...[
+              _label('att_t_witnesses', hint: 'att_t_witnesses_hint'),
+              Wrap(spacing: 8, children: [
+                for (final n in TeacherAttendanceController.witnessOptions)
+                  ChoiceChip(
+                    label: Text('$n'),
+                    selected: p.requiredWitnesses == n,
+                    onSelected: (_) => p.setWitnesses(n),
+                  ),
+              ]),
+            ],
+            _label('att_t_grace', hint: 'att_t_grace_hint'),
+            Wrap(spacing: 8, children: [
+              for (final g in TeacherAttendanceController.graceOptions)
+                ChoiceChip(
+                  label: Text(attT('att_t_seconds', args: {'n': '$g'})),
+                  selected: p.graceSeconds == g,
+                  onSelected: (_) => p.setGrace(g),
+                ),
+            ]),
+            const SizedBox(height: 6),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: p.allowWeb,
+              onChanged: p.setAllowWeb,
+              title: Text(attT('att_t_allow_web'),
+                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              subtitle: Text(attT('att_t_allow_web_hint'),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+            ),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: p.useLocation,
+              onChanged: p.setUseLocation,
+              title: Text(attT('att_t_location'),
+                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              subtitle: Text(attT('att_t_location_hint'),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+            ),
+            if (p.useLocation)
+              Wrap(spacing: 8, children: [
+                for (final r in TeacherAttendanceController.radiusOptions)
+                  ChoiceChip(
+                    label: Text(attT('att_t_meters', args: {'n': '$r'})),
+                    selected: p.radiusM == r,
+                    onSelected: (_) => p.setRadius(r),
+                  ),
+              ]),
+            const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                    foregroundColor: _bad,
-                    side: const BorderSide(color: _bad),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                onPressed: p.loading ? null : p.close,
-                icon: const Icon(CupertinoIcons.lock),
-                label: Text(attT('att_t_close'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                onPressed: p.loading ? null : () => p.open(),
+                child: p.loading
+                    ? const SizedBox(
+                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                    : Text(attT('att_t_start'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
               ),
             ),
-        ],
-        if (p.error != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Text(p.error!, style: const TextStyle(color: _bad, fontFamily: 'tajawal', fontSize: 12)),
-          ),
-      ]),
+          ] else ...[
+            const SizedBox(height: 6),
+            _CodeDisplay(p: p),
+            if (p.host != null && (p.isOpen || p.isClosing)) ...[
+              const SizedBox(height: 12),
+              _TeacherRelayBanner(host: p.host!),
+            ],
+            const SizedBox(height: 14),
+            if (p.usesCode)
+              Text(attT('att_t_show'),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: Colors.grey.shade600)),
+            if (p.isOpen)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(attT('att_t_move_hint'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+              ),
+            const SizedBox(height: 16),
+            if (p.closed || !(p.code?.isOpen ?? true))
+              Column(children: [
+                _Banner(
+                    icon: CupertinoIcons.lock_fill,
+                    text: p.isClosing
+                        ? attT('att_t_closing', args: {'n': '${p.closingLeft}'})
+                        : attT(p.closed ? 'att_t_closed' : 'att_t_expired'),
+                    color: _warn),
+                if (!p.isClosing)
+                  TextButton(
+                      onPressed: p.clear,
+                      child: Text(attT('att_t_new'), style: const TextStyle(fontFamily: 'tajawal'))),
+              ])
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: _bad,
+                      side: const BorderSide(color: _bad),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  onPressed: p.loading ? null : p.close,
+                  icon: const Icon(CupertinoIcons.lock),
+                  label: Text(attT('att_t_close'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                ),
+              ),
+          ],
+          if (p.error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(p.error!.startsWith('att_') ? attT(p.error!) : p.error!,
+                  style: const TextStyle(color: _bad, fontFamily: 'tajawal', fontSize: 12)),
+            ),
+        ]),
+      ),
     );
   }
 }
 
 class _CodeDisplay extends StatelessWidget {
   const _CodeDisplay({required this.p});
-  final TeacherAttendanceProvider p;
+  final TeacherAttendanceController p;
 
   @override
   Widget build(BuildContext context) {
     final primary = context.colors.primary;
     final rot = p.window?.rotationSeconds ?? 45;
     final code = p.code?.code ?? '------';
-    final grouped = '${code.substring(0, 3)} ${code.substring(3)}';
+    final grouped = p.usesCode ? '${code.substring(0, 3)} ${code.substring(3)}' : '';
     final active = p.isOpen;
 
     return Column(children: [
@@ -608,6 +676,9 @@ class _CodeDisplay extends StatelessWidget {
             ),
           ),
           Column(mainAxisSize: MainAxisSize.min, children: [
+            if (grouped.isEmpty)
+              Icon(CupertinoIcons.person_3_fill, size: 54, color: active ? primary : Colors.grey)
+            else
             Text(grouped,
                 style: TextStyle(
                     fontSize: 38,

@@ -407,11 +407,6 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
-  LinearGradient get _lightSlideBarGradient => LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: _model?.gradientLightSlideBar ?? AppTheme.lightSlideBarGradient.colors,
-  );
 
   LinearGradient get _sliderGradient => LinearGradient(
     begin: Alignment.topLeft,

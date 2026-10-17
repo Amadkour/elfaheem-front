@@ -7,6 +7,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
@@ -24,6 +26,14 @@ class AuthSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Name / logo / tagline / mission / stats come from the admin's "About us" data.
+    return ListenableBuilder(
+      listenable: AppIdentity.instance,
+      builder: (context, _) => _buildPanel(context, AppIdentity.instance),
+    );
+  }
+
+  Widget _buildPanel(BuildContext context, AppIdentity id) {
     return Container(
       width: context.width / 3 > 400 ? 400 : context.width / 3,
       decoration: BoxDecoration(gradient: context.colors.slideBarGradient),
@@ -65,35 +75,49 @@ class AuthSidebar extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.2),
                           ),
                         ),
-                        child: const Icon(
+                        child: id.logoUrl != null
+                            ? Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: AppNetworkImage(
+                            url: id.logoUrl!,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                            : const Icon(
                           Icons.layers_rounded,
                           color: Colors.white,
                           size: 22,
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'El-faheem',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              fontFamily: 'tajawal',
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              id.name.isNotEmpty ? id.name : 'El-faheem',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                fontFamily: 'tajawal',
+                              ),
                             ),
-                          ),
-                          Text(
-                            'learning_platform'.tr,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
-                              fontSize: 11,
-                              letterSpacing: 1.2,
-                              fontFamily: 'tajawal',
+                            Text(
+                              id.tagline.isNotEmpty ? id.tagline : 'learning_platform'.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                fontSize: 11,
+                                letterSpacing: 1.2,
+                                fontFamily: 'tajawal',
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -113,7 +137,9 @@ class AuthSidebar extends StatelessWidget {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'join_students_hint'.tr,
+                    id.mission.isNotEmpty ? id.mission : 'join_students_hint'.tr,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.65),
                       fontSize: 14,
@@ -141,16 +167,26 @@ class AuthSidebar extends StatelessWidget {
 
                   const Spacer(),
 
-                  // Trust badges
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 8,
-                    children: [
-                      _TrustBadge(label: 'badge_students'.tr),
-                      _TrustBadge(label: 'badge_teachers'.tr),
-                      _TrustBadge(label: 'badge_secure'.tr),
-                    ],
-                  ),
+                  // Statistics: the stats banner of the admin's "About us" page.
+                  // (Falls back to the old fixed badges until the admin adds some.)
+                  if (id.stats.isNotEmpty)
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        for (final st in id.stats.take(4)) _SidebarStat(value: st.value, label: st.label),
+                      ],
+                    )
+                  else
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
+                      children: [
+                        _TrustBadge(label: 'badge_students'.tr),
+                        _TrustBadge(label: 'badge_teachers'.tr),
+                        _TrustBadge(label: 'badge_secure'.tr),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -208,6 +244,54 @@ class _SidebarFeature extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+class _SidebarStat extends StatelessWidget {
+  final String value;
+  final String label;
+
+  const _SidebarStat({required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: const BoxConstraints(minWidth: 96, maxWidth: 160),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: 0.10),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textDirection: TextDirection.ltr,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'tajawal',
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.72),
+            fontSize: 11.5,
+            fontFamily: 'tajawal',
+            height: 1.3,
+          ),
+        ),
+      ],
+    ),
   );
 }
 

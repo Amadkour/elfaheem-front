@@ -4864,10 +4864,6 @@
     "en": "Teachers",
     "ar": "المعلمون"
   },
-  "terms_and_conditions": {
-    "en": "Terms & Conditions",
-    "ar": "الشروط والأحكام"
-  },
   "theme": {
     "en": "Theme",
     "ar": "المظهر"
@@ -10240,6 +10236,191 @@
     "en": "Sending the code…",
     "ar": "جارٍ إرسال الرمز…"
   },
+  "att_stage_witness": {
+    "en": "Signals from nearby classmates",
+    "ar": "إشارات الزملاء القريبين"
+  },
+  "att_witness_progress": {
+    "en": "Classmate signals: {x} of {n}",
+    "ar": "إشارات الزملاء: {x} من {n}"
+  },
+  "att_need_mates": {
+    "en": "Your teacher requires signals from {n} nearby classmate(s). Ask them to open the app with \"Help classmates\" on.",
+    "ar": "المعلّم يطلب إشارة من {n} زميل قريب. اطلب منهم فتح التطبيق وتفعيل \"ساعد زملاءك\"."
+  },
+  "att_err_witnesses": {
+    "en": "Not enough nearby classmates answered. Move closer together and try again.",
+    "ar": "لم نجد العدد المطلوب من الزملاء القريبين. اقتربوا من بعضكم وأعد المحاولة."
+  },
+  "att_reason_not_enough_witnesses": {
+    "en": "Not enough classmate signals",
+    "ar": "عدد إشارات الزملاء غير كافٍ"
+  },
+  "att_t_witnesses": {
+    "en": "Classmates required per student",
+    "ar": "عدد الزملاء المطلوبين لكل طالب"
+  },
+  "att_t_witnesses_hint": {
+    "en": "Default 0 = no classmate signals",
+    "ar": "الافتراضي 0 = بدون إشارات زملاء"
+  },
+  "att_visible_yes": {
+    "en": "Your phone is visible to nearby classmates",
+    "ar": "هاتفك ظاهر للزملاء القريبين"
+  },
+  "att_visible_no": {
+    "en": "Your phone is not visible to classmates right now",
+    "ar": "هاتفك غير ظاهر للزملاء حالياً"
+  },
+  "att_t_relay_on": {
+    "en": "Your phone is receiving check-ins from nearby offline students and sending them to the server",
+    "ar": "هاتفك يستقبل حضور الطلاب غير المتصلين القريبين ويرسله للخادم"
+  },
+  "att_t_relay_off": {
+    "en": "Your phone is not visible to offline students (turn on Bluetooth and Location)",
+    "ar": "هاتفك غير ظاهر للطلاب غير المتصلين (فعّل البلوتوث والموقع)"
+  },
+  "att_launch_btn": {
+    "en": "Start attendance",
+    "ar": "بدء أخذ الحضور"
+  },
+  "att_launch_title": {
+    "en": "Choose the lesson",
+    "ar": "اختر المحاضرة"
+  },
+  "att_launch_empty": {
+    "en": "No lessons yet",
+    "ar": "لا توجد محاضرات بعد"
+  },
+  "att_tab_downloads": {
+    "en": "Downloads",
+    "ar": "التنزيلات"
+  },
+  "att_tab_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "att_courses_title": {
+    "en": "Your courses for attendance",
+    "ar": "كورساتك للحضور"
+  },
+  "att_courses_empty": {
+    "en": "No saved courses yet. Open the app once while online and they will appear here.",
+    "ar": "لا توجد كورسات محفوظة. افتح التطبيق مرة واحدة وأنت متصل لتظهر هنا."
+  },
+  "att_course_tap": {
+    "en": "Tap to enter the attendance code",
+    "ar": "اضغط لإدخال كود الحضور"
+  },
+  "att_sheet_sub_mates": {
+    "en": "Stay next to your classmates — your presence is verified through nearby phones",
+    "ar": "ابقَ بجانب زملائك — سيتم التحقق من حضورك عبر الأجهزة القريبة"
+  },
+  "att_need_location": {
+    "en": "Your location will be checked (GPS / Wi-Fi)",
+    "ar": "سيتم التحقق من موقعك (GPS / شبكة الواي فاي)"
+  },
+  "att_err_web_not_allowed": {
+    "en": "The teacher did not allow web check-in. Use the mobile app.",
+    "ar": "المعلّم لم يسمح بتسجيل الحضور من الويب. استخدم تطبيق الموبايل."
+  },
+  "att_err_teacher_location": {
+    "en": "Could not get your location. Turn on location or join the Wi-Fi and try again.",
+    "ar": "تعذّر تحديد موقعك. فعّل الموقع أو اتصل بشبكة الواي فاي ثم حاول مرة أخرى."
+  },
+  "att_reason_wrong_location": {
+    "en": "You are outside the classroom area or your location could not be verified",
+    "ar": "أنت خارج نطاق القاعة أو لم يمكن التحقق من موقعك"
+  },
+  "att_t_method": {
+    "en": "How to identify students",
+    "ar": "طريقة التحقق من الطلاب"
+  },
+  "att_t_method_hint": {
+    "en": "The code, a number of nearby classmates, or both",
+    "ar": "الكود، أو عدد من الزملاء القريبين، أو الاثنان معاً"
+  },
+  "att_method_code": {
+    "en": "Code",
+    "ar": "الكود"
+  },
+  "att_method_witnesses": {
+    "en": "Classmates",
+    "ar": "الزملاء"
+  },
+  "att_method_both": {
+    "en": "Code + classmates",
+    "ar": "الكود + الزملاء"
+  },
+  "att_t_grace": {
+    "en": "Closing grace",
+    "ar": "مهلة الإغلاق"
+  },
+  "att_t_grace_hint": {
+    "en": "After closing, late requests are still accepted for this long",
+    "ar": "بعد الإغلاق يظل النظام يقبل الطلبات المتأخرة لهذه المدة"
+  },
+  "att_t_seconds": {
+    "en": "{n} s",
+    "ar": "{n} ث"
+  },
+  "att_t_allow_web": {
+    "en": "Allow check-in from the web",
+    "ar": "السماح بالتسجيل من الويب"
+  },
+  "att_t_allow_web_hint": {
+    "en": "When off: students can check in from the mobile app only",
+    "ar": "عند الإيقاف: الحضور من تطبيق الموبايل فقط"
+  },
+  "att_t_location": {
+    "en": "Check location",
+    "ar": "التحقق من الموقع"
+  },
+  "att_t_location_hint": {
+    "en": "Students must be near you (GPS) or on the same Wi-Fi",
+    "ar": "يجب أن يكون الطالب قرب موقعك (GPS) أو على نفس شبكة الواي فاي"
+  },
+  "att_t_meters": {
+    "en": "{n} m",
+    "ar": "{n} م"
+  },
+  "att_t_move_hint": {
+    "en": "You can leave this screen — the code stays visible in the top bar",
+    "ar": "يمكنك مغادرة هذه الشاشة — سيبقى الكود ظاهراً في الشريط العلوي"
+  },
+  "att_t_closing": {
+    "en": "Closing in {n} s…",
+    "ar": "يُغلق خلال {n} ثانية…"
+  },
+  "att_t_new": {
+    "en": "Start a new attendance",
+    "ar": "بدء حضور جديد"
+  },
+  "att_entry_open": {
+    "en": "Attendance is open now",
+    "ar": "الحضور مفتوح الآن"
+  },
+  "att_entry_closed": {
+    "en": "No attendance open",
+    "ar": "لا يوجد حضور مفتوح"
+  },
+  "att_t_running": {
+    "en": "Attendance is running",
+    "ar": "الحضور يعمل الآن"
+  },
+  "att_t_entry_sub": {
+    "en": "Start an attendance for a lesson",
+    "ar": "ابدأ جلسة حضور لإحدى المحاضرات"
+  },
+  "att_banner_tap": {
+    "en": "Tap to open",
+    "ar": "اضغط للفتح"
+  },
+  "att_err_unsupported_ios": {
+    "en": "This device cannot connect to nearby phones right now",
+    "ar": "هذا الجهاز لا يدعم الاتصال بالأجهزة القريبة حالياً"
+  },
+
   "admin_search_subscriptions": {
     "ar": "ابحث بالاسم أو البريد أو الهاتف أو اسم المرسل أو المرجع",
     "en": "Search name, email, phone, sender or reference"
@@ -11299,5 +11480,169 @@
   "cat_pill_total": {
     "ar": "{n} تصنيفات",
     "en": "{n} categories"
+  },
+  "about_us": {
+    "ar": "من نحن",
+    "en": "About us"
+  },
+  "about_retry": {
+    "ar": "حاول مرة أخرى",
+    "en": "Try again"
+  },
+  "about_version": {
+    "ar": "الإصدار",
+    "en": "Version"
+  },
+  "about_update_available": {
+    "ar": "تحديث جديد متاح",
+    "en": "Update available"
+  },
+  "about_update_available_long": {
+    "ar": "يوجد إصدار أحدث جاهز لك",
+    "en": "A newer version is ready for you"
+  },
+  "about_up_to_date": {
+    "ar": "أنت على آخر إصدار، كل شيء تمام",
+    "en": "You're on the latest version — all good"
+  },
+  "about_this_app": {
+    "ar": "عن التطبيق",
+    "en": "About this app"
+  },
+  "about_installed_version": {
+    "ar": "الإصدار المثبّت",
+    "en": "Installed version"
+  },
+  "about_latest_version": {
+    "ar": "أحدث إصدار",
+    "en": "Latest version"
+  },
+  "about_whats_new": {
+    "ar": "ما الجديد",
+    "en": "What's new"
+  },
+  "about_mission": {
+    "ar": "لماذا نحن هنا",
+    "en": "Why we're here"
+  },
+  "about_mission_sub": {
+    "ar": "الفكرة التي بدأنا منها",
+    "en": "The idea we started with"
+  },
+  "about_features": {
+    "ar": "ما ستحبه فينا",
+    "en": "What you'll love"
+  },
+  "about_features_sub": {
+    "ar": "أشياء صغيرة تصنع فرقًا كبيرًا",
+    "en": "Small things that make a big difference"
+  },
+  "about_team": {
+    "ar": "الناس خلف التطبيق",
+    "en": "The people behind it"
+  },
+  "about_team_sub": {
+    "ar": "فريق يعمل ليتعلّم الجميع بسهولة",
+    "en": "A team working so everyone can learn with ease"
+  },
+  "about_contact": {
+    "ar": "قل لنا مرحبًا",
+    "en": "Say hello"
+  },
+  "about_contact_hint": {
+    "ar": "اضغط للفتح، واضغط مطوّلًا للنسخ",
+    "en": "Tap to open, press and hold to copy"
+  },
+  "about_copied": {
+    "ar": "تم النسخ",
+    "en": "Copied"
+  },
+  "about_copy": {
+    "ar": "نسخ",
+    "en": "Copy"
+  },
+  "about_type_email": {
+    "ar": "البريد الإلكتروني",
+    "en": "Email"
+  },
+  "about_type_phone": {
+    "ar": "الهاتف",
+    "en": "Phone"
+  },
+  "about_type_whatsapp": {
+    "ar": "واتساب",
+    "en": "WhatsApp"
+  },
+  "about_type_telegram": {
+    "ar": "تيليجرام",
+    "en": "Telegram"
+  },
+  "about_type_website": {
+    "ar": "الموقع",
+    "en": "Website"
+  },
+  "about_type_facebook": {
+    "ar": "فيسبوك",
+    "en": "Facebook"
+  },
+  "about_type_instagram": {
+    "ar": "إنستغرام",
+    "en": "Instagram"
+  },
+  "about_type_youtube": {
+    "ar": "يوتيوب",
+    "en": "YouTube"
+  },
+  "about_type_address": {
+    "ar": "العنوان",
+    "en": "Address"
+  },
+  "about_type_general": {
+    "ar": "للتواصل",
+    "en": "Contact"
+  },
+  "terms_and_conditions": {
+    "ar": "الشروط والأحكام",
+    "en": "Terms & conditions"
+  },
+  "terms_intro": {
+    "ar": "اقرأها بهدوء — كتبناها لتعرف حقوقك وما نلتزم به تجاهك.",
+    "en": "Take your time — we wrote these so you know your rights and what we promise you."
+  },
+  "terms_last_updated": {
+    "ar": "آخر تحديث",
+    "en": "Updated"
+  },
+  "terms_n_sections": {
+    "ar": "{n} أقسام",
+    "en": "{n} sections"
+  },
+  "terms_section": {
+    "ar": "القسم",
+    "en": "Section"
+  },
+  "terms_search_hint": {
+    "ar": "ابحث في الشروط…",
+    "en": "Search the terms…"
+  },
+  "terms_expand_all": {
+    "ar": "فتح الكل",
+    "en": "Expand all"
+  },
+  "terms_collapse_all": {
+    "ar": "إغلاق الكل",
+    "en": "Collapse all"
+  },
+  "terms_empty": {
+    "ar": "لم تتم إضافة أي شروط بعد.",
+    "en": "No terms have been added yet."
+  },
+  "terms_no_match": {
+    "ar": "لم نجد شيئًا يطابق بحثك. جرّب كلمة أخرى.",
+    "en": "We couldn't find anything matching your search. Try another word."
+  },
+  "terms_footer": {
+    "ar": "باستمرارك في استخدام المنصة فأنت تؤكد أنك قرأت الشروط وفهمتها ووافقت عليها. شكرًا لثقتك بنا.",
+    "en": "By continuing to use the platform you confirm that you've read, understood and agreed to these terms. Thank you for trusting us."
   }
 }

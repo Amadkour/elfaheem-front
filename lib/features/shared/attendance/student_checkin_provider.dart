@@ -23,6 +23,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
 import 'attendance_crypto.dart';
+import 'attendance_location.dart';
 import 'attendance_models.dart';
 import 'attendance_offline_sync.dart';
 import 'attendance_permissions.dart';
@@ -76,6 +77,7 @@ class StudentCheckInProvider extends ChangeNotifier {
   final AttendanceRepository _repo;
   final AttendanceStore _store;
   final RelayClient _relay;
+  final LocationEvidenceService _location = LocationEvidenceService();
 
   static const _maxRelayAttempts = 3;
   static final _codeRe = RegExp(r'^\d{6}$');
@@ -87,6 +89,12 @@ class StudentCheckInProvider extends ChangeNotifier {
 
   /// Classmates required by the teacher for the window we know about (0 = none).
   int witnessesNeeded = 0;
+
+  /// False when the teacher identifies students by classmates only (no code to type).
+  bool needsCode = true;
+
+  /// The teacher also checks the student's location (GPS / Wi-Fi).
+  bool needsLocation = false;
 
   /// Signals collected so far in the current attempt.
   int witnessesFound = 0;
@@ -175,7 +183,9 @@ class StudentCheckInProvider extends ChangeNotifier {
       await _flushPending();
     }
     w ??= await _cachedWindow();
-    witnessesNeeded = w?.requiredWitnesses ?? 0;
+    witnessesNeeded = (w?.needsWitnesses ?? false) ? w!.requiredWitnesses : 0;
+    needsCode = w?.needsCode ?? true;
+    needsLocation = w?.needsLocation ?? false;
     _emit();
   }
 
@@ -195,7 +205,9 @@ class StudentCheckInProvider extends ChangeNotifier {
     if (busy) return;
     final code = rawCode.trim();
     reset();
-    if (!_codeRe.hasMatch(code)) {
+    // An empty code is allowed: sessions identified by classmates only need none. Whether it is
+    // required is checked once the window (and its method) is known.
+    if (code.isNotEmpty && !_codeRe.hasMatch(code)) {
       _finish(const CheckInOutcome(OutcomeKind.failed, messageKey: 'att_err_code_format'));
       return;
     }
@@ -247,7 +259,19 @@ class StudentCheckInProvider extends ChangeNotifier {
           at: Stage.send);
       return;
     }
-    witnessesNeeded = window.requiredWitnesses;
+    witnessesNeeded = window.needsWitnesses ? window.requiredWitnesses : 0;
+    needsCode = window.needsCode;
+    needsLocation = window.needsLocation;
+    if (kIsWeb && !window.allowWeb) {
+      _fail('att_err_web_not_allowed', at: Stage.send);
+      return;
+    }
+    if (window.needsCode && code.isEmpty) {
+      _fail('att_err_code_format', at: Stage.send);
+      return;
+    }
+    if (!window.needsCode) code = '';
+    final evidence = await _location.collect(window);
 
     // Classmate signals (only when the teacher asked for them).
     List<Map<String, dynamic>> witnesses = const [];
@@ -261,7 +285,7 @@ class StudentCheckInProvider extends ChangeNotifier {
     }
 
     _stage(Stage.send, StageState.active);
-    final p = _build(code, key, window, witnesses);
+    final p = _build(code, key, window, witnesses, evidence);
     await _store.addPending(p);
     _stage(Stage.send, StageState.ok);
     _stage(Stage.server, StageState.active);
@@ -339,7 +363,15 @@ class StudentCheckInProvider extends ChangeNotifier {
             return;
           }
         }
-        if (window != null) witnessesNeeded = window.requiredWitnesses;
+        if (window != null) {
+          witnessesNeeded = window.needsWitnesses ? window.requiredWitnesses : 0;
+          if (window.needsCode && code.isEmpty) {
+            await _closeAll(links);
+            _fail('att_err_code_format', at: Stage.send);
+            return;
+          }
+          if (!window.needsCode) code = '';
+        }
 
         // 2) Classmate signals.
         if (pending == null) {
@@ -359,7 +391,7 @@ class StudentCheckInProvider extends ChangeNotifier {
           } else {
             _stage(Stage.witness, StageState.skipped);
           }
-          pending = _build(code, key, window!, witnesses);
+          pending = _build(code, key, window!, witnesses, await _location.collect(window));
           await _store.addPending(pending); // persisted BEFORE it leaves the phone
         }
 
@@ -494,7 +526,8 @@ class StudentCheckInProvider extends ChangeNotifier {
 
   // ── helpers ───────────────────────────────────────────────────────────
   PendingAttendance _build(
-      String code, StudentKey key, OpenWindow w, List<Map<String, dynamic>> witnesses) {
+      String code, StudentKey key, OpenWindow w, List<Map<String, dynamic>> witnesses,
+      [Map<String, dynamic>? evidence]) {
     final id = newRequestId();
     return PendingAttendance(
       requestId: id,
@@ -502,9 +535,10 @@ class StudentCheckInProvider extends ChangeNotifier {
       attendanceSessionId: w.attendanceSessionId,
       studentId: key.userId,
       code: code,
-      signature: signRequest(key.key, id, w.attendanceSessionId, code),
+      signature: signRequest(key.key, id, w.attendanceSessionId, code, evidence),
       createdAtMs: DateTime.now().millisecondsSinceEpoch,
       witnesses: witnesses,
+      evidence: evidence,
     );
   }
 
@@ -542,6 +576,7 @@ class StudentCheckInProvider extends ChangeNotifier {
         'invalid_signature' => 'att_err_invalid_signature',
         'relay_not_allowed' => 'att_err_relay_not_allowed',
         'no_open_attendance' => 'att_err_no_window',
+        'web_not_allowed' => 'att_err_web_not_allowed',
         _ => 'att_err_generic',
       };
 }

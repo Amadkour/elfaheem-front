@@ -22,56 +22,42 @@
 /// same phone, or several links at once) silently replaces the first one. So every callback goes
 /// through [_Hub] below, which routes by endpoint id.
 ///
+/// This file is the Nearby Connections (Android) transport and the entry point ([RelayClient],
+/// [RelayHost]) that also drives the Bluetooth LE transport (relay_ble_transport.dart) so that
+/// iPhones work too. See relay_link.dart for the transport order.
+///
 /// pubspec.yaml:   nearby_connections: ^4.0.0     (Android only; needs Google Play services)
+///                 bluetooth_low_energy: ^6.0.0   (iPhone + Android<->iPhone)
 library;
 
 import 'dart:async';
-import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:nearby_connections/nearby_connections.dart';
+
+import 'relay_ble_transport.dart';
+import 'relay_link.dart';
+
+export 'relay_link.dart';
 
 const String kRelayServiceId = 'com.elfaheem.attendance.relay';
 // CLUSTER (M-to-N): a phone can advertise AND discover at the same time, and one phone can talk
 // to several classmates — both are needed for the classmate-witness signals.
 const Strategy _kStrategy = Strategy.P2P_CLUSTER;
 
-enum RelayFailure { bluetoothOff, noRelay, linkLost, timeout, unknown }
-
-class RelayException implements Exception {
-  const RelayException(this.kind, [this.detail]);
-  final RelayFailure kind;
-  final String? detail;
-  @override
-  String toString() => 'RelayException($kind, $detail)';
-}
-
-Uint8List _encode(Map<String, dynamic> m) => Uint8List.fromList(utf8.encode(jsonEncode(m)));
+bool get _nearbyOk => !kIsWeb && Platform.isAndroid;
+bool get _bleOk =>
+    !kIsWeb && (Platform.isIOS || (Platform.isAndroid && kAndroidAlsoUsesBle));
 
 Map<String, dynamic>? _decode(Payload p) {
   if (p.type != PayloadType.BYTES || p.bytes == null) return null;
-  try {
-    final d = jsonDecode(utf8.decode(p.bytes!));
-    return d is Map ? Map<String, dynamic>.from(d) : null;
-  } catch (_) {
-    return null;
-  }
+  return decodeMsg(p.bytes!);
 }
 
 // ════════════════════════════════════════════════════════════════════════════
 //  HUB — the only place that talks to the plugin's global callbacks
 // ════════════════════════════════════════════════════════════════════════════
-
-bool _isReply(Map<String, dynamic> m) {
-  final t = m['t'];
-  return t == 'window' || t == 'result' || t == 'error' || (t == 'witness' && m.containsKey('sig'));
-}
-
-bool _isRequest(Map<String, dynamic> m) {
-  final t = m['t'];
-  return t == 'hello' || t == 'submit' || (t == 'witness' && m.containsKey('att'));
-}
 
 class _Hub {
   _Hub._();
@@ -80,8 +66,8 @@ class _Hub {
   final Nearby nearby = Nearby();
 
   /// Links WE opened (client side), by endpoint id.
-  final Map<String, RelayLink> links = {};
-  final Map<String, Completer<RelayLink>> connecting = {};
+  final Map<String, _NearbyLink> links = {};
+  final Map<String, Completer<_NearbyLink>> connecting = {};
 
   /// Set while this phone advertises: answers requests arriving on ANY connection.
   RelayHandler? hostHandler;
@@ -90,9 +76,9 @@ class _Hub {
     final m = _decode(p);
     if (m == null) return;
     final link = links[eid];
-    if (link != null && _isReply(m) && link._deliver(m)) return;
+    if (link != null && isReply(m) && link._deliver(m)) return;
     final h = hostHandler;
-    if (h != null && _isRequest(m)) _serve(eid, m, h);
+    if (h != null && isRequest(m)) _serve(eid, m, h);
   }
 
   Future<void> _serve(String eid, Map<String, dynamic> req, RelayHandler h) async {
@@ -104,7 +90,7 @@ class _Hub {
       reply = {'t': 'error', 'code': 'relay_failed', 'message': 'relay failed'};
     }
     try {
-      await nearby.sendBytesPayload(eid, _encode(reply));
+      await nearby.sendBytesPayload(eid, encodeMsg(reply));
     } catch (_) {}
   }
 
@@ -121,7 +107,7 @@ class _Hub {
   void disResult(String id, Status st) {
     final c = connecting[id];
     if (st == Status.CONNECTED) {
-      final l = RelayLink._(nearby, id);
+      final l = _NearbyLink._(nearby, id);
       links[id] = l;
       if (c != null && !c.isCompleted) c.complete(l);
     } else if (c != null && !c.isCompleted) {
@@ -142,10 +128,11 @@ class _Hub {
 //  CLIENT (student collecting signals / offline student)
 // ════════════════════════════════════════════════════════════════════════════
 
-/// An open connection to ONE nearby phone.
-class RelayLink {
-  RelayLink._(this._nearby, this.endpointId);
+/// An open Nearby Connections link to ONE nearby phone.
+class _NearbyLink implements RelayLink {
+  _NearbyLink._(this._nearby, this.endpointId);
   final Nearby _nearby;
+  @override
   final String endpointId;
 
   Completer<Map<String, dynamic>>? _waiting;
@@ -167,13 +154,13 @@ class RelayLink {
     }
   }
 
-  /// Sends [msg] and waits for the single reply.
+  @override
   Future<Map<String, dynamic>> request(Map<String, dynamic> msg,
       {Duration timeout = const Duration(seconds: 25)}) async {
     if (_closed) throw const RelayException(RelayFailure.linkLost);
     final w = Completer<Map<String, dynamic>>();
     _waiting = w;
-    await _nearby.sendBytesPayload(endpointId, _encode(msg));
+    await _nearby.sendBytesPayload(endpointId, encodeMsg(msg));
     try {
       return await w.future.timeout(timeout);
     } on TimeoutException {
@@ -181,6 +168,7 @@ class RelayLink {
     }
   }
 
+  @override
   Future<void> close() async {
     _closed = true;
     _Hub.i.links.remove(endpointId);
@@ -191,14 +179,14 @@ class RelayLink {
 }
 
 class RelayClient {
-  final Nearby _nearby = Nearby();
   final Set<String> _mine = {};
+  final List<RelayLink> _bleLinks = [];
 
   /// Human-readable trace of the last search (shown on failure so a field test is diagnosable).
   String diag = '';
 
-  /// Discovers nearby phones and connects to up to [count] of them (as many as are found before
-  /// [timeout]). Throws [RelayException] if none could be reached.
+  /// Searches with every transport this phone has and connects to up to [count] phones (as many
+  /// as are found before [timeout]). Throws [RelayException] if none could be reached.
   /// [skip] lets the caller avoid endpoints that already failed.
   Future<List<RelayLink>> connectMany({
     required int count,
@@ -206,18 +194,57 @@ class RelayClient {
     Set<String> skip = const {},
     String nickname = 'student',
   }) async {
+    final c = RelayCollector(count);
+    final jobs = <Future<void>>[
+      if (_nearbyOk) _nearbyMany(c, timeout, skip, nickname),
+      if (_bleOk) BleRelay.instance.connectMany(c, timeout: timeout, skip: skip),
+    ];
+    if (jobs.isEmpty) {
+      throw const RelayException(RelayFailure.unknown, 'no transport on this device');
+    }
+    await Future.any([c.enough, Future.wait(jobs)]);
+    c.cancel();
+    await Future.wait(jobs); // transports stop searching and clean up
+
+    for (final l in c.links) {
+      if (l is _NearbyLink) {
+        _mine.add(l.endpointId);
+      } else {
+        _bleLinks.add(l);
+      }
+    }
+    diag = c.notes.join(' | ');
+    if (c.links.isEmpty) {
+      final off = c.errors.where((e) => e.kind == RelayFailure.bluetoothOff);
+      if (off.isNotEmpty && c.errors.length == jobs.length) throw off.first;
+      throw RelayException(RelayFailure.noRelay, diag);
+    }
+    return List.of(c.links);
+  }
+
+  /// One relay (used when no witnesses are needed).
+  Future<RelayLink> connect({
+    Duration timeout = const Duration(seconds: 25),
+    Set<String> skip = const {},
+    String nickname = 'student',
+  }) async =>
+      (await connectMany(count: 1, timeout: timeout, skip: skip, nickname: nickname)).first;
+
+  // ── Nearby Connections search (Android) ───────────────────────────────
+  Future<void> _nearbyMany(
+      RelayCollector c, Duration timeout, Set<String> skip, String nickname) async {
+    final nearby = Nearby();
     final found = StreamController<String>();
     final seen = <String>{...skip};
     var foundCount = 0;
     final connectErrors = <String>[];
-    diag = '';
 
     try {
-      await _nearby.stopDiscovery();
+      await nearby.stopDiscovery();
     } catch (_) {}
 
     try {
-      final ok = await _nearby.startDiscovery(
+      final ok = await nearby.startDiscovery(
         nickname,
         _kStrategy,
         serviceId: kRelayServiceId,
@@ -230,33 +257,39 @@ class RelayClient {
         onEndpointLost: (_) {},
       );
       if (!ok) throw const RelayException(RelayFailure.bluetoothOff, 'startDiscovery returned false');
-    } on RelayException {
+    } on RelayException catch (e) {
+      c.errors.add(e);
+      c.notes.add('nearby: ${e.detail}');
       await found.close();
-      rethrow;
+      return;
     } catch (e) {
       // Nearby throws a PlatformException when Bluetooth / Location is off or already discovering.
+      c.errors.add(RelayException(RelayFailure.bluetoothOff, e.toString()));
+      c.notes.add('nearby: $e');
       await found.close();
-      throw RelayException(RelayFailure.bluetoothOff, e.toString());
+      return;
     }
 
-    final links = <RelayLink>[];
     final deadline = DateTime.now().add(timeout);
     final it = StreamIterator<String>(found.stream);
+    var connected = 0;
     try {
-      while (links.length < count) {
+      while (!c.satisfied) {
         final left = deadline.difference(DateTime.now());
         if (left <= Duration.zero) break;
         bool has;
         try {
-          has = await it.moveNext().timeout(left);
+          has = await Future.any<bool>([
+            it.moveNext(),
+            c.enough.then((_) => false),
+          ]).timeout(left);
         } on TimeoutException {
           break;
         }
         if (!has) break;
         try {
           final l = await _connectTo(it.current, nickname);
-          _mine.add(l.endpointId);
-          links.add(l);
+          if (c.add(l)) connected++;
         } on RelayException catch (e) {
           connectErrors.add('${e.kind.name}${e.detail == null ? '' : ':${e.detail}'}');
           continue; // that phone refused / dropped: look for another one
@@ -265,29 +298,22 @@ class RelayClient {
     } finally {
       await it.cancel();
       await found.close();
-      await _safeStopDiscovery();
+      try {
+        await nearby.stopDiscovery();
+      } catch (_) {}
     }
-    diag = 'discovery ok; phones found=$foundCount; connected=${links.length}'
-        '${connectErrors.isEmpty ? '' : '; connect errors=${connectErrors.join(', ')}'}';
-    if (links.isEmpty) throw RelayException(RelayFailure.noRelay, diag);
-    return links;
+    c.notes.add('nearby: found=$foundCount; connected=$connected'
+        '${connectErrors.isEmpty ? '' : '; errors=${connectErrors.join(', ')}'}');
   }
 
-  /// One relay (used when no witnesses are needed).
-  Future<RelayLink> connect({
-    Duration timeout = const Duration(seconds: 25),
-    Set<String> skip = const {},
-    String nickname = 'student',
-  }) async =>
-      (await connectMany(count: 1, timeout: timeout, skip: skip, nickname: nickname)).first;
-
-  Future<RelayLink> _connectTo(String endpointId, String nickname) async {
+  Future<_NearbyLink> _connectTo(String endpointId, String nickname) async {
     final hub = _Hub.i;
-    final connected = Completer<RelayLink>();
+    final nearby = hub.nearby;
+    final connected = Completer<_NearbyLink>();
     hub.connecting[endpointId] = connected;
     try {
       // No token check on purpose: security never depends on this link (see header).
-      final asked = await _nearby.requestConnection(
+      final asked = await nearby.requestConnection(
         nickname,
         endpointId,
         onConnectionInitiated: hub.disInitiated,
@@ -307,22 +333,24 @@ class RelayClient {
     }
   }
 
-  Future<void> _safeStopDiscovery() async {
-    try {
-      await _nearby.stopDiscovery();
-    } catch (_) {}
-  }
-
   /// Stops searching and closes only OUR links (never the ones this phone serves as a host).
   Future<void> stop() async {
-    await _safeStopDiscovery();
-    for (final id in _mine.toList()) {
-      _Hub.i.links.remove(id);
+    if (_nearbyOk) {
       try {
-        await _nearby.disconnectFromEndpoint(id);
+        await _Hub.i.nearby.stopDiscovery();
       } catch (_) {}
+      for (final id in _mine.toList()) {
+        _Hub.i.links.remove(id);
+        try {
+          await _Hub.i.nearby.disconnectFromEndpoint(id);
+        } catch (_) {}
+      }
     }
     _mine.clear();
+    for (final l in _bleLinks) {
+      await l.close();
+    }
+    _bleLinks.clear();
   }
 }
 
@@ -330,10 +358,7 @@ class RelayClient {
 //  HOST (a student phone that is visible to classmates)
 // ════════════════════════════════════════════════════════════════════════════
 
-typedef RelayHandler = Future<Map<String, dynamic>> Function(Map<String, dynamic> request);
-
 class RelayHost {
-  final Nearby _nearby = Nearby();
   bool _running = false;
   bool get running => _running;
 
@@ -342,39 +367,61 @@ class RelayHost {
 
   Future<bool> start({required RelayHandler handler, String nickname = 'relay'}) async {
     if (_running) return true;
-    final hub = _Hub.i;
-    hub.hostHandler = handler;
-    try {
-      await _nearby.stopAdvertising();
-    } catch (_) {}
-    try {
-      final ok = await _nearby.startAdvertising(
-        nickname,
-        _kStrategy,
-        serviceId: kRelayServiceId,
-        onConnectionInitiated: hub.adInitiated,
-        onConnectionResult: (id, status) {},
-        onDisconnected: (id) {},
-      );
-      _running = ok;
-      lastError = ok ? null : 'startAdvertising returned false';
-      if (!ok) hub.hostHandler = null;
-      return ok;
-    } catch (e) {
-      lastError = e.toString();
-      debugPrint('relay advertise failed: $e');
-      _running = false;
-      hub.hostHandler = null;
-      return false;
+    final errors = <String>[];
+    var ok = false;
+
+    if (_nearbyOk) {
+      final nearby = _Hub.i.nearby;
+      final hub = _Hub.i;
+      hub.hostHandler = handler;
+      try {
+        await nearby.stopAdvertising();
+      } catch (_) {}
+      try {
+        final r = await nearby.startAdvertising(
+          nickname,
+          _kStrategy,
+          serviceId: kRelayServiceId,
+          onConnectionInitiated: hub.adInitiated,
+          onConnectionResult: (id, status) {},
+          onDisconnected: (id) {},
+        );
+        if (r) {
+          ok = true;
+        } else {
+          errors.add('nearby: startAdvertising returned false');
+          hub.hostHandler = null;
+        }
+      } catch (e) {
+        errors.add('nearby: $e');
+        debugPrint('relay advertise failed: $e');
+        hub.hostHandler = null;
+      }
     }
+
+    if (_bleOk) {
+      final r = await BleRelay.instance.startHost(handler);
+      if (r) {
+        ok = true;
+      } else {
+        errors.add('ble: ${BleRelay.instance.lastError}');
+      }
+    }
+
+    _running = ok;
+    lastError = ok ? null : errors.join(' | ');
+    return ok;
   }
 
   /// Stops advertising only; connections this phone opened as a client stay alive.
   Future<void> stop() async {
     _running = false;
-    _Hub.i.hostHandler = null;
-    try {
-      await _nearby.stopAdvertising();
-    } catch (_) {}
+    if (_nearbyOk) {
+      _Hub.i.hostHandler = null;
+      try {
+        await _Hub.i.nearby.stopAdvertising();
+      } catch (_) {}
+    }
+    if (_bleOk) await BleRelay.instance.stopHost();
   }
 }

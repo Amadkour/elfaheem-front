@@ -59,10 +59,21 @@ class DeviceIdService {
     return _name ??= 'Unknown device';
   }
 
+  /// 'android' | 'ios' | 'web' | 'other' — the server lets teachers refuse web check-in.
+  static String get platform {
+    if (kIsWeb) return 'web';
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => 'android',
+      TargetPlatform.iOS => 'ios',
+      _ => 'other',
+    };
+  }
+
   /// Merge these into EVERY authenticated request.
   Future<Map<String, String>> headers() async => {
         'X-Device-Id': await id(),
         // header values must be latin-1; encode the name to be safe
         'X-Device-Name': Uri.encodeComponent(await name()),
+        'X-Client-Platform': platform,
       };
 }

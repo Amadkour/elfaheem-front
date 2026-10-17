@@ -51,6 +51,7 @@ const _presets = [
 
 class _Preset {
   const _Preset(this.ar, this.en, this.icon);
+
   final String ar, en, icon;
 }
 
@@ -58,10 +59,12 @@ class AdminRequiredDocumentsPage extends StatefulWidget {
   const AdminRequiredDocumentsPage({super.key});
 
   @override
-  State<AdminRequiredDocumentsPage> createState() => _AdminRequiredDocumentsPageState();
+  State<AdminRequiredDocumentsPage> createState() =>
+      _AdminRequiredDocumentsPageState();
 }
 
-class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage> {
+class _AdminRequiredDocumentsPageState
+    extends State<AdminRequiredDocumentsPage> {
   static const _base = '/api/v1/admin/required-documents';
   final _api = ApiClient();
   List<Map<String, dynamic>> _items = [];
@@ -92,7 +95,10 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
     _items.insert(to, it);
     setState(() {});
     try {
-      await _api.post('$_base/reorder', body: {'ids': _items.map((e) => e['id']).toList()});
+      await _api.post(
+        '$_base/reorder',
+        body: {'ids': _items.map((e) => e['id']).toList()},
+      );
     } catch (e) {
       toast('$e', error: true);
       _load(silent: true);
@@ -119,7 +125,11 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
     if (!ok) return;
     try {
       final r = await _api.delete('$_base/${d['id']}');
-      toast(r is Map && r['disabled'] == true ? 'doc_disabled_instead'.tr : 'doc_deleted'.tr);
+      toast(
+        r is Map && r['disabled'] == true
+            ? 'doc_disabled_instead'.tr
+            : 'doc_deleted'.tr,
+      );
       await _load(silent: true);
     } catch (e) {
       toast('$e', error: true);
@@ -162,19 +172,33 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
 
   // ── pieces ───────────────────────────────────────────────────────────────
   Widget _header() {
-    final requiredActive =
-        _items.where((e) => asBool(e['is_required']) && asBool(e['is_active'])).length;
+    final requiredActive = _items
+        .where((e) => asBool(e['is_required']) && asBool(e['is_active']))
+        .length;
     final active = _items.where((e) => asBool(e['is_active'])).length;
     return PremiumHero(
       icon: Icons.folder_shared_rounded,
       colors: AdminPalette.teal,
       title: 'required_documents_title'.tr,
       subtitle: 'doc_intro'.tr,
-      footer: Wrap(spacing: 8, runSpacing: 6, children: [
-        HeroPill(trp('doc_count', {'n': _items.length}), icon: Icons.folder_copy_rounded),
-        HeroPill(trp('doc_active_count', {'n': active}), icon: Icons.check_circle_rounded),
-        HeroPill(trp('doc_required_count', {'n': requiredActive}), icon: Icons.priority_high_rounded),
-      ]),
+      footer: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          HeroPill(
+            trp('doc_count', {'n': _items.length}),
+            icon: Icons.folder_copy_rounded,
+          ),
+          HeroPill(
+            trp('doc_active_count', {'n': active}),
+            icon: Icons.check_circle_rounded,
+          ),
+          HeroPill(
+            trp('doc_required_count', {'n': requiredActive}),
+            icon: Icons.priority_high_rounded,
+          ),
+        ],
+      ),
     );
   }
 
@@ -187,23 +211,42 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: c.divider),
       ),
-      child: Column(children: [
-        ServiceIcon(icon: Icons.note_add_rounded, colors: AdminPalette.teal, size: 62),
-        const SizedBox(height: 14),
-        Text('doc_empty'.tr,
-            textAlign: TextAlign.center,
-            style: adminText(context, size: 14, weight: FontWeight.w600, color: c.textMedium, height: 1.5)),
-        const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: () => _edit(),
-          icon: const Icon(Icons.add_rounded),
-          label: Text('doc_add'.tr, style: const TextStyle(fontFamily: 'tajawal')),
-          style: FilledButton.styleFrom(
-            backgroundColor: c.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        children: [
+          ServiceIcon(
+            icon: Icons.note_add_rounded,
+            colors: AdminPalette.teal,
+            size: 62,
           ),
-        ),
-      ]),
+          const SizedBox(height: 14),
+          Text(
+            'doc_empty'.tr,
+            textAlign: TextAlign.center,
+            style: adminText(
+              context,
+              size: 14,
+              weight: FontWeight.w600,
+              color: c.textMedium,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: () => _edit(),
+            icon: const Icon(Icons.add_rounded),
+            label: Text(
+              'doc_add'.tr,
+              style: const TextStyle(fontFamily: 'tajawal'),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: c.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -218,19 +261,30 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
     final fg = on ? color : c.textLight;
     return Material(
       color: on ? color.withValues(alpha: 0.13) : c.inputBg,
-      shape: StadiumBorder(side: BorderSide(color: on ? color.withValues(alpha: 0.5) : c.divider)),
+      shape: StadiumBorder(
+        side: BorderSide(color: on ? color.withValues(alpha: 0.5) : c.divider),
+      ),
       child: InkWell(
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 14, color: fg),
-            const SizedBox(width: 5),
-            Text(label,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: fg),
+              const SizedBox(width: 5),
+              Text(
+                label,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
-          ]),
+                  fontFamily: 'tajawal',
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -263,58 +317,102 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
             opacity: isActive ? 1 : 0.62,
             child: Padding(
               padding: const EdgeInsets.all(14),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  ServiceIcon(icon: docIcon(d['icon_name'] as String?), colors: palette, size: 48),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(_title(d),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: adminText(context, size: 15, weight: FontWeight.w800)),
-                      if (other.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(other,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: adminText(context,
-                                size: 12, weight: FontWeight.w500, color: c.textMedium)),
-                      ],
-                    ]),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ServiceIcon(
+                        icon: docIcon(d['icon_name'] as String?),
+                        colors: palette,
+                        size: 48,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _title(d),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: adminText(
+                                context,
+                                size: 15,
+                                weight: FontWeight.w800,
+                              ),
+                            ),
+                            if (other.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                other,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: adminText(
+                                  context,
+                                  size: 12,
+                                  weight: FontWeight.w500,
+                                  color: c.textMedium,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'delete'.tr,
+                        icon: Icon(
+                          Icons.delete_outline_rounded,
+                          color: c.danger,
+                        ),
+                        onPressed: () => _delete(d),
+                      ),
+                      ReorderableDragStartListener(
+                        index: i,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.drag_indicator_rounded,
+                            color: c.textLight,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'delete'.tr,
-                    icon: Icon(Icons.delete_outline_rounded, color: c.danger),
-                    onPressed: () => _delete(d),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _pill(
+                        label: isRequired
+                            ? 'doc_required'.tr
+                            : 'doc_optional'.tr,
+                        icon: isRequired
+                            ? Icons.priority_high_rounded
+                            : Icons.remove_rounded,
+                        color: AdminPalette.rose.last,
+                        on: isRequired,
+                        onTap: () => _toggle(d, 'is_required'),
+                      ),
+                      _pill(
+                        label: isActive ? 'doc_active'.tr : 'doc_hidden'.tr,
+                        icon: isActive
+                            ? Icons.check_circle_rounded
+                            : Icons.visibility_off_rounded,
+                        color: AdminPalette.green.last,
+                        on: isActive,
+                        onTap: () => _toggle(d, 'is_active'),
+                      ),
+                      StatusChip(
+                        trp('doc_uploads_n', {'n': asInt(d['uploads'])}),
+                        AdminPalette.blue.last,
+                      ),
+                    ],
                   ),
-                  ReorderableDragStartListener(
-                    index: i,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(Icons.drag_indicator_rounded, color: c.textLight),
-                    ),
-                  ),
-                ]),
-                const SizedBox(height: 12),
-                Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                  _pill(
-                    label: isRequired ? 'doc_required'.tr : 'doc_optional'.tr,
-                    icon: isRequired ? Icons.priority_high_rounded : Icons.remove_rounded,
-                    color: AdminPalette.rose.last,
-                    on: isRequired,
-                    onTap: () => _toggle(d, 'is_required'),
-                  ),
-                  _pill(
-                    label: isActive ? 'doc_active'.tr : 'doc_hidden'.tr,
-                    icon: isActive ? Icons.check_circle_rounded : Icons.visibility_off_rounded,
-                    color: AdminPalette.green.last,
-                    on: isActive,
-                    onTap: () => _toggle(d, 'is_active'),
-                  ),
-                  StatusChip(trp('doc_uploads_n', {'n': asInt(d['uploads'])}), AdminPalette.blue.last),
-                ]),
-              ]),
+                ],
+              ),
             ),
           ),
         ),
@@ -325,7 +423,10 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
   @override
   Widget build(BuildContext context) {
     AdminPalette.attach(context);
-    context.watch<LangProvider>(); // whole page re-translates when the language changes
+    context
+        .watch<
+          LangProvider
+        >(); // whole page re-translates when the language changes
 
     Widget body;
     if (_loading) {
@@ -341,7 +442,8 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
       body = ReorderableListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         header: _header(),
-        buildDefaultDragHandles: false, // our own handle on each card
+        buildDefaultDragHandles: false,
+        // our own handle on each card
         itemCount: _items.length,
         onReorder: _reorder,
         itemBuilder: (_, i) => _card(i, _items[i]),
@@ -358,8 +460,13 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
               backgroundColor: context.colors.primary,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_rounded),
-              label: Text('doc_add'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+              label: Text(
+                'doc_add'.tr,
+                style: const TextStyle(
+                  fontFamily: 'tajawal',
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
       child: Align(
         alignment: Alignment.topCenter,
@@ -377,6 +484,7 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
 /// animation (no "used after being disposed" errors).
 class _DocForm extends StatefulWidget {
   const _DocForm({this.doc});
+
   final Map<String, dynamic>? doc;
 
   @override
@@ -418,14 +526,15 @@ class _DocFormState extends State<_DocForm> {
   }
 
   void _usePreset(_Preset p) => setState(() {
-        _titleAr.text = p.ar;
-        _titleEn.text = p.en;
-        _icon = p.icon;
-      });
+    _titleAr.text = p.ar;
+    _titleEn.text = p.en;
+    _icon = p.icon;
+  });
 
   void _submit() {
     if (!(_form.currentState?.validate() ?? false)) return;
-    String? n(TextEditingController t) => t.text.trim().isEmpty ? null : t.text.trim();
+    String? n(TextEditingController t) =>
+        t.text.trim().isEmpty ? null : t.text.trim();
     Navigator.pop(context, <String, dynamic>{
       'title_ar': _titleAr.text.trim(),
       'title_en': n(_titleEn),
@@ -438,11 +547,17 @@ class _DocFormState extends State<_DocForm> {
   }
 
   Widget _label(String key) => Padding(
-        padding: const EdgeInsets.only(bottom: 8, top: 4),
-        child: Text(key.tr,
-            style: adminText(context,
-                size: 12.5, weight: FontWeight.w700, color: context.colors.textMedium)),
-      );
+    padding: const EdgeInsets.only(bottom: 8, top: 4),
+    child: Text(
+      key.tr,
+      style: adminText(
+        context,
+        size: 12.5,
+        weight: FontWeight.w700,
+        color: context.colors.textMedium,
+      ),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -459,86 +574,132 @@ class _DocFormState extends State<_DocForm> {
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
             child: Form(
               key: _form,
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                if (_isNew) ...[
-                  _label('doc_quick_add'),
-                  Wrap(spacing: 8, runSpacing: 8, children: [
-                    for (final p in _presets)
-                      ActionChip(
-                        avatar: Icon(docIcon(p.icon), size: 16, color: c.primary),
-                        label: Text(ar ? p.ar : p.en,
-                            style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
-                        backgroundColor: c.inputBg,
-                        side: BorderSide(color: c.divider),
-                        onPressed: () => _usePreset(p),
-                      ),
-                  ]),
-                  const SizedBox(height: 16),
-                ],
-                Field(
-                  controller: _titleAr,
-                  label: 'doc_title_ar'.tr,
-                  validator: (v) => (v ?? '').trim().isEmpty ? 'doc_title_required'.tr : null,
-                ),
-                Field(controller: _titleEn, label: 'doc_title_en'.tr, ltr: true),
-                Field(controller: _descAr, label: 'doc_desc_ar'.tr, maxLines: 2),
-                Field(controller: _descEn, label: 'doc_desc_en'.tr, maxLines: 2, ltr: true),
-                _label('doc_icon'),
-                Wrap(spacing: 10, runSpacing: 10, children: [
-                  for (final e in kDocIcons.entries)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: () => setState(() => _icon = e.key),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: _icon == e.key ? c.primary.withValues(alpha: 0.12) : c.inputBg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: _icon == e.key ? c.primary : c.divider,
-                              width: _icon == e.key ? 2 : 1),
-                        ),
-                        child: Icon(e.value,
-                            color: _icon == e.key ? c.primary : c.textMedium, size: 24),
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isNew) ...[
+                    _label('doc_quick_add'),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final p in _presets)
+                          ActionChip(
+                            avatar: Icon(
+                              docIcon(p.icon),
+                              size: 16,
+                              color: c.primary,
+                            ),
+                            label: Text(
+                              ar ? p.ar : p.en,
+                              style: const TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 12.5,
+                              ),
+                            ),
+                            backgroundColor: c.inputBg,
+                            side: BorderSide(color: c.divider),
+                            onPressed: () => _usePreset(p),
+                          ),
+                      ],
                     ),
-                ]),
-                const SizedBox(height: 16),
-                PremiumSwitchRow(
-                  icon: Icons.priority_high_rounded,
-                  title: 'doc_required'.tr,
-                  subtitle: 'doc_required_hint'.tr,
-                  value: _required,
-                  onChanged: (v) => setState(() => _required = v),
-                ),
-                PremiumSwitchRow(
-                  icon: Icons.check_circle_rounded,
-                  title: 'doc_active'.tr,
-                  subtitle: 'doc_active_hint'.tr,
-                  value: _active,
-                  onChanged: (v) => setState(() => _active = v),
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: c.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
-                    child: Text('save'.tr,
-                        style: const TextStyle(
-                            fontFamily: 'tajawal',
-                            fontSize: 15.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
+                    const SizedBox(height: 16),
+                  ],
+                  Field(
+                    controller: _titleAr,
+                    label: 'doc_title_ar'.tr,
+                    validator: (v) => (v ?? '').trim().isEmpty
+                        ? 'doc_title_required'.tr
+                        : null,
                   ),
-                ),
-              ]),
+                  Field(
+                    controller: _titleEn,
+                    label: 'doc_title_en'.tr,
+                    ltr: true,
+                  ),
+                  Field(
+                    controller: _descAr,
+                    label: 'doc_desc_ar'.tr,
+                    maxLines: 2,
+                  ),
+                  Field(
+                    controller: _descEn,
+                    label: 'doc_desc_en'.tr,
+                    maxLines: 2,
+                    ltr: true,
+                  ),
+                  _label('doc_icon'),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      for (final e in kDocIcons.entries)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () => setState(() => _icon = e.key),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _icon == e.key
+                                  ? c.primary.withValues(alpha: 0.12)
+                                  : c.inputBg,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: _icon == e.key ? c.primary : c.divider,
+                                width: _icon == e.key ? 2 : 1,
+                              ),
+                            ),
+                            child: Icon(
+                              e.value,
+                              color: _icon == e.key ? c.primary : c.textMedium,
+                              size: 24,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  PremiumSwitchRow(
+                    icon: Icons.priority_high_rounded,
+                    title: 'doc_required'.tr,
+                    subtitle: 'doc_required_hint'.tr,
+                    value: _required,
+                    onChanged: (v) => setState(() => _required = v),
+                  ),
+                  PremiumSwitchRow(
+                    icon: Icons.check_circle_rounded,
+                    title: 'doc_active'.tr,
+                    subtitle: 'doc_active_hint'.tr,
+                    value: _active,
+                    onChanged: (v) => setState(() => _active = v),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: _submit,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.primary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'save'.tr,
+                        style: const TextStyle(
+                          fontFamily: 'tajawal',
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
