@@ -1,6 +1,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -22,6 +23,7 @@ import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
@@ -511,15 +513,109 @@ class _PremiumLoadingScreen extends StatelessWidget {
 /// Branded from the dashboard's "About us" data (AppIdentity: cached from the last launch,
 /// so it is already right on the first frame; before the very first fetch it falls back to
 /// the bundled logo + the remote-config name).
-class _SplashBody extends StatelessWidget {
+// Add at the top of the file that contains _SplashBody:
+// import 'dart:async';
+// import 'dart:math' as math;
+// Add at the top of the file that contains _SplashBody:
+// import 'dart:async';
+// import 'dart:math' as math;
+// Add at the top of the file that contains _SplashBody:
+// import 'dart:async';
+// import 'dart:math' as math;
+
+class _SplashBody extends StatefulWidget {
   const _SplashBody();
 
-  Widget _blob(double size, double alpha) => Container(
+  @override
+  State<_SplashBody> createState() => _SplashBodyState();
+}
+
+class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin {
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..forward();
+
+  late final AnimationController _loop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 3200),
+  )..repeat(reverse: true);
+
+  // Continuous clock for the organic random logo drift (never loops/snaps).
+  static const _clockSeconds = 86400.0;
+  late final AnimationController _drift = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 86400),
+  )..forward();
+
+  // Random phases per launch: the logo wanders differently every time.
+  final _rnd = math.Random();
+  late final List<double> _ph = List.generate(8, (_) => _rnd.nextDouble() * math.pi * 2);
+
+  late final Animation<double> _greetA = _step(0.00, 0.35);
+  late final Animation<double> _logoA = _step(0.10, 0.60, Curves.easeOutBack);
+  late final Animation<double> _nameA = _step(0.35, 0.75);
+  late final Animation<double> _tagA = _step(0.50, 0.90);
+  late final Animation<double> _footA = _step(0.65, 1.00);
+  late final Animation<double> _float = CurvedAnimation(parent: _loop, curve: Curves.easeInOut);
+
+  Animation<double> _step(double s, double e, [Curve curve = Curves.easeOutCubic]) =>
+      CurvedAnimation(parent: _enter, curve: Interval(s, e, curve: curve));
+
+  static const _messages = [
+    'نجهّز لك كل شيء…',
+    'لحظات ونكون معك',
+    'نحضّر تجربتك بكل حب',
+    'شكراً لصبرك 💛',
+  ];
+  int _msgIndex = 0;
+  Timer? _msgTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _msgTimer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
+      if (!mounted) return;
+      setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _msgTimer?.cancel();
+    _enter.dispose();
+    _loop.dispose();
+    _drift.dispose();
+    super.dispose();
+  }
+
+  String get _greeting {
+    final h = DateTime.now().hour;
+    if (h < 5) return 'ليلة هادئة 🌙';
+    if (h < 12) return 'صباح الخير ☀️';
+    if (h < 17) return 'طاب يومك 🌤️';
+    if (h < 21) return 'مساء الخير 🌇';
+    return 'مساء النور 🌙';
+  }
+
+  double get _t => _drift.value * _clockSeconds;
+
+  Widget _reveal(Animation<double> a, Widget child, {double dy = 0.18}) {
+    return FadeTransition(
+      opacity: a,
+      child: SlideTransition(
+        position: Tween<Offset>(begin: Offset(0, dy), end: Offset.zero).animate(a),
+        child: child,
+      ),
+    );
+  }
+
+  Widget _glow(double size, Color color) => Container(
     width: size,
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: alpha),
+      gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
     ),
   );
 
@@ -535,106 +631,378 @@ class _SplashBody extends StatelessWidget {
         final tagline = id.tagline;
         final version = id.versionLabel;
 
+        final logoImage = AppNetworkImage(
+          url: id.logoUrl ?? 'assets/images/logo.png',
+          width: 92,
+          height: 92,
+          fit: BoxFit.contain,
+        );
+
         return Directionality(
           textDirection: pageDirection,
           child: Scaffold(
+            backgroundColor: c.background,
             body: Container(
               width: double.infinity,
               height: double.infinity,
-              decoration: BoxDecoration(gradient: c.primaryGradient),
+              // Flat theme background colour (adapts to light / dark).
+              color: c.background,
               child: Stack(
                 children: [
-                  PositionedDirectional(top: -90, end: -90, child: _blob(300, 0.07)),
-                  PositionedDirectional(bottom: -110, start: -70, child: _blob(280, 0.05)),
-                  PositionedDirectional(top: 220, start: -50, child: _blob(150, 0.05)),
+                  // ══ Premium background (all layers derive from the theme) ══
+
+                  // 1) Gentle top/bottom primary wash over the flat background.
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            c.primary.withValues(alpha: c.isDark ? 0.12 : 0.08),
+                            Colors.transparent,
+                            c.primary.withValues(alpha: c.isDark ? 0.14 : 0.09),
+                          ],
+                          stops: const [0.0, 0.5, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 2) Fine dot grid that fades out toward the centre.
+                  Positioned.fill(
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        painter: _DotGridPainter(
+                          color: c.primary.withValues(alpha: c.isDark ? 0.22 : 0.16),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 3) Drifting primary glows.
+                  AnimatedBuilder(
+                    animation: _drift,
+                    builder: (_, __) {
+                      final t = _t;
+                      return Stack(
+                        children: [
+                          PositionedDirectional(
+                            top: -120 + 26 * math.sin(t * 0.30 + _ph[0]),
+                            end: -110 + 20 * math.sin(t * 0.23 + _ph[1]),
+                            child: _glow(380, c.primary.withValues(alpha: c.isDark ? 0.24 : 0.16)),
+                          ),
+                          PositionedDirectional(
+                            bottom: -140 + 24 * math.sin(t * 0.27 + _ph[2]),
+                            start: -100 + 18 * math.sin(t * 0.21 + _ph[3]),
+                            child: _glow(360, c.primaryLight.withValues(alpha: c.isDark ? 0.20 : 0.22)),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+
+                  // 4) Breathing spotlight + concentric rings behind the logo.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: AnimatedBuilder(
+                        animation: _float,
+                        builder: (_, __) {
+                          final p = _float.value;
+                          Widget ring(double size, double alpha) => Container(
+                            width: size,
+                            height: size,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: c.primary.withValues(alpha: alpha),
+                                width: 1,
+                              ),
+                            ),
+                          );
+                          return Center(
+                            child: Transform.scale(
+                              scale: 1 + 0.05 * p,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  _glow(460, c.primary.withValues(alpha: c.isDark ? 0.26 : 0.17)),
+                                  ring(280, c.isDark ? 0.20 : 0.14),
+                                  ring(400, c.isDark ? 0.14 : 0.09),
+                                  ring(540, c.isDark ? 0.09 : 0.05),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // 5) Soft vignette for depth.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: RadialGradient(
+                            center: Alignment.center,
+                            radius: 1.15,
+                            colors: [
+                              Colors.transparent,
+                              (c.isDark ? Colors.black : c.primaryDark)
+                                  .withValues(alpha: c.isDark ? 0.35 : 0.10),
+                            ],
+                            stops: const [0.6, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
                   SafeArea(
                     child: Column(
                       children: [
-                        const Spacer(flex: 3),
-                        TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0.85, end: 1),
-                          duration: const Duration(milliseconds: 700),
-                          curve: Curves.easeOutBack,
-                          builder: (_, v, child) => Opacity(
-                            opacity: v.clamp(0.0, 1.0),
-                            child: Transform.scale(scale: v, child: child),
-                          ),
-                          child: Container(
-                            width: 132,
-                            height: 132,
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(38),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 32,
-                                  offset: const Offset(0, 14),
+                        // ── Top half: greeting ──
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 20),
+                              child: _reveal(
+                                _greetA,
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: c.primaryTint,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: c.primary.withValues(alpha: 0.18)),
+                                  ),
+                                  child: Text(
+                                    _greeting,
+                                    style: TextStyle(
+                                      fontFamily: 'tajawal',
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: c.primary,
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
-                            child: AppNetworkImage(
-                              url: id.logoUrl ?? 'assets/images/logo.png',
-                              width: 92,
-                              height: 92,
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 26),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            name,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        if (tagline.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 40),
-                            child: Text(
-                              tagline,
-                              textAlign: TextAlign.center,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontFamily: 'tajawal',
-                                fontSize: 15,
-                                height: 1.5,
-                                color: Colors.white.withValues(alpha: 0.85),
+                                dy: -0.4,
                               ),
                             ),
                           ),
-                        ],
-                        const Spacer(flex: 3),
-                        const SizedBox(
-                          width: 26,
-                          height: 26,
-                          child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white70),
                         ),
-                        const SizedBox(height: 18),
-                        if (version.isNotEmpty)
-                          Text(
-                            'v$version',
-                            style: TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 12,
-                              letterSpacing: 0.6,
-                              color: Colors.white.withValues(alpha: 0.65),
+
+                        // ── Logo: exactly centred (both halves are Expanded) ──
+                        ScaleTransition(
+                          scale: Tween<double>(begin: 0.8, end: 1).animate(_logoA),
+                          child: FadeTransition(
+                            opacity: CurvedAnimation(
+                              parent: _enter,
+                              curve: const Interval(0.1, 0.45),
+                            ),
+                            child: AnimatedBuilder(
+                              animation: Listenable.merge([_drift, _float]),
+                              child: logoImage,
+                              builder: (_, image) {
+                                final t = _t;
+                                final dx = 12 * math.sin(t * 0.90 + _ph[0]) +
+                                    6 * math.sin(t * 1.70 + _ph[1]);
+                                final dy = 14 * math.sin(t * 1.10 + _ph[2]) +
+                                    6 * math.sin(t * 2.10 + _ph[3]);
+                                final tilt = 0.05 * math.sin(t * 0.80 + _ph[4]) +
+                                    0.02 * math.sin(t * 1.90 + _ph[5]);
+                                final breathe = 1 + 0.025 * math.sin(t * 1.30 + _ph[6]);
+                                final p = _float.value;
+
+                                return Transform.translate(
+                                  offset: Offset(dx, dy),
+                                  child: Transform.rotate(
+                                    angle: tilt,
+                                    child: Transform.scale(
+                                      scale: breathe,
+                                      child: SizedBox(
+                                        width: 200,
+                                        height: 200,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            // pulsing halo in primary
+                                            Container(
+                                              width: 150 + 46 * p,
+                                              height: 150 + 46 * p,
+                                              decoration: BoxDecoration(
+                                                borderRadius: BorderRadius.circular(46 + 10 * p),
+                                                border: Border.all(
+                                                  color: c.primary.withValues(alpha: 0.30 * (1 - p)),
+                                                  width: 1.6,
+                                                ),
+                                              ),
+                                            ),
+                                            Container(
+                                              width: 136,
+                                              height: 136,
+                                              padding: const EdgeInsets.all(20),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white,
+                                                borderRadius: BorderRadius.circular(40),
+                                                border: Border.all(
+                                                  color: c.primaryLight.withValues(alpha: 0.55),
+                                                  width: 3,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: c.primary.withValues(alpha: 0.28),
+                                                    blurRadius: 36,
+                                                    offset: Offset(-dx * 0.5, 16 - dy * 0.4),
+                                                  ),
+                                                  BoxShadow(
+                                                    color: c.primaryLight.withValues(alpha: 0.30),
+                                                    blurRadius: 60,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: image,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                        const SizedBox(height: 22),
+                        ),
+
+                        // ── Bottom half: name, tagline, then footer ──
+                        Expanded(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 6),
+                              _reveal(
+                                _nameA,
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                                  child: Text(
+                                    name,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'tajawal',
+                                      fontSize: 30,
+                                      fontWeight: FontWeight.w800,
+                                      color: c.textDark,
+                                      height: 1.2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (tagline.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                _reveal(
+                                  _tagA,
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: 36,
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [c.primary, c.primaryLight],
+                                          ),
+                                          borderRadius: BorderRadius.circular(3),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                                        child: Text(
+                                          tagline,
+                                          textAlign: TextAlign.center,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontFamily: 'tajawal',
+                                            fontSize: 15.5,
+                                            height: 1.6,
+                                            color: c.textMedium,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              const Spacer(),
+                              _reveal(
+                                _footA,
+                                Column(
+                                  children: [
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 450),
+                                      transitionBuilder: (child, anim) => FadeTransition(
+                                        opacity: anim,
+                                        child: SlideTransition(
+                                          position: Tween<Offset>(
+                                            begin: const Offset(0, 0.4),
+                                            end: Offset.zero,
+                                          ).animate(anim),
+                                          child: child,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        _messages[_msgIndex],
+                                        key: ValueKey(_msgIndex),
+                                        style: TextStyle(
+                                          fontFamily: 'tajawal',
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
+                                          color: c.textMedium,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: SizedBox(
+                                        width: 120,
+                                        height: 4,
+                                        child: LinearProgressIndicator(
+                                          minHeight: 4,
+                                          backgroundColor: c.primary.withValues(alpha: 0.15),
+                                          valueColor: AlwaysStoppedAnimation<Color>(c.primary),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (version.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: c.primaryTint,
+                                          borderRadius: BorderRadius.circular(20),
+                                        ),
+                                        child: Text(
+                                          'v$version',
+                                          style: TextStyle(
+                                            fontFamily: 'tajawal',
+                                            fontSize: 11.5,
+                                            letterSpacing: 0.6,
+                                            color: c.textLight,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                dy: 0.3,
+                              ),
+                              const SizedBox(height: 22),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -648,9 +1016,32 @@ class _SplashBody extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Auth guard
-// ─────────────────────────────────────────────────────────────────────────────
+
+/// Fine dot grid; dots fade out near the centre so the logo stays the focus.
+class _DotGridPainter extends CustomPainter {
+  final Color color;
+  const _DotGridPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const gap = 26.0;
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxDist = math.sqrt(center.dx * center.dx + center.dy * center.dy);
+    final paint = Paint();
+    for (double y = gap / 2; y < size.height; y += gap) {
+      for (double x = gap / 2; x < size.width; x += gap) {
+        final d = (Offset(x, y) - center).distance / maxDist; // 0 centre → 1 corner
+        final fade = ((d - 0.25) / 0.75).clamp(0.0, 1.0);
+        if (fade <= 0) continue;
+        paint.color = color.withValues(alpha: color.a * fade);
+        canvas.drawCircle(Offset(x, y), 1.1, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DotGridPainter old) => old.color != color;
+}// ─────────────────────────────────────────────────────────────────────────────
 
 class _Guard extends StatefulWidget {
   final Widget child;
