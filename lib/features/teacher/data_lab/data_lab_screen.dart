@@ -1,12 +1,12 @@
 // lib/features/shared/data_lab/data_lab_screen.dart
-// The teacher's Data Lab for one course — one calm sheet:
-//   • tap a column title to sort, drag the edge of a title to resize it
-//   • "Columns" decides what is visible in the table and what the students see
-//   • tap any value to change it (a value you type replaces the automatic one; clear it to get the automatic one back)
-//   • "Numbers / Bars / Both" changes how values are drawn
-//   • zoom with the − / + buttons (or Ctrl + mouse wheel on the web) to fit more or read easier
-//   • the ⋮ menu holds the rest: import, export, certificates, ask students, new column
-//   • the sheet scrolls sideways by dragging, with Shift + wheel, or with the scrollbar
+// The teacher's Data Lab for one course — a full-screen sheet:
+//   • slim top bar: small "exit full screen" icon, course name, quick numbers, and one button that
+//     shows / hides the tools panel (search, columns, view, zoom, import / export …) so the table gets the whole height
+//   • the table header and the student names stay pinned while you scroll; rows load lazily, so it stays fast
+//   • two synced horizontal scrollbars: one above the table and one at its end (drag, Shift + wheel, or the bars)
+//   • tap a column title to sort · press and hold it (or right-click) for that column's settings
+//   • a green line under a column title means "students can see this column"
+//   • zoom with − / + (or Ctrl + mouse wheel on the web)
 //
 // Open it from the course profile / analytics hub:
 //   Navigator.push(context, MaterialPageRoute(
@@ -15,14 +15,12 @@ library;
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, confirm, EmptyState, ErrorRetry;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -40,10 +38,16 @@ import 'data_lab_widgets.dart';
 
 // Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,
 // so rows and columns always stay perfectly aligned.
-const double _nameW = 168, _rowH = 56, _headH = 54, _avgH = 38;
+const double _nameW = 168, _rowH = 54, _headH = 46, _avgH = 36;
 const double _minZoom = 0.7, _maxZoom = 1.5;
 
-/// Lets a mouse / trackpad drag the sheet sideways (Flutter web only scrolls with touch by default).
+/// Translation with a friendly English fallback while a key is not in the language files yet.
+String _tr(String key, String fallback) {
+  final v = key.tr;
+  return (v.isEmpty || v == key) ? fallback : v;
+}
+
+/// Lets a mouse / trackpad drag the sheet (Flutter web only scrolls with touch by default).
 class _DragScroll extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -78,27 +82,56 @@ class _DataLabView extends StatefulWidget {
 }
 
 class _DataLabViewState extends State<_DataLabView> {
-  final _scroll = ScrollController();
-  final _hScroll = ScrollController();
+  final _hTop = ScrollController(); // the scrollbar above the table
+  final _hMain = ScrollController(); // the scrollbar at the end of the table
+  final _vNames = ScrollController(); // student names (left)
+  final _vRows = ScrollController(); // values (right) — kept in step with the names
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
+  bool _syncing = false;
+  bool _panelOpen = false;
   double _zoom = 1.0;
 
   @override
   void initState() {
     super.initState();
-    _scroll.addListener(() {
-      if (_scroll.hasClients && _scroll.position.extentAfter < 600) context.read<DataLabProvider>().loadMore();
+    _link(_hTop, _hMain);
+    _link(_hMain, _hTop);
+    _link(_vNames, _vRows);
+    _link(_vRows, _vNames);
+    _vRows.addListener(() {
+      if (_vRows.hasClients && _vRows.position.extentAfter < 600) context.read<DataLabProvider>().loadMore();
+    });
+    // The teacher always starts with plain numbers — calm and easy to read.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final p = context.read<DataLabProvider>();
+      if (p.view != DlView.value) p.setView(DlView.value);
     });
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _scroll.dispose();
-    _hScroll.dispose();
+    _hTop.dispose();
+    _hMain.dispose();
+    _vNames.dispose();
+    _vRows.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  /// Keeps two scroll controllers at the same offset.
+  void _link(ScrollController a, ScrollController b) {
+    a.addListener(() {
+      if (_syncing || !a.hasClients || !b.hasClients) return;
+      if (!b.position.hasContentDimensions) return;
+      final t = a.offset.clamp(0.0, b.position.maxScrollExtent).toDouble();
+      if ((b.offset - t).abs() < 0.5) return;
+      _syncing = true;
+      b.jumpTo(t);
+      _syncing = false;
+    });
   }
 
   void _setZoom(double v) {
@@ -117,152 +150,161 @@ class _DataLabViewState extends State<_DataLabView> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<DataLabProvider>();
-    Widget body;
+    final c = context.colors;
+    Widget content;
     if (p.loading && p.grid == null) {
-      body = const Center(child: AppLoadingIndicator());
+      content = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.grid == null) {
-      body = ErrorRetry(message: p.error!, onRetry: p.load);
+      content = ErrorRetry(message: p.error!, onRetry: p.load);
+    } else if (p.rows.isEmpty) {
+      content = _empty(context, p);
     } else {
-      body = RefreshIndicator(
-        onRefresh: () => p.load(silent: true),
-        child: ListView(
-          controller: _scroll,
-          physics: const AlwaysScrollableScrollPhysics(),
-          cacheExtent: 800,
-          padding: const EdgeInsets.only(bottom: 90),
-          children: [
-            _header(context, p),
-            _toolbar(context, p),
-            _subBar(context, p),
-            if (p.rows.isEmpty)
-              _empty(context, p)
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Listener(
-                  onPointerSignal: (e) {
-                    if (e is PointerScrollEvent && (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
-                      GestureBinding.instance.pointerSignalResolver.register(e, (ev) {
-                        final dy = (ev as PointerScrollEvent).scrollDelta.dy;
-                        _setZoom(_zoom * (dy > 0 ? 0.94 : 1.06));
-                      });
-                    }
-                  },
-                  child: RepaintBoundary(
-                    child: DlCard(padding: EdgeInsets.zero, child: _SheetTable(p: p, hScroll: _hScroll, zoom: _zoom)),
-                  ),
-                ),
-              ),
-            if (p.loadingMore)
-              const Padding(padding: EdgeInsets.all(18), child: Center(child: AppLoadingIndicator()))
-            else if (p.rows.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.all(14),
-                child: Center(
-                  child: Text('${'dl_showing'.tr} ${p.rows.length} / ${p.total}', style: dlText(12, c: context.colors.textMedium)),
-                ),
-              ),
-          ],
-        ),
+      content = Listener(
+        onPointerSignal: (e) {
+          if (e is PointerScrollEvent && (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+            GestureBinding.instance.pointerSignalResolver.register(e, (ev) {
+              final dy = (ev as PointerScrollEvent).scrollDelta.dy;
+              _setZoom(_zoom * (dy > 0 ? 0.94 : 1.06));
+            });
+          }
+        },
+        child: _SheetTable(p: p, zoom: _zoom, hTop: _hTop, hMain: _hMain, vNames: _vNames, vRows: _vRows),
       );
     }
-    return BasePage(
-      key: const ValueKey('data_lab'),
-      useWebCard: true,
-      maxWith: 2000,
-      appBar: ScreenAppBar(title: 'dl_title'.tr),
-      child: body,
+    return Directionality(
+      textDirection: pageDirection,
+      child: Scaffold(
+        backgroundColor: c.cardBg,
+        body: SafeArea(
+          child: Column(children: [
+            Container(
+              decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
+              child: Column(children: [_topBar(context, p), _panel(context, p)]),
+            ),
+            Expanded(child: content),
+          ]),
+        ),
+      ),
     );
   }
 
-  // ── header: the course, how many students, and two friendly rings ────────
-  Widget _header(BuildContext context, DataLabProvider p) {
+  // ── slim top bar ─────────────────────────────────────────────────────────
+  Widget _topBar(BuildContext context, DataLabProvider p) {
     final c = context.colors;
     final prog = p.stat('progress')?.avg, att = p.stat('attendance')?.avg;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(c.radiusLarge),
-        border: Border.all(color: c.divider),
-      ),
+    var sub = '${p.grid?.studentsTotal ?? 0} ${'dl_students'.tr}';
+    if (prog != null) sub += '  ·  ${prog.round()}% ${'dl_progress'.tr}';
+    if (att != null) sub += '  ·  ${att.round()}% ${'dl_attendance'.tr}';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       child: Row(children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
-          child: Icon(Icons.table_chart_rounded, color: c.primary, size: 22),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(widget.courseTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(16, w: FontWeight.w800, c: c.textDark, h: 1.3)),
-            const SizedBox(height: 3),
-            Text('${p.grid?.studentsTotal ?? 0} ${'dl_students'.tr}', style: dlText(12.5, c: c.textMedium)),
-          ]),
+        _BarButton(
+          icon: Icons.fullscreen_exit_rounded,
+          tooltip: _tr('dl_exit_full', 'Back'),
+          onTap: () => Navigator.of(context).maybePop(),
         ),
         const SizedBox(width: 10),
-        _Ring(label: 'dl_progress'.tr, value: prog, color: c.primary),
-        const SizedBox(width: 12),
-        _Ring(label: 'dl_attendance'.tr, value: att, color: c.success),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(widget.courseTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: c.textDark)),
+            const SizedBox(height: 1),
+            Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11.5, c: c.textMedium)),
+          ]),
+        ),
+        if (p.selected.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: p.clearSelection,
+            borderRadius: BorderRadius.circular(20),
+            child: DlTag('${p.selected.length} ${'dl_selected'.tr}  ✕', c.primary),
+          ),
+        ],
+        const SizedBox(width: 8),
+        _BarButton(
+          icon: _panelOpen ? Icons.keyboard_arrow_up_rounded : Icons.tune_rounded,
+          tooltip: _tr('dl_tools', 'Tools'),
+          active: _panelOpen,
+          badge: _panelOpen ? 0 : p.hiddenCount,
+          onTap: () => setState(() => _panelOpen = !_panelOpen),
+        ),
       ]),
     );
   }
 
-  // ── search + columns + ⋮ ─────────────────────────────────────────────────
-  Widget _toolbar(BuildContext context, DataLabProvider p) {
+  // ── tools panel: shows / hides with one tap ──────────────────────────────
+  Widget _panel(BuildContext context, DataLabProvider p) {
     final c = context.colors;
     OutlineInputBorder b(Color col, [double w = 1]) =>
         OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: col, width: w));
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      child: Row(children: [
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: TextField(
-              controller: _searchCtrl,
-              onChanged: (v) => _search(p, v),
-              style: dlText(14, c: c.textDark),
-              decoration: InputDecoration(
-                hintText: 'dl_search_hint'.tr,
-                hintStyle: dlText(13, c: c.textLight),
-                prefixIcon: Icon(Icons.search_rounded, color: c.textMedium),
-                // Only this little button rebuilds while typing — not the whole sheet.
-                suffixIcon: ListenableBuilder(
-                  listenable: _searchCtrl,
-                  builder: (_, __) => _searchCtrl.text.isEmpty
-                      ? const SizedBox.shrink()
-                      : IconButton(
-                    icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                    onPressed: () {
-                      _debounce?.cancel();
-                      _searchCtrl.clear();
-                      p.setSearch('');
-                    },
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: !_panelOpen
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: SizedBox(
+                height: 48,
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: (v) => _search(p, v),
+                  style: dlText(14, c: c.textDark),
+                  decoration: InputDecoration(
+                    hintText: 'dl_search_hint'.tr,
+                    hintStyle: dlText(13, c: c.textLight),
+                    prefixIcon: Icon(Icons.search_rounded, color: c.textMedium),
+                    // Only this little button rebuilds while typing — not the whole sheet.
+                    suffixIcon: ListenableBuilder(
+                      listenable: _searchCtrl,
+                      builder: (_, __) => _searchCtrl.text.isEmpty
+                          ? const SizedBox.shrink()
+                          : IconButton(
+                        icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
+                        onPressed: () {
+                          _debounce?.cancel();
+                          _searchCtrl.clear();
+                          p.setSearch('');
+                        },
+                      ),
+                    ),
+                    filled: true,
+                    fillColor: c.cardBg,
+                    contentPadding: EdgeInsets.zero,
+                    border: b(c.divider),
+                    enabledBorder: b(c.divider),
+                    focusedBorder: b(c.primary, 1.6),
                   ),
                 ),
-                filled: true,
-                fillColor: c.cardBg,
-                contentPadding: EdgeInsets.zero,
-                border: b(c.divider),
-                enabledBorder: b(c.divider),
-                focusedBorder: b(c.primary, 1.6),
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        _SquareButton(
-          icon: Icons.view_column_rounded,
-          tooltip: 'dl_columns'.tr,
-          badge: p.hiddenCount,
-          onTap: () => showColumnsSheet(context, p),
-        ),
-        const SizedBox(width: 8),
-        _moreMenu(context, p),
-      ]),
+            const SizedBox(width: 10),
+            _SquareButton(
+              icon: Icons.view_column_rounded,
+              tooltip: 'dl_columns'.tr,
+              badge: p.hiddenCount,
+              onTap: () => showColumnsSheet(context, p),
+            ),
+            const SizedBox(width: 8),
+            _SquareButton(
+              icon: Icons.refresh_rounded,
+              tooltip: _tr('dl_refresh', 'Refresh'),
+              onTap: () => p.load(silent: true),
+            ),
+            const SizedBox(width: 8),
+            _moreMenu(context, p),
+          ]),
+          const SizedBox(height: 10),
+          Wrap(spacing: 10, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            _ViewToggle(p: p),
+            _ZoomControl(zoom: _zoom, onChanged: _setZoom),
+            _Legend(),
+          ]),
+        ]),
+      ),
     );
   }
 
@@ -315,35 +357,14 @@ class _DataLabViewState extends State<_DataLabView> {
     );
   }
 
-  // ── numbers / bars / both  +  zoom  (+ selection chip when someone is ticked) ──
-  Widget _subBar(BuildContext context, DataLabProvider p) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          _ViewToggle(p: p),
-          _ZoomControl(zoom: _zoom, onChanged: _setZoom),
-        ]),
-        if (p.selected.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: InkWell(
-              onTap: p.clearSelection,
-              borderRadius: BorderRadius.circular(20),
-              child: DlTag('${p.selected.length} ${'dl_selected'.tr}  ✕', context.colors.primary),
-            ),
-          ),
+  Widget _empty(BuildContext context, DataLabProvider p) => Center(
+    child: SingleChildScrollView(
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        SizedBox(height: 200, child: EmptyState(p.search.isEmpty ? 'dl_empty'.tr : 'dl_no_match'.tr, icon: Icons.table_chart_rounded)),
+        if (p.search.isEmpty && p.config.allowImport)
+          DlActionPill(icon: Icons.upload_file_rounded, label: 'dl_import'.tr, onTap: () => showImportWizard(context, p)),
       ]),
-    );
-  }
-
-  Widget _empty(BuildContext context, DataLabProvider p) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 24),
-    child: Column(children: [
-      SizedBox(height: 200, child: EmptyState(p.search.isEmpty ? 'dl_empty'.tr : 'dl_no_match'.tr, icon: Icons.table_chart_rounded)),
-      if (p.search.isEmpty && p.config.allowImport)
-        DlActionPill(icon: Icons.upload_file_rounded, label: 'dl_import'.tr, onTap: () => showImportWizard(context, p)),
-    ]),
+    ),
   );
 }
 
@@ -351,40 +372,48 @@ class _DataLabViewState extends State<_DataLabView> {
 // Small controls
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// A soft ring with the percentage in the middle.
-class _Ring extends StatelessWidget {
-  const _Ring({required this.label, required this.value, required this.color});
+class _BarButton extends StatelessWidget {
+  const _BarButton({required this.icon, required this.tooltip, required this.onTap, this.active = false, this.badge = 0});
 
-  final String label;
-  final double? value;
-  final Color color;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+  final bool active;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final v = value;
-    return Column(mainAxisSize: MainAxisSize.min, children: [
-      SizedBox(
-        width: 46,
-        height: 46,
-        child: Stack(alignment: Alignment.center, children: [
-          SizedBox(
-            width: 46,
-            height: 46,
-            child: CircularProgressIndicator(
-              value: v == null ? 0 : (v / 100).clamp(0.0, 1.0),
-              strokeWidth: 5,
-              strokeCap: StrokeCap.round,
-              backgroundColor: color.withValues(alpha: 0.14),
-              valueColor: AlwaysStoppedAnimation(color),
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Stack(clipBehavior: Clip.none, children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: active ? c.primary.withValues(alpha: 0.12) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: active ? c.primary.withValues(alpha: 0.35) : c.divider),
             ),
+            child: Icon(icon, size: 20, color: active ? c.primary : c.textMedium),
           ),
-          Text(v == null ? '–' : '${v.round()}', style: dlText(13, w: FontWeight.w800, c: c.textDark)),
+          if (badge > 0)
+            PositionedDirectional(
+              top: -4,
+              end: -4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(color: c.warning, borderRadius: BorderRadius.circular(10)),
+                child: Text('$badge', style: dlText(9.5, w: FontWeight.w800, c: Colors.white)),
+              ),
+            ),
         ]),
       ),
-      const SizedBox(height: 3),
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10, c: c.textMedium)),
-    ]);
+    );
   }
 }
 
@@ -423,6 +452,23 @@ class _SquareButton extends StatelessWidget {
             ),
         ]),
       ),
+    );
+  }
+}
+
+/// Explains the green line under a column title.
+class _Legend extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(color: c.success.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(20)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(width: 16, height: 3, decoration: BoxDecoration(color: c.success, borderRadius: BorderRadius.circular(3))),
+        const SizedBox(width: 7),
+        Text(_tr('dl_legend_students', 'Shown to students'), style: dlText(11.5, w: FontWeight.w700, c: c.success)),
+      ]),
     );
   }
 }
@@ -505,89 +551,196 @@ class _ViewToggle extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The sheet: frozen name column + sideways-scrolling value columns (fixed row heights keep them aligned)
+// The sheet
+//   ┌ top scrollbar ─────────────────────────┐
+//   │ names (frozen) │ pinned column titles  │
+//   │                │ class average         │
+//   │  lazy rows     │  lazy rows            │   ← both lists scroll together
+//   └ bottom scrollbar ──────────────────────┘
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SheetTable extends StatelessWidget {
-  const _SheetTable({required this.p, required this.hScroll, required this.zoom});
+  const _SheetTable({
+    required this.p,
+    required this.zoom,
+    required this.hTop,
+    required this.hMain,
+    required this.vNames,
+    required this.vRows,
+  });
 
   final DataLabProvider p;
-  final ScrollController hScroll;
   final double zoom;
+  final ScrollController hTop, hMain, vNames, vRows;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final z = zoom;
     final cols = p.shownColumns;
+    final rows = p.rows;
     final line = BorderSide(color: c.divider.withValues(alpha: 0.6));
     final avgBg = c.primary.withValues(alpha: 0.04);
-    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // ── frozen names ──────────────────────────────────────────────────
-      Container(
-        width: _nameW * z,
-        decoration: BoxDecoration(border: BorderDirectional(end: line)),
+    var totalW = 0.0;
+    for (final col in cols) {
+      totalW += p.widthOf(col.key) * z;
+    }
+    final rowCount = rows.length + 1; // +1 = footer ("showing x / y" or the loading spinner)
+
+    final scrollbarTheme = ScrollbarThemeData(
+      thickness: const WidgetStatePropertyAll(8),
+      radius: const Radius.circular(8),
+      thumbVisibility: const WidgetStatePropertyAll(true),
+      trackVisibility: const WidgetStatePropertyAll(true),
+      thumbColor: WidgetStatePropertyAll(c.primary.withValues(alpha: 0.45)),
+      trackColor: WidgetStatePropertyAll(c.primary.withValues(alpha: 0.06)),
+      trackBorderColor: const WidgetStatePropertyAll(Colors.transparent),
+    );
+
+    return ScrollbarTheme(
+      data: scrollbarTheme,
+      child: ScrollConfiguration(
+        behavior: _DragScroll(),
         child: Column(children: [
+          // ── top horizontal scrollbar ──────────────────────────────────
           Container(
-            height: _headH * z,
-            alignment: AlignmentDirectional.centerStart,
-            padding: const EdgeInsetsDirectional.only(start: 16),
-            color: c.primary.withValues(alpha: 0.08),
-            child: Text('dl_student'.tr, style: dlText(12.5 * z, w: FontWeight.w800, c: c.primary)),
-          ),
-          Container(
-            height: _avgH * z,
-            alignment: AlignmentDirectional.centerStart,
-            padding: const EdgeInsetsDirectional.only(start: 16),
-            color: avgBg,
-            child: Text('dl_class_avg'.tr, style: dlText(11.5 * z, w: FontWeight.w700, c: c.textMedium)),
-          ),
-          for (final r in p.rows) RepaintBoundary(child: _NameCell(p: p, row: r, zoom: z)),
-        ]),
-      ),
-      // ── scrolling values (horizontal only) ────────────────────────────
-      Expanded(
-        child: ScrollConfiguration(
-          behavior: _DragScroll(),
-          child: Scrollbar(
-            controller: hScroll,
-            thumbVisibility: kIsWeb,
-            child: SingleChildScrollView(
-              controller: hScroll,
-              scrollDirection: Axis.horizontal,
-              physics: const ClampingScrollPhysics(),
-              child: Column(children: [
-                Row(children: [for (final col in cols) _HeadCell(p: p, col: col, zoom: z)]),
-                Container(
-                  height: _avgH * z,
-                  color: avgBg,
-                  child: Row(children: [
-                    for (final col in cols)
-                      SizedBox(
-                        width: p.widthOf(col.key) * z,
-                        child: Center(
-                          child: Text(col.isNumber ? dlFmt(p.stat(col.key)?.avg) : '',
-                              style: dlText(12 * z, w: FontWeight.w700, c: c.textMedium)),
-                        ),
-                      ),
-                  ]),
+            color: c.cardBg,
+            child: Row(children: [
+              SizedBox(width: _nameW * z),
+              Expanded(
+                child: Scrollbar(
+                  controller: hTop,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: hTop,
+                    scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
+                    child: SizedBox(width: totalW, height: 14),
+                  ),
                 ),
-                for (final r in p.rows)
-                  RepaintBoundary(
-                    child: Container(
-                      height: _rowH * z,
-                      decoration: BoxDecoration(border: Border(top: line)),
-                      child: Row(children: [for (final col in cols) _ValueCell(p: p, row: r, col: col, zoom: z)]),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              // ── frozen names ──────────────────────────────────────────
+              Container(
+                width: _nameW * z,
+                decoration: BoxDecoration(border: BorderDirectional(end: line)),
+                child: Column(children: [
+                  Container(
+                    height: _headH * z,
+                    alignment: AlignmentDirectional.centerStart,
+                    padding: const EdgeInsetsDirectional.only(start: 16),
+                    color: c.primary.withValues(alpha: 0.08),
+                    child: Text('dl_student'.tr, style: dlText(12.5 * z, w: FontWeight.w800, c: c.primary)),
+                  ),
+                  Container(
+                    height: _avgH * z,
+                    alignment: AlignmentDirectional.centerStart,
+                    padding: const EdgeInsetsDirectional.only(start: 16),
+                    color: avgBg,
+                    child: Text('dl_class_avg'.tr, style: dlText(11.5 * z, w: FontWeight.w700, c: c.textMedium)),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: vNames,
+                      itemExtent: _rowH * z,
+                      itemCount: rowCount,
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemBuilder: (_, i) {
+                        if (i == rows.length) return _Footer(p: p, zoom: z);
+                        return RepaintBoundary(child: _NameCell(p: p, row: rows[i], zoom: z));
+                      },
                     ),
                   ),
-              ]),
-            ),
+                ]),
+              ),
+              // ── values: titles stay pinned, rows scroll down ──────────
+              Expanded(
+                child: Scrollbar(
+                  controller: hMain,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  child: SingleChildScrollView(
+                    controller: hMain,
+                    scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
+                    child: SizedBox(
+                      width: totalW,
+                      child: Column(children: [
+                        Row(children: [for (final col in cols) _HeadCell(p: p, col: col, zoom: z)]),
+                        Container(
+                          height: _avgH * z,
+                          color: avgBg,
+                          child: Row(children: [
+                            for (final col in cols)
+                              SizedBox(
+                                width: p.widthOf(col.key) * z,
+                                child: Center(
+                                  child: Text(col.isNumber ? dlFmt(p.stat(col.key)?.avg) : '',
+                                      style: dlText(12 * z, w: FontWeight.w700, c: c.textMedium)),
+                                ),
+                              ),
+                          ]),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            controller: vRows,
+                            itemExtent: _rowH * z,
+                            itemCount: rowCount,
+                            padding: const EdgeInsets.only(bottom: 16),
+                            itemBuilder: (_, i) {
+                              if (i == rows.length) return const SizedBox.shrink();
+                              final r = rows[i];
+                              final picked = p.selected.contains(r.rowId);
+                              return RepaintBoundary(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: picked ? c.primary.withValues(alpha: 0.05) : null,
+                                    border: Border(top: line),
+                                  ),
+                                  child: Row(children: [for (final col in cols) _ValueCell(p: p, row: r, col: col, zoom: z)]),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ]),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
           ),
-        ),
+        ]),
       ),
-    ]);
+    );
   }
 }
+
+/// Last item of the names list: a tiny spinner while more students load, otherwise "showing x / y".
+class _Footer extends StatelessWidget {
+  const _Footer({required this.p, required this.zoom});
+
+  final DataLabProvider p;
+  final double zoom;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Center(
+      child: p.loadingMore
+          ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary))
+          : Text('${'dl_showing'.tr} ${p.rows.length} / ${p.total}', style: dlText(11 * zoom, c: c.textLight)),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Column title
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _HeadCell extends StatelessWidget {
   const _HeadCell({required this.p, required this.col, required this.zoom});
@@ -596,113 +749,308 @@ class _HeadCell extends StatelessWidget {
   final DlColumn col;
   final double zoom;
 
-  Future<void> _menu(BuildContext context, String v) async {
-    switch (v) {
-      case 'edit':
-        showColumnEditor(context, p, column: col);
-      case 'hide':
-        final e = await p.setColumnFlags(col, hidden: true);
-        if (e != null) toast(e, error: true);
-      case 'students':
-        final e = await p.setColumnFlags(col, students: !col.visibleToStudents);
-        if (e != null) toast(e, error: true);
-      case 'delete':
-        if (!await confirm(context, message: 'dl_delete_column_q'.tr, danger: true)) return;
-        final e = await p.deleteColumn(col.key);
-        if (e != null) toast(e, error: true);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final z = zoom;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final sorted = p.sort == col.key;
-    PopupMenuEntry<String> it(String v, IconData icon, String label, {Color? color}) => PopupMenuItem(
-      value: v,
-      child: Row(children: [
-        Icon(icon, size: 19, color: color ?? c.textMedium),
-        const SizedBox(width: 10),
-        Text(label, style: dlText(13, w: FontWeight.w700, c: color ?? c.textDark)),
-      ]),
-    );
+    final shown = col.visibleToStudents;
     return SizedBox(
       width: p.widthOf(col.key) * z,
       height: _headH * z,
-      child: Stack(children: [
-        Positioned.fill(
-          child: InkWell(
-            onTap: () => p.toggleSort(col.key),
-            child: Container(
-              color: c.primary.withValues(alpha: 0.08),
-              padding: const EdgeInsetsDirectional.only(start: 12, end: 34),
-              alignment: AlignmentDirectional.centerStart,
-              child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(col.label,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: dlText(12 * z, w: FontWeight.w800, c: sorted ? c.primary : c.textDark, h: 1.25)),
-                // Only the few signs that really matter: sorted, calculated, shown to students.
-                if (sorted || col.visibleToStudents || col.isCalculated)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 2),
-                    child: Row(children: [
-                      if (sorted) Icon(p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12 * z, color: c.primary),
-                      if (col.isCalculated) Icon(Icons.functions_rounded, size: 12 * z, color: c.purple),
-                      if (col.visibleToStudents) Icon(Icons.visibility_rounded, size: 12 * z, color: c.success),
-                    ]),
+      child: Tooltip(
+        message: _tr('dl_header_hint', 'Tap to sort · hold for settings'),
+        triggerMode: TooltipTriggerMode.manual, // hover only — never fights with press-and-hold
+        waitDuration: const Duration(milliseconds: 700),
+        child: Stack(children: [
+          Positioned.fill(
+            child: InkWell(
+              onTap: () => p.toggleSort(col.key),
+              onLongPress: () => showColumnSettings(context, p, col),
+              onSecondaryTap: () => showColumnSettings(context, p, col),
+              child: Container(
+                color: shown ? c.success.withValues(alpha: 0.09) : c.primary.withValues(alpha: 0.08),
+                padding: const EdgeInsetsDirectional.only(start: 12, end: 14),
+                alignment: AlignmentDirectional.centerStart,
+                child: Row(children: [
+                  // The title shrinks to stay on one line.
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(col.label,
+                          maxLines: 1, softWrap: false, style: dlText(12.5 * z, w: FontWeight.w800, c: sorted ? c.primary : c.textDark)),
+                    ),
                   ),
-              ]),
+                  if (col.isCalculated) ...[
+                    const SizedBox(width: 4),
+                    Icon(Icons.functions_rounded, size: 13 * z, color: c.purple),
+                  ],
+                  if (sorted) ...[
+                    const SizedBox(width: 4),
+                    Icon(p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 13 * z, color: c.primary),
+                  ],
+                ]),
+              ),
             ),
           ),
-        ),
-        // ⋮ menu
-        PositionedDirectional(
-          end: 10,
-          top: 0,
-          bottom: 0,
-          child: PopupMenuButton<String>(
-            tooltip: '',
-            padding: EdgeInsets.zero,
-            icon: Icon(Icons.more_vert_rounded, size: 18, color: c.textMedium),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            color: c.cardBg,
-            onSelected: (v) => _menu(context, v),
-            itemBuilder: (_) => [
-              it('edit', Icons.edit_outlined, 'dl_menu_edit'.tr),
-              it('hide', Icons.visibility_off_rounded, 'dl_menu_hide'.tr),
-              it('students', col.visibleToStudents ? Icons.person_off_rounded : Icons.person_rounded,
-                  col.visibleToStudents ? 'dl_menu_students_hide'.tr : 'dl_menu_students_show'.tr),
-              if (!col.isBuiltin) it('delete', Icons.delete_outline_rounded, 'dl_delete_column'.tr, color: c.danger),
-            ],
-          ),
-        ),
-        // drag handle: pull the edge to resize (the drag is divided by the zoom so it follows the finger)
-        PositionedDirectional(
-          end: 0,
-          top: 0,
-          bottom: 0,
-          width: 12,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.resizeColumn,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragUpdate: (d) => p.setWidth(col.key, p.widthOf(col.key) + (rtl ? -d.delta.dx : d.delta.dx) / z),
-              child: Center(
-                child: Container(
-                  width: 3,
-                  height: 20,
-                  decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(3)),
+          // The green line = students can see this column.
+          if (shown)
+            PositionedDirectional(
+              start: 10,
+              end: 10,
+              bottom: 0,
+              height: 3,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: c.success, borderRadius: const BorderRadius.vertical(top: Radius.circular(3))),
+                ),
+              ),
+            ),
+          // drag handle: pull the edge to resize (the drag is divided by the zoom so it follows the finger)
+          PositionedDirectional(
+            end: 0,
+            top: 0,
+            bottom: 0,
+            width: 12,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.resizeColumn,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onHorizontalDragUpdate: (d) => p.setWidth(col.key, p.widthOf(col.key) + (rtl ? -d.delta.dx : d.delta.dx) / z),
+                child: Center(
+                  child: Container(
+                    width: 3,
+                    height: 18,
+                    decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(3)),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Column settings: a floating card (press and hold / right-click a column title)
+// ─────────────────────────────────────────────────────────────────────────────
+
+void showColumnSettings(BuildContext context, DataLabProvider p, DlColumn col) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    barrierColor: Colors.black.withValues(alpha: 0.35),
+    constraints: const BoxConstraints(maxWidth: 520),
+    builder: (_) => Directionality(
+      textDirection: pageDirection,
+      child: _ColumnSheet(p: p, col: col, outer: context),
+    ),
+  );
+}
+
+class _ColumnSheet extends StatefulWidget {
+  const _ColumnSheet({required this.p, required this.col, required this.outer});
+
+  final DataLabProvider p;
+  final DlColumn col;
+  final BuildContext outer; // the screen's context — still alive after this sheet closes
+
+  @override
+  State<_ColumnSheet> createState() => _ColumnSheetState();
+}
+
+class _ColumnSheetState extends State<_ColumnSheet> {
+  late bool _students = widget.col.visibleToStudents;
+
+  DataLabProvider get p => widget.p;
+  DlColumn get col => widget.col;
+
+  Future<void> _toggleStudents(bool v) async {
+    setState(() => _students = v);
+    final e = await p.setColumnFlags(col, students: v);
+    if (e != null) {
+      if (mounted) setState(() => _students = !v);
+      toast(e, error: true);
+    }
+  }
+
+  Future<void> _hide() async {
+    Navigator.pop(context);
+    final e = await p.setColumnFlags(col, hidden: true);
+    if (e != null) toast(e, error: true);
+  }
+
+  Future<void> _delete() async {
+    final outer = widget.outer;
+    Navigator.pop(context);
+    if (!outer.mounted) return;
+    if (!await confirm(outer, message: 'dl_delete_column_q'.tr, danger: true)) return;
+    final e = await p.deleteColumn(col.key);
+    if (e != null) toast(e, error: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final sorted = p.sort == col.key;
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(10),
+        child: Material(
+          color: c.cardBg,
+          elevation: 8,
+          shadowColor: Colors.black.withValues(alpha: 0.25),
+          borderRadius: BorderRadius.circular(28),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(4))),
+              ),
+              const SizedBox(height: 16),
+              // ── who is this column ──
+              Row(children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                  ),
+                  child: Icon(col.isCalculated ? Icons.functions_rounded : Icons.view_column_rounded, color: Colors.white, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(col.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(17, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+                    const SizedBox(height: 5),
+                    if (col.isCalculated)
+                      DlTag(_tr('dl_calculated', 'Calculated'), c.purple, icon: Icons.functions_rounded)
+                    else if (col.isBuiltin)
+                      DlTag(_tr('dl_builtin', 'Built-in'), c.primary)
+                    else
+                      DlTag(_tr('dl_custom', 'Custom'), c.accent),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 16),
+              // ── students switch ──
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+                decoration: BoxDecoration(
+                  color: _students ? c.success.withValues(alpha: 0.10) : c.textLight.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _students ? c.success.withValues(alpha: 0.35) : Colors.transparent),
+                ),
+                child: Row(children: [
+                  Icon(_students ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: _students ? c.success : c.textMedium),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_tr('dl_shown_students', 'Shown to students'), style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
+                      const SizedBox(height: 2),
+                      Text(_tr('dl_shown_students_hint', 'Students can see this column in their own results.'),
+                          style: dlText(11.5, c: c.textMedium, h: 1.4)),
+                    ]),
+                  ),
+                  Switch(value: _students, activeColor: c.success, onChanged: _toggleStudents),
+                ]),
+              ),
+              const SizedBox(height: 12),
+              // ── actions ──
+              Row(children: [
+                Expanded(
+                  child: _ActionTile(
+                    icon: col.isCalculated ? Icons.functions_rounded : Icons.edit_outlined,
+                    label: 'dl_menu_edit'.tr,
+                    color: c.primary,
+                    onTap: () {
+                      final outer = widget.outer;
+                      Navigator.pop(context);
+                      if (outer.mounted) showColumnEditor(outer, p, column: col);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _ActionTile(
+                    icon: sorted ? (p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded) : Icons.swap_vert_rounded,
+                    label: _tr('dl_sort', 'Sort'),
+                    color: c.accent,
+                    onTap: () {
+                      p.toggleSort(col.key);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(child: _ActionTile(icon: Icons.visibility_off_rounded, label: 'dl_menu_hide'.tr, color: c.warning, onTap: _hide)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: col.isBuiltin
+                      ? const SizedBox.shrink()
+                      : _ActionTile(icon: Icons.delete_outline_rounded, label: 'dl_delete_column'.tr, color: c.danger, onTap: _delete),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  const _ActionTile({required this.icon, required this.label, required this.color, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color.withValues(alpha: 0.09),
+    borderRadius: BorderRadius.circular(20),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(11)),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(label, maxLines: 1, style: dlText(13, w: FontWeight.w800, c: color)),
+            ),
+          ),
+        ]),
+      ),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cells
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _NameCell extends StatelessWidget {
   const _NameCell({required this.p, required this.row, required this.zoom});
