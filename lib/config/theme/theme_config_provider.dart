@@ -183,7 +183,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   // ══════════════════════════════════════════════════════════════════════
 
   Color get background => isDark
-      ? (_model?.darkBackground ?? AppTheme.darkBackground)
+      ? (_model?.darkCard.withAlpha(230) ?? AppTheme.darkBackground)
       : (_model?.background ?? AppTheme.background);
 
   Color get surface => isDark

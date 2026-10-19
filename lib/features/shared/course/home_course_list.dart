@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/student/models.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -90,11 +92,15 @@ class _HomeCourseListState extends State<HomeCourseList> {
   @override
   Widget build(BuildContext context) {
     final cols = context.screenW >= 700 ? 3 : 2;
+    // Cell height is computed from the card's own content (image + info area)
+    // instead of a fixed aspect ratio, so nothing overflows or wastes space.
+    final gridW = math.min(context.screenW, Breakpoints.contentMax);
+    final cellW = (gridW - 40 - 14 * (cols - 1)) / cols;
     final delegate = SliverGridDelegateWithFixedCrossAxisCount(
       crossAxisCount: cols,
       crossAxisSpacing: 14,
       mainAxisSpacing: 14,
-      childAspectRatio: 0.7,
+      mainAxisExtent: CourseCard.cellHeight(context, cellW),
     );
 
     Widget body;

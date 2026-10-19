@@ -2,7 +2,7 @@
 ///
 /// Drop-in UI for relay-based attendance:
 ///   Student : [AttendanceStudentButton]  -> bottom sheet with code entry, live progress, verified result
-///   Student : [RelayHostTile]            -> "Help classmates" switch (online phones act as relay)
+///   Student : an online phone helps nearby classmates automatically while its sheet is open
 ///   Teacher : [AttendanceTeacherButton]  -> bottom sheet with the rotating code + live present counter
 library;
 
@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 
 import 'attendance_live_screen.dart';
 import 'attendance_permissions.dart';
+import 'attendance_radios.dart';
 import 'attendance_strings.dart';
 import 'relay_host_provider.dart';
 import 'student_checkin_provider.dart';
@@ -73,31 +74,231 @@ Future<void> showStudentCheckInSheet(BuildContext context, {int? sessionId, int?
 }
 
 class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.child});
+  const _SheetFrame({required this.child, this.header});
   final Widget child;
 
+  /// Premium gradient header (icon, title, subtitle). Sits flush at the top of the sheet.
+  final Widget? header;
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 30, offset: const Offset(0, -6))],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (header != null)
+              header!
+            else
               Container(
                   width: 42,
                   height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
+                  margin: const EdgeInsets.only(top: 12, bottom: 4),
                   decoration: BoxDecoration(
                       color: Colors.grey.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
-              child,
+            Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: child),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Gradient header shared by the student and teacher sheets.
+class _PremiumHeader extends StatelessWidget {
+  const _PremiumHeader({required this.icon, required this.title, this.subtitle, this.trailing});
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 10, 12, 18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [c.primary, c.purple],
+        ),
+      ),
+      child: Column(children: [
+        Container(
+            width: 42,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
+        Row(children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white24)),
+            child: Icon(icon, color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(subtitle!,
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+              ],
+            ]),
+          ),
+          if (trailing != null) trailing!,
+        ]),
+      ]),
+    );
+  }
+}
+
+/// Soft rounded group used to organise the settings / status blocks.
+class _Card extends StatelessWidget {
+  const _Card({required this.child, this.color});
+  final Widget child;
+  final Color? color;
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: (color ?? context.colors.primary).withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: (color ?? context.colors.primary).withValues(alpha: 0.12)),
+        ),
+        child: child,
+      );
+}
+
+/// GPS / Wi-Fi / Bluetooth state. Tap an "off" chip to go and switch it on.
+class _RadiosRow extends StatelessWidget {
+  const _RadiosRow({required this.p});
+  final StudentCheckInProvider p;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = p.radios;
+    Widget chip(RadioKind kind, IconData icon, String label, bool? on, {required bool needed}) {
+      final color = on == true ? _ok : (needed ? _bad : _warn);
+      return Expanded(
+        child: GestureDetector(
+          onTap: on == true
+              ? null
+              : () async {
+                  final opened = await AttendanceRadios.fix(kind);
+                  if (!opened && context.mounted) {
+                    ScaffoldMessenger.maybeOf(context)
+                        ?.showSnackBar(SnackBar(content: Text(attT('att_radio_hint'))));
+                  }
+                },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
+            ),
+            child: Column(children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
+              Text(on == null ? '—' : attT(on ? 'att_radio_on' : 'att_radio_off'),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: color)),
             ]),
           ),
         ),
       );
+    }
+
+    return Column(children: [
+      Row(children: [
+        chip(RadioKind.gps, CupertinoIcons.location_solid, 'GPS', r.gps, needed: p.needsLocation),
+        const SizedBox(width: 8),
+        chip(RadioKind.wifi, CupertinoIcons.wifi, 'Wi-Fi', r.wifi, needed: false),
+        const SizedBox(width: 8),
+        chip(RadioKind.bluetooth, CupertinoIcons.bluetooth, 'Bluetooth', r.bluetooth, needed: p.online == false),
+      ]),
+      if (r.permissionsBlocked)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: _Banner(icon: CupertinoIcons.lock_shield, text: attT('att_err_perm_settings'), color: _bad),
+        ),
+    ]);
+  }
+}
+
+/// Six-box one-time-code input (a hidden TextField drives the boxes).
+class _CodeBoxes extends StatelessWidget {
+  const _CodeBoxes({required this.controller, required this.enabled, required this.onSubmit});
+  final TextEditingController controller;
+  final bool enabled;
+  final ValueChanged<String> onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = context.colors.primary;
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (_, _) {
+        final text = controller.text;
+        return Stack(alignment: Alignment.center, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            for (var i = 0; i < 6; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 44,
+                height: 56,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: primary.withValues(alpha: i < text.length ? 0.12 : 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: i == text.length ? primary : primary.withValues(alpha: 0.2),
+                      width: i == text.length ? 2 : 1),
+                ),
+                child: Text(i < text.length ? text[i] : '',
+                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
+              ),
+          ]),
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0,
+              child: TextField(
+                controller: controller,
+                enabled: enabled,
+                autofocus: true,
+                maxLength: 6,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onSubmitted: onSubmit,
+              ),
+            ),
+          ),
+        ]);
+      },
+    );
+  }
 }
 
 class _StudentSheet extends StatefulWidget {
@@ -107,13 +308,28 @@ class _StudentSheet extends StatefulWidget {
   State<_StudentSheet> createState() => _StudentSheetState();
 }
 
-class _StudentSheetState extends State<_StudentSheet> {
+class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserver {
   final _ctrl = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ctrl.dispose();
     super.dispose();
+  }
+
+  /// Back from the system settings (after switching GPS / Bluetooth on): re-read the radios.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) {
+      context.read<StudentCheckInProvider>().refreshRadios();
+    }
   }
 
   @override
@@ -124,17 +340,20 @@ class _StudentSheetState extends State<_StudentSheet> {
     final finished = o != null && o.kind != OutcomeKind.failed && o.kind != OutcomeKind.pending;
 
     return _SheetFrame(
+      header: _PremiumHeader(
+        icon: CupertinoIcons.dot_radiowaves_left_right,
+        title: widget.title ?? attT('att_sheet_title'),
+        subtitle: attT(p.needsCode ? 'att_sheet_sub' : 'att_sheet_sub_mates'),
+        trailing: IconButton(
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white70),
+        ),
+      ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(CupertinoIcons.dot_radiowaves_left_right, size: 34, color: primary),
-        const SizedBox(height: 8),
-        Text(widget.title ?? attT('att_sheet_title'),
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
-        const SizedBox(height: 4),
-        Text(attT(p.needsCode ? 'att_sheet_sub' : 'att_sheet_sub_mates'),
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.grey.shade600)),
-        const SizedBox(height: 16),
+        if (!finished) ...[
+          _RadiosRow(p: p),
+          const SizedBox(height: 12),
+        ],
         if (p.online != null)
           _Banner(
             icon: p.online! ? CupertinoIcons.wifi : CupertinoIcons.antenna_radiowaves_left_right,
@@ -148,62 +367,64 @@ class _StudentSheetState extends State<_StudentSheet> {
               text: attT('att_need_mates', args: {'n': '${p.witnessesNeeded}'}),
               color: primary),
         ],
+        // An online phone is visible to nearby classmates automatically while this sheet is open.
         if (p.online == true && p.host != null) _VisibleBanner(host: p.host!),
-        if (p.online == true && !p.busy && o == null) const RelayHostTile(),
         if (p.needsLocation) ...[
           const SizedBox(height: 8),
           _Banner(icon: CupertinoIcons.location_solid, text: attT('att_need_location'), color: primary),
         ],
         if (!finished && p.needsCode) ...[
-          const SizedBox(height: 14),
-          TextField(
-            controller: _ctrl,
-            enabled: !p.busy,
-            autofocus: true,
-            maxLength: 6,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            style: const TextStyle(fontSize: 30, letterSpacing: 10, fontWeight: FontWeight.w800),
-            decoration: InputDecoration(
-              counterText: '',
-              hintText: '••••••',
-              labelText: attT('att_code_hint'),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
-            ),
-            onSubmitted: (v) => p.submit(v),
-          ),
+          const SizedBox(height: 20),
+          _CodeBoxes(controller: _ctrl, enabled: !p.busy, onSubmit: p.submit),
+          const SizedBox(height: 4),
+          Text(attT('att_code_hint'),
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
         ],
         if (p.busy || o != null) ...[
-          const SizedBox(height: 12),
-          for (final s in Stage.values)
-            if (p.stages[s] != StageState.skipped) _StageRow(stage: s, state: p.stages[s]!),
+          const SizedBox(height: 14),
+          _Card(
+            child: Column(children: [
+              for (final s in Stage.values)
+                if (p.stages[s] != StageState.skipped) _StageRow(stage: s, state: p.stages[s]!),
+            ]),
+          ),
         ],
         if (o != null) ...[
-          const SizedBox(height: 14),
+          const SizedBox(height: 6),
           _OutcomeCard(outcome: o),
           if (o.needsSettings)
             TextButton(onPressed: openSettings, child: Text(attT('att_err_perm_settings'))),
         ],
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         SizedBox(
           width: double.infinity,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: primary,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          height: 52,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: p.busy ? null : LinearGradient(colors: [primary, context.colors.purple]),
+              color: p.busy ? Colors.grey.shade300 : null,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: p.busy
+                  ? null
+                  : [BoxShadow(color: primary.withValues(alpha: 0.35), blurRadius: 16, offset: const Offset(0, 6))],
             ),
-            onPressed: p.busy
-                ? null
-                : finished
-                    ? () => Navigator.of(context).maybePop()
-                    : () => p.submit(_ctrl.text),
-            child: p.busy
-                ? const SizedBox(
-                    width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                : Text(attT(finished ? 'att_done' : (o == null ? 'att_submit' : 'att_retry')),
-                    style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 15)),
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              ),
+              onPressed: p.busy
+                  ? null
+                  : finished
+                      ? () => Navigator.of(context).maybePop()
+                      : () => p.submit(_ctrl.text),
+              child: p.busy
+                  ? const SizedBox(
+                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                  : Text(attT(finished ? 'att_done' : (o == null ? 'att_submit' : 'att_retry')),
+                      style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16)),
+            ),
           ),
         ),
       ]),
@@ -325,7 +546,18 @@ class _OutcomeCard extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: color, size: 26),
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.4, end: 1),
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.elasticOut,
+          builder: (_, v, child) => Transform.scale(scale: v, child: child),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 26),
+          ),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -441,12 +673,12 @@ class AttendanceTeacherButton extends StatelessWidget {
   }
 }
 
-Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId) {
+Future<void> showTeacherAttendanceSheet(BuildContext context, int sessionId, {String? title}) {
   RelayHostProvider? host;
   try {
     host = context.read<RelayHostProvider>();
   } catch (_) {}
-  final ctl = TeacherAttendanceController.instance..prepare(sessionId, host);
+  final ctl = TeacherAttendanceController.instance..prepare(sessionId, host, title: title);
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -484,18 +716,18 @@ class _TeacherSheet extends StatelessWidget {
     final started = p.window != null;
 
     return _SheetFrame(
+      header: _PremiumHeader(
+        icon: CupertinoIcons.qrcode,
+        title: attT('att_t_title'),
+        subtitle: p.lessonTitle,
+        trailing: IconButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white70)),
+      ),
       child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Row(children: [
-            Expanded(
-              child: Text(attT('att_t_title'),
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800)),
-            ),
-            IconButton(
-                onPressed: () => Navigator.of(context).maybePop(),
-                icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.grey)),
-          ]),
           if (!started) ...[
+            _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _label('att_t_duration'),
             Wrap(spacing: 8, children: [
               for (final m in TeacherAttendanceController.options)
@@ -525,6 +757,8 @@ class _TeacherSheet extends StatelessWidget {
                   ),
               ]),
             ],
+            ])),
+            _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _label('att_t_grace', hint: 'att_t_grace_hint'),
             Wrap(spacing: 8, children: [
               for (final g in TeacherAttendanceController.graceOptions)
@@ -545,6 +779,7 @@ class _TeacherSheet extends StatelessWidget {
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
             ),
             _LocationSetup(p: p),
+            ])),
             const SizedBox(height: 18),
             SizedBox(
               width: double.infinity,
@@ -657,7 +892,9 @@ class _LocationSetup extends StatelessWidget {
     if (pick == null) return;
     p.setWebSource(pick);
     p.setUseLocation(true);
-    if (pick == 'mobile') await p.checkSharedLocation();
+    if (pick == 'mobile' && !await p.checkSharedLocation()) {
+      p.requestFromMobile(); // silent push to the phone; the sheet shows "waiting" meanwhile
+    }
   }
 
   @override
@@ -694,14 +931,22 @@ class _LocationSetup extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Row(children: [
-              Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.info,
-                  size: 18, color: p.sharedFromMobile ? _ok : _warn),
+              if (p.waitingMobile)
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              else
+                Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.info,
+                    size: 18, color: p.sharedFromMobile ? _ok : _warn),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(attT(p.sharedFromMobile ? 'att_t_shared_found' : 'att_t_shared_missing'),
+                child: Text(
+                    attT(p.waitingMobile
+                        ? 'att_t_waiting_mobile'
+                        : (p.sharedFromMobile ? 'att_t_shared_found' : 'att_t_shared_missing')),
                     style: grey),
               ),
-              TextButton(onPressed: p.checkSharedLocation, child: Text(attT('att_t_shared_check'))),
+              TextButton(
+                  onPressed: p.waitingMobile ? null : p.requestFromMobile,
+                  child: Text(attT('att_t_ask_phone'))),
             ]),
           ),
         if (!kIsWeb)

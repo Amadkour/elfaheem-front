@@ -30,19 +30,19 @@ class CourseDetailsTopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final buttons = <Widget>[
       if (showRefresh)
-        _GlassBtn(
+        GlassBtn(
           icon: Icons.refresh_rounded,
           tooltip: 'refresh'.tr,
           onTap: () => onRefresh(),
         ),
       if (onShare != null)
-        _GlassBtn(
+        GlassBtn(
           icon: Icons.ios_share_rounded,
           tooltip: 'course_hero_share'.tr,
           onTap: onShare!,
         ),
       if (onLike != null)
-        _GlassBtn(
+        GlassBtn(
           icon: isFavorite
               ? Icons.favorite_rounded
               : Icons.favorite_border_rounded,
@@ -51,7 +51,7 @@ class CourseDetailsTopBar extends StatelessWidget {
           onTap: onLike!,
         ),
       if (onSetting != null)
-        _GlassBtn(
+        GlassBtn(
           icon: CupertinoIcons.settings,
           iconColor: isFavorite ? const Color(0xFFFF5A7A) : Colors.white,
           tooltip: 'course_hero_setting'.tr,
@@ -62,7 +62,7 @@ class CourseDetailsTopBar extends StatelessWidget {
       children: [
         ...[
           if(onBack!=null)
-            _GlassBtn(
+            GlassBtn(
               icon: Icons.arrow_back_ios_rounded,
               tooltip: 'course_hero_share'.tr,
               onTap: onBack!,
@@ -80,8 +80,8 @@ class CourseDetailsTopBar extends StatelessWidget {
   }
 }
 
-class _GlassBtn extends StatelessWidget {
-  const _GlassBtn({
+class GlassBtn extends StatelessWidget {
+  const GlassBtn({
     required this.icon,
     required this.onTap,
     this.iconColor = Colors.white,

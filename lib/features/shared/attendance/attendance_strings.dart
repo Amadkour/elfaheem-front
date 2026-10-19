@@ -265,4 +265,29 @@ const Map<String, (String, String)> _fallback = {
     'Registration closes now; late requests are still accepted for {n} s.'
   ),
   'att_cancel': ('إلغاء', 'Cancel'),
+  // ── radios, push-driven location sharing ─────────────────────────────
+  'att_radio_on': ('يعمل', 'On'),
+  'att_radio_off': ('متوقف — اضغط', 'Off — tap'),
+  'att_radio_hint': (
+    'فعّله من الإعدادات السريعة للهاتف (لا يمكن للتطبيق تشغيله بنفسه)',
+    'Turn it on from the phone\'s quick settings (an app cannot switch it on by itself)'
+  ),
+  'att_t_shared_auto': ('تمت مشاركة موقعك مع نسخة الويب', 'Your location was shared with the web app'),
+  'att_t_web_asks_title': ('نسخة الويب تطلب موقعك', 'The web app is asking for your location'),
+  'att_t_web_asks_body': (
+    'نسخة الويب تحتاج موقع القاعة من هاتفك لبدء الحضور.',
+    'The web app needs the classroom location from your phone to start attendance.'
+  ),
+  'att_t_share_now': ('شارك الآن', 'Share now'),
+  'att_later': ('لاحقاً', 'Later'),
+  'att_t_waiting_mobile': ('بانتظار هاتفك… سيتم إرسال الموقع تلقائياً', 'Waiting for your phone… it will send the location by itself'),
+  'att_t_ask_phone': ('اطلب من الهاتف', 'Ask phone'),
+  'att_err_no_mobile_device': (
+    'لا يوجد هاتف مسجّل لحسابك. افتح التطبيق على الموبايل مرة واحدة.',
+    'No phone is registered for your account. Open the mobile app once.'
+  ),
+  'att_err_mobile_no_answer': (
+    'لم يرد الهاتف. افتح التطبيق على الموبايل واضغط «مشاركة الموقع للويب».',
+    'The phone did not answer. Open the mobile app and tap "Share location for web".'
+  ),
 };

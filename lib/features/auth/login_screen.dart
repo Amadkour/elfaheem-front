@@ -91,12 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Consumer<LangProvider>(
       builder: (context, l, _) {
-        return SafeArea(
-          child: BasePage(
-            child: MediaQuery.of(context).size.width > 800
-                ? _buildWideLayout()
-                : _buildNarrowLayout(),
-          ),
+        return BasePage(
+          child: MediaQuery.of(context).size.width > 800
+              ? _buildWideLayout()
+              : _buildNarrowLayout(),
         );
       },
     );
@@ -107,23 +105,38 @@ class _LoginScreenState extends State<LoginScreen> {
     return Row(
       children: [
         AuthSidebar(),
-        Expanded(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 40,
-                    vertical: 32,
+        Spacer(),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: ClipRRect(
+            borderRadius: BorderRadiusGeometry.circular(
+              context.colors.radiusXL,
+            ),
+            child: ColoredBox(
+              color: context.colors.isDark
+                  ? context.colors.cardBg
+                  : context.colors.primary.withAlpha(30),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 24,
+                ),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 32,
+                    ),
+                    child: _buildFormCard(),
                   ),
-                  child: _buildFormCard(),
                 ),
               ),
             ),
           ),
         ),
+        Spacer(),
+
       ],
     );
   }
@@ -301,31 +314,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _orDivider() {
-    final c = context.colors;
-    final line = Expanded(
-      child: Container(height: 1, color: c.secondText.withAlpha(50)),
-    );
-    return Row(
-      children: [
-        line,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
-            'or'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: c.secondText,
-            ),
-          ),
-        ),
-        line,
-      ],
     );
   }
 

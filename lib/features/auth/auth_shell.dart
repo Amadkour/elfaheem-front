@@ -27,13 +27,15 @@ class AuthScaffold extends StatelessWidget {
     super.key,
     required this.builder,
     this.maxWidth = 480,
-    this.pageKey, required this.title,
+    this.pageKey,
+    required this.title,
   });
 
   /// Builds the page content. It is called again whenever the language changes,
   /// so every `.tr` text refreshes.
   final AuthBodyBuilder builder;
- final String title;
+  final String title;
+
   /// Max width of the form panel on wide (web) screens.
   final double maxWidth;
 
@@ -44,23 +46,32 @@ class AuthScaffold extends StatelessWidget {
     return Consumer<LangProvider>(
       builder: (context, l, _) {
         final isWide = MediaQuery.of(context).size.width > 800;
-        return SafeArea(
-          child: BasePage(
-            appBar: ScreenAppBar(title: title,showBack: true,),
-            key: pageKey,
-            child: isWide
-                ? Row(
-                    children: [
-                      AuthSidebar(),
-                      Expanded(
-                        child: Center(
+        return BasePage(
+          appBar: ScreenAppBar(title: title, showBack: true,background:context.colors.primary, titleColor: Colors.white,),
+          key: pageKey,
+          child: isWide
+              ? Row(
+                  children: [
+                    AuthSidebar(),
+                    Spacer(),
+                    Container(
+                      constraints:  BoxConstraints(maxWidth: maxWidth),
+                      margin: EdgeInsets.all(10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadiusGeometry.circular(
+                          context.colors.radiusXL,
+                        ),
+                        child: ColoredBox(
+                          color: context.colors.isDark
+                              ? context.colors.cardBg
+                              : context.colors.primary.withAlpha(30),
                           child: SingleChildScrollView(
                             padding: const EdgeInsets.symmetric(
-                              vertical: 24,
                               horizontal: 24,
+                              vertical: 24,
                             ),
                             child: ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: maxWidth),
+                              constraints:  BoxConstraints(maxWidth: maxWidth),
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 40,
@@ -72,17 +83,18 @@ class AuthScaffold extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  )
-                : Center(
-                    child: SafeArea(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                        child: builder(context, false),
-                      ),
+                    ),
+                    Spacer(),
+                  ],
+                )
+              : Center(
+                  child: SafeArea(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      child: builder(context, false),
                     ),
                   ),
-          ),
+                ),
         );
       },
     );
@@ -107,7 +119,6 @@ class AuthTopBar extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
         AppNetworkImage(
           url: 'assets/images/logo.png',
           width: size,
@@ -248,7 +259,8 @@ class AuthLangSwitch extends StatelessWidget {
     final ar = AppConfig.lang == 'ar';
     return AuthPillSwitch(
       tooltip: ar ? 'English' : 'العربية',
-      isEnd: ar, // EN on the left, AR on the right
+      isEnd: ar,
+      // EN on the left, AR on the right
       dark: dark,
       gradient: _switchGradient(context, dark),
       knob: Text(

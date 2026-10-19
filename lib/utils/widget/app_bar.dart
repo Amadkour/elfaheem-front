@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/parent/parent_widgets.dart';
+
 class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
   final bool showBack;
   final Color? background;
+  final Color? titleColor;
 
   const ScreenAppBar({
     super.key,
@@ -13,6 +15,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.actions,
     this.showBack = true,
     this.background,
+    this.titleColor,
   });
 
   @override
@@ -32,22 +35,22 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
         centerTitle: false,
         leading: showBack
             ? GestureDetector(
-          onTap: () => Navigator.of(context).maybePop(),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: c.cardBg,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            // CupertinoIcons.back mirrors by itself with the direction.
-            child: Icon(CupertinoIcons.back, color: c.textDark, size: 20),
-          ),
-        )
+                onTap: () => Navigator.of(context).maybePop(),
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: c.cardBg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  // CupertinoIcons.back mirrors by itself with the direction.
+                  child: Icon(CupertinoIcons.back, color: c.textDark, size: 20),
+                ),
+              )
             : null,
         title: Text(
           title,
           textAlign: TextAlign.start,
-          style: c.h2.copyWith(fontFamily: 'bahji'),
+          style: c.h2.copyWith(fontFamily: 'bahji',color: titleColor),
         ),
         actions: actions,
       ),

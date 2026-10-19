@@ -8137,10 +8137,6 @@
     "en": "No internet connection. Check your network and try again.",
     "ar": "لا يوجد اتصال بالإنترنت. تحقق من الشبكة وحاول مرة أخرى."
   },
-  "dl_title": {
-    "ar": "التحميلات",
-    "en": "Downloads"
-  },
   "dl_offline_info": {
     "ar": "أنت غير متصل بالإنترنت — يمكنك مشاهدة الفيديوهات المحمّلة",
     "en": "You are offline — you can watch your downloaded videos"
@@ -8201,7 +8197,7 @@
     "ar": "بدأ التحميل…",
     "en": "Download started…"
   },
-  "dl_done": {
+  "dl_done_offline": {
     "ar": "تم التحميل — متاح بدون إنترنت",
     "en": "Downloaded — available offline"
   },
@@ -11720,5 +11716,1105 @@
   "terms_footer": {
     "ar": "باستمرارك في استخدام المنصة فأنت تؤكد أنك قرأت الشروط وفهمتها ووافقت عليها. شكرًا لثقتك بنا.",
     "en": "By continuing to use the platform you confirm that you've read, understood and agreed to these terms. Thank you for trusting us."
+  },
+  "att_radio_on": {
+    "en": "On",
+    "ar": "يعمل"
+  },
+  "att_radio_off": {
+    "en": "Off — tap",
+    "ar": "متوقف — اضغط"
+  },
+  "att_radio_hint": {
+    "en": "Turn it on from the phone's quick settings (an app cannot switch it on by itself)",
+    "ar": "فعّله من الإعدادات السريعة للهاتف (لا يمكن للتطبيق تشغيله بنفسه)"
+  },
+  "att_t_shared_auto": {
+    "en": "Your location was shared with the web app",
+    "ar": "تمت مشاركة موقعك مع نسخة الويب"
+  },
+  "att_t_web_asks_title": {
+    "en": "The web app is asking for your location",
+    "ar": "نسخة الويب تطلب موقعك"
+  },
+  "att_t_web_asks_body": {
+    "en": "The web app needs the classroom location from your phone to start attendance.",
+    "ar": "نسخة الويب تحتاج موقع القاعة من هاتفك لبدء الحضور."
+  },
+  "att_t_share_now": {
+    "en": "Share now",
+    "ar": "شارك الآن"
+  },
+  "att_later": {
+    "en": "Later",
+    "ar": "لاحقاً"
+  },
+  "att_t_waiting_mobile": {
+    "en": "Waiting for your phone… it will send the location by itself",
+    "ar": "بانتظار هاتفك… سيتم إرسال الموقع تلقائياً"
+  },
+  "att_t_ask_phone": {
+    "en": "Ask phone",
+    "ar": "اطلب من الهاتف"
+  },
+  "att_err_no_mobile_device": {
+    "en": "No phone is registered for your account. Open the mobile app once.",
+    "ar": "لا يوجد هاتف مسجّل لحسابك. افتح التطبيق على الموبايل مرة واحدة."
+  },
+  "att_err_mobile_no_answer": {
+    "en": "The phone did not answer. Open the mobile app and tap \"Share location for web\".",
+    "ar": "لم يرد الهاتف. افتح التطبيق على الموبايل واضغط «مشاركة الموقع للويب»."
+  },
+  "dl_title": {
+    "en": "Data Lab",
+    "ar": "معمل البيانات"
+  },
+  "downloads": {
+    "en": "Downloads",
+    "ar": "التحميلات"
+  },
+  "dl_hero_sub": {
+    "en": "Everything about your class in one live sheet. Add your own columns, mix them with weights, and share what you want.",
+    "ar": "كل شيء عن طلابك في جدول واحد حيّ. أضف أعمدتك، اجمعها بأوزان، وشارك ما تريد."
+  },
+  "dl_entry_sub": {
+    "en": "Progress, attendance, exams and your own marks in one sheet",
+    "ar": "التقدم والحضور والاختبارات ودرجاتك في جدول واحد"
+  },
+  "dl_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "dl_student": {
+    "en": "Student",
+    "ar": "الطالب"
+  },
+  "dl_avg_progress": {
+    "en": "Avg progress",
+    "ar": "متوسط التقدم"
+  },
+  "dl_avg_attendance": {
+    "en": "Avg attendance",
+    "ar": "متوسط الحضور"
+  },
+  "dl_class_avg": {
+    "en": "Class average",
+    "ar": "متوسط الفصل"
+  },
+  "dl_search_hint": {
+    "en": "Search a student…",
+    "ar": "ابحث عن طالب…"
+  },
+  "dl_empty": {
+    "en": "No students yet. When students enroll, they show up here by themselves — or import your own sheet.",
+    "ar": "لا يوجد طلاب بعد. عند اشتراك الطلاب سيظهرون هنا تلقائياً — أو استورد جدولك الخاص."
+  },
+  "dl_no_match": {
+    "en": "Nobody matches that search.",
+    "ar": "لا يوجد من يطابق هذا البحث."
+  },
+  "dl_showing": {
+    "en": "Showing",
+    "ar": "عرض"
+  },
+  "dl_selected": {
+    "en": "selected",
+    "ar": "محدد"
+  },
+  "dl_clear": {
+    "en": "Clear",
+    "ar": "إلغاء التحديد"
+  },
+  "dl_import": {
+    "en": "Import",
+    "ar": "استيراد"
+  },
+  "dl_export": {
+    "en": "Export",
+    "ar": "تصدير"
+  },
+  "dl_new_column": {
+    "en": "New column",
+    "ar": "عمود جديد"
+  },
+  "dl_ask_students": {
+    "en": "Ask students",
+    "ar": "اسأل الطلاب"
+  },
+  "dl_temporary": {
+    "en": "Temporary",
+    "ar": "مؤقت"
+  },
+  "dl_waiting": {
+    "en": "Waiting for student",
+    "ar": "بانتظار الطالب"
+  },
+  "dl_delete_row_q": {
+    "en": "Remove this line from the sheet?",
+    "ar": "حذف هذا السطر من الجدول؟"
+  },
+  "dl_value": {
+    "en": "Value",
+    "ar": "القيمة"
+  },
+  "dl_clear_value": {
+    "en": "Clear",
+    "ar": "مسح"
+  },
+  "dl_visible_to_students": {
+    "en": "Visible to students",
+    "ar": "ظاهر للطلاب"
+  },
+  "dl_load_more": {
+    "en": "Load more",
+    "ar": "عرض المزيد"
+  },
+  "dl_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "dl_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "dl_none": {
+    "en": "None",
+    "ar": "لا شيء"
+  },
+  "dl_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "dl_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "dl_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "dl_edit_column": {
+    "en": "Edit column",
+    "ar": "تعديل العمود"
+  },
+  "dl_column_kind": {
+    "en": "What kind of column?",
+    "ar": "ما نوع العمود؟"
+  },
+  "dl_kind_manual": {
+    "en": "I type the values",
+    "ar": "أُدخل القيم بنفسي"
+  },
+  "dl_kind_manual_sub": {
+    "en": "Marks, notes, a group name…",
+    "ar": "درجات، ملاحظات، اسم مجموعة…"
+  },
+  "dl_kind_calc": {
+    "en": "Calculated",
+    "ar": "محسوب"
+  },
+  "dl_kind_calc_sub": {
+    "en": "Mix other columns with weights",
+    "ar": "اجمع أعمدة أخرى بأوزان"
+  },
+  "dl_column_name": {
+    "en": "Column name",
+    "ar": "اسم العمود"
+  },
+  "dl_column_name_hint": {
+    "en": "e.g. Lab mark",
+    "ar": "مثال: درجة المعمل"
+  },
+  "dl_type_number": {
+    "en": "Number",
+    "ar": "رقم"
+  },
+  "dl_type_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "dl_max_value": {
+    "en": "Highest possible value",
+    "ar": "أعلى قيمة ممكنة"
+  },
+  "dl_options": {
+    "en": "Choices (optional)",
+    "ar": "اختيارات (اختياري)"
+  },
+  "dl_options_hint": {
+    "en": "Separate with commas: A, B, C",
+    "ar": "افصل بفاصلة: أ، ب، ج"
+  },
+  "dl_calc_from": {
+    "en": "Calculate from",
+    "ar": "احسب من"
+  },
+  "dl_calc_from_sub": {
+    "en": "Pick the columns. Each one gets the same weight until you change it.",
+    "ar": "اختر الأعمدة. لكل عمود نفس الوزن حتى تغيّره."
+  },
+  "dl_total_weight": {
+    "en": "Total weight",
+    "ar": "مجموع الأوزان"
+  },
+  "dl_equal_weights": {
+    "en": "Equal weights",
+    "ar": "أوزان متساوية"
+  },
+  "dl_weights_scaled": {
+    "en": "Weights don't have to add up to 100 — they are scaled for you.",
+    "ar": "ليس شرطاً أن يكون المجموع 100 — سيتم ضبطه تلقائياً."
+  },
+  "dl_missing_values": {
+    "en": "When a value is missing",
+    "ar": "عند غياب قيمة"
+  },
+  "dl_missing_values_sub": {
+    "en": "What should happen if a student has no value in one of the columns?",
+    "ar": "ماذا يحدث إذا لم يكن لدى الطالب قيمة في أحد الأعمدة؟"
+  },
+  "dl_missing_zero": {
+    "en": "Count it as 0",
+    "ar": "اعتبرها صفراً"
+  },
+  "dl_missing_skip": {
+    "en": "Ignore that column",
+    "ar": "تجاهل هذا العمود"
+  },
+  "dl_visible_to_students_sub": {
+    "en": "Students see this column on their own analytics profile",
+    "ar": "يرى الطلاب هذا العمود في ملفهم التحليلي"
+  },
+  "dl_hide_column": {
+    "en": "Hide from the sheet",
+    "ar": "إخفاء من الجدول"
+  },
+  "dl_hide_column_sub": {
+    "en": "It stays available for calculations",
+    "ar": "يبقى متاحاً للحسابات"
+  },
+  "dl_delete_column": {
+    "en": "Delete column",
+    "ar": "حذف العمود"
+  },
+  "dl_delete_column_q": {
+    "en": "Delete this column and all its values?",
+    "ar": "حذف هذا العمود وكل قيمه؟"
+  },
+  "dl_err_label": {
+    "en": "Please give it a name",
+    "ar": "من فضلك اكتب اسماً"
+  },
+  "dl_err_pick_columns": {
+    "en": "Pick at least one column",
+    "ar": "اختر عموداً واحداً على الأقل"
+  },
+  "dl_imp_step_file": {
+    "en": "File",
+    "ar": "الملف"
+  },
+  "dl_imp_step_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "dl_imp_step_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "dl_imp_step_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "dl_imp_file_title": {
+    "en": "Bring your own sheet",
+    "ar": "أحضر جدولك الخاص"
+  },
+  "dl_imp_file_sub": {
+    "en": "Excel or CSV. One column is enough — we'll match it to your students.",
+    "ar": "ملف Excel أو CSV. يكفي عمود واحد — سنطابقه مع طلابك."
+  },
+  "dl_choose_file": {
+    "en": "Choose a file",
+    "ar": "اختر ملفاً"
+  },
+  "dl_imp_limit": {
+    "en": "Up to this many lines:",
+    "ar": "حتى هذا العدد من الأسطر:"
+  },
+  "dl_imp_header_tip": {
+    "en": "The first line must be the column titles.",
+    "ar": "يجب أن يكون السطر الأول عناوين الأعمدة."
+  },
+  "dl_imp_rows": {
+    "en": "lines",
+    "ar": "سطر"
+  },
+  "dl_imp_shared": {
+    "en": "Already in the system",
+    "ar": "موجود في النظام"
+  },
+  "dl_t_skip": {
+    "en": "Don't import",
+    "ar": "لا تستورد"
+  },
+  "dl_t_name": {
+    "en": "Student name",
+    "ar": "اسم الطالب"
+  },
+  "dl_t_email": {
+    "en": "E-mail",
+    "ar": "البريد الإلكتروني"
+  },
+  "dl_t_phone": {
+    "en": "Phone",
+    "ar": "الهاتف"
+  },
+  "dl_t_identifier": {
+    "en": "Student ID / code",
+    "ar": "كود / رقم الطالب"
+  },
+  "dl_t_new_number": {
+    "en": "New number column",
+    "ar": "عمود رقمي جديد"
+  },
+  "dl_t_new_text": {
+    "en": "New text column",
+    "ar": "عمود نصي جديد"
+  },
+  "dl_merge_title": {
+    "en": "Which column identifies the student?",
+    "ar": "أي عمود يحدد الطالب؟"
+  },
+  "dl_merge_sub": {
+    "en": "We use it to match each line with a student.",
+    "ar": "نستخدمه لمطابقة كل سطر مع طالب."
+  },
+  "dl_merge_unknown": {
+    "en": "I don't know — ask the students",
+    "ar": "لا أعرف — اطلب من الطلاب"
+  },
+  "dl_merge_none": {
+    "en": "Map at least one column as name, e-mail, phone or ID first.",
+    "ar": "حدد أولاً عموداً واحداً على الأقل كاسم أو بريد أو هاتف أو كود."
+  },
+  "dl_ask_explain": {
+    "en": "Students of this course will be asked for this value the next time they open the app. Their sheet lines are matched automatically when they answer.",
+    "ar": "سيُطلب من طلاب هذا الكورس هذه القيمة عند فتح التطبيق. وتُطابق أسطرهم تلقائياً عند الإجابة."
+  },
+  "dl_ask_which_column": {
+    "en": "Which sheet column holds that value?",
+    "ar": "أي عمود في الملف يحمل هذه القيمة؟"
+  },
+  "dl_ask_label": {
+    "en": "What should students be asked?",
+    "ar": "ماذا نسأل الطلاب؟"
+  },
+  "dl_ask_text": {
+    "en": "Text box",
+    "ar": "حقل نص"
+  },
+  "dl_ask_dropdown": {
+    "en": "Dropdown list",
+    "ar": "قائمة اختيارات"
+  },
+  "dl_err_map_one": {
+    "en": "Map at least one column",
+    "ar": "حدد عموداً واحداً على الأقل"
+  },
+  "dl_err_merge": {
+    "en": "Choose the column that identifies the student",
+    "ar": "اختر العمود الذي يحدد الطالب"
+  },
+  "dl_err_request_header": {
+    "en": "Choose which sheet column holds the value",
+    "ar": "اختر عمود الملف الذي يحمل القيمة"
+  },
+  "dl_err_options": {
+    "en": "Add at least two choices",
+    "ar": "أضف اختيارين على الأقل"
+  },
+  "dl_plan_matched": {
+    "en": "Found in your course",
+    "ar": "موجودون في كورسك"
+  },
+  "dl_plan_unmatched": {
+    "en": "Not in your course yet",
+    "ar": "غير موجودين في كورسك"
+  },
+  "dl_plan_new_columns": {
+    "en": "New columns",
+    "ar": "أعمدة جديدة"
+  },
+  "dl_plan_skipped_rows": {
+    "en": "lines can't be used (empty or matching several students)",
+    "ar": "أسطر لا يمكن استخدامها (فارغة أو تطابق عدة طلاب)"
+  },
+  "dl_unmatched_title": {
+    "en": "What about the others?",
+    "ar": "وماذا عن الباقين؟"
+  },
+  "dl_unmatched_sub": {
+    "en": "Lines that don't match a student of this course.",
+    "ar": "الأسطر التي لا تطابق أي طالب في هذا الكورس."
+  },
+  "dl_policy_temp": {
+    "en": "Keep as temporary students",
+    "ar": "احتفظ بهم كطلاب مؤقتين"
+  },
+  "dl_policy_temp_sub": {
+    "en": "They live in the sheet only — no account.",
+    "ar": "يظهرون في الجدول فقط — بدون حساب."
+  },
+  "dl_policy_accounts": {
+    "en": "Add them to the system",
+    "ar": "أضفهم إلى النظام"
+  },
+  "dl_policy_accounts_sub": {
+    "en": "Creates accounts with a temporary password and enrolls them.",
+    "ar": "ينشئ حسابات بكلمة مرور مؤقتة ويسجلهم في الكورس."
+  },
+  "dl_policy_skip": {
+    "en": "Skip them",
+    "ar": "تجاهلهم"
+  },
+  "dl_policy_skip_sub": {
+    "en": "Only update the students you already have.",
+    "ar": "حدّث الطلاب الموجودين فقط."
+  },
+  "dl_policy_request_note": {
+    "en": "The unmatched lines wait until each student enters the value you asked for.",
+    "ar": "تنتظر الأسطر غير المطابقة حتى يُدخل كل طالب القيمة المطلوبة."
+  },
+  "dl_missing_title": {
+    "en": "A few things are missing",
+    "ar": "ينقص بعض البيانات"
+  },
+  "dl_missing_sub": {
+    "en": "To create accounts we need a name and a way to sign in. Fill them with a constant if your file doesn't have them.",
+    "ar": "لإنشاء حسابات نحتاج اسماً وطريقة لتسجيل الدخول. املأها بقيمة ثابتة إن لم تكن في ملفك."
+  },
+  "dl_fill_name": {
+    "en": "Name for everyone (constant)",
+    "ar": "اسم ثابت للجميع"
+  },
+  "dl_fill_name_hint": {
+    "en": "e.g. Student",
+    "ar": "مثال: طالب"
+  },
+  "dl_fill_prefix": {
+    "en": "ID prefix",
+    "ar": "بادئة الكود"
+  },
+  "dl_fill_prefix_hint": {
+    "en": "e.g. CS- → CS-1, CS-2…",
+    "ar": "مثال: CS- ← CS-1، CS-2…"
+  },
+  "dl_login_note": {
+    "en": "Students without an e-mail sign in with their ID and the temporary password shown after the import.",
+    "ar": "الطلاب بدون بريد يدخلون بالكود وكلمة المرور المؤقتة التي تظهر بعد الاستيراد."
+  },
+  "dl_fill_cells": {
+    "en": "Fill empty cells with a value",
+    "ar": "املأ الخانات الفارغة بقيمة"
+  },
+  "dl_fill_cells_sub": {
+    "en": "Optional — per column",
+    "ar": "اختياري — لكل عمود"
+  },
+  "dl_fill_value": {
+    "en": "Constant value",
+    "ar": "قيمة ثابتة"
+  },
+  "dl_check_again": {
+    "en": "Check again",
+    "ar": "تحقق مجدداً"
+  },
+  "dl_import_now": {
+    "en": "Import now",
+    "ar": "استورد الآن"
+  },
+  "dl_done_title": {
+    "en": "All set!",
+    "ar": "تم بنجاح!"
+  },
+  "dl_done_added": {
+    "en": "Added",
+    "ar": "تمت إضافتهم"
+  },
+  "dl_done_request_sent": {
+    "en": "Students will be asked for the value next time they open the app.",
+    "ar": "سيُطلب من الطلاب القيمة عند فتح التطبيق."
+  },
+  "dl_done_accounts": {
+    "en": "New accounts",
+    "ar": "حسابات جديدة"
+  },
+  "dl_done_accounts_sub": {
+    "en": "Share these temporary passwords — e-mailed ones were already sent.",
+    "ar": "شارك كلمات المرور المؤقتة — التي لها بريد أُرسلت تلقائياً."
+  },
+  "dl_copy_all": {
+    "en": "Copy all",
+    "ar": "نسخ الكل"
+  },
+  "dl_copied": {
+    "en": "Copied",
+    "ar": "تم النسخ"
+  },
+  "dl_exp_where": {
+    "en": "Where should it go?",
+    "ar": "إلى أين نرسلها؟"
+  },
+  "dl_exp_download": {
+    "en": "Download",
+    "ar": "تنزيل"
+  },
+  "dl_exp_download_sub": {
+    "en": "Save the file on this device",
+    "ar": "احفظ الملف على هذا الجهاز"
+  },
+  "dl_exp_email": {
+    "en": "E-mail me",
+    "ar": "أرسلها لي بالبريد"
+  },
+  "dl_exp_email_sub": {
+    "en": "A short summary in the mail and the sheet attached",
+    "ar": "ملخص في البريد والجدول مرفق"
+  },
+  "dl_exp_students": {
+    "en": "E-mail the students",
+    "ar": "أرسلها للطلاب"
+  },
+  "dl_exp_students_sub": {
+    "en": "Each student gets his own line",
+    "ar": "كل طالب يستلم سطره فقط"
+  },
+  "dl_exp_profile": {
+    "en": "Publish on students' profile",
+    "ar": "انشرها في ملف الطلاب"
+  },
+  "dl_exp_profile_sub": {
+    "en": "Students see these columns in their analytics profile",
+    "ar": "يرى الطلاب هذه الأعمدة في ملفهم التحليلي"
+  },
+  "dl_exp_email_to": {
+    "en": "Send to",
+    "ar": "أرسل إلى"
+  },
+  "dl_exp_email_to_hint": {
+    "en": "Leave empty for your own e-mail",
+    "ar": "اتركه فارغاً لبريدك"
+  },
+  "dl_exp_note": {
+    "en": "Add a note (optional)",
+    "ar": "أضف ملاحظة (اختياري)"
+  },
+  "dl_exp_format": {
+    "en": "File type",
+    "ar": "نوع الملف"
+  },
+  "dl_exp_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "dl_exp_columns_students": {
+    "en": "Students only receive columns that are visible to them.",
+    "ar": "يستلم الطلاب الأعمدة الظاهرة لهم فقط."
+  },
+  "dl_exp_only": {
+    "en": "Only selected students:",
+    "ar": "الطلاب المحددون فقط:"
+  },
+  "dl_exp_btn_download": {
+    "en": "Download the sheet",
+    "ar": "نزّل الجدول"
+  },
+  "dl_exp_btn_email": {
+    "en": "Send by e-mail",
+    "ar": "أرسل بالبريد"
+  },
+  "dl_exp_btn_students": {
+    "en": "Send to students",
+    "ar": "أرسل للطلاب"
+  },
+  "dl_exp_btn_publish": {
+    "en": "Publish now",
+    "ar": "انشر الآن"
+  },
+  "dl_exp_downloaded": {
+    "en": "Your sheet is ready",
+    "ar": "جدولك جاهز"
+  },
+  "dl_exp_email_queued": {
+    "en": "On its way to",
+    "ar": "في الطريق إلى"
+  },
+  "dl_exp_students_queued": {
+    "en": "e-mails on their way",
+    "ar": "رسائل في الطريق"
+  },
+  "dl_exp_published": {
+    "en": "students notified",
+    "ar": "طالب تم إشعارهم"
+  },
+  "dl_req_explain": {
+    "en": "Need a value from every student — seat number, group, section? Ask once; they answer on a screen they can't skip.",
+    "ar": "تحتاج قيمة من كل طالب — رقم جلوس، مجموعة، سكشن؟ اسأل مرة واحدة؛ يجيبون في شاشة لا يمكن تخطيها."
+  },
+  "dl_req_title": {
+    "en": "Question for the students",
+    "ar": "السؤال للطلاب"
+  },
+  "dl_req_title_hint": {
+    "en": "e.g. Your seat number",
+    "ar": "مثال: رقم الجلوس الخاص بك"
+  },
+  "dl_req_send": {
+    "en": "Send to students",
+    "ar": "أرسل للطلاب"
+  },
+  "dl_req_sent": {
+    "en": "Sent — students will be asked",
+    "ar": "تم الإرسال — سيُسأل الطلاب"
+  },
+  "dl_req_list": {
+    "en": "Your questions",
+    "ar": "أسئلتك"
+  },
+  "dl_req_none": {
+    "en": "Nothing asked yet.",
+    "ar": "لم تسأل شيئاً بعد."
+  },
+  "dl_req_answered": {
+    "en": "answered",
+    "ar": "أجابوا"
+  },
+  "dl_req_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "dl_req_closed": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "dl_req_close_q": {
+    "en": "Stop asking students for this?",
+    "ar": "إيقاف سؤال الطلاب عن هذا؟"
+  },
+  "dl_gate_title": {
+    "en": "Quick question before you continue",
+    "ar": "سؤال سريع قبل المتابعة"
+  },
+  "dl_gate_sub": {
+    "en": "Your teacher needs one detail for",
+    "ar": "يحتاج معلمك معلومة واحدة لكورس"
+  },
+  "dl_gate_your_answer": {
+    "en": "Your answer",
+    "ar": "إجابتك"
+  },
+  "dl_gate_continue": {
+    "en": "Continue",
+    "ar": "متابعة"
+  },
+  "dl_gate_required": {
+    "en": "Please answer first",
+    "ar": "من فضلك أجب أولاً"
+  },
+  "dl_gate_more": {
+    "en": "more question(s) after this",
+    "ar": "أسئلة أخرى بعد هذا"
+  },
+  "dl_gate_why": {
+    "en": "It only takes a moment and helps your teacher follow your progress.",
+    "ar": "تستغرق لحظة وتساعد معلمك على متابعة تقدمك."
+  },
+  "dl_profile_title": {
+    "en": "Analytics profile",
+    "ar": "الملف التحليلي"
+  },
+  "dl_profile_empty": {
+    "en": "Nothing to show yet. Your numbers appear here as you learn.",
+    "ar": "لا يوجد ما يُعرض بعد. ستظهر أرقامك هنا أثناء تعلمك."
+  },
+  "dl_progress": {
+    "en": "Progress",
+    "ar": "التقدم"
+  },
+  "dl_attendance": {
+    "en": "Attendance",
+    "ar": "الحضور"
+  },
+  "dl_exams": {
+    "en": "Exams",
+    "ar": "الاختبارات"
+  },
+  "dl_scope_all": {
+    "en": "All courses",
+    "ar": "كل الكورسات"
+  },
+  "dl_scope_this_course": {
+    "en": "This course",
+    "ar": "هذا الكورس"
+  },
+  "dl_scope_all_mine": {
+    "en": "All my courses",
+    "ar": "كل كورساتي"
+  },
+  "dl_attended": {
+    "en": "Attended",
+    "ar": "حضر"
+  },
+  "dl_of": {
+    "en": "of",
+    "ar": "من"
+  },
+  "dl_sessions_held": {
+    "en": "sessions so far",
+    "ar": "جلسة حتى الآن"
+  },
+  "dl_profile_marks": {
+    "en": "Marks from your teacher",
+    "ar": "درجات من المعلم"
+  },
+  "dl_profile_marks_sub": {
+    "en": "The line marks the class average.",
+    "ar": "الخط يمثل متوسط الفصل."
+  },
+  "dl_hidden_from_student": {
+    "en": "The student doesn't see this",
+    "ar": "لا يراه الطالب"
+  },
+  "dl_not_attempted": {
+    "en": "Not attempted yet",
+    "ar": "لم يُحاول بعد"
+  },
+  "dl_attempts": {
+    "en": "attempt(s)",
+    "ar": "محاولة"
+  },
+  "dl_passed": {
+    "en": "Passed",
+    "ar": "ناجح"
+  },
+  "dl_not_passed": {
+    "en": "Not passed",
+    "ar": "لم ينجح"
+  },
+  "dl_flags_title": {
+    "en": "Study flags",
+    "ar": "علامات المذاكرة"
+  },
+  "dl_flags_sub": {
+    "en": "Questions saved for review and questions answered wrongly.",
+    "ar": "أسئلة محفوظة للمراجعة وأسئلة أُجيبت خطأ."
+  },
+  "dl_review_flags": {
+    "en": "Saved for review",
+    "ar": "محفوظة للمراجعة"
+  },
+  "dl_read_flags": {
+    "en": "To read again",
+    "ar": "للقراءة مجدداً"
+  },
+  "dl_insight_empty": {
+    "en": "Numbers will appear as the course moves on.",
+    "ar": "ستظهر الأرقام مع تقدم الكورس."
+  },
+  "dl_insight_great_me": {
+    "en": "You're doing great — {a} is your strongest area.",
+    "ar": "أداؤك رائع — {a} هو أقوى نقطة لديك."
+  },
+  "dl_insight_great_other": {
+    "en": "Doing well — strongest area: {a}.",
+    "ar": "أداء جيد — أقوى نقطة: {a}."
+  },
+  "dl_insight_best_me": {
+    "en": "You shine in {a}.",
+    "ar": "أنت متميز في {a}."
+  },
+  "dl_insight_best_other": {
+    "en": "Strongest area: {a}.",
+    "ar": "أقوى نقطة: {a}."
+  },
+  "dl_insight_focus": {
+    "en": "A little attention on {a} would help.",
+    "ar": "القليل من الاهتمام بـ {a} سيفيد."
+  },
+  "dl_profile_teacher_note": {
+    "en": "You see every column, including the ones hidden from the student.",
+    "ar": "ترى كل الأعمدة بما فيها المخفية عن الطالب."
+  },
+  "dl_profile_student_note": {
+    "en": "Your teacher chooses what appears here.",
+    "ar": "معلمك يختار ما يظهر هنا."
+  },
+  "dl_my_profile": {
+    "en": "My analytics",
+    "ar": "تحليلاتي"
+  },
+  "dl_my_profile_sub": {
+    "en": "See how you're doing in your courses",
+    "ar": "اطلع على أدائك في كورساتك"
+  },
+  "dl_admin_title": {
+    "en": "Data Lab control",
+    "ar": "التحكم في معمل البيانات"
+  },
+  "dl_admin_sub": {
+    "en": "Decide what teachers and students can do, and where Data Lab is available.",
+    "ar": "حدد ما يمكن للمعلمين والطلاب فعله، وأين يتوفر المعمل."
+  },
+  "dl_admin_stat_courses": {
+    "en": "Courses using it",
+    "ar": "كورسات تستخدمه"
+  },
+  "dl_admin_stat_columns": {
+    "en": "Custom columns",
+    "ar": "أعمدة مخصصة"
+  },
+  "dl_admin_stat_requests": {
+    "en": "Open requests",
+    "ar": "طلبات مفتوحة"
+  },
+  "dl_admin_enabled": {
+    "en": "Data Lab",
+    "ar": "معمل البيانات"
+  },
+  "dl_admin_enabled_sub": {
+    "en": "Master switch for the whole feature",
+    "ar": "المفتاح الرئيسي للميزة كلها"
+  },
+  "dl_admin_teachers": {
+    "en": "Teachers can…",
+    "ar": "يمكن للمعلمين…"
+  },
+  "dl_admin_import": {
+    "en": "Import sheets",
+    "ar": "استيراد الجداول"
+  },
+  "dl_admin_import_sub": {
+    "en": "Upload Excel / CSV and merge it with students",
+    "ar": "رفع Excel / CSV ودمجه مع الطلاب"
+  },
+  "dl_admin_accounts": {
+    "en": "Create accounts from imports",
+    "ar": "إنشاء حسابات من الاستيراد"
+  },
+  "dl_admin_accounts_sub": {
+    "en": "Add unknown students to the system",
+    "ar": "إضافة الطلاب غير الموجودين للنظام"
+  },
+  "dl_admin_export": {
+    "en": "Export sheets",
+    "ar": "تصدير الجداول"
+  },
+  "dl_admin_export_sub": {
+    "en": "Download the sheet or publish it",
+    "ar": "تنزيل الجدول أو نشره"
+  },
+  "dl_admin_email": {
+    "en": "Send sheets by e-mail",
+    "ar": "إرسال الجداول بالبريد"
+  },
+  "dl_admin_email_sub": {
+    "en": "To themselves and to their students",
+    "ar": "لأنفسهم ولطلابهم"
+  },
+  "dl_admin_requests": {
+    "en": "Ask students for values",
+    "ar": "سؤال الطلاب عن قيم"
+  },
+  "dl_admin_requests_sub": {
+    "en": "A screen students must answer",
+    "ar": "شاشة يجب أن يجيب عليها الطلاب"
+  },
+  "dl_admin_students": {
+    "en": "Students can…",
+    "ar": "يمكن للطلاب…"
+  },
+  "dl_admin_student_view": {
+    "en": "See their analytics profile",
+    "ar": "رؤية ملفهم التحليلي"
+  },
+  "dl_admin_student_view_sub": {
+    "en": "Progress, attendance, exams and the columns teachers publish",
+    "ar": "التقدم والحضور والاختبارات والأعمدة التي ينشرها المعلم"
+  },
+  "dl_admin_limits": {
+    "en": "Limits",
+    "ar": "الحدود"
+  },
+  "dl_admin_max_rows": {
+    "en": "Max lines per import",
+    "ar": "أقصى عدد أسطر للاستيراد"
+  },
+  "dl_admin_max_cols": {
+    "en": "Max custom columns per course",
+    "ar": "أقصى عدد أعمدة مخصصة لكل كورس"
+  },
+  "dl_admin_formats": {
+    "en": "Allowed file types",
+    "ar": "أنواع الملفات المسموحة"
+  },
+  "dl_admin_one_format": {
+    "en": "Keep at least one file type",
+    "ar": "أبقِ نوع ملف واحداً على الأقل"
+  },
+  "dl_admin_courses": {
+    "en": "Courses",
+    "ar": "الكورسات"
+  },
+  "dl_admin_courses_sub": {
+    "en": "Switch Data Lab off for a single course",
+    "ar": "أوقف المعمل لكورس بعينه"
+  },
+  "dl_certificates": {
+    "en": "Certificates",
+    "ar": "الشهادات"
+  },
+  "dl_cert_explain": {
+    "en": "Send the course certificate to everyone who passed. Pick what counts as passing and how they should receive it.",
+    "ar": "أرسل شهادة الكورس لكل من نجح. اختر معيار النجاح وطريقة الوصول."
+  },
+  "dl_cert_none": {
+    "en": "This course has no certificate yet. Create one in the course first, then come back.",
+    "ar": "لا توجد شهادة لهذا الكورس بعد. أنشئ واحدة في الكورس ثم عد."
+  },
+  "dl_cert_which": {
+    "en": "Which certificate?",
+    "ar": "أي شهادة؟"
+  },
+  "dl_cert_passed_by": {
+    "en": "Passed means…",
+    "ar": "النجاح يعني…"
+  },
+  "dl_cert_passed_by_sub": {
+    "en": "Pick the column that decides it — a calculated Final column works well.",
+    "ar": "اختر العمود الذي يحدد ذلك — عمود نهائي محسوب مناسب جداً."
+  },
+  "dl_cert_pass_mark": {
+    "en": "Pass mark",
+    "ar": "درجة النجاح"
+  },
+  "dl_cert_reached": {
+    "en": "students reached the pass mark",
+    "ar": "طالب وصلوا لدرجة النجاح"
+  },
+  "dl_cert_already": {
+    "en": "already have it",
+    "ar": "لديهم الشهادة بالفعل"
+  },
+  "dl_cert_how": {
+    "en": "How should they get it?",
+    "ar": "كيف تصلهم؟"
+  },
+  "dl_cert_notification": {
+    "en": "Notification",
+    "ar": "إشعار"
+  },
+  "dl_cert_email": {
+    "en": "E-mail",
+    "ar": "بريد إلكتروني"
+  },
+  "dl_cert_both": {
+    "en": "Both",
+    "ar": "الاثنان"
+  },
+  "dl_cert_note": {
+    "en": "Certificates are made in Arabic and English. We'll notify you when they're all sent.",
+    "ar": "تُنشأ الشهادات بالعربية والإنجليزية. سنخبرك عند اكتمال الإرسال."
+  },
+  "dl_cert_send": {
+    "en": "Send certificates",
+    "ar": "أرسل الشهادات"
+  },
+  "dl_cert_queued": {
+    "en": "certificates are being prepared",
+    "ar": "شهادة قيد التجهيز"
+  },
+  "dl_admin_certificates": {
+    "en": "Send certificates",
+    "ar": "إرسال الشهادات"
+  },
+  "dl_admin_certificates_sub": {
+    "en": "To everyone who passed, by notification or e-mail",
+    "ar": "لكل من نجح، بإشعار أو بريد"
+  },
+  "dl_hub_sub": {
+    "en": "A live sheet of your students",
+    "ar": "جدول حيّ لطلابك"
+  },
+  "dl_view_value": {
+    "en": "Numbers",
+    "ar": "الأرقام"
+  },
+  "dl_view_bar": {
+    "en": "Bars",
+    "ar": "أشرطة"
+  },
+  "dl_view_both": {
+    "en": "Both",
+    "ar": "الاثنان"
+  },
+  "dl_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "dl_columns_sub": {
+    "en": "Choose what appears in your table and what students can see. Nothing is deleted when you hide a column.",
+    "ar": "اختر ما يظهر في جدولك وما يراه الطلاب. لا يُحذف شيء عند إخفاء عمود."
+  },
+  "dl_col_in_table": {
+    "en": "In table",
+    "ar": "في الجدول"
+  },
+  "dl_col_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "dl_show_all": {
+    "en": "Show all",
+    "ar": "إظهار الكل"
+  },
+  "dl_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "dl_menu_edit": {
+    "en": "Edit column",
+    "ar": "تعديل العمود"
+  },
+  "dl_menu_hide": {
+    "en": "Hide from table",
+    "ar": "إخفاء من الجدول"
+  },
+  "dl_menu_students_show": {
+    "en": "Show to students",
+    "ar": "إظهار للطلاب"
+  },
+  "dl_menu_students_hide": {
+    "en": "Hide from students",
+    "ar": "إخفاء عن الطلاب"
+  },
+  "dl_kind_auto": {
+    "en": "Automatic",
+    "ar": "تلقائي"
+  },
+  "dl_kind_manual_short": {
+    "en": "Typed by you",
+    "ar": "من إدخالك"
+  },
+  "dl_auto_value": {
+    "en": "Back to automatic",
+    "ar": "العودة للتلقائي"
+  },
+  "dl_manual_value": {
+    "en": "Set by you",
+    "ar": "قيمتك"
+  },
+  "dl_manual_hint": {
+    "en": "You replaced the automatic value. Go back to automatic any time.",
+    "ar": "استبدلت القيمة التلقائية. يمكنك العودة إليها في أي وقت."
   }
 }

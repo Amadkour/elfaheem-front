@@ -12,6 +12,7 @@
 ///  certificate · live/recorded                                → highlights
 library;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -70,7 +71,7 @@ void _openSupport(BuildContext context, CourseModel course) {
         create: (_) => ComplaintProvider(),
         child: NewComplaintScreen(
           courseTitle:
-          (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '',
+              (AppConfig.lang == 'ar' ? course.titleAr : course.titleEn) ?? '',
           courseId: course.id,
         ),
       ),
@@ -121,12 +122,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       maxWith: twoCol ? 1180 : 800,
       child: loading
           ? Center(
-        child: SizedBox(
-          width: loaderSize,
-          height: loaderSize,
-          child: AppLoadingIndicator(),
-        ),
-      )
+              child: SizedBox(
+                width: loaderSize,
+                height: loaderSize,
+                child: AppLoadingIndicator(),
+              ),
+            )
           : _Body(twoCol: twoCol),
     );
   }
@@ -153,8 +154,7 @@ class _Body extends StatelessWidget {
       child: Column(
         children: [
           Expanded(child: twoCol ? const _WebLayout() : const _MobileLayout()),
-          if(context.width<1200)
-            _MobileBuyBar(),
+          if (context.width < 1200) _MobileBuyBar(),
         ],
       ),
     );
@@ -176,10 +176,10 @@ bool _onCourseDetailScroll(BuildContext context, ScrollNotification n) {
 
 /// Slivers shared by both layouts (everything under the hero).
 List<Widget> _contentSlivers(
-    BuildContext context,
-    CourseDetailProvider p, {
-      required bool showChips,
-    }) {
+  BuildContext context,
+  CourseDetailProvider p, {
+  required bool showChips,
+}) {
   final c = p.course;
   final highlights = _highlights(context, c);
   return [
@@ -200,7 +200,7 @@ List<Widget> _contentSlivers(
     SliverToBoxAdapter(
       child: CourseRoadmapSection(
         currentCourseName:
-        (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
+            (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
         recentCompletedCourses: c.recentCompletedCourses,
         nextCourses: c.nextCourses,
         recommendedCourses: c.recommendedCourses,
@@ -211,7 +211,7 @@ List<Widget> _contentSlivers(
             builder: (_) => RoadmapEnrollmentScreen(
               courseId: int.parse(c.id),
               courseName:
-              (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
+                  (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? '',
             ),
           ),
         ),
@@ -485,10 +485,10 @@ class _PriceBlock extends StatelessWidget {
       children: [
         compact
             ? FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: priceRow,
-        )
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: priceRow,
+              )
             : priceRow,
         if (discount && course.discountEndsAt != null) ...[
           const SizedBox(height: 6),
@@ -619,21 +619,21 @@ List<_Highlight> _highlights(BuildContext context, CourseModel c) {
   return [
     if (c.certificates.isNotEmpty)
       (
-      icon: Icons.workspace_premium_rounded,
-      label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
-      color: col.success,
+        icon: Icons.workspace_premium_rounded,
+        label: gt('شهادة إتمام معتمدة', 'Certificate of completion'),
+        color: col.success,
       ),
     if (c.type == 'live')
       (
-      icon: Icons.sensors_rounded,
-      label: gt('بث مباشر', 'Live sessions'),
-      color: col.danger,
+        icon: Icons.sensors_rounded,
+        label: gt('بث مباشر', 'Live sessions'),
+        color: col.danger,
       )
     else
       (
-      icon: Icons.play_circle_outline_rounded,
-      label: gt('كورس مسجّل', 'Recorded course'),
-      color: col.primary,
+        icon: Icons.play_circle_outline_rounded,
+        label: gt('كورس مسجّل', 'Recorded course'),
+        color: col.primary,
       ),
   ];
 }
@@ -728,6 +728,7 @@ class _TabBarWidget extends StatelessWidget {
       if (showLive) (CourseDetailTab.live, 'live'.tr, Icons.sensors_rounded),
       (CourseDetailTab.lessons, 'sessions'.tr, Icons.play_lesson_rounded),
       (CourseDetailTab.exam, 'exams'.tr, Icons.assignment_rounded),
+      (CourseDetailTab.analytics, 'analytics'.tr, Icons.analytics_outlined),
       (CourseDetailTab.about, 'course_details'.tr, Icons.info_outline_rounded),
     ];
 
@@ -810,27 +811,27 @@ class _TabItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           boxShadow: active
               ? [
-            BoxShadow(
-              color: c.primary.withValues(alpha: 0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ]
+                  BoxShadow(
+                    color: c.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
               : null,
         ),
         child: stacked
             ? Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [ic, const SizedBox(height: 3), text],
-        )
+                mainAxisSize: MainAxisSize.min,
+                children: [ic, const SizedBox(height: 3), text],
+              )
             : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ic,
-            const SizedBox(width: 7),
-            Flexible(child: text),
-          ],
-        ),
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ic,
+                  const SizedBox(width: 7),
+                  Flexible(child: text),
+                ],
+              ),
       ),
     );
   }

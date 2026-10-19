@@ -924,7 +924,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       );
       if (!mounted) return;
       setState(() => _downloaded = true);
-      Helpers.showMessage(offlineT('dl_done'));
+      Helpers.showMessage(offlineT('dl_done_offline'));
     } catch (_) {
       Helpers.showMessage(offlineT('dl_failed'));
     }

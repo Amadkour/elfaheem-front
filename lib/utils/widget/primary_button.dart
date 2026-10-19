@@ -56,10 +56,13 @@ class PrimaryButton extends StatelessWidget {
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         if (icon != null && iconBefore ) ...[
-                          const SizedBox(width: 6),
-                          Icon(icon, color: Colors.white, size: 18),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(5.0,0,5,2),
+                            child: Icon(icon, color: Colors.white, size: 18),
+                          ),
                         ],
                         Flexible(
                           child: Text(

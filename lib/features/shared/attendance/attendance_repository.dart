@@ -73,6 +73,10 @@ class AttendanceRepository {
         if (bssid != null) 'bssid': bssid,
       });
 
+  /// Web teacher: ask the teacher's phone (silent push) to share its location.
+  Future<bool> requestLocationFromMobile() async =>
+      _m(await _api.post('$_base/teacher-location/request'))['requested'] == true;
+
   /// Web teacher: the reference point shared from the mobile app (404 `no_shared_location` if none).
   Future<({double? lat, double? lng, String? bssid})> sharedLocation() async {
     final m = _m(await _api.get('$_base/teacher-location'));

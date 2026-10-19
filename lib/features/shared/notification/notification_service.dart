@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../../../utils/widget/app_navigator.dart';
 import 'admin_message_dialogs.dart';
+// Attendance live nudges (silent pushes). Adjust the path if your attendance folder differs.
+import '../attendance/attendance_push.dart';
 
 // TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
@@ -233,6 +235,15 @@ class NotificationService {
       print('[FCM] disable_list_updated received → refreshing');
       _refreshDisableList();
 
+      return;
+    }
+    // Silent push: attendance opened / closed (student button) or a web session asks this phone
+    // for the classroom location (teacher). Shows nothing.
+    final attType = data['type'] as String?;
+    if (attType == 'attendance_opened' ||
+        attType == 'attendance_closed' ||
+        attType == 'attendance_location_request') {
+      AttendancePush.instance.handle(Map<String, dynamic>.from(data));
       return;
     }
     // Silent push: the admin changed the theme -> re-fetch it, repaint live, show nothing.

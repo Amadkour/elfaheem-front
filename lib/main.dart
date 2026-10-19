@@ -1,5 +1,3 @@
-library;
-
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:firebase_core/firebase_core.dart';
@@ -11,19 +9,17 @@ import 'package:flutter_education_app/features/shared/downloads/downloads_screen
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
+import 'package:flutter_education_app/url_strategy_stub.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
@@ -32,11 +28,16 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'config/app_config.dart';
 import 'config/storage_service.dart';
 import 'config/theme/theme_config_provider.dart';
+import 'core/app_identity.dart';
 import 'core/providers.dart';
 import 'features/admin/admin_view_as_page.dart';
 import 'features/auth/login_screen.dart';
 import 'features/auth/register_screen.dart';
 import 'features/auth/verified_screen.dart';
+import 'features/shared/attendance/attendance_offline_sync.dart';
+import 'features/shared/attendance/attendance_push.dart';
+import 'features/shared/attendance/attendance_store.dart';
+import 'features/shared/attendance/attendance_teacher_banner.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
@@ -52,67 +53,118 @@ import 'features/admin/admin_dashboard_screen.dart';
 import 'features/parent/parent_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
-import 'url_strategy_stub.dart'
-if (dart.library.js_interop) 'url_strategy_web.dart';
+
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Entry point
+// ─────────────────────────────────────────────────────────────────────────────
+
 Future<void> main() async {
-  configureUrlStrategy();
-  if (!kIsWeb) {
+  configureUrlStrategy(); // web: usePathUrlStrategy(), mobile: no-op
+
+  if (kIsWeb) {
+    WidgetsFlutterBinding.ensureInitialized();
+    await _bootstrap();
+  } else {
+    // ensureInitialized and runApp must run in the SAME zone.
     runZonedGuarded(() async {
       WidgetsFlutterBinding.ensureInitialized();
-
-      await _initCore();
-      await _initCrashlytics();
-
-      _runApp();
+      await _bootstrap();
     }, _onZoneError);
-  } else {
-    WidgetsFlutterBinding.ensureInitialized();
+  }
+}
 
+/// Paints a light boot screen immediately (no white screen), runs the startup
+/// work, then ALWAYS starts the real app (or shows the startup error).
+Future<void> _bootstrap() async {
+  runApp(const _BootApp());
+
+  try {
     await _initCore();
+  } catch (e, s) {
+    debugPrint('[bootstrap:core] $e\n$s');
+    runApp(_FatalApp(error: '$e'));
+    return;
+  }
 
+  if (!kIsWeb) {
+    await _safe('crashlytics', _initCrashlytics, seconds: 8);
+  }
+
+  try {
     _runApp();
+  } catch (e, s) {
+    debugPrint('[bootstrap:runApp] $e\n$s');
+    runApp(_FatalApp(error: '$e'));
   }
 }
 
 // ── Shared initialisation (all platforms) ───────────────────────────────────
 
 Future<void> _initCore() async {
+  // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
 
-  await readLanguage();
-  // Name / tagline / logo / stats the admin set + installed version: cache first (instant), refresh in the background.
-  await _safe('identity', () => AppIdentity.instance.init(), seconds: 4);
+  await _safe('language', () => readLanguage(), seconds: 8);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
-  await _safe('firebase', () =>
-      Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform));
-  await _safe('remoteConfig', () => RemoteConfigService.instance.init());
+  await _safe(
+    'firebase',
+        () =>
+        Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform),
+    seconds: 10,
+  );
+  await _safe(
+    'remoteConfig',
+        () => RemoteConfigService.instance.init(),
+    seconds: 8,
+  );
 
-  // Safari (non-PWA) has no push support, so on web don't block startup on it.
-  if (kIsWeb) {
-    _safe('notifications', () => NotificationService.instance.init());
-  } else {
-    await _safe('notifications', () => NotificationService.instance.init());
-  }
+  // Never block startup on notifications (permission dialog / FCM token can be slow).
+  _safe(
+    'notifications',
+        () => NotificationService.instance.init(),
+    seconds: 30,
+  );
 
   // One online/offline answer for the whole app; the route observer switches screens with it.
-  await _safe('connectivity', () => AppConnectivity.instance.init());
-  topRouteObserver.bindConnectivity();
+  await _safe(
+    'connectivity',
+        () => AppConnectivity.instance.init(),
+    seconds: 5,
+  );
+  try {
+    topRouteObserver.bindConnectivity();
+  } catch (e) {
+    debugPrint('[init:bindConnectivity] $e');
+  }
 
   // Offline (encrypted) videos: purge expired copies and load the list, so the
-  // start route below can be chosen synchronously.
+  // start route can be chosen synchronously.
   if (!kIsWeb) {
-    await _safe('offlineVideos', () => OfflineVideoService.instance.init());
+    await _safe(
+      'offlineVideos',
+          () => OfflineVideoService.instance.init(),
+      seconds: 8,
+    );
+    // Subscribed courses saved for the offline Attendance tab.
+    await _safe(
+      'attendanceCourses',
+          () => AttendanceStore.instance.preload(),
+      seconds: 8,
+    );
   }
 }
 
 /// Runs an init step with a timeout; failures are logged, never fatal.
-Future<T?> _safe<T>(String name, Future<T> Function() fn,
-    {int seconds = 6}) async {
+Future<T?> _safe<T>(
+    String name,
+    Future<T> Function() fn, {
+      int seconds = 6,
+    }) async {
   try {
     return await fn().timeout(Duration(seconds: seconds));
   } catch (e) {
@@ -124,6 +176,9 @@ Future<T?> _safe<T>(String name, Future<T> Function() fn,
 // ── Crashlytics (mobile only) ────────────────────────────────────────────────
 
 Future<void> _initCrashlytics() async {
+  // Firebase failed or timed out → skip instead of throwing.
+  if (Firebase.apps.isEmpty) return;
+
   // Disable in debug so your dashboard stays clean during development
   await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(
     !kDebugMode,
@@ -134,8 +189,12 @@ Future<void> _initCrashlytics() async {
 }
 
 void _onZoneError(Object error, StackTrace stack) {
-  // Catches errors outside the widget tree (Futures, Streams, isolates)
-  FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  debugPrint('Zone error: $error\n$stack');
+  try {
+    if (Firebase.apps.isNotEmpty) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
+  } catch (_) {}
 }
 
 // ── App entry point ──────────────────────────────────────────────────────────
@@ -152,6 +211,74 @@ void _runApp() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Boot screen (shown instantly while startup work runs) + fatal error screen
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BootApp extends StatelessWidget {
+  const _BootApp();
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      ),
+    );
+  }
+}
+
+class _FatalApp extends StatelessWidget {
+  const _FatalApp({required this.error});
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        size: 48, color: Colors.redAccent),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Startup error',
+                      style:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      error,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () => _bootstrap(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // App widget
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -162,18 +289,21 @@ class ElFaheemApp extends StatefulWidget {
   State<ElFaheemApp> createState() => _ElFaheemAppState();
 }
 
-class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
+class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
+    AttendancePush.instance.bind(navigatorKey);
     ViewAsBanner.onExit = () {
       // /auth/me returned the VIEWED user while view-as was on → put the admin's own profile back first,
       // otherwise the admin dashboard answers "admins only".
       context.read<MyAuthProvider>().restoreOwnUser();
-      navigatorKey.currentState
-          ?.pushNamedAndRemoveUntil('/admin_dashboard', (r) => false);
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/admin_dashboard',
+            (r) => false,
+      );
     };
 
     // NOTE: load() must NOT be called synchronously here. ThemeConfigProvider
@@ -183,6 +313,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     // build". Deferring to the post-frame callback runs it safely once the
     // whole tree has finished its first build.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       context.read<ThemeConfigProvider>().load();
 
       // When the network link returns, AppConnectivity asks the server before it says "online".
@@ -193,7 +324,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       };
 
       // ── Version check – blocks launch if a force-update is required ──────────
-      await VersionCheckService.instance.checkOnStartup();
+      try {
+        await VersionCheckService.instance.checkOnStartup();
+      } catch (e) {
+        debugPrint('[versionCheck] $e');
+      }
     });
   }
 
@@ -207,7 +342,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   void didChangeAppLifecycleState(AppLifecycleState s) {
     if (s == AppLifecycleState.resumed &&
         context.read<MyAuthProvider>().isAuthenticated &&
-        !ViewAsState.active) {   // never pop the VIEWED user's admin dialogs while an admin is looking around
+        !ViewAsState.active) {
+      // never pop the VIEWED user's admin dialogs while an admin is looking around
       AdminMessageDialogs.checkPending();
     }
   }
@@ -224,7 +360,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     if (_lastServerOk != serverOk) {
       _lastServerOk = serverOk;
       WidgetsBinding.instance.addPostFrameCallback(
-              (_) => AppConnectivity.instance.reportServerReachable(serverOk));
+            (_) => AppConnectivity.instance.reportServerReachable(serverOk),
+      );
     }
 
     // Block on the theme response before rendering the real app so every
@@ -240,10 +377,18 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
     // Offline at start-up + the user has downloaded videos → open the
     // Downloads page so they can keep watching. (If there are no downloads,
     // behave exactly as before.)
-    final bool offlineStart = !kIsWeb &&
-        auth.isAuthenticated &&
-        tc.serverUnreachable &&
-        OfflineVideoService.instance.downloadedIds.value.isNotEmpty;
+    final bool offlineStart =
+        !kIsWeb &&
+            auth.isAuthenticated &&
+            tc.serverUnreachable &&
+            (OfflineVideoService.instance.downloadedIds.value.isNotEmpty ||
+                AttendanceStore.instance.hasCachedCourses);
+    // Refresh the saved course list for the offline Attendance tab (no-op offline).
+    if (auth.isAuthenticated && !tc.serverUnreachable) {
+      WidgetsBinding.instance.addPostFrameCallback(
+            (_) => AttendanceOfflineSync.instance.warmCourses(),
+      );
+    }
     final String initialRoute = !auth.isAuthenticated
         ? '/login'
         : (offlineStart ? '/downloads' : auth.homeRoute);
@@ -262,7 +407,6 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
         statusBarColor: Colors.transparent,
       ),
       child: ThemeConfigScope(
-        // ← wrap here
         provider: tc,
         child: MaterialApp(
           navigatorKey: navigatorKey,
@@ -287,16 +431,23 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
           // GuestBanner is the same idea for a guest ("Browsing as guest · Login").
           builder: (_, child) => GuestBanner(
             child: ViewAsBanner(
-              child: _OfflineThemeBanner(
-                child: ResponsiveBreakpoints.builder(
-                  breakpoints: [
-                    const Breakpoint(start: 0, end: 450, name: MOBILE),
-                    const Breakpoint(start: 451, end: 800, name: TABLET),
-                    const Breakpoint(start: 801, end: 1920, name: DESKTOP),
-                    const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
-                  ],
-                  useShortestSide: true,
-                  child: child!,
+              child: AttendanceTeacherBanner(
+                navigatorKey: navigatorKey,
+                child: _OfflineThemeBanner(
+                  child: ResponsiveBreakpoints.builder(
+                    breakpoints: [
+                      const Breakpoint(start: 0, end: 450, name: MOBILE),
+                      const Breakpoint(start: 451, end: 800, name: TABLET),
+                      const Breakpoint(start: 801, end: 1920, name: DESKTOP),
+                      const Breakpoint(
+                        start: 1921,
+                        end: double.infinity,
+                        name: '4K',
+                      ),
+                    ],
+                    useShortestSide: true,
+                    child: child!,
+                  ),
                 ),
               ),
             ),
@@ -312,13 +463,19 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
-    final link = DeepLinkService.parse(settings.name);              // /c/12?ref=5
+    final link = DeepLinkService.parse(settings.name); // /c/12?ref=5
     if (link != null) {
-      if (!context.read<MyAuthProvider>().isAuthenticated) {          // open it right after login
+      if (!context.read<MyAuthProvider>().isAuthenticated) {
+        // open it right after login
         DeepLinkService.instance.setPending(link);
         return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
       }
-      return _fade(_Guard(child: CourseLinkLoader(courseId: link.courseId, ref: link.ref)), settings);
+      return _fade(
+        _Guard(
+          child: CourseLinkLoader(courseId: link.courseId, ref: link.ref),
+        ),
+        settings,
+      );
     }
     switch (settings.name) {
       case '/login':
@@ -328,7 +485,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       case '/otp':
         final args = settings.arguments;
         if (args is! List || args.length < 2) {
-          return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+          return _fade(
+            const LoginScreen(),
+            const RouteSettings(name: '/login'),
+          );
         }
         return _fade(
           OtpVerificationScreen(
@@ -340,9 +500,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
       case '/forgot-password':
         return _fade(const ForgetScreen(), settings);
       case '/home':
-        return _fade(const _Guard(guestOk: true, child: HomeScreen()), settings);
+        return _fade(
+          const _Guard(guestOk: true, child: HomeScreen()),
+          settings,
+        );
       case '/dashboard':
-        return _fade(const _Guard(guestOk: true, child: DashboardScreen()), settings);
+        return _fade(
+          const _Guard(guestOk: true, child: DashboardScreen()),
+          settings,
+        );
       case '/teacher_dashboard':
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/admin_dashboard':
@@ -379,12 +545,13 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver{
 }
 
 PageRoute _fade(Widget page, RouteSettings settings) => PageRouteBuilder(
-  settings: settings, // ← this is the missing piece
+  settings: settings,
   pageBuilder: (_, _, _) => page,
   transitionsBuilder: (_, anim, _, child) =>
       FadeTransition(opacity: anim, child: child),
   transitionDuration: const Duration(milliseconds: 300),
 );
+
 // ─────────────────────────────────────────────────────────────────────────────
 // "No internet" header — shown above every screen while the theme could not be
 // fetched from the server. The app keeps running on the cached / default theme.
@@ -414,12 +581,17 @@ class _OfflineThemeBanner extends StatelessWidget {
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.wifi_off_rounded,
-                        color: Colors.white, size: 20),
+                    const Icon(
+                      Icons.wifi_off_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -513,16 +685,6 @@ class _PremiumLoadingScreen extends StatelessWidget {
 /// Branded from the dashboard's "About us" data (AppIdentity: cached from the last launch,
 /// so it is already right on the first frame; before the very first fetch it falls back to
 /// the bundled logo + the remote-config name).
-// Add at the top of the file that contains _SplashBody:
-// import 'dart:async';
-// import 'dart:math' as math;
-// Add at the top of the file that contains _SplashBody:
-// import 'dart:async';
-// import 'dart:math' as math;
-// Add at the top of the file that contains _SplashBody:
-// import 'dart:async';
-// import 'dart:math' as math;
-
 class _SplashBody extends StatefulWidget {
   const _SplashBody();
 
@@ -530,7 +692,8 @@ class _SplashBody extends StatefulWidget {
   State<_SplashBody> createState() => _SplashBodyState();
 }
 
-class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin {
+class _SplashBodyState extends State<_SplashBody>
+    with TickerProviderStateMixin {
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1600),
@@ -550,17 +713,29 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
 
   // Random phases per launch: the logo wanders differently every time.
   final _rnd = math.Random();
-  late final List<double> _ph = List.generate(8, (_) => _rnd.nextDouble() * math.pi * 2);
+  late final List<double> _ph = List.generate(
+    8,
+        (_) => _rnd.nextDouble() * math.pi * 2,
+  );
 
   late final Animation<double> _greetA = _step(0.00, 0.35);
   late final Animation<double> _logoA = _step(0.10, 0.60, Curves.easeOutBack);
   late final Animation<double> _nameA = _step(0.35, 0.75);
   late final Animation<double> _tagA = _step(0.50, 0.90);
   late final Animation<double> _footA = _step(0.65, 1.00);
-  late final Animation<double> _float = CurvedAnimation(parent: _loop, curve: Curves.easeInOut);
+  late final Animation<double> _float = CurvedAnimation(
+    parent: _loop,
+    curve: Curves.easeInOut,
+  );
 
-  Animation<double> _step(double s, double e, [Curve curve = Curves.easeOutCubic]) =>
-      CurvedAnimation(parent: _enter, curve: Interval(s, e, curve: curve));
+  Animation<double> _step(
+      double s,
+      double e, [
+        Curve curve = Curves.easeOutCubic,
+      ]) => CurvedAnimation(
+    parent: _enter,
+    curve: Interval(s, e, curve: curve),
+  );
 
   static const _messages = [
     'نجهّز لك كل شيء…',
@@ -604,7 +779,10 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
     return FadeTransition(
       opacity: a,
       child: SlideTransition(
-        position: Tween<Offset>(begin: Offset(0, dy), end: Offset.zero).animate(a),
+        position: Tween<Offset>(
+          begin: Offset(0, dy),
+          end: Offset.zero,
+        ).animate(a),
         child: child,
       ),
     );
@@ -627,7 +805,9 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
     return ListenableBuilder(
       listenable: id,
       builder: (context, _) {
-        final name = id.name.isNotEmpty ? id.name : RemoteConfigService.instance.appName;
+        final name = id.name.isNotEmpty
+            ? id.name
+            : RemoteConfigService.instance.appName;
         final tagline = id.tagline;
         final version = id.versionLabel;
 
@@ -674,7 +854,9 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                     child: RepaintBoundary(
                       child: CustomPaint(
                         painter: _DotGridPainter(
-                          color: c.primary.withValues(alpha: c.isDark ? 0.22 : 0.16),
+                          color: c.primary.withValues(
+                            alpha: c.isDark ? 0.22 : 0.16,
+                          ),
                         ),
                       ),
                     ),
@@ -683,19 +865,29 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                   // 3) Drifting primary glows.
                   AnimatedBuilder(
                     animation: _drift,
-                    builder: (_, __) {
+                    builder: (_, _) {
                       final t = _t;
                       return Stack(
                         children: [
                           PositionedDirectional(
                             top: -120 + 26 * math.sin(t * 0.30 + _ph[0]),
                             end: -110 + 20 * math.sin(t * 0.23 + _ph[1]),
-                            child: _glow(380, c.primary.withValues(alpha: c.isDark ? 0.24 : 0.16)),
+                            child: _glow(
+                              380,
+                              c.primary.withValues(
+                                alpha: c.isDark ? 0.24 : 0.16,
+                              ),
+                            ),
                           ),
                           PositionedDirectional(
                             bottom: -140 + 24 * math.sin(t * 0.27 + _ph[2]),
                             start: -100 + 18 * math.sin(t * 0.21 + _ph[3]),
-                            child: _glow(360, c.primaryLight.withValues(alpha: c.isDark ? 0.20 : 0.22)),
+                            child: _glow(
+                              360,
+                              c.primaryLight.withValues(
+                                alpha: c.isDark ? 0.20 : 0.22,
+                              ),
+                            ),
                           ),
                         ],
                       );
@@ -707,7 +899,7 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                     child: IgnorePointer(
                       child: AnimatedBuilder(
                         animation: _float,
-                        builder: (_, __) {
+                        builder: (_, _) {
                           final p = _float.value;
                           Widget ring(double size, double alpha) => Container(
                             width: size,
@@ -726,7 +918,12 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                               child: Stack(
                                 alignment: Alignment.center,
                                 children: [
-                                  _glow(460, c.primary.withValues(alpha: c.isDark ? 0.26 : 0.17)),
+                                  _glow(
+                                    460,
+                                    c.primary.withValues(
+                                      alpha: c.isDark ? 0.26 : 0.17,
+                                    ),
+                                  ),
                                   ring(280, c.isDark ? 0.20 : 0.14),
                                   ring(400, c.isDark ? 0.14 : 0.09),
                                   ring(540, c.isDark ? 0.09 : 0.05),
@@ -771,11 +968,16 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                               child: _reveal(
                                 _greetA,
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: c.primaryTint,
                                     borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: c.primary.withValues(alpha: 0.18)),
+                                    border: Border.all(
+                                      color: c.primary.withValues(alpha: 0.18),
+                                    ),
                                   ),
                                   child: Text(
                                     _greeting,
@@ -795,7 +997,10 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
 
                         // ── Logo: exactly centred (both halves are Expanded) ──
                         ScaleTransition(
-                          scale: Tween<double>(begin: 0.8, end: 1).animate(_logoA),
+                          scale: Tween<double>(
+                            begin: 0.8,
+                            end: 1,
+                          ).animate(_logoA),
                           child: FadeTransition(
                             opacity: CurvedAnimation(
                               parent: _enter,
@@ -806,13 +1011,17 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                               child: logoImage,
                               builder: (_, image) {
                                 final t = _t;
-                                final dx = 12 * math.sin(t * 0.90 + _ph[0]) +
-                                    6 * math.sin(t * 1.70 + _ph[1]);
-                                final dy = 14 * math.sin(t * 1.10 + _ph[2]) +
-                                    6 * math.sin(t * 2.10 + _ph[3]);
-                                final tilt = 0.05 * math.sin(t * 0.80 + _ph[4]) +
-                                    0.02 * math.sin(t * 1.90 + _ph[5]);
-                                final breathe = 1 + 0.025 * math.sin(t * 1.30 + _ph[6]);
+                                final dx =
+                                    12 * math.sin(t * 0.90 + _ph[0]) +
+                                        6 * math.sin(t * 1.70 + _ph[1]);
+                                final dy =
+                                    14 * math.sin(t * 1.10 + _ph[2]) +
+                                        6 * math.sin(t * 2.10 + _ph[3]);
+                                final tilt =
+                                    0.05 * math.sin(t * 0.80 + _ph[4]) +
+                                        0.02 * math.sin(t * 1.90 + _ph[5]);
+                                final breathe =
+                                    1 + 0.025 * math.sin(t * 1.30 + _ph[6]);
                                 final p = _float.value;
 
                                 return Transform.translate(
@@ -832,9 +1041,14 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                                               width: 150 + 46 * p,
                                               height: 150 + 46 * p,
                                               decoration: BoxDecoration(
-                                                borderRadius: BorderRadius.circular(46 + 10 * p),
+                                                borderRadius:
+                                                BorderRadius.circular(
+                                                  46 + 10 * p,
+                                                ),
                                                 border: Border.all(
-                                                  color: c.primary.withValues(alpha: 0.30 * (1 - p)),
+                                                  color: c.primary.withValues(
+                                                    alpha: 0.30 * (1 - p),
+                                                  ),
                                                   width: 1.6,
                                                 ),
                                               ),
@@ -845,19 +1059,29 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                                               padding: const EdgeInsets.all(20),
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
-                                                borderRadius: BorderRadius.circular(40),
+                                                borderRadius:
+                                                BorderRadius.circular(40),
                                                 border: Border.all(
-                                                  color: c.primaryLight.withValues(alpha: 0.55),
+                                                  color: c.primaryLight
+                                                      .withValues(alpha: 0.55),
                                                   width: 3,
                                                 ),
                                                 boxShadow: [
                                                   BoxShadow(
-                                                    color: c.primary.withValues(alpha: 0.28),
+                                                    color: c.primary.withValues(
+                                                      alpha: 0.28,
+                                                    ),
                                                     blurRadius: 36,
-                                                    offset: Offset(-dx * 0.5, 16 - dy * 0.4),
+                                                    offset: Offset(
+                                                      -dx * 0.5,
+                                                      16 - dy * 0.4,
+                                                    ),
                                                   ),
                                                   BoxShadow(
-                                                    color: c.primaryLight.withValues(alpha: 0.30),
+                                                    color: c.primaryLight
+                                                        .withValues(
+                                                      alpha: 0.30,
+                                                    ),
                                                     blurRadius: 60,
                                                     spreadRadius: 2,
                                                   ),
@@ -884,7 +1108,9 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                               _reveal(
                                 _nameA,
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                  ),
                                   child: Text(
                                     name,
                                     textAlign: TextAlign.center,
@@ -913,12 +1139,16 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                                           gradient: LinearGradient(
                                             colors: [c.primary, c.primaryLight],
                                           ),
-                                          borderRadius: BorderRadius.circular(3),
+                                          borderRadius: BorderRadius.circular(
+                                            3,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 12),
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 40),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 40,
+                                        ),
                                         child: Text(
                                           tagline,
                                           textAlign: TextAlign.center,
@@ -942,17 +1172,20 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                                 Column(
                                   children: [
                                     AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 450),
-                                      transitionBuilder: (child, anim) => FadeTransition(
-                                        opacity: anim,
-                                        child: SlideTransition(
-                                          position: Tween<Offset>(
-                                            begin: const Offset(0, 0.4),
-                                            end: Offset.zero,
-                                          ).animate(anim),
-                                          child: child,
-                                        ),
+                                      duration: const Duration(
+                                        milliseconds: 450,
                                       ),
+                                      transitionBuilder: (child, anim) =>
+                                          FadeTransition(
+                                            opacity: anim,
+                                            child: SlideTransition(
+                                              position: Tween<Offset>(
+                                                begin: const Offset(0, 0.4),
+                                                end: Offset.zero,
+                                              ).animate(anim),
+                                              child: child,
+                                            ),
+                                          ),
                                       child: Text(
                                         _messages[_msgIndex],
                                         key: ValueKey(_msgIndex),
@@ -972,18 +1205,28 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
                                         height: 4,
                                         child: LinearProgressIndicator(
                                           minHeight: 4,
-                                          backgroundColor: c.primary.withValues(alpha: 0.15),
-                                          valueColor: AlwaysStoppedAnimation<Color>(c.primary),
+                                          backgroundColor: c.primary.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          valueColor:
+                                          AlwaysStoppedAnimation<Color>(
+                                            c.primary,
+                                          ),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 16),
                                     if (version.isNotEmpty)
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
                                         decoration: BoxDecoration(
                                           color: c.primaryTint,
-                                          borderRadius: BorderRadius.circular(20),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
                                         ),
                                         child: Text(
                                           'v$version',
@@ -1016,10 +1259,10 @@ class _SplashBodyState extends State<_SplashBody> with TickerProviderStateMixin 
   }
 }
 
-
 /// Fine dot grid; dots fade out near the centre so the logo stays the focus.
 class _DotGridPainter extends CustomPainter {
   final Color color;
+
   const _DotGridPainter({required this.color});
 
   @override
@@ -1030,7 +1273,8 @@ class _DotGridPainter extends CustomPainter {
     final paint = Paint();
     for (double y = gap / 2; y < size.height; y += gap) {
       for (double x = gap / 2; x < size.width; x += gap) {
-        final d = (Offset(x, y) - center).distance / maxDist; // 0 centre → 1 corner
+        final d =
+            (Offset(x, y) - center).distance / maxDist; // 0 centre → 1 corner
         final fade = ((d - 0.25) / 0.75).clamp(0.0, 1.0);
         if (fade <= 0) continue;
         paint.color = color.withValues(alpha: color.a * fade);
@@ -1041,36 +1285,50 @@ class _DotGridPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_DotGridPainter old) => old.color != color;
-}// ─────────────────────────────────────────────────────────────────────────────
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Route guard
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Guard extends StatefulWidget {
   final Widget child;
 
   /// Student catalogue screens a GUEST may open (read-only). Everything else still needs a login.
   final bool guestOk;
+
   const _Guard({required this.child, this.guestOk = false});
-  @override State<_Guard> createState() => _GuardState();
+
+  @override
+  State<_Guard> createState() => _GuardState();
 }
+
 class _GuardState extends State<_Guard> {
-  @override void initState() {
+  @override
+  void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (widget.guestOk && GuestState.active) return; // guest: no pending links / admin dialogs / pushes
+      if (widget.guestOk && GuestState.active) {
+        return; // guest: no pending links / admin dialogs / pushes
+      }
       if (!context.read<MyAuthProvider>().isAuthenticated) {
         Navigator.of(context).pushReplacementNamed('/login');
         return;
       }
-      DeepLinkService.instance.consumePending();     // link opened while logged out
+      DeepLinkService.instance.consumePending(); // link opened while logged out
       if (!ViewAsState.active) {
-        AdminMessageDialogs.checkPending();          // dialogs sent by admins
+        AdminMessageDialogs.checkPending(); // dialogs sent by admins
       }
       // a push tapped while the app was closed / logged out → open its target now
       NotificationService.instance.consumePendingPush();
     });
   }
-  @override Widget build(BuildContext context) =>
-      (context.read<MyAuthProvider>().isAuthenticated || (widget.guestOk && GuestState.active))
+
+  @override
+  Widget build(BuildContext context) =>
+      (context.read<MyAuthProvider>().isAuthenticated ||
+          (widget.guestOk && GuestState.active))
           ? widget.child
           : const SizedBox.shrink();
 }
@@ -1078,6 +1336,7 @@ class _GuardState extends State<_Guard> {
 /// Sends the user to their own home screen (used when a route has no usable arguments).
 class _RedirectHome extends StatefulWidget {
   const _RedirectHome();
+
   @override
   State<_RedirectHome> createState() => _RedirectHomeState();
 }
@@ -1088,8 +1347,9 @@ class _RedirectHomeState extends State<_RedirectHome> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      Navigator.of(context)
-          .pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
+      Navigator.of(
+        context,
+      ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute);
     });
   }
 
@@ -1141,7 +1401,7 @@ class _NotFoundScreen extends StatelessWidget {
               ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute),
               child: Text(
                 'home'.tr,
-                style: TextStyle(
+                style: const TextStyle(
                   fontFamily: 'tajawal',
                   color: Color(0xFF5B8FFF),
                 ),

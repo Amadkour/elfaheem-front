@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/utils/widget/fit_sections.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/private_flag.dart';
@@ -155,168 +158,216 @@ class CourseCard extends StatelessWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Expanded(
-              child: _Thumbnail(
-                course: course,
-                isTeacher: isTeacher,
-                fullScreen: fullScreen,
-                pageName: pageName,
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 11),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            (AppConfig.lang == 'ar'
-                                ? course.titleAr
-                                : course.titleEn) ??
-                                '',
-                            style: context.colors.h3.copyWith(
-                              fontSize: 13,
-                              overflow: TextOverflow.ellipsis,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+        child: LayoutBuilder(
+          builder: (context, c) {
+            // The info area has a height computed from its content (not half
+            // of the card), so rows never fight for space. The image takes
+            // whatever is left.
+            final design = infoDesignHeight * FitSections.textScale(context);
+            final infoH = c.hasBoundedHeight
+                ? math.min(design, c.maxHeight * 0.62)
+                : design;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: _Thumbnail(
+                    course: course,
+                    isTeacher: isTeacher,
+                    fullScreen: fullScreen,
+                    pageName: pageName,
+                  ),
+                ),
+                SizedBox(
+                  height: infoH,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(11, 5, 11, 7),
+                    // Higher priority number = removed first when the card is
+                    // too short. priority 0 (the title) is never removed.
+                    child: FitSections(
+                      sections: [
+                        FitSection(
+                          height: 20,
+                          child:
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  (AppConfig.lang == 'ar'
+                                      ? course.titleAr
+                                      : course.titleEn) ??
+                                      '',
+                                  style: context.colors.h3.copyWith(
+                                    fontSize: 13,
+                                    overflow: TextOverflow.ellipsis,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (course.rateSummary?.average != null)
+                                _StatsRow(course: course),
+                            ],
                           ),
                         ),
-                        if (course.rateSummary?.average != null)
-                          _StatsRow(course: course),
-                      ],
-                    ),
-
-                    const _CardDivider(),
-
-                    // Teacher
-                    Spacer(flex: 1),
-                    if (description.isNotEmpty) ...[
-                      ParentComponent(featureKey: 'course_card.description', child: Text(
-                        description,
-                        style: context.colors.caption.copyWith(
-                          overflow: TextOverflow.ellipsis,
-                          color: context.colors.textLight,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 9,
+                        const FitSection(
+                          height: 7,
+                          priority: 1,
+                          label: 'divider',
+                          child: _CardDivider(),
                         ),
-                      )),
-                      Spacer(flex: 1),
-                    ],
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (!isTeacher && course.teacher != null)
-                          Expanded(
-                            flex: 1,
-                            child: ParentComponent(featureKey: 'course_card.instructor', child: InstructorAvatar(
-                              teacher: course.teacher!,
-                              size: 30,
-                              canOpen: true,
-                              showTitle: true,
-                              showImage: false,
-                            )),
-                          ),
-                        if (course.category != null)
-                          Flexible(
-                            flex: 1,
-                            child: ParentComponent(featureKey: 'course_card.category', child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.colors.primary,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                        if (description.isNotEmpty)
+                          FitSection(
+                            height: 13,
+                            priority: 6,
+                            label: 'description',
+                            child: ParentComponent(
+                              featureKey: 'course_card.description',
                               child: Text(
-                                AppConfig.lang == 'ar'
-                                    ? course.category!.nameAr
-                                    : course.category!.nameEn,
+                                description,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: context.colors.caption.copyWith(
+                                  color: context.colors.textLight,
+                                  fontWeight: FontWeight.w700,
                                   fontSize: 9,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'bahji',
                                 ),
                               ),
-                            )),
+                            ),
                           ),
-                        if (isTeacher)
-                          Flexible(
-                            flex: 1,
-                            child: ParentComponent(featureKey: 'course_card.publish_status', child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: course.isPublished
-                                    ? context.colors.success
-                                    : context.colors.warning,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                course.isPublished
-                                    ? 'published'.tr
-                                    : 'draft'.tr,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  fontFamily: 'bahji',
+                        FitSection(
+                          height: 30,
+                          priority: 3,
+                          label: 'instructor/category/status',
+                          child:
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              if (!isTeacher && course.teacher != null)
+                                Expanded(
+                                  flex: 1,
+                                  child: ParentComponent(featureKey: 'course_card.instructor', child: InstructorAvatar(
+                                    teacher: course.teacher!,
+                                    size: 30,
+                                    canOpen: true,
+                                    showTitle: true,
+                                    showImage: false,
+                                  )),
                                 ),
-                              ),
-                            )),
+                              if (course.category != null)
+                                Flexible(
+                                  flex: 1,
+                                  child: ParentComponent(featureKey: 'course_card.category', child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: context.colors.primary,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      AppConfig.lang == 'ar'
+                                          ? course.category!.nameAr
+                                          : course.category!.nameEn,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        fontFamily: 'bahji',
+                                      ),
+                                    ),
+                                  )),
+                                ),
+                              if (isTeacher)
+                                Flexible(
+                                  flex: 1,
+                                  child: ParentComponent(featureKey: 'course_card.publish_status', child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: course.isPublished
+                                          ? context.colors.success
+                                          : context.colors.warning,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      course.isPublished
+                                          ? 'published'.tr
+                                          : 'draft'.tr,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        fontFamily: 'bahji',
+                                      ),
+                                    ),
+                                  )),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (hasStudents || hasCertificate)
+                          FitSection(
+                            height: 20,
+                            priority: 5,
+                            label: 'students/certificate',
+                            child: _StudentRow(
+                              course: course,
+                              hasStudents: hasStudents,
+                              hasCertificate: hasCertificate,
+                            ),
+                          ),
+                        if (hasHours || hasLectures)
+                          FitSection(
+                            height: 20,
+                            priority: 4,
+                            label: 'sessions/hours',
+                            child: _MetaRow(
+                              course: course,
+                              hasHours: hasHours,
+                              hasLectures: hasLectures,
+                            ),
+                          ),
+                        if ((course.isEnrolled || isTeacher) &&
+                            course.progress > 0)
+                          FitSection(
+                            height: 14,
+                            priority: 2,
+                            label: 'progress',
+                            child: _ProgressBar(progress: course.progress),
                           ),
                       ],
                     ),
-                    Spacer(flex: 1),
-                    if (hasStudents || hasCertificate)
-                      _StudentRow(
-                        course: course,
-                        hasStudents: hasStudents,
-                        hasCertificate: hasCertificate,
-                      ),
-                    Spacer(),
-
-                    // Lectures + hours
-                    if (hasHours || hasLectures)
-                      _MetaRow(
-                        course: course,
-                        hasHours: hasHours,
-                        hasLectures: hasLectures,
-                      ),
-                    Spacer(flex: 2),
-
-                    // Text(course.progress.toString()),
-                    // Progress bar — only when enrolled
-                    if ((course.isEnrolled || isTeacher) &&
-                        course.progress > 0) ...[
-                      _ProgressBar(progress: course.progress),
-                      Spacer(flex: 2),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
     );
   }
+
+  /// Design height of the info area at text scale 1.0:
+  /// all sections (124) + gaps (18) + vertical padding (12).
+  static const double infoDesignHeight = 154;
+
+  /// Image height = card width * thumbRatio.
+  static const double thumbRatio = 0.6;
+
+  /// Exact cell height for a grid: use it as `mainAxisExtent`.
+  static double cellHeight(BuildContext context, double cellWidth) =>
+      cellWidth * thumbRatio + infoDesignHeight * FitSections.textScale(context);
 }
 
 // ── Thumbnail ────────────────────────────────────────────────────────────────
@@ -581,40 +632,34 @@ class _MetaRow extends StatelessWidget {
   );
 
   Widget _featureContent(BuildContext context) {
-    return Row(
-      children: [
-        if (hasLectures) ...[
-          IconColored(
-            color: context.colors.primary,
-            icon: Icons.play_circle_outline_rounded,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            '${course.sessionsCount} ${'session'.tr}',
-            maxLines: 1,
-            style: context.colors.caption.copyWith(fontSize: 10),
-          ),
+    // FittedBox(scaleDown): if the row is wider than the card it shrinks a
+    // little instead of overflowing.
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (hasLectures)
+            _IconText(
+              color: context.colors.primary,
+              icon: Icons.play_circle_outline_rounded,
+              text: '${course.sessionsCount} ${'session'.tr}',
+            ),
+          if (hasLectures && hasHours) const SizedBox(width: 12),
+          if (hasHours)
+            _IconText(
+              color: context.colors.accent,
+              icon: Icons.access_time_rounded,
+              text: '${course.hoursCount} ${'hours'.tr}',
+            ),
         ],
-        if (hasLectures && hasHours) Spacer(),
-        if (hasHours) ...[
-          IconColored(
-            color: context.colors.accent,
-            icon: Icons.access_time_rounded,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            '${course.hoursCount} ${'hours'.tr}',
-            maxLines: 1,
-            style: context.colors.caption.copyWith(fontSize: 10),
-          ),
-        ],
-        Spacer(),
-      ],
+      ),
     );
   }
 }
 
-// ── Lectures + hours ─────────────────────────────────────────────────────────
+// ── Students + certificate ───────────────────────────────────────────────────
 class _StudentRow extends StatelessWidget {
   final CourseModel course;
   final bool hasStudents, hasCertificate;
@@ -634,34 +679,59 @@ class _StudentRow extends StatelessWidget {
   Widget _featureContent(BuildContext context) {
     return Row(
       children: [
-        if (hasCertificate) ...[
-          IconColored(
-            color: context.colors.success,
-            icon: Icons.workspace_premium_rounded,
-          ),
-          const SizedBox(width: 3),
+        // The certificate title is the only long text: it takes what is left
+        // and ends with an ellipsis.
+        if (hasCertificate)
           Flexible(
-            child: Text(
-              course.certificates.first.title,
-              maxLines: 1,
-              style: context.colors.caption.copyWith(fontSize: 10),
+            child: _IconText(
+              color: context.colors.success,
+              icon: Icons.workspace_premium_rounded,
+              text: course.certificates.first.title,
+              shrinkText: true,
             ),
           ),
-        ],
-        if (hasStudents && hasCertificate) Spacer(),
-        if (hasStudents) ...[
-          IconColored(
+        if (hasStudents && hasCertificate) const SizedBox(width: 10),
+        if (hasStudents)
+          _IconText(
             color: context.colors.accent2,
             icon: CupertinoIcons.group,
+            text: '${course.studentsCount} ${'student'.tr}',
           ),
-          const SizedBox(width: 3),
-          Text(
-            '${course.studentsCount} ${'student'.tr}',
-            maxLines: 1,
-            style: context.colors.caption.copyWith(fontSize: 10),
-          ),
-        ],
-        Spacer(),
+      ],
+    );
+  }
+}
+
+/// Small tinted icon + one-line caption.
+class _IconText extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String text;
+
+  /// true → the text may shrink with an ellipsis (put it inside a Flexible).
+  final bool shrinkText;
+
+  const _IconText({
+    required this.color,
+    required this.icon,
+    required this.text,
+    this.shrinkText = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: context.colors.caption.copyWith(fontSize: 10),
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconColored(color: color, icon: icon),
+        const SizedBox(width: 3),
+        if (shrinkText) Flexible(child: label) else label,
       ],
     );
   }
@@ -688,9 +758,14 @@ class _ProgressBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'you_progress'.tr,
-          style: context.colors.caption.copyWith(fontSize: 10),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 72),
+          child: Text(
+            'you_progress'.tr,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.colors.caption.copyWith(fontSize: 10),
+          ),
         ),
         Expanded(
           child: Padding(

@@ -23,6 +23,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -72,10 +73,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   static const int otpLength = 4;
   static const int resendSeconds = 120;
 
-  final List<TextEditingController> _controllers =
-  List.generate(otpLength, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes =
-  List.generate(otpLength, (_) => FocusNode());
+  final List<TextEditingController> _controllers = List.generate(
+    otpLength,
+    (_) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(
+    otpLength,
+    (_) => FocusNode(),
+  );
 
   late final AnimationController _shakeController;
   late final AnimationController _fadeController;
@@ -86,7 +91,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   bool _hasError = false;
   bool _sending = false; // a code is being requested right now
   late List<String> _pending; // channels still to verify
-  late final List<String> _allChannels; // every channel of this flow (step tracker)
+  late final List<String>
+  _allChannels; // every channel of this flow (step tracker)
 
   /// Every way of the channels that were pending when this screen opened.
   List<VerifyWay> _allWays = const [];
@@ -131,7 +137,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final offered = _link?.methods;
     final auth = _auth;
     return _allWays.where((w) {
-      if (_isReg && w.isLink(auth) && offered != null) return offered.contains(w.name);
+      if (_isReg && w.isLink(auth) && offered != null)
+        return offered.contains(w.name);
       return true;
     }).toList();
   }
@@ -162,7 +169,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOut);
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOut,
+    );
     _fadeController.forward();
 
     _shakeController = AnimationController(
@@ -184,7 +194,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       if (!mounted) return;
       final auth = _auth;
       if (!auth.policyLoaded) {
-        await auth.loadPolicy(); // opened straight from a deep link / Google: policy not read yet
+        await auth
+            .loadPolicy(); // opened straight from a deep link / Google: policy not read yet
         if (!mounted) return;
         setState(_computeWays);
       }
@@ -196,7 +207,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         _telegramInstalled = await _detectTelegram();
         if (!mounted) return;
         if (_telegramInstalled == false) {
-          setState(() => _way = _allWays.firstWhere((w) => w != VerifyWay.telegram));
+          setState(
+            () => _way = _allWays.firstWhere((w) => w != VerifyWay.telegram),
+          );
         }
       }
       _prepare();
@@ -211,7 +224,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       _allWays = verifyWaysForChannels(auth, _pending);
       if (_allWays.isEmpty) _allWays = const [VerifyWay.email];
       final picked = widget.initialWay;
-      _way = (picked != null && _allWays.contains(picked)) ? picked : _allWays.first;
+      _way = (picked != null && _allWays.contains(picked))
+          ? picked
+          : _allWays.first;
     } else {
       _allWays = [
         for (final r in auth.resetWays)
@@ -219,11 +234,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ];
       if (_allWays.isEmpty) _allWays = const [VerifyWay.email];
       final sentVia = VerifyWayX.fromName(auth.resetSentVia);
-      _way = (sentVia != null && _allWays.contains(sentVia)) ? sentVia : _allWays.first;
+      _way = (sentVia != null && _allWays.contains(sentVia))
+          ? sentVia
+          : _allWays.first;
     }
     _sent
       ..clear()
-      ..addAll(_way == null ? const [] : [_way!]); // the server already sent / prepared it
+      ..addAll(
+        _way == null ? const [] : [_way!],
+      ); // the server already sent / prepared it
   }
 
   @override
@@ -286,7 +305,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   void _selectWay(VerifyWay w) {
     if (w == _way) return;
     // Telegram <-> WhatsApp share one link session: only the selected way changes.
-    final stayOnLink = _link != null && w.isLink(_auth) && (_way?.isLink(_auth) ?? false);
+    final stayOnLink =
+        _link != null && w.isLink(_auth) && (_way?.isLink(_auth) ?? false);
     setState(() {
       _way = w;
       _hasError = false;
@@ -311,7 +331,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   void _onOtpChanged(int index, String value) {
     setState(() => _hasError = false);
     if (value.length > 2) {
-      _distribute(value); // the whole code was pasted / auto-filled into one box
+      _distribute(
+        value,
+      ); // the whole code was pasted / auto-filled into one box
       return;
     }
     if (value.length == 2) {
@@ -357,11 +379,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final auth = _auth;
     final success = _isReg
         ? await auth.verifyOtp(
-      gmail: widget.email,
-      code: _fullOtp,
-      channel: _channel,
-      way: _way?.name,
-    )
+            gmail: widget.email,
+            code: _fullOtp,
+            channel: _channel,
+            way: _way?.name,
+          )
         : await auth.verifyResetOtp(gmail: widget.email, code: _fullOtp);
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -407,7 +429,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   // ═══════════════════════════════════════════════════════════════════════
 
   Future<bool> _detectTelegram() async {
-    if (kIsWeb) return true; // a browser cannot tell; the t.me link handles both cases
+    if (kIsWeb)
+      return true; // a browser cannot tell; the t.me link handles both cases
     try {
       return await canLaunchUrl(Uri.parse('tg://resolve'));
     } catch (_) {
@@ -443,7 +466,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       // the selected link way is not offered by the server: fall back to one that is
       final w = _way;
       if (w != null && w.isLink(auth) && !session.methods.contains(w.name)) {
-        final fb = _allWays.where((x) => x.isLink(auth) && session.methods.contains(x.name));
+        final fb = _allWays.where(
+          (x) => x.isLink(auth) && session.methods.contains(x.name),
+        );
         if (fb.isNotEmpty) _way = fb.first;
       }
     });
@@ -481,8 +506,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Future<void> _openTelegram(PhoneLinkSession s) async {
     if (!kIsWeb && s.telegramAppUrl != null) {
       try {
-        if (await launchUrl(Uri.parse(s.telegramAppUrl!),
-            mode: LaunchMode.externalApplication)) {
+        if (await launchUrl(
+          Uri.parse(s.telegramAppUrl!),
+          mode: LaunchMode.externalApplication,
+        )) {
           return;
         }
       } catch (_) {} // app not installed: fall back to the https link
@@ -513,7 +540,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       setState(() {
         _pending = List.of(auth.pendingChannels);
         _hasError = false;
-        final left = _allWays.where((w) => _pending.contains(w.channel)).toList();
+        final left = _allWays
+            .where((w) => _pending.contains(w.channel))
+            .toList();
         _way = left.isEmpty ? null : (left.contains(_way) ? _way : left.first);
       });
       _snack('verify_step_done'.tr);
@@ -549,7 +578,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       ..showSnackBar(
         SnackBar(
           content: Text(msg),
-          backgroundColor: error ? context.colors.danger : context.colors.success,
+          backgroundColor: error
+              ? context.colors.danger
+              : context.colors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -563,7 +594,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'verification'.tr,
-      maxWidth: 520,
+      maxWidth: 550,
       builder: (context, isWide) => FadeTransition(
         opacity: _fadeAnimation,
         child: Column(
@@ -593,7 +624,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       }
       return widget.email;
     }
-    if (w.isPhone) return widget.phoneNumber ?? auth.pendingPhoneMasked ?? widget.email;
+    if (w.isPhone)
+      return widget.phoneNumber ?? auth.pendingPhoneMasked ?? widget.email;
     return widget.email;
   }
 
@@ -614,7 +646,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showSteps) ...[
-          VerifyStepTracker(channels: _allChannels, pending: _pending, current: _channel),
+          VerifyStepTracker(
+            channels: _allChannels,
+            pending: _pending,
+            current: _channel,
+          ),
           const SizedBox(height: 24),
         ],
         Center(child: VerifyWayHero(way: way)),
@@ -662,8 +698,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             transitionBuilder: (child, anim) => FadeTransition(
               opacity: anim,
               child: SlideTransition(
-                position: Tween<Offset>(begin: const Offset(0, 0.05), end: Offset.zero)
-                    .animate(anim),
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.05),
+                  end: Offset.zero,
+                ).animate(anim),
                 child: child,
               ),
             ),
@@ -674,14 +712,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             ),
           ),
         ),
-        if (ways.length > 1) ...[
-          const SizedBox(height: 22),
-          Text(
-            'verify_try_another_way'.tr,
-            textAlign: TextAlign.center,
-            style: c.body.copyWith(fontSize: 12.5),
-          ),
-        ],
+
+        const SizedBox(height: 22),
+        Text(
+          'verify_try_another_way'.tr,
+          textAlign: TextAlign.center,
+          style: c.body.copyWith(fontSize: 12.5),
+        ),
       ],
     );
   }
@@ -693,19 +730,26 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       duration: const Duration(milliseconds: 200),
       child: _sending
           ? Padding(
-        padding: const EdgeInsets.only(bottom: 14),
-        child: VerifyWayStatusPill(
-          way: _way ?? VerifyWay.email,
-          label: 'verify_sending'.tr,
-        ),
-      )
+              padding: const EdgeInsets.only(bottom: 14),
+              child: VerifyWayStatusPill(
+                way: _way ?? VerifyWay.email,
+                label: 'verify_sending'.tr,
+              ),
+            )
           : const SizedBox(width: double.infinity),
     ),
     _buildOtpFields(),
     const SizedBox(height: 22),
     _buildResendRow(),
     const SizedBox(height: 26),
-    _buildConfirmButton(),
+    PrimaryButton(
+      isLoading: _isLoading,
+      label: 'confirm'.tr,
+      enable: _isOtpComplete && !_isLoading,
+      icon: Icons.verified_rounded,
+      iconBefore: true,
+      onPressed: _onConfirm,
+    ),
   ];
 
   Widget _buildOtpFields() {
@@ -732,7 +776,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       child: Padding(
         padding: const EdgeInsets.all(6),
         child: ListenableBuilder(
-          listenable: Listenable.merge([_focusNodes[index], _controllers[index]]),
+          listenable: Listenable.merge([
+            _focusNodes[index],
+            _controllers[index],
+          ]),
           builder: (context, _) {
             final isFocused = _focusNodes[index].hasFocus;
             final isFilled = _controllers[index].text.isNotEmpty;
@@ -759,40 +806,62 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                 border: Border.all(color: border, width: isFocused ? 2 : 1),
                 boxShadow: isFocused
                     ? [
-                  BoxShadow(
-                    color: c.primary.withValues(alpha: 0.14),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+                        BoxShadow(
+                          color: c.primary.withValues(alpha: 0.14),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
                     : null,
               ),
               child: Focus(
                 onKeyEvent: (_, e) => _onKeyEvent(index, e),
-                child: TextField(
-                  controller: _controllers[index],
-                  focusNode: _focusNodes[index],
-                  textAlign: TextAlign.center,
-                  keyboardType: TextInputType.number,
-                  autofillHints: index == 0 ? const [AutofillHints.oneTimeCode] : null,
-                  style: TextStyle(
-                    fontSize: 28,
-                    height: 2.2,
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
+                child: SizedBox(
+                  height: 66,
+                  child: TextField(
+                    controller: _controllers[index],
+                    focusNode: _focusNodes[index],
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
+                    // text + cursor vertically centered
+                    expands: true,
+                    // field fills the 66px height
+                    maxLines: null,
+                    // required when expands: true
+                    minLines: null,
+                    // required when expands: true
+                    keyboardType: TextInputType.number,
+                    autofillHints: index == 0
+                        ? const [AutofillHints.oneTimeCode]
+                        : null,
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      color: c.textDark,
+                      height: 1.0, // line height = font size, no extra space
+                    ),
+                    strutStyle: const StrutStyle(
+                      fontSize: 28,
+                      height: 1.0,
+                      forceStrutHeight:
+                          true, // same line box for every font/digit
+                    ),
+                    cursorColor: c.primary,
+                    cursorHeight: 40,
+                    // cursor length (see note below)
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      counterText: '',
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      fillColor: Colors.transparent,
+                    ),
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: (value) => _onOtpChanged(index, value),
                   ),
-                  cursorColor: c.primary,
-                  decoration: const InputDecoration(
-                    constraints: BoxConstraints(minHeight: 66),
-                    counterText: '',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (value) => _onOtpChanged(index, value),
                 ),
               ),
             );
@@ -812,45 +881,45 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         duration: const Duration(milliseconds: 200),
         child: canResend
             ? TextButton.icon(
-          key: const ValueKey('resend'),
-          onPressed: _onResend,
-          icon: Icon(Icons.refresh_rounded, size: 18, color: c.primary),
-          label: Text(
-            'resend'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: c.primary,
-            ),
-          ),
-        )
+                key: const ValueKey('resend'),
+                onPressed: _onResend,
+                icon: Icon(Icons.refresh_rounded, size: 18, color: c.primary),
+                label: Text(
+                  'resend'.tr,
+                  style: TextStyle(
+                    fontFamily: 'tajawal',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: c.primary,
+                  ),
+                ),
+              )
             : Row(
-          key: const ValueKey('timer'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                value: left / resendSeconds,
-                strokeWidth: 2.4,
-                color: (w ?? VerifyWay.email).brand,
-                backgroundColor: c.divider,
+                key: const ValueKey('timer'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      value: left / resendSeconds,
+                      strokeWidth: 2.4,
+                      color: (w ?? VerifyWay.email).brand,
+                      backgroundColor: c.divider,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'resend_in'.tr + _timerText,
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: c.textLight,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'resend_in'.tr + _timerText,
-              style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: c.textLight,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -877,23 +946,31 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               padding: const EdgeInsets.symmetric(vertical: 17),
               child: Center(
                 child: _isLoading
-                    ? const SizedBox(width: 24, height: 24, child: AppLoadingIndicator())
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: AppLoadingIndicator(),
+                      )
                     : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.verified_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'confirm'.tr,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.verified_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'confirm'.tr,
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -919,7 +996,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             child: Text(
               _linkError!,
               textAlign: TextAlign.center,
-              style: TextStyle(color: context.colors.danger, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: context.colors.danger,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         OutlinedButton.icon(
@@ -933,7 +1013,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     var method = _way == VerifyWay.whatsapp ? 'whatsapp' : 'telegram';
     if (!s.methods.contains(method)) {
       if (s.methods.isEmpty) {
-        return [Text('generic_error'.tr, textAlign: TextAlign.center, style: context.colors.body)];
+        return [
+          Text(
+            'generic_error'.tr,
+            textAlign: TextAlign.center,
+            style: context.colors.body,
+          ),
+        ];
       }
       method = s.methods.first;
     }
@@ -941,13 +1027,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     return [
       VerifyWayButton(
         way: way,
-        label: (way == VerifyWay.telegram ? 'phone_link_telegram' : 'phone_link_whatsapp').tr,
-        onPressed: () => way == VerifyWay.telegram ? _openTelegram(s) : _openWhatsapp(s),
+        label:
+            (way == VerifyWay.telegram
+                    ? 'phone_link_telegram'
+                    : 'phone_link_whatsapp')
+                .tr,
+        onPressed: () =>
+            way == VerifyWay.telegram ? _openTelegram(s) : _openWhatsapp(s),
       ),
       if (kIsWeb) ..._buildQrSection(s, way),
       const SizedBox(height: 20),
       Text(
-        (way == VerifyWay.telegram ? 'phone_link_tg_steps' : 'phone_link_wa_steps').tr,
+        (way == VerifyWay.telegram
+                ? 'phone_link_tg_steps'
+                : 'phone_link_wa_steps')
+            .tr,
         textAlign: TextAlign.center,
         style: context.colors.body,
       ),
@@ -985,9 +1079,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       Center(
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white, // QR codes need a light background, also in dark mode
+            color: Colors.white,
+            // QR codes need a light background, also in dark mode
             borderRadius: BorderRadius.circular(c.radiusMedium),
-            border: Border.all(color: way.brand.withValues(alpha: 0.45), width: 2),
+            border: Border.all(
+              color: way.brand.withValues(alpha: 0.45),
+              width: 2,
+            ),
             boxShadow: [
               BoxShadow(
                 color: way.brand.withValues(alpha: 0.18),

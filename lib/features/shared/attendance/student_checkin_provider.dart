@@ -27,6 +27,7 @@ import 'attendance_location.dart';
 import 'attendance_models.dart';
 import 'attendance_offline_sync.dart';
 import 'attendance_permissions.dart';
+import 'attendance_radios.dart';
 import 'attendance_repository.dart';
 import 'attendance_store.dart';
 import 'relay_host_provider.dart';
@@ -89,6 +90,15 @@ class StudentCheckInProvider extends ChangeNotifier {
 
   /// Classmates required by the teacher for the window we know about (0 = none).
   int witnessesNeeded = 0;
+
+  /// GPS / Wi-Fi / Bluetooth state, prepared automatically when the sheet opens.
+  RadioStatus radios = RadioStatus.unknown;
+
+  /// Re-reads the radios (no prompts) — called when the app returns from system settings.
+  Future<void> refreshRadios() async {
+    radios = await AttendanceRadios.read(radios.permissions);
+    _emit();
+  }
 
   /// False when the teacher identifies students by classmates only (no code to type).
   bool needsCode = true;
@@ -162,6 +172,11 @@ class StudentCheckInProvider extends ChangeNotifier {
   /// Warms the cache while the student still has internet (key + window), makes this phone
   /// reachable for classmates, and re-sends any request whose answer was lost earlier.
   Future<void> warmUp() async {
+    // One tap prepares everything: permissions are requested and the radios are checked.
+    AttendanceRadios.prepare().then((r) {
+      radios = r;
+      _emit();
+    });
     try {
       final k = await _probeKey();
       if (k != null) await _store.saveKey(k);

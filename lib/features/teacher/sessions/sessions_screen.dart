@@ -50,10 +50,14 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
+import '../../shared/attendance/attendance_course_entry.dart';
+import '../../shared/attendance/teacher_attendance_controller.dart';
+import '../../shared/attendance/teacher_attendance_launcher.dart';
 import '../../shared/course/teacher_course_roadmap_section.dart';
 import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
+import '../data_lab/data_lab_entry_cards.dart';
 import '../home/teacher_models.dart';
 import '../../student/models.dart' show CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
@@ -61,8 +65,6 @@ import 'components/course_details_section.dart';
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
-import '../../shared/attendance/attendance_course_entry.dart';
-import '../../shared/attendance/teacher_attendance_launcher.dart';
 
 /// Opens one of the teacher's OWN courses (next course / manually
 /// recommended — both are guaranteed by the backend to belong to this
@@ -99,7 +101,8 @@ void _openOwnCoursePreview(BuildContext context, CourseSummary summary) {
 void _openForeignCoursePreview(BuildContext context, CourseSummary summary) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => CourseDetailScreen(course: CourseModel.fromSummary(summary)),
+      builder: (_) =>
+          CourseDetailScreen(course: CourseModel.fromSummary(summary)),
     ),
   );
 }
@@ -156,11 +159,10 @@ class _TeacherSessionsView extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       useSafeArea: true,
-      builder: (_) =>
-          ChangeNotifierProvider.value(
-            value: provider,
-            child: SessionFormSheet(provider: provider),
-          ),
+      builder: (_) => ChangeNotifierProvider.value(
+        value: provider,
+        child: SessionFormSheet(provider: provider),
+      ),
     );
   }
 
@@ -196,20 +198,29 @@ class _TeacherSessionsView extends StatelessWidget {
             slivers: [
               // ── Hero — rebuilds only when `course` changes ────────────
               SliverToBoxAdapter(
-                child: Selector<TeacherCourseScreenProvider,
-                    (TeacherCourse course, String? reelUrl)>(
-                  selector: (_, p) => (p.course, p.reelUrl),
-                  builder: (context, data, _) {
-                    final (course, reelUrl) = data;
+                child:
+                    Selector<
+                      TeacherCourseScreenProvider,
+                      (TeacherCourse course, String? reelUrl)
+                    >(
+                      selector: (_, p) => (p.course, p.reelUrl),
+                      builder: (context, data, _) {
+                        final (course, reelUrl) = data;
 
-                    return CourseHero(
-                      course: course,
-                      reelUrl: reelUrl,
-                      onBack: () => Navigator.maybePop(context),
-                      onEditCourse: () => _openEditCourse(context),
-                      onRefresh: () => provider.refresh(),
-                    );
-                  },
+                        return CourseHero(
+                          course: course,
+                          reelUrl: reelUrl,
+                          onBack: () => Navigator.maybePop(context),
+                          onEditCourse: () => _openEditCourse(context),
+                          onRefresh: () => provider.refresh(),
+                        );
+                      },
+                    ),
+              ),
+              SliverToBoxAdapter(
+                child: DataLabEntryCard(
+                  courseId: provider.course.id,
+                  courseTitle: provider.course.titleEn ?? '',
                 ),
               ),
 
@@ -222,52 +233,52 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child:
-                  Selector<
-                      TeacherCourseScreenProvider,
-                      (TeacherCourse course, int sessionCount, bool expanded)
-                  >(
-                    selector: (_, p) =>
-                    (p.course, p.sessionCount, p.openCourseDetails),
-                    builder: (context, data, _) {
-                      final (course, sessionCount, expanded) = data;
-                      return DetailCard(
-                        // Stable key — DetailCard keeps its own
-                        // expand/collapse animation state across
-                        // rebuilds instead of being destroyed and
-                        // recreated every time (previously a fresh
-                        // Random() key every build).
-                        key: const ValueKey('sessions_course_details_card'),
-                        expanded: expanded,
-                        icon: CupertinoIcons.list_bullet_below_rectangle,
-                        title: 'course_details'.tr,
-                        color: const Color(0xFF4DA6FF),
-                        course: course,
-                        children: [
-                          // ── Rating ──────────────────────────────
-                          RatingWidget(
-                            type: RateType.course,
-                            sourceId: course.id.toString(),
-                            canEdit: false,
-                            compact: false,
-                          ),
-                          // Student progress section
-                          SessionProgressSection(
-                            totalMaterial: course.expectedHours.toInt() > 0
-                                ? course.expectedHours.toInt()
-                                : course.totalHours.toInt(),
-                            completeMaterial: course.totalHours.toInt(),
-                            isTeacher: false,
-                            isFull: true,
-                          ),
-                          CourseStatsRow(
+                      Selector<
+                        TeacherCourseScreenProvider,
+                        (TeacherCourse course, int sessionCount, bool expanded)
+                      >(
+                        selector: (_, p) =>
+                            (p.course, p.sessionCount, p.openCourseDetails),
+                        builder: (context, data, _) {
+                          final (course, sessionCount, expanded) = data;
+                          return DetailCard(
+                            // Stable key — DetailCard keeps its own
+                            // expand/collapse animation state across
+                            // rebuilds instead of being destroyed and
+                            // recreated every time (previously a fresh
+                            // Random() key every build).
+                            key: const ValueKey('sessions_course_details_card'),
+                            expanded: expanded,
+                            icon: CupertinoIcons.list_bullet_below_rectangle,
+                            title: 'course_details'.tr,
+                            color: const Color(0xFF4DA6FF),
                             course: course,
-                            sessionCount: sessionCount,
-                          ),
-                          CourseDetailsSection(course: course),
-                        ],
-                      );
-                    },
-                  ),
+                            children: [
+                              // ── Rating ──────────────────────────────
+                              RatingWidget(
+                                type: RateType.course,
+                                sourceId: course.id.toString(),
+                                canEdit: false,
+                                compact: false,
+                              ),
+                              // Student progress section
+                              SessionProgressSection(
+                                totalMaterial: course.expectedHours.toInt() > 0
+                                    ? course.expectedHours.toInt()
+                                    : course.totalHours.toInt(),
+                                completeMaterial: course.totalHours.toInt(),
+                                isTeacher: false,
+                                isFull: true,
+                              ),
+                              CourseStatsRow(
+                                course: course,
+                                sessionCount: sessionCount,
+                              ),
+                              CourseDetailsSection(course: course),
+                            ],
+                          );
+                        },
+                      ),
                 ),
               ),
 
@@ -296,7 +307,8 @@ class _TeacherSessionsView extends StatelessWidget {
                       recommendedCourses: course.recommendedCourseSummaries,
                       similarCourses: course.similarCourses,
                       onTapOwnCourse: (s) => _openOwnCoursePreview(context, s),
-                      onTapSuggestedCourse: (s) => _openForeignCoursePreview(context, s),
+                      onTapSuggestedCourse: (s) =>
+                          _openForeignCoursePreview(context, s),
                     ),
                   ),
                 ),
@@ -339,12 +351,29 @@ class _AttendanceEntrySliver extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.select<TeacherCourseScreenProvider, (String?, int)>(
-        (p) => (p.course.type, p.sessions.length));
-    if (p.$1 == 'recorded' || p.$2 == 0) return const SizedBox.shrink();
-    final sessions = context.read<TeacherCourseScreenProvider>().sessions;
-    return TeacherAttendanceCourseEntry(sessions: [
-      for (var i = 0; i < sessions.length; i++)
-        LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name),
-    ]);
+      (p) => (p.course.type, p.sessions.length),
+    );
+    // Hidden for recorded / empty courses — unless a web session is waiting for this phone's
+    // location, then the entry (with its "share location" card) must always be reachable.
+    return ListenableBuilder(
+      listenable: TeacherAttendanceController.instance,
+      builder: (ctx, _) {
+        final waiting =
+            TeacherAttendanceController.instance.webLocationRequested;
+        if (!waiting && (p.$1 == 'recorded' || p.$2 == 0))
+          return const SizedBox.shrink();
+        final sessions = ctx.read<TeacherCourseScreenProvider>().sessions;
+        return TeacherAttendanceCourseEntry(
+          sessions: [
+            for (var i = 0; i < sessions.length; i++)
+              LauncherSession(
+                id: sessions[i].id,
+                number: i + 1,
+                name: sessions[i].name,
+              ),
+          ],
+        );
+      },
+    );
   }
 }

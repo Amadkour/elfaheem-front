@@ -21,6 +21,7 @@ import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
+import '../shared/attendance/admin_data_lab_page.dart';
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_categories_page.dart';
@@ -307,6 +308,14 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.dashboard_customize_rounded,
           colors: AdminPalette.blue,
           onTap: () => push(const AdminFeaturesPage()),
+        ),
+        AdminService(
+          labelKey: 'dl_admin_title',
+          descKey: 'dl_admin_sub',
+          icon: Icons.science_rounded,
+          colors: AdminPalette.teal,
+          featureKey: 'data_lab.admin',
+          onTap: () => push(const AdminDataLabPage()),
         ),
         AdminService(
           labelKey: 'admin_flags_title',

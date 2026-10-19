@@ -9,6 +9,7 @@
 /// appears when the teacher allowed web attendance for the open session.
 library;
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -18,7 +19,9 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 
 import 'attendance_models.dart';
+import 'attendance_live_screen.dart';
 import 'attendance_offline_sync.dart';
+import 'attendance_push.dart';
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
@@ -147,28 +150,52 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
   void initState() {
     super.initState();
     AppConnectivity.instance.online.addListener(_refresh);
+    AttendancePush.instance.events.addListener(_onPush);
     _refresh();
   }
 
   @override
   void dispose() {
     AppConnectivity.instance.online.removeListener(_refresh);
+    AttendancePush.instance.events.removeListener(_onPush);
+    _expiry?.cancel();
     super.dispose();
   }
 
+  Timer? _expiry;
+
+  /// The teacher opened / closed attendance: react at once (no waiting for a refresh).
+  void _onPush() {
+    final e = AttendancePush.instance.events.value;
+    if (e == null || (e.courseId != null && e.courseId != widget.courseId)) return;
+    if (e.closed && mounted) setState(() => _window = null); // hide immediately
+    _refresh(force: true);
+  }
+
   /// Online: ask the server and STORE the answer. Offline: use what was stored before.
-  Future<void> _refresh() async {
+  Future<void> _refresh({bool force = false}) async {
     OpenWindow? w;
     if (AppConnectivity.instance.isOnline) {
-      w = await AttendanceOfflineSync.instance.warm(courseId: widget.courseId);
+      w = await AttendanceOfflineSync.instance.warm(courseId: widget.courseId, force: force);
     } else {
       w = await AttendanceStore.instance.windowForCourse(widget.courseId);
     }
     if (!mounted) return;
     setState(() {
-      _window = w;
+      _window = (w == null || w.isOver) ? null : w;
       _checked = true;
     });
+    // Hide by itself when the window runs out.
+    _expiry?.cancel();
+    final end = _window == null ? null : DateTime.tryParse('${_window!.expiresAt}Z');
+    if (end != null) {
+      final left = end.difference(DateTime.now().toUtc());
+      if (!left.isNegative) {
+        _expiry = Timer(left + const Duration(seconds: 1), () {
+          if (mounted) setState(() => _window = null);
+        });
+      }
+    }
   }
 
   @override
@@ -176,7 +203,9 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
     final w = _window;
     // WEB: only when the teacher explicitly allowed it for the open session.
     if (kIsWeb && !(w?.allowWeb ?? false)) return const SizedBox.shrink();
-    final open = w != null;
+    // Shown ONLY while an attendance is open for this course.
+    if (!_checked || w == null || w.isOver) return const SizedBox.shrink();
+    const open = true;
     final c = context.colors;
 
     return ValueListenableBuilder<bool>(
@@ -255,14 +284,20 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
         final running = t.isOpen;
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-          child: _PremiumSurface(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            // The web app is waiting for the classroom location from this phone.
+            if (t.webLocationRequested && !kIsWeb) ...[
+              const _WebLocationRequestCard(),
+              const SizedBox(height: 8),
+            ],
+            _PremiumSurface(
             height: 60,
             live: running,
             from: running ? c.success : c.primary,
             to: running ? c.success.withValues(alpha: 0.78) : c.purple,
             onTap: () {
               if (running) {
-                showTeacherAttendanceSheet(context, t.sessionId!);
+                openAttendanceLive(context);
               } else {
                 showSessionPickerSheet(context, sessions);
               }
@@ -300,8 +335,54 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 24),
             ]),
           ),
+          ]),
         );
       },
     );
   }
+}
+
+/// Shown on the teacher's MOBILE course profile while a web session asks for the location.
+class _WebLocationRequestCard extends StatefulWidget {
+  const _WebLocationRequestCard();
+  @override
+  State<_WebLocationRequestCard> createState() => _WebLocationRequestCardState();
+}
+
+class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
+  bool _busy = false;
+
+  Future<void> _share() async {
+    setState(() => _busy = true);
+    final t = TeacherAttendanceController.instance;
+    final ok = await t.shareLocationForWeb();
+    if (ok) t.markWebRequest(false);
+    if (mounted) setState(() => _busy = false);
+  }
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [BoxShadow(color: const Color(0xFFEA580C).withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))],
+        ),
+        child: Row(children: [
+          const Icon(Icons.location_searching_rounded, color: Colors.white),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(attT('att_t_web_asks_body'),
+                style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFEA580C)),
+            onPressed: _busy ? null : _share,
+            child: _busy
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                : Text(attT('att_t_share_now'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+          ),
+        ]),
+      );
 }

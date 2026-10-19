@@ -206,7 +206,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           body: AuthScaffold(
             title: 'register'.tr,
             pageKey: const ValueKey('register'),
-            maxWidth: 760,
+            maxWidth: 800,
             builder: (context, isWide) => _buildForm(provider),
           ),
         );
@@ -355,10 +355,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             controller: _confirmedPasswordController,
             label: 'confirmed_password'.tr,
             obscure: _obscureConfirm,
-            onChange: (v){
-              setState(() {
-
-              });
+            onChange: (v) {
+              setState(() {});
             },
             onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),

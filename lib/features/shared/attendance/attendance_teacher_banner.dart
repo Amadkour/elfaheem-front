@@ -18,6 +18,8 @@ import 'teacher_attendance_controller.dart';
 String _mmss(Duration d) =>
     '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
 
+// NOTE: this bar lives ABOVE the Navigator (no Overlay): never use Tooltip / IconButton(tooltip:),
+// PopupMenu, DropdownButton or showDialog(context) from here.
 class AttendanceTeacherBanner extends StatelessWidget {
   const AttendanceTeacherBanner({super.key, required this.navigatorKey, required this.child});
 
@@ -79,6 +81,16 @@ class AttendanceTeacherBanner extends StatelessWidget {
                           fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                     ),
                   ),
+                if (t.lessonTitle != null && t.lessonTitle!.isNotEmpty) ...[
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(t.lessonTitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontFamily: 'tajawal', fontSize: 12, color: Colors.white.withValues(alpha: 0.9))),
+                  ),
+                ],
                 const Spacer(),
                 const Icon(Icons.people_alt_rounded, color: Colors.white, size: 17),
                 const SizedBox(width: 4),
@@ -95,7 +107,6 @@ class AttendanceTeacherBanner extends StatelessWidget {
                 if (!closing)
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    tooltip: attT('att_t_close'),
                     onPressed: () {
                       HapticFeedback.lightImpact();
                       t.close();

@@ -97,6 +97,12 @@ class OpenWindow {
         'wifi_bssid': wifiBssid,
       };
 
+  /// Past its end time (no slack): the student's attendance button hides itself.
+  bool get isOver {
+    final t = DateTime.tryParse('${expiresAt}Z');
+    return t != null && DateTime.now().toUtc().isAfter(t);
+  }
+
   /// Expiry is only a UX hint — the server is the only authority.
   bool get looksExpired {
     final t = DateTime.tryParse('${expiresAt}Z');

@@ -44,6 +44,21 @@ class BleRelay {
 
   String? lastError;
 
+  /// Is Bluetooth switched on? null = unknown / unsupported. Waits briefly for the first state.
+  Future<bool?> bluetoothOn() async {
+    if (!supported) return null;
+    try {
+      final cm = _cm ??= CentralManager();
+      var st = cm.state;
+      if (st == BluetoothLowEnergyState.unknown) {
+        st = await cm.stateChanged.map((e) => e.state).first.timeout(const Duration(seconds: 2));
+      }
+      return st == BluetoothLowEnergyState.poweredOn;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ── HOST (peripheral) ──────────────────────────────────────────────────
   PeripheralManager? _pm;
   GATTCharacteristic? _tx;

@@ -61,6 +61,7 @@ class BasePage extends StatelessWidget {
   }
 
   Widget _buildPage(BuildContext context) {
+    Color bg=background ??(context.colors.background);
     if (key case ValueKey(
     value: final v,
     ) when AppConfig.disableList.contains(v)) {
@@ -82,7 +83,7 @@ class BasePage extends StatelessWidget {
     }
     Widget w = Scaffold(
       appBar: appBar,
-      backgroundColor: background ?? context.colors.background,
+      backgroundColor:bg,
       floatingActionButton: _buildFab(), // was: floatingActionButton
       bottomNavigationBar:
       enableFooterWidget ? _footerWith(bottomNavigationBar) : null,
@@ -101,7 +102,7 @@ class BasePage extends StatelessWidget {
       return Directionality(
         textDirection: Helpers.pageDirection,
         child: Scaffold(
-          backgroundColor: background ?? (context.colors.background),
+          backgroundColor: bg,
           // NOTE: no footer here — `w` below already carries it via its own
           // bottomNavigationBar, and `w` is what actually renders in this
           // branch (nested inside the centered card).
@@ -143,6 +144,6 @@ class BasePage extends StatelessWidget {
       );
     }
 
-    return w;
+    return SafeArea(child: w);
   }
 }

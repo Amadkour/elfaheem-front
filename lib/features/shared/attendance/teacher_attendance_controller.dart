@@ -70,6 +70,15 @@ class TeacherAttendanceController extends ChangeNotifier {
   bool closed = false;
   String? error;
 
+  /// Lesson title shown in the global bar (set when the sheet is prepared).
+  String? lessonTitle;
+
+  /// MOBILE: a web session asked this phone for the classroom location (silent push).
+  bool webLocationRequested = false;
+
+  /// WEB: waiting for the phone to answer.
+  bool waitingMobile = false;
+
   /// After "close": counts down the grace so the teacher sees when nothing more is accepted.
   int closingLeft = 0;
 
@@ -94,8 +103,9 @@ class TeacherAttendanceController extends ChangeNotifier {
   bool get usesWitnesses => method != 'code';
 
   /// Prepare a fresh setup for [id] (does nothing while another window is running).
-  void prepare(int id, RelayHostProvider? h) {
+  void prepare(int id, RelayHostProvider? h, {String? title}) {
     host = h ?? host;
+    if (title != null && !(isOpen && sessionId != id)) lessonTitle = title;
     if (isOpen && sessionId != id) return;
     if (window == null || closed) {
       sessionId = id;
@@ -142,6 +152,39 @@ class TeacherAttendanceController extends ChangeNotifier {
       error = e.message;
       notifyListeners();
       return false;
+    }
+  }
+
+  void markWebRequest(bool v) {
+    if (webLocationRequested == v) return;
+    webLocationRequested = v;
+    notifyListeners();
+  }
+
+  /// WEB: ask the phone for its location and wait (up to a minute) for the answer.
+  Future<bool> requestFromMobile() async {
+    if (waitingMobile) return false;
+    waitingMobile = true;
+    error = null;
+    notifyListeners();
+    try {
+      final sent = await _repo.requestLocationFromMobile();
+      if (!sent) {
+        error = 'att_err_no_mobile_device';
+        return false;
+      }
+      for (var i = 0; i < 20; i++) {
+        await Future<void>.delayed(const Duration(seconds: 3));
+        if (await checkSharedLocation()) return true;
+      }
+      error = 'att_err_mobile_no_answer';
+      return false;
+    } on ApiException catch (e) {
+      error = e.message;
+      return false;
+    } finally {
+      waitingMobile = false;
+      notifyListeners();
     }
   }
 

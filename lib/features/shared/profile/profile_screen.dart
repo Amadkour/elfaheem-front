@@ -138,14 +138,14 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           // Downloaded (encrypted) videos — native apps only.
-                          if (!kIsWeb)
+                          if (!kIsWeb && !context.read<MyAuthProvider>().isTeacher)
                             ParentComponent(
                               featureKey: 'profile.downloads',
                               child: SettingsTile(
                                 icon: Icons.download_for_offline_rounded,
                                 iconBg: c.accentTint,
                                 iconColor: c.accent,
-                                label: offlineT('dl_title'),
+                                label: offlineT('downloads'),
                                 onTap: () => _push(const DownloadsScreen()),
                               ),
                             ),

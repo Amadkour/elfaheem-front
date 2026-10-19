@@ -58,8 +58,12 @@ class AttendanceOfflineSync {
       final w = await _repo.openWindow(sessionId: sessionId, courseId: courseId);
       await _store.saveWindow(w);
       return w;
-    } on ApiException {
-      return null; // no open window right now (404) — that is a normal answer
+    } on ApiException catch (e) {
+      // No open window right now (404) is a normal answer: forget a stale cached one.
+      if (courseId != null && (e.isNotFound || e.code == 'no_open_attendance')) {
+        await _store.removeCourseWindows(courseId);
+      }
+      return null;
     }
   }
 

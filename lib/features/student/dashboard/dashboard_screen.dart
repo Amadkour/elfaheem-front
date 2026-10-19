@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart';
+import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -138,38 +139,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final unread = context.watch<NotificationsProvider>().unreadCount;
-        final w = constraints.maxWidth;
-        if (w >= 900) {
-          return WideShell(
-            currentIndex: _currentIndex,
-            onTap: (i) {
-              if (mounted) setState(() => _currentIndex = i);
-            },
-            dashboardItems: dashboardItems,
-            unreadCount: unread,
-          );
-        }
-        if (kIsWeb && w >= 600) {
-          return RailShell(
-            currentIndex: _currentIndex,
-            onTap: (i) {
-              if (mounted) setState(() => _currentIndex = i);
-            },
-            dashboardItems: dashboardItems,
-            unreadCount: unread,
-          );
-        }
-        return MobileShell(
-          currentIndex: _currentIndex,
-          onTap: (i) {
-            if (mounted) setState(() => _currentIndex = i);
+    return Directionality(
+      textDirection: Helpers.pageDirection,
+      child: DataLabGate(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final unread = context.watch<NotificationsProvider>().unreadCount;
+            final w = constraints.maxWidth;
+            if (w >= 900) {
+              return WideShell(
+                currentIndex: _currentIndex,
+                onTap: (i) {
+                  if (mounted) setState(() => _currentIndex = i);
+                },
+                dashboardItems: dashboardItems,
+                unreadCount: unread,
+              );
+            }
+            if (kIsWeb && w >= 600) {
+              return RailShell(
+                currentIndex: _currentIndex,
+                onTap: (i) {
+                  if (mounted) setState(() => _currentIndex = i);
+                },
+                dashboardItems: dashboardItems,
+                unreadCount: unread,
+              );
+            }
+            return MobileShell(
+              currentIndex: _currentIndex,
+              onTap: (i) {
+                if (mounted) setState(() => _currentIndex = i);
+              },
+              dashboardItems: dashboardItems,
+            );
           },
-          dashboardItems: dashboardItems,
-        );
-      },
+        ),
+      ),
     );
   }
 }

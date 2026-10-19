@@ -73,6 +73,15 @@ class AttendanceStore {
     await p.setString(_kWindows, jsonEncode(all));
   }
 
+  /// The teacher closed attendance (or it ended): forget every cached window of that course so
+  /// the student's button disappears, online or offline.
+  Future<void> removeCourseWindows(int courseId) async {
+    final all = await _windows();
+    all.removeWhere((_, j) => j is Map && (j['course_id'] as num?)?.toInt() == courseId);
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_kWindows, jsonEncode(all));
+  }
+
   // ── courses stored for the offline "Attendance" tab ───────────────────
   List<CachedCourse> _courses = const [];
 

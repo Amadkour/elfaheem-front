@@ -107,7 +107,7 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                         trailing: const Icon(CupertinoIcons.chevron_forward, size: 16),
                         onTap: () {
                           Navigator.of(sheetCtx).pop();
-                          showTeacherAttendanceSheet(context, s.id);
+                          showTeacherAttendanceSheet(context, s.id, title: s.name);
                         },
                       );
                     },

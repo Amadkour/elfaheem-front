@@ -79,7 +79,7 @@ extension AppCurrencyX on AppCurrency {
   );
 }
 
-enum CourseDetailTab { lessons, about, live, exam }
+enum CourseDetailTab { lessons, about, live, exam,analytics }
 
 class SessionModel {
   final int id,
