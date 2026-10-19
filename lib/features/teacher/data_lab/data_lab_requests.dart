@@ -1,6 +1,7 @@
-// lib/features/shared/data_lab/data_lab_requests.dart
+// lib/features/teacher/data_lab/data_lab_requests.dart
 // Teacher side of "ask the students for a value": create a request and follow how many answered.
 // Students get a notification and a blocking screen (see data_lab_gate.dart) until they answer.
+// "Remind" nudges only the students who have not answered yet.
 library;
 
 import 'package:flutter/material.dart';
@@ -33,6 +34,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
   String _type = 'text';
   bool _busy = false, _loading = true;
   List<DlRequestInfo> _items = [];
+  final Set<int> _working = {}; // requests with a remind / close in progress
 
   @override
   void initState() {
@@ -55,6 +57,31 @@ class _RequestsSheetState extends State<_RequestsSheet> {
       // the list is optional, creating still works
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _remind(DlRequestInfo r) async {
+    setState(() => _working.add(r.id));
+    try {
+      final n = await _api.remindRequest(widget.p.courseId, r.id);
+      toast(n == 0 ? dlTr('dl_req_all_answered', 'Everyone has already answered 🎉') : '$n ${dlTr('dl_req_reminded', 'students reminded')}');
+    } catch (e) {
+      toast(e is ApiException ? e.message : '$e', error: true);
+    } finally {
+      if (mounted) setState(() => _working.remove(r.id));
+    }
+  }
+
+  Future<void> _close(DlRequestInfo r) async {
+    if (!await confirm(context, message: 'dl_req_close_q'.tr)) return;
+    setState(() => _working.add(r.id));
+    try {
+      await _api.closeRequest(widget.p.courseId, r.id);
+      await _load();
+    } catch (e) {
+      toast(e is ApiException ? e.message : '$e', error: true);
+    } finally {
+      if (mounted) setState(() => _working.remove(r.id));
     }
   }
 
@@ -113,23 +140,61 @@ class _RequestsSheetState extends State<_RequestsSheet> {
                   padding: const EdgeInsets.all(14),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Expanded(child: Text(r.title, style: dlText(14, w: FontWeight.w800, c: c.textDark))),
-                      if (r.isActive)
-                        TextButton(
-                          onPressed: () async {
-                            if (!await confirm(context, message: 'dl_req_close_q'.tr)) return;
-                            await _api.closeRequest(widget.p.courseId, r.id);
-                            _load();
-                          },
-                          child: Text('dl_req_close'.tr),
-                        )
-                      else
-                        DlTag('dl_req_closed'.tr, c.textLight),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: (r.isActive ? c.warning : c.textLight).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(r.inputType == 'dropdown' ? Icons.list_alt_rounded : Icons.text_fields_rounded,
+                            size: 18, color: r.isActive ? c.warning : c.textLight),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(r.title, style: dlText(14, w: FontWeight.w800, c: c.textDark)),
+                          Text(
+                            [
+                              if (r.createdAt != null) dlAgo(r.createdAt),
+                              if (r.isMergeKey) dlTr('dl_req_merge', 'links imported lines'),
+                            ].join(' · '),
+                            style: dlText(11, c: c.textLight),
+                          ),
+                        ]),
+                      ),
+                      if (!r.isActive) DlTag('dl_req_closed'.tr, c.textLight),
                     ]),
-                    const SizedBox(height: 8),
-                    DlBar(value: r.total == 0 ? 0 : r.answered / r.total * 100, color: c.primary),
+                    const SizedBox(height: 10),
+                    DlBar(value: r.total == 0 ? 0 : r.answered / r.total * 100, color: r.answered >= r.total ? c.success : c.primary),
                     const SizedBox(height: 4),
-                    Text('${r.answered} / ${r.total} ${'dl_req_answered'.tr}', style: dlText(11.5, c: c.textMedium)),
+                    Row(children: [
+                      Expanded(
+                        child: Text(
+                          '${r.answered} / ${r.total} ${'dl_req_answered'.tr}'
+                          '${r.isActive && r.waiting > 0 ? ' · ${r.waiting} ${dlTr('dl_req_waiting', 'still waiting')}' : ''}',
+                          style: dlText(11.5, c: c.textMedium),
+                        ),
+                      ),
+                      if (r.isActive && _working.contains(r.id))
+                        const Padding(
+                          padding: EdgeInsets.all(8),
+                          child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                        )
+                      else if (r.isActive) ...[
+                        if (r.waiting > 0)
+                          TextButton.icon(
+                            onPressed: () => _remind(r),
+                            icon: const Icon(Icons.notifications_active_rounded, size: 16),
+                            label: Text(dlTr('dl_req_remind', 'Remind')),
+                          ),
+                        TextButton(
+                          onPressed: () => _close(r),
+                          style: TextButton.styleFrom(foregroundColor: c.danger),
+                          child: Text('dl_req_close'.tr),
+                        ),
+                      ],
+                    ]),
                   ]),
                 ),
           ],

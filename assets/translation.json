@@ -12816,5 +12816,1073 @@
   "dl_manual_hint": {
     "en": "You replaced the automatic value. Go back to automatic any time.",
     "ar": "استبدلت القيمة التلقائية. يمكنك العودة إليها في أي وقت."
+  },
+  "an_above_avg": {
+    "en": "above average",
+    "ar": "فوق المتوسط"
+  },
+  "an_attention": {
+    "en": "{n} of your courses could use a little extra attention.",
+    "ar": "{n} من مقرراتك تحتاج إلى بعض الاهتمام الإضافي."
+  },
+  "an_below_avg": {
+    "en": "below average",
+    "ar": "تحت المتوسط"
+  },
+  "an_class": {
+    "en": "class",
+    "ar": "الفصل"
+  },
+  "an_course_progress": {
+    "en": "Course progress",
+    "ar": "التقدم في المقرر"
+  },
+  "an_courses": {
+    "en": "Courses",
+    "ar": "المقررات"
+  },
+  "an_error_title": {
+    "en": "Something went wrong",
+    "ar": "حدث خطأ ما"
+  },
+  "an_full_profile": {
+    "en": "My full analytics profile",
+    "ar": "ملفي التحليلي الكامل"
+  },
+  "an_hello": {
+    "en": "Hello, {name} 👋",
+    "ar": "أهلًا، {name} 👋"
+  },
+  "an_marker_hint": {
+    "en": "the line marks the class average",
+    "ar": "الخط يوضح متوسط الفصل"
+  },
+  "an_needs_attention": {
+    "en": "Needs attention",
+    "ar": "يحتاج اهتمامًا"
+  },
+  "an_open_report": {
+    "en": "Open the full course report",
+    "ar": "افتح التقرير الكامل للمقرر"
+  },
+  "an_open_report_sub": {
+    "en": "Every session, every exam and your progress over time",
+    "ar": "كل محاضرة وكل اختبار وتطور مستواك مع الوقت"
+  },
+  "an_refresh": {
+    "en": "Refresh",
+    "ar": "تحديث"
+  },
+  "an_saved_flags": {
+    "en": "saved flags",
+    "ar": "علامة محفوظة"
+  },
+  "an_see_all": {
+    "en": "See all",
+    "ar": "عرض الكل"
+  },
+  "an_show_first": {
+    "en": "Show first",
+    "ar": "اعرضها أولًا"
+  },
+  "an_sort_attention": {
+    "en": "Needs attention",
+    "ar": "يحتاج اهتمامًا"
+  },
+  "an_sort_name": {
+    "en": "A–Z",
+    "ar": "أ–ي"
+  },
+  "an_sort_progress": {
+    "en": "Progress",
+    "ar": "التقدم"
+  },
+  "an_vs_all_above": {
+    "en": "Above the class average everywhere — wonderful work! 🌟",
+    "ar": "أعلى من متوسط الفصل في كل شيء — عمل رائع! 🌟"
+  },
+  "an_vs_all_below": {
+    "en": "Below the class average for now — a little extra effort will close the gap.",
+    "ar": "أقل من متوسط الفصل حاليًا — قليل من الجهد الإضافي سيقلّص الفارق."
+  },
+  "an_vs_class": {
+    "en": "You and your class",
+    "ar": "أنت وفصلك"
+  },
+  "an_vs_mixed": {
+    "en": "Ahead of the class in some areas, with room to grow in others.",
+    "ar": "متقدم على الفصل في بعض الجوانب، وأمامك مساحة للتحسن في أخرى."
+  },
+  "dl_ago_days": {
+    "en": "days ago",
+    "ar": "أيام مضت"
+  },
+  "dl_ago_hours": {
+    "en": "h ago",
+    "ar": "س مضت"
+  },
+  "dl_ago_min": {
+    "en": "min ago",
+    "ar": "د مضت"
+  },
+  "dl_ago_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "dl_ago_yesterday": {
+    "en": "yesterday",
+    "ar": "أمس"
+  },
+  "dl_avg": {
+    "en": "Average",
+    "ar": "المتوسط"
+  },
+  "dl_builtin": {
+    "en": "Built-in",
+    "ar": "تلقائي"
+  },
+  "dl_calculated": {
+    "en": "Calculated",
+    "ar": "محسوب"
+  },
+  "dl_cert_resend_off": {
+    "en": "already have it and will be skipped. Switch on to send it again.",
+    "ar": "لديهم الشهادة بالفعل وسيتم تخطيهم. فعّل الخيار لإرسالها مرة أخرى."
+  },
+  "dl_cert_resend_on": {
+    "en": "They will receive it again (the same certificate, not a new one).",
+    "ar": "ستصلهم الشهادة مرة أخرى (نفس الشهادة، وليست شهادة جديدة)."
+  },
+  "dl_clear_search": {
+    "en": "Clear the search",
+    "ar": "مسح البحث"
+  },
+  "dl_clear_selection": {
+    "en": "Clear selection",
+    "ar": "إلغاء التحديد"
+  },
+  "dl_columns_drag": {
+    "en": "Drag the handle to change the order.",
+    "ar": "اسحب المقبض لتغيير الترتيب."
+  },
+  "dl_custom": {
+    "en": "Custom",
+    "ar": "يدوي"
+  },
+  "dl_delete_row": {
+    "en": "Remove this line",
+    "ar": "حذف هذا السطر"
+  },
+  "dl_done_problems": {
+    "en": "Lines that need a look",
+    "ar": "أسطر تحتاج إلى مراجعة"
+  },
+  "dl_done_refused": {
+    "en": "values were refused (not a number, out of range, not a listed choice …)",
+    "ar": "قيمة تم رفضها (ليست رقمًا، أو خارج النطاق، أو ليست من الخيارات المتاحة …)"
+  },
+  "dl_done_values": {
+    "en": "values written",
+    "ar": "قيمة تمت كتابتها"
+  },
+  "dl_edit_formula": {
+    "en": "Edit formula",
+    "ar": "تعديل المعادلة"
+  },
+  "dl_empty_sub": {
+    "en": "Students appear here as soon as they enrol. You can also bring in a sheet you already have.",
+    "ar": "يظهر الطلاب هنا فور تسجيلهم في المقرر. ويمكنك أيضًا استيراد ملف لديك بالفعل."
+  },
+  "dl_err_above_max": {
+    "en": "The full mark of this column is",
+    "ar": "الدرجة النهائية لهذا العمود هي"
+  },
+  "dl_err_negative": {
+    "en": "The value cannot be below 0",
+    "ar": "لا يمكن أن تكون القيمة أقل من 0"
+  },
+  "dl_err_number": {
+    "en": "Please type a number, e.g. 17.5",
+    "ar": "من فضلك اكتب رقمًا، مثل 17.5"
+  },
+  "dl_ex_average": {
+    "en": "Average",
+    "ar": "متوسط"
+  },
+  "dl_ex_pass": {
+    "en": "Pass / fail",
+    "ar": "ناجح / راسب"
+  },
+  "dl_ex_weighted": {
+    "en": "Weighted & rounded",
+    "ar": "موزون ومقرَّب"
+  },
+  "dl_exit_full": {
+    "en": "Exit full screen",
+    "ar": "الخروج من ملء الشاشة"
+  },
+  "dl_exp_filtered": {
+    "en": "Only the lines that match your search",
+    "ar": "الأسطر المطابقة لبحثك فقط"
+  },
+  "dl_export_sub": {
+    "en": "File, e-mail or students",
+    "ar": "ملف أو بريد أو للطلاب"
+  },
+  "dl_filled": {
+    "en": "filled",
+    "ar": "مُدخلة"
+  },
+  "dl_formula": {
+    "en": "Formula",
+    "ar": "المعادلة"
+  },
+  "dl_formula_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "dl_formula_cycle": {
+    "en": "This formula would depend on itself",
+    "ar": "هذه المعادلة ستعتمد على نفسها"
+  },
+  "dl_formula_empty": {
+    "en": "Type a formula first",
+    "ar": "اكتب المعادلة أولًا"
+  },
+  "dl_formula_examples": {
+    "en": "Examples — tap one to start from it",
+    "ar": "أمثلة — اضغط على أحدها لتبدأ منه"
+  },
+  "dl_formula_functions": {
+    "en": "Functions",
+    "ar": "الدوال"
+  },
+  "dl_formula_max": {
+    "en": "Full mark (the end of the progress bar)",
+    "ar": "الدرجة النهائية (نهاية شريط التقدم)"
+  },
+  "dl_formula_next": {
+    "en": "Try another student",
+    "ar": "جرّب طالبًا آخر"
+  },
+  "dl_formula_no_column": {
+    "en": "Use at least one column, like [Quiz], in the formula",
+    "ar": "استخدم عمودًا واحدًا على الأقل في المعادلة، مثل [Quiz]"
+  },
+  "dl_formula_no_sources": {
+    "en": "There are no number columns to use yet.",
+    "ar": "لا توجد أعمدة رقمية لاستخدامها بعد."
+  },
+  "dl_formula_ok": {
+    "en": "The formula is valid",
+    "ar": "المعادلة صحيحة"
+  },
+  "dl_formula_operators": {
+    "en": "Operators",
+    "ar": "العمليات"
+  },
+  "dl_formula_sub": {
+    "en": "Write it like Excel. Tap a column or a function below to add it.",
+    "ar": "اكتبها كما في Excel. اضغط على عمود أو دالة بالأسفل لإضافتها."
+  },
+  "dl_full": {
+    "en": "Full screen",
+    "ar": "ملء الشاشة"
+  },
+  "dl_full_mark": {
+    "en": "Full mark",
+    "ar": "الدرجة النهائية"
+  },
+  "dl_h_cell": {
+    "en": "Value changed",
+    "ar": "تم تغيير قيمة"
+  },
+  "dl_h_certs": {
+    "en": "Certificates sent",
+    "ar": "تم إرسال الشهادات"
+  },
+  "dl_h_col_del": {
+    "en": "Column deleted",
+    "ar": "تم حذف عمود"
+  },
+  "dl_h_col_edit": {
+    "en": "Column changed",
+    "ar": "تم تعديل عمود"
+  },
+  "dl_h_col_new": {
+    "en": "Column added",
+    "ar": "تمت إضافة عمود"
+  },
+  "dl_h_empty": {
+    "en": "empty / automatic",
+    "ar": "فارغ / تلقائي"
+  },
+  "dl_h_import": {
+    "en": "Sheet imported",
+    "ar": "تم استيراد ملف"
+  },
+  "dl_h_lock": {
+    "en": "Column locked",
+    "ar": "تم قفل عمود"
+  },
+  "dl_h_publish": {
+    "en": "Published to students",
+    "ar": "تم النشر للطلاب"
+  },
+  "dl_h_request": {
+    "en": "Student request",
+    "ar": "طلب من الطلاب"
+  },
+  "dl_h_row_del": {
+    "en": "Line removed",
+    "ar": "تم حذف سطر"
+  },
+  "dl_h_unlock": {
+    "en": "Column unlocked",
+    "ar": "تم فتح قفل عمود"
+  },
+  "dl_header_hint": {
+    "en": "Tap to sort · hold for settings",
+    "ar": "اضغط للترتيب · اضغط مطولًا للإعدادات"
+  },
+  "dl_header_sub": {
+    "en": "Grades, attendance and everything you track — in one sheet",
+    "ar": "الدرجات والحضور وكل ما تتابعه — في جدول واحد"
+  },
+  "dl_hidden_cols": {
+    "en": "hidden",
+    "ar": "مخفي"
+  },
+  "dl_hide_bar": {
+    "en": "Hide toolbar",
+    "ar": "إخفاء شريط الأدوات"
+  },
+  "dl_history": {
+    "en": "Change history",
+    "ar": "سجل التغييرات"
+  },
+  "dl_history_empty": {
+    "en": "No changes yet",
+    "ar": "لا توجد تغييرات بعد"
+  },
+  "dl_history_short": {
+    "en": "History",
+    "ar": "السجل"
+  },
+  "dl_history_sub": {
+    "en": "Every change is kept with who made it and when — nothing is lost silently.",
+    "ar": "كل تغيير محفوظ مع من قام به ومتى — لا شيء يضيع بصمت."
+  },
+  "dl_how_formula": {
+    "en": "Formula",
+    "ar": "معادلة"
+  },
+  "dl_how_weights": {
+    "en": "Weighted average",
+    "ar": "متوسط موزون"
+  },
+  "dl_import_sub": {
+    "en": "Excel or CSV",
+    "ar": "Excel أو CSV"
+  },
+  "dl_insights": {
+    "en": "Class insights",
+    "ar": "مؤشرات الفصل"
+  },
+  "dl_legend_students": {
+    "en": "Shown to students",
+    "ar": "ظاهر للطلاب"
+  },
+  "dl_line": {
+    "en": "Line",
+    "ar": "سطر"
+  },
+  "dl_lock_hint": {
+    "en": "For approved marks: nobody can edit or import into this column until you unlock it.",
+    "ar": "للدرجات المعتمدة: لا يمكن لأحد التعديل أو الاستيراد في هذا العمود حتى تفتح القفل."
+  },
+  "dl_lock_title": {
+    "en": "Lock the results",
+    "ar": "قفل النتائج"
+  },
+  "dl_locked": {
+    "en": "Locked",
+    "ar": "مقفل"
+  },
+  "dl_locked_cols": {
+    "en": "locked",
+    "ar": "مقفلة"
+  },
+  "dl_locked_cols_hint": {
+    "en": "Approved columns: they cannot be edited until you unlock them",
+    "ar": "أعمدة معتمدة: لا يمكن تعديلها حتى تفتح القفل"
+  },
+  "dl_locked_done": {
+    "en": "Locked — values are now read-only",
+    "ar": "تم القفل — القيم الآن للقراءة فقط"
+  },
+  "dl_median": {
+    "en": "Median",
+    "ar": "الوسيط"
+  },
+  "dl_no_match_sub": {
+    "en": "Try another name, e-mail, phone or ID.",
+    "ar": "جرّب اسمًا أو بريدًا أو هاتفًا أو رقمًا آخر."
+  },
+  "dl_pass_rate": {
+    "en": "Passed",
+    "ar": "ناجحون"
+  },
+  "dl_plan_full_mark": {
+    "en": "Some marks are above 100, so that column's full mark follows the highest mark. You can change it later.",
+    "ar": "بعض الدرجات أعلى من 100، لذلك ستكون الدرجة النهائية لهذا العمود هي أعلى درجة. يمكنك تغييرها لاحقًا."
+  },
+  "dl_pres_both": {
+    "en": "Both",
+    "ar": "الاثنان"
+  },
+  "dl_pres_numbers": {
+    "en": "Numbers",
+    "ar": "أرقام"
+  },
+  "dl_pres_progress": {
+    "en": "Progress",
+    "ar": "تقدم"
+  },
+  "dl_pres_title": {
+    "en": "How this column looks",
+    "ar": "شكل عرض هذا العمود"
+  },
+  "dl_range": {
+    "en": "Lowest – highest",
+    "ar": "الأدنى – الأعلى"
+  },
+  "dl_refresh": {
+    "en": "Refresh",
+    "ar": "تحديث"
+  },
+  "dl_req_all_answered": {
+    "en": "Everyone has already answered 🎉",
+    "ar": "الجميع أجاب بالفعل 🎉"
+  },
+  "dl_req_merge": {
+    "en": "links imported lines",
+    "ar": "يربط الأسطر المستوردة"
+  },
+  "dl_req_remind": {
+    "en": "Remind",
+    "ar": "تذكير"
+  },
+  "dl_req_reminded": {
+    "en": "students reminded",
+    "ar": "طالب تم تذكيره"
+  },
+  "dl_req_waiting": {
+    "en": "still waiting",
+    "ar": "ما زالوا لم يجيبوا"
+  },
+  "dl_select_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "dl_show_bar": {
+    "en": "Show toolbar",
+    "ar": "إظهار شريط الأدوات"
+  },
+  "dl_shown_students": {
+    "en": "Shown to students",
+    "ar": "ظاهر للطلاب"
+  },
+  "dl_shown_students_hint": {
+    "en": "Students can see this column in their own results.",
+    "ar": "يمكن للطلاب رؤية هذا العمود في نتائجهم."
+  },
+  "dl_sort": {
+    "en": "Sort",
+    "ar": "ترتيب"
+  },
+  "dl_spread_tight": {
+    "en": "Results are close together across the class.",
+    "ar": "النتائج متقاربة في الفصل."
+  },
+  "dl_spread_wide": {
+    "en": "Results are spread widely — some students may need extra support.",
+    "ar": "النتائج متباعدة كثيرًا — قد يحتاج بعض الطلاب إلى دعم إضافي."
+  },
+  "dl_unlocked_done": {
+    "en": "Unlocked — values can be edited again",
+    "ar": "تم فتح القفل — يمكن تعديل القيم مرة أخرى"
+  },
+  "dl_view_all_hint": {
+    "en": "Applies to every column. Press and hold a column title to set just that column.",
+    "ar": "يُطبَّق على كل الأعمدة. اضغط مطولًا على عنوان عمود لضبطه وحده."
+  },
+  "sa_ins_progress": {
+    "en": "You have completed {n}% of the course content.",
+    "ar": "أنهيت {n}% من محتوى المقرر."
+  },
+  "sa_ins_progress_done": {
+    "en": "You completed every lesson of the course 🎉",
+    "ar": "أنهيت كل دروس المقرر 🎉"
+  },
+  "sa_ins_review": {
+    "en": "{n} saved questions are waiting in your review bank.",
+    "ar": "{n} سؤالًا محفوظًا في بنك المراجعة بانتظارك."
+  },
+  "sa_ins_trend_down": {
+    "en": "Your last exam is {n} points below your earlier average — a quick review can help.",
+    "ar": "اختبارك الأخير أقل بـ {n} درجة من متوسطك السابق — مراجعة سريعة ستفيدك."
+  },
+  "sa_ins_trend_up": {
+    "en": "Your last exam is {n} points above your earlier average — keep it up!",
+    "ar": "اختبارك الأخير أعلى بـ {n} درجة من متوسطك السابق — استمر!"
+  },
+  "sa_marks_none": {
+    "en": "Your teacher has not published any marks for this course yet.",
+    "ar": "لم ينشر معلمك أي درجات لهذا المقرر بعد."
+  },
+  "sa_marks_unavailable": {
+    "en": "No marks shared yet",
+    "ar": "لا توجد درجات منشورة بعد"
+  },
+  "sa_marks_unavailable_sub": {
+    "en": "When your teacher shares results for this course, they will appear here with the class average.",
+    "ar": "عندما يشارك معلمك نتائج هذا المقرر ستظهر هنا مع متوسط الفصل."
+  },
+  "sa_overall_hint_full": {
+    "en": "An average of your progress, attendance and exam results.",
+    "ar": "متوسط تقدمك وحضورك ونتائج اختباراتك."
+  },
+  "sa_tab_marks": {
+    "en": "My marks",
+    "ar": "درجاتي"
+  },
+  "dl_locked_msg": {
+    "en": "locked — unlock it to change values",
+    "ar": "مقفل — افتح القفل لتعديل القيم"
+  },
+  "sa_status_passed": {
+    "en": "Passed ✓",
+    "ar": "نجحت ✓"
+  },
+  "sa_status_failed": {
+    "en": "Not passed ✗",
+    "ar": "لم تنجح ✗"
+  },
+  "sa_status_upcoming": {
+    "en": "Upcoming",
+    "ar": "قادم"
+  },
+  "sa_status_not_taken": {
+    "en": "Not taken",
+    "ar": "لم تؤدِّه"
+  },
+  "an_exams_waiting": {
+    "en": "{n} exams are waiting for you — open my exams",
+    "ar": "{n} اختبارات بانتظارك — افتح اختباراتي"
+  },
+  "an_open_exams": {
+    "en": "Open my exams",
+    "ar": "افتح اختباراتي"
+  },
+  "pl_sec_marks": {
+    "en": "Marks from the teachers",
+    "ar": "درجات من المعلمين"
+  },
+  "pl_sec_marks_hint": {
+    "en": "What the teachers shared, next to the class average — the same view your child has.",
+    "ar": "ما شاركه المعلمون بجانب متوسط الفصل — نفس ما يراه ابنك."
+  },
+  "pl_link_another": {
+    "en": "Link another child",
+    "ar": "ربط ابن آخر"
+  },
+  "pl_attention_courses": {
+    "en": "{n} need attention",
+    "ar": "{n} تحتاج اهتمامًا"
+  },
+  "pl_unread_alerts": {
+    "en": "{n} new alerts",
+    "ar": "{n} تنبيهات جديدة"
+  },
+  "dl_formula_sub2": {
+    "en": "Write it like Excel. Tap a column, an operator or a function below — its help appears under the keys.",
+    "ar": "اكتبها كما في Excel. اضغط على عمود أو عملية أو دالة بالأسفل — يظهر شرحها تحت الأزرار."
+  },
+  "dl_text_result": {
+    "en": "Text result",
+    "ar": "نتيجة نصية"
+  },
+  "dl_formula_tap_hint": {
+    "en": "Tap any operator or function to see what it does, with an example.",
+    "ar": "اضغط على أي عملية أو دالة لترى ما تفعله مع مثال."
+  },
+  "dl_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "dl_example": {
+    "en": "Example",
+    "ar": "مثال"
+  },
+  "dl_use_example": {
+    "en": "Tap to use",
+    "ar": "اضغط للاستخدام"
+  },
+  "dl_help_plus": {
+    "en": "Adds two values.",
+    "ar": "تجمع قيمتين."
+  },
+  "dl_help_minus": {
+    "en": "Subtracts the second value from the first.",
+    "ar": "تطرح القيمة الثانية من الأولى."
+  },
+  "dl_help_times": {
+    "en": "Multiplies — handy for weights.",
+    "ar": "الضرب — مفيد للأوزان."
+  },
+  "dl_help_divide": {
+    "en": "Divides. Dividing by 0 gives an empty result.",
+    "ar": "القسمة. القسمة على 0 تعطي نتيجة فارغة."
+  },
+  "dl_help_power": {
+    "en": "Raises to a power.",
+    "ar": "رفع إلى أُس."
+  },
+  "dl_help_percent": {
+    "en": "Percent: 40% is the same as 0.4.",
+    "ar": "نسبة مئوية: 40% تساوي 0.4."
+  },
+  "dl_help_brackets": {
+    "en": "Groups a part so it is calculated first.",
+    "ar": "تجمع جزءًا ليُحسب أولًا."
+  },
+  "dl_help_comma": {
+    "en": "Separates the values given to a function.",
+    "ar": "تفصل بين القيم المعطاة للدالة."
+  },
+  "dl_help_gt": {
+    "en": "Greater than — gives 1 (yes) or 0 (no). Use it inside IF.",
+    "ar": "أكبر من — تعطي 1 (نعم) أو 0 (لا). استخدمها داخل IF."
+  },
+  "dl_help_gte": {
+    "en": "Greater than or equal to.",
+    "ar": "أكبر من أو يساوي."
+  },
+  "dl_help_lt": {
+    "en": "Less than.",
+    "ar": "أصغر من."
+  },
+  "dl_help_lte": {
+    "en": "Less than or equal to.",
+    "ar": "أصغر من أو يساوي."
+  },
+  "dl_help_eq": {
+    "en": "Equal to — works with numbers and with text (letter case ignored).",
+    "ar": "يساوي — تعمل مع الأرقام ومع النصوص (دون اعتبار لحالة الأحرف)."
+  },
+  "dl_help_neq": {
+    "en": "Not equal to.",
+    "ar": "لا يساوي."
+  },
+  "dl_help_text": {
+    "en": "Text goes between double quotes. A formula can give text, like \"Pass\".",
+    "ar": "يُكتب النص بين علامتي تنصيص مزدوجتين. يمكن للمعادلة أن تعطي نصًا مثل \"ناجح\"."
+  },
+  "dl_help_join": {
+    "en": "Joins values into one text.",
+    "ar": "تضم القيم في نص واحد."
+  },
+  "dl_help_if": {
+    "en": "IF(test, then, else): gives \"then\" when the test is true, otherwise \"else\". Then / else can be numbers or \"text\".",
+    "ar": "IF(شرط، إذا_تحقق، وإلا): تعطي القيمة الأولى عند تحقق الشرط وإلا الثانية. يمكن أن تكونا أرقامًا أو \"نصًا\"."
+  },
+  "dl_help_and": {
+    "en": "True only when every test is true — use it inside IF.",
+    "ar": "تكون صحيحة فقط عندما تتحقق كل الشروط — استخدمها داخل IF."
+  },
+  "dl_help_or": {
+    "en": "True when at least one test is true.",
+    "ar": "تكون صحيحة عند تحقق شرط واحد على الأقل."
+  },
+  "dl_help_round": {
+    "en": "ROUND(x, digits): rounds to the nearest number (0 digits if left out).",
+    "ar": "ROUND(x, digits): تقريب لأقرب رقم (0 خانات عشرية إن لم تُكتب)."
+  },
+  "dl_help_ceiling": {
+    "en": "CEILING(x, step): rounds UP to a multiple of step (1 if left out).",
+    "ar": "CEILING(x, step): تقريب لأعلى إلى مضاعف الخطوة (1 إن لم تُكتب)."
+  },
+  "dl_help_floor": {
+    "en": "FLOOR(x, step): rounds DOWN to a multiple of step (1 if left out).",
+    "ar": "FLOOR(x, step): تقريب لأسفل إلى مضاعف الخطوة (1 إن لم تُكتب)."
+  },
+  "dl_help_roundup": {
+    "en": "ROUNDUP(x, digits): always rounds away from zero.",
+    "ar": "ROUNDUP(x, digits): تقريب دائمًا بعيدًا عن الصفر."
+  },
+  "dl_help_rounddown": {
+    "en": "ROUNDDOWN(x, digits): always rounds toward zero.",
+    "ar": "ROUNDDOWN(x, digits): تقريب دائمًا نحو الصفر."
+  },
+  "dl_help_sum": {
+    "en": "SUM(a, b, …): adds them up (empty cells are left out).",
+    "ar": "SUM(a, b, …): مجموعها (الخلايا الفارغة لا تُحسب)."
+  },
+  "dl_help_average": {
+    "en": "AVERAGE(a, b, …): the mean of the filled values.",
+    "ar": "AVERAGE(a, b, …): متوسط القيم المُدخلة."
+  },
+  "dl_help_min": {
+    "en": "MIN(a, b, …): the smallest value.",
+    "ar": "MIN(a, b, …): أصغر قيمة."
+  },
+  "dl_help_max": {
+    "en": "MAX(a, b, …): the largest value — e.g. the best of two attempts.",
+    "ar": "MAX(a, b, …): أكبر قيمة — مثل أفضل محاولتين."
+  },
+  "dl_help_count": {
+    "en": "COUNT(a, b, …): how many of them are filled in.",
+    "ar": "COUNT(a, b, …): عدد القيم المُدخلة منها."
+  },
+  "dl_help_int": {
+    "en": "INT(x): the whole part, rounded down.",
+    "ar": "INT(x): الجزء الصحيح مقربًا لأسفل."
+  },
+  "dl_help_abs": {
+    "en": "ABS(x): removes the minus sign.",
+    "ar": "ABS(x): يحذف إشارة السالب."
+  },
+  "dl_help_sqrt": {
+    "en": "SQRT(x): square root — e.g. a curve on low marks.",
+    "ar": "SQRT(x): الجذر التربيعي — مثلًا لرفع الدرجات المنخفضة."
+  },
+  "dl_help_power_fn": {
+    "en": "POWER(x, y): x to the power y.",
+    "ar": "POWER(x, y): x مرفوعة للأس y."
+  },
+  "dl_help_mod": {
+    "en": "MOD(x, y): the remainder of x ÷ y.",
+    "ar": "MOD(x, y): باقي قسمة x على y."
+  },
+  "dl_pinned_title": {
+    "en": "Pinned columns",
+    "ar": "الأعمدة المثبتة"
+  },
+  "dl_resize_hint": {
+    "en": "Drag to resize · double-tap for the default width",
+    "ar": "اسحب لتغيير العرض · اضغط مرتين للعرض الافتراضي"
+  },
+  "dl_pin_keep_one": {
+    "en": "Keep at least one pinned column",
+    "ar": "يجب أن يبقى عمود مثبت واحد على الأقل"
+  },
+  "dl_pinned_sub": {
+    "en": "Pinned columns stay on the side while the rest of the sheet scrolls. Tap to pin or unpin — the number is their order. Drag the edge of a title to change its width.",
+    "ar": "تبقى الأعمدة المثبتة على الجانب بينما يتحرك باقي الجدول. اضغط للتثبيت أو الإلغاء — الرقم هو ترتيبها. اسحب حافة العنوان لتغيير العرض."
+  },
+  "dl_pinned_student": {
+    "en": "Student details",
+    "ar": "بيانات الطالب"
+  },
+  "dl_pinned_data": {
+    "en": "Sheet columns",
+    "ar": "أعمدة الجدول"
+  },
+  "dl_reset_widths": {
+    "en": "Reset all widths",
+    "ar": "إعادة كل العروض للافتراضي"
+  },
+  "dl_header_hint2": {
+    "en": "Tap to sort · hold for settings · drag ⠿ to move",
+    "ar": "اضغط للترتيب · اضغط مطولًا للإعدادات · اسحب ⠿ للنقل"
+  },
+  "dl_unpin": {
+    "en": "Unpin",
+    "ar": "إلغاء التثبيت"
+  },
+  "dl_pin": {
+    "en": "Pin to the side",
+    "ar": "تثبيت على الجانب"
+  },
+  "ta_hero_ok": {
+    "en": "Every class is on track — nice work!",
+    "ar": "كل الفصول تسير بشكل جيد — عمل رائع!"
+  },
+  "ta_attention": {
+    "en": "Needs your attention",
+    "ar": "يحتاجون اهتمامك"
+  },
+  "ta_attention_sub": {
+    "en": "Attendance under 60 % or exams under 50 % — tap a student for the full picture.",
+    "ar": "حضور أقل من 60% أو اختبارات أقل من 50% — اضغط على الطالب لترى الصورة كاملة."
+  },
+  "ta_pass_rate": {
+    "en": "Students passing on exam average",
+    "ar": "الطلاب الناجحون في متوسط الاختبارات"
+  },
+  "ta_class_progress": {
+    "en": "Class progress",
+    "ar": "تقدم الفصل"
+  },
+  "ta_dl_sub": {
+    "en": "Grades, formulas, imports and certificates — in one sheet",
+    "ar": "الدرجات والمعادلات والاستيراد والشهادات — في جدول واحد"
+  },
+  "ta_hero_risk": {
+    "en": "{n} students could use your attention this week.",
+    "ar": "{n} طلاب يحتاجون اهتمامك هذا الأسبوع."
+  },
+  "ta_risk_n": {
+    "en": "{n} need attention",
+    "ar": "{n} يحتاجون اهتمامًا"
+  },
+  "ta_dl_published": {
+    "en": "{n} columns shared with students",
+    "ar": "{n} أعمدة مشاركة مع الطلاب"
+  },
+  "dl_rule_empty": {
+    "en": "is empty",
+    "ar": "فارغة"
+  },
+  "dl_rule_filled": {
+    "en": "has a value",
+    "ar": "بها قيمة"
+  },
+  "dl_rule_between": {
+    "en": "between",
+    "ar": "بين"
+  },
+  "dl_rule_contains": {
+    "en": "contains",
+    "ar": "يحتوي"
+  },
+  "dl_preset_below_pass": {
+    "en": "Below the pass mark",
+    "ar": "أقل من درجة النجاح"
+  },
+  "dl_preset_top": {
+    "en": "Top marks (≥ 90 %)",
+    "ar": "الدرجات العليا (≥ 90%)"
+  },
+  "dl_preset_empty": {
+    "en": "Missing values",
+    "ar": "قيم ناقصة"
+  },
+  "dl_preset_vs_avg": {
+    "en": "Below the class average",
+    "ar": "أقل من متوسط الفصل"
+  },
+  "dl_preset_fail": {
+    "en": "Says \"Fail\"",
+    "ar": "مكتوب \"Fail\""
+  },
+  "dl_preset_pass": {
+    "en": "Says \"Pass\"",
+    "ar": "مكتوب \"Pass\""
+  },
+  "dl_style_title": {
+    "en": "Style & colours",
+    "ar": "التنسيق والألوان"
+  },
+  "dl_style_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "dl_style_color": {
+    "en": "Column colour",
+    "ar": "لون العمود"
+  },
+  "dl_style_color_sub": {
+    "en": "Tints the title and every cell of the column.",
+    "ar": "يلوّن العنوان وكل خلايا العمود."
+  },
+  "dl_style_text": {
+    "en": "Text",
+    "ar": "النص"
+  },
+  "dl_font_default": {
+    "en": "Sheet default",
+    "ar": "خط الجدول"
+  },
+  "dl_align_default": {
+    "en": "Auto",
+    "ar": "تلقائي"
+  },
+  "dl_style_bold": {
+    "en": "Bold",
+    "ar": "عريض"
+  },
+  "dl_rules_title": {
+    "en": "Highlight rules",
+    "ar": "قواعد التمييز"
+  },
+  "dl_rules_sub": {
+    "en": "The first rule that matches a cell colours it. Use a formula for anything special.",
+    "ar": "أول قاعدة تنطبق على الخلية تلوّنها. استخدم معادلة لأي حالة خاصة."
+  },
+  "dl_rule_add": {
+    "en": "Add rule",
+    "ar": "إضافة قاعدة"
+  },
+  "dl_rule_up": {
+    "en": "Check first",
+    "ar": "افحصها أولًا"
+  },
+  "dl_scale": {
+    "en": "Colour scale",
+    "ar": "تدرج لوني"
+  },
+  "dl_scale_sub": {
+    "en": "low → high",
+    "ar": "من الأقل إلى الأعلى"
+  },
+  "dl_hl_by_hand": {
+    "en": "cells highlighted by hand",
+    "ar": "خلايا مميزة يدويًا"
+  },
+  "dl_clear_all": {
+    "en": "Clear all",
+    "ar": "مسح الكل"
+  },
+  "dl_hl_tip": {
+    "en": "Tip: hold any cell in the sheet to highlight it by hand.",
+    "ar": "نصيحة: اضغط مطولًا على أي خلية في الجدول لتمييزها يدويًا."
+  },
+  "dl_style_reset": {
+    "en": "Remove all styling",
+    "ar": "إزالة كل التنسيق"
+  },
+  "dl_rule_need_value": {
+    "en": "Type the value to compare with",
+    "ar": "اكتب القيمة للمقارنة"
+  },
+  "dl_rule_need_two": {
+    "en": "Type both ends",
+    "ar": "اكتب الطرفين"
+  },
+  "dl_rule_title": {
+    "en": "Highlight when…",
+    "ar": "ميّز عندما…"
+  },
+  "dl_rule_t_value": {
+    "en": "The value",
+    "ar": "القيمة"
+  },
+  "dl_rule_t_formula": {
+    "en": "Formula",
+    "ar": "معادلة"
+  },
+  "dl_rule_from": {
+    "en": "From",
+    "ar": "من"
+  },
+  "dl_rule_value": {
+    "en": "Value",
+    "ar": "القيمة"
+  },
+  "dl_rule_to": {
+    "en": "To",
+    "ar": "إلى"
+  },
+  "dl_rule_this": {
+    "en": "this cell",
+    "ar": "هذه الخلية"
+  },
+  "dl_rule_formula_hint": {
+    "en": "True (not 0, not empty) = highlighted. [@] is the cell itself — e.g. [@] < [Midterm] marks a drop.",
+    "ar": "صحيح (ليس 0 وليس فارغًا) = مميَّز. [@] هي الخلية نفسها — مثال: [@] < [Midterm] يُظهر التراجع."
+  },
+  "dl_rule_matches": {
+    "en": "Matches",
+    "ar": "تطابق"
+  },
+  "dl_rule_loaded": {
+    "en": "students on screen",
+    "ar": "طالب ظاهر"
+  },
+  "dl_rule_bg": {
+    "en": "Highlight colour",
+    "ar": "لون التمييز"
+  },
+  "dl_rule_fg": {
+    "en": "Text colour",
+    "ar": "لون النص"
+  },
+  "dl_look_title": {
+    "en": "Sheet look",
+    "ar": "مظهر الجدول"
+  },
+  "dl_look_avg": {
+    "en": "Class averages",
+    "ar": "متوسطات الفصل"
+  },
+  "dl_look_avg_sub": {
+    "en": "Show them in their own band so they are never mistaken for a student.",
+    "ar": "اعرضها في شريط خاص حتى لا تُخلط أبدًا بأي طالب."
+  },
+  "dl_avg_top": {
+    "en": "Above the titles",
+    "ar": "فوق العناوين"
+  },
+  "dl_avg_header": {
+    "en": "Under the titles",
+    "ar": "تحت العناوين"
+  },
+  "dl_avg_off": {
+    "en": "Hidden",
+    "ar": "مخفي"
+  },
+  "dl_avg_highlight": {
+    "en": "Highlight the averages",
+    "ar": "تمييز المتوسطات"
+  },
+  "dl_avg_highlight_sub": {
+    "en": "Tinted band and numbers in pills.",
+    "ar": "شريط ملون وأرقام داخل كبسولات."
+  },
+  "dl_look_font": {
+    "en": "Default font",
+    "ar": "الخط الافتراضي"
+  },
+  "dl_font_app": {
+    "en": "App font",
+    "ar": "خط التطبيق"
+  },
+  "dl_look_size": {
+    "en": "Text size",
+    "ar": "حجم النص"
+  },
+  "dl_look_align": {
+    "en": "Alignment of the values",
+    "ar": "محاذاة القيم"
+  },
+  "dl_align_start": {
+    "en": "Start",
+    "ar": "البداية"
+  },
+  "dl_align_center": {
+    "en": "Centre",
+    "ar": "الوسط"
+  },
+  "dl_align_end": {
+    "en": "End",
+    "ar": "النهاية"
+  },
+  "dl_look_note": {
+    "en": "These choices are kept on this device. Column colours, fonts and highlight rules (column card → Style & colours) are shared with everyone on the sheet.",
+    "ar": "هذه الاختيارات محفوظة على هذا الجهاز. ألوان الأعمدة وخطوطها وقواعد التمييز (بطاقة العمود ← التنسيق والألوان) مشتركة مع كل من يستخدم الجدول."
+  },
+  "dl_rules_short": {
+    "en": "rules",
+    "ar": "قواعد"
+  },
+  "dl_hl_cell_sub": {
+    "en": "Highlight this cell by hand. Everyone who opens the sheet sees it.",
+    "ar": "ميّز هذه الخلية يدويًا. يراها كل من يفتح الجدول."
+  },
+  "dl_hl_cell": {
+    "en": "Highlight this cell",
+    "ar": "تمييز هذه الخلية"
   }
 }

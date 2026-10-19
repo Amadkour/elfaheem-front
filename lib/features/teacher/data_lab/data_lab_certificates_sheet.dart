@@ -1,9 +1,10 @@
-// lib/features/shared/data_lab/data_lab_certificates_sheet.dart
+// lib/features/teacher/data_lab/data_lab_certificates_sheet.dart
 // Send a certificate to every student who passed.
 //   1. pick the certificate of the course
 //   2. pick the column that decides "passed" (e.g. the calculated Final) and the pass mark in %
 //   3. see how many students reached it, then send by notification, e-mail or both
 // If lines are selected in the sheet, only those are considered.
+// Students who already hold this certificate are skipped unless "send again" is switched on.
 library;
 
 import 'package:flutter/material.dart';
@@ -34,10 +35,11 @@ class _CertSheetState extends State<_CertSheet> {
   List<Map<String, dynamic>> _certs = [];
   int? _certId;
   String? _column;
-  double _mark = 50;
+  late double _mark = p.config.passPercent.clamp(0, 100).toDouble();
   String _delivery = 'notification';
   Map<String, dynamic>? _plan;
-  bool _loading = true, _busy = false, _checking = false;
+  bool _loading = true, _busy = false, _checking = false, _resend = false;
+  int _checkGen = 0;
 
   DataLabProvider get p => widget.p;
   List<DlColumn> get _numeric => p.columns.where((c) => c.isNumber && c.source != 'read_flags' && c.source != 'review_flags').toList();
@@ -66,8 +68,10 @@ class _CertSheetState extends State<_CertSheet> {
     }
   }
 
+  /// Asks the server how many students would receive it. Only the latest answer is kept (the slider fires often).
   Future<void> _check() async {
     if (_certId == null || _column == null) return;
+    final gen = ++_checkGen;
     setState(() => _checking = true);
     try {
       final r = await _api.sendCertificates(p.courseId,
@@ -76,14 +80,20 @@ class _CertSheetState extends State<_CertSheet> {
           minPercent: _mark,
           delivery: _delivery,
           rowIds: p.selected.isEmpty ? null : p.selected.toList(),
+          resend: _resend,
           dryRun: true);
-      if (mounted) setState(() => _plan = r);
+      if (mounted && gen == _checkGen) setState(() => _plan = r);
     } catch (e) {
-      if (mounted) setState(() => _plan = null);
+      if (mounted && gen == _checkGen) setState(() => _plan = null);
       toast(e is ApiException ? e.message : '$e', error: true);
     } finally {
-      if (mounted) setState(() => _checking = false);
+      if (mounted && gen == _checkGen) setState(() => _checking = false);
     }
+  }
+
+  void _nudge(double d) {
+    setState(() => _mark = (_mark + d).clamp(0, 100).roundToDouble());
+    _check();
   }
 
   Future<void> _send() async {
@@ -95,6 +105,7 @@ class _CertSheetState extends State<_CertSheet> {
           minPercent: _mark,
           delivery: _delivery,
           rowIds: p.selected.isEmpty ? null : p.selected.toList(),
+          resend: _resend,
           dryRun: false);
       toast('${r['queued'] ?? 0} ${'dl_cert_queued'.tr}');
       if (mounted) Navigator.pop(context);
@@ -160,12 +171,22 @@ class _CertSheetState extends State<_CertSheet> {
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: Text('${'dl_cert_pass_mark'.tr}: ${_mark.round()}%', style: dlText(13.5, w: FontWeight.w800, c: c.textDark))),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _mark <= 0 ? null : () => _nudge(-1),
+                  icon: Icon(Icons.remove_circle_outline_rounded, color: c.textMedium),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: _mark >= 100 ? null : () => _nudge(1),
+                  icon: Icon(Icons.add_circle_outline_rounded, color: c.textMedium),
+                ),
               ]),
               Slider(
                 value: _mark,
                 min: 0,
                 max: 100,
-                divisions: 20,
+                divisions: 100,
                 activeColor: c.primary,
                 label: '${_mark.round()}%',
                 onChanged: (v) => setState(() => _mark = v),
@@ -198,6 +219,37 @@ class _CertSheetState extends State<_CertSheet> {
                   ),
                 ]),
               ),
+              if (already > 0) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 6, 6),
+                  decoration: BoxDecoration(
+                    color: c.warning.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: c.warning.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.replay_rounded, color: c.warning, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _resend
+                            ? dlTr('dl_cert_resend_on', 'They will receive it again (the same certificate, not a new one).')
+                            : '$already ${dlTr('dl_cert_resend_off', 'already have it and will be skipped. Switch on to send it again.')}',
+                        style: dlText(12, w: FontWeight.w600, c: c.textDark, h: 1.4),
+                      ),
+                    ),
+                    Switch(
+                      value: _resend,
+                      activeTrackColor: c.warning,
+                      onChanged: (v) {
+                        setState(() => _resend = v);
+                        _check();
+                      },
+                    ),
+                  ]),
+                ),
+              ],
               DlSectionTitle('dl_cert_how'.tr),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 DlChoiceChip(label: 'dl_cert_notification'.tr, icon: Icons.notifications_active_rounded, selected: _delivery == 'notification', onTap: () => setState(() => _delivery = 'notification')),

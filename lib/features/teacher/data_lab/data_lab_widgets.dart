@@ -1,11 +1,20 @@
-// lib/features/shared/data_lab/data_lab_widgets.dart
+// lib/features/teacher/data_lab/data_lab_widgets.dart
 // Small reusable building blocks of the Data Lab (all colours come from the app theme).
 library;
 
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+
+import 'data_lab_models.dart';
+
+/// Translation with a friendly English fallback while a key is not in the language files yet.
+String dlTr(String key, String fallback) {
+  final v = key.tr;
+  return (v.isEmpty || v == key) ? fallback : v;
+}
 
 TextStyle dlText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
     TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: c, height: h);
@@ -478,5 +487,309 @@ class DlChoiceChip extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Premium building blocks (all colours from the theme)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Compact number pill: icon · value · label. Used in the sheet's header.
+class DlStatChip extends StatelessWidget {
+  const DlStatChip({super.key, required this.icon, required this.value, required this.label, this.color, this.tooltip});
+
+  final IconData icon;
+  final String value, label;
+  final Color? color;
+  final String? tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = color ?? c.primary;
+    final chip = Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: col.withValues(alpha: 0.18)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(color: col.withValues(alpha: 0.16), shape: BoxShape.circle),
+          child: Icon(icon, size: 14, color: col),
+        ),
+        const SizedBox(width: 7),
+        Text(value, style: dlText(13, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(width: 5),
+        Text(label, style: dlText(11.5, w: FontWeight.w600, c: c.textMedium)),
+      ]),
+    );
+    return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
+  }
+}
+
+/// Soft pulsing placeholder while the first page loads (no package needed).
+class DlShimmer extends StatefulWidget {
+  const DlShimmer({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<DlShimmer> createState() => _DlShimmerState();
+}
+
+class _DlShimmerState extends State<DlShimmer> with SingleTickerProviderStateMixin {
+  late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
+    ..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween<double>(begin: 0.45, end: 1).animate(CurvedAnimation(parent: _a, curve: Curves.easeInOut)),
+    child: widget.child,
+  );
+}
+
+class DlSkeletonBox extends StatelessWidget {
+  const DlSkeletonBox({super.key, this.width, this.height = 12, this.radius = 8});
+
+  final double? width;
+  final double height, radius;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: width,
+    height: height,
+    decoration: BoxDecoration(
+      color: context.colors.divider.withValues(alpha: 0.7),
+      borderRadius: BorderRadius.circular(radius),
+    ),
+  );
+}
+
+/// The shape of the sheet while it loads: calmer than a spinner, and the page does not jump when data arrives.
+class DlSheetSkeleton extends StatelessWidget {
+  const DlSheetSkeleton({super.key, this.rows = 9, this.columns = 4});
+
+  final int rows, columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return DlShimmer(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+        children: [
+          Row(children: [
+            const DlSkeletonBox(width: 120, height: 30, radius: 10),
+            for (var j = 0; j < columns; j++) ...[const SizedBox(width: 12), const Expanded(child: DlSkeletonBox(height: 30, radius: 10))],
+          ]),
+          const SizedBox(height: 14),
+          for (var i = 0; i < rows; i++)
+            Container(
+              height: 48,
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.5)))),
+              child: Row(children: [
+                const DlSkeletonBox(width: 26, height: 26, radius: 13),
+                const SizedBox(width: 10),
+                DlSkeletonBox(width: 70.0 + (i * 23) % 40, height: 11),
+                const SizedBox(width: 24),
+                for (var j = 0; j < columns; j++) ...[
+                  const SizedBox(width: 12),
+                  Expanded(child: Center(child: DlSkeletonBox(width: 26.0 + (i + j) * 7 % 20, height: 11))),
+                ],
+              ]),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Five bars: how the class is spread over 0–20 %, 20–40 % … 80–100 % of the full mark.
+class DlHistogram extends StatelessWidget {
+  const DlHistogram({super.key, required this.buckets, this.height = 74});
+
+  final List<int> buckets;
+  final double height;
+
+  static const _labels = ['0–20', '20–40', '40–60', '60–80', '80–100'];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final top = buckets.fold<int>(0, (m, e) => e > m ? e : m);
+    return Directionality(
+      textDirection: TextDirection.ltr, // a scale always reads low → high
+      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        for (var i = 0; i < 5; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              Text(i < buckets.length ? '${buckets[i]}' : '0', style: dlText(11, w: FontWeight.w800, c: c.textDark)),
+              const SizedBox(height: 3),
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: top == 0 || i >= buckets.length ? 0 : buckets[i] / top),
+                duration: const Duration(milliseconds: 600),
+                curve: Curves.easeOutCubic,
+                builder: (_, t, __) => Container(
+                  height: 4 + (height - 4) * t,
+                  decoration: BoxDecoration(
+                    color: dlScoreColor(context, i * 20.0 + 10).withValues(alpha: 0.85),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(7), bottom: Radius.circular(3)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(_labels[i], maxLines: 1, style: dlText(9.5, c: c.textLight)),
+            ]),
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+/// A calm, tinted message block (tips, warnings, "locked" notes …).
+class DlBanner extends StatelessWidget {
+  const DlBanner({super.key, required this.icon, required this.text, this.color, this.action});
+
+  final IconData icon;
+  final String text;
+  final Color? color;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = color ?? c.primary;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: col.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: col.withValues(alpha: 0.22)),
+      ),
+      child: Row(children: [
+        Icon(icon, size: 19, color: col),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: dlText(12, w: FontWeight.w600, c: c.textDark, h: 1.45))),
+        ?action,
+      ]),
+    );
+  }
+}
+
+/// "3 min ago" / "yesterday" / a date — friendly time for the history.
+String dlAgo(DateTime? t) {
+  if (t == null) return '';
+  final d = DateTime.now().difference(t);
+  if (d.inSeconds < 60) return dlTr('dl_ago_now', 'just now');
+  if (d.inMinutes < 60) return '${d.inMinutes} ${dlTr('dl_ago_min', 'min ago')}';
+  if (d.inHours < 24) return '${d.inHours} ${dlTr('dl_ago_hours', 'h ago')}';
+  if (d.inDays == 1) return dlTr('dl_ago_yesterday', 'yesterday');
+  if (d.inDays < 7) return '${d.inDays} ${dlTr('dl_ago_days', 'days ago')}';
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${t.year}-${two(t.month)}-${two(t.day)}';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Column style colours
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A style colour: a theme name (follows the app theme and dark mode) or '#RRGGBB'.
+Color? dlStyleColor(BuildContext context, String? token) {
+  if (token == null || token.isEmpty) return null;
+  final c = context.colors;
+  switch (token) {
+    case 'primary':
+      return c.primary;
+    case 'success':
+      return c.success;
+    case 'warning':
+      return c.warning;
+    case 'danger':
+      return c.danger;
+    case 'purple':
+      return c.purple;
+    case 'accent':
+      return c.accent;
+    case 'accent2':
+      return c.accent2;
+  }
+  if (token.startsWith('#') && token.length == 7) {
+    final v = int.tryParse(token.substring(1), radix: 16);
+    if (v != null) return Color(0xFF000000 | v);
+  }
+  return null;
+}
+
+/// Red → amber → green for 0 → 50 → 100 (the colour scale of a column).
+Color dlScaleColor(BuildContext context, double pct) {
+  final c = context.colors;
+  final t = (pct / 100).clamp(0.0, 1.0);
+  return t < 0.5 ? Color.lerp(c.danger, c.warning, t * 2)! : Color.lerp(c.warning, c.success, (t - 0.5) * 2)!;
+}
+
+/// Text alignment of a style value ('start' | 'center' | 'end').
+TextAlign dlTextAlign(String? a) => switch (a) {
+  'start' => TextAlign.start,
+  'end' => TextAlign.end,
+  _ => TextAlign.center,
+};
+
+AlignmentDirectional dlAlignment(String? a) => switch (a) {
+  'start' => AlignmentDirectional.centerStart,
+  'end' => AlignmentDirectional.centerEnd,
+  _ => AlignmentDirectional.center,
+};
+
+/// A row of colour swatches (+ "none"). [value] is the selected token.
+class DlSwatches extends StatelessWidget {
+  const DlSwatches({super.key, required this.value, required this.onChanged, this.allowNone = true, this.size = 30});
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+  final bool allowNone;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    Widget dot(String? token) {
+      final col = dlStyleColor(context, token);
+      final on = value == token;
+      return InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => onChanged(token),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: col ?? c.inputBg,
+            border: Border.all(color: on ? c.textDark : c.divider, width: on ? 2.4 : 1),
+          ),
+          child: col == null
+              ? Icon(Icons.format_color_reset_rounded, size: size * 0.55, color: c.textMedium)
+              : (on ? Icon(Icons.check_rounded, size: size * 0.6, color: Colors.white) : null),
+        ),
+      );
+    }
+
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      if (allowNone) dot(null),
+      for (final t in dlStyleColors) dot(t),
+    ]);
   }
 }

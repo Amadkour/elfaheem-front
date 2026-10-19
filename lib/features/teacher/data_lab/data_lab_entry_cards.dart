@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_entry_cards.dart
+// lib/features/teacher/data_lab/data_lab_entry_cards.dart
 // Drop-in entry points:
 //   • DataLabEntryCard           – put it in the TEACHER's course profile  (opens DataLabScreen)
 //   • MyAnalyticsProfileCard     – put it in the STUDENT's course page / profile (opens the student's profile)
@@ -10,7 +10,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
-import '../../student/courses/details/student_analytics_profile_screen.dart';
+import '../../student/analysis/student_analytics_profile_screen.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_screen.dart';

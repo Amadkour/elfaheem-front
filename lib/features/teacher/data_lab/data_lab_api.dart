@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_api.dart
+// lib/features/teacher/data_lab/data_lab_api.dart
 // Every Data Lab request in one place (teacher, student and admin).
 //
 // Needs two packages in pubspec.yaml (skip the ones your exam import/export already uses):
@@ -27,6 +27,12 @@ class DataLabApi {
     dlMap(await _api.get('$_b/config', queryParams: {if (courseId != null) 'course_id': courseId})),
   );
 
+  // ── teacher analytics hub ─────────────────────────────────────────────────
+  /// Class snapshot of the teacher's courses: {items: [{course_id, enabled, students, progress, attendance,
+  /// exam_avg, exam_pass_rate, at_risk, at_risk_preview: [...], ...}], pass_percent, thresholds}.
+  Future<Map<String, dynamic>> overview({List<int>? courseIds}) async => dlMap(await _api.get('$_b/overview',
+      queryParams: {if (courseIds != null && courseIds.isNotEmpty) 'course_ids': courseIds.join(',')}));
+
   // ── sheet ─────────────────────────────────────────────────────────────────
   Future<DlGrid> grid(
       int courseId, {
@@ -53,6 +59,10 @@ class DataLabApi {
       DlColumn.fromJson(dlMap(await _api.patch('$_b/courses/$courseId/columns/$key', body: body)));
 
   Future<void> deleteColumn(int courseId, String key) => _api.delete('$_b/courses/$courseId/columns/$key');
+
+  /// Saves the order of the columns (every key, first to last).
+  Future<void> reorderColumns(int courseId, List<String> keys) =>
+      _api.put('$_b/courses/$courseId/columns-order', body: {'keys': keys});
 
   /// Returns {values, overridden} of that line, recalculated. An empty value gives the automatic value back.
   Future<Map<String, dynamic>> putCell(int courseId, int rowId, String key, dynamic value) async =>
@@ -105,6 +115,7 @@ class DataLabApi {
     required double minPercent,
     required String delivery,
     List<int>? rowIds,
+    bool resend = false,
     required bool dryRun,
   }) async =>
       dlMap(await _api.post('$_b/courses/$courseId/certificates/send', body: {
@@ -113,6 +124,7 @@ class DataLabApi {
         'min_percent': minPercent,
         'delivery': delivery,
         if (rowIds != null) 'row_ids': rowIds,
+        'resend': resend,
         'dry_run': dryRun,
       }));
 
@@ -125,6 +137,22 @@ class DataLabApi {
           body: {'title': title, 'input_type': inputType, if (options != null) 'options': options});
 
   Future<void> closeRequest(int courseId, int id) => _api.delete('$_b/courses/$courseId/requests/$id');
+
+  /// Notification + push to the students who did not answer yet. Returns how many were reminded.
+  Future<int> remindRequest(int courseId, int id) async =>
+      ((dlMap(await _api.post('$_b/courses/$courseId/requests/$id/remind', body: const {}))['reminded'] as num?) ?? 0)
+          .toInt();
+
+  // ── change history ────────────────────────────────────────────────────────
+  Future<({int total, List<DlAuditEntry> items})> audit(int courseId, {int? rowId, String? key, int skip = 0, int limit = 50}) async {
+    final m = dlMap(await _api.get('$_b/courses/$courseId/audit', queryParams: {
+      'row_id': ?rowId,
+      'key': ?key,
+      'skip': skip,
+      'limit': limit,
+    }));
+    return (total: (m['total'] as num?)?.toInt() ?? 0, items: dlList(m['items']).map(DlAuditEntry.fromJson).toList());
+  }
 
   Future<List<DlPendingRequest>> myPendingRequests() async =>
       dlList(dlMap(await _api.get('$_b/me/pending-requests'))['items']).map(DlPendingRequest.fromJson).toList();

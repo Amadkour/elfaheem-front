@@ -10,7 +10,21 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
 
+import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_widgets.dart';
+
+/// A child's analytics profile — the same one the student sees (progress, attendance, exams, the marks the
+/// teachers published with the class average, flags). null when Data Lab is off / nothing is shared.
+Future<DlProfile?> plFetchChildProfile(ApiClient api, int studentId) async {
+  try {
+    final r = await api.get('/api/v1/parent/children/$studentId/profile');
+    if (r is! Map) return null;
+    final p = DlProfile.fromJson(Map<String, dynamic>.from(r));
+    return p.courses.isEmpty ? null : p;
+  } catch (_) {
+    return null; // optional: the reports work without it
+  }
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  STUDENT — generate / show the link code
@@ -84,6 +98,18 @@ class ParentLinkProvider extends BaseProvider {
   List<Map<String, dynamic>> get documents => plList(config['documents']);
   int get pendingCount => requests.where((r) => r['status'] == 'pending').length;
 
+  /// Analytics profile of every linked child (for the children cards). Missing key = not loaded yet.
+  final Map<int, DlProfile?> profiles = {};
+
+  Future<void> loadProfiles() async {
+    final ids = [for (final c in children) (c['id'] as num).toInt()];
+    final got = await Future.wait(ids.map((id) => plFetchChildProfile(_api, id)));
+    for (var i = 0; i < ids.length; i++) {
+      profiles[ids[i]] = got[i];
+    }
+    notifyListeners();
+  }
+
   Future<void> loadAll() async {
     final c = await run(() => _api.get('/api/v1/parent/link/config'));
     if (c is Map) config = Map<String, dynamic>.from(c);
@@ -92,6 +118,7 @@ class ParentLinkProvider extends BaseProvider {
     final ch = await run(() => _api.get('/api/v1/parent/children'), makLoading: false);
     if (ch != null) children = plList(ch);
     notifyListeners();
+    loadProfiles(); // fire-and-forget: the cards fill in when it arrives
   }
 
   Future<void> refreshChildrenAndRequests() async {
@@ -151,6 +178,7 @@ class ParentLinkProvider extends BaseProvider {
     config = {};
     requests = [];
     children = [];
+    profiles.clear();
     notifyListeners();
   }
 }
@@ -166,6 +194,23 @@ class ParentReportsProvider extends BaseProvider {
   DateTime refDate = DateTime.now();
   bool loaded = false;
 
+  /// Analytics profile per child (marks the teachers published + class averages). Loaded once — it does not
+  /// depend on the report's period / date.
+  final Map<int, DlProfile?> profiles = {};
+
+  Future<void> _loadProfiles() async {
+    final ids = [
+      for (final c in children)
+        if ((c['student'] as Map?)?['id'] case final num id) if (!profiles.containsKey(id.toInt())) id.toInt(),
+    ];
+    if (ids.isEmpty) return;
+    final got = await Future.wait(ids.map((id) => plFetchChildProfile(_api, id)));
+    for (var i = 0; i < ids.length; i++) {
+      profiles[ids[i]] = got[i];
+    }
+    notifyListeners();
+  }
+
   Future<void> load() async {
     final r = await run(() => _api.get('/api/v1/parent/reports',
         queryParams: {'period': 'all', 'date': plDate(refDate)}));
@@ -173,6 +218,7 @@ class ParentReportsProvider extends BaseProvider {
       children = plList(r['children']);
       loaded = true;
       notifyListeners();
+      _loadProfiles();
     }
   }
 
@@ -194,6 +240,7 @@ class ParentReportsProvider extends BaseProvider {
       ];
       loaded = true;
       notifyListeners();
+      _loadProfiles();
     }
   }
 

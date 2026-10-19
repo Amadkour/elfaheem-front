@@ -5,6 +5,9 @@
 // The server returns the three periods of every child in ONE call (period=all), so switching
 // between Daily / Weekly / Monthly is instant. Day / week boundaries are computed by the server
 // (Africa/Cairo, weeks start on Saturday by default).
+//
+// Each report also shows "Marks from the teachers": the child's analytics profile (the same view the child has in
+// the student app — published marks with the class average). With several children, chips at the top show one.
 library;
 
 import 'package:flutter/material.dart';
@@ -14,6 +17,9 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../shared/analytics/analytics_ui.dart';
+import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
+import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
 import 'parent_report_widgets.dart';
 import 'parent_widgets.dart';
@@ -65,6 +71,7 @@ class _ReportsBody extends StatefulWidget {
 class _ReportsBodyState extends State<_ReportsBody> {
   late final ParentReportsProvider _p = ParentReportsProvider();
   String _period = 'daily';
+  int? _only; // several children: show one (null = all)
 
   @override
   void initState() {
@@ -123,6 +130,20 @@ class _ReportsBodyState extends State<_ReportsBody> {
             ]),
           ]),
         ),
+        if (widget.studentId == null && p.children.length > 1)
+          SizedBox(
+            height: 46,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              children: [
+                _childChip(context, null, anTr('pl_all_children', 'All children')),
+                for (final ch in p.children)
+                  if ((ch['student'] as Map?)?['id'] case final num id)
+                    _childChip(context, id.toInt(), '${(ch['student'] as Map)['name']}'),
+              ],
+            ),
+          ),
         Expanded(
           child: !p.loaded && p.isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -136,11 +157,12 @@ class _ReportsBodyState extends State<_ReportsBody> {
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
               children: [
                 for (final ch in p.children)
-                  if (ch[_period] is Map)
+                  if (ch[_period] is Map && (_only == null || (ch['student'] as Map?)?['id'] == _only))
                     _ChildReportCard(
                       name: '${(ch['student'] as Map)['name']}',
                       report: Map<String, dynamic>.from(ch[_period] as Map),
                       period: _period,
+                      profile: p.profiles[((ch['student'] as Map?)?['id'] as num?)?.toInt()],
                     ),
               ],
             ),
@@ -149,17 +171,39 @@ class _ReportsBodyState extends State<_ReportsBody> {
       ]);
     }),
   );
+
+  Widget _childChip(BuildContext context, int? id, String label) {
+    final c = context.colors;
+    final on = _only == id;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 8),
+      child: ChoiceChip(
+        selected: on,
+        showCheckmark: false,
+        avatar: id == null ? Icon(Icons.groups_rounded, size: 16, color: on ? Colors.white : c.textMedium) : AnAvatar(name: label, size: 22),
+        label: Text(label, style: anText(12.5, w: FontWeight.w700, c: on ? Colors.white : c.textDark)),
+        selectedColor: c.primary,
+        backgroundColor: c.cardBg,
+        side: BorderSide(color: on ? c.primary : c.divider),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        onSelected: (_) => setState(() => _only = id),
+      ),
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  One child, one period — the full report
 // ═════════════════════════════════════════════════════════════════════════════
 class _ChildReportCard extends StatelessWidget {
-  const _ChildReportCard({required this.name, required this.report, required this.period});
+  const _ChildReportCard({required this.name, required this.report, required this.period, this.profile});
 
   final String name;
   final Map<String, dynamic> report;
   final String period;
+
+  /// The child's analytics profile (published marks + class averages) — null when not available.
+  final DlProfile? profile;
 
   Map get _s => report['summary'] as Map;
   Map get _prev => report['previous_summary'] as Map;
@@ -209,8 +253,12 @@ class _ChildReportCard extends StatelessWidget {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            const Icon(Icons.person_rounded, color: Colors.white),
-            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white24),
+              child: AnAvatar(name: name, url: profile?.imageUrl, size: 34, color: tierColor, onColor: true),
+            ),
+            const SizedBox(width: 10),
             Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
           ]),
           Text(range, style: const TextStyle(color: Colors.white70, fontSize: 12)),
@@ -246,6 +294,9 @@ class _ChildReportCard extends StatelessWidget {
           hint: 'pl_sec_insights_hint'.tr,
           child: Column(children: [for (final i in insights) PlInsightTile(level: '${i['level']}', text: _insight(i))]),
         ),
+
+      // ── MARKS FROM THE TEACHERS (same view as the child's analytics profile) ─
+      if (profile != null) ParentChildMarksSection(profile: profile!),
 
       // ── KEY NUMBERS ─────────────────────────────────────────────────────────
       LayoutBuilder(builder: (context, box) {

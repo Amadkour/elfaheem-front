@@ -9,6 +9,7 @@ import '../../../../config/app_config.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../../student/analysis/student_analytics_profile_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -522,14 +523,33 @@ class _StudentTile extends StatelessWidget {
         ]),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
+          // tap the student → their analytics profile (progress, exams, marks, flags — the same one parents see)
+          child: InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => StudentAnalyticsProfileScreen.forTeacher(
+                  studentId: student.id,
+                  studentName: student.name,
+                  courseId: context.read<TeacherAttendanceProvider>().courseId,
+                ),
+              ),
+            ),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(student.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: examT(14, w: FontWeight.w800, c: c.textDark)),
+              Row(children: [
+                Flexible(
+                  child: Text(student.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: examT(14, w: FontWeight.w800, c: c.textDark)),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.insights_rounded, size: 14, color: c.primary.withValues(alpha: 0.7)),
+              ]),
               const SizedBox(height: 5),
               if (student.durationMinutes != null)
                 ExamChip(
@@ -540,6 +560,7 @@ class _StudentTile extends StatelessWidget {
               else
                 ExamBadge(present ? 'present'.tr : 'absent'.tr, statusColor),
             ],
+          ),
           ),
         ),
         Switch.adaptive(

@@ -12,6 +12,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
+import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
 
 import '../../../../utils/widget/base_page.dart';
 
@@ -340,7 +341,20 @@ class _FlagCard extends StatelessWidget {
                 ]),
                 children: [
                   for (final s in item.students)
-                    Padding(
+                    InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      // tap → the student's analytics profile
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StudentAnalyticsProfileScreen.forTeacher(
+                            studentId: s.studentId,
+                            studentName: s.name,
+                            courseId: context.read<TeacherReadFlagsProvider>().courseId,
+                          ),
+                        ),
+                      ),
+                      child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Row(children: [
                         CircleAvatar(
@@ -356,7 +370,10 @@ class _FlagCard extends StatelessWidget {
                         ),
                         ExamBadge(
                             tx('flag_wrong_times', {'n': s.wrongCount}), kDanger),
+                        const SizedBox(width: 4),
+                        Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
                       ]),
+                    ),
                     ),
                 ],
               ),

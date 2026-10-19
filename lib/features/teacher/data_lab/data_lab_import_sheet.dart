@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_import_sheet.dart
+// lib/features/teacher/data_lab/data_lab_import_sheet.dart
 // Import wizard: pick file → match columns → decide what happens to students who are not in the course.
 //
 //  1. file        .xlsx / .csv (header line + data lines). One column is enough.
@@ -149,6 +149,13 @@ class _ImportWizardState extends State<_ImportWizard> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Changes what happens to unmatched lines, then asks the server again (outside setState on purpose).
+  void _setPolicy(String v) {
+    if (_policy == v) return;
+    setState(() => _policy = v);
+    _check();
   }
 
   Future<void> _goCheck() async {
@@ -390,11 +397,26 @@ class _ImportWizardState extends State<_ImportWizard> {
         ]),
         if (pl.newColumns.isNotEmpty) Padding(
           padding: const EdgeInsets.only(top: 10),
-          child: Wrap(spacing: 6, runSpacing: 6, children: [
+          child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
             Text('${'dl_plan_new_columns'.tr}:', style: dlText(12, c: c.textMedium)),
-            for (final n in pl.newColumns) DlTag(n, c.purple, icon: Icons.add_chart_rounded),
+            if (pl.newColumnsDetail.isNotEmpty)
+              for (final n in pl.newColumnsDetail)
+                DlTag(
+                  n['max'] == null ? '${n['label']}' : '${n['label']} · /${dlFmt(n['max'])}',
+                  c.purple,
+                  icon: n['type'] == 'number' ? Icons.pin_rounded : Icons.text_fields_rounded,
+                )
+            else
+              for (final n in pl.newColumns) DlTag(n, c.purple, icon: Icons.add_chart_rounded),
           ]),
         ),
+        if (pl.newColumnsDetail.any((n) => (dlNum(n['max']) ?? 100) > 100))
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: _Tip(Icons.straighten_rounded,
+                dlTr('dl_plan_full_mark', 'Some marks are above 100, so that column\'s full mark follows the highest mark. You can change it later.'),
+                color: c.primary),
+          ),
         if (pl.emptyKey + pl.ambiguous > 0)
           Padding(
             padding: const EdgeInsets.only(top: 10),
@@ -408,10 +430,7 @@ class _ImportWizardState extends State<_ImportWizard> {
           title: 'dl_policy_temp'.tr,
           sub: 'dl_policy_temp_sub'.tr,
           selected: _policy == 'temporary',
-          onTap: () => setState(() {
-            _policy = 'temporary';
-            _check();
-          }),
+          onTap: () => _setPolicy('temporary'),
         ),
         if (pv.allowCreateAccounts)
           _PolicyTile(
@@ -419,20 +438,14 @@ class _ImportWizardState extends State<_ImportWizard> {
             title: 'dl_policy_accounts'.tr,
             sub: 'dl_policy_accounts_sub'.tr,
             selected: _policy == 'create_accounts',
-            onTap: () => setState(() {
-              _policy = 'create_accounts';
-              _check();
-            }),
+            onTap: () => _setPolicy('create_accounts'),
           ),
         _PolicyTile(
           icon: Icons.block_rounded,
           title: 'dl_policy_skip'.tr,
           sub: 'dl_policy_skip_sub'.tr,
           selected: _policy == 'skip',
-          onTap: () => setState(() {
-            _policy = 'skip';
-            _check();
-          }),
+          onTap: () => _setPolicy('skip'),
         ),
       ] else
         Padding(padding: const EdgeInsets.only(top: 12), child: _Tip(Icons.mark_chat_unread_rounded, 'dl_policy_request_note'.tr, color: c.warning)),
@@ -504,6 +517,32 @@ class _ImportWizardState extends State<_ImportWizard> {
       ]),
       if (r.raw['will_stage'] != null && r.willStage > 0)
         Padding(padding: const EdgeInsets.only(top: 12), child: _Tip(Icons.mark_chat_unread_rounded, 'dl_done_request_sent'.tr, color: c.warning)),
+      if (r.cellsWritten > 0)
+        Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: _Tip(Icons.task_alt_rounded, '${r.cellsWritten} ${dlTr('dl_done_values', 'values written')}', color: c.success),
+        ),
+      if (r.errors.isNotEmpty) ...[
+        DlSectionTitle(
+          dlTr('dl_done_problems', 'Lines that need a look'),
+          subtitle: r.rejectedCells > 0
+              ? '${r.rejectedCells} ${dlTr('dl_done_refused', 'values were refused (not a number, out of range, not a listed choice …)')}'
+              : null,
+        ),
+        for (final e in r.errors.take(12))
+          Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(color: c.warning.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+            child: Row(children: [
+              if ((e['row'] as num? ?? 0) > 0) ...[
+                DlTag('${dlTr('dl_line', 'Line')} ${e['row']}', c.warning),
+                const SizedBox(width: 8),
+              ],
+              Expanded(child: Text('${e['message']}', style: dlText(12, c: c.textDark, h: 1.35))),
+            ]),
+          ),
+      ],
       if (creds.isNotEmpty) ...[
         DlSectionTitle('dl_done_accounts'.tr, subtitle: 'dl_done_accounts_sub'.tr, trailing: TextButton.icon(
           onPressed: () {

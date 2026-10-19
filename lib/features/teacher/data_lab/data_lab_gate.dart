@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_gate.dart
+// lib/features/teacher/data_lab/data_lab_gate.dart
 // Student side of a Data Lab request: a screen that stays on top of the app until the student answers.
 //
 // Wrap the student's home once (e.g. in the student dashboard):

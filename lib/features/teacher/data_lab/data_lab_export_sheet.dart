@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_export_sheet.dart
+// lib/features/teacher/data_lab/data_lab_export_sheet.dart
 // Export: choose the columns (all of them are listed), the file type, and where it goes —
 //   • download            the file straight to this device (share sheet / browser download)
 //   • e-mail me           summary in the mail body + the sheet attached (Excel or PDF …)
@@ -67,6 +67,10 @@ class _ExportSheetState extends State<_ExportSheet> {
         if (_delivery == 'email' && _emailTo.text.trim().isNotEmpty) 'email_to': _emailTo.text.trim(),
         if (_note.text.trim().isNotEmpty) 'note': _note.text.trim(),
         'lang': AppConfig.lang,
+        // the same lines, in the same order, as on screen
+        if (p.search.trim().isNotEmpty) 'search': p.search.trim(),
+        'sort': ?p.sort,
+        'desc': p.desc,
       });
       if (!mounted) return;
       switch (_delivery) {
@@ -105,6 +109,14 @@ class _ExportSheetState extends State<_ExportSheet> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: DlTag('${'dl_exp_only'.tr} ${p.selected.length}', c.primary, icon: Icons.checklist_rounded),
+              )
+            else if (p.search.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: DlBanner(
+                  icon: Icons.filter_alt_rounded,
+                  text: '${dlTr('dl_exp_filtered', 'Only the lines that match your search')}: “${p.search.trim()}”',
+                ),
               ),
             DlSectionTitle('dl_exp_where'.tr),
             _Dest(Icons.download_rounded, 'dl_exp_download'.tr, 'dl_exp_download_sub'.tr, _delivery == 'download', () => setState(() => _delivery = 'download')),

@@ -1,4 +1,4 @@
-// lib/features/shared/data_lab/data_lab_models.dart
+// lib/features/teacher/data_lab/data_lab_models.dart
 // Plain Dart models of the Data Lab API (no Flutter import on purpose).
 library;
 
@@ -34,12 +34,16 @@ class DlConfig {
     this.maxImportRows = 2000,
     this.maxCustomColumns = 30,
     this.exportFormats = const ['xlsx', 'csv', 'pdf'],
+    this.passPercent = 50,
   });
 
   final bool enabled, studentView, allowImport, allowExport, allowEmailExport;
   final bool allowCreateAccounts, allowStudentRequests, allowCertificates;
   final int maxImportRows, maxCustomColumns;
   final List<String> exportFormats;
+
+  /// Default pass mark (% of a column's full mark) set by the admin — used by the stats and the certificates.
+  final double passPercent;
 
   factory DlConfig.fromJson(Map<String, dynamic> j) => DlConfig(
     enabled: j['enabled'] != false,
@@ -53,7 +57,149 @@ class DlConfig {
     maxImportRows: (j['max_import_rows'] as num?)?.toInt() ?? 2000,
     maxCustomColumns: (j['max_custom_columns'] as num?)?.toInt() ?? 30,
     exportFormats: (j['export_formats'] as List?)?.map((e) => '$e').toList() ?? const ['xlsx', 'csv', 'pdf'],
+    passPercent: dlNum(j['pass_percent']) ?? 50,
   );
+}
+
+// ── column style: colour, font, alignment, highlight rules ─────────────────
+
+/// Colours are stored as a theme name (primary, success, warning, danger, purple, accent, accent2) — so they follow
+/// the app theme and dark mode — or as '#RRGGBB'.
+const dlStyleColors = ['primary', 'success', 'warning', 'danger', 'purple', 'accent', 'accent2', '#3B82F6', '#14B8A6', '#F97316', '#EC4899', '#64748B'];
+
+/// Fonts the teacher can pick (bundled with the app). null = the sheet's default.
+const dlStyleFonts = <String?>[null, 'tajawal', 'bahji'];
+
+/// One highlight rule. The first rule that matches a cell colours it.
+///   cmp     : this cell  <op>  a   (op: > >= < <= = <> between contains)   — numbers, or text for = <> contains
+///   empty   : the cell is empty          filled : the cell has a value
+///   formula : any formula (column names in [ ], [@] = this cell) that is true (≠ 0 / not empty)
+class DlRule {
+  const DlRule({required this.type, this.op = '>=', this.a, this.b, this.expr, this.bg = 'danger', this.fg, this.bold = false});
+
+  final String type, op;
+  final String? a, b, expr, bg, fg;
+  final bool bold;
+
+  DlRule copyWith({String? type, String? op, String? a, String? b, String? expr, String? bg, String? fg, bool? bold, bool clearFg = false}) => DlRule(
+    type: type ?? this.type,
+    op: op ?? this.op,
+    a: a ?? this.a,
+    b: b ?? this.b,
+    expr: expr ?? this.expr,
+    bg: bg ?? this.bg,
+    fg: clearFg ? null : (fg ?? this.fg),
+    bold: bold ?? this.bold,
+  );
+
+  factory DlRule.fromJson(Map<String, dynamic> j) => DlRule(
+    type: '${j['type'] ?? 'cmp'}',
+    op: '${j['op'] ?? '>='}',
+    a: j['a']?.toString(),
+    b: j['b']?.toString(),
+    expr: j['expr'] as String?,
+    bg: j['bg'] as String?,
+    fg: j['fg'] as String?,
+    bold: j['bold'] == true,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'type': type,
+    'op': op,
+    'a': ?a,
+    'b': ?b,
+    'expr': ?expr,
+    'bg': ?bg,
+    'fg': ?fg,
+    if (bold) 'bold': true,
+  };
+}
+
+class DlColumnStyle {
+  const DlColumnStyle({
+    this.color,
+    this.font,
+    this.size = 1.0,
+    this.bold = false,
+    this.align,
+    this.scale = false,
+    this.rules = const [],
+    this.cells = const {},
+  });
+
+  /// Tint of the whole column (title + cells).
+  final String? color;
+  final String? font;
+
+  /// Text size factor: 0.9 small · 1 normal · 1.15 large.
+  final double size;
+  final bool bold;
+
+  /// start | center | end (null = the sheet's default).
+  final String? align;
+
+  /// Colour scale on numbers: low = red → middle = amber → high = green (of the column's full mark).
+  final bool scale;
+  final List<DlRule> rules;
+
+  /// Cells highlighted by hand: row id → colour.
+  final Map<int, String> cells;
+
+  bool get isEmpty => color == null && font == null && size == 1.0 && !bold && align == null && !scale && rules.isEmpty && cells.isEmpty;
+
+  DlColumnStyle copyWith({
+    String? color,
+    String? font,
+    double? size,
+    bool? bold,
+    String? align,
+    bool? scale,
+    List<DlRule>? rules,
+    Map<int, String>? cells,
+    bool clearColor = false,
+    bool clearFont = false,
+    bool clearAlign = false,
+  }) =>
+      DlColumnStyle(
+        color: clearColor ? null : (color ?? this.color),
+        font: clearFont ? null : (font ?? this.font),
+        size: size ?? this.size,
+        bold: bold ?? this.bold,
+        align: clearAlign ? null : (align ?? this.align),
+        scale: scale ?? this.scale,
+        rules: rules ?? this.rules,
+        cells: cells ?? this.cells,
+      );
+
+  factory DlColumnStyle.fromJson(Map<String, dynamic> j) {
+    if (j.isEmpty) return const DlColumnStyle();
+    final cells = <int, String>{};
+    dlMap(j['cells']).forEach((k, v) {
+      final id = int.tryParse(k);
+      if (id != null && v is String) cells[id] = v;
+    });
+    return DlColumnStyle(
+      color: j['color'] as String?,
+      font: j['font'] as String?,
+      size: dlNum(j['size']) ?? 1.0,
+      bold: j['bold'] == true,
+      align: j['align'] as String?,
+      scale: j['scale'] == true,
+      rules: dlList(j['rules']).map(DlRule.fromJson).toList(),
+      cells: cells,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'color': ?color,
+    'font': ?font,
+    if (size != 1.0) 'size': size,
+    if (bold) 'bold': true,
+    'align': ?align,
+    if (scale) 'scale': true,
+    if (rules.isNotEmpty) 'rules': [for (final r in rules) r.toJson()],
+    if (cells.isNotEmpty) 'cells': {for (final e in cells.entries) '${e.key}': e.value},
+  };
 }
 
 // ── sheet ────────────────────────────────────────────────────────────────────
@@ -72,12 +218,27 @@ class DlColumn {
     this.maxValue = 100,
     this.visibleToStudents = false,
     this.isHidden = false,
+    this.isLocked = false,
     this.position = 0,
+    this.expr,
+    this.display,
+    this.style = const DlColumnStyle(),
   });
 
   final int id;
   final String key, label, kind, dataType;
   final String? source;
+
+  /// Excel-style formula written with column KEYS ({quiz_1}); see data_lab_formula.dart.
+  final String? expr;
+
+  /// How this column is drawn: 'value' | 'bar' | 'both' (null = follow the sheet's default).
+  final String? display;
+
+  /// Colour, font, alignment, highlight rules and manually highlighted cells (shared by everyone on the sheet).
+  final DlColumnStyle style;
+
+  bool get hasExpr => isCalculated && expr != null && expr!.trim().isNotEmpty;
 
   /// calculated columns: [{key, weight}]
   final List<Map<String, dynamic>> inputs;
@@ -85,6 +246,9 @@ class DlColumn {
   final List<String> options;
   final double maxValue;
   final bool visibleToStudents, isHidden;
+
+  /// Approved results: the server refuses edits and imports until the teacher unlocks the column.
+  final bool isLocked;
   final int position;
 
   bool get isNumber => dataType == 'number';
@@ -92,7 +256,7 @@ class DlColumn {
   bool get isBuiltin => kind == 'builtin';
   bool get isCustom => kind == 'custom';
 
-  DlColumn copyWith({String? label, bool? visibleToStudents, bool? isHidden}) => DlColumn(
+  DlColumn copyWith({String? label, bool? visibleToStudents, bool? isHidden, bool? isLocked, String? display, DlColumnStyle? style}) => DlColumn(
     id: id,
     key: key,
     label: label ?? this.label,
@@ -105,7 +269,11 @@ class DlColumn {
     maxValue: maxValue,
     visibleToStudents: visibleToStudents ?? this.visibleToStudents,
     isHidden: isHidden ?? this.isHidden,
+    isLocked: isLocked ?? this.isLocked,
     position: position,
+    expr: expr,
+    display: display ?? this.display,
+    style: style ?? this.style,
   );
 
   /// 0–100 style columns get a coloured bar.
@@ -123,10 +291,14 @@ class DlColumn {
       inputs: dlList(f['inputs']),
       missing: '${f['missing'] ?? 'zero'}',
       options: (j['options'] as List?)?.map((e) => '$e').toList() ?? const [],
-      maxValue: dlNum(j['max_value']) ?? 100,
+      maxValue: dlNum(f['max']) ?? dlNum(j['max_value']) ?? 100,
       visibleToStudents: j['visible_to_students'] == true,
       isHidden: j['is_hidden'] == true,
+      isLocked: j['is_locked'] == true,
       position: (j['position'] as num?)?.toInt() ?? 0,
+      expr: f['expr'] is String && (f['expr'] as String).trim().isNotEmpty ? f['expr'] as String : null,
+      display: j['display'] as String?,
+      style: DlColumnStyle.fromJson(dlMap(j['style'])),
     );
   }
 }
@@ -170,16 +342,34 @@ class DlRow {
 }
 
 class DlStat {
-  const DlStat({this.avg, this.min, this.max, this.filled = 0});
+  const DlStat({
+    this.avg,
+    this.min,
+    this.max,
+    this.filled = 0,
+    this.median,
+    this.std,
+    this.passCount = 0,
+    this.passRate,
+    this.buckets = const [],
+  });
 
-  final double? avg, min, max;
-  final int filled;
+  final double? avg, min, max, median, std, passRate;
+  final int filled, passCount;
+
+  /// How many students fall in 0–20 %, 20–40 %, 40–60 %, 60–80 %, 80–100 % of the full mark.
+  final List<int> buckets;
 
   factory DlStat.fromJson(Map<String, dynamic> j) => DlStat(
     avg: dlNum(j['avg']),
     min: dlNum(j['min']),
     max: dlNum(j['max']),
     filled: (j['filled'] as num?)?.toInt() ?? 0,
+    median: dlNum(j['median']),
+    std: dlNum(j['std']),
+    passCount: (j['pass_count'] as num?)?.toInt() ?? 0,
+    passRate: dlNum(j['pass_rate']),
+    buckets: (j['buckets'] as List?)?.map((e) => (e as num?)?.toInt() ?? 0).toList() ?? const [],
   );
 }
 
@@ -286,6 +476,11 @@ class DlImportPlan {
   int get willCreateAccounts => _i('will_create_accounts');
   int get willStage => _i('will_stage');
   int get rowsMissingContact => _i('rows_missing_contact');
+  int get cellsWritten => _i('cells_written');
+  int get rejectedCells => _i('rejected_cells');
+
+  /// [{label, type, max}] — a new number column gets the highest mark of the file as full mark when it is above 100.
+  List<Map<String, dynamic>> get newColumnsDetail => dlList(raw['new_columns_detail']);
   List<String> get newColumns => (raw['new_columns'] as List?)?.map((e) => '$e').toList() ?? [];
   List<Map<String, dynamic>> get missingFields => dlList(raw['missing_fields']);
   List<Map<String, dynamic>> get errors => dlList(raw['errors']);
@@ -469,11 +664,19 @@ class DlRequestInfo {
     required this.isActive,
     required this.answered,
     required this.total,
+    this.isMergeKey = false,
+    this.createdAt,
   });
 
   final int id, answered, total;
   final String title, inputType;
-  final bool isActive;
+  final bool isActive, isMergeKey;
+  final DateTime? createdAt;
+
+  int get waiting {
+    final w = total - answered;
+    return w < 0 ? 0 : w;
+  }
 
   factory DlRequestInfo.fromJson(Map<String, dynamic> j) => DlRequestInfo(
     id: (j['id'] as num).toInt(),
@@ -482,5 +685,49 @@ class DlRequestInfo {
     isActive: j['is_active'] == true,
     answered: (j['answered'] as num?)?.toInt() ?? 0,
     total: (j['total'] as num?)?.toInt() ?? 0,
+    isMergeKey: j['is_merge_key'] == true,
+    createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal(),
+  );
+}
+
+// ── change history ───────────────────────────────────────────────────────────
+
+class DlAuditEntry {
+  DlAuditEntry({
+    required this.id,
+    required this.action,
+    this.rowId,
+    this.rowLabel,
+    this.columnKey,
+    this.columnLabel,
+    this.oldValue,
+    this.newValue,
+    this.note,
+    this.user = '',
+    this.at,
+  });
+
+  final int id;
+
+  /// cell | import | column_create | column_update | column_delete | lock | unlock | row_delete | request |
+  /// certificates | publish
+  final String action;
+  final int? rowId;
+  final String? rowLabel, columnKey, columnLabel, oldValue, newValue, note;
+  final String user;
+  final DateTime? at;
+
+  factory DlAuditEntry.fromJson(Map<String, dynamic> j) => DlAuditEntry(
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    action: '${j['action'] ?? ''}',
+    rowId: (j['row_id'] as num?)?.toInt(),
+    rowLabel: j['row_label'] as String?,
+    columnKey: j['column_key'] as String?,
+    columnLabel: j['column_label'] as String?,
+    oldValue: j['old'] as String?,
+    newValue: j['new'] as String?,
+    note: j['note'] as String?,
+    user: '${j['user'] ?? ''}',
+    at: DateTime.tryParse('${j['at'] ?? ''}')?.toLocal(),
   );
 }

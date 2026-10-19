@@ -1,3 +1,10 @@
+// lib/features/student/analysis/student_course_analytics_screen.dart
+// One course, everything about it — the student's (and the parent's) report:
+//   Overview   overall score, KPIs, a kind summary, you vs the class, exam trend, attendance timeline
+//   Attendance every session, searchable and filterable
+//   Exams      every exam with its result
+//   My marks   what the teacher published from the Data Lab (with the class average), progress and saved flags
+// Open on a given tab with [initialTab] (0 overview · 1 attendance · 2 exams · 3 marks).
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -8,45 +15,24 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_education_app/utils/widget/search_text_field.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../teacher/analysis/attendance/attendance_model.dart';
+import '../../teacher/data_lab/data_lab_models.dart';
 import 'attendance/student_attendance_model.dart';
 import 'student_analytics_provider.dart';
+import 'student_analytics_profile_screen.dart';
+import 'student_analytics_widgets.dart';
+import 'flags/student_flags_screen.dart';
+import 'exam/student_exam_list_screen.dart';
+import 'exam/student_exam_provider.dart';
 
-const _font = 'bahji';
+TextStyle _t(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) => anText(size, w: w, c: c, h: h);
 
-TextStyle _t(double size,
-    {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
-    TextStyle(fontFamily: _font, fontSize: size, fontWeight: w, color: c, height: h);
+String _level(double v) => anLevel(v);
 
-/// Overall performance = average of attendance and exam average
-/// (attendance only when no exam has been taken yet).
-double _overall(StudentCourseAnalyticsProvider p) {
-  final att = p.attendanceRate.toDouble();
-  if (p.attemptedCount == 0) return att;
-  return (att + p.avgScore.toDouble()) / 2;
-}
+Color _scoreColor(BuildContext c, double v) => anScoreColor(c, v);
 
-String _level(double v) => v >= 85
-    ? 'sa_level_excellent'.tr
-    : v >= 70
-    ? 'sa_level_very_good'.tr
-    : v >= 50
-    ? 'sa_level_good'.tr
-    : 'sa_level_needs_follow_up'.tr;
+String _fmt(String key, Map<String, Object?> params) => anFmt(key, params);
 
-Color _scoreColor(BuildContext c, double v) => v >= 75
-    ? c.colors.success
-    : v >= 50
-    ? const Color(0xFFF59E0B)
-    : const Color(0xFFEF4444);
-
-const _danger = Color(0xFFEF4444);
-
-/// Translates [key] and fills `{name}` placeholders.
-String _fmt(String key, Map<String, Object?> params) {
-  var out = key.tr;
-  params.forEach((k, v) => out = out.replaceAll('{$k}', '$v'));
-  return out;
-}
+bool _isPresent(FullAttendance r) => anIsPresent(r);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Entry
@@ -56,23 +42,32 @@ class StudentCourseAnalyticsScreen extends StatelessWidget {
   final int courseId;
   final String courseTitle;
 
+  /// 0 overview · 1 attendance · 2 exams · 3 my marks
+  final int initialTab;
+
+  /// The course's analytics block when the caller already has it (the hub does): it shows at once.
+  final DlCourseBlock? initialBlock;
+
   const StudentCourseAnalyticsScreen({
     super.key,
     required this.courseId,
     required this.courseTitle,
+    this.initialTab = 0,
+    this.initialBlock,
   });
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-    create: (_) =>
-    StudentCourseAnalyticsProvider(courseId: courseId)..loadAll(),
-    child: _CourseAnalyticsView(courseTitle: courseTitle),
+    create: (_) => StudentCourseAnalyticsProvider(courseId: courseId, initialBlock: initialBlock)..loadAll(),
+    child: _CourseAnalyticsView(courseId: courseId, courseTitle: courseTitle, initialTab: initialTab),
   );
 }
 
 class _CourseAnalyticsView extends StatefulWidget {
+  final int courseId;
   final String courseTitle;
-  const _CourseAnalyticsView({required this.courseTitle});
+  final int initialTab;
+  const _CourseAnalyticsView({required this.courseId, required this.courseTitle, required this.initialTab});
 
   @override
   State<_CourseAnalyticsView> createState() => _CourseAnalyticsViewState();
@@ -85,7 +80,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this, initialIndex: widget.initialTab.clamp(0, 3));
   }
 
   @override
@@ -99,14 +94,14 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
     final prov = context.watch<StudentCourseAnalyticsProvider>();
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: pageDirection, // follows the app language (it was forced to RTL)
       child: BasePage(
         maxWith: 1100,
         useWebCard: true,
         child: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [
             SliverToBoxAdapter(
-              child: _Hero(title: widget.courseTitle, prov: prov),
+              child: _Hero(title: widget.courseTitle, prov: prov, onOpenTab: (i) => _tab.animateTo(i)),
             ),
             SliverPersistentHeader(
               pinned: true,
@@ -122,9 +117,10 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
           body: TabBarView(
             controller: _tab,
             children: [
-              _OverviewTab(prov: prov),
+              _OverviewTab(prov: prov, onOpenTab: (i) => _tab.animateTo(i)),
               _AttendanceTab(prov: prov),
               _ExamsTab(prov: prov),
+              _MarksTab(prov: prov, courseId: widget.courseId, courseTitle: widget.courseTitle),
             ],
           ),
         ),
@@ -140,11 +136,12 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
 class _Hero extends StatelessWidget {
   final String title;
   final StudentCourseAnalyticsProvider prov;
-  const _Hero({required this.title, required this.prov});
+  final ValueChanged<int> onOpenTab;
+  const _Hero({required this.title, required this.prov, required this.onOpenTab});
 
   @override
   Widget build(BuildContext context) {
-    final overall = _overall(prov);
+    final overall = prov.overall ?? 0;
     final loading = prov.loadingAtt && prov.loadingExams;
 
     return Container(
@@ -152,7 +149,7 @@ class _Hero extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [const Color(0xFF0D47A1), context.colors.primary],
+          colors: [context.colors.primaryDark, context.colors.primary],
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
         boxShadow: [
@@ -212,9 +209,20 @@ class _Hero extends StatelessWidget {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'sa_overall_hint'.tr,
+                      prov.progress != null
+                          ? anTr('sa_overall_hint_full', 'An average of your progress, attendance and exam results.')
+                          : 'sa_overall_hint'.tr,
                       style: _t(12, c: Colors.white70, h: 1.6),
                     ),
+                    if (prov.progress != null) ...[
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        const Icon(Icons.trending_up_rounded, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text('${anTr('an_course_progress', 'Course progress')}: ${anPct(prov.progress)}',
+                            style: _t(12.5, w: FontWeight.w700, c: Colors.white)),
+                      ]),
+                    ],
                   ],
                 ),
               ),
@@ -222,22 +230,25 @@ class _Hero extends StatelessWidget {
             const SizedBox(height: 20),
             Row(children: [
               _HeroStat(
+                onTap: () => onOpenTab(1),
                 icon: Icons.check_circle_rounded,
-                color: const Color(0xFF69F0AE),
+                color: Colors.white,
                 value: '${prov.attendanceRate.toStringAsFixed(0)}%',
                 label: 'attendance_rate'.tr,
               ),
               const SizedBox(width: 10),
               _HeroStat(
+                onTap: () => onOpenTab(2),
                 icon: Icons.emoji_events_rounded,
-                color: const Color(0xFFFFD740),
+                color: Colors.white,
                 value: '${prov.passedCount}/${prov.attemptedCount}',
                 label: 'sa_passed_exams'.tr,
               ),
               const SizedBox(width: 10),
               _HeroStat(
+                onTap: () => onOpenTab(2),
                 icon: Icons.bar_chart_rounded,
-                color: const Color(0xFF80D8FF),
+                color: Colors.white,
                 value: '${prov.avgScore.toStringAsFixed(0)}%',
                 label: 'sa_avg_score'.tr,
               ),
@@ -274,15 +285,17 @@ class _HeroStat extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String value, label;
+  final VoidCallback? onTap;
   const _HeroStat(
       {required this.icon,
         required this.color,
         required this.value,
-        required this.label});
+        required this.label,
+        this.onTap});
 
   @override
   Widget build(BuildContext context) => Expanded(
-    child: Container(
+    child: GestureDetector(onTap: onTap, child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.12),
@@ -299,7 +312,7 @@ class _HeroStat extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: _t(10, c: Colors.white70)),
       ]),
-    ),
+    )),
   );
 }
 
@@ -366,13 +379,17 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
   @override
   double get maxExtent => 66;
 
+  // Scales down instead of overflowing: four tabs fit on a small phone too.
   Widget _tab(IconData i, String s) => Tab(
     height: 42,
-    child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(i, size: 16),
-      const SizedBox(width: 6),
-      Text(s),
-    ]),
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(i, size: 16),
+        const SizedBox(width: 6),
+        Text(s),
+      ]),
+    ),
   );
 
   @override
@@ -400,7 +417,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
             indicator: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               gradient: LinearGradient(
-                  colors: [const Color(0xFF0D47A1), primary]),
+                  colors: [context.colors.primaryDark, primary]),
             ),
             labelColor: Colors.white,
             unselectedLabelColor: inactive,
@@ -410,6 +427,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
               _tab(Icons.dashboard_rounded, 'sa_tab_overview'.tr),
               _tab(Icons.fact_check_rounded, 'attendance'.tr),
               _tab(Icons.quiz_rounded, 'exams'.tr),
+              _tab(Icons.workspace_premium_rounded, anTr('sa_tab_marks', 'My marks')),
             ],
           ),
         ),
@@ -425,7 +443,8 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
 
 class _OverviewTab extends StatelessWidget {
   final StudentCourseAnalyticsProvider prov;
-  const _OverviewTab({required this.prov});
+  final ValueChanged<int> onOpenTab;
+  const _OverviewTab({required this.prov, required this.onOpenTab});
 
   List<_Insight> _insights(BuildContext context) {
     final list = <_Insight>[];
@@ -438,10 +457,10 @@ class _OverviewTab extends StatelessWidget {
         list.add(_Insight(Icons.verified_rounded, success,
             _fmt('sa_ins_att_excellent', {'present': prov.presentCount, 'total': prov.totalSessions})));
       } else if (rate >= 60) {
-        list.add(_Insight(Icons.info_rounded, const Color(0xFFF59E0B),
+        list.add(_Insight(Icons.info_rounded, context.colors.warning,
             _fmt('sa_ins_att_fair', {'absent': absent})));
       } else {
-        list.add(_Insight(Icons.warning_amber_rounded, _danger,
+        list.add(_Insight(Icons.warning_amber_rounded, context.colors.danger,
             _fmt('sa_ins_att_low', {'absent': absent})));
       }
     }
@@ -450,7 +469,7 @@ class _OverviewTab extends StatelessWidget {
       final failed = prov.attemptedCount - prov.passedCount;
       list.add(_Insight(
         failed == 0 ? Icons.emoji_events_rounded : Icons.school_rounded,
-        failed == 0 ? success : const Color(0xFFF59E0B),
+        failed == 0 ? success : context.colors.warning,
         failed == 0
             ? _fmt('sa_ins_exam_all_passed', {'n': prov.passedCount})
             : _fmt('sa_ins_exam_some', {'passed': prov.passedCount, 'attempted': prov.attemptedCount, 'failed': failed}),
@@ -461,14 +480,41 @@ class _OverviewTab extends StatelessWidget {
           .toList();
       if (done.isNotEmpty) {
         done.sort((a, b) => b.percentage!.compareTo(a.percentage!));
-        list.add(_Insight(Icons.star_rounded, const Color(0xFF3B82F6),
+        list.add(_Insight(Icons.star_rounded, context.colors.primary,
             _fmt('sa_ins_best', {'name': done.first.examName, 'pct': done.first.percentage!.toStringAsFixed(0)})));
       }
     }
 
+    final tr = prov.trend;
+    if (tr != null && tr.abs() >= 5) {
+      list.add(_Insight(
+        tr > 0 ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+        tr > 0 ? success : context.colors.warning,
+        tr > 0
+            ? anFmt('sa_ins_trend_up', {'n': tr.round()}, 'Your last exam is {n} points above your earlier average — keep it up!')
+            : anFmt('sa_ins_trend_down', {'n': (-tr).round()}, 'Your last exam is {n} points below your earlier average — a quick review can help.'),
+      ));
+    }
+
+    final b = prov.block;
+    if (b != null && b.progress != null) {
+      final p = b.progress!;
+      list.add(_Insight(
+        Icons.route_rounded,
+        p >= 75 ? success : (p >= 40 ? context.colors.primary : context.colors.warning),
+        p >= 100
+            ? anTr('sa_ins_progress_done', 'You completed every lesson of the course 🎉')
+            : anFmt('sa_ins_progress', {'n': p.round()}, 'You have completed {n}% of the course content.'),
+      ));
+    }
+    if (b != null && b.reviewFlags > 0) {
+      list.add(_Insight(Icons.bookmark_rounded, context.colors.warning,
+          anFmt('sa_ins_review', {'n': b.reviewFlags}, '{n} saved questions are waiting in your review bank.')));
+    }
+
     final pending = prov.exams.where((e) => !e.attempted).length;
     if (pending > 0) {
-      list.add(_Insight(Icons.pending_actions_rounded, Colors.teal,
+      list.add(_Insight(Icons.pending_actions_rounded, context.colors.accent2,
           _fmt('sa_ins_pending', {'n': pending})));
     }
     return list;
@@ -501,7 +547,7 @@ class _OverviewTab extends StatelessWidget {
             Expanded(
               child: _KpiCard(
                 icon: Icons.event_busy_rounded,
-                color: _danger,
+                color: context.colors.danger,
                 value: '${prov.totalSessions - prov.presentCount}',
                 label: 'sa_sessions_missed'.tr,
               ),
@@ -512,7 +558,7 @@ class _OverviewTab extends StatelessWidget {
             Expanded(
               child: _KpiCard(
                 icon: Icons.workspace_premium_rounded,
-                color: const Color(0xFFF59E0B),
+                color: context.colors.warning,
                 value: '${prov.passedCount}',
                 label: 'sa_passed_exams'.tr,
               ),
@@ -521,12 +567,21 @@ class _OverviewTab extends StatelessWidget {
             Expanded(
               child: _KpiCard(
                 icon: Icons.insights_rounded,
-                color: const Color(0xFF3B82F6),
+                color: context.colors.primary,
                 value: '${prov.avgScore.toStringAsFixed(0)}%',
                 label: 'sa_avg_score'.tr,
               ),
             ),
           ]),
+          if (prov.block?.progress != null) ...[
+            const SizedBox(height: 12),
+            _KpiCard(
+              icon: Icons.route_rounded,
+              color: context.colors.purple,
+              value: anPct(prov.block!.progress),
+              label: anTr('an_course_progress', 'Course progress'),
+            ),
+          ],
           const SizedBox(height: 16),
 
           if (insights.isNotEmpty)
@@ -545,6 +600,44 @@ class _OverviewTab extends StatelessWidget {
             ),
           if (insights.isNotEmpty) const SizedBox(height: 16),
 
+          // You vs the class (only what the teacher shares a class average for)
+          if (prov.block != null)
+            Builder(builder: (context) {
+              final rows = <(String, double?, double?)>[
+                (anTr('an_course_progress', 'Course progress'), prov.block!.progress, prov.classAvg('progress')),
+                ('attendance_rate'.tr, prov.totalSessions == 0 ? prov.block!.attendance : prov.attendanceRate, prov.classAvg('attendance')),
+                ('sa_avg_score'.tr, prov.attemptedCount == 0 ? prov.block!.examAvg : prov.avgScore, prov.classAvg('exam_avg')),
+              ];
+              if (!rows.any((r) => r.$2 != null && r.$3 != null)) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _SectionCard(
+                  icon: Icons.groups_rounded,
+                  title: anTr('an_vs_class', 'You and your class'),
+                  child: AnVsClassCard(rows: rows, bare: true),
+                ),
+              );
+            }),
+
+          // Teacher's published marks — a short preview, the full list is in "My marks"
+          if ((prov.block?.extraColumns ?? const []).isNotEmpty) ...[
+            _SectionCard(
+              icon: Icons.workspace_premium_rounded,
+              title: anTr('sa_tab_marks', 'My marks'),
+              trailing: TextButton(
+                onPressed: () => onOpenTab(3),
+                child: Text(anTr('an_see_all', 'See all'), style: _t(12, w: FontWeight.w700, c: context.colors.primary)),
+              ),
+              child: Column(children: [
+                for (final (i, col) in prov.block!.extraColumns.take(3).indexed) ...[
+                  if (i > 0) Divider(color: context.colors.divider, height: 22),
+                  AnMarkRow(col: col),
+                ],
+              ]),
+            ),
+            const SizedBox(height: 16),
+          ],
+
           // Exam chart
           if (prov.exams.any((e) => e.attempted && e.percentage != null)) ...[
             _SectionCard(
@@ -556,7 +649,7 @@ class _OverviewTab extends StatelessWidget {
                 Text('sa_passed_label'.tr,
                     style: _t(11, c: context.colors.textMedium)),
                 const SizedBox(width: 10),
-                const _Dot(_danger),
+                _Dot(context.colors.danger),
                 const SizedBox(width: 4),
                 Text('failed'.tr,
                     style: _t(11, c: context.colors.textMedium)),
@@ -576,7 +669,7 @@ class _OverviewTab extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text('attending'.tr, style: _t(11, c: context.colors.textMedium)),
                 const SizedBox(width: 10),
-                const _Dot(_danger),
+                _Dot(context.colors.danger),
                 const SizedBox(width: 4),
                 Text('did_not_attend'.tr, style: _t(11, c: context.colors.textMedium)),
               ]),
@@ -593,7 +686,7 @@ class _OverviewTab extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: (_isPresent(r)
                               ? context.colors.success
-                              : _danger)
+                              : context.colors.danger)
                               .withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(7),
                         ),
@@ -615,8 +708,6 @@ class _OverviewTab extends StatelessWidget {
   }
 }
 
-bool _isPresent(FullAttendance r) =>
-    r.attendance.isNotEmpty && r.attendance.first.isPresent;
 
 class _Insight extends StatelessWidget {
   final IconData icon;
@@ -722,7 +813,7 @@ class _ScoresChart extends StatelessWidget {
                 child: Builder(builder: (_) {
                   final pct = e.percentage!.clamp(0, 100).toDouble();
                   final color =
-                  e.passed == false ? _danger : context.colors.success;
+                  e.passed == false ? context.colors.danger : context.colors.success;
                   return Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -803,7 +894,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
     final filtered = prov.attendance.where((r) {
       if (_filter == 1 && !_isPresent(r)) return false;
       if (_filter == 2 && _isPresent(r)) return false;
-      if (q.isNotEmpty && !r.sessions.name.contains(q)) return false;
+      if (q.isNotEmpty && !r.sessions.name.toLowerCase().contains(q.toLowerCase())) return false;
       return true;
     }).toList();
 
@@ -888,7 +979,7 @@ class _AttendanceSummaryCard extends StatelessWidget {
             const SizedBox(height: 10),
             _BarRow('attending'.tr, present, total, context.colors.success),
             const SizedBox(height: 8),
-            _BarRow('did_not_attend'.tr, total - present, total, _danger),
+            _BarRow('did_not_attend'.tr, total - present, total, context.colors.danger),
           ]),
         ),
       ]),
@@ -904,9 +995,11 @@ class _BarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-    SizedBox(
-        width: 34,
+    ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 34, maxWidth: 110),
         child: Text(label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: _t(12, c: context.colors.textMedium))),
     const SizedBox(width: 8),
     Expanded(
@@ -932,7 +1025,7 @@ class _AttendanceTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final present = _isPresent(record);
-    final color = present ? context.colors.success : _danger;
+    final color = present ? context.colors.success : context.colors.danger;
     final duration =
     record.attendance.isNotEmpty ? record.attendance.first.duration : null;
 
@@ -955,8 +1048,8 @@ class _AttendanceTile extends StatelessWidget {
             width: 5,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: const BorderRadius.horizontal(
-                  right: Radius.circular(16)),
+              borderRadius: const BorderRadiusDirectional.horizontal(
+                  start: Radius.circular(16)),
             ),
           ),
           Expanded(
@@ -1084,6 +1177,39 @@ class _ExamsTabState extends State<_ExamsTab> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          // Taking / retrying an exam happens in the exam list — one tap away.
+          ParentComponent(
+            featureKey: 'analytics.exams_chip',
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: AnCard(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                borderColor: context.colors.primary.withValues(alpha: 0.3),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChangeNotifierProvider(
+                      create: (_) => StudentExamProvider()..loadMyExams(),
+                      child: const StudentExamListScreen(),
+                    ),
+                  ),
+                ),
+                child: Row(children: [
+                  Icon(Icons.play_circle_rounded, color: context.colors.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      prov.pendingCount > 0
+                          ? anFmt('an_exams_waiting', {'n': prov.pendingCount}, '{n} exams are waiting for you — open my exams')
+                          : anTr('an_open_exams', 'Open my exams'),
+                      style: _t(13, w: FontWeight.w700, c: context.colors.textDark),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right_rounded, color: context.colors.primary),
+                ]),
+              ),
+            ),
+          ),
           _FilterChips(
             labels: ['filter_all'.tr, 'sa_passed_label'.tr, 'failed'.tr, 'not_attempted'.tr],
             selected: _filter,
@@ -1111,8 +1237,8 @@ class _ExamTile extends StatelessWidget {
   Color _color(BuildContext c) => exam.passed == true
       ? c.colors.success
       : exam.passed == false
-      ? _danger
-      : Colors.blueGrey;
+      ? c.colors.danger
+      : c.colors.textMedium;
 
   @override
   Widget build(BuildContext context) {
@@ -1126,8 +1252,8 @@ class _ExamTile extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
               colors: [
                 color.withValues(alpha: 0.10),
                 color.withValues(alpha: 0.03)
@@ -1163,11 +1289,11 @@ class _ExamTile extends StatelessWidget {
           child: Column(children: [
             Row(children: [
               _InfoChip(Icons.timer_outlined, '${exam.duration ?? 0} ${'minutes'.tr}',
-                  Colors.teal),
+                  context.colors.accent2),
               if (exam.startDate != null) ...[
                 const SizedBox(width: 16),
                 _InfoChip(Icons.calendar_today_outlined,
-                    _fmtDate(exam.startDate!), Colors.orange),
+                    _fmtDate(exam.startDate!), context.colors.warning),
               ],
             ]),
             if (hasScore) ...[
@@ -1216,7 +1342,7 @@ class _ExamTile extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.blueGrey.withValues(alpha: 0.08),
+                  color: context.colors.textLight.withValues(alpha: 0.10),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text('sa_exam_not_taken_yet'.tr,
@@ -1231,6 +1357,143 @@ class _ExamTile extends StatelessWidget {
   }
 
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Tab 4 — My marks (Data Lab: what the teacher published, progress, saved flags)
+// ══════════════════════════════════════════════════════════════════════════════
+
+class _MarksTab extends StatelessWidget {
+  final StudentCourseAnalyticsProvider prov;
+  final int courseId;
+  final String courseTitle;
+  const _MarksTab({required this.prov, required this.courseId, required this.courseTitle});
+
+  void _flags(BuildContext context, int tab) => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => StudentFlagsScreen(courseId: courseId, courseTitle: courseTitle, initialTab: tab)),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final b = prov.block;
+    if (b == null && prov.loadingBlock) return const Center(child: AppLoadingIndicator());
+    if (b == null) {
+      return RefreshIndicator(
+        onRefresh: prov.loadBlock,
+        child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
+          const SizedBox(height: 40),
+          AnEmpty(
+            icon: Icons.workspace_premium_outlined,
+            title: anTr('sa_marks_unavailable', 'No marks shared yet'),
+            sub: anTr('sa_marks_unavailable_sub', 'When your teacher shares results for this course, they will appear here with the class average.'),
+          ),
+        ]),
+      );
+    }
+    final marks = b.extraColumns;
+    return RefreshIndicator(
+      onRefresh: prov.loadBlock,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        children: [
+          // progress + attendance at a glance
+          AnCard(
+            padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
+            child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+              AnRing(value: b.progress, label: anTr('an_course_progress', 'Course progress')),
+              AnRing(value: b.attendance, label: 'attendance_rate'.tr),
+              AnRing(value: b.examAvg, label: 'sa_avg_score'.tr),
+            ]),
+          ),
+          if (b.held > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Row(children: [
+                Icon(Icons.event_available_rounded, size: 16, color: c.success),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text('${'dl_attended'.tr} ${b.attended} ${'dl_of'.tr} ${b.held} ${'dl_sessions_held'.tr}',
+                      style: _t(12, c: c.textMedium)),
+                ),
+              ]),
+            ),
+          AnSectionTitle(
+            'dl_profile_marks'.tr,
+            icon: Icons.workspace_premium_rounded,
+            subtitle: 'dl_profile_marks_sub'.tr,
+          ),
+          if (marks.isEmpty)
+            AnCard(
+              child: Row(children: [
+                Icon(Icons.hourglass_empty_rounded, color: c.textLight),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(anTr('sa_marks_none', 'Your teacher has not published any marks for this course yet.'),
+                      style: _t(13, c: c.textMedium, h: 1.5)),
+                ),
+              ]),
+            )
+          else
+            AnCard(
+              child: Column(children: [
+                for (var i = 0; i < marks.length; i++) ...[
+                  if (i > 0) Divider(color: c.divider, height: 24),
+                  AnMarkRow(col: marks[i]),
+                ],
+              ]),
+            ),
+          AnSectionTitle('dl_flags_title'.tr, icon: Icons.bookmarks_rounded, subtitle: 'dl_flags_sub'.tr),
+          Row(children: [
+            Expanded(
+              child: ParentComponent(
+                featureKey: 'analytics.review_chip',
+                child: AnFlagTile(
+                  icon: Icons.bookmark_rounded,
+                  color: c.warning,
+                  value: b.reviewFlags,
+                  label: 'dl_review_flags'.tr,
+                  onTap: () => _flags(context, 0),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: ParentComponent(
+                featureKey: 'analytics.read_flags_chip',
+                child: AnFlagTile(
+                  icon: Icons.menu_book_rounded,
+                  color: c.danger,
+                  value: b.readFlags,
+                  label: 'dl_read_flags'.tr,
+                  onTap: () => _flags(context, 1),
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 18),
+          ParentComponent(
+            featureKey: 'data_lab.my_profile',
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                side: BorderSide(color: c.primary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => StudentAnalyticsProfileScreen.forStudent(courseId: courseId)),
+              ),
+              icon: Icon(Icons.insights_rounded, color: c.primary),
+              label: Text(anTr('an_full_profile', 'My full analytics profile'), style: _t(13.5, w: FontWeight.w800, c: c.primary)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1419,11 +1682,11 @@ class _ErrorRetry extends StatelessWidget {
           width: 88,
           height: 88,
           decoration: BoxDecoration(
-            color: _danger.withValues(alpha: 0.08),
+            color: context.colors.danger.withValues(alpha: 0.08),
             shape: BoxShape.circle,
           ),
           child: Icon(Icons.wifi_off_rounded,
-              size: 40, color: _danger.withValues(alpha: 0.7)),
+              size: 40, color: context.colors.danger.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: 14),
         Text(message,
