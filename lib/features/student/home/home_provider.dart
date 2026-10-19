@@ -92,11 +92,27 @@ class HomeProvider extends BaseProvider {
   List<CourseModel> otherCourses=[];
   List<CategoryModel> categories=[];
   List<InstructorData> instructors = [];
+
+  /// The last dashboard request failed (offline / server error). The screen shows a retry
+  /// state instead of staying on the shimmer.
+  bool loadFailed = false;
+
+  bool get hasData =>
+      myCourses.isNotEmpty ||
+          otherCourses.isNotEmpty ||
+          categories.isNotEmpty ||
+          instructors.isNotEmpty;
   // ── Init — run everything in parallel ─────────────────────────────────────
 
   Future<void> init(BuildContext context) async {
-    await fetchStudentDashboard();
-
+    try {
+      await fetchStudentDashboard();
+    } catch (e) {
+      // e.g. a parsing error: never leave the page on the shimmer
+      loadFailed = true;
+      stopLoading();
+      notifyListeners();
+    }
   }
 
   // ── Fetch top 5 doctors ───────────────────────────────────────────────────
@@ -105,6 +121,7 @@ class HomeProvider extends BaseProvider {
   /// The backend returns teachers ordered by composite_rate DESC.
   Future<void> fetchStudentDashboard() async {
     makeLoading();
+    loadFailed = false;
     final result = await run(
           () => api.get(
         '/api/v1/teacher/student-dashboard',
@@ -113,7 +130,12 @@ class HomeProvider extends BaseProvider {
       ),
     );
     // Request failed → run() already holds the error. This used to throw "operator [] on null" here.
-    if (result is! Map) return;
+    if (result is! Map) {
+      loadFailed = true;
+      stopLoading(); // otherwise the page stays on the shimmer forever
+      notifyListeners();
+      return;
+    }
 
     if (result['categories'] is List) {
       categories = (result['categories'] as List)

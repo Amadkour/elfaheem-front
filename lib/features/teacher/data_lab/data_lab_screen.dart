@@ -4,17 +4,21 @@
 //   • "Columns" decides what is visible in the table and what the students see
 //   • tap any value to change it (a value you type replaces the automatic one; clear it to get the automatic one back)
 //   • "Numbers / Bars / Both" changes how values are drawn
+//   • zoom with the − / + buttons (or Ctrl + mouse wheel on the web) to fit more or read easier
 //   • the ⋮ menu holds the rest: import, export, certificates, ask students, new column
-//   • on the web the sheet scrolls sideways with the mouse (drag, Shift + wheel, scrollbar or the arrow buttons)
+//   • the sheet scrolls sideways by dragging, with Shift + wheel, or with the scrollbar
 //
 // Open it from the course profile / analytics hub:
 //   Navigator.push(context, MaterialPageRoute(
 //       builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)));
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/gestures.dart' show PointerDeviceKind;
+import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, confirm, EmptyState, ErrorRetry;
@@ -23,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
+import '../../student/courses/details/student_analytics_profile_screen.dart';
 import 'data_lab_certificates_sheet.dart';
 import 'data_lab_column_sheet.dart';
 import 'data_lab_columns_sheet.dart';
@@ -32,9 +37,11 @@ import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_requests.dart';
 import 'data_lab_widgets.dart';
-import 'student_analytics_profile_screen.dart';
 
-const double _nameW = 176, _rowH = 58, _headH = 56, _avgH = 40;
+// Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,
+// so rows and columns always stay perfectly aligned.
+const double _nameW = 168, _rowH = 56, _headH = 54, _avgH = 38;
+const double _minZoom = 0.7, _maxZoom = 1.5;
 
 /// Lets a mouse / trackpad drag the sheet sideways (Flutter web only scrolls with touch by default).
 class _DragScroll extends MaterialScrollBehavior {
@@ -74,27 +81,37 @@ class _DataLabViewState extends State<_DataLabView> {
   final _scroll = ScrollController();
   final _hScroll = ScrollController();
   final _searchCtrl = TextEditingController();
+  Timer? _debounce;
+  double _zoom = 1.0;
 
   @override
   void initState() {
     super.initState();
     _scroll.addListener(() {
-      if (_scroll.hasClients && _scroll.position.extentAfter < 400) context.read<DataLabProvider>().loadMore();
+      if (_scroll.hasClients && _scroll.position.extentAfter < 600) context.read<DataLabProvider>().loadMore();
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _scroll.dispose();
     _hScroll.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _slide(double dx) {
-    if (!_hScroll.hasClients) return;
-    final max = _hScroll.position.maxScrollExtent;
-    _hScroll.animateTo((_hScroll.offset + dx).clamp(0.0, max), duration: const Duration(milliseconds: 260), curve: Curves.easeOut);
+  void _setZoom(double v) {
+    final n = (v.clamp(_minZoom, _maxZoom) as num).toDouble();
+    final stepped = (n * 20).round() / 20; // steps of 5%
+    if (stepped == _zoom) return;
+    setState(() => _zoom = stepped);
+  }
+
+  void _search(DataLabProvider p, String v) {
+    _debounce?.cancel();
+    // Wait until the teacher pauses typing — one request instead of one per letter.
+    _debounce = Timer(const Duration(milliseconds: 350), () => p.setSearch(v));
   }
 
   @override
@@ -111,6 +128,7 @@ class _DataLabViewState extends State<_DataLabView> {
         child: ListView(
           controller: _scroll,
           physics: const AlwaysScrollableScrollPhysics(),
+          cacheExtent: 800,
           padding: const EdgeInsets.only(bottom: 90),
           children: [
             _header(context, p),
@@ -121,7 +139,19 @@ class _DataLabViewState extends State<_DataLabView> {
             else
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: DlCard(padding: EdgeInsets.zero, child: _SheetTable(p: p, hScroll: _hScroll)),
+                child: Listener(
+                  onPointerSignal: (e) {
+                    if (e is PointerScrollEvent && (HardwareKeyboard.instance.isControlPressed || HardwareKeyboard.instance.isMetaPressed)) {
+                      GestureBinding.instance.pointerSignalResolver.register(e, (ev) {
+                        final dy = (ev as PointerScrollEvent).scrollDelta.dy;
+                        _setZoom(_zoom * (dy > 0 ? 0.94 : 1.06));
+                      });
+                    }
+                  },
+                  child: RepaintBoundary(
+                    child: DlCard(padding: EdgeInsets.zero, child: _SheetTable(p: p, hScroll: _hScroll, zoom: _zoom)),
+                  ),
+                ),
               ),
             if (p.loadingMore)
               const Padding(padding: EdgeInsets.all(18), child: Center(child: AppLoadingIndicator()))
@@ -139,35 +169,43 @@ class _DataLabViewState extends State<_DataLabView> {
     return BasePage(
       key: const ValueKey('data_lab'),
       useWebCard: true,
+      maxWith: 2000,
       appBar: ScreenAppBar(title: 'dl_title'.tr),
       child: body,
     );
   }
 
-  // ── header: course + two numbers, nothing else ───────────────────────────
+  // ── header: the course, how many students, and two friendly rings ────────
   Widget _header(BuildContext context, DataLabProvider p) {
     final c = context.colors;
     final prog = p.stat('progress')?.avg, att = p.stat('attendance')?.avg;
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 8, 14, 12),
-      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
+        color: c.cardBg,
         borderRadius: BorderRadius.circular(c.radiusLarge),
-        gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
-        boxShadow: c.primaryShadow,
+        border: Border.all(color: c.divider),
       ),
       child: Row(children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(14)),
+          child: Icon(Icons.table_chart_rounded, color: c.primary, size: 22),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(widget.courseTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(18, w: FontWeight.w800, c: Colors.white, h: 1.3)),
-            const SizedBox(height: 4),
-            Text('${p.grid?.studentsTotal ?? 0} ${'dl_students'.tr}', style: dlText(12.5, c: Colors.white70)),
+            Text(widget.courseTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(16, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+            const SizedBox(height: 3),
+            Text('${p.grid?.studentsTotal ?? 0} ${'dl_students'.tr}', style: dlText(12.5, c: c.textMedium)),
           ]),
         ),
         const SizedBox(width: 10),
-        _MiniStat(label: 'dl_progress'.tr, value: prog),
-        const SizedBox(width: 8),
-        _MiniStat(label: 'dl_attendance'.tr, value: att),
+        _Ring(label: 'dl_progress'.tr, value: prog, color: c.primary),
+        const SizedBox(width: 12),
+        _Ring(label: 'dl_attendance'.tr, value: att, color: c.success),
       ]),
     );
   }
@@ -185,24 +223,25 @@ class _DataLabViewState extends State<_DataLabView> {
             height: 48,
             child: TextField(
               controller: _searchCtrl,
-              onChanged: (v) {
-                p.setSearch(v);
-                setState(() {});
-              },
+              onChanged: (v) => _search(p, v),
               style: dlText(14, c: c.textDark),
               decoration: InputDecoration(
                 hintText: 'dl_search_hint'.tr,
                 hintStyle: dlText(13, c: c.textLight),
                 prefixIcon: Icon(Icons.search_rounded, color: c.textMedium),
-                suffixIcon: _searchCtrl.text.isEmpty
-                    ? null
-                    : IconButton(
-                  icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                  onPressed: () {
-                    _searchCtrl.clear();
-                    p.setSearch('');
-                    setState(() {});
-                  },
+                // Only this little button rebuilds while typing — not the whole sheet.
+                suffixIcon: ListenableBuilder(
+                  listenable: _searchCtrl,
+                  builder: (_, __) => _searchCtrl.text.isEmpty
+                      ? const SizedBox.shrink()
+                      : IconButton(
+                    icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
+                    onPressed: () {
+                      _debounce?.cancel();
+                      _searchCtrl.clear();
+                      p.setSearch('');
+                    },
+                  ),
                 ),
                 filled: true,
                 fillColor: c.cardBg,
@@ -276,28 +315,24 @@ class _DataLabViewState extends State<_DataLabView> {
     );
   }
 
-  // ── numbers / bars / both  +  selection  +  web arrows ───────────────────
+  // ── numbers / bars / both  +  zoom  (+ selection chip when someone is ticked) ──
   Widget _subBar(BuildContext context, DataLabProvider p) {
-    final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
-      child: Row(children: [
-        _ViewToggle(p: p),
-        const SizedBox(width: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          _ViewToggle(p: p),
+          _ZoomControl(zoom: _zoom, onChanged: _setZoom),
+        ]),
         if (p.selected.isNotEmpty)
-          Flexible(
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
             child: InkWell(
               onTap: p.clearSelection,
               borderRadius: BorderRadius.circular(20),
-              child: DlTag('${p.selected.length} ${'dl_selected'.tr}  ✕', c.primary),
+              child: DlTag('${p.selected.length} ${'dl_selected'.tr}  ✕', context.colors.primary),
             ),
           ),
-        const Spacer(),
-        if (kIsWeb) ...[
-          _ArrowButton(icon: Icons.chevron_left_rounded, onTap: () => _slide(-320)),
-          const SizedBox(width: 6),
-          _ArrowButton(icon: Icons.chevron_right_rounded, onTap: () => _slide(320)),
-        ],
       ]),
     );
   }
@@ -316,25 +351,41 @@ class _DataLabViewState extends State<_DataLabView> {
 // Small controls
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _MiniStat extends StatelessWidget {
-  const _MiniStat({required this.label, required this.value});
+/// A soft ring with the percentage in the middle.
+class _Ring extends StatelessWidget {
+  const _Ring({required this.label, required this.value, required this.color});
 
   final String label;
   final double? value;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.16),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.white24),
-    ),
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      Text(value == null ? '–' : '${value!.round()}%', style: dlText(16, w: FontWeight.w800, c: Colors.white)),
-      Text(label, style: dlText(10, c: Colors.white70)),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final v = value;
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      SizedBox(
+        width: 46,
+        height: 46,
+        child: Stack(alignment: Alignment.center, children: [
+          SizedBox(
+            width: 46,
+            height: 46,
+            child: CircularProgressIndicator(
+              value: v == null ? 0 : (v / 100).clamp(0.0, 1.0),
+              strokeWidth: 5,
+              strokeCap: StrokeCap.round,
+              backgroundColor: color.withValues(alpha: 0.14),
+              valueColor: AlwaysStoppedAnimation(color),
+            ),
+          ),
+          Text(v == null ? '–' : '${v.round()}', style: dlText(13, w: FontWeight.w800, c: c.textDark)),
+        ]),
+      ),
+      const SizedBox(height: 3),
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10, c: c.textMedium)),
+    ]);
+  }
 }
 
 class _SquareButton extends StatelessWidget {
@@ -376,29 +427,42 @@ class _SquareButton extends StatelessWidget {
   }
 }
 
-class _ArrowButton extends StatelessWidget {
-  const _ArrowButton({required this.icon, required this.onTap});
+/// − 100% +   (tap the percentage to go back to 100%)
+class _ZoomControl extends StatelessWidget {
+  const _ZoomControl({required this.zoom, required this.onChanged});
 
-  final IconData icon;
-  final VoidCallback onTap;
+  final double zoom;
+  final ValueChanged<double> onChanged;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return InkWell(
+    Widget btn(IconData icon, bool enabled, VoidCallback onTap) => InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
-        child: Icon(icon, color: c.textMedium),
-      ),
+      onTap: enabled ? onTap : null,
+      child: SizedBox(width: 34, height: 32, child: Icon(icon, size: 18, color: enabled ? c.textMedium : c.textLight.withValues(alpha: 0.5))),
+    );
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(15), border: Border.all(color: c.divider)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        btn(Icons.remove_rounded, zoom > _minZoom + 0.001, () => onChanged(zoom - 0.1)),
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onChanged(1.0),
+          child: SizedBox(
+            width: 46,
+            height: 32,
+            child: Center(child: Text('${(zoom * 100).round()}%', style: dlText(12, w: FontWeight.w800, c: c.textDark))),
+          ),
+        ),
+        btn(Icons.add_rounded, zoom < _maxZoom - 0.001, () => onChanged(zoom + 0.1)),
+      ]),
     );
   }
 }
 
-/// Numbers | Bars | Both
+/// Numbers | Bars | Both — only the chosen one shows its name, so it stays small.
 class _ViewToggle extends StatelessWidget {
   const _ViewToggle({required this.p});
 
@@ -414,12 +478,15 @@ class _ViewToggle extends StatelessWidget {
         onTap: () => p.setView(v),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          height: 32,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(12)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 15, color: on ? Colors.white : c.textMedium),
-            const SizedBox(width: 5),
-            Text(label, style: dlText(11.5, w: FontWeight.w700, c: on ? Colors.white : c.textMedium)),
+            Icon(icon, size: 16, color: on ? Colors.white : c.textMedium),
+            if (on) ...[
+              const SizedBox(width: 5),
+              Text(label, style: dlText(11.5, w: FontWeight.w700, c: Colors.white)),
+            ],
           ]),
         ),
       );
@@ -442,41 +509,43 @@ class _ViewToggle extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SheetTable extends StatelessWidget {
-  const _SheetTable({required this.p, required this.hScroll});
+  const _SheetTable({required this.p, required this.hScroll, required this.zoom});
 
   final DataLabProvider p;
   final ScrollController hScroll;
+  final double zoom;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final z = zoom;
     final cols = p.shownColumns;
-    final line = BorderSide(color: c.divider.withValues(alpha: 0.7));
+    final line = BorderSide(color: c.divider.withValues(alpha: 0.6));
     final avgBg = c.primary.withValues(alpha: 0.04);
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       // ── frozen names ──────────────────────────────────────────────────
       Container(
-        width: _nameW,
+        width: _nameW * z,
         decoration: BoxDecoration(border: BorderDirectional(end: line)),
         child: Column(children: [
           Container(
-            height: _headH,
+            height: _headH * z,
             alignment: AlignmentDirectional.centerStart,
             padding: const EdgeInsetsDirectional.only(start: 16),
             color: c.primary.withValues(alpha: 0.08),
-            child: Text('dl_student'.tr, style: dlText(12.5, w: FontWeight.w800, c: c.primary)),
+            child: Text('dl_student'.tr, style: dlText(12.5 * z, w: FontWeight.w800, c: c.primary)),
           ),
           Container(
-            height: _avgH,
+            height: _avgH * z,
             alignment: AlignmentDirectional.centerStart,
             padding: const EdgeInsetsDirectional.only(start: 16),
             color: avgBg,
-            child: Text('dl_class_avg'.tr, style: dlText(11.5, w: FontWeight.w700, c: c.textMedium)),
+            child: Text('dl_class_avg'.tr, style: dlText(11.5 * z, w: FontWeight.w700, c: c.textMedium)),
           ),
-          for (final r in p.rows) _NameCell(p: p, row: r),
+          for (final r in p.rows) RepaintBoundary(child: _NameCell(p: p, row: r, zoom: z)),
         ]),
       ),
-      // ── scrolling values ──────────────────────────────────────────────
+      // ── scrolling values (horizontal only) ────────────────────────────
       Expanded(
         child: ScrollConfiguration(
           behavior: _DragScroll(),
@@ -486,27 +555,30 @@ class _SheetTable extends StatelessWidget {
             child: SingleChildScrollView(
               controller: hScroll,
               scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
               child: Column(children: [
-                Row(children: [for (final col in cols) _HeadCell(p: p, col: col)]),
+                Row(children: [for (final col in cols) _HeadCell(p: p, col: col, zoom: z)]),
                 Container(
-                  height: _avgH,
+                  height: _avgH * z,
                   color: avgBg,
                   child: Row(children: [
                     for (final col in cols)
                       SizedBox(
-                        width: p.widthOf(col.key),
+                        width: p.widthOf(col.key) * z,
                         child: Center(
                           child: Text(col.isNumber ? dlFmt(p.stat(col.key)?.avg) : '',
-                              style: dlText(12, w: FontWeight.w700, c: c.textMedium)),
+                              style: dlText(12 * z, w: FontWeight.w700, c: c.textMedium)),
                         ),
                       ),
                   ]),
                 ),
                 for (final r in p.rows)
-                  Container(
-                    height: _rowH,
-                    decoration: BoxDecoration(border: Border(top: line)),
-                    child: Row(children: [for (final col in cols) _ValueCell(p: p, row: r, col: col)]),
+                  RepaintBoundary(
+                    child: Container(
+                      height: _rowH * z,
+                      decoration: BoxDecoration(border: Border(top: line)),
+                      child: Row(children: [for (final col in cols) _ValueCell(p: p, row: r, col: col, zoom: z)]),
+                    ),
                   ),
               ]),
             ),
@@ -518,10 +590,11 @@ class _SheetTable extends StatelessWidget {
 }
 
 class _HeadCell extends StatelessWidget {
-  const _HeadCell({required this.p, required this.col});
+  const _HeadCell({required this.p, required this.col, required this.zoom});
 
   final DataLabProvider p;
   final DlColumn col;
+  final double zoom;
 
   Future<void> _menu(BuildContext context, String v) async {
     switch (v) {
@@ -543,6 +616,7 @@ class _HeadCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final z = zoom;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final sorted = p.sort == col.key;
     PopupMenuEntry<String> it(String v, IconData icon, String label, {Color? color}) => PopupMenuItem(
@@ -554,8 +628,8 @@ class _HeadCell extends StatelessWidget {
       ]),
     );
     return SizedBox(
-      width: p.widthOf(col.key),
-      height: _headH,
+      width: p.widthOf(col.key) * z,
+      height: _headH * z,
       child: Stack(children: [
         Positioned.fill(
           child: InkWell(
@@ -568,14 +642,15 @@ class _HeadCell extends StatelessWidget {
                 Text(col.label,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: dlText(12, w: FontWeight.w800, c: sorted ? c.primary : c.textDark, h: 1.25)),
+                    style: dlText(12 * z, w: FontWeight.w800, c: sorted ? c.primary : c.textDark, h: 1.25)),
+                // Only the few signs that really matter: sorted, calculated, shown to students.
                 if (sorted || col.visibleToStudents || col.isCalculated)
                   Padding(
-                    padding: const EdgeInsets.only(top: 3),
+                    padding: const EdgeInsets.only(top: 2),
                     child: Row(children: [
-                      if (sorted) Icon(p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12, color: c.primary),
-                      if (col.isCalculated) Icon(Icons.functions_rounded, size: 12, color: c.purple),
-                      if (col.visibleToStudents) Icon(Icons.visibility_rounded, size: 12, color: c.success),
+                      if (sorted) Icon(p.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded, size: 12 * z, color: c.primary),
+                      if (col.isCalculated) Icon(Icons.functions_rounded, size: 12 * z, color: c.purple),
+                      if (col.visibleToStudents) Icon(Icons.visibility_rounded, size: 12 * z, color: c.success),
                     ]),
                   ),
               ]),
@@ -603,7 +678,7 @@ class _HeadCell extends StatelessWidget {
             ],
           ),
         ),
-        // drag handle: pull the edge to resize
+        // drag handle: pull the edge to resize (the drag is divided by the zoom so it follows the finger)
         PositionedDirectional(
           end: 0,
           top: 0,
@@ -613,11 +688,11 @@ class _HeadCell extends StatelessWidget {
             cursor: SystemMouseCursors.resizeColumn,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onHorizontalDragUpdate: (d) => p.setWidth(col.key, p.widthOf(col.key) + (rtl ? -d.delta.dx : d.delta.dx)),
+              onHorizontalDragUpdate: (d) => p.setWidth(col.key, p.widthOf(col.key) + (rtl ? -d.delta.dx : d.delta.dx) / z),
               child: Center(
                 child: Container(
                   width: 3,
-                  height: 22,
+                  height: 20,
                   decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(3)),
                 ),
               ),
@@ -630,14 +705,16 @@ class _HeadCell extends StatelessWidget {
 }
 
 class _NameCell extends StatelessWidget {
-  const _NameCell({required this.p, required this.row});
+  const _NameCell({required this.p, required this.row, required this.zoom});
 
   final DataLabProvider p;
   final DlRow row;
+  final double zoom;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final z = zoom;
     final isStudent = row.studentId != null;
     final picked = p.selected.contains(row.rowId);
     return InkWell(
@@ -650,33 +727,35 @@ class _NameCell extends StatelessWidget {
       )
           : null,
       child: Container(
-        height: _rowH,
+        height: _rowH * z,
         padding: const EdgeInsetsDirectional.only(start: 4, end: 6),
         decoration: BoxDecoration(
           color: picked ? c.primary.withValues(alpha: 0.07) : null,
-          border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.7))),
+          border: Border(top: BorderSide(color: c.divider.withValues(alpha: 0.6))),
         ),
         child: Row(children: [
           if (isStudent)
             Checkbox(
               value: picked,
               visualDensity: VisualDensity.compact,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               activeColor: c.primary,
               onChanged: (_) => p.toggleSelect(row.rowId),
             )
           else
             const SizedBox(width: 12),
+          // Just the name. A small tag appears only when the student needs attention (temporary / waiting).
           Expanded(
             child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(row.name.isEmpty ? '—' : row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w700, c: c.textDark)),
-              const SizedBox(height: 2),
-              if (row.isTemporary)
-                DlTag('dl_temporary'.tr, c.warning, icon: Icons.hourglass_bottom_rounded)
-              else if (row.isStaged)
-                DlTag('dl_waiting'.tr, c.purple, icon: Icons.mark_email_unread_rounded)
-              else if ((row.identifier ?? row.email ?? '').isNotEmpty)
-                Text(row.identifier?.isNotEmpty == true ? row.identifier! : row.email!,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: c.textLight)),
+              Text(row.name.isEmpty ? '—' : row.name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13 * z, w: FontWeight.w700, c: c.textDark)),
+              if (row.isTemporary) ...[
+                const SizedBox(height: 2),
+                DlTag('dl_temporary'.tr, c.warning, icon: Icons.hourglass_bottom_rounded),
+              ] else if (row.isStaged) ...[
+                const SizedBox(height: 2),
+                DlTag('dl_waiting'.tr, c.purple, icon: Icons.mark_email_unread_rounded),
+              ],
             ]),
           ),
           if (!isStudent)
@@ -697,17 +776,19 @@ class _NameCell extends StatelessWidget {
 }
 
 class _ValueCell extends StatelessWidget {
-  const _ValueCell({required this.p, required this.row, required this.col});
+  const _ValueCell({required this.p, required this.row, required this.col, required this.zoom});
 
   final DataLabProvider p;
   final DlRow row;
   final DlColumn col;
+  final double zoom;
 
   bool get _editable => col.isNumber || col.isCustom;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final z = zoom;
     final v = row.values[col.key];
     final manual = row.overridden.contains(col.key);
     Widget content;
@@ -715,33 +796,33 @@ class _ValueCell extends StatelessWidget {
       final n = dlNum(v);
       final max = col.isPercent ? 100.0 : (col.maxValue == 0 ? 100.0 : col.maxValue);
       final pct = n == null ? null : n / max * 100;
-      final text = Text(dlFmt(v), style: dlText(13.5, w: FontWeight.w800, c: dlScoreColor(context, pct)));
+      final text = Text(dlFmt(v), style: dlText(13.5 * z, w: FontWeight.w800, c: dlScoreColor(context, pct)));
       final bar = Padding(
-        padding: EdgeInsets.symmetric(horizontal: p.view == DlView.bar ? 14 : 16),
-        child: DlBar(value: n, max: max, height: p.view == DlView.bar ? 9 : 5, marker: p.stat(col.key)?.avg),
+        padding: EdgeInsets.symmetric(horizontal: (p.view == DlView.bar ? 14 : 16) * z),
+        child: DlBar(value: n, max: max, height: (p.view == DlView.bar ? 9 : 5) * z, marker: p.stat(col.key)?.avg),
       );
       content = switch (p.view) {
         DlView.value => text,
         DlView.bar => Tooltip(message: dlFmt(v), child: bar),
-        DlView.both => Column(mainAxisAlignment: MainAxisAlignment.center, children: [text, const SizedBox(height: 2), bar]),
+        DlView.both => Column(mainAxisAlignment: MainAxisAlignment.center, children: [text, SizedBox(height: 2 * z), bar]),
       };
     } else if (v != null) {
       content = Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Text('$v', maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: dlText(12.5, c: c.textDark)),
+        child: Text('$v', maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center, style: dlText(12.5 * z, c: c.textDark)),
       );
     } else {
-      content = Icon(_editable ? Icons.add_rounded : Icons.remove_rounded, size: 16, color: c.textLight.withValues(alpha: 0.6));
+      content = Icon(_editable ? Icons.add_rounded : Icons.remove_rounded, size: 16 * z, color: c.textLight.withValues(alpha: 0.6));
     }
     return InkWell(
       onTap: _editable ? () => _edit(context, manual) : null,
       child: SizedBox(
-        width: p.widthOf(col.key),
-        height: _rowH,
+        width: p.widthOf(col.key) * z,
+        height: _rowH * z,
         child: Stack(alignment: Alignment.center, children: [
           content,
           if (manual)
-            PositionedDirectional(top: 7, end: 9, child: Icon(Icons.edit_rounded, size: 10, color: c.primary.withValues(alpha: 0.8))),
+            PositionedDirectional(top: 7 * z, end: 9 * z, child: Icon(Icons.edit_rounded, size: 10 * z, color: c.primary.withValues(alpha: 0.8))),
         ]),
       ),
     );

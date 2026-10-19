@@ -239,6 +239,7 @@ class DlImportPreview {
     required this.existingColumns,
     required this.allowCreateAccounts,
     required this.allowStudentRequests,
+    required this.allowCertificates,
   });
 
   final String importId, filename;
@@ -265,6 +266,7 @@ class DlImportPreview {
     existingColumns: dlList(j['existing_columns']).map(DlColumn.fromJson).toList(),
     allowCreateAccounts: j['allow_create_accounts'] != false,
     allowStudentRequests: j['allow_student_requests'] != false,
+    allowCertificates: j['allow_certificates'] != false,
   );
 }
 

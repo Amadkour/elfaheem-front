@@ -49,6 +49,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void _onTabRequested() {
     final id = AppNavigator.requestedTab.value;
     if (id == null) return;
+    if (id == 'last') {
+      // "open the LAST tab" (offline start-up: the last tab is the profile, which holds the
+      // Downloads entry). Works whatever tabs the feature list switched off.
+      AppNavigator.requestedTab.value = null; // consumed
+      if (mounted && dashboardItems.isNotEmpty) {
+        setState(() => _currentIndex = dashboardItems.length - 1);
+      }
+      return;
+    }
     final label = switch (id) {
       'profile' => 'my_profile',
       'my_courses' => 'my_courses',

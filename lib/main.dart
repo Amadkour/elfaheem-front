@@ -19,7 +19,9 @@ import 'package:flutter_education_app/url_strategy_stub.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/widget/deep_link_service.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import 'package:provider/provider.dart';
@@ -76,8 +78,9 @@ Future<void> main() async {
   }
 }
 
-/// Paints a light boot screen immediately (no white screen), runs the startup
-/// work, then ALWAYS starts the real app (or shows the startup error).
+/// Paints the premium splash immediately (no white screen), runs the startup
+/// work, then ALWAYS starts the real app. The error screen ([_FatalApp]) is
+/// shown only when startup fails.
 Future<void> _bootstrap() async {
   runApp(const _BootApp());
 
@@ -214,18 +217,51 @@ void _runApp() {
 // Boot screen (shown instantly while startup work runs) + fatal error screen
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _BootApp extends StatelessWidget {
+/// Shown INSTANTLY while the startup work runs: the same premium splash that is
+/// shown while the live theme loads (so the two hand over seamlessly).
+///
+/// It needs a ThemeConfigProvider for `context.colors`; this one is never loaded,
+/// so it paints with the default palette. If it cannot be created before the
+/// core services are ready, a plain spinner is used as the very first frame.
+class _BootApp extends StatefulWidget {
   const _BootApp();
 
   @override
+  State<_BootApp> createState() => _BootAppState();
+}
+
+class _BootAppState extends State<_BootApp> {
+  ThemeConfigProvider? _theme;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _theme = ThemeConfigProvider(api: ApiClient());
+    } catch (e) {
+      debugPrint('[boot] splash theme unavailable: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _theme?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator()),
-      ),
-    );
+    final theme = _theme;
+    if (theme == null) {
+      return const MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    return ThemeConfigScope(provider: theme, child: const _PremiumLoadingScreen());
   }
 }
 
@@ -389,9 +425,13 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
             (_) => AttendanceOfflineSync.instance.warmCourses(),
       );
     }
+    // Student + offline start-up: Dashboard (on its LAST tab) first, Downloads on top of it.
+    final bool offlineStudentStart = offlineStart && auth.isStudent;
     final String initialRoute = !auth.isAuthenticated
         ? '/login'
-        : (offlineStart ? '/downloads' : auth.homeRoute);
+        : (offlineStudentStart
+        ? '/dashboard'
+        : (offlineStart ? '/downloads' : auth.homeRoute));
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     final appName = RemoteConfigService.instance.appName;
@@ -418,9 +458,19 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
           initialRoute: initialRoute,
           onGenerateRoute: _router,
-          onGenerateInitialRoutes: (name) => [
-            _router(RouteSettings(name: name))!,
-          ],
+          onGenerateInitialRoutes: (name) {
+            if (offlineStudentStart) {
+              // The dashboard reads this when it mounts and jumps to its last tab (profile).
+              AppNavigator.requestedTab.value = 'last';
+              // The Downloads page below is opened by the app → closed again when back online.
+              topRouteObserver.expectAutoDownloads();
+              return [
+                _router(const RouteSettings(name: '/dashboard'))!,
+                _router(const RouteSettings(name: '/downloads'))!,
+              ];
+            }
+            return [_router(RouteSettings(name: name))!];
+          },
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -563,9 +613,16 @@ class _OfflineThemeBanner extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ValueListenableBuilder<bool>(
+    valueListenable: topRouteObserver.shortcutVisible,
+    builder: (context, shortcut, _) => _content(context, shortcut),
+  );
+
+  Widget _content(BuildContext context, bool shortcut) {
     final tc = context.watch<ThemeConfigProvider>();
-    final show = tc.serverUnreachable;
+    // The header also shows while the phone is offline but the theme call has not failed yet,
+    // because it hosts the "Open downloads" button.
+    final show = tc.serverUnreachable || shortcut;
     final c = context.colors;
 
     // The child keeps the same slot (index 1, wrapped in the same widgets)
@@ -585,49 +642,106 @@ class _OfflineThemeBanner extends StatelessWidget {
                   horizontal: 14,
                   vertical: 6,
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.wifi_off_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'no_network_banner'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.wifi_off_rounded,
                           color: Colors.white,
+                          size: 20,
                         ),
-                      ),
-                    ),
-                    if (tc.isRetrying)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    else
-                      TextButton.icon(
-                        onPressed: () =>
-                            context.read<ThemeConfigProvider>().reload(),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        icon: const Icon(Icons.refresh_rounded, size: 18),
-                        label: Text(
-                          'retry'.tr,
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
-                            fontWeight: FontWeight.w700,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'no_network_banner'.tr,
+                            style: const TextStyle(
+                              fontFamily: 'tajawal',
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+                    // Bottom of the header: one tap to the Downloads page (offline only).
+                    if (shortcut)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, bottom: 2),
+                        child: Row(
+                          children: [
+
+                            Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: Material(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                shape: StadiumBorder(
+                                  side: BorderSide(
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                  ),
+                                ),
+                                child: InkWell(
+                                  customBorder: const StadiumBorder(),
+                                  onTap: topRouteObserver.openDownloads,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 5,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.download_for_offline_rounded,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          offlineT('dl_open_downloads'),
+                                          style: const TextStyle(
+                                            fontFamily: 'tajawal',
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Spacer(),
+                            if (tc.isRetrying)
+                              const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            else
+                              TextButton.icon(
+                                onPressed: () =>
+                                    context.read<ThemeConfigProvider>().reload(),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                icon: const Icon(Icons.refresh_rounded, size: 18),
+                                label: Text(
+                                  'retry'.tr,
+                                  style: const TextStyle(
+                                    fontFamily: 'tajawal',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                   ],
@@ -694,10 +808,20 @@ class _SplashBody extends StatefulWidget {
 
 class _SplashBodyState extends State<_SplashBody>
     with TickerProviderStateMixin {
+  // Shared by the instant boot splash and the theme-loading splash, so the hand-over between
+  // them neither replays the intro nor makes the logo jump.
+  static bool _introPlayed = false;
+  static final Stopwatch _clock = Stopwatch()..start();
+  static final List<double> _phShared = (() {
+    final r = math.Random();
+    return List<double>.generate(8, (_) => r.nextDouble() * math.pi * 2);
+  })();
+
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1600),
-  )..forward();
+    value: _introPlayed ? 1.0 : 0.0,
+  );
 
   late final AnimationController _loop = AnimationController(
     vsync: this,
@@ -705,18 +829,13 @@ class _SplashBodyState extends State<_SplashBody>
   )..repeat(reverse: true);
 
   // Continuous clock for the organic random logo drift (never loops/snaps).
-  static const _clockSeconds = 86400.0;
   late final AnimationController _drift = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 86400),
   )..forward();
 
   // Random phases per launch: the logo wanders differently every time.
-  final _rnd = math.Random();
-  late final List<double> _ph = List.generate(
-    8,
-        (_) => _rnd.nextDouble() * math.pi * 2,
-  );
+  late final List<double> _ph = _phShared;
 
   late final Animation<double> _greetA = _step(0.00, 0.35);
   late final Animation<double> _logoA = _step(0.10, 0.60, Curves.easeOutBack);
@@ -749,6 +868,9 @@ class _SplashBodyState extends State<_SplashBody>
   @override
   void initState() {
     super.initState();
+    if (!_introPlayed) {
+      _enter.forward().whenComplete(() => _introPlayed = true);
+    }
     _msgTimer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
       if (!mounted) return;
       setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
@@ -773,7 +895,7 @@ class _SplashBodyState extends State<_SplashBody>
     return 'مساء النور 🌙';
   }
 
-  double get _t => _drift.value * _clockSeconds;
+  double get _t => _clock.elapsedMicroseconds / 1000000.0;
 
   Widget _reveal(Animation<double> a, Widget child, {double dy = 0.18}) {
     return FadeTransition(
@@ -805,9 +927,7 @@ class _SplashBodyState extends State<_SplashBody>
     return ListenableBuilder(
       listenable: id,
       builder: (context, _) {
-        final name = id.name.isNotEmpty
-            ? id.name
-            : RemoteConfigService.instance.appName;
+        final name = id.name.isNotEmpty ? id.name : _safeAppName();
         final tagline = id.tagline;
         final version = id.versionLabel;
 
@@ -1411,5 +1531,13 @@ class _NotFoundScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+/// RemoteConfigService may not be initialised yet while the boot splash is showing.
+String _safeAppName() {
+  try {
+    return RemoteConfigService.instance.appName;
+  } catch (_) {
+    return '';
   }
 }
