@@ -24,6 +24,8 @@ import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
 import 'component/top_bar.dart';
 import '../../teacher/schedules/schedules_provider.dart';
+import 'package:flutter_education_app/features/org/home_org_mix.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -260,12 +262,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      // ── Featured (ads) — after personal content, never above the greeting ──
+                      const SliverToBoxAdapter(child: HomeAdsSlider()),
                       // ── Organizations (join a university / faculty) ──────
                       if (!GuestState.active)
                         const SliverToBoxAdapter(
                           child: ParentComponent(
                             key: ValueKey('student_home.org'),
-                            child: OrgHomeEntry(),
+                            child: HomeOrgMix(),
                           ),
                         ),
 

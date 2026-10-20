@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 class EditableImage extends StatelessWidget {
   const EditableImage(
@@ -141,15 +142,18 @@ class EditableImage extends StatelessWidget {
 
     final xFile = await ImagePicker().pickImage(
       source: source,
-      maxWidth: 800,
-      maxHeight: 800,
-      imageQuality: 85,
+      maxWidth: 2400,          // the cropper decides the final size
+      maxHeight: 2400,
+      imageQuality: 92,
     );
     if (xFile == null) return;
 
     if (!context.mounted) return;
 
-    onChange(xFile);
+    // Crop / zoom / circle / output size before uploading (the app-wide cropper).
+    final cropped = await showAppImageCropper(context, await xFile.readAsBytes());
+    if (cropped == null || !context.mounted) return;
+    onChange(XFile.fromData(cropped, name: 'photo.png', mimeType: 'image/png'));
   }
 }
 

@@ -26,6 +26,7 @@ import '../../utils/widget/base_page.dart';
 import '../../utils/widget/editable_image.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 class _ProfileApi {
   static const me = '/api/v1/admin/me';
@@ -381,16 +382,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
               ? 'admin_name_is_required'.tr
               : null,
         ),
-        Field(
-          controller: _email,
-          label: 'admin_email'.tr,
-          keyboard: TextInputType.emailAddress,
-          ltr: true,
-          enabled: isSuper,
-          validator: (v) => (v == null || !v.contains('@') || !v.contains('.'))
-              ? 'admin_invalid_email'.tr
-              : null,
-        ),
+        AppEmailField(controller: _email, label: 'admin_email'.tr, enabled: isSuper),
         if (!isSuper)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -426,12 +418,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       icon: Icons.call_rounded,
       title: 'admin_section_contact'.tr,
       children: [
-        Field(
-          controller: _phone,
-          label: 'admin_phone'.tr,
-          keyboard: TextInputType.phone,
-          ltr: true,
-        ),
+        AppPhoneField(controller: _phone, label: 'admin_phone'.tr),
         Field(
           controller: _country,
           label: 'admin_country_code'.tr,
@@ -446,21 +433,8 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       icon: Icons.lock_rounded,
       title: 'admin_section_security'.tr,
       children: [
-        Field(
-          controller: _password,
-          label: 'admin_new_password_optional'.tr,
-          obscure: true,
-          validator: (v) => (v == null || v.isEmpty || v.length >= 6)
-              ? null
-              : 'admin_at_least_6_characters'.tr,
-        ),
-        Field(
-          controller: _confirm,
-          label: 'confirm_new_password'.tr,
-          obscure: true,
-          validator: (v) =>
-          (v ?? '') == _password.text ? null : 'password_mismatch'.tr,
-        ),
+        AppPasswordField(controller: _password, label: 'admin_new_password_optional'.tr, required: false),
+        AppPasswordField(controller: _confirm, label: 'confirm_new_password'.tr, mustMatch: _password),
       ],
     );
   }

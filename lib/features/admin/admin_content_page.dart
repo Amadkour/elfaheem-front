@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -235,15 +236,17 @@ class _AdminContentPageState extends State<AdminContentPage> {
   Future<void> _pickImage(String path) async {
     final x = await ImagePicker()
         .pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 88);
-    if (x == null) return;
+    if (x == null || !mounted) return;
+    final img = await cropImageWithName(context, await x.readAsBytes(), x.name);
+    if (img == null || !mounted) return;
     setState(() => _uploading = path);
     try {
-      final bytes = await x.readAsBytes();
+      final bytes = img.bytes;
       await _api.postMultipart(
         '$_write$path',
         fields: const {},
         fileField: 'file',
-        fileName: x.name,
+        fileName: img.name,
         fileBytes: bytes,
       );
       toast('content_photo_saved'.tr);

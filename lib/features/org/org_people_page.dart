@@ -12,6 +12,7 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -232,9 +233,9 @@ Future<void> _openAdd(BuildContext context, OrgMembersProvider p, String kind, O
                   onChanged: (v) => set(() => role = v),
                 ),
               ),
-            Field(controller: email, label: t('البريد الإلكتروني', 'Email'), keyboard: TextInputType.emailAddress, ltr: true),
+            AppEmailField(controller: email, label: t('البريد الإلكتروني', 'Email')),
             Field(controller: name, label: t('الاسم (للحساب الجديد)', 'Name (for a new account)')),
-            Field(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)'), keyboard: TextInputType.phone, ltr: true),
+            AppPhoneField(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),
             if (role == 'student') Field(controller: code, label: t('الرقم الجامعي (اختياري)', 'Student number (optional)')),
             Field(controller: pass, label: t('كلمة مرور (اتركها فارغة لتوليد واحدة)', 'Password (leave empty to generate)'), ltr: true),
             const SizedBox(height: 4),

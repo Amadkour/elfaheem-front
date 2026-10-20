@@ -47,6 +47,7 @@ import 'admin_versions_page.dart';
 import 'admin_view_as_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -125,6 +126,13 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
+        AdminService(
+          labelKey: 'svc_ads',
+          descKey: 'svc_ads_d',
+          icon: Icons.campaign_rounded,
+          colors: AdminPalette.orange,
+          onTap: () => push(const AdminAdsPage()),
+        ),
         AdminService(
           labelKey: 'svc_organizations',
           descKey: 'svc_organizations_d',

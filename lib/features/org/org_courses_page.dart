@@ -168,6 +168,11 @@ Future<void> _courseForm(BuildContext context, OrgCoursesProvider p, Map<String,
   final hours = TextEditingController(text: edit == null ? '0' : '${edit['total_hours']}');
   int teacherId = asInt((edit?['teacher'] as Map?)?['id'], asInt(teachers.first['id']));
   bool published = edit?['is_published'] ?? true, membersOnly = edit?['members_only'] ?? true, busy = false;
+  // prerequisites: other courses of this organization the student must have completed
+  final prereqs = <int>{...((edit?['prerequisite_ids'] as List?) ?? const []).map((e) => asInt(e))};
+  final all = await OrgApi.i.getMap('${context.read<OrgSession>().base}/courses', {'size': 100, 'scope': 'tree'});
+  final options = asMapList(all?['items']).where((x) => x['id'] != edit?['id']).toList();
+  if (!context.mounted) return;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -182,6 +187,20 @@ Future<void> _courseForm(BuildContext context, OrgCoursesProvider p, Map<String,
               options: {for (final u in teachers) asInt(u['id']): '${u['name']}'},
               onChanged: (v) => set(() => teacherId = v ?? teacherId),
             ),
+            if (options.isNotEmpty) ...[
+              Text(t('المتطلبات السابقة (مقررات يجب اجتيازها أولاً)', 'Prerequisites (courses to complete first)'),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: ctx.colors.textLight)),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final o in options)
+                  FilterChip(
+                    label: Text(t('${o['name_ar'] ?? o['name_en']}', '${o['name_en'] ?? o['name_ar']}'), style: const TextStyle(fontFamily: 'tajawal')),
+                    selected: prereqs.contains(asInt(o['id'])),
+                    onSelected: (on) => set(() => on ? prereqs.add(asInt(o['id'])) : prereqs.remove(asInt(o['id']))),
+                  ),
+              ]),
+              const SizedBox(height: 12),
+            ],
             Row(children: [
               Expanded(child: Field(controller: fees, label: t('السعر السنوي', 'Yearly fee'), keyboard: TextInputType.number, ltr: true)),
               const SizedBox(width: 10),
@@ -211,6 +230,7 @@ Future<void> _courseForm(BuildContext context, OrgCoursesProvider p, Map<String,
                   'total_hours': double.tryParse(hours.text) ?? 0,
                   'is_published': published,
                   'members_only': membersOnly,
+                  'prerequisite_ids': prereqs.toList(),
                 });
                 if (ctx.mounted) {
                   set(() => busy = false);

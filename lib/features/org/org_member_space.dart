@@ -21,6 +21,9 @@ import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show ComplaintBubble, fieldIcons;
 import 'org_ui.dart';
+import 'org_terms_pages.dart';
+import 'org_departments_page.dart' show DeptLogo;
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 const _pub = '$orgBase/public';
 
@@ -34,7 +37,7 @@ class OrgMemberSpace extends StatelessWidget {
     final col = orgColor(context, org);
     final id = asInt(org['id']);
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: BasePage(
         useWebCard: true,
         maxWith: 900,
@@ -62,6 +65,7 @@ class OrgMemberSpace extends StatelessWidget {
               Tab(icon: const Icon(Icons.apartment_rounded, size: 20), text: t('الإدارات', 'Departments')),
               Tab(icon: const Icon(Icons.assignment_rounded, size: 20), text: t('طلباتي', 'Requests')),
               Tab(icon: const Icon(Icons.support_agent_rounded, size: 20), text: t('شكاواي', 'Complaints')),
+              Tab(icon: const Icon(Icons.gavel_rounded, size: 20), text: t('اللوائح', 'Regulations')),
             ],
           ),
           Expanded(
@@ -70,6 +74,7 @@ class OrgMemberSpace extends StatelessWidget {
               _Directory(org: org),
               _Requests(orgId: id),
               _MyComplaints(org: org),
+              OrgTermsView(orgId: id),
             ]),
           ),
         ]),
@@ -211,7 +216,7 @@ class _DirectoryState extends State<_Directory> with _Loader<_Directory> {
                 ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    IconBadge(deptIcon(d['icon']), hexColor(d['color'], c.primary), size: 44),
+                    DeptLogo(d: d, size: 44),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -413,9 +418,9 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
       case 'number':
         input = Field(controller: _c(k), label: label, keyboard: TextInputType.number, ltr: true);
       case 'email':
-        input = Field(controller: _c(k), label: label, keyboard: TextInputType.emailAddress, ltr: true);
+        input = AppEmailField(controller: _c(k), label: label);
       case 'phone':
-        input = Field(controller: _c(k), label: label, keyboard: TextInputType.phone, ltr: true);
+        input = AppPhoneField(controller: _c(k), label: label);
       case 'select':
         input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label, style: orgText(context, w: FontWeight.w700)),

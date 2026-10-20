@@ -387,8 +387,9 @@ class OrgScheduleProvider extends AdminBase {
   Future<List<Map<String, dynamic>>?> editSlot(int slotId, Map<String, dynamic> patch, {bool force = false}) =>
       _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$slotId', body: {...patch, if (force) 'force': true}));
 
-  Future<List<Map<String, dynamic>>?> addSlot(Map<String, dynamic> body, {bool force = false}) =>
-      _slotCall(() => api.post('$base/schedules/${schedule!['id']}/slots', body: {...body, if (force) 'force': true}));
+  Future<List<Map<String, dynamic>>?> addSlot(Map<String, dynamic> body, {bool force = false, bool replace = false}) =>
+      _slotCall(() => api.post('$base/schedules/${schedule!['id']}/slots',
+          body: {...body, if (force) 'force': true, if (replace) 'replace_conflicts': true}));
 
   Future<List<Map<String, dynamic>>?> _slotCall(Future<dynamic> Function() fn) async {
     try {

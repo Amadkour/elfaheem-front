@@ -19,6 +19,9 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'dart:typed_data';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Colours, icons, labels
@@ -408,14 +411,14 @@ class OrgSwitchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SwitchListTile.adaptive(
+    return Material(type: MaterialType.transparency, child: SwitchListTile.adaptive(
       contentPadding: EdgeInsets.zero,
       value: value,
       onChanged: onChanged,
       activeThumbColor: c.primary,
       title: Text(title, style: orgText(context, w: FontWeight.w700)),
       subtitle: subtitle == null ? null : Text(subtitle!, style: orgText(context, size: 12, color: c.textMedium)),
-    );
+    ));
   }
 }
 
@@ -578,14 +581,37 @@ Map<String, List<String>> permsToJson(Map<String, Set<String>> p) => {
 const orgFileExtensions = ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'zip'];
 
 /// Pick a file and upload it to [uploadPath] (…/uploads). Returns {url, name, type, size} or null.
-Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath, {List<String>? extensions}) async {
+/// Org files come back as signed API paths ("/api/v1/org/files/…") — make them absolute for the app.
+String orgFileUrl(String? url) {
+  final u = url ?? '';
+  if (!u.startsWith('/')) return u;
+  final base = AppConfig.baseUrl.endsWith('/') ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1) : AppConfig.baseUrl;
+  return '$base$u';
+}
+
+const _imageExt = {'png', 'jpg', 'jpeg', 'webp', 'gif'};
+
+/// Pick a file and upload it. Images go through the app cropper first (zoom, circle, smaller size).
+Future<Map<String, dynamic>?> orgPickAndUpload(String uploadPath,
+    {List<String>? extensions, BuildContext? context, CropShape cropShape = CropShape.square}) async {
   final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: extensions ?? orgFileExtensions);
   if (f == null) return null;
-  final bytes = kIsWeb ? await f.readAsBytes() : null;
+  var name = f.name;
+  Uint8List? bytes = kIsWeb ? await f.readAsBytes() : null;
+  final isImage = _imageExt.contains(name.split('.').last.toLowerCase());
+  if (isImage && context != null && context.mounted) {
+    final cropped = await showAppImageCropper(context, bytes ?? await f.readAsBytes(), shape: cropShape);
+    if (cropped == null) return null;
+    bytes = cropped;
+    name = '${name.replaceAll(RegExp(r'\.[^.]+$'), '')}.png';
+  }
   try {
     final r = await ApiClient().postMultipart(uploadPath,
-        fields: const {}, fileField: 'file', fileName: f.name, filePath: kIsWeb ? null : f.path, fileBytes: bytes);
-    return r is Map ? Map<String, dynamic>.from(r) : null;
+        fields: const {}, fileField: 'file', fileName: name, filePath: bytes != null ? null : f.path, fileBytes: bytes);
+    if (r is! Map) return null;
+    final out = Map<String, dynamic>.from(r);
+    out['url'] = orgFileUrl('${out['url'] ?? ''}');
+    return out;
   } on ApiException catch (e) {
     toast(e.message, error: true);
     return null;
@@ -632,13 +658,13 @@ class OrgPickField<T> extends StatelessWidget {
           final entries = options.entries
               .where((e) => query.isEmpty || e.value.toLowerCase().contains(query.toLowerCase()))
               .toList();
-          Widget row(T? v, String text) => ListTile(
+          Widget row(T? v, String text) => Material(type: MaterialType.transparency, child: ListTile(
                 onTap: () => Navigator.pop(ctx, _Picked<T>(v)),
                 title: Text(text, style: orgText(ctx, w: v == value ? FontWeight.w800 : FontWeight.w500)),
                 trailing: v == value ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 tileColor: v == value ? c.primary.withValues(alpha: 0.07) : null,
-              );
+              ));
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             child: Column(mainAxisSize: MainAxisSize.min, children: [

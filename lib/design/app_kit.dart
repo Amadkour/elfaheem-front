@@ -186,7 +186,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                   for (final i in shown)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
-                      child: ListTile(
+                      child: Material(type: MaterialType.transparency, child: ListTile(
                         enabled: i.enabled,
                         onTap: () => Navigator.pop(ctx, _Pick<T>(i.value)),
                         title: DefaultTextStyle.merge(
@@ -195,7 +195,7 @@ class _AppDropdownState<T> extends State<AppDropdown<T>> {
                         ),
                         trailing: i.value == _value ? Icon(Icons.check_circle_rounded, color: c.primary) : null,
                         tileColor: i.value == _value ? c.primary.withValues(alpha: 0.07) : null,
-                      ),
+                      )),
                     ),
                 ]),
               ),

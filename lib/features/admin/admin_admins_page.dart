@@ -29,6 +29,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_list.dart' show RowCard;
 import 'admin_view_as_page.dart' show startViewAs;
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -612,33 +613,14 @@ class _AdminFormState extends State<_AdminForm> {
                         ? 'admin_name_is_required'.tr
                         : null,
                   ),
-                  Field(
-                    controller: _email,
-                    label: 'admin_email'.tr,
-                    keyboard: TextInputType.emailAddress,
-                    ltr: true,
-                    validator: (v) =>
-                    (v == null || !v.contains('@') || !v.contains('.'))
-                        ? 'admin_invalid_email'.tr
-                        : null,
-                  ),
+                  AppEmailField(controller: _email, label: 'admin_email'.tr),
                   PhoneInputField(
                     controller: _phone,
                     label: 'admin_phone'.tr,
                   ),
-                  Field(
-                    controller: _password,
-                    label: editing
+                  AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr
-                        : 'password'.tr,
-                    obscure: true,
-                    validator: (v) {
-                      if (editing && (v == null || v.isEmpty)) return null;
-                      return (v == null || v.length < 6)
-                          ? 'admin_at_least_6_characters'.tr
-                          : null;
-                    },
-                  ),
+                        : 'password'.tr, required: !editing),
                   if (editing)
                     SwitchListTile.adaptive(
                       contentPadding: EdgeInsets.zero,

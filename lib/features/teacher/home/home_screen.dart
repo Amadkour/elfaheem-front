@@ -22,6 +22,8 @@ import '../courses/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
+import 'package:flutter_education_app/features/org/home_org_mix.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -99,6 +101,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       ),
                       const SizedBox(height: 20),
 
+                      // ── Ads (platform / allowed teachers) ────────────────
+                      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
                       // ── Add course button ────────────────────────────────
                       ParentComponent(
                         child: ContentBox(
@@ -115,7 +119,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         child: ContentBox(
                           key: ValueKey('teacher_home_org'),
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const OrgHomeEntry(),
+                          child: const HomeOrgMix(),
                         ),
                       ),
                       SizedBox(height: 24),

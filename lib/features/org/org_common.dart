@@ -11,6 +11,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_providers.dart';
+import 'org_ui.dart' show orgFileUrl;
 
 /// Warm, human gradient from the organization's own colour (falls back to the app primary).
 Color orgColor(BuildContext context, Map<String, dynamic>? org) {
@@ -60,7 +61,7 @@ Map<String, String> dayLabels() => {
 
 Future<void> openFileUrl(String? url) async {
   if (url == null || url.isEmpty) return;
-  final ok = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  final ok = await launchUrl(Uri.parse(orgFileUrl(url)), mode: LaunchMode.externalApplication);
   if (!ok) toast(t('تعذّر فتح الملف', 'Could not open the file'), error: true);
 }
 
@@ -198,4 +199,27 @@ class OrgHero extends StatelessWidget {
   }
 
   Widget _fallbackIcon() => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: Colors.white, size: 28);
+}
+
+
+/// Excel · PDF · Word — one sheet for every organization export.
+Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>? query]) async {
+  final fmt = await showAdminSheet<String>(context, (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          SheetHeader(t('تصدير بصيغة', 'Export as')),
+          for (final (f, label, icon) in [
+            ('xlsx', 'Excel', Icons.table_chart_rounded),
+            ('pdf', 'PDF', Icons.picture_as_pdf_rounded),
+            ('docx', 'Word', Icons.description_rounded),
+          ])
+            ListTile(
+              leading: Icon(icon),
+              title: Text(label, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              onTap: () => Navigator.pop(ctx, f),
+            ),
+        ]),
+      ));
+  if (fmt == null || !context.mounted) return;
+  await downloadExcel(context, path, {...?query, 'format': fmt});
 }

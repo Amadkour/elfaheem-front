@@ -14574,16 +14574,16 @@
     "ar": "تجاهل"
   },
   "cert_font_cinzel": {
-    "en": "Cinzel (display serif)",
-    "ar": "Cinzel (عنوان)"
+    "en": "Cinzel (Roman capitals)",
+    "ar": "سنزل — حروف رومانية"
   },
   "cert_font_great_vibes": {
     "en": "Great Vibes (script)",
-    "ar": "Great Vibes (خط يدوي)"
+    "ar": "جريت فايبز — خط يد"
   },
   "cert_font_cormorant": {
-    "en": "Cormorant (italic)",
-    "ar": "Cormorant (مائل)"
+    "en": "Cormorant Garamond",
+    "ar": "كورمورانت"
   },
   "cert_font_tajawal": {
     "en": "Tajawal",
@@ -14598,8 +14598,8 @@
     "ar": "تجوال عريض"
   },
   "cert_font_amiri": {
-    "en": "Amiri (Arabic serif)",
-    "ar": "أميري"
+    "en": "Amiri (Naskh)",
+    "ar": "أميري — نسخ"
   },
   "cert_font_amiri_bold": {
     "en": "Amiri Bold",
@@ -14796,5 +14796,129 @@
   "cert_copy_ready": {
     "en": "Your copy is ready and attached to this certificate — edit it freely",
     "ar": "نسختك جاهزة ومرتبطة بهذه الشهادة — عدّلها كما تشاء"
+  },
+  "cert_my_designs": {
+    "en": "My certificate designs",
+    "ar": "تصميمات شهاداتي"
+  },
+  "logout_confirm": {
+    "en": "Sign out of your account?",
+    "ar": "تسجيل الخروج من حسابك؟"
+  },
+  "cert_font_cormorant_italic": {
+    "en": "Cormorant Italic",
+    "ar": "كورمورانت مائل"
+  },
+  "cert_font_playfair": {
+    "en": "Playfair Display",
+    "ar": "بلاي فير"
+  },
+  "cert_font_playfair_bold": {
+    "en": "Playfair Display Bold",
+    "ar": "بلاي فير عريض"
+  },
+  "cert_font_playfair_italic": {
+    "en": "Playfair Italic",
+    "ar": "بلاي فير مائل"
+  },
+  "cert_font_eb_garamond": {
+    "en": "EB Garamond",
+    "ar": "غاراموند"
+  },
+  "cert_font_pinyon_script": {
+    "en": "Pinyon Script (formal)",
+    "ar": "بينيون — خط رسمي"
+  },
+  "cert_font_baskerville": {
+    "en": "Baskerville",
+    "ar": "باسكرفيل"
+  },
+  "cert_font_baskerville_bold": {
+    "en": "Baskerville Bold",
+    "ar": "باسكرفيل عريض"
+  },
+  "cert_font_aref_ruqaa": {
+    "en": "Aref Ruqaa",
+    "ar": "عارف رقعة"
+  },
+  "cert_font_aref_ruqaa_bold": {
+    "en": "Aref Ruqaa Bold",
+    "ar": "عارف رقعة عريض"
+  },
+  "cert_font_scheherazade": {
+    "en": "Scheherazade",
+    "ar": "شهرزاد"
+  },
+  "cert_font_scheherazade_bold": {
+    "en": "Scheherazade Bold",
+    "ar": "شهرزاد عريض"
+  },
+  "cert_font_reem_kufi": {
+    "en": "Reem Kufi",
+    "ar": "ريم كوفي"
+  },
+  "cert_font_reem_kufi_bold": {
+    "en": "Reem Kufi Bold",
+    "ar": "ريم كوفي عريض"
+  },
+  "cert_font_el_messiri": {
+    "en": "El Messiri",
+    "ar": "المسيري"
+  },
+  "cert_font_el_messiri_bold": {
+    "en": "El Messiri Bold",
+    "ar": "المسيري عريض"
+  },
+  "cert_font_cairo": {
+    "en": "Cairo",
+    "ar": "القاهرة"
+  },
+  "cert_font_cairo_bold": {
+    "en": "Cairo Extra Bold",
+    "ar": "القاهرة عريض"
+  },
+  "cert_font_markazi": {
+    "en": "Markazi Text",
+    "ar": "مركزي"
+  },
+  "cert_font_markazi_bold": {
+    "en": "Markazi Text Bold",
+    "ar": "مركزي عريض"
+  },
+  "svc_ads": {
+    "en": "Ads",
+    "ar": "الإعلانات"
+  },
+  "svc_ads_d": {
+    "en": "Home-screen slider, teacher ads, prices & approval",
+    "ar": "شريط الإعلانات وإعلانات المعلمين والأسعار والمراجعة"
+  },
+  "my_ads": {
+    "en": "My ads",
+    "ar": "إعلاناتي"
+  },
+  "cert_add_photo": {
+    "en": "Student photo",
+    "ar": "صورة الطالب"
+  },
+  "cert_use_for_courses": {
+    "en": "Use for courses",
+    "ar": "استخدامه للكورسات"
+  },
+  "cert_use_for_courses_hint": {
+    "en": "Certificates of these courses use this design automatically; otherwise the premium automatic certificate is issued.",
+    "ar": "شهادات هذه الكورسات تستخدم هذا التصميم تلقائياً؛ وإلا تُصدر الشهادة التلقائية الفاخرة."
+  },
+  "cert_all_my_courses": {
+    "en": "All my courses",
+    "ar": "كل كورساتي"
+  },
+  "cert_designs_link_title": {
+    "en": "Certificate designs",
+    "ar": "تصميمات الشهادات"
+  },
+  "cert_designs_link_sub": {
+    "en": "Design once, use it on all or some of your courses",
+    "ar": "صمّم مرة واحدة واستخدمه لكل كورساتك أو بعضها"
   }
 }

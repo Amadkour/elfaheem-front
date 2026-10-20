@@ -30,6 +30,7 @@ import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'google_auth_flow.dart';
 import 'verify_way.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
@@ -249,12 +250,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
 
           // Email
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
+          AppEmailField(controller: _emailController, label: 'email'.tr),
           const SizedBox(height: 20),
 
           // Phone — always shown when the admin verifies accounts by phone,

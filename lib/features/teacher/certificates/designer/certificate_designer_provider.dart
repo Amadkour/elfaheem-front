@@ -491,6 +491,14 @@ class CertificateDesignerProvider extends BaseProvider {
     ));
   }
 
+  /// The student's profile photo (circle by default) — filled per student when the certificate is issued.
+  void addPhoto() {
+    final d = design;
+    if (d == null) return;
+    const s = 130.0;
+    _add(CertField(id: _newId(), kind: CertFieldKind.photo, x: d.logicalW * 0.08, y: (d.logicalH - s) / 2, w: s, h: s, shrink: false));
+  }
+
   void addLine() {
     final d = design;
     if (d == null) return;

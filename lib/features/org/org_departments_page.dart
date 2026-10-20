@@ -21,6 +21,8 @@ import 'org_providers.dart';
 import 'org_services_pages.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 const _featureIcons = {
   'announcements': Icons.campaign_rounded,
@@ -161,7 +163,7 @@ class _DeptCard extends StatelessWidget {
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              IconBadge(deptIcon(d['icon']), col, size: 48),
+              DeptLogo(d: d, size: 48),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -207,8 +209,12 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final location = TextEditingController(text: '${edit?['location'] ?? ''}');
   final hours = TextEditingController(text: '${edit?['office_hours'] ?? ''}');
   String icon = '${edit?['icon'] ?? 'apartment'}';
+  String? logo = edit?['logo_url'] as String?;
   String color = '${edit?['color'] ?? '#0F7B5F'}';
-  final features = <String>{...((edit?['features'] as List?) ?? featureLabels().keys).map((e) => '$e')};
+  // NB: `(x as List?) ?? map.keys` cast the keys (an Iterable) to List on web → the wizard crashed before opening.
+  final features = <String>{
+    ...(edit == null ? featureLabels().keys : ((edit['features'] as List?) ?? const []).map((e) => '$e')),
+  };
   bool busy = false, saved = false;
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
@@ -251,7 +257,31 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
             Field(controller: desc, label: t('ماذا تقدم هذه الإدارة؟', 'What does it do?'), maxLines: 2),
-            Text(t('الشكل', 'Look'), style: orgText(ctx, size: 12.5, color: c.textLight)),
+            // the department's own logo (cropped, resized, public) — replaces the icon everywhere
+            Row(children: [
+              if ((logo ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 10),
+                  child: ClipRRect(borderRadius: BorderRadius.circular(14),
+                      child: Image.network(logo!, width: 52, height: 52, fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => const SizedBox(width: 52, height: 52))),
+                ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final r = await orgPickAndUpload('/api/v1/org/logo', extensions: const ['png', 'jpg', 'jpeg', 'webp'],
+                        context: ctx, cropShape: CropShape.square);
+                    if (r != null) set(() => logo = '${r['url']}');
+                  },
+                  icon: const Icon(Icons.add_photo_alternate_rounded),
+                  label: Text((logo ?? '').isEmpty ? t('رفع شعار الإدارة', 'Upload department logo') : t('تغيير الشعار', 'Change logo')),
+                ),
+              ),
+              if ((logo ?? '').isNotEmpty)
+                IconButton(onPressed: () => set(() => logo = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
+            ]),
+            const SizedBox(height: 12),
+            Text(t('أو أيقونة ولون', 'or an icon and colour'), style: orgText(ctx, size: 12.5, color: c.textLight)),
             const SizedBox(height: 6),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final e in deptIconChoices.entries)
@@ -303,7 +333,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             const SizedBox(height: 6),
             Field(controller: location, label: t('المكان — مثلاً: مبنى ب، الدور الثاني', 'Where — e.g. Building B, 2nd floor')),
             Field(controller: hours, label: t('مواعيد العمل — مثلاً: الأحد–الخميس 9–2', 'Office hours — e.g. Sun–Thu 9–2')),
-            Field(controller: email, label: t('البريد', 'E-mail'), ltr: true, keyboard: TextInputType.emailAddress),
+            AppEmailField(controller: email, label: t('البريد', 'E-mail')),
             PhoneInputField(controller: phone, label: t('الهاتف', 'Phone')),
             const SizedBox(height: 6),
             PrimaryButton(
@@ -321,6 +351,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   'name_en': en.text.trim(),
                   'description': desc.text.trim(),
                   'icon': icon,
+                  'logo_url': logo,
                   'color': color,
                   'features': features.toList(),
                   'location': location.text.trim(),
@@ -731,6 +762,25 @@ class _DeptDataLabState extends State<_DeptDataLab> {
                       ),
                     ),
                 ]),
+    );
+  }
+}
+
+
+/// The department's uploaded logo, or its icon badge.
+class DeptLogo extends StatelessWidget {
+  const DeptLogo({super.key, required this.d, this.size = 44});
+  final Map<String, dynamic> d;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = '${d['logo_url'] ?? ''}';
+    if (logo.isEmpty) return IconBadge(deptIcon(d['icon']), hexColor(d['color'], context.colors.primary), size: size);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(size * 0.3),
+      child: Image.network(logo, width: size, height: size, fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => IconBadge(deptIcon(d['icon']), hexColor(d['color'], context.colors.primary), size: size)),
     );
   }
 }

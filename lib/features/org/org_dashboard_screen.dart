@@ -37,10 +37,12 @@ import 'org_departments_page.dart';
 import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
+import 'org_terms_pages.dart';
 import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 class _OrgTabs extends ChangeNotifier {
   int currentTab = 0;
@@ -508,7 +510,31 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
                 ),
             ]),
             const SizedBox(height: 14),
-            Field(controller: logo, label: t('رابط الشعار (اختياري)', 'Logo URL (optional)'), ltr: true),
+            // Logo: upload an image (cropped, resized, stored publicly) — or paste a URL.
+            Row(children: [
+              if (logo.text.trim().isNotEmpty)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Image.network(logo.text.trim(), width: 52, height: 52, fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const SizedBox(width: 52, height: 52)),
+                  ),
+                ),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final r = await orgPickAndUpload('/api/v1/org/logo',
+                        extensions: const ['png', 'jpg', 'jpeg', 'webp'], context: ctx, cropShape: CropShape.square);
+                    if (r != null) set(() => logo.text = '${r['url']}');
+                  },
+                  icon: const Icon(Icons.add_photo_alternate_rounded),
+                  label: Text(logo.text.trim().isEmpty ? t('رفع الشعار', 'Upload logo') : t('تغيير الشعار', 'Change logo')),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Field(controller: logo, label: t('أو رابط الشعار', 'or a logo URL'), ltr: true),
             Field(controller: desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 3),
             if (official) ...[
               const SizedBox(height: 6),
@@ -716,6 +742,9 @@ class _OrgServicesGroup extends StatelessWidget {
       if (s.canAny('certificates') || s.isOrgAdmin)
         tile(Icons.workspace_premium_rounded, AdminPalette.orange.last, t('تصميمات الشهادات', 'Certificate designs'),
             () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+      if (s.can('terms'))
+        tile(Icons.gavel_rounded, AdminPalette.orange.last, t('الشروط واللوائح', 'Terms & regulations'),
+            () => open(t('الشروط واللوائح', 'Terms & regulations'), const OrgTermsAdminPage())),
       if (s.can('roles'))
         tile(Icons.admin_panel_settings_rounded, AdminPalette.indigo.last, t('الأدوار والصلاحيات', 'Roles & privileges'),
             () => open(t('الأدوار والصلاحيات', 'Roles & privileges'), const OrgAccessPage())),

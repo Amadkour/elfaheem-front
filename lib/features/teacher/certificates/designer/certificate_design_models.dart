@@ -12,30 +12,54 @@ import 'dart:ui' show Color;
 const double kLogicalLong = 1000;
 const double kLogicalShort = 707;
 
-/// Fonts the server can draw (the same keys as certificate_design_renderer.FONT_KEYS).
+/// Fonts the server can draw — the same keys AND the same static files as
+/// certificate_design_renderer.FONT_CATALOG, so the on-screen design is exactly what students receive.
 class CertFont {
   final String key;
   final String labelKey;
-  final String family; // Flutter font family used only for the on-screen preview
-  final bool italic;
-  final bool bold;
+  final String family;          // bundled static font (assets/fonts/cert)
+  final String? arabicFallback; // Latin-only fonts draw Arabic with Amiri — like the server
+  final bool arabic;            // has its own Arabic glyphs
+  // weight / style are baked into each file: never synthesized (that is what made the preview differ)
+  bool get italic => false;
+  bool get bold => false;
 
-  const CertFont(this.key, this.labelKey, this.family, {this.italic = false, this.bold = false});
+  const CertFont(this.key, this.labelKey, this.family, {this.arabicFallback, this.arabic = false});
 }
 
 const List<CertFont> kCertFonts = [
-  CertFont('cinzel', 'cert_font_cinzel', 'Cinzel', bold: true),
-  CertFont('great_vibes', 'cert_font_great_vibes', 'GreatVibes'),
-  CertFont('cormorant_italic', 'cert_font_cormorant', 'CormorantGaramond', italic: true),
-  CertFont('tajawal', 'cert_font_tajawal', 'tajawal'),
-  CertFont('tajawal_medium', 'cert_font_tajawal_medium', 'tajawal'),
-  CertFont('tajawal_bold', 'cert_font_tajawal_bold', 'tajawal', bold: true),
-  CertFont('amiri', 'cert_font_amiri', 'Amiri'),
-  CertFont('amiri_bold', 'cert_font_amiri_bold', 'Amiri', bold: true),
+  CertFont('cinzel', 'cert_font_cinzel', 'CertCinzel', arabicFallback: 'CertAmiriBold', arabic: false),
+  CertFont('great_vibes', 'cert_font_great_vibes', 'CertGreatVibes', arabicFallback: 'CertAmiriBold', arabic: false),
+  CertFont('cormorant_italic', 'cert_font_cormorant_italic', 'CertCormorantItalic', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('cormorant', 'cert_font_cormorant', 'CertCormorant', arabicFallback: 'CertAmiriBold', arabic: false),
+  CertFont('playfair', 'cert_font_playfair', 'CertPlayfair', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('playfair_bold', 'cert_font_playfair_bold', 'CertPlayfairBold', arabicFallback: 'CertAmiriBold', arabic: false),
+  CertFont('playfair_italic', 'cert_font_playfair_italic', 'CertPlayfairItalic', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('eb_garamond', 'cert_font_eb_garamond', 'CertEBGaramond', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('pinyon_script', 'cert_font_pinyon_script', 'CertPinyon', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('baskerville', 'cert_font_baskerville', 'CertBaskerville', arabicFallback: 'CertAmiri', arabic: false),
+  CertFont('baskerville_bold', 'cert_font_baskerville_bold', 'CertBaskervilleBold', arabicFallback: 'CertAmiriBold', arabic: false),
+  CertFont('tajawal', 'cert_font_tajawal', 'tajawal', arabic: true),
+  CertFont('tajawal_medium', 'cert_font_tajawal_medium', 'CertTajawalMedium', arabic: true),
+  CertFont('tajawal_bold', 'cert_font_tajawal_bold', 'CertTajawalBold', arabic: true),
+  CertFont('amiri', 'cert_font_amiri', 'CertAmiri', arabic: true),
+  CertFont('amiri_bold', 'cert_font_amiri_bold', 'CertAmiriBold', arabic: true),
+  CertFont('aref_ruqaa', 'cert_font_aref_ruqaa', 'CertArefRuqaa', arabic: true),
+  CertFont('aref_ruqaa_bold', 'cert_font_aref_ruqaa_bold', 'CertArefRuqaaBold', arabic: true),
+  CertFont('scheherazade', 'cert_font_scheherazade', 'CertScheherazade', arabic: true),
+  CertFont('scheherazade_bold', 'cert_font_scheherazade_bold', 'CertScheherazadeBold', arabic: true),
+  CertFont('reem_kufi', 'cert_font_reem_kufi', 'CertReemKufi', arabic: true),
+  CertFont('reem_kufi_bold', 'cert_font_reem_kufi_bold', 'CertReemKufiBold', arabic: true),
+  CertFont('el_messiri', 'cert_font_el_messiri', 'CertElMessiri', arabic: true),
+  CertFont('el_messiri_bold', 'cert_font_el_messiri_bold', 'CertElMessiriBold', arabic: true),
+  CertFont('cairo', 'cert_font_cairo', 'CertCairo', arabic: true),
+  CertFont('cairo_bold', 'cert_font_cairo_bold', 'CertCairoBold', arabic: true),
+  CertFont('markazi', 'cert_font_markazi', 'CertMarkazi', arabic: true),
+  CertFont('markazi_bold', 'cert_font_markazi_bold', 'CertMarkaziBold', arabic: true),
 ];
 
 CertFont certFont(String key) =>
-    kCertFonts.firstWhere((f) => f.key == key, orElse: () => kCertFonts[3]);
+    kCertFonts.firstWhere((f) => f.key == key, orElse: () => kCertFonts.firstWhere((f) => f.key == 'tajawal'));
 
 /// Dynamic values a text field can contain, written as {key}.
 class CertPlaceholder {
@@ -80,7 +104,7 @@ String colorToHex(Color c) {
   return '#${two(c.r)}${two(c.g)}${two(c.b)}'.toUpperCase();
 }
 
-enum CertFieldKind { text, signature, logo, line }
+enum CertFieldKind { text, signature, logo, line, photo }
 
 CertFieldKind _kindOf(String? s) => CertFieldKind.values.firstWhere(
       (k) => k.name == s,
@@ -105,6 +129,7 @@ class CertField {
   final int maxLines;
   final bool shrink;
   final bool visible;
+  final String shape; // student photo: circle | rounded
 
   const CertField({
     required this.id,
@@ -124,6 +149,7 @@ class CertField {
     this.maxLines = 3,
     this.shrink = true,
     this.visible = true,
+    this.shape = 'circle',
   });
 
   bool get isText => kind == CertFieldKind.text;
@@ -147,6 +173,7 @@ class CertField {
         maxLines: (j['max_lines'] as num?)?.toInt() ?? 3,
         shrink: (j['shrink'] as bool?) ?? true,
         visible: (j['visible'] as bool?) ?? true,
+        shape: (j['shape'] as String?) ?? 'circle',
       );
 
   Map<String, dynamic> toJson() => {
@@ -167,6 +194,7 @@ class CertField {
         'max_lines': maxLines,
         'shrink': shrink,
         'visible': visible,
+        if (kind == CertFieldKind.photo) 'shape': shape,
       };
 
   CertField copyWith({
@@ -186,6 +214,7 @@ class CertField {
     int? maxLines,
     bool? shrink,
     bool? visible,
+    String? shape,
   }) =>
       CertField(
         id: id,
@@ -205,6 +234,7 @@ class CertField {
         maxLines: maxLines ?? this.maxLines,
         shrink: shrink ?? this.shrink,
         visible: visible ?? this.visible,
+        shape: shape ?? this.shape,
       );
 
   CertField copyWithNewId(String newId) => CertField(

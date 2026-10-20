@@ -15,6 +15,8 @@ import 'org_common.dart';
 import 'org_dashboard_screen.dart' show showOrgForm, showOrgSwitcher;
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 class OrgStatusScreen extends StatefulWidget {
   const OrgStatusScreen({super.key});
@@ -175,6 +177,16 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
               ),
             ],
             const SizedBox(height: 6),
+            // A waiting / rejected / suspended org admin can always leave (before: no way out of this screen).
+            TextButton.icon(
+              onPressed: () async {
+                if (await confirm(context, message: 'logout_confirm'.tr) && context.mounted) {
+                  await context.read<ProfileProvider>().logout(context);
+                }
+              },
+              icon: Icon(Icons.logout_rounded, color: c.danger),
+              label: Text('logout'.tr, style: TextStyle(fontFamily: 'tajawal', color: c.danger)),
+            ),
             TextButton.icon(
               onPressed: _busy ? null : _refresh,
               icon: const Icon(Icons.refresh_rounded),

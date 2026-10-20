@@ -32,12 +32,15 @@ import '../../../../config/theme/theme_config_provider.dart';
 import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 final RegExp _arabicChars = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]');
 
-Future<Uint8List?> _pickImage() async {
+/// Logo, signature, background and image fields: pick → app cropper (zoom, circle, size — or "use original").
+Future<Uint8List?> _pickImage(BuildContext context) async {
   final f = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2400);
-  return f == null ? null : await f.readAsBytes();
+  if (f == null || !context.mounted) return null;
+  return showAppImageCropper(context, await f.readAsBytes());
 }
 
 void _toast(BuildContext context, String message, {bool error = false}) {
@@ -237,7 +240,7 @@ class _Wizard extends StatelessWidget {
     }
 
     Future<void> fromTemplate() async {
-      final bytes = await _pickImage();
+      final bytes = await _pickImage(context);
       if (bytes == null) return;
       final ok = await p.createFromTemplateImage(bytes, orgId: orgId);
       if (!ok && context.mounted) _toast(context, 'certificate_action_failed'.tr, error: true);
@@ -285,7 +288,7 @@ class _Wizard extends StatelessWidget {
                 url: p.pendingLogoUrl,
                 uploadLabel: 'cert_upload_logo'.tr,
                 onUpload: () async {
-                  final b = await _pickImage();
+                  final b = await _pickImage(context);
                   if (b != null) await p.uploadLogo(b);
                 },
                 onRemove: p.removeLogoImage,
@@ -391,7 +394,7 @@ class _SignatureEditorState extends State<_SignatureEditor> {
         url: url,
         uploadLabel: 'cert_upload_signature'.tr,
         onUpload: () async {
-          final b = await _pickImage();
+          final b = await _pickImage(context);
           if (b == null) return;
           final ok = await p.uploadSignature(b);
           if (!ok && context.mounted) _toast(context, 'cert_signature_failed'.tr, error: true);
@@ -521,6 +524,7 @@ class _Toolbar extends StatelessWidget {
             }
           }),
           tool(Icons.horizontal_rule_rounded, 'cert_add_line'.tr, p.addLine),
+          tool(Icons.account_circle_rounded, 'cert_add_photo'.tr, p.addPhoto),
           const SizedBox(width: 8),
           SegmentedButton<bool>(
             showSelectedIcon: false,
@@ -623,6 +627,24 @@ class _CanvasField extends StatelessWidget {
       case CertFieldKind.line:
         content = Container(height: (f.h < 1 ? 1 : f.h) * scale, color: hexToColor(f.color).withValues(alpha: f.opacity));
         break;
+      case CertFieldKind.photo:
+        // placeholder silhouette — each certificate gets the student's own photo (same as the server preview)
+        final side = f.w * scale;
+        content = Opacity(
+          opacity: f.opacity,
+          child: Container(
+            width: side,
+            height: side,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD6DCE2),
+              shape: f.shape == 'rounded' ? BoxShape.rectangle : BoxShape.circle,
+              borderRadius: f.shape == 'rounded' ? BorderRadius.circular(side * 0.16) : null,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: Icon(Icons.person_rounded, size: side * 0.62, color: const Color(0xFFAAB2BC)),
+          ),
+        );
+        break;
     }
 
     return Positioned(
@@ -674,6 +696,7 @@ class _CanvasField extends StatelessWidget {
     final cf = certFont(f.font);
     final style = TextStyle(
       fontFamily: cf.family,
+      fontFamilyFallback: cf.arabicFallback == null ? null : [cf.arabicFallback!],   // same as the server
       fontWeight: cf.bold ? FontWeight.w700 : FontWeight.w400,
       fontStyle: cf.italic ? FontStyle.italic : FontStyle.normal,
       fontSize: f.size * scale,
@@ -903,13 +926,13 @@ class _FieldPanelState extends State<_FieldPanel> {
               ),
           ]),
           _LabeledSlider(label: 'cert_letter_spacing'.tr, value: f.letterSpacing, min: 0, max: 20, decimals: 1, onChanged: (v) => edit((x) => x.copyWith(letterSpacing: v))),
-          SwitchListTile(
+          Material(type: MaterialType.transparency, child: SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             title: Text('cert_auto_fit'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
             value: f.shrink,
             onChanged: (v) => edit((x) => x.copyWith(shrink: v)),
-          ),
+          )),
           Row(children: [
             Text('cert_max_lines'.tr, style: c.caption),
             const Spacer(),
@@ -1027,6 +1050,8 @@ class _LayersPanel extends StatelessWidget {
           return 'cert_add_logo'.tr;
         case CertFieldKind.line:
           return 'cert_add_line'.tr;
+        case CertFieldKind.photo:
+          return 'cert_add_photo'.tr;
         case CertFieldKind.text:
           final t = (f.text ?? '').replaceAll('\n', ' ');
           return t.isEmpty ? 'cert_add_text'.tr : t;
@@ -1037,6 +1062,7 @@ class _LayersPanel extends StatelessWidget {
           CertFieldKind.signature => Icons.draw_rounded,
           CertFieldKind.logo => Icons.image_outlined,
           CertFieldKind.line => Icons.horizontal_rule_rounded,
+          CertFieldKind.photo => Icons.account_circle_rounded,
           CertFieldKind.text => Icons.text_fields_rounded,
         };
 
@@ -1049,7 +1075,7 @@ class _LayersPanel extends StatelessWidget {
           onReorder: d.canEdit ? p.reorder : (_, __) {},
           itemBuilder: (_, i) {
             final f = d.fields[i];
-            return ListTile(
+            return Material(type: MaterialType.transparency, key: ValueKey(f.id), child: ListTile(
               key: ValueKey(f.id),
               dense: true,
               selected: f.id == p.selectedId,
@@ -1072,7 +1098,7 @@ class _LayersPanel extends StatelessWidget {
                       const SizedBox(width: 22), // room for the drag handle
                     ])
                   : null,
-            );
+            ));
           },
         ),
       ),
@@ -1151,13 +1177,13 @@ class _PagePanelState extends State<_PagePanel> {
               for (final s in const ['classic', 'modern', 'dark'])
                 ChoiceChip(label: Text('cert_style_$s'.tr), selected: _style == s, onSelected: (_) => setState(() => _style = s)),
             ]),
-            SwitchListTile(
+            Material(type: MaterialType.transparency, child: SwitchListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text('cert_reset_layout'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
               value: _resetFields,
               onChanged: (v) => setState(() => _resetFields = v),
-            ),
+            )),
             Wrap(spacing: 8, runSpacing: 8, children: [
               ElevatedButton.icon(
                 onPressed: () async {
@@ -1169,7 +1195,7 @@ class _PagePanelState extends State<_PagePanel> {
               ),
               OutlinedButton.icon(
                 onPressed: () async {
-                  final b = await _pickImage();
+                  final b = await _pickImage(context);
                   if (b != null) await p.uploadBackground(b);
                 },
                 icon: const Icon(Icons.upload_file_rounded, size: 16),
@@ -1187,7 +1213,7 @@ class _PagePanelState extends State<_PagePanel> {
             url: d.logoUrl,
             uploadLabel: 'cert_upload_logo'.tr,
             onUpload: () async {
-              final b = await _pickImage();
+              final b = await _pickImage(context);
               if (b != null) await p.uploadLogo(b);
             },
             onRemove: p.removeLogoImage,

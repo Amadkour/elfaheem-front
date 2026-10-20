@@ -197,6 +197,8 @@ class _DesignCard extends StatelessWidget {
                 onSelected: (v) async {
                   if (v == 'edit') {
                     onOpen();
+                  } else if (v == 'assign') {
+                    await showDesignAssignment(context, design.id);
                   } else if (v == 'delete') {
                     final ok = await showDialog<bool>(
                       context: context,
@@ -214,6 +216,7 @@ class _DesignCard extends StatelessWidget {
                 },
                 itemBuilder: (_) => [
                   PopupMenuItem(value: 'edit', child: Text('cert_edit_design'.tr)),
+                  PopupMenuItem(value: 'assign', child: Text('cert_use_for_courses'.tr)),
                   PopupMenuItem(value: 'delete', child: Text('delete'.tr)),
                 ],
               ),
@@ -245,4 +248,75 @@ class _DesignCard extends StatelessWidget {
       ]),
     );
   }
+}
+
+
+/// "Use this design for": all my courses, or chosen courses. When a certificate is issued without its own design,
+/// the course's assigned design is used — otherwise the automatic premium landscape certificate.
+Future<void> showDesignAssignment(BuildContext context, int designId) async {
+  final api = ApiClient();
+  List<Map<String, dynamic>> courses = const [];
+  bool all = false;
+  final picked = <int>{};
+  try {
+    final r = await api.get('/api/v1/certificate-designs/$designId/assignable-courses');
+    courses = [for (final x in (r as Map)['items'] as List) Map<String, dynamic>.from(x as Map)];
+    final d = await api.get('/api/v1/certificate-designs/$designId');
+    all = (d as Map)['apply_all'] == true;
+    picked.addAll(((d['course_ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
+  } catch (_) {}
+  if (!context.mounted) return;
+  await showModalBottomSheet<void>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    builder: (ctx) => StatefulBuilder(builder: (ctx, set) {
+      final c = ctx.colors;
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('cert_use_for_courses'.tr, style: c.h3),
+          const SizedBox(height: 4),
+          Text('cert_use_for_courses_hint'.tr, style: c.caption),
+          Material(
+            type: MaterialType.transparency,
+            child: SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: all,
+              onChanged: (v) => set(() => all = v),
+              title: Text('cert_all_my_courses'.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+            ),
+          ),
+          if (!all)
+            Flexible(
+              child: ListView(shrinkWrap: true, children: [
+                for (final co in courses)
+                  Material(
+                    type: MaterialType.transparency,
+                    child: CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: picked.contains(co['id']),
+                      onChanged: (on) => set(() => on == true ? picked.add(co['id'] as int) : picked.remove(co['id'])),
+                      title: Text('${co['title']}', style: const TextStyle(fontFamily: 'tajawal')),
+                    ),
+                  ),
+              ]),
+            ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () async {
+                try {
+                  await api.put('/api/v1/certificate-designs/$designId/assignment', body: {'apply_all': all, 'course_ids': picked.toList()});
+                  if (ctx.mounted) Navigator.pop(ctx);
+                } catch (_) {}
+              },
+              child: Text('save'.tr),
+            ),
+          ),
+        ]),
+      );
+    }),
+  );
 }

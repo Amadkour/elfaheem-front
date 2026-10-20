@@ -22,6 +22,7 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 String _q(int? deptId) => deptId == null ? '' : '?dept_id=$deptId';
 
@@ -224,7 +225,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
             Row(children: [
               OutlinedButton.icon(
                 onPressed: () async {
-                  final f = await orgPickAndUpload('${s.base}/uploads', extensions: const ['png', 'jpg', 'jpeg', 'webp']);
+                  final f = await orgPickAndUpload('${s.base}/uploads', extensions: const ['png', 'jpg', 'jpeg', 'webp'], context: ctx, cropShape: CropShape.wide);
                   if (f != null) set(() => image = '${f['url']}');
                 },
                 icon: const Icon(Icons.image_rounded),
@@ -374,7 +375,7 @@ class _FormCard extends StatelessWidget {
                   final r = await OrgApi.i.put(url, {'status': v}, v == 'open' ? t('النموذج مفتوح الآن ✅', 'The form is open ✅') : t('أُغلق النموذج', 'Form closed'));
                   if (r is Map) p.replaceRow(Map<String, dynamic>.from(r));
                 case 'export':
-                  await downloadExcel(context, 'forms/${row['id']}/export');
+                  await exportData(context, 'forms/${row['id']}/export');
                 case 'delete':
                   if (!await confirm(context, message: t('حذف النموذج؟ إن كان له ردود سيُغلق فقط حفاظاً عليها.', 'Delete the form? If it has answers it is only closed, to keep them.'), danger: true)) return;
                   if (await OrgApi.i.del(url, t('تم', 'Done')) != null) p.refresh();
@@ -384,7 +385,7 @@ class _FormCard extends StatelessWidget {
               if (s.can('forms', 'update', dept)) PopupMenuItem(value: 'edit', child: Text(t('تعديل الحقول', 'Edit fields'))),
               if (s.can('forms', 'update', dept) && row['status'] != 'open') PopupMenuItem(value: 'open', child: Text(t('فتح لاستقبال الردود', 'Open for answers'))),
               if (s.can('forms', 'update', dept) && row['status'] == 'open') PopupMenuItem(value: 'closed', child: Text(t('إغلاق', 'Close'))),
-              if (s.can('forms', 'export', dept)) PopupMenuItem(value: 'export', child: Text(t('تصدير الردود (Excel)', 'Export answers (Excel)'))),
+              if (s.can('forms', 'export', dept)) PopupMenuItem(value: 'export', child: Text(t('تصدير الردود (Excel / PDF / Word)', 'Export answers (Excel / PDF / Word)'))),
               if (s.can('forms', 'delete', dept)) PopupMenuItem(value: 'delete', child: Text(t('حذف', 'Delete'), style: TextStyle(color: c.danger))),
             ],
           ),
@@ -410,6 +411,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
   late String _kind = '${widget.edit?['kind'] ?? 'request'}';
   late bool _review = widget.edit?['requires_review'] != false;
   late bool _multiple = widget.edit?['allow_multiple'] == true;
+  late bool _mandatory = widget.edit?['mandatory'] == true;
   late Map<String, dynamic> _audience = asMap(widget.edit?['audience']).isEmpty
       ? {'roles': ['student'], 'sub_orgs': true}
       : asMap(widget.edit?['audience']);
@@ -497,6 +499,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
       'audience': _audience,
       'requires_review': _kind == 'survey' ? false : _review,
       'allow_multiple': _multiple,
+      'mandatory': _mandatory,
       if (widget.edit == null) 'dept_id': widget.deptId,
     };
     var r = widget.edit == null
@@ -534,6 +537,11 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                   subtitle: t('يحصل المتقدم على رقم متابعة ويُبلغ بالنتيجة', 'People get a tracking number and are told the result'),
                   value: _review,
                   onChanged: (v) => setState(() => _review = v)),
+            OrgSwitchRow(
+                title: t('إلزامي — يفتح على الرئيسية حتى يُرسَل', 'Mandatory — opens on the home screen until sent'),
+                subtitle: t('للبيانات التي يجب على كل عضو إرسالها (تحديث بيانات، إقرار …)', 'For data every member must send (profile update, declaration …)'),
+                value: _mandatory,
+                onChanged: (v) => setState(() => _mandatory = v)),
             OrgSwitchRow(title: t('السماح بأكثر من رد للشخص', 'Allow more than one answer per person'),
                 value: _multiple, onChanged: (v) => setState(() => _multiple = v)),
             OrgAudiencePicker(value: _audience, onChanged: (v) => setState(() => _audience = v)),
@@ -610,7 +618,7 @@ class OrgFormResponsesScreen extends StatelessWidget {
             if (s.can('forms', 'export', dept))
               IconButton(
                   tooltip: t('تصدير Excel', 'Export Excel'),
-                  onPressed: () => downloadExcel(context, 'forms/${form['id']}/export'),
+                  onPressed: () => exportData(context, 'forms/${form['id']}/export'),
                   icon: const Icon(Icons.file_download_rounded)),
           ]),
           child: Column(children: [
@@ -984,9 +992,9 @@ class OrgComplaintsPage extends StatelessWidget {
             Align(
               alignment: AlignmentDirectional.centerEnd,
               child: TextButton.icon(
-                onPressed: () => downloadExcel(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
+                onPressed: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
                 icon: const Icon(Icons.file_download_rounded, size: 18),
-                label: Text(t('تقرير Excel', 'Excel report'), style: const TextStyle(fontFamily: 'tajawal')),
+                label: Text(t('تصدير التقرير', 'Export report'), style: const TextStyle(fontFamily: 'tajawal')),
               ),
             ),
           Expanded(

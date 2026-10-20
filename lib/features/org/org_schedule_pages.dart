@@ -17,6 +17,9 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'org_availability_pages.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -109,6 +112,12 @@ class _SetupTab extends StatelessWidget {
                     title: Text('${r['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
                     subtitle: Text('${_kindLabel('${r['kind']}')} · ${r['capacity']}${(r['building'] ?? '').toString().isEmpty ? '' : ' · ${r['building']}'}'),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                      if (s.can('schedule', 'update'))
+                        IconButton(
+                          tooltip: t('الفترات المتاحة لهذا المكان', 'When this place is available'),
+                          icon: const Icon(Icons.event_available_rounded, size: 20),
+                          onPressed: () => _availabilitySheet(context, p, 'room', asInt(r['id']), '${t('أوقات إتاحة', 'Available periods of')} ${r['name']}'),
+                        ),
                       if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => _roomForm(context, p, r)),
                       if (s.can('schedule', 'delete')) IconButton(icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger), onPressed: () async {
                         if (await confirm(context, message: t('حذف القاعة؟', 'Delete this room?'), danger: true)) p.deleteRoom(asInt(r['id']));
@@ -227,6 +236,16 @@ class _PlanningTab extends StatelessWidget {
       const SizedBox(height: 16),
       Section(
         title: t('أوقات التواجد (الهيئة التدريسية والمعاونة)', 'Staff availability'),
+        trailing: TextButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                  value: context.read<OrgSession>(),
+                  child: BasePage(useWebCard: true, maxWith: 900,
+                      appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests')),
+                      child: const OrgAvailabilityRequestsPage())))),
+          icon: const Icon(Icons.send_rounded, size: 18),
+          label: Text(t('اطلبها منهم', 'Ask them')),
+        ),
         icon: Icons.event_available_rounded,
         child: p.staff.isEmpty
             ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف مدرسين وهيئة معاونة أولاً.', 'Add teachers and staff first.')))
@@ -327,6 +346,58 @@ Future<void> _loadForm(BuildContext context, OrgScheduleProvider p, Map<String, 
 }
 
 /// Days × periods grid. Empty selection = "available at any time".
+/// Conflict preview: what clashes, in plain words — remove the clashing slots of THIS timetable, add anyway, or cancel.
+Future<String?> showConflictPreview(BuildContext context, List<Map<String, dynamic>> conflicts, {bool canReplace = true}) {
+  final removable = conflicts.any((x) => (x['removable_slot_ids'] as List? ?? const []).isNotEmpty);
+  final elsewhere = conflicts.any((x) => x['elsewhere'] == true);
+  return showAdminSheet<String>(context, (ctx) {
+    final c = ctx.colors;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SheetHeader(t('يوجد تعارض في هذا الموعد', 'This time clashes')),
+        for (final x in conflicts)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: c.danger.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.danger.withValues(alpha: 0.3)),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(x['elsewhere'] == true ? Icons.link_rounded : Icons.warning_amber_rounded, color: c.danger, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), style: orgText(ctx, w: FontWeight.w800)),
+                  if ((x['courses'] as List? ?? const []).isNotEmpty)
+                    Text((x['courses'] as List).join(' · '), style: orgText(ctx, size: 12, color: c.textMedium)),
+                ]),
+              ),
+            ]),
+          ),
+        if (elsewhere)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(t('بعض التعارضات في جداول أخرى مفعّلة ولا يمكن حذفها من هنا.', 'Some clashes are in other active timetables and can\'t be removed from here.'),
+                style: orgText(ctx, size: 12, color: c.textMedium)),
+          ),
+        if (canReplace && removable)
+          PrimaryButton(isLoading: false, label: t('حذف الحصص المتعارضة وإضافة هذه', 'Remove the clashing slots & add'),
+              icon: Icons.swap_horiz_rounded, iconBefore: true, onPressed: () => Navigator.pop(ctx, 'replace')),
+        const SizedBox(height: 8),
+        OutlinedButton(
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46), foregroundColor: c.danger),
+          onPressed: () => Navigator.pop(ctx, 'force'),
+          child: Text(t('إضافة رغم التعارض', 'Add anyway')),
+        ),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
+      ]),
+    );
+  });
+}
+
 Future<void> _availabilitySheet(BuildContext context, OrgScheduleProvider p, String type, int id, String title) async {
   if (p.periods.isEmpty) {
     toast(t('أضف الفترات أولاً', 'Add periods first'), error: true);
@@ -720,19 +791,20 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
               options: {for (final u in items) asInt(u['id']): '${u['name']}'},
               onChanged: (x) => set(() => on(x)),
             );
-        Future<void> save({bool force = false}) async {
+        Future<void> save({bool force = false, bool replace = false}) async {
           set(() => busy = true);
           final body = {'day': day, 'period_id': period, 'room_id': room, 'teacher_id': teacher, 'assistant_id': assistant, 'admin_assistant_id': adm};
           final res = slot == null
-              ? await p.addSlot({...body, 'course_id': course}, force: force)
+              ? await p.addSlot({...body, 'course_id': course}, force: force, replace: replace)
               : await p.editSlot(asInt(slot['id']), body, force: force);
           if (!ctx.mounted) return;
           set(() => busy = false);
           if (res == null) {
             Navigator.pop(ctx);
           } else if (res.isNotEmpty && res.first['type'] != 'error') {
-            final go = await confirm(ctx, message: '${res.map(_issueText).toSet().join('\n')}\n\n${t('حفظ رغم التعارض؟', 'Save anyway?')}', danger: true);
-            if (go && ctx.mounted) await save(force: true);
+            final choice = await showConflictPreview(ctx, res, canReplace: slot == null);
+            if (choice == 'replace' && ctx.mounted) await save(replace: true);
+            if (choice == 'force' && ctx.mounted) await save(force: true);
           }
         }
 

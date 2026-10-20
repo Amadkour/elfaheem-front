@@ -18,6 +18,7 @@ import '../org/org_ui.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 const _base = '/api/v1/admin/orgs';
 
@@ -46,6 +47,11 @@ class AdminOrganizationsPage extends StatelessWidget {
           useWebCard: true,
           maxWith: 1000,
           appBar: ScreenAppBar(title: t('المؤسسات', 'Organizations'), actions: [
+            IconButton(
+              tooltip: t('مديرو المؤسسات', 'Organization admins'),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminOrgAdminsPage())),
+              icon: const Icon(Icons.manage_accounts_rounded),
+            ),
             IconButton(
               tooltip: t('حساب مدير مؤسسة', 'Org-admin account'),
               onPressed: () => _createOrgAdmin(context),
@@ -230,7 +236,7 @@ Future<void> _createOrgAdmin(BuildContext context) async {
   final name = TextEditingController();
   final email = TextEditingController();
   final phone = TextEditingController();
-  bool busy = false;
+  bool busy = false, verify = true;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -240,15 +246,23 @@ Future<void> _createOrgAdmin(BuildContext context) async {
                 style: orgText(ctx, size: 12.5, color: ctx.colors.textMedium)),
             const SizedBox(height: 12),
             Field(controller: name, label: t('الاسم', 'Name')),
-            Field(controller: email, label: t('البريد', 'E-mail'), ltr: true, keyboard: TextInputType.emailAddress),
+            AppEmailField(controller: email, label: t('البريد', 'E-mail')),
             PhoneInputField(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),   // same field as registration
+            OrgSwitchRow(
+              title: t('تأكيد البريد الإلكتروني', 'Verify the e-mail'),
+              subtitle: t('نرسل رمزاً للبريد ويؤكّده المدير عند أول دخول', 'We e-mail a code; the admin confirms it at first sign-in'),
+              value: verify,
+              onChanged: (v) => set(() => verify = v),
+            ),
+            const SizedBox(height: 6),
             PrimaryButton(
               isLoading: busy,
               label: t('إنشاء الحساب', 'Create account'),
               onPressed: () async {
                 set(() => busy = true);
                 final r = await OrgApi.i.post('$_base/org-admins',
-                    {'name': name.text.trim(), 'email': email.text.trim(), if (phone.text.trim().isNotEmpty) 'phone': phone.text.trim()});
+                    {'name': name.text.trim(), 'email': email.text.trim(), 'send_verification': verify,
+                      if (phone.text.trim().isNotEmpty) 'phone': phone.text.trim()});
                 if (!ctx.mounted) return;
                 set(() => busy = false);
                 if (r is Map) {
@@ -267,6 +281,169 @@ Future<void> _createOrgAdmin(BuildContext context) async {
                 }
               },
             ),
+          ]),
+        );
+      }));
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Organization admins — the platform manages the people who run organizations
+// ═════════════════════════════════════════════════════════════════════════════
+
+class AdminOrgAdminsPage extends StatelessWidget {
+  const AdminOrgAdminsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider(
+      create: (_) => OrgPaged('$_base/org-admins')..refresh(),
+      child: Builder(builder: (context) {
+        final p = context.watch<OrgPaged>();
+        final c = context.colors;
+        return BasePage(
+          useWebCard: true,
+          maxWith: 900,
+          appBar: ScreenAppBar(title: t('مديرو المؤسسات', 'Organization admins'), actions: [
+            IconButton(
+              tooltip: t('حساب جديد', 'New account'),
+              onPressed: () async {
+                await _createOrgAdmin(context);
+                p.refresh();
+              },
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+            ),
+          ]),
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+              child: SearchBox(hint: t('الاسم أو البريد أو الهاتف', 'Name, e-mail or phone'), onChanged: p.setSearch),
+            ),
+            Expanded(
+              child: PagedList<OrgPaged>(
+                emptyText: t('لا يوجد مديرو مؤسسات بعد', 'No organization admins yet'),
+                itemBuilder: (context, row) {
+                  final verified = row['email_verified'] == true;
+                  final active = row['is_active'] != false;
+                  final orgs = asMapList(row['organizations']);
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
+                    child: RowCard(
+                      accent: active ? null : c.danger,
+                      onTap: () => _manageOrgAdmin(context, row),
+                      child: Row(children: [
+                        AdminAvatar(name: '${row['name']}', url: row['image_url'] as String?),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text('${row['name']}', style: orgText(context, w: FontWeight.w800)),
+                            Text('${row['email']}', textDirection: TextDirection.ltr,
+                                style: orgText(context, size: 12, color: c.textMedium)),
+                            const SizedBox(height: 4),
+                            Wrap(spacing: 6, runSpacing: 4, children: [
+                              OrgPill(verified ? t('بريد مؤكَّد', 'E-mail verified') : t('بريد غير مؤكَّد', 'E-mail not verified'),
+                                  color: verified ? c.success : c.warning,
+                                  icon: verified ? Icons.verified_rounded : Icons.mark_email_unread_rounded),
+                              if (!active) OrgPill(t('معطَّل', 'Disabled'), color: c.danger, icon: Icons.block_rounded),
+                              for (final o in orgs.take(2)) OrgPill(orgNameOf(o), icon: Icons.domain_rounded, color: c.textMedium),
+                            ]),
+                          ]),
+                        ),
+                        Icon(Icons.chevron_right_rounded, color: c.textLight),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ]),
+        );
+      }),
+    );
+  }
+}
+
+Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) async {
+  final p = context.read<OrgPaged>();
+  final name = TextEditingController(text: '${row['name'] ?? ''}');
+  final email = TextEditingController(text: '${row['email'] ?? ''}');
+  final phone = TextEditingController(text: '${row['phone'] ?? ''}');
+  bool active = row['is_active'] != false, busy = false;
+  final url = '$_base/org-admins/${row['id']}';
+  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = ctx.colors;
+        Future<void> showPassword(String pwd) => showDialog<void>(
+              context: ctx,
+              builder: (_) => AlertDialog(
+                title: Text(t('كلمة المرور الجديدة (تظهر مرة واحدة)', 'New password (shown once)')),
+                content: SelectableText(pwd, textDirection: TextDirection.ltr),
+              ),
+            );
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SheetHeader('${row['name']}'),
+            Field(controller: name, label: t('الاسم', 'Name')),
+            AppEmailField(controller: email, label: t('البريد الإلكتروني', 'E-mail')),
+            PhoneInputField(controller: phone, label: t('الهاتف', 'Phone')),
+            OrgSwitchRow(
+              title: t('الحساب مفعّل', 'Account active'),
+              subtitle: t('عند التعطيل لا يستطيع تسجيل الدخول', 'When disabled they cannot sign in'),
+              value: active,
+              onChanged: (v) => set(() => active = v),
+            ),
+            const SizedBox(height: 8),
+            PrimaryButton(
+              isLoading: busy,
+              label: t('حفظ', 'Save'),
+              onPressed: () async {
+                set(() => busy = true);
+                final r = await OrgApi.i.put(url, {
+                  'name': name.text.trim(),
+                  'email': email.text.trim(),
+                  'phone': phone.text.trim(),
+                  'is_active': active,
+                }, email.text.trim().toLowerCase() != '${row['email']}'.toLowerCase()
+                    ? t('تم الحفظ — أُرسل رمز تأكيد للبريد الجديد', 'Saved — a verification code was sent to the new e-mail')
+                    : t('تم الحفظ', 'Saved'));
+                if (!ctx.mounted) return;
+                set(() => busy = false);
+                if (r != null) {
+                  p.refresh();
+                  Navigator.pop(ctx);
+                }
+              },
+            ),
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    if (!await confirm(ctx, message: t('إنشاء كلمة مرور جديدة؟ سيُسجَّل خروجه من كل الأجهزة.', 'Create a new password? They will be signed out everywhere.'))) return;
+                    final r = await OrgApi.i.post('$url/reset-password');
+                    if (r is Map && ctx.mounted) await showPassword('${r['generated_password']}');
+                  },
+                  icon: const Icon(Icons.key_rounded),
+                  label: Text(t('كلمة مرور جديدة', 'New password')),
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (row['email_verified'] != true)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(foregroundColor: c.warning),
+                    onPressed: () async {
+                      final r = await OrgApi.i.post('$url/send-verification');
+                      if (r is Map) {
+                        toast(r['sent'] == true
+                            ? t('أُرسل رمز التأكيد إلى البريد ✉️', 'Verification code sent ✉️')
+                            : t('تعذّر الإرسال الآن — حاول لاحقاً', 'Could not send now — try later'), error: r['sent'] != true);
+                      }
+                    },
+                    icon: const Icon(Icons.mark_email_read_rounded),
+                    label: Text(t('إرسال تأكيد البريد', 'Send e-mail verification')),
+                  ),
+                ),
+            ]),
           ]),
         );
       }));

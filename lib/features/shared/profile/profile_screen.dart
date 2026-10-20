@@ -40,6 +40,8 @@ import 'components/setting_title.dart';
 import 'profile_provider.dart' show ProfileProvider;
 import 'update_account_widget.dart';
 import '../../../utils/helpers.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -150,6 +152,27 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           if (context.read<MyAuthProvider>().isTeacher) ...[
+                            ParentComponent(
+                              featureKey: 'profile.my_ads',
+                              child: SettingsTile(
+                                icon: Icons.campaign_rounded,
+                                iconBg: c.accentTint,
+                                iconColor: c.accent,
+                                label: 'my_ads'.tr,
+                                onTap: () => _push(const TeacherAdsPage()),
+                              ),
+                            ),
+                            ParentComponent(
+                              featureKey: 'profile.certificate_designs',
+                              child: SettingsTile(
+                                icon: Icons.workspace_premium_rounded,
+                                iconBg: c.accentTint,
+                                iconColor: c.accent,
+                                label: 'cert_my_designs'.tr,
+                                // personal designs: usable on every course of this teacher (no organization needed)
+                                onTap: () => _push(const CertificateDesignsScreen()),
+                              ),
+                            ),
                             ParentComponent(
                               featureKey: 'profile.teacher_profile',
                               child: SettingsTile(
