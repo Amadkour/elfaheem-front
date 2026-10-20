@@ -443,11 +443,11 @@ class _EnrollRoadmapButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.rocket_launch_rounded, size: 18, color: ink),
+             Icon(Icons.rocket_launch_rounded, size: 18, color: ink),
             const SizedBox(width: 8),
             Text(
               label,
-              style: const TextStyle(
+              style:  TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 13,
                 fontWeight: FontWeight.w800,

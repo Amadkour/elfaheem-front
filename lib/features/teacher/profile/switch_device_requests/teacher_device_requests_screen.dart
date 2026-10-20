@@ -233,7 +233,7 @@ class _Card extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline_rounded, size: 18, color: warn),
+                   Icon(Icons.info_outline_rounded, size: 18, color: warn),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(

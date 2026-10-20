@@ -586,7 +586,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
               border: Border.all(color: _rose.withValues(alpha: 0.5), width: 1.5),
               boxShadow: [BoxShadow(color: _rose.withValues(alpha: 0.3), blurRadius: 16)],
             ),
-            child: const Icon(Icons.call_end_rounded, color: _rose, size: 24),
+            child:  Icon(Icons.call_end_rounded, color: _rose, size: 24),
           ),
           const SizedBox(height: 5),
           Text('lr_end'.tr,
