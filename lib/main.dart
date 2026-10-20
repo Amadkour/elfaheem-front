@@ -49,6 +49,7 @@ import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
+import 'features/org/org_dashboard_screen.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
@@ -563,6 +564,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/admin_dashboard':
         return _fade(const _Guard(child: AdminDashboardScreen()), settings);
+      case '/org_dashboard':
+        return _fade(const _Guard(child: OrgDashboardScreen()), settings);
       case '/parent_dashboard':
         return _fade(const _Guard(child: ParentDashboardScreen()), settings);
       case '/subscription':

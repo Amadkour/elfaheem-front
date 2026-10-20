@@ -1,0 +1,184 @@
+name: flutter_education_app
+description: Complete educational platform with VOD and live streaming
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.10.0 <4.0.0'
+
+dependencies:
+  share_plus: ^13.3.1
+  flutter_web_plugins:
+    sdk: flutter
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.0
+  provider: ^6.1.1
+  dio: ^5.4.0
+  shared_preferences: ^2.2.2
+  chewie: ^1.7.4
+  webview_flutter: ^4.4.2
+  cupertino_icons: ^1.0.6
+  flutter_spinkit: ^5.2.0
+  cached_network_image: ^4.0.4
+  file_picker: ^13.1.0
+  image_picker: ^1.0.5
+  intl: ^0.20.2
+  fluttertoast: ^10.0.2
+  url_launcher: ^6.2.2
+  flutter_localizations:
+    sdk: flutter
+  flutter_native_splash:
+  flutter_background: ^1.1.0
+  permission_handler: ^13.0.2
+  logging: ^1.0.1
+  flutter_svg: ^2.0.5
+  collection: '>=1.16.0'
+  nested: any
+  flutter_webrtc: ^1.6.0
+  mime: any
+  responsive_framework: ^1.5.1
+  moyasar: ^3.0.2
+  # Paymob's OFFICIAL native SDK bridge (Apple Pay / Google Pay / cards on-device, Egypt).
+  # Android SDK is bundled inside the plugin; iOS xcframework too. Pin `ref` to a commit hash
+  # once you have tested a build, so a later push to `main` can't change your payment screen.
+  #  flutter_paymob_sdk:
+  #    git:
+  #      url: https://github.com/PaymobAccept/flutter_sdk.git
+  #      ref: main
+  path: any
+  cross_file: any
+  timeago: ^3.7.1
+  flutter_local_notifications: ^22.0.1
+  timezone: ^0.11.1
+  firebase_core: ^5.0.0
+  firebase_messaging: ^17.0.0
+  firebase_crashlytics: ^6.0.0
+  firebase_remote_config: ^7.0.0
+  video_player: ^2.9.2
+  wakelock_plus: ^1.2.10
+  livekit_client: ^2.8.0
+  loading_animation_widget: ^1.3.0
+  bluetooth_low_energy: ^6.0.0
+  # Modern replacement for dart:html / dart:js_util (both removed on recent
+  # Dart SDKs). Used only inside web_notification_web.dart.
+  web: ^1.1.0
+  linkify: ^5.0.0
+  flutter_secure_storage: ^11.2.0
+  # X25519 / AES-GCM / HKDF for the app-layer envelope encryption in
+  # api_client.dart. NOT the same package as `crypto` above (that one is
+  # hash-only — sha256 for certificate pinning); this one is a different
+  # pub.dev package and both are needed.
+  cryptography: ^2.7.0
+  android_id: ^0.6.0
+  # Pinned: 1.5.2+ applies kotlin-android only on AGP < 9, so with
+  # android.builtInKotlin=false its Kotlin code is never compiled.
+  screen_protector: 1.5.1
+  file_saver: ^0.7.0
+  # Picture-in-Picture (minimize) for the video player — Android only.
+  floating: ^6.0.0
+  # AES-CTR for the encrypted offline downloads.
+  pointycastle:
+  crypto: any
+  http_parser: any
+  package_info_plus: any
+  http: any
+  device_info_plus: ^13.3.0
+  uuid: any
+  qr_flutter: ^4.1.0
+  # Relay-based offline attendance: short-range link (BLE + Wi-Fi Direct) between an offline
+  # student and an online classmate. Android only; needs Google Play services.
+  nearby_connections: ^4.0.0
+  # One online/offline answer for the app.
+  firebase_auth: ^7.0.0
+  geolocator: ^14.0.1
+  connectivity_plus: ^7.3.1
+  network_info_plus: ^8.2.1
+dependency_overrides:
+  flutter_webrtc:
+    git:
+      url: https://github.com/Amadkour/flutter-webrtc.git
+      ref: main
+  flutter_lints: ^6.0.0
+
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/translation.json
+  fonts:
+    - family: bahji
+      fonts:
+        - asset: assets/fonts/Bahij_TheSansArabic-Bold.ttf
+          style: italic
+    - family: tajawal
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+          style: italic
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/Tajawal-Regular.ttf
+          style: italic
+
+# ─────────────────────────────────────────────────────────────────────────────
+# App launcher icon (was completely missing — this is why the project icon
+# was showing the default Flutter icon instead of your logo).
+# Run: dart run flutter_launcher_icons
+# dart run flutter_launcher_icons:generate -o
+# ─────────────────────────────────────────────────────────────────────────────
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+
+  # Main fallback image
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0C1511"
+  adaptive_icon_foreground: "assets/icon/adaptive_icon_foreground.png"
+
+  # Explicitly set the paths for web and desktop platforms to stop the fallback error
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Splash screen
+# android_12 now points at a SEPARATE, padded image (splash_android12.png)
+# instead of reusing the full-bleed splash.png. Android 12+ renders this
+# image inside a fixed circular "safe zone" (~1/3 of a 960x960 canvas,
+# centered) and clips anything outside it — reusing the full-bleed logo is
+# exactly why it was being cropped before.
+# Run: dart run flutter_native_splash:create
+# ─────────────────────────────────────────────────────────────────────────────
+flutter_native_splash:
+  color: "#FBF7EC"
+  color_dark: "#0C1511"
+
+  image: assets/images/splash.png
+  image_dark: assets/images/splash.png
+
+  android_gravity: center
+  ios_content_mode: center
+
+  fullscreen: true
+
+  # Android 12+ specific configuration (required for newer Android versions)
+  android_12:
+    image: assets/images/splash_android12.png
+    icon_background_color: "#D4FEFD"
+    color: "#D4FEFD"
+    color_dark: "#D4FEFD"
+  web: true
+dev_dependencies:
+  flutter_test: any
+  flutter_launcher_icons: ^0.14.3

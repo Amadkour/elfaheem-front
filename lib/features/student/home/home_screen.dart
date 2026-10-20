@@ -5,6 +5,7 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
+import '../../org/org_member_pages.dart' show OrgHomeEntry;
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
@@ -258,6 +259,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: SizedBox(height: 28),
                         ),
                       ),
+
+                      // ── Organizations (join a university / faculty) ──────
+                      if (!GuestState.active)
+                        const SliverToBoxAdapter(
+                          child: ParentComponent(
+                            key: ValueKey('student_home.org'),
+                            child: OrgHomeEntry(),
+                          ),
+                        ),
 
                       // ── Categories ───────────────────────────────────────
                       if (context

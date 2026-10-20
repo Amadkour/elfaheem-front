@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
+import '../../org/org_member_pages.dart' show OrgHomeEntry;
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/top_route_observer.dart';
@@ -105,6 +106,16 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
 
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: _AddCourseButton(),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+
+                      // ── Organizations (join a university / faculty) ─────
+                      ParentComponent(
+                        child: ContentBox(
+                          key: ValueKey('teacher_home_org'),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: const OrgHomeEntry(),
                         ),
                       ),
                       SizedBox(height: 24),

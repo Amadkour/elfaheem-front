@@ -488,6 +488,20 @@ class DlImportPlan {
   List<Map<String, dynamic>> get unmatchedPreview => dlList(raw['unmatched_preview']);
   bool get needsName => missingFields.any((m) => m['field'] == 'name');
   bool get needsContact => missingFields.any((m) => m['field'] == 'contact');
+
+  // "Add them to the course" (create_accounts)
+  int get willEnrollExisting => _i('will_enroll_existing');
+  int get willInviteEmail => _i('will_invite_email');
+  int get willPhoneOnly => _i('will_phone_only');
+  int get willSheetOnly => _i('will_sheet_only');
+  int get skipped => _i('skipped');
+
+  /// Lines with neither e-mail nor phone: [{row, name, identifier, email, phone, values}].
+  List<Map<String, dynamic>> get needsContactLines => dlList(raw['needs_contact']);
+
+  /// After the import: {enrolled_existing, invited, phone_only, sheet_only, left_out}.
+  Map<String, dynamic> get result => dlMap(raw['result']);
+  int resultOf(String k) => (result[k] as num?)?.toInt() ?? 0;
 }
 
 // ── profile ──────────────────────────────────────────────────────────────────
@@ -639,21 +653,55 @@ class DlPendingRequest {
     required this.title,
     required this.inputType,
     required this.options,
+    this.courseId = 0,
+    this.formKey = '',
+    this.formTitle = '',
+    this.position = 0,
+    this.maxValue,
   });
 
-  final int requestId;
-  final String courseTitle, title, inputType;
+  final int requestId, courseId, position;
+  final String courseTitle, title, inputType, formKey, formTitle;
   final List<String> options;
+  final double? maxValue;
 
   bool get isDropdown => inputType == 'dropdown';
+  bool get isNumber => inputType == 'number';
 
   factory DlPendingRequest.fromJson(Map<String, dynamic> j) => DlPendingRequest(
     requestId: (j['request_id'] as num).toInt(),
+    courseId: (j['course_id'] as num?)?.toInt() ?? 0,
     courseTitle: '${j['course_title'] ?? ''}',
     title: '${j['title'] ?? ''}',
     inputType: '${j['input_type'] ?? 'text'}',
     options: (j['options'] as List?)?.map((e) => '$e').toList() ?? [],
+    formKey: '${j['form_key'] ?? 'q${j['request_id']}'}',
+    formTitle: '${j['form_title'] ?? ''}',
+    position: (j['position'] as num?)?.toInt() ?? 0,
+    maxValue: dlNum(j['max_value']),
   );
+}
+
+/// The questions of one form, as the student sees them on ONE screen.
+class DlPendingForm {
+  DlPendingForm(this.questions);
+
+  final List<DlPendingRequest> questions;
+
+  String get key => questions.first.formKey;
+  String get courseTitle => questions.first.courseTitle;
+  String get title => questions.first.formTitle;
+
+  /// Pending questions grouped by form (order kept).
+  static List<DlPendingForm> group(List<DlPendingRequest> items) {
+    final map = <String, List<DlPendingRequest>>{};
+    for (final q in items) {
+      map.putIfAbsent('${q.courseId}|${q.formKey}', () => []).add(q);
+    }
+    return [
+      for (final l in map.values) DlPendingForm(l..sort((a, b) => a.position.compareTo(b.position))),
+    ];
+  }
 }
 
 class DlRequestInfo {
@@ -666,17 +714,42 @@ class DlRequestInfo {
     required this.total,
     this.isMergeKey = false,
     this.createdAt,
+    this.formKey = '',
+    this.formTitle = '',
+    this.position = 0,
+    this.columnKey,
+    this.columnLabel,
+    this.options = const [],
   });
 
-  final int id, answered, total;
-  final String title, inputType;
+  final int id, answered, total, position;
+  final String title, inputType, formKey, formTitle;
   final bool isActive, isMergeKey;
   final DateTime? createdAt;
+  final String? columnKey, columnLabel;
+  final List<String> options;
 
   int get waiting {
     final w = total - answered;
     return w < 0 ? 0 : w;
   }
+
+  DlRequestInfo copyWith({bool? isActive}) => DlRequestInfo(
+    id: id,
+    title: title,
+    inputType: inputType,
+    isActive: isActive ?? this.isActive,
+    answered: answered,
+    total: total,
+    isMergeKey: isMergeKey,
+    createdAt: createdAt,
+    formKey: formKey,
+    formTitle: formTitle,
+    position: position,
+    columnKey: columnKey,
+    columnLabel: columnLabel,
+    options: options,
+  );
 
   factory DlRequestInfo.fromJson(Map<String, dynamic> j) => DlRequestInfo(
     id: (j['id'] as num).toInt(),
@@ -687,7 +760,40 @@ class DlRequestInfo {
     total: (j['total'] as num?)?.toInt() ?? 0,
     isMergeKey: j['is_merge_key'] == true,
     createdAt: DateTime.tryParse('${j['created_at'] ?? ''}')?.toLocal(),
+    formKey: '${j['form_key'] ?? 'q${j['id']}'}',
+    formTitle: '${j['form_title'] ?? ''}',
+    position: (j['position'] as num?)?.toInt() ?? 0,
+    columnKey: j['column_key'] as String?,
+    columnLabel: j['column_label'] as String?,
+    options: (j['options'] as List?)?.map((e) => '$e').toList() ?? const [],
   );
+}
+
+/// The questions of one form, for the teacher.
+class DlRequestForm {
+  DlRequestForm(this.questions);
+
+  final List<DlRequestInfo> questions;
+
+  String get key => questions.first.formKey;
+  String get title => questions.first.formTitle.isNotEmpty ? questions.first.formTitle : questions.first.title;
+  DateTime? get createdAt => questions.first.createdAt;
+  int get activeCount => questions.where((q) => q.isActive).length;
+  bool get isMergeKey => questions.any((q) => q.isMergeKey);
+
+  /// Students still missing at least one active answer (the biggest gap of an active question).
+  int get waiting => questions.where((q) => q.isActive).fold(0, (m, q) => q.waiting > m ? q.waiting : m);
+  int get total => questions.isEmpty ? 0 : questions.first.total;
+
+  static List<DlRequestForm> group(List<DlRequestInfo> items) {
+    final map = <String, List<DlRequestInfo>>{};
+    for (final q in items) {
+      map.putIfAbsent(q.formKey, () => []).add(q);
+    }
+    final out = [for (final l in map.values) DlRequestForm(l..sort((a, b) => a.position.compareTo(b.position)))];
+    out.sort((a, b) => (b.createdAt ?? DateTime(2000)).compareTo(a.createdAt ?? DateTime(2000)));
+    return out;
+  }
 }
 
 // ── change history ───────────────────────────────────────────────────────────

@@ -11,9 +11,44 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:share_plus/share_plus.dart';
-
 import 'data_lab_models.dart';
+import 'data_lab_saver_io.dart' if (dart.library.html) 'data_lab_saver_web.dart' as saver;
+
+/// The message a teacher sends a student (WhatsApp / SMS / …) with his login details.
+String dlLoginMessage({required String name, required String login, required String password, required String link, required String course}) =>
+    '$name\n'
+    '${course.isEmpty ? '' : '$course\n'}'
+    'تسجيل الدخول · Login: $login\n'
+    'كلمة المرور المؤقتة · Temporary password: $password\n'
+    '$link\n'
+    'ستختار كلمة مرور خاصة بك عند أول دخول · You will choose your own password at the first sign-in.';
+
+/// An exported file, ready to be saved or shared.
+class DlExportFile {
+  DlExportFile({required this.bytes, required this.name, required this.mime, this.rows = 0});
+
+  final Uint8List bytes;
+  final String name, mime;
+  final int rows;
+
+  String get extension => name.contains('.') ? name.split('.').last.toLowerCase() : '';
+  String get sizeLabel => bytes.length < 1024 * 1024
+      ? '${(bytes.length / 1024).toStringAsFixed(bytes.length < 10240 ? 1 : 0)} KB'
+      : '${(bytes.length / 1024 / 1024).toStringAsFixed(1)} MB';
+
+  /// Web / desktop: the file can be written straight to the device (browser download / Downloads folder).
+  static bool get canSaveDirectly => saver.dlCanSaveDirectly;
+
+  /// Saves the file. Returns the saved path (desktop), the file name (web) or null when the system share sheet
+  /// was used instead (phones — it holds "Save to Files" / "Save to device").
+  Future<String?> save() => saver.dlSaveBytes(bytes, name, mime);
+
+  Future<void> share() => saver.dlShareBytes(bytes, name, mime);
+
+  static Future<void> reveal(String path) => saver.dlRevealFile(path);
+
+  static Future<void> open(String path) => saver.dlOpenFile(path);
+}
 
 class DataLabApi {
   DataLabApi({ApiClient? api}) : _api = api ?? ApiClient();
@@ -94,15 +129,13 @@ class DataLabApi {
   Future<Map<String, dynamic>> export(int courseId, Map<String, dynamic> body) async =>
       dlMap(await _api.post('$_b/courses/$courseId/export', body: body));
 
-  /// Opens the share sheet (mobile) / downloads the file (web) for a "download" export.
-  Future<void> saveDownloaded(Map<String, dynamic> res) async {
-    final bytes = base64Decode('${res['content_base64']}');
-    final name = '${res['filename']}';
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile.fromData(bytes, name: name, mimeType: '${res['mime']}')],
-      subject: name,
-    ));
-  }
+  /// The file of a "download" export.
+  DlExportFile fileOf(Map<String, dynamic> res) => DlExportFile(
+    bytes: base64Decode('${res['content_base64']}'),
+    name: '${res['filename']}',
+    mime: '${res['mime']}',
+    rows: (res['rows'] as num?)?.toInt() ?? 0,
+  );
 
   // ── certificates ──────────────────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> certificates(int courseId) async =>
@@ -136,6 +169,19 @@ class DataLabApi {
       _api.post('$_b/courses/$courseId/requests',
           body: {'title': title, 'input_type': inputType, if (options != null) 'options': options});
 
+  /// A form: several questions shown to the student on ONE screen.
+  /// question = {title, input_type: text|dropdown|number, options?, column_key? (an existing column), max_value?}
+  Future<Map<String, dynamic>> createForm(int courseId, {required String title, required List<Map<String, dynamic>> questions}) async =>
+      dlMap(await _api.post('$_b/courses/$courseId/requests', body: {'title': title, 'questions': questions}));
+
+  /// Deactivate / re-activate one question (re-activating asks again the students who did not answer).
+  Future<void> setRequestActive(int courseId, int id, bool active) =>
+      _api.patch('$_b/courses/$courseId/requests/$id', body: {'is_active': active});
+
+  Future<int> remindForm(int courseId, String formKey) async =>
+      ((dlMap(await _api.post('$_b/courses/$courseId/forms/$formKey/remind', body: const {}))['reminded'] as num?) ?? 0)
+          .toInt();
+
   Future<void> closeRequest(int courseId, int id) => _api.delete('$_b/courses/$courseId/requests/$id');
 
   /// Notification + push to the students who did not answer yet. Returns how many were reminded.
@@ -158,6 +204,46 @@ class DataLabApi {
       dlList(dlMap(await _api.get('$_b/me/pending-requests'))['items']).map(DlPendingRequest.fromJson).toList();
 
   Future<void> answerRequest(int id, String value) => _api.post('$_b/me/requests/$id/answer', body: {'value': value});
+
+  /// Every answer of one form screen at once (all or nothing).
+  Future<void> answerForm(Map<int, String> answers) => _api.post('$_b/me/forms/answer', body: {
+    'answers': [for (final e in answers.entries) {'request_id': e.key, 'value': e.value}],
+  });
+
+  // ── account setup (accounts created by a teacher's import) ───────────────
+  // Under /api/v1/auth (it must work before anything else, like /auth/me). An older server only has the
+  // /data-lab/me/… routes: then those are used.
+  static const _setup = '/api/v1/auth/account-setup';
+
+  Future<dynamic> _setupCall(Future<dynamic> Function(String base) call) async {
+    try {
+      return await call(_setup);
+    } on ApiException catch (e) {
+      if (e.statusCode != 404 && e.statusCode != 405) rethrow;
+      return call('$_b/me/account-setup');
+    }
+  }
+
+  Future<Map<String, dynamic>> accountSetup() async => dlMap(await _setupCall((b) => _api.get(b)));
+
+  /// {step: done | verify_email, email?}
+  Future<Map<String, dynamic>> saveAccountSetup({String? name, String? email, String? phone, String? password}) async =>
+      dlMap(await _setupCall((b) => _api.post(b, body: {
+        'name': ?name,
+        'email': ?email,
+        'phone': ?phone,
+        'password': ?password,
+      })));
+
+  Future<Map<String, dynamic>> verifyAccountSetup(String code) async =>
+      dlMap(await _setupCall((b) => _api.post('$b/verify', body: {'code': code})));
+
+  Future<void> resendAccountSetupCode() => _setupCall((b) => _api.post('$b/resend', body: const {}));
+
+  /// Teacher: new TEMPORARY login details for a student of the course → {name, login, password, emailed, link}.
+  /// The student chooses his own password again at the next sign-in. Students with an e-mail also get them by e-mail.
+  Future<Map<String, dynamic>> newLoginDetails(int courseId, int rowId) async =>
+      dlMap(await _api.post('$_b/courses/$courseId/rows/$rowId/login', body: const {}));
 
   // ── profiles ──────────────────────────────────────────────────────────────
   Future<DlProfile> myProfile({int? courseId, required String lang}) async => DlProfile.fromJson(dlMap(

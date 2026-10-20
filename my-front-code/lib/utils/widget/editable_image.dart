@@ -1,0 +1,232 @@
+// ── Image picking ──────────────────────────────────────────────────────────
+import 'dart:typed_data';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../../config/app_config.dart';
+import '../../config/theme/theme_config_provider.dart';
+
+class EditableImage extends StatelessWidget {
+  const EditableImage(
+      {super.key,
+      required this.onChange,
+      this.imageUrl,
+      this.imageByte,
+      this.imageFile, required this.size, this.isCircle=false});
+
+  final Future<void> Function(XFile file) onChange;
+  final String? imageUrl;
+  final XFile? imageFile;
+  final Uint8List? imageByte;
+  final double size;
+  final bool isCircle;
+  @override
+  Widget build(BuildContext context) {
+    print(context.height/10);
+    return Container(
+      height: size,
+      width: size,
+        padding: EdgeInsets.all(10),
+        child: Stack(
+          clipBehavior : Clip.none,
+      children: [
+        // Image picker — overlaps bottom of header
+        Positioned(
+          child: Center(
+            child: GestureDetector(
+              onTap: () => _pickImage(context,onChange),
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape:isCircle? BoxShape.circle : BoxShape.rectangle,
+                  borderRadius:isCircle?null: BorderRadius.all(Radius.circular(20)),
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: isCircle? ClipOval(
+                  child: _imageChild(imageByte, imageUrl),
+                ):ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  clipBehavior: Clip.hardEdge,
+                  child: _imageChild(imageByte, imageUrl),
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (imageByte != null || imageUrl != null)
+          Positioned(
+            bottom: isCircle?0 :0,
+            left:isCircle? (size/1.7): - 10,
+            child: InkWell(
+              borderRadius: const BorderRadius.all(Radius.circular(10)),
+              onTap: () => _pickImage(context,onChange),
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  gradient: context.colors.primaryGradient,
+                  shape:isCircle? BoxShape.circle : BoxShape.rectangle,
+                  borderRadius:isCircle?null: BorderRadius.all(Radius.circular(10)),
+                  border: Border.all(color: Colors.white, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: context.colors.primary.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+      ],
+    ));
+  }
+
+  Widget _imageChild(Uint8List? bytes, String? url) {
+    if (bytes != null) {
+      return Image.memory(bytes, fit: BoxFit.cover);
+    }
+    if (url != null && url.isNotEmpty) {
+      return AppNetworkImage( url: url,);
+    }
+    return _placeholder();
+  }
+
+  Widget _placeholder() => Container(
+        decoration: BoxDecoration(
+          shape:isCircle? BoxShape.circle : BoxShape.rectangle,
+            color: const Color(0xFFE8F0FE),
+
+  ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_photo_alternate_rounded,
+                size: 26, color: Color(0xFF0D6EFD)),
+            SizedBox(height: 4),
+            Text('صورة',
+                style: TextStyle(
+                    fontSize: 9,
+                    color: Color(0xFF0D6EFD),
+                    fontFamily: 'bahji',
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+      );
+
+  Future<void> _pickImage(BuildContext context,Future<void> Function(XFile file) onChange) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _ImageSourceSheet(),
+    );
+    if (source == null) return;
+
+    final xFile = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+    if (xFile == null) return;
+
+    if (!context.mounted) return;
+
+    onChange(xFile);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Image source bottom sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ImageSourceSheet extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('اختر مصدر الصورة',
+                style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'bahji',
+                    color: context.colors.textDark)),
+            const SizedBox(height: 16),
+            _SheetTile(
+              icon: Icons.photo_library_rounded,
+              label: 'من المعرض',
+              color: const Color(0xFF0D6EFD),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            _SheetTile(
+              icon: Icons.camera_alt_rounded,
+              label: 'الكاميرا',
+              color: const Color(0xFF198754),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      );
+}
+
+class _SheetTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SheetTile(
+      {required this.icon,
+      required this.label,
+      required this.color,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(label,
+            style: const TextStyle(fontFamily: 'bahji', fontSize: 14)),
+      );
+}

@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/student/attendance/attendance_pro
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:provider/provider.dart';
+import '../features/org/org_providers.dart';
 import '../config/storage_service.dart' show StorageService;
 import '../config/theme/theme_config_provider.dart';
 import '../features/auth/auth_provider.dart';
@@ -32,6 +33,8 @@ List<SingleChildWidget> appProviders({
 }) => [
   // Storage — shared singleton
   Provider<StorageService>.value(value: storage),
+  // Organizations: which organizations I manage + the selected one (org-admin dashboard)
+  ChangeNotifierProvider<OrgSession>(create: (_) => OrgSession()),
   ChangeNotifierProvider<TeacherTransfersProvider>(
     create: (_) => TeacherTransfersProvider(),
   ),

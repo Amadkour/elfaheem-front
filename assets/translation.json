@@ -13884,5 +13884,385 @@
   "dl_hl_cell": {
     "en": "Highlight this cell",
     "ar": "تمييز هذه الخلية"
+  },
+  "dl_exp_download_sub2": {
+    "en": "Save the file on this device, or share it.",
+    "ar": "احفظ الملف على هذا الجهاز أو شاركه."
+  },
+  "dl_exp_same_look": {
+    "en": "Same look as your sheet: colours, highlights, averages, widths and pinned columns.",
+    "ar": "بنفس شكل جدولك: الألوان والتمييز والمتوسطات والعروض والأعمدة المثبتة."
+  },
+  "dl_exp_pinned": {
+    "en": "Always included (pinned)",
+    "ar": "مضمّنة دائمًا (مثبتة)"
+  },
+  "dl_exp_pinned_sub": {
+    "en": "Pinned columns open the file, in their order.",
+    "ar": "الأعمدة المثبتة تبدأ بها الملف، بنفس ترتيبها."
+  },
+  "dl_exp_more_details": {
+    "en": "More student details",
+    "ar": "بيانات إضافية للطالب"
+  },
+  "dl_exp_btn_prepare": {
+    "en": "Prepare the file",
+    "ar": "تجهيز الملف"
+  },
+  "dl_file_saved": {
+    "en": "Saved to your Downloads",
+    "ar": "تم الحفظ في التنزيلات"
+  },
+  "dl_file_saved_title": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "dl_file_ready": {
+    "en": "Your file is ready",
+    "ar": "ملفك جاهز"
+  },
+  "dl_file_save_again": {
+    "en": "Save again",
+    "ar": "حفظ مرة أخرى"
+  },
+  "dl_file_save": {
+    "en": "Save / Download",
+    "ar": "حفظ / تنزيل"
+  },
+  "dl_file_save_phone": {
+    "en": "Save to device / Open with…",
+    "ar": "حفظ على الجهاز / فتح بواسطة…"
+  },
+  "dl_file_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "dl_file_open": {
+    "en": "Open",
+    "ar": "فتح"
+  },
+  "dl_file_folder": {
+    "en": "Folder",
+    "ar": "المجلد"
+  },
+  "dl_q_need_text": {
+    "en": "Write question",
+    "ar": "اكتب السؤال"
+  },
+  "dl_q_on": {
+    "en": "Question switched on — students who did not answer are asked again",
+    "ar": "تم تفعيل السؤال — سيُطلب مرة أخرى ممن لم يجب"
+  },
+  "dl_q_off": {
+    "en": "Question switched off",
+    "ar": "تم إيقاف السؤال"
+  },
+  "dl_req_explain2": {
+    "en": "Students see your questions on one screen and cannot continue until they answer. Their answers go straight into the sheet.",
+    "ar": "يرى الطلاب أسئلتك في شاشة واحدة ولا يمكنهم المتابعة حتى يجيبوا. تُضاف إجاباتهم مباشرة إلى الجدول."
+  },
+  "dl_form_new": {
+    "en": "New form",
+    "ar": "نموذج جديد"
+  },
+  "dl_form_title": {
+    "en": "Form title (optional)",
+    "ar": "عنوان النموذج (اختياري)"
+  },
+  "dl_form_title_hint": {
+    "en": "e.g. A few details for the exam",
+    "ar": "مثال: بعض البيانات قبل الاختبار"
+  },
+  "dl_q_add": {
+    "en": "Add a question",
+    "ar": "إضافة سؤال"
+  },
+  "dl_q_n": {
+    "en": "Question",
+    "ar": "سؤال"
+  },
+  "dl_ask_number": {
+    "en": "Number",
+    "ar": "رقم"
+  },
+  "dl_q_save_in": {
+    "en": "Save the answers in",
+    "ar": "احفظ الإجابات في"
+  },
+  "dl_q_new_col": {
+    "en": "A new column",
+    "ar": "عمود جديد"
+  },
+  "dl_q_existing_note": {
+    "en": "Students who already have a value in this column are not asked.",
+    "ar": "الطلاب الذين لديهم قيمة في هذا العمود لن يُسألوا."
+  },
+  "dl_q_count": {
+    "en": "questions",
+    "ar": "أسئلة"
+  },
+  "dl_q_close_all": {
+    "en": "Close all",
+    "ar": "إغلاق الكل"
+  },
+  "dl_q_switch_off": {
+    "en": "Switch this question off",
+    "ar": "إيقاف هذا السؤال"
+  },
+  "dl_q_switch_on": {
+    "en": "Ask it again",
+    "ar": "اسأل مرة أخرى"
+  },
+  "dl_setup_err_name": {
+    "en": "Please enter your full name",
+    "ar": "من فضلك اكتب اسمك الكامل"
+  },
+  "dl_setup_err_email": {
+    "en": "Please enter a valid e-mail",
+    "ar": "من فضلك اكتب بريدًا إلكترونيًا صحيحًا"
+  },
+  "dl_setup_err_phone": {
+    "en": "Please enter a valid phone number",
+    "ar": "من فضلك اكتب رقم هاتف صحيحًا"
+  },
+  "dl_setup_err_pass": {
+    "en": "Choose a password of at least 8 characters",
+    "ar": "اختر كلمة مرور من 8 أحرف على الأقل"
+  },
+  "dl_setup_err_match": {
+    "en": "The two passwords are not the same",
+    "ar": "كلمتا المرور غير متطابقتين"
+  },
+  "dl_setup_err_code": {
+    "en": "Enter the 4-digit code",
+    "ar": "اكتب الرمز المكوّن من 4 أرقام"
+  },
+  "dl_setup_done": {
+    "en": "Your account is verified",
+    "ar": "تم توثيق حسابك"
+  },
+  "dl_setup_done_sub": {
+    "en": "Everything is set. From now on, sign in with your own password.",
+    "ar": "كل شيء جاهز. من الآن سجّل الدخول بكلمة المرور الخاصة بك."
+  },
+  "dl_setup_continue": {
+    "en": "Continue",
+    "ar": "متابعة"
+  },
+  "dl_setup_sign_out": {
+    "en": "Sign out",
+    "ar": "تسجيل الخروج"
+  },
+  "dl_setup_code_title": {
+    "en": "Check your e-mail",
+    "ar": "تحقق من بريدك"
+  },
+  "dl_setup_code_sub": {
+    "en": "We sent a 4-digit code to",
+    "ar": "أرسلنا رمزًا من 4 أرقام إلى"
+  },
+  "dl_setup_verify": {
+    "en": "Verify",
+    "ar": "تحقق"
+  },
+  "dl_setup_resend_in": {
+    "en": "Send again in",
+    "ar": "إعادة الإرسال بعد"
+  },
+  "dl_setup_resend": {
+    "en": "Send the code again",
+    "ar": "أرسل الرمز مرة أخرى"
+  },
+  "dl_setup_change_email": {
+    "en": "Change e-mail",
+    "ar": "تغيير البريد"
+  },
+  "dl_setup_title": {
+    "en": "Welcome!",
+    "ar": "أهلًا بك!"
+  },
+  "dl_setup_welcome": {
+    "en": "Welcome to",
+    "ar": "أهلًا بك في"
+  },
+  "dl_setup_sub": {
+    "en": "Your teacher created your account. Complete your details and choose your own password to finish.",
+    "ar": "أنشأ معلمك حسابك. أكمل بياناتك واختر كلمة مرور خاصة بك للإنهاء."
+  },
+  "dl_setup_name": {
+    "en": "Full name",
+    "ar": "الاسم الكامل"
+  },
+  "dl_setup_pass": {
+    "en": "New password",
+    "ar": "كلمة المرور الجديدة"
+  },
+  "dl_setup_pass2": {
+    "en": "Confirm the password",
+    "ar": "تأكيد كلمة المرور"
+  },
+  "dl_setup_email_note": {
+    "en": "We will send a code to this e-mail to verify it.",
+    "ar": "سنرسل رمزًا إلى هذا البريد للتحقق منه."
+  },
+  "dl_setup_next": {
+    "en": "Next",
+    "ar": "التالي"
+  },
+  "dl_setup_finish": {
+    "en": "Finish",
+    "ar": "إنهاء"
+  },
+  "dl_fix_undecided_q": {
+    "en": "lines without e-mail or phone have no decision yet. They will be left out — continue?",
+    "ar": "سطرًا بدون بريد أو هاتف لم يُتخذ قرار بشأنها. سيتم تجاهلها — هل تريد المتابعة؟"
+  },
+  "dl_imp_cols": {
+    "en": "columns",
+    "ar": "أعمدة"
+  },
+  "dl_imp_other_file": {
+    "en": "Choose another file",
+    "ar": "اختر ملفًا آخر"
+  },
+  "dl_t_group_student": {
+    "en": "Student details",
+    "ar": "بيانات الطالب"
+  },
+  "dl_t_group_columns": {
+    "en": "Columns of the sheet",
+    "ar": "أعمدة الجدول"
+  },
+  "dl_t_override": {
+    "en": "replaces the automatic value",
+    "ar": "يستبدل القيمة التلقائية"
+  },
+  "dl_t_hidden": {
+    "en": "hidden",
+    "ar": "مخفي"
+  },
+  "dl_t_group_new": {
+    "en": "New column",
+    "ar": "عمود جديد"
+  },
+  "dl_imp_new_cols": {
+    "en": "new columns",
+    "ar": "أعمدة جديدة"
+  },
+  "dl_policy_add": {
+    "en": "Add them to the course",
+    "ar": "أضفهم إلى المقرر"
+  },
+  "dl_policy_add_sub": {
+    "en": "Platform users are enrolled and notified. New students get an account — an invitation e-mail when there is an e-mail.",
+    "ar": "مستخدمو المنصة يُسجَّلون ويصلهم إشعار. الطلاب الجدد يحصلون على حساب — مع دعوة بالبريد عند وجود بريد."
+  },
+  "dl_plan_enroll": {
+    "en": "already on the platform — enrolled + notified",
+    "ar": "موجودون على المنصة — تسجيل + إشعار"
+  },
+  "dl_plan_invite": {
+    "en": "new accounts — invitation e-mail with their login",
+    "ar": "حسابات جديدة — دعوة بالبريد ببيانات الدخول"
+  },
+  "dl_plan_phone": {
+    "en": "new accounts with a phone only — you hand over the login",
+    "ar": "حسابات جديدة بهاتف فقط — تسلّمهم بيانات الدخول بنفسك"
+  },
+  "dl_plan_no_contact": {
+    "en": "without e-mail or phone — decide below",
+    "ar": "بدون بريد أو هاتف — قرّر بالأسفل"
+  },
+  "dl_plan_sheet_only": {
+    "en": "kept in the sheet only",
+    "ar": "في الجدول فقط"
+  },
+  "dl_plan_setup_note": {
+    "en": "At their first sign-in, new students complete their details and choose their own password; an e-mail they add is verified by a code.",
+    "ar": "عند أول تسجيل دخول يكمل الطلاب الجدد بياناتهم ويختارون كلمة مرور خاصة بهم، ويتم التحقق من أي بريد يضيفونه برمز."
+  },
+  "dl_fix_title": {
+    "en": "Students without e-mail or phone",
+    "ar": "طلاب بدون بريد أو هاتف"
+  },
+  "dl_fix_sub": {
+    "en": "Add at least one, keep them in the sheet only, or ignore them. The other students are imported anyway.",
+    "ar": "أضف واحدًا على الأقل، أو احتفظ بهم في الجدول فقط، أو تجاهلهم. باقي الطلاب يُستوردون على أي حال."
+  },
+  "dl_fix_all_sheet": {
+    "en": "Rest: sheet only",
+    "ar": "الباقي: في الجدول فقط"
+  },
+  "dl_fix_all_skip": {
+    "en": "Rest: ignore",
+    "ar": "الباقي: تجاهل"
+  },
+  "dl_res_enrolled": {
+    "en": "enrolled in the course and notified",
+    "ar": "تم تسجيلهم في المقرر وإشعارهم"
+  },
+  "dl_res_invited": {
+    "en": "invited by e-mail",
+    "ar": "تمت دعوتهم بالبريد"
+  },
+  "dl_res_phone": {
+    "en": "accounts with a phone only — give them their login",
+    "ar": "حسابات بهاتف فقط — سلّمهم بيانات الدخول"
+  },
+  "dl_res_left_out": {
+    "en": "left out",
+    "ar": "تم تجاهلهم"
+  },
+  "dl_done_accounts_sub2": {
+    "en": "Students with an e-mail received their login. Hand the others theirs — they choose their own password at the first sign-in.",
+    "ar": "الطلاب أصحاب البريد وصلتهم بيانات الدخول. سلّم الباقين بياناتهم — سيختارون كلمة مرور خاصة بهم عند أول دخول."
+  },
+  "dl_fix_sheet": {
+    "en": "Sheet only",
+    "ar": "في الجدول فقط"
+  },
+  "dl_fix_skip": {
+    "en": "Ignore",
+    "ar": "تجاهل"
+  },
+  "dl_row_history_sub": {
+    "en": "Every change on this line",
+    "ar": "كل تغيير على هذا السطر"
+  },
+  "dl_login_details": {
+    "en": "Login details",
+    "ar": "بيانات الدخول"
+  },
+  "dl_login_details_sub": {
+    "en": "A new temporary password to give the student (e-mailed too when there is an e-mail)",
+    "ar": "كلمة مرور مؤقتة جديدة لتسليمها للطالب (تُرسل بالبريد أيضًا إن وُجد)"
+  },
+  "dl_login_details_q": {
+    "en": "Create new temporary login details? The old password stops working and the student chooses a new one at sign-in.",
+    "ar": "إنشاء بيانات دخول مؤقتة جديدة؟ ستتوقف كلمة المرور القديمة وسيختار الطالب كلمة جديدة عند الدخول."
+  },
+  "dl_login_emailed": {
+    "en": "Also sent to the student by e-mail.",
+    "ar": "أُرسلت للطالب بالبريد أيضًا."
+  },
+  "dl_login_give": {
+    "en": "Give these to the student — they are shown only now.",
+    "ar": "سلّمها للطالب — تظهر الآن فقط."
+  },
+  "dl_login_login": {
+    "en": "Login",
+    "ar": "تسجيل الدخول"
+  },
+  "dl_login_password": {
+    "en": "Temporary password",
+    "ar": "كلمة المرور المؤقتة"
+  },
+  "dl_login_link": {
+    "en": "Link",
+    "ar": "الرابط"
+  },
+  "dl_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
   }
 }

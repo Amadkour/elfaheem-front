@@ -298,6 +298,15 @@ class MyAuthProvider extends BaseProvider {
   /// Set by login() when the server answers 403 (account inactive / unverified).
   bool needsVerification = false;
   String? pendingRole; // role from the 403 body, if the backend sends it
+
+  /// From the login answer: an account a teacher created by importing a sheet must first be completed
+  /// (new password, missing e-mail / phone / name). Read by DataLabGate right after login. null = nothing to do.
+  Map<String, dynamic>? accountSetup;
+
+  void _readAccountSetup(Map result) {
+    final s = result['account_setup'];
+    accountSetup = (s is Map && s['required'] == true) ? Map<String, dynamic>.from(s) : null;
+  }
   UserModel? get currentUser => _currentUser;
 
   bool get isStudent => currentUser?.role == 'student';
@@ -626,6 +635,7 @@ class MyAuthProvider extends BaseProvider {
     if (result != null && result is Map) {
       // 1. Save tokens
       await _persistTokens(result);
+      _readAccountSetup(result);
 
       // 2. Build and cache the user model
       final userJson = result['user'] as Map<String, dynamic>;
@@ -703,6 +713,7 @@ class MyAuthProvider extends BaseProvider {
 
     if (result != null && result is Map) {
       await _persistTokens(result);
+      _readAccountSetup(result);
       final userJson = result['user'] as Map<String, dynamic>;
       _currentUser = UserModel.fromJson(userJson);
       await _storage.saveUser(userJson);
@@ -860,6 +871,7 @@ class MyAuthProvider extends BaseProvider {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
     await _storage.clearAll(); // wipes tokens + user JSON
+    accountSetup = null;
     _currentUser = null;
     notifyListeners();
   }

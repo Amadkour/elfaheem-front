@@ -22,13 +22,16 @@ import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart' show GestureBinding, PointerDeviceKind, PointerScrollEvent;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, SystemChrome, SystemUiMode, SystemUiOverlay;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData, HardwareKeyboard, SystemChrome, SystemUiMode, SystemUiOverlay;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, confirm, ErrorRetry;
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../student/analysis/student_analytics_profile_screen.dart';
+import 'data_lab_api.dart';
 import 'data_lab_certificates_sheet.dart';
 import 'data_lab_column_sheet.dart';
 import 'data_lab_columns_sheet.dart';
@@ -1371,7 +1374,8 @@ class _IdentityCell extends StatelessWidget {
           ),
         )
             : null,
-        onLongPress: () => showHistorySheet(context, p, rowId: row.rowId, title: row.name.isEmpty ? null : row.name),
+        onLongPress: () => _rowActions(context, p, row),
+        onSecondaryTap: () => _rowActions(context, p, row),
         child: Padding(
           padding: const EdgeInsetsDirectional.only(start: 6, end: 8),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1401,6 +1405,161 @@ class _IdentityCell extends StatelessWidget {
     );
   }
 }
+
+/// Hold a student's name: history of the line · new login details (students only).
+Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) async {
+  final picked = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    constraints: const BoxConstraints(maxWidth: 520),
+    builder: (ctx) {
+      final c = ctx.colors;
+      Widget tile(String v, IconData icon, String title, String sub, Color color) => ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(title, style: dlText(14, w: FontWeight.w800, c: c.textDark)),
+        subtitle: Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.35)),
+        onTap: () => Navigator.pop(ctx, v),
+      );
+      return Directionality(
+        textDirection: pageDirection,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Material(
+              color: c.cardBg,
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
+                child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Text(row.name.isEmpty ? '—' : row.name, style: dlText(16, w: FontWeight.w800, c: c.textDark)),
+                  ),
+                  tile('history', Icons.history_rounded, _tr('dl_history_short', 'History'),
+                      _tr('dl_row_history_sub', 'Every change on this line'), c.purple),
+                  if (row.studentId != null)
+                    tile('login', Icons.key_rounded, _tr('dl_login_details', 'Login details'),
+                        _tr('dl_login_details_sub', 'A new temporary password to give the student (e-mailed too when there is an e-mail)'), c.primary),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      );
+    },
+  );
+  if (picked == null || !context.mounted) return;
+  if (picked == 'history') {
+    await showHistorySheet(context, p, rowId: row.rowId, title: row.name.isEmpty ? null : row.name);
+  } else if (picked == 'login') {
+    final ok = await confirm(context,
+        message: _tr('dl_login_details_q', 'Create new temporary login details? The old password stops working and the student chooses a new one at sign-in.'));
+    if (!ok || !context.mounted) return;
+    try {
+      final r = await DataLabApi().newLoginDetails(p.courseId, row.rowId);
+      if (context.mounted) await _showLoginDetails(context, r, p.grid?.title ?? '');
+    } catch (e) {
+      toast(e is ApiException ? e.message : '$e', error: true);
+    }
+  }
+}
+
+/// The login details of one student, to copy or share (WhatsApp, SMS …).
+Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showModalBottomSheet<void>(
+  context: context,
+  backgroundColor: Colors.transparent,
+  constraints: const BoxConstraints(maxWidth: 520),
+  builder: (ctx) {
+    final c = ctx.colors;
+    final msg = dlLoginMessage(name: '${r['name']}', login: '${r['login']}', password: '${r['password']}', link: '${r['link']}', course: course);
+    Widget line(String label, String value, {bool big = false}) => Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(14), border: Border.all(color: c.divider)),
+      child: Row(children: [
+        Expanded(child: Text(label, style: dlText(12, c: c.textMedium))),
+        SelectableText(value, textDirection: TextDirection.ltr,
+            style: dlText(big ? 17 : 13.5, w: FontWeight.w800, c: big ? c.primary : c.textDark).copyWith(letterSpacing: big ? 1 : 0)),
+      ]),
+    );
+    return Directionality(
+      textDirection: pageDirection,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Material(
+            color: c.cardBg,
+            borderRadius: BorderRadius.circular(26),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(Icons.key_rounded, size: 32, color: c.primary),
+                ),
+                const SizedBox(height: 10),
+                Text('${r['name']}', style: dlText(17, w: FontWeight.w800, c: c.textDark)),
+                const SizedBox(height: 4),
+                Text(
+                  r['emailed'] == true
+                      ? _tr('dl_login_emailed', 'Also sent to the student by e-mail.')
+                      : _tr('dl_login_give', 'Give these to the student — they are shown only now.'),
+                  textAlign: TextAlign.center,
+                  style: dlText(12, c: r['emailed'] == true ? c.success : c.warning, h: 1.4),
+                ),
+                const SizedBox(height: 14),
+                line(_tr('dl_login_login', 'Login'), '${r['login']}'),
+                line(_tr('dl_login_password', 'Temporary password'), '${r['password']}', big: true),
+                line(_tr('dl_login_link', 'Link'), '${r['link']}'),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        side: BorderSide(color: c.divider),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: msg));
+                        toast('dl_copied'.tr);
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: Text(_tr('dl_copy', 'Copy'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: c.primary,
+                        minimumSize: const Size.fromHeight(48),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () => SharePlus.instance.share(ShareParams(text: msg)),
+                      icon: const Icon(Icons.share_rounded, size: 18),
+                      label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w800, c: Colors.white)),
+                    ),
+                  ),
+                ]),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+);
 
 /// Which columns are pinned on the start side (student details and / or data columns) + reset of the widths.
 void showPinSheet(BuildContext context, DataLabProvider p) {
