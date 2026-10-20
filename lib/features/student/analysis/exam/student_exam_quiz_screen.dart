@@ -141,6 +141,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
 
   void _showQuestionGrid(BuildContext context, QuizSession s) {
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -578,7 +579,7 @@ class _ReviewFlagButton extends StatelessWidget {
     final prov = context.watch<StudentExamProvider>();
     if (!prov.reviewFlagsEnabled) return const SizedBox.shrink();
     final flagged = prov.isReviewFlagged(question.id);
-    final color = flagged ? Colors.deepOrange : Colors.grey;
+    final color = flagged ? context.colors.danger : context.colors.textLight;
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: prov.flagBusy

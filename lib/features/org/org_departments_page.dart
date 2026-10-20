@@ -20,6 +20,7 @@ import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_services_pages.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/utils/widget/phone_field.dart';
 
 const _featureIcons = {
   'announcements': Icons.campaign_rounded,
@@ -207,7 +208,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final hours = TextEditingController(text: '${edit?['office_hours'] ?? ''}');
   String icon = '${edit?['icon'] ?? 'apartment'}';
   String color = '${edit?['color'] ?? '#0F7B5F'}';
-  final features = <String>{...(((edit?['features'] as List?) ?? featureLabels().keys)as List).map((e) => '$e')};
+  final features = <String>{...((edit?['features'] as List?) ?? featureLabels().keys).map((e) => '$e')};
   bool busy = false, saved = false;
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
@@ -303,7 +304,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Field(controller: location, label: t('المكان — مثلاً: مبنى ب، الدور الثاني', 'Where — e.g. Building B, 2nd floor')),
             Field(controller: hours, label: t('مواعيد العمل — مثلاً: الأحد–الخميس 9–2', 'Office hours — e.g. Sun–Thu 9–2')),
             Field(controller: email, label: t('البريد', 'E-mail'), ltr: true, keyboard: TextInputType.emailAddress),
-            Field(controller: phone, label: t('الهاتف', 'Phone'), ltr: true, keyboard: TextInputType.phone),
+            PhoneInputField(controller: phone, label: t('الهاتف', 'Phone')),
             const SizedBox(height: 6),
             PrimaryButton(
               isLoading: busy,

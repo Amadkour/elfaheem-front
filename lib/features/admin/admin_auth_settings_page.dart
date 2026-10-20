@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../auth/verify_way.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class AdminAuthSettingsPage extends StatefulWidget {
   const AdminAuthSettingsPage({super.key});
@@ -262,7 +263,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
           ? null
           : PremiumSaveBar(label: 'save'.tr, loading: _saving, onPressed: _save),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingIndicator(size: 56))
           : Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(

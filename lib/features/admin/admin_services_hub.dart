@@ -21,7 +21,7 @@ import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
-import 'admin_data_lab_page.dart';
+import '../shared/attendance/admin_data_lab_page.dart';
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_categories_page.dart';

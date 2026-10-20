@@ -27,6 +27,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -452,6 +453,7 @@ class _ImportWizardState extends State<_ImportWizard> {
     final pv = _pv!;
     final cols = pv.existingColumns;
     final picked = await showModalBottomSheet<String>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -643,7 +645,7 @@ class _ImportWizardState extends State<_ImportWizard> {
     final accounts = _policy == 'create_accounts' && !_ask;
     return [
       if (pl == null)
-        const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator()))
+        const Padding(padding: EdgeInsets.all(30), child: const Center(child: AppLoadingIndicator(size: 56)))
       else ...[
         Row(children: [
           Expanded(child: _Count(Icons.check_circle_rounded, c.success, '${pl.matched}', 'dl_plan_matched'.tr)),

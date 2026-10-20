@@ -31,6 +31,7 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 final RegExp _arabicChars = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]');
 
@@ -183,7 +184,13 @@ class _DesignerViewState extends State<_DesignerView> {
           child: _initializing || p.isLoading && !hasDesign
               ? const Center(child: AppLoadingIndicator())
               : Stack(children: [
-                  hasDesign ? const _Editor() : _Wizard(orgId: widget.orgId),
+                  hasDesign
+                      ? Column(children: [
+                          // read-only (organization / someone else's design): offer an editable copy
+                          if (!p.design!.canEdit) _CustomizeBanner(certificateId: widget.certificateId),
+                          const Expanded(child: _Editor()),
+                        ])
+                      : _Wizard(orgId: widget.orgId),
                   if (p.busy || p.saving)
                     Positioned.fill(
                       child: ColoredBox(
@@ -858,7 +865,7 @@ class _FieldPanelState extends State<_FieldPanel> {
               ),
           ]),
           const SizedBox(height: 10),
-          DropdownButtonFormField<String>(
+          AppDropdown<String>(
             value: f.font,
             isExpanded: true,
             decoration: InputDecoration(labelText: 'cert_font'.tr, border: const OutlineInputBorder(), isDense: true),
@@ -1234,6 +1241,50 @@ class _PreviewDialog extends StatelessWidget {
           ),
         ]),
       ),
+    );
+  }
+}
+
+
+/// Shown above a design the teacher may use but not edit. One tap → their own copy, attached to the course
+/// certificate, fully editable (positions, alignment, fonts, sizes, colours …). The shared original is untouched.
+class _CustomizeBanner extends StatelessWidget {
+  const _CustomizeBanner({required this.certificateId});
+  final int? certificateId;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final p = context.watch<CertificateDesignerProvider>();
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: c.warning.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.warning.withValues(alpha: 0.35)),
+      ),
+      child: Row(children: [
+        Icon(Icons.lock_outline_rounded, color: c.warning, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text('cert_readonly_design'.tr,
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w600, color: c.textDark, height: 1.4)),
+        ),
+        const SizedBox(width: 8),
+        FilledButton.icon(
+          onPressed: p.busy || p.saving
+              ? null
+              : () async {
+                  final ok = await context.read<CertificateDesignerProvider>().customizeCopy(certificateId: certificateId);
+                  if (ok && context.mounted) {
+                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('cert_copy_ready'.tr)));
+                  }
+                },
+          icon: const Icon(Icons.edit_rounded, size: 18),
+          label: Text('cert_customize_copy'.tr),
+        ),
+      ]),
     );
   }
 }

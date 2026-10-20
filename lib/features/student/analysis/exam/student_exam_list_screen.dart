@@ -94,7 +94,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                 Row(children: [
                   HeroStat(
                     icon: Icons.quiz_rounded,
-                    color: const Color(0xFF80D8FF),
+                    color: context.colors.primaryLight,
                     value: '${all.length}',
                     label: 'exams'.tr,
                   ),
@@ -286,7 +286,7 @@ class _ExamCard extends StatelessWidget {
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [
           ExamChip(Icons.timer_outlined,
-              tx('exam_minutes_short', {'n': exam.duration ?? 0}), Colors.teal),
+              tx('exam_minutes_short', {'n': exam.duration ?? 0}), context.colors.success),
           ExamChip(Icons.help_outline_rounded,
               tx('exam_questions_short', {'n': exam.questionCount}), accent),
           if (exam.maxSubmissions != null && exam.maxSubmissions! > 0) ...[
@@ -377,7 +377,7 @@ class _DeadlineChipState extends State<_DeadlineChip> {
         ? kDanger
         : isUrgent
         ? kAmber
-        : Colors.blueGrey;
+        : context.colors.primary;
     final label = isDead
         ? tx('exam_deadline_ended')
         : _remaining.inHours >= 24

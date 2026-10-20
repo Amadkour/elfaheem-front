@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class AdminParentRequestsPage extends StatelessWidget {
   const AdminParentRequestsPage({super.key});
@@ -119,7 +120,7 @@ maxWith: 1100,
         ),
         Expanded(
           child: p.isLoading && p.items.isEmpty
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: AppLoadingIndicator(size: 56))
               : p.hasError && p.items.isEmpty
                   ? PlError(p.errorMessage ?? '', onRetry: p.loadRequests)
                   : p.items.isEmpty
@@ -133,7 +134,7 @@ maxWith: 1100,
                             itemBuilder: (_, i) {
                               if (i >= p.items.length) {
                                 return const Padding(
-                                    padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
+                                    padding: EdgeInsets.all(16), child: const Center(child: AppLoadingIndicator(size: 56)));
                               }
                               final r = p.items[i];
                               return PlCard(
@@ -264,7 +265,7 @@ class _DetailState extends State<_Detail> {
     return BasePage(
       appBar: ScreenAppBar(title: 'pl_request_details'.tr),
       child: d == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingIndicator(size: 56))
           : ListView(padding: const EdgeInsets.all(16), children: [
               Row(children: [
                 PlStatusChip('${d['status']}'),

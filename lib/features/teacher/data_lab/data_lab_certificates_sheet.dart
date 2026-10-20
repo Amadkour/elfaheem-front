@@ -17,6 +17,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 Future<void> showCertificatesSheet(BuildContext context, DataLabProvider p) =>
     showAdminSheet(context, (_) => _CertSheet(p: p));
@@ -126,7 +127,7 @@ class _CertSheetState extends State<_CertSheet> {
       SheetHeader('dl_certificates'.tr),
       Flexible(
         child: _loading
-            ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+            ? const Padding(padding: EdgeInsets.all(40), child: const Center(child: AppLoadingIndicator(size: 56)))
             : ListView(
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),

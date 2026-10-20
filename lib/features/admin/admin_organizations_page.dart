@@ -17,6 +17,7 @@ import '../org/org_providers.dart';
 import '../org/org_ui.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
+import 'package:flutter_education_app/utils/widget/phone_field.dart';
 
 const _base = '/api/v1/admin/orgs';
 
@@ -240,7 +241,7 @@ Future<void> _createOrgAdmin(BuildContext context) async {
             const SizedBox(height: 12),
             Field(controller: name, label: t('الاسم', 'Name')),
             Field(controller: email, label: t('البريد', 'E-mail'), ltr: true, keyboard: TextInputType.emailAddress),
-            Field(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)'), ltr: true),
+            PhoneInputField(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),   // same field as registration
             PrimaryButton(
               isLoading: busy,
               label: t('إنشاء الحساب', 'Create account'),

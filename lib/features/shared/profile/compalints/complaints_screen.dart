@@ -626,6 +626,7 @@ class _FilterRow extends StatelessWidget {
   void _openCategorySheet(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(
@@ -1864,6 +1865,7 @@ class _ReplyInput extends StatelessWidget {
   void _showImagePicker(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(

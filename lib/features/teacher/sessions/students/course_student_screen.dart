@@ -309,7 +309,7 @@ class _FloatingStatsCard extends StatelessWidget {
               icon: Icons.people_alt_rounded,
               label: 'stat_total'.tr,
               value: '${p.totalCount}',
-              color: const Color(0xFF5B8FFF),
+              color: context.colors.primaryLight,
             ),
           ),
           Container(width: 1, height: 34, color: context.colors.divider),
@@ -891,6 +891,7 @@ Future<CourseCertificate?> _pickCertificate(
   }
   if (certs.length == 1) return certs.first;
   return showModalBottomSheet<CourseCertificate>(
+      useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,
     builder: (_) => _CertificatePickerSheet(certificates: certs),

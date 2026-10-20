@@ -132,6 +132,7 @@ class EditableImage extends StatelessWidget {
 
   Future<void> _pickImage(BuildContext context,Future<void> Function(XFile file) onChange) async {
     final source = await showModalBottomSheet<ImageSource>(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _ImageSourceSheet(),
@@ -187,7 +188,7 @@ class _ImageSourceSheet extends StatelessWidget {
             _SheetTile(
               icon: Icons.photo_library_rounded,
               label: 'من المعرض',
-              color: const Color(0xFF0D6EFD),
+              color: context.colors.primary,
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             _SheetTile(

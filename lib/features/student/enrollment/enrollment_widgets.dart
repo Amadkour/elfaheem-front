@@ -550,7 +550,7 @@ class _ManualTransferStatusBannerState
     }
     final c = context.colors;
     final isRejected = _status == 'rejected';
-    final tone = isRejected ? c.danger : Colors.orange.shade700;
+    final tone = isRejected ? c.danger : context.colors.warning;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

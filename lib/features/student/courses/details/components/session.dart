@@ -211,7 +211,7 @@ class _SessionExamBannerState extends State<_SessionExamBanner> {
       icon = Icons.event_busy_rounded;
       status = 'session_exam_closed'.tr;
     } else if (exam.attempted) {
-      color = Colors.orange;
+      color = context.colors.warning;
       icon = Icons.refresh_rounded;
       status = 'session_exam_failed_retry'.tr;
     } else {

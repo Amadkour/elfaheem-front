@@ -577,7 +577,7 @@ class _MethodCardState extends State<_MethodCard> {
     final method = asStr(m['method']);
     final enabled = asBool(m['enabled']);
     final summary = _summary(m, method);
-    final warn = Colors.amber.shade800;
+    final warn = context.colors.warning;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

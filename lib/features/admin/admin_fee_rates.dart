@@ -255,11 +255,11 @@ class _FeeRateCard extends StatelessWidget {
           ? Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.amber.withValues(alpha: .15),
+          color: context.colors.warning.withValues(alpha: .15),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text('admin_fee_custom'.tr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.amber.shade800)),
+            style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.warning)),
       )
           : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

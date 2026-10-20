@@ -9,8 +9,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 
-import '../../../core/api_client.dart';
-import '../../../core/base_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import 'teacher_document_model.dart';
 
 // File extensions accepted for a document: any common image format or PDF.

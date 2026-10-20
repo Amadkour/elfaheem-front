@@ -484,7 +484,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           // ViewAsBanner shows the "View only: <name> · Back to admin" bar above EVERY screen while a
           // super-admin is in view-as mode (it renders nothing otherwise).
           // GuestBanner is the same idea for a guest ("Browsing as guest · Login").
-          builder: (_, child) => GuestBanner(
+          // ONE direction for everything the Navigator shows — pages AND overlays (dialogs, bottom sheets, menus,
+          // date pickers). A Directionality inside a page never reaches overlays, which is why some of them were
+          // laid out in the wrong direction.
+          builder: (_, child) => Directionality(
+            textDirection: Helpers.pageDirection,
+            child: GuestBanner(
             child: ViewAsBanner(
               child: AttendanceTeacherBanner(
                 navigatorKey: navigatorKey,
@@ -506,7 +511,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          ),
+          )),
           supportedLocales: context
               .read<LangProvider>()
               .languages

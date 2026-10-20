@@ -390,7 +390,7 @@ class _RoadmapNode extends StatelessWidget {
             child: Icon(
               icon,
               size: 18,
-              color: isCurrent ? const Color(0xFF1E1B4B) : iconColor,
+              color: isCurrent ? context.colors.primaryDark : iconColor,
             ),
           ),
           const SizedBox(height: 8),
@@ -431,7 +431,7 @@ class _EnrollRoadmapButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const ink = Color(0xFF1E1B4B);
+    final ink = context.colors.primaryDark;
     return GestureDetector(
       onTap: onTap,
       child: Container(

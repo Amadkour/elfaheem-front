@@ -76,6 +76,21 @@ class CertificateDesignerProvider extends BaseProvider {
 
   // ── load ─────────────────────────────────────────────────────────────────
 
+  /// The open design is read-only for me (an organization's / someone else's design): make MY editable copy —
+  /// positions, alignment, fonts, sizes, colours and all — and attach it to [certificateId] when given.
+  Future<bool> customizeCopy({int? certificateId}) async {
+    final id = design?.id;
+    if (id == null) return false;
+    final q = certificateId == null ? '' : '?certificate_id=$certificateId';
+    final r = await run(() => _api.post('/api/v1/certificate-designs/$id/duplicate$q'));
+    if (r is Map<String, dynamic>) {
+      design = CertDesign.fromJson(r);
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   Future<bool> loadDesign(int designId) async {
     final r = await run(() => _api.get('/api/v1/certificate-designs/$designId'));
     if (r is Map<String, dynamic>) {

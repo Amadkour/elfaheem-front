@@ -49,6 +49,7 @@ Future<void> showSessionFormSheet(
     );
   } else {
     await showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,

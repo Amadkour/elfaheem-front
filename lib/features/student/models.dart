@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';
-import '../../../utils/helpers.dart';
-import '../../../utils/widget/rating_widget.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/category/model.dart';
 import '../teacher/home/teacher_models.dart';

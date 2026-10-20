@@ -278,7 +278,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                     SettingsTile(
                       icon: Icons.language_rounded,
                       iconBg: c.purpleTint,
-                      iconColor: const Color(0xFF8B6FFF),
+                      iconColor: context.colors.primaryLight,
                       label: 'change_language'.tr,
                       onTap: () => _push(const ChangeLanguageScreen()),
                     ),

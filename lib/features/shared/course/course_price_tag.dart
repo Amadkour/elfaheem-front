@@ -13,8 +13,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'discount_info.dart';
 
 /// Compact price block: shows the discounted price, with the original price

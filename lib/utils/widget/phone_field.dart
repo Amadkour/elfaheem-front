@@ -132,6 +132,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
 
   Future<void> _pickCountry() async {
     final picked = await showModalBottomSheet<PhoneCountry>(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => _CountrySheet(
@@ -243,10 +244,10 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
                       color: _kIcon,
                     ),
                     hintText: _country.hint,
-                    hintStyle: const TextStyle(
+                    hintStyle: TextStyle(
                       fontFamily: 'tajawal',
                       fontSize: 14,
-                      color: Colors.grey,
+                      color: context.colors.textLight,
                     ),
                     filled: true,
                     fillColor: c.inputBg,

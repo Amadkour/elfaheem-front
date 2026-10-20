@@ -710,6 +710,7 @@ class TeacherSchedulesScreen extends StatefulWidget {
   final TeacherCourse course;
   const TeacherSchedulesScreen({super.key, required this.course});
   static void openAddScheduleScreenSheet(BuildContext context,) => showModalBottomSheet(
+      useSafeArea: true,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

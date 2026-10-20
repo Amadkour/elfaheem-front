@@ -11,6 +11,9 @@ import '../../config/app_config.dart';
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 const _prios = ['high', 'medium', 'low'];
 
@@ -123,7 +126,7 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
           if (kids.length > 1)
             Expanded(
               child: DropdownButtonHideUnderline(
-                child: DropdownButton<int?>(
+                child: AppDropdown<int?>(
                   isExpanded: true,
                   value: p.childId,
                   items: [
@@ -151,7 +154,7 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
       ),
       Expanded(
         child: !p.loaded && p.isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: AppLoadingIndicator(size: 56))
             : !p.loaded && p.hasError
                 ? PlError(p.errorMessage ?? '', onRetry: p.load)
                 : list.isEmpty
@@ -318,7 +321,7 @@ class _AlertCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Flexible(child: Text('${child['name']}', style: TextStyle(fontSize: 12, color: c.primary, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
                           const SizedBox(width: 10),
-                          Icon(Icons.schedule_rounded, size: 14, color: Colors.grey.shade600),
+                          Icon(Icons.schedule_rounded, size: 14, color: context.colors.textMedium),
                           const SizedBox(width: 3),
                           Text(_ago(alert['at']), style: c.caption.copyWith(fontSize: 12)),
                           if (showPriority) ...[

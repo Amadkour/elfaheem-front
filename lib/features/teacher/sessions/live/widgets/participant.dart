@@ -275,9 +275,9 @@ class RemoteTrackPublicationMenuWidget extends StatelessWidget {
       tooltip: 'lr_subscribe_menu'.tr,
       icon: Icon(icon,
           color: {
-            TrackSubscriptionState.notAllowed: Colors.red,
-            TrackSubscriptionState.unsubscribed: Colors.grey,
-            TrackSubscriptionState.subscribed: Colors.green,
+            TrackSubscriptionState.notAllowed: context.colors.danger,
+            TrackSubscriptionState.unsubscribed: context.colors.textLight,
+            TrackSubscriptionState.subscribed: context.colors.success,
           }[pub.subscriptionState]),
       onSelected: (value) => value(),
       itemBuilder: (BuildContext context) => <PopupMenuEntry<Function>>[

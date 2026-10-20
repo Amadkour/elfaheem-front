@@ -342,7 +342,7 @@ class _TransferTimeWarningBannerState
     // the app's existing color tokens so the banner matches the theme.
     final Color accent = (urgent || expired)
         ? c.danger
-        : Colors.orange.shade700;
+        : context.colors.warning;
     final Color bg = accent.withValues(alpha: expired ? .14 : .10);
     final Color border = accent.withValues(alpha: expired ? .5 : .3);
 

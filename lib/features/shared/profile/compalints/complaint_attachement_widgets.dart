@@ -394,6 +394,7 @@ class _ImageViewer extends StatelessWidget {
 void _showPdfSheet(BuildContext context, {required String? name, required String url, int? bytes}) {
   final c = context.colors;
   showModalBottomSheet(
+      useSafeArea: true,
     context: context,
     backgroundColor: c.cardBg,
     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),

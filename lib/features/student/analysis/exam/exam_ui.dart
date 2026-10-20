@@ -558,7 +558,7 @@ class GradientButton extends StatelessWidget {
     final base = color ?? context.colors.primary;
     final disabled = onTap == null && !loading;
     final cs = disabled
-        ? [Colors.grey.shade300, Colors.grey.shade400]
+        ? [context.colors.divider, context.colors.textLight]
         : [color ?? kDeep, base];
     return GestureDetector(
       onTap: loading ? null : onTap,

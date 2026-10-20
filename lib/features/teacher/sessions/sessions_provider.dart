@@ -20,8 +20,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
-import '../../../../core/api_client.dart';
-import '../../../../core/base_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/session/material/session_material_model.dart';
 import '../../shared/upload/upload_queue_manager.dart';

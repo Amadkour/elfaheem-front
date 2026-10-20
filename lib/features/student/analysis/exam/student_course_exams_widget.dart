@@ -126,7 +126,7 @@ class _SessionExamButtonState extends State<SessionExamButton> {
       color = exam.passed == true ? context.colors.success : kDanger;
     } else if (closed) {
       label = tx('exam_closed');
-      color = Colors.grey;
+      color = context.colors.textLight;
     } else {
       label = tx('exam_start');
       color = context.colors.primary;
@@ -269,7 +269,7 @@ class _CourseExamTile extends StatelessWidget {
 
     final Color accent;
     if (isFrozen && !isDone) {
-      accent = Colors.blueGrey;
+      accent = context.colors.primary;
     } else if (isDone) {
       accent = exam.passed == true ? c.success : kDanger;
     } else {
@@ -344,7 +344,7 @@ class _MetaRow extends StatelessWidget {
     final parts = <Widget>[];
 
     parts.add(_Meta(Icons.timer_outlined,
-        tx('exam_minutes_short', {'n': exam.duration ?? 0}), Colors.teal));
+        tx('exam_minutes_short', {'n': exam.duration ?? 0}), context.colors.success));
     parts.add(_Meta(Icons.help_outline_rounded,
         tx('exam_questions_short', {'n': exam.questionCount}), accent));
 
@@ -370,7 +370,7 @@ class _MetaRow extends StatelessWidget {
         color = diff.inHours < 3 ? kDanger : kAmber;
       } else {
         label = '${exam.endDate!.day}/${exam.endDate!.month}';
-        color = Colors.blueGrey;
+        color = context.colors.primary;
       }
       parts.add(_Meta(Icons.hourglass_bottom_rounded, label, color));
     }

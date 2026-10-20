@@ -315,7 +315,8 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
-            Flexible(child: builder(ctx)),
+            // bottom safe area: content never sits under the home indicator / gesture bar
+            Flexible(child: SafeArea(top: false, child: builder(ctx))),
           ]),
         ),
       ),

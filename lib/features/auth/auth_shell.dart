@@ -242,7 +242,7 @@ class AuthThemeSwitch extends StatelessWidget {
       knob: Icon(
         dark ? Icons.dark_mode_rounded : Icons.wb_sunny_rounded,
         key: ValueKey(dark),
-        color: dark ? Colors.indigo : Colors.orange,
+        color: dark ? context.colors.primary : context.colors.warning,
         size: 18,
       ),
       onTap: () => provider.changeMode(!provider.darkMode),
@@ -270,7 +270,7 @@ class AuthLangSwitch extends StatelessWidget {
           fontFamily: 'tajawal',
           fontSize: ar ? 17 : 12,
           fontWeight: FontWeight.w800,
-          color: dark ? Colors.indigo : context.colors.primary,
+          color: dark ? context.colors.primary : context.colors.primary,
         ),
       ),
       onTap: () => context.read<LangProvider>().changeLang(ar ? 'en' : 'ar'),

@@ -12,6 +12,7 @@ import '../../../shared/models/exam_model.dart';
 import 'exam_files.dart';
 import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
@@ -442,6 +443,7 @@ class _HubViewState extends State<_HubView>
   }
 
   void _showCreateSheet(BuildContext ctx) => showModalBottomSheet(
+      useSafeArea: true,
     context: ctx,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -461,6 +463,7 @@ class _HubViewState extends State<_HubView>
     if (!mounted) return;
     // -1 = "no session" (detach); null = dismissed
     final picked = await showModalBottomSheet<int>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -491,6 +494,7 @@ class _HubViewState extends State<_HubView>
     // Load questions if not already loaded
     prov.loadQuestions(exam.id);
     showModalBottomSheet(
+      useSafeArea: true,
       context: ctx,
       isScrollControlled: true,
       backgroundColor: context.colors.background,
@@ -503,6 +507,7 @@ class _HubViewState extends State<_HubView>
 
   void _showAnswers(StudentExamResult r, ExamModel exam) =>
       showModalBottomSheet(
+      useSafeArea: true,
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -512,6 +517,7 @@ class _HubViewState extends State<_HubView>
   /// Attempts + random-paper rules of an existing exam.
   void _showRulesSheet(TeacherExamProvider prov, ExamModel exam) =>
       showModalBottomSheet(
+      useSafeArea: true,
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -668,12 +674,12 @@ class _ExamCard extends StatelessWidget {
               ExamChip(
                 Icons.help_outline_rounded,
                 '${exam.questionCount} ${'question_count_chip'.tr.split(' ').last}',
-                Colors.blueGrey,
+                context.colors.primary,
               ),
               ExamChip(
                 Icons.timer_outlined,
                 '${exam.duration ?? 0} ${'duration_chip'.tr.split(' ').last}',
-                Colors.teal,
+                context.colors.success,
               ),
               // Which session this exam gates (tap to change / detach).
               GestureDetector(
@@ -683,7 +689,7 @@ class _ExamCard extends StatelessWidget {
                   exam.sessionId == null
                       ? 'exam_no_session'.tr
                       : _shorten(sessionName ?? 'session'.tr),
-                  exam.sessionId == null ? Colors.grey : c.primary,
+                  exam.sessionId == null ? context.colors.textLight : c.primary,
                 ),
               ),
               // Attempts + random-paper rules (tap to edit).
@@ -694,7 +700,7 @@ class _ExamCard extends StatelessWidget {
                   (exam.maxSubmissions ?? 0) > 0
                       ? '${'chip_attempts_label'.tr}: ${exam.maxSubmissions}'
                       : 'chip_attempts_unlimited'.tr,
-                  Colors.indigo,
+                  context.colors.primary,
                 ),
               ),
               if (exam.questionsPerStudent != null)
@@ -719,7 +725,7 @@ class _ExamCard extends StatelessWidget {
                 ExamChip(
                   Icons.lock_outline_rounded,
                   exam.passcode!,
-                  Colors.purple,
+                  context.colors.purple,
                 ),
               if (exam.startDate != null)
                 ExamChip(
@@ -745,7 +751,7 @@ class _ExamCard extends StatelessWidget {
                   icon: exam.isPublished
                       ? Icons.visibility_off_rounded
                       : Icons.visibility_rounded,
-                  color: exam.isPublished ? Colors.blueGrey : c.success,
+                  color: exam.isPublished ? context.colors.primary : c.success,
                   onTap: onToggle,
                 ),
               ),
@@ -754,7 +760,7 @@ class _ExamCard extends StatelessWidget {
                 child: _ModernActionBtn(
                   title: 'btn_questions'.tr,
                   icon: Icons.edit_note_rounded,
-                  color: Colors.deepOrange,
+                  color: context.colors.danger,
                   onTap: onManageQuestions,
                 ),
               ),
@@ -866,7 +872,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: context.colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -876,9 +882,9 @@ class _ManageQuestionsSheet extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 14, 12, 0),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.edit_note_rounded,
-                    color: Colors.deepOrange,
+                    color: context.colors.danger,
                     size: 22,
                   ),
                   const SizedBox(width: 10),
@@ -896,10 +902,10 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         ),
                         Text(
                           exam.name,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -980,14 +986,14 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           Icon(
                             Icons.wifi_off_rounded,
                             size: 48,
-                            color: Colors.grey.shade300,
+                            color: context.colors.divider,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             error,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'bahji',
-                              color: Colors.grey,
+                              color: context.colors.textLight,
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -1012,24 +1018,24 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           Icon(
                             Icons.quiz_outlined,
                             size: 56,
-                            color: Colors.grey.shade300,
+                            color: context.colors.divider,
                           ),
                           const SizedBox(height: 10),
                           Text(
                             'no_questions_yet'.tr,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 15,
-                              color: Colors.grey,
+                              color: context.colors.textLight,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'no_questions_hint'.tr,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'bahji',
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: context.colors.textLight,
                             ),
                           ),
                         ],
@@ -1069,6 +1075,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
     required int examId,
     required Question? existing,
   }) => showModalBottomSheet(
+      useSafeArea: true,
     context: ctx,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -1154,7 +1161,7 @@ class _QuestionTile extends StatelessWidget {
     decoration: BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: Colors.grey.shade200),
+      border: Border.all(color: context.colors.inputBg),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -1205,10 +1212,10 @@ class _QuestionTile extends StatelessWidget {
               ),
               // Edit / Delete actions
               PopupMenuButton<String>(
-                icon: const Icon(
+                icon: Icon(
                   Icons.more_vert_rounded,
                   size: 18,
-                  color: Colors.grey,
+                  color: context.colors.textLight,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -1236,15 +1243,15 @@ class _QuestionTile extends StatelessWidget {
                     value: 'delete',
                     child: ListTile(
                       dense: true,
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.delete_outline,
-                        color: Colors.redAccent,
+                        color: context.colors.danger,
                       ),
                       title: Text(
                         'btn_delete'.tr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
-                          color: Colors.redAccent,
+                          color: context.colors.danger,
                         ),
                       ),
                     ),
@@ -1272,12 +1279,12 @@ class _QuestionTile extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: isCorrect
                         ? context.colors.success.withValues(alpha: 0.1)
-                        : Colors.grey.shade100,
+                        : context.colors.inputBg,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isCorrect
                           ? context.colors.success.withValues(alpha: 0.4)
-                          : Colors.grey.shade300,
+                          : context.colors.divider,
                     ),
                   ),
                   child: Row(
@@ -1298,7 +1305,7 @@ class _QuestionTile extends StatelessWidget {
                           fontSize: 12,
                           color: isCorrect
                               ? context.colors.success
-                              : Colors.grey.shade700,
+                              : context.colors.textMedium,
                           fontWeight: isCorrect
                               ? FontWeight.w700
                               : FontWeight.w400,
@@ -1319,7 +1326,7 @@ class _QuestionTile extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 11,
-              color: Colors.grey.shade500,
+              color: context.colors.textLight,
             ),
           ),
         ),
@@ -1487,7 +1494,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: context.colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1583,11 +1590,11 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         const SizedBox(height: 14),
                         Text(
                           'options_label'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -1612,22 +1619,22 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                         '{num}',
                                         '${i + 1}',
                                       ),
-                                      hintStyle: const TextStyle(
+                                      hintStyle: TextStyle(
                                         fontFamily: 'bahji',
-                                        color: Colors.grey,
+                                        color: context.colors.textLight,
                                       ),
                                       filled: true,
-                                      fillColor: Colors.grey.shade50,
+                                      fillColor: context.colors.inputBg,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade200,
+                                          color: context.colors.inputBg,
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                         borderSide: BorderSide(
-                                          color: Colors.grey.shade200,
+                                          color: context.colors.inputBg,
                                         ),
                                       ),
                                       contentPadding:
@@ -1644,7 +1651,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                     onPressed: () => _removeOption(i),
                                     icon: Icon(
                                       Icons.remove_circle_outline,
-                                      color: Colors.redAccent.shade200,
+                                      color: context.colors.danger,
                                       size: 20,
                                     ),
                                     padding: EdgeInsets.zero,
@@ -1881,7 +1888,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: context.colors.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1960,15 +1967,15 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                     const SizedBox(height: 14),
                     // ── Attach to a session (optional) ─────────────────────
                     if (widget.provider.sessions.isNotEmpty) ...[
-                      DropdownButtonFormField<int?>(
+                      AppDropdown<int?>(
                         initialValue: _sessionId,
                         isExpanded: true,
                         decoration: InputDecoration(
                           labelText: 'field_exam_session_label'.tr,
-                          labelStyle: const TextStyle(
+                          labelStyle: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 13,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                           prefixIcon: Icon(
                             Icons.play_lesson_rounded,
@@ -1979,11 +1986,11 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                           fillColor: context.colors.inputBg,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: context.colors.divider),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(color: Colors.grey.shade200),
+                            borderSide: BorderSide(color: context.colors.inputBg),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12,
@@ -2091,16 +2098,16 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                    color: Colors.grey.shade300,
+                                    color: context.colors.divider,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.calendar_today_outlined,
                                       size: 18,
-                                      color: Colors.grey,
+                                      color: context.colors.textLight,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
@@ -2113,7 +2120,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                         fontSize: 14,
                                         color: _scheduleDate != null
                                             ? Colors.black87
-                                            : Colors.grey,
+                                            : context.colors.textLight,
                                       ),
                                     ),
                                   ],
@@ -2144,7 +2151,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                 ),
                                 decoration: BoxDecoration(
                                   border: Border.all(
-                                    color: Colors.orange.shade300,
+                                    color: context.colors.warning,
                                   ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -2153,7 +2160,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     Icon(
                                       Icons.event_busy_rounded,
                                       size: 18,
-                                      color: Colors.orange.shade600,
+                                      color: context.colors.warning,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
@@ -2166,7 +2173,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                         fontSize: 14,
                                         color: _deadlineDate != null
                                             ? context.colors.textDark
-                                            : Colors.grey,
+                                            : context.colors.textLight,
                                       ),
                                     ),
                                   ],
@@ -2248,7 +2255,7 @@ class _SessionPickerSheet extends StatelessWidget {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: context.colors.divider,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -2278,10 +2285,10 @@ class _SessionPickerSheet extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
                 'exam_session_gate_hint'.tr,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'bahji',
                   fontSize: 12,
-                  color: Colors.grey,
+                  color: context.colors.textLight,
                 ),
               ),
             ),
@@ -2313,9 +2320,9 @@ class _SessionPickerSheet extends StatelessWidget {
                         child: Center(
                           child: Text(
                             'no_sessions_yet'.tr,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'bahji',
-                              color: Colors.grey,
+                              color: context.colors.textLight,
                             ),
                           ),
                         ),
@@ -2379,7 +2386,7 @@ class _AnswersSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: context.colors.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -2422,10 +2429,10 @@ class _AnswersSheet extends StatelessWidget {
                         '${result.marksObtained?.toStringAsFixed(0) ?? 0} / '
                         '${result.totalMarks?.toStringAsFixed(0) ?? 0} ${'marks_label'.tr}'
                         '  •  ${result.percentage?.toStringAsFixed(1) ?? 0}%',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 13,
-                          color: Colors.grey,
+                          color: context.colors.textLight,
                         ),
                       ),
                     ],
@@ -2437,7 +2444,7 @@ class _AnswersSheet extends StatelessWidget {
                       : 'result_failed_badge'.tr,
                   result.passed == true
                       ? context.colors.success
-                      : Colors.redAccent,
+                      : context.colors.danger,
                 ),
               ],
             ),
@@ -2448,9 +2455,9 @@ class _AnswersSheet extends StatelessWidget {
                 ? Center(
                     child: Text(
                       'no_answers'.tr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'bahji',
-                        color: Colors.grey,
+                        color: context.colors.textLight,
                       ),
                     ),
                   )
@@ -2462,7 +2469,7 @@ class _AnswersSheet extends StatelessWidget {
                       final correct = a.isCorrect == true;
                       final color = correct
                           ? context.colors.success
-                          : Colors.redAccent;
+                          : context.colors.danger;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
@@ -2489,10 +2496,10 @@ class _AnswersSheet extends StatelessWidget {
                                 children: [
                                   Text(
                                     '${'question_prefix'.tr} ${a.questionId}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontFamily: 'bahji',
                                       fontSize: 12,
-                                      color: Colors.grey,
+                                      color: context.colors.textLight,
                                     ),
                                   ),
                                   Text(
@@ -2546,7 +2553,7 @@ class _ResultTile extends StatelessWidget {
         ? c.success
         : passed == false
         ? kDanger
-        : Colors.blueGrey;
+        : context.colors.primary;
     final initial = result.studentName.isEmpty ? '?' : result.studentName[0];
 
     return ExamCard(
@@ -2616,7 +2623,7 @@ class _ResultTile extends StatelessWidget {
                         color,
                       )
                     else
-                      _StatusBadge('not_attempted_badge'.tr, Colors.blueGrey),
+                      _StatusBadge('not_attempted_badge'.tr, context.colors.primary),
                   ],
                 ),
                 if (pct != null) ...[
@@ -2740,21 +2747,21 @@ class _Field extends StatelessWidget {
     decoration: InputDecoration(
       labelText: label,
       hintText: hint,
-      labelStyle: const TextStyle(
+      labelStyle: TextStyle(
         fontFamily: 'bahji',
         fontSize: 13,
-        color: Colors.grey,
+        color: context.colors.textLight,
       ),
-      hintStyle: const TextStyle(fontFamily: 'bahji', color: Colors.grey),
+      hintStyle: TextStyle(fontFamily: 'bahji', color: context.colors.textLight),
       filled: true,
       fillColor: context.colors.inputBg,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade300),
+        borderSide: BorderSide(color: context.colors.divider),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(color: Colors.grey.shade200),
+        borderSide: BorderSide(color: context.colors.inputBg),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
     ),
@@ -2779,7 +2786,7 @@ class _Toggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     decoration: BoxDecoration(
-      border: Border.all(color: Colors.grey.shade200),
+      border: Border.all(color: context.colors.inputBg),
       borderRadius: BorderRadius.circular(12),
     ),
     child: Column(
@@ -2997,10 +3004,10 @@ class _ImportResultDialog extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 '${'import_skipped_label'.tr}: ${result.skipped}',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'bahji',
                   fontWeight: FontWeight.w700,
-                  color: Colors.redAccent,
+                  color: context.colors.danger,
                 ),
               ),
               const SizedBox(height: 8),
@@ -3014,10 +3021,10 @@ class _ImportResultDialog extends StatelessWidget {
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
                           '${'import_row_label'.tr} ${e.row}: ${e.message}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                         ),
                       ),
@@ -3127,10 +3134,10 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
     final pool = widget.poolSize;
     final tooMany =
         _limitQuestions && n != null && pool != null && pool > 0 && n > pool;
-    const hintStyle = TextStyle(
+    final hintStyle = TextStyle(
       fontFamily: 'bahji',
       fontSize: 12,
-      color: Colors.grey,
+      color: context.colors.textLight,
     );
 
     return Column(
@@ -3194,7 +3201,7 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
                           ? 'questions_exceed_pool_warning'.tr
                           : 'questions_per_student_hint'.tr,
                       style: hintStyle.copyWith(
-                        color: tooMany ? Colors.orange.shade800 : Colors.grey,
+                        color: tooMany ? context.colors.warning : context.colors.textLight,
                       ),
                     ),
                   ],
@@ -3283,7 +3290,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: context.colors.divider,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -3318,10 +3325,10 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text(
                         'exam_rules_apply_note'.tr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: context.colors.textLight,
                         ),
                       ),
                     ),

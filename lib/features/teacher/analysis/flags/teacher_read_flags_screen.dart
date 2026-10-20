@@ -299,7 +299,7 @@ class _FlagCard extends StatelessWidget {
               tx('tflag_max_tries', {'n': item.maxWrongTries}), kViolet),
           ExamChip(Icons.functions_rounded,
               tx('tflag_avg_tries', {'n': item.avgWrongTries.toStringAsFixed(1)}),
-              Colors.teal),
+              context.colors.success),
         ]),
         if (item.correctAnswer != null) ...[
           const SizedBox(height: 12),

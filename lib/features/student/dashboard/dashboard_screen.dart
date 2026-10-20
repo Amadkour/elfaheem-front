@@ -27,6 +27,7 @@ import '../courses/my_courses/my_courses_provider.dart';
 import '../courses/my_courses/my_courses_screen.dart';
 import '../../shared/notification/notifications_provider.dart';
 import '../home/home_screen.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DashboardScreen — responsive shell
@@ -267,9 +268,11 @@ class WideShell extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Al-Faheem',
-                                  style: TextStyle(
+                                // ONE app name: the one the super admin sets ("About us") — the login/register
+                                // screens already used it, the sidebar had "Al-Faheem" hard-coded.
+                                Text(
+                                  AppIdentity.instance.name.isNotEmpty ? AppIdentity.instance.name : 'Al-Faheem',
+                                  style: const TextStyle(
                                     fontFamily: 'bahji',
                                     color: Colors.white,
                                     fontWeight: FontWeight.normal,
@@ -277,7 +280,7 @@ class WideShell extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  'app_tagline'.tr,
+                                  AppIdentity.instance.tagline.isNotEmpty ? AppIdentity.instance.tagline : 'app_tagline'.tr,
                                   style: TextStyle(
                                     fontFamily: 'tajawal',
                                     color: Colors.white.withValues(alpha: 0.4),

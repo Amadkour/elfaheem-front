@@ -508,34 +508,196 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   /// AppTheme's static ThemeData with the server palette laid on top, so
   /// Material widgets (buttons, tabs, checkboxes, scaffold) follow a live
   /// theme change too — not only widgets that read `context.colors`.
+  /// The ONE source of the app's look. Every Material widget in every role (raw dialogs, sheets, buttons,
+  /// inputs, chips, switches, snackbars …) inherits these component themes from the LIVE palette chosen by the
+  /// super admin — so a screen nobody restyled still looks like the rest of the app (Data Lab design language:
+  /// generous radii, tajawal weights, tinted chips, floating snackbars, calm surfaces).
   ThemeData materialTheme({required bool dark}) {
     final base = dark ? AppTheme.darkThemeData : AppTheme.themeData;
     final m = _model;
-    if (m == null) return base;
-    final p = m.primary;
-    final disabledBg = dark ? m.darkDivider : m.divider;
+    final p = m?.primary ?? AppTheme.primary;
+    final pLight = m?.primaryLight ?? AppTheme.primaryLight;
+    final danger = m?.danger ?? AppTheme.danger;
+    final success = m?.success ?? AppTheme.success;
+    final accent2 = m?.accent2 ?? AppTheme.accent2;
+    final bg = m == null ? base.scaffoldBackgroundColor : (dark ? m.darkBackground : m.background);
+    final card = m == null ? base.cardColor : (dark ? m.darkCard : m.cardBg);
+    final surface = m == null ? base.colorScheme.surface : (dark ? m.darkSurface : m.surfaceCard);
+    final divider = m == null ? base.dividerColor : (dark ? m.darkDivider : m.divider);
+    final input = m == null ? (base.inputDecorationTheme.fillColor ?? card) : (dark ? m.inputBgDark : m.inputBg);
+    final text = m == null ? (dark ? Colors.white : const Color(0xFF1F2430)) : (dark ? m.darkTextPrimary : m.textDark);
+    final muted = m == null ? Colors.grey : (dark ? m.darkTextMuted : m.textMedium);
+    final faint = m == null ? Colors.grey : (dark ? m.darkTextLight : m.textLight);
+    final ink = m?.charcoal ?? const Color(0xFF1F2430);
+
+    TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
+        TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: c);
+    final r14 = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
+    WidgetStateProperty<Color?> on(Color sel, Color off) =>
+        WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? sel : off);
+    OutlineInputBorder ob(Color c, [double w = 1]) =>
+        OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: c, width: w));
+
     return base.copyWith(
-      scaffoldBackgroundColor: dark ? m.darkBackground : m.background,
+      scaffoldBackgroundColor: bg,
+      cardColor: card,
+      dividerColor: divider,
       colorScheme: base.colorScheme.copyWith(
         primary: p,
-        error: m.danger,
-        surface: dark ? m.darkSurface : m.surfaceCard,
+        onPrimary: Colors.white,
+        primaryContainer: p.withValues(alpha: 0.12),
+        onPrimaryContainer: p,
+        secondary: accent2,
+        tertiary: success,
+        error: danger,
+        surface: surface,
+        onSurface: text,
+        onSurfaceVariant: muted,
+        outline: divider,
+        outlineVariant: divider,
       ),
+      textSelectionTheme: TextSelectionThemeData(
+          cursorColor: p, selectionColor: p.withValues(alpha: 0.25), selectionHandleColor: p),
+      // ── buttons ──
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: base.elevatedButtonTheme.style?.copyWith(
-          backgroundColor: WidgetStateProperty.resolveWith(
-                (s) => s.contains(WidgetState.disabled) ? disabledBg : p,
-          ),
+        style: (base.elevatedButtonTheme.style ?? const ButtonStyle()).copyWith(
+          backgroundColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.disabled) ? divider : p),
+          foregroundColor: const WidgetStatePropertyAll(Colors.white),
+          shape: WidgetStatePropertyAll(r14),
+          textStyle: WidgetStatePropertyAll(ts(14.5, FontWeight.w800)),
+          minimumSize: const WidgetStatePropertyAll(Size(64, 48)),
+          elevation: const WidgetStatePropertyAll(0),
         ),
       ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: p,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: p.withValues(alpha: 0.35),
+          shape: r14,
+          minimumSize: const Size(64, 48),
+          textStyle: ts(14.5, FontWeight.w800),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: p,
+          side: BorderSide(color: p.withValues(alpha: 0.45), width: 1.3),
+          shape: r14,
+          minimumSize: const Size(64, 48),
+          textStyle: ts(14, FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: p, shape: r14, textStyle: ts(13.5, FontWeight.w700)),
+      ),
+      iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: text)),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: p,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        extendedTextStyle: ts(14, FontWeight.w800),
+      ),
+      // ── inputs & selection ──
+      inputDecorationTheme: base.inputDecorationTheme.copyWith(
+        filled: true,
+        fillColor: input,
+        labelStyle: ts(13, FontWeight.w500, muted),
+        hintStyle: ts(13, FontWeight.w400, faint),
+        floatingLabelStyle: ts(13, FontWeight.w700, p),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: ob(divider),
+        enabledBorder: ob(divider),
+        focusedBorder: ob(p, 1.6),
+        errorBorder: ob(danger),
+        focusedErrorBorder: ob(danger, 1.6),
+      ),
+      checkboxTheme: base.checkboxTheme.copyWith(
+        fillColor: on(p, Colors.transparent),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+      ),
+      radioTheme: RadioThemeData(fillColor: on(p, faint)),
+      switchTheme: SwitchThemeData(
+        thumbColor: on(Colors.white, Colors.white),
+        trackColor: on(p, divider),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      sliderTheme: base.sliderTheme.copyWith(
+          activeTrackColor: p, thumbColor: p, inactiveTrackColor: p.withValues(alpha: 0.18)),
+      chipTheme: ChipThemeData(
+        backgroundColor: input,
+        selectedColor: p.withValues(alpha: 0.14),
+        secondarySelectedColor: p.withValues(alpha: 0.14),
+        checkmarkColor: p,
+        side: BorderSide(color: divider),
+        shape: const StadiumBorder(),
+        labelStyle: ts(12.5, FontWeight.w600, text),
+        secondaryLabelStyle: ts(12.5, FontWeight.w800, p),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+          color: p, linearTrackColor: p.withValues(alpha: 0.14), circularTrackColor: Colors.transparent),
       tabBarTheme: base.tabBarTheme.copyWith(
         labelColor: p,
         indicatorColor: p,
+        unselectedLabelColor: muted,
+        labelStyle: ts(13.5, FontWeight.w800),
+        unselectedLabelStyle: ts(13.5, FontWeight.w500),
       ),
-      checkboxTheme: base.checkboxTheme.copyWith(
-        fillColor: WidgetStateProperty.resolveWith(
-              (s) => s.contains(WidgetState.selected) ? p : Colors.transparent,
-        ),
+      // ── surfaces ──
+      cardTheme: base.cardTheme.copyWith(
+        color: card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: divider)),
+      ),
+      dialogTheme: base.dialogTheme.copyWith(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        titleTextStyle: ts(18, FontWeight.w800, text),
+        contentTextStyle: ts(14, FontWeight.w500, muted),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: card,
+        modalBackgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+        clipBehavior: Clip.antiAlias,
+        constraints: const BoxConstraints(maxWidth: 720),     // comfortable on tablets & web
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: card,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        textStyle: ts(13.5, FontWeight.w600, text),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: dark ? card : ink,
+        contentTextStyle: ts(13.5, FontWeight.w600, Colors.white),
+        actionTextColor: pLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        insetPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(color: ink.withValues(alpha: 0.92), borderRadius: BorderRadius.circular(10)),
+        textStyle: ts(12, FontWeight.w600, Colors.white),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: muted,
+        titleTextStyle: ts(14, FontWeight.w700, text),
+        subtitleTextStyle: ts(12.5, FontWeight.w500, muted),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dividerTheme: base.dividerTheme.copyWith(color: divider, space: 1),
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        headerBackgroundColor: p,
+        headerForegroundColor: Colors.white,
+        todayBorder: BorderSide(color: p),
       ),
     );
   }

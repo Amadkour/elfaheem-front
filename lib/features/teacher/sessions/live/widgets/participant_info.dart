@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'live_palette.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 enum ParticipantTrackType {
   kUserMedia,
@@ -107,7 +108,7 @@ class ParticipantInfoWidget extends StatelessWidget {
                 ConnectionQuality.excellent: const Color(0xFF34C270),
                 ConnectionQuality.good: const Color(0xFFFF9500),
                 ConnectionQuality.poor: _rose,
-              }[connectionQuality] ?? Colors.red,
+              }[connectionQuality] ?? context.colors.danger,
             ),
           ],
           const SizedBox(width: 4),

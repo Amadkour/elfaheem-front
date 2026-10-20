@@ -333,7 +333,7 @@ class _ResultBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final color = passed ? c.success : Colors.redAccent;
+    final color = passed ? c.success : context.colors.danger;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -501,21 +501,21 @@ class _StatsCard extends StatelessWidget {
           _StatRow(
             tx('exam_answered_questions'),
             '$answered / $total',
-            Colors.teal,
+            context.colors.success,
             Icons.help_outline_rounded,
           ),
           _div(),
           _StatRow(
             tx('exam_passing_score'),
             '${passingScore.toInt()}%',
-            Colors.orange,
+            context.colors.warning,
             Icons.star_outline_rounded,
           ),
           _div(),
           _StatRow(
             tx('exam_attempt_number'),
             '$submissionCount${maxSubmissions != null ? ' / $maxSubmissions' : ''}',
-            Colors.purple,
+            context.colors.purple,
             Icons.repeat_rounded,
           ),
           if (remaining != null && maxSubmissions != null) ...[
@@ -523,7 +523,7 @@ class _StatsCard extends StatelessWidget {
             _StatRow(
               tx('exam_remaining_attempts_short'),
               '$remaining',
-              remaining! > 0 ? Colors.green : Colors.redAccent,
+              remaining! > 0 ? context.colors.success : context.colors.danger,
               Icons.replay_rounded,
             ),
           ],
@@ -552,10 +552,10 @@ class _StatRow extends StatelessWidget {
       const SizedBox(width: 8),
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'bahji',
           fontSize: 13,
-          color: Colors.grey,
+          color: context.colors.textLight,
         ),
       ),
       const Spacer(),
@@ -586,15 +586,15 @@ class _RetryButton extends StatelessWidget {
     child: Container(
       height: 56,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6C5CE7), Color(0xFF8E44AD)],
+        gradient: LinearGradient(
+          colors: [context.colors.primaryLight, context.colors.purple],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6C5CE7).withValues(alpha: .4),
+            color: context.colors.primaryLight.withValues(alpha: .4),
             blurRadius: 18,
             offset: const Offset(0, 7),
           ),
@@ -659,13 +659,13 @@ class _QuestionBreakdownTile extends StatelessWidget {
     Color color;
     IconData icon;
     if (!hasResult || answer == null) {
-      color = Colors.grey;
+      color = context.colors.textLight;
       icon = Icons.remove_circle_outline_rounded;
     } else if (isCorrect == true) {
       color = context.colors.success;
       icon = Icons.check_circle_rounded;
     } else {
-      color = Colors.redAccent;
+      color = context.colors.danger;
       icon = Icons.cancel_rounded;
     }
 
@@ -818,21 +818,21 @@ class _WarningBanner extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(12),
     decoration: BoxDecoration(
-      color: Colors.orange.shade50,
+      color: context.colors.warning,
       borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: Colors.orange.shade200),
+      border: Border.all(color: context.colors.warning),
     ),
     child: Row(
       children: [
-        const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+        Icon(Icons.warning_amber_rounded, color: context.colors.warning, size: 18),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
             message,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 12,
-              color: Colors.orange,
+              color: context.colors.warning,
             ),
           ),
         ),

@@ -14672,5 +14672,129 @@
   "lr_removed_body": {
     "en": "The teacher removed you from this live class. Contact them if you think this is a mistake.",
     "ar": "أخرجك المعلم من هذه المحاضرة المباشرة. تواصل معه إن كنت تظن أن هذا خطأ."
+  },
+  "cert_current_design": {
+    "en": "Design in use",
+    "ar": "التصميم المستخدم"
+  },
+  "cert_default_template": {
+    "en": "Students get the default template",
+    "ar": "يحصل الطلاب على القالب الافتراضي"
+  },
+  "cert_edit_design_btn": {
+    "en": "Edit the design",
+    "ar": "تعديل التصميم"
+  },
+  "cert_remove_design": {
+    "en": "Use default",
+    "ar": "استخدام الافتراضي"
+  },
+  "account_not_verified": {
+    "en": "Your account is not verified yet",
+    "ar": "حسابك غير مفعّل بعد"
+  },
+  "admin_custom_module": {
+    "en": "Custom module",
+    "ar": "وحدة مخصصة"
+  },
+  "admin_custom_module_name": {
+    "en": "Module name",
+    "ar": "اسم الوحدة"
+  },
+  "admin_custom_module_name_hint": {
+    "en": "e.g. Library",
+    "ar": "مثلاً: المكتبة"
+  },
+  "admin_enter_custom_module_name": {
+    "en": "Enter the module name",
+    "ar": "اكتب اسم الوحدة"
+  },
+  "admin_payments_hero_hint": {
+    "en": "Review transfers, confirm payments and follow every payment from one place",
+    "ar": "راجع التحويلات وأكّد المدفوعات وتابع كل عملية دفع من مكان واحد"
+  },
+  "audio_only": {
+    "en": "Audio only",
+    "ar": "صوت فقط"
+  },
+  "complaint_about_course": {
+    "en": "About a course",
+    "ar": "بخصوص كورس"
+  },
+  "complaint_hero_sub": {
+    "en": "Tell us what happened — we read every message and reply as soon as we can",
+    "ar": "أخبرنا بما حدث — نقرأ كل رسالة ونرد في أقرب وقت"
+  },
+  "complaint_hero_title": {
+    "en": "We're listening",
+    "ar": "نحن نسمعك"
+  },
+  "course_hero_setting": {
+    "en": "Course settings",
+    "ar": "إعدادات الدورة"
+  },
+  "course_passcode_hint": {
+    "en": "Enter the course passcode",
+    "ar": "أدخل رمز الدورة"
+  },
+  "course_passcode_title": {
+    "en": "This course is protected",
+    "ar": "هذه الدورة محمية برمز"
+  },
+  "course_passcode_wrong": {
+    "en": "Wrong passcode — try again",
+    "ar": "الرمز غير صحيح — حاول مرة أخرى"
+  },
+  "course_reel_unsupported_type": {
+    "en": "This file type is not supported for the course reel",
+    "ar": "نوع الملف غير مدعوم للفيديو التعريفي"
+  },
+  "default_plan_label": {
+    "en": "Default plan",
+    "ar": "الخطة الافتراضية"
+  },
+  "edit": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "edit_session_subtitle": {
+    "en": "Update the lesson details",
+    "ar": "حدّث بيانات الدرس"
+  },
+  "empty_calender": {
+    "en": "Nothing scheduled for this day",
+    "ar": "لا مواعيد في هذا اليوم"
+  },
+  "new_session_subtitle": {
+    "en": "Add a new lesson to the course",
+    "ar": "أضف درساً جديداً للدورة"
+  },
+  "reject": {
+    "en": "Reject",
+    "ar": "رفض"
+  },
+  "stream_quality": {
+    "en": "Stream quality",
+    "ar": "جودة البث"
+  },
+  "verified_documents": {
+    "en": "Verified documents",
+    "ar": "مستندات موثّقة"
+  },
+  "video": {
+    "en": "Video",
+    "ar": "فيديو"
+  },
+  "cert_readonly_design": {
+    "en": "This design is shared with you, so it can't be edited here. Make your own copy to change positions, alignment, fonts and colours.",
+    "ar": "هذا التصميم مشترك معك ولا يمكن تعديله هنا. أنشئ نسختك الخاصة لتغيير المواضع والمحاذاة والخطوط والألوان."
+  },
+  "cert_customize_copy": {
+    "en": "Customize my copy",
+    "ar": "تخصيص نسختي"
+  },
+  "cert_copy_ready": {
+    "en": "Your copy is ready and attached to this certificate — edit it freely",
+    "ar": "نسختك جاهزة ومرتبطة بهذه الشهادة — عدّلها كما تشاء"
   }
 }

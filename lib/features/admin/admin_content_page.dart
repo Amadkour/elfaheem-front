@@ -29,6 +29,7 @@ import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -954,7 +955,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator(size: 56));
     } else if (_error != null) {
       body = ErrorRetry(message: _error!, onRetry: _load);
     } else {

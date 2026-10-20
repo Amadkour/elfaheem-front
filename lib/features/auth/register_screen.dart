@@ -90,6 +90,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _openTerms() async {
     context.read<AboutTermsProvider>().clearSelection();
     final accepted = await showModalBottomSheet<bool>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

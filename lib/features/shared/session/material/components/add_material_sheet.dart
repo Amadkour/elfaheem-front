@@ -95,6 +95,7 @@ Future<void> showAddMaterialSheet(
     );
   } else {
     await showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,

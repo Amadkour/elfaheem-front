@@ -23,9 +23,9 @@ class ClickableText extends StatelessWidget {
           text: url,
           style: context.colors.caption.copyWith(
             height: 1.8,
-            color: Colors.orange,
+            color: context.colors.warning,
             decoration: TextDecoration.underline,
-            decorationColor: Colors.orangeAccent,
+            decorationColor: context.colors.warning,
             decorationThickness: 2
           ),
           recognizer: TapGestureRecognizer()

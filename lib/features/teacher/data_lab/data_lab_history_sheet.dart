@@ -13,6 +13,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 Future<void> showHistorySheet(BuildContext context, DataLabProvider p, {int? rowId, String? columnKey, String? title}) =>
     showAdminSheet(context, (_) => _HistorySheet(p: p, rowId: rowId, columnKey: columnKey, title: title));
@@ -91,7 +92,7 @@ class _HistorySheetState extends State<_HistorySheet> {
       SheetHeader(widget.title ?? dlTr('dl_history', 'Change history')),
       Flexible(
         child: _loading
-            ? const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator()))
+            ? const Padding(padding: EdgeInsets.all(40), child: const Center(child: AppLoadingIndicator(size: 56)))
             : NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n.metrics.extentAfter < 300) _load(next: true);

@@ -96,6 +96,7 @@ class _StyleSheetState extends State<_StyleSheet> {
 
   Future<void> _editRule([int? index]) async {
     final r = await showModalBottomSheet<DlRule>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

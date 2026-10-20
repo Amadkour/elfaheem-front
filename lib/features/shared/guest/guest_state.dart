@@ -111,6 +111,7 @@ class GuestGuard {
     _sheetOpen = true;
     try {
       await showModalBottomSheet<void>(
+      useSafeArea: true,
         context: context,
         useRootNavigator: true,
         isScrollControlled: true,

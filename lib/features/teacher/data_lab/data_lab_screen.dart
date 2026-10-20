@@ -1409,6 +1409,7 @@ class _IdentityCell extends StatelessWidget {
 /// Hold a student's name: history of the line · new login details (students only).
 Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) async {
   final picked = await showModalBottomSheet<String>(
+      useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,
     constraints: const BoxConstraints(maxWidth: 520),
@@ -1473,6 +1474,7 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
 
 /// The login details of one student, to copy or share (WhatsApp, SMS …).
 Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, String course) => showModalBottomSheet<void>(
+      useSafeArea: true,
   context: context,
   backgroundColor: Colors.transparent,
   constraints: const BoxConstraints(maxWidth: 520),
@@ -1564,6 +1566,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
 /// Which columns are pinned on the start side (student details and / or data columns) + reset of the widths.
 void showPinSheet(BuildContext context, DataLabProvider p) {
   showModalBottomSheet<void>(
+      useSafeArea: true,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -1813,6 +1816,7 @@ class _HeadCell extends StatelessWidget {
 
 void showColumnSettings(BuildContext context, DataLabProvider p, DlColumn col) {
   showModalBottomSheet<void>(
+      useSafeArea: true,
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -2378,6 +2382,7 @@ class _ValueCell extends StatelessWidget {
 
   Future<void> _edit(BuildContext context, bool manual, dynamic current) async {
     final res = await showModalBottomSheet<String>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

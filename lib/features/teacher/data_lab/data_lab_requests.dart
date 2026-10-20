@@ -17,6 +17,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -209,7 +210,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
               ),
               DlSectionTitle('dl_req_list'.tr),
               if (_loading)
-                const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
+                const Padding(padding: EdgeInsets.all(20), child: const Center(child: AppLoadingIndicator(size: 56)))
               else if (_forms.isEmpty)
                 Padding(padding: const EdgeInsets.all(10), child: Text('dl_req_none'.tr, style: dlText(12.5, c: c.textMedium)))
               else

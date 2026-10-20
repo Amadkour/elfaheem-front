@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 
 class CourseAccessSheet extends StatefulWidget {
@@ -16,6 +17,7 @@ class CourseAccessSheet extends StatefulWidget {
 
   static Future<bool> show(BuildContext context, {required int courseId, required String courseName}) async {
     final ok = await showModalBottomSheet<bool>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -179,7 +181,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                         child: Padding(
                           padding: const EdgeInsets.all(5),
                           child: k == 'x'
-                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: Colors.red.shade400,
+                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: context.colors.danger,
                               child: const Icon(Icons.clear, color: Colors.white, size: 22))
                               : k == 'del'
                               ? _Key(onTap: _del, child: const Icon(Icons.backspace_outlined, color: _muted, size: 22))

@@ -40,6 +40,7 @@ import 'org_ui.dart';
 import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
+import 'package:flutter_education_app/utils/widget/phone_field.dart';
 
 class _OrgTabs extends ChangeNotifier {
   int currentTab = 0;
@@ -516,7 +517,7 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
               const SizedBox(height: 8),
               Field(controller: license, label: t('رقم القرار / الترخيص', 'Decree / licence number')),
               Field(controller: email, label: t('البريد الرسمي', 'Official e-mail'), ltr: true),
-              Field(controller: phone, label: t('هاتف التواصل', 'Contact phone'), ltr: true),
+              PhoneInputField(controller: phone, label: t('هاتف التواصل', 'Contact phone')),
               Field(controller: website, label: t('الموقع الإلكتروني', 'Website'), ltr: true),
               Field(controller: address, label: t('العنوان', 'Address')),
             ],

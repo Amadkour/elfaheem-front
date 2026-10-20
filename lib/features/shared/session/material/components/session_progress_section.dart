@@ -38,10 +38,10 @@ class SessionProgressSection extends StatelessWidget {
 
     final Color fillStart = isFinished
         ? const Color(0xFF00C48C)
-        : const Color(0xFF4DA6FF);
+        : context.colors.primaryLight;
     final Color fillEnd = isFinished
         ? const Color(0xFF00E5A0)
-        : const Color(0xFF845EF7);
+        : context.colors.primaryLight;
 
     return Padding(
       padding: const EdgeInsets.only(top: 12),

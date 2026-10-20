@@ -1295,6 +1295,7 @@ class _AddImageButton extends StatelessWidget {
   void _show(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(

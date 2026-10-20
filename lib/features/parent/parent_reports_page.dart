@@ -23,6 +23,7 @@ import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
 import 'parent_report_widgets.dart';
 import 'parent_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 const _periods = ['daily', 'weekly', 'monthly'];
 
@@ -146,7 +147,7 @@ class _ReportsBodyState extends State<_ReportsBody> {
           ),
         Expanded(
           child: !p.loaded && p.isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? const Center(child: AppLoadingIndicator(size: 56))
               : !p.loaded && p.hasError
               ? PlError(p.errorMessage ?? '', onRetry: p.reload)
               : p.children.isEmpty
@@ -316,7 +317,7 @@ class _ChildReportCard extends StatelessWidget {
             label: 'pl_k_attendance'.tr,
             value: _pct(_att['rate']),
             sub: _att['scheduled'] == 0 ? 'pl_att_none_short'.tr : plFmt('pl_k_attendance_sub', {'a': _att['attended'], 'b': _att['scheduled']}),
-            color: _att['rate'] == null ? Colors.grey : plPctColor(context, _att['rate'] as num),
+            color: _att['rate'] == null ? context.colors.textLight : plPctColor(context, _att['rate'] as num),
           ),
           PlKpi(
             icon: Icons.local_fire_department_rounded,
@@ -331,7 +332,7 @@ class _ChildReportCard extends StatelessWidget {
             label: 'pl_k_exams'.tr,
             value: _pct(examNow),
             sub: _n(_s, 'exams_taken') == 0 ? 'pl_k_exams_none'.tr : plFmt('pl_k_exams_sub', {'a': _s['exams_taken'], 'b': _s['exams_passed']}),
-            color: examNow == null ? Colors.grey : plPctColor(context, examNow),
+            color: examNow == null ? context.colors.textLight : plPctColor(context, examNow),
             delta: (examNow != null && examOld != null) ? examNow - examOld : null,
             deltaSuffix: '%',
           ),
@@ -440,9 +441,9 @@ class _ChildReportCard extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
                   radius: 18,
-                  backgroundColor: (x['percentage'] == null ? Colors.grey : plPctColor(context, x['percentage'] as num)).withAlpha(30),
+                  backgroundColor: (x['percentage'] == null ? context.colors.textLight : plPctColor(context, x['percentage'] as num)).withAlpha(30),
                   child: Icon(x['passed'] == true ? Icons.check_rounded : Icons.close_rounded,
-                      color: x['percentage'] == null ? Colors.grey : plPctColor(context, x['percentage'] as num)),
+                      color: x['percentage'] == null ? context.colors.textLight : plPctColor(context, x['percentage'] as num)),
                 ),
                 title: Text('${x['exam']}'),
                 subtitle: Text('${plLabel(x, 'course')} · ${plDateTime(x['at'])}'),
@@ -641,6 +642,7 @@ class _ChildReportCard extends StatelessWidget {
   void _scoreSheet(BuildContext context) {
     final comps = plList(_score['components']);
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       showDragHandle: true,
       isScrollControlled: true,

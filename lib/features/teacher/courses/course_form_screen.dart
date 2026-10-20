@@ -428,6 +428,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ...formProvider.pendingSchedules.map((s) => s.day),
     };
     await showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -642,10 +643,10 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               const SizedBox(height: 6),
                               Text(
                                 'price_plans_hint'.tr,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'tajawal',
                                   fontSize: 11.5,
-                                  color: Colors.grey,
+                                  color: context.colors.textLight,
                                 ),
                               ),
                               const SizedBox(height: 14),
@@ -1069,12 +1070,12 @@ class _HeroHeader extends StatelessWidget {
             child: Container(
               height: unit * 2,
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF1A3C6E),
-                    Color(0xFF0D6EFD),
-                    Color(0xFF4F9FFF),
+                    context.colors.primaryDark,
+                    context.colors.primary,
+                    context.colors.primaryLight,
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -1891,12 +1892,12 @@ class _StickyFooter extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: canSave
                         ? context.colors.primary.withValues(alpha: 0.08)
-                        : const Color(0xFFF0F1F4),
+                        : context.colors.inputBg,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: canSave
                           ? context.colors.primary.withValues(alpha: 0.35)
-                          : const Color(0xFFCDD5E0),
+                          : context.colors.divider,
                     ),
                   ),
                   child: Center(
@@ -1928,8 +1929,8 @@ class _StickyFooter extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: canSave
                       ? context.colors.primaryGradient
-                      : const LinearGradient(
-                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                      : LinearGradient(
+                    colors: [context.colors.divider, context.colors.divider],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,

@@ -1144,7 +1144,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.video_library_rounded,
           '${c.sessionsCount} ${'session'.tr}',
-          const Color(0xFF185FA5),
+          context.colors.primary,
         ),
       ],
       [

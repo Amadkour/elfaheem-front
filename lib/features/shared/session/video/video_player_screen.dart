@@ -963,6 +963,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void _openStreamPicker() {
     _hideTimer?.cancel();
     showModalBottomSheet<void>(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -980,6 +981,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void _openSpeedSheet() {
     _hideTimer?.cancel();
     showModalBottomSheet<void>(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,

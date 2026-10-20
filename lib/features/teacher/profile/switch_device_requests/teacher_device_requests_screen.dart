@@ -142,7 +142,7 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    const warn = Colors.orange;
+    final warn = context.colors.warning;
 
     return SwipeRequestCard(
       itemId: item.id,

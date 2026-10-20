@@ -596,7 +596,7 @@ class _PlanTile extends StatelessWidget {
                       ? _PlanBadge(
                           label: 'plan_best_value'.tr,
                           icon: Icons.workspace_premium_rounded,
-                          tone: Colors.amber.shade800,
+                          tone: context.colors.warning,
                           filled: true,
                         )
                       : (savePercent != null)
@@ -709,7 +709,7 @@ class _PlanTile extends StatelessWidget {
                             fontSize: 11,
                             fontFamily: 'bahji',
                             decoration: TextDecoration.lineThrough,
-                            decorationColor: Colors.redAccent,
+                            decorationColor: context.colors.danger,
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -862,7 +862,7 @@ class _PaymentMethodPicker extends StatelessWidget {
                   : Icons.account_balance_wallet_rounded,
               iconColor: w.type == 'apple_pay'
                   ? Colors.black87
-                  : const Color(0xFF1A73E8),
+                  : context.colors.primary,
               title:
                   g.labelFor(w.type) ??
                   (w.type == 'apple_pay' ? 'Apple Pay' : 'Google Pay'),
@@ -885,7 +885,7 @@ class _PaymentMethodPicker extends StatelessWidget {
             _MethodTile(
               selected: enroll.selectedManualMethod == 'instapay',
               icon: Icons.qr_code_2_rounded,
-              iconColor: const Color(0xFF6A1B9A),
+              iconColor: context.colors.purple,
               title: g.labelFor('instapay') ?? 'transfer_instapay_title'.tr,
               subtitle: 'instapay_subtitle'.tr,
               onTap: () => enroll.selectManualMethod('instapay'),
@@ -946,20 +946,20 @@ class _SecureBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
     decoration: BoxDecoration(
-      color: Colors.green.withValues(alpha: .10),
+      color: context.colors.success.withValues(alpha: .10),
       borderRadius: BorderRadius.circular(6),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.lock_rounded, size: 9, color: Colors.green),
+        Icon(Icons.lock_rounded, size: 9, color: context.colors.success),
         const SizedBox(width: 3),
         Text(
           'secure_badge'.tr,
           style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: Colors.green.shade700,
+            color: context.colors.success,
             fontFamily: 'bahji',
           ),
         ),
@@ -1054,13 +1054,13 @@ class _MethodTile extends StatelessWidget {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.amber.withValues(alpha: .15),
+                            color: context.colors.warning.withValues(alpha: .15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             badge!,
                             style: c.caption.copyWith(
-                              color: Colors.amber.shade800,
+                              color: context.colors.warning,
                               fontSize: 10,
                             ),
                           ),

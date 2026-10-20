@@ -491,10 +491,10 @@ class _BrandMark extends StatelessWidget {
     width: compact ? 42 : 54,
     height: compact ? 42 : 54,
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
+      gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Color(0xFF4369E8), Color(0xFF263FAE)],
+        colors: [context.colors.primary, context.colors.primary],
       ),
       borderRadius: BorderRadius.circular(compact ? 14 : 18),
       boxShadow: [
