@@ -139,7 +139,7 @@ class TeacherAttendanceController extends ChangeNotifier {
     error = null;
     final here = await _loc.here();
     if (here.lat == null && here.bssid == null) {
-      error = 'att_err_teacher_location';
+      error = locationProblemKey(_loc.lastProblem, teacher: true);   // says WHAT to switch on
       notifyListeners();
       return false;
     }
@@ -222,7 +222,9 @@ class TeacherAttendanceController extends ChangeNotifier {
         lng = here.lng;
         bssid = here.bssid;
         if (lat == null && bssid == null) {
-          error = 'att_err_teacher_location';
+          error = (kIsWeb && webLocationSource == 'mobile')
+              ? 'att_err_teacher_location'
+              : locationProblemKey(_loc.lastProblem, teacher: true);
           loading = false;
           notifyListeners();
           return;

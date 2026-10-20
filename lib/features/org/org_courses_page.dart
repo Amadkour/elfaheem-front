@@ -10,6 +10,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
+import 'org_ui.dart';
 
 /// Active members of one role (up to 200) — used by the pickers.
 Future<List<Map<String, dynamic>>> orgPeople(OrgSession s, String role, {String? search}) async {
@@ -25,7 +26,7 @@ class OrgCoursesPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
-    if (!s.can('courses')) return EmptyState(t('لا تملك صلاحية عرض الكورسات', 'You cannot view courses'), icon: Icons.lock_rounded);
+    if (!s.can('courses')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الكورسات', 'You cannot view courses'));
     return ChangeNotifierProvider(create: (_) => OrgCoursesProvider(s)..refresh(), child: const _CoursesView());
   }
 }
@@ -127,7 +128,7 @@ class _CourseTile extends StatelessWidget {
               Wrap(spacing: 6, runSpacing: 4, children: [
                 InfoChip(Icons.groups_rounded, '${row['students']}', c.primary),
                 InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
-                if (row['members_only'] == true) InfoChip(Icons.lock_rounded, t('للأعضاء فقط', 'Members only'), AdminPaletteSafe.violet),
+                if (row['members_only'] == true) InfoChip(Icons.lock_rounded, t('للأعضاء فقط', 'Members only'), context.colors.purple),
                 if (row['is_published'] != true) StatusChip(t('غير منشور', 'Draft'), c.warning),
               ]),
             ]),
@@ -152,10 +153,6 @@ class _CourseTile extends StatelessWidget {
   }
 }
 
-/// Tiny local colour so this file doesn't need AdminPalette.attach ordering concerns.
-class AdminPaletteSafe {
-  static const violet = Color(0xFF7C3AED);
-}
 
 Future<void> _courseForm(BuildContext context, OrgCoursesProvider p, Map<String, dynamic>? edit) async {
   final s = context.read<OrgSession>();
@@ -178,23 +175,22 @@ Future<void> _courseForm(BuildContext context, OrgCoursesProvider p, Map<String,
             SheetHeader(edit == null ? t('كورس جديد', 'New course') : t('تعديل الكورس', 'Edit course')),
             Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
-            DropdownButtonFormField<int>(
-              initialValue: teacherId,
-              decoration: InputDecoration(labelText: t('المدرس', 'Teacher'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [for (final u in teachers) DropdownMenuItem(value: asInt(u['id']), child: Text('${u['name']}'))],
+            OrgPickField<int>(
+              label: t('المدرس', 'Teacher'),
+              icon: Icons.person_rounded,
+              value: teacherId,
+              options: {for (final u in teachers) asInt(u['id']): '${u['name']}'},
               onChanged: (v) => set(() => teacherId = v ?? teacherId),
             ),
-            const SizedBox(height: 12),
             Row(children: [
               Expanded(child: Field(controller: fees, label: t('السعر السنوي', 'Yearly fee'), keyboard: TextInputType.number, ltr: true)),
               const SizedBox(width: 10),
               Expanded(child: Field(controller: hours, label: t('عدد الساعات', 'Total hours'), keyboard: TextInputType.number, ltr: true)),
             ]),
-            SwitchListTile.adaptive(contentPadding: EdgeInsets.zero, title: Text(t('منشور', 'Published')), value: published, onChanged: (v) => set(() => published = v)),
-            SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: Text(t('للأعضاء فقط', 'Members only')),
-                subtitle: Text(t('يختفي من الكتالوج العام', 'Hidden from the public catalogue')),
+            OrgSwitchRow(title: t('منشور', 'Published'), value: published, onChanged: (v) => set(() => published = v)),
+            OrgSwitchRow(
+                title: t('للأعضاء فقط', 'Members only'),
+                subtitle: t('يختفي من الكتالوج العام', 'Hidden from the public catalogue'),
                 value: membersOnly,
                 onChanged: (v) => set(() => membersOnly = v)),
             const SizedBox(height: 6),

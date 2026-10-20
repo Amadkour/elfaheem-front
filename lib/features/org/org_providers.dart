@@ -50,12 +50,43 @@ class OrgSession extends AdminBase {
 
   bool get isOrgAdmin => const ['org_admin', 'platform_admin'].contains(current?['my_role']);
 
-  /// Is [action] on [module] allowed for me in the selected organization?
-  bool can(String module, [String action = 'view']) {
+  /// v2: may I create a new ROOT organization (university …)? Sub-organizations need `sub_orgs.insert`.
+  bool canCreateRoot = false;
+
+  /// pending | approved | rejected | suspended (an ancestor's suspension counts too).
+  String get status => '${current?['status'] ?? 'approved'}';
+  bool get approved => status == 'approved';
+
+  static String _alias(String module, String action) =>
+      module == 'requests' && action == 'update' ? 'approve' : action;   // v1 call sites keep working
+
+  /// Is [action] on [module] allowed for me in the selected organization — org-wide, or inside [deptId]?
+  bool can(String module, [String action = 'view', int? deptId]) {
     if (isOrgAdmin) return true;
+    final a = _alias(module, action);
     final p = current?['permissions'];
-    if (p is Map && p[module] is List) return (p[module] as List).contains(action);
+    if (p is Map && p[module] is List && (p[module] as List).contains(a)) return true;
+    if (deptId != null) {
+      final d = current?['dept_permissions'];
+      final m = d is Map ? d['$deptId'] : null;
+      if (m is Map && m[module] is List) return (m[module] as List).contains(a);
+    }
     return false;
+  }
+
+  /// Org-wide OR in at least one department (to decide whether a menu entry is shown at all).
+  bool canAny(String module, [String action = 'view']) {
+    if (can(module, action)) return true;
+    final d = current?['dept_permissions'];
+    if (d is! Map) return false;
+    final a = _alias(module, action);
+    return d.values.any((m) => m is Map && m[module] is List && (m[module] as List).contains(a));
+  }
+
+  /// Departments where I have any right (empty for org-wide people — they see every department).
+  Set<int> get myDeptIds {
+    final d = current?['dept_permissions'];
+    return d is Map ? {for (final k in d.keys) int.tryParse('$k') ?? -1} : <int>{};
   }
 
   String get base => '$orgBase/orgs/$currentId';
@@ -64,6 +95,7 @@ class OrgSession extends AdminBase {
     final r = await run(() => api.get('$orgBase/mine'));
     if (r is Map) {
       items = asMapList(r['items']);
+      canCreateRoot = r['can_create_root'] == true;
       if (!keepSelection || !items.any((o) => o['id'] == currentId)) {
         currentId = items.isEmpty ? null : asInt(items.first['id']);
       }
@@ -99,6 +131,18 @@ class OrgSession extends AdminBase {
     final r = await call(() => api.delete(base), ok: t('تم الحذف', 'Deleted'));
     if (r != null) await load(keepSelection: false);
     return r != null;
+  }
+
+  /// Sends a rejected application back for review.
+  Future<bool> resubmit() async {
+    final r = await call(() => api.post('$base/resubmit'), ok: t('أُعيد إرسال الطلب للمراجعة', 'Sent back for review'));
+    if (r != null) await load();
+    return r != null;
+  }
+
+  Future<Map<String, dynamic>?> details() async {
+    final r = await run(() => api.get(base), makLoading: false);
+    return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
   Future<String?> regenerateCode() async {
@@ -433,4 +477,67 @@ class OrgMembershipProvider extends AdminBase {
     timetables = r is Map ? asMapList(r['items']) : [];
     notifyListeners();
   }
+}
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  v2 generic helpers — used by departments · services · roles · member space · platform review
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Any paged list of the v2 API: `OrgPaged('${session.base}/complaints', {'status': 'active'})`.
+/// The server's extra keys (stats, folders, form …) are in [extra].
+class OrgPaged extends AdminPagedProvider {
+  OrgPaged(this._path, [Map<String, dynamic>? filters]) : _filters = {...?filters};
+  final String _path;
+  final Map<String, dynamic> _filters;
+
+  @override
+  String get path => _path;
+
+  @override
+  Map<String, dynamic> get filters => _filters;
+
+  Future<void> setFilter(String key, Object? value) {
+    if (value == null || '$value'.isEmpty) {
+      _filters.remove(key);
+    } else {
+      _filters[key] = value;
+    }
+    return refresh();
+  }
+
+  /// Replaces one row in place after a mutation (no reload, no scroll jump).
+  void replaceRow(Map<String, dynamic> row) {
+    final i = rows.indexWhere((r) => r['id'] == row['id']);
+    if (i >= 0) {
+      rows[i] = row;
+      notifyListeners();
+    }
+  }
+}
+
+/// Thin mutation helper with the app's toasts: `final r = await OrgApi.i.post(url, body, ok: '…')`.
+/// Returns the decoded body (or true) on success, null on failure (the server message was toasted).
+class OrgApi extends AdminBase {
+  OrgApi._();
+  static final OrgApi i = OrgApi._();
+
+  Future<Map<String, dynamic>?> getMap(String path, [Map<String, dynamic>? query]) async {
+    try {
+      final r = await api.get(path, queryParams: query);
+      return r is Map ? Map<String, dynamic>.from(r) : null;
+    } on ApiException catch (e) {
+      toast(e.message, error: true);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<dynamic> post(String path, [Map<String, dynamic>? body, String? ok]) =>
+      call(() => api.post(path, body: body ?? const {}), ok: ok);
+
+  Future<dynamic> put(String path, Map<String, dynamic> body, [String? ok]) => call(() => api.put(path, body: body), ok: ok);
+
+  Future<dynamic> del(String path, [String? ok]) => call(() => api.delete(path), ok: ok);
 }

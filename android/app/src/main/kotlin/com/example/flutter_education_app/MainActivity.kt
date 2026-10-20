@@ -30,7 +30,10 @@ package com.example.flutter_education_app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Intent
+import android.provider.Settings
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.util.Log
@@ -48,6 +51,7 @@ class MainActivity : FlutterActivity() {
         private const val CH_RECORDER      = "com.example.flutter_education_app/native_recorder"
         private const val CH_NOTIFICATIONS = "com.example.flutter_education_app/notifications"
         private const val CH_REC_EVENTS    = "com.example.flutter_education_app/rec_events"
+        private const val CH_RADIOS        = "com.example.flutter_education_app/radios"   // attendance: switch radios on
 
         // 1001: the one and only MediaProjection grant → ACTION_STORE_PROJECTION
         private const val REQUEST_MEDIA_PROJECTION = 1001
@@ -332,6 +336,40 @@ class MainActivity : FlutterActivity() {
                         result.success(null)
                     } else {
                         result.notImplemented()
+                    }
+                }
+
+        // ── 3b. Radios: the attendance sheet's "Turn on Bluetooth / Wi-Fi" buttons ──
+        // Apps may not switch radios themselves; these open the SYSTEM dialog / panel for the person.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CH_RADIOS)
+                .setMethodCallHandler { call, result ->
+                    try {
+                        when (call.method) {
+                            "requestBluetoothOn" -> {
+                                val adapter = getSystemService(BluetoothManager::class.java)?.adapter
+                                if (adapter == null) { result.success(false); return@setMethodCallHandler }
+                                if (adapter.isEnabled) { result.success(true); return@setMethodCallHandler }
+                                // "Allow <app> to turn on Bluetooth?" — needs BLUETOOTH_CONNECT on Android 12+
+                                startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                result.success(true)
+                            }
+                            "openBluetoothSettings" -> {
+                                startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                result.success(true)
+                            }
+                            "openWifiPanel" -> {
+                                val action = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+                                    Settings.Panel.ACTION_WIFI else Settings.ACTION_WIFI_SETTINGS
+                                startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                result.success(true)
+                            }
+                            else -> result.notImplemented()
+                        }
+                    } catch (e: Exception) {          // SecurityException (permission not granted yet) …
+                        Log.w(TAG, "radios.${call.method} failed: ${e.message}")
+                        result.success(false)        // … Dart falls back to the settings screen / a hint
                     }
                 }
 

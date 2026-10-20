@@ -14264,5 +14264,413 @@
   "dl_copy": {
     "en": "Copy",
     "ar": "نسخ"
+  },
+  "cert_designer_title": {
+    "en": "Certificate designer",
+    "ar": "مصمم الشهادات"
+  },
+  "cert_designs_title": {
+    "en": "Certificate designs",
+    "ar": "تصميمات الشهادات"
+  },
+  "cert_new_design": {
+    "en": "New design",
+    "ar": "تصميم جديد"
+  },
+  "cert_no_designs": {
+    "en": "No designs yet",
+    "ar": "لا توجد تصميمات بعد"
+  },
+  "cert_edit_design": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "cert_use_design": {
+    "en": "Use for this certificate",
+    "ar": "استخدام لهذه الشهادة"
+  },
+  "cert_design_in_use": {
+    "en": "Design applied to this certificate",
+    "ar": "تم تطبيق التصميم على هذه الشهادة"
+  },
+  "cert_scope_org": {
+    "en": "Organization",
+    "ar": "المؤسسة"
+  },
+  "cert_scope_personal": {
+    "en": "Personal",
+    "ar": "شخصي"
+  },
+  "cert_delete_design_title": {
+    "en": "Delete design?",
+    "ar": "حذف التصميم؟"
+  },
+  "cert_delete_design_body": {
+    "en": "Certificates using it go back to the default template.",
+    "ar": "الشهادات التي تستخدمه ستعود للقالب الافتراضي."
+  },
+  "cert_design_certificate_btn": {
+    "en": "Design certificate",
+    "ar": "تصميم الشهادة"
+  },
+  "cert_choose_saved_design_btn": {
+    "en": "Choose a saved design",
+    "ar": "اختيار تصميم محفوظ"
+  },
+  "cert_wizard_intro": {
+    "en": "Start with a draft built from your app theme, logo and signature, or insert your own template. Everything can be edited afterwards.",
+    "ar": "ابدأ بمسودة مبنية على ألوان التطبيق والشعار والتوقيع، أو أدرج قالبك الخاص. يمكنك تعديل كل شيء لاحقاً."
+  },
+  "cert_orientation": {
+    "en": "Page orientation",
+    "ar": "اتجاه الصفحة"
+  },
+  "cert_orientation_landscape": {
+    "en": "Landscape",
+    "ar": "أفقي"
+  },
+  "cert_orientation_portrait": {
+    "en": "Portrait",
+    "ar": "رأسي"
+  },
+  "cert_style": {
+    "en": "Style",
+    "ar": "النمط"
+  },
+  "cert_style_classic": {
+    "en": "Classic",
+    "ar": "كلاسيكي"
+  },
+  "cert_style_modern": {
+    "en": "Modern",
+    "ar": "عصري"
+  },
+  "cert_style_dark": {
+    "en": "Dark",
+    "ar": "داكن"
+  },
+  "cert_logo": {
+    "en": "Logo",
+    "ar": "الشعار"
+  },
+  "cert_upload_logo": {
+    "en": "Upload logo",
+    "ar": "رفع الشعار"
+  },
+  "cert_logo_org_hint": {
+    "en": "If you skip this, the organization logo is used.",
+    "ar": "إن تجاهلت هذا فسيُستخدم شعار المؤسسة."
+  },
+  "cert_signature": {
+    "en": "Signature",
+    "ar": "التوقيع"
+  },
+  "cert_upload_signature": {
+    "en": "Upload signature photo",
+    "ar": "رفع صورة التوقيع"
+  },
+  "cert_signature_hint": {
+    "en": "Photograph your signature on white paper — the background is removed automatically.",
+    "ar": "صوّر توقيعك على ورقة بيضاء — تتم إزالة الخلفية تلقائياً."
+  },
+  "cert_signature_ink": {
+    "en": "Ink colour",
+    "ar": "لون الحبر"
+  },
+  "cert_signature_strength": {
+    "en": "Background removal strength",
+    "ar": "قوة إزالة الخلفية"
+  },
+  "cert_signature_failed": {
+    "en": "No signature found in the image — use a clearer photo.",
+    "ar": "لم يتم العثور على توقيع في الصورة — استخدم صورة أوضح."
+  },
+  "cert_generate_draft": {
+    "en": "Generate draft from app theme",
+    "ar": "إنشاء مسودة من ألوان التطبيق"
+  },
+  "cert_use_my_template": {
+    "en": "Use my own template image",
+    "ar": "استخدام صورة قالبي الخاص"
+  },
+  "cert_start_blank": {
+    "en": "Start with a blank page",
+    "ar": "البدء بصفحة فارغة"
+  },
+  "cert_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "cert_add_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "cert_add_dynamic": {
+    "en": "Dynamic field",
+    "ar": "حقل ديناميكي"
+  },
+  "cert_add_signature": {
+    "en": "Signature",
+    "ar": "التوقيع"
+  },
+  "cert_add_logo": {
+    "en": "Logo",
+    "ar": "الشعار"
+  },
+  "cert_add_line": {
+    "en": "Line",
+    "ar": "خط"
+  },
+  "cert_upload_signature_first": {
+    "en": "Upload a signature first (Page tab).",
+    "ar": "ارفع توقيعاً أولاً (تبويب الصفحة)."
+  },
+  "cert_upload_logo_first": {
+    "en": "Upload a logo first (Page tab).",
+    "ar": "ارفع شعاراً أولاً (تبويب الصفحة)."
+  },
+  "cert_tab_field": {
+    "en": "Field",
+    "ar": "الحقل"
+  },
+  "cert_tab_layers": {
+    "en": "Layers",
+    "ar": "الطبقات"
+  },
+  "cert_tab_page": {
+    "en": "Page",
+    "ar": "الصفحة"
+  },
+  "cert_select_field_hint": {
+    "en": "Tap an element on the certificate to edit it.",
+    "ar": "اضغط على أي عنصر في الشهادة لتعديله."
+  },
+  "cert_no_fields": {
+    "en": "No fields yet — add text, signature or logo from the toolbar.",
+    "ar": "لا توجد حقول — أضف نصاً أو توقيعاً أو شعاراً من الشريط."
+  },
+  "cert_layers_hint": {
+    "en": "Drag to rearrange. Lower in the list = on top.",
+    "ar": "اسحب لإعادة الترتيب. الأسفل في القائمة = في الأعلى."
+  },
+  "cert_field_text": {
+    "en": "Text (use {student_name} …)",
+    "ar": "النص (استخدم {student_name} …)"
+  },
+  "cert_field_text_ar": {
+    "en": "Arabic wording (optional)",
+    "ar": "النص بالعربية (اختياري)"
+  },
+  "cert_field_text_ar_hint": {
+    "en": "Used for the Arabic version of the certificate",
+    "ar": "يُستخدم في النسخة العربية من الشهادة"
+  },
+  "cert_font": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "cert_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "cert_width": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "cert_height": {
+    "en": "Height",
+    "ar": "الارتفاع"
+  },
+  "cert_thickness": {
+    "en": "Thickness",
+    "ar": "السماكة"
+  },
+  "cert_color": {
+    "en": "Colour",
+    "ar": "اللون"
+  },
+  "cert_align": {
+    "en": "Alignment",
+    "ar": "المحاذاة"
+  },
+  "cert_letter_spacing": {
+    "en": "Letter spacing",
+    "ar": "تباعد الحروف"
+  },
+  "cert_opacity": {
+    "en": "Opacity",
+    "ar": "الشفافية"
+  },
+  "cert_auto_fit": {
+    "en": "Shrink to fit the box",
+    "ar": "تصغير الخط ليناسب المربع"
+  },
+  "cert_max_lines": {
+    "en": "Max lines",
+    "ar": "أقصى عدد أسطر"
+  },
+  "cert_center": {
+    "en": "Centre",
+    "ar": "توسيط"
+  },
+  "cert_duplicate": {
+    "en": "Duplicate",
+    "ar": "تكرار"
+  },
+  "cert_bring_forward": {
+    "en": "Forward",
+    "ar": "للأمام"
+  },
+  "cert_send_backward": {
+    "en": "Backward",
+    "ar": "للخلف"
+  },
+  "cert_design_name": {
+    "en": "Design name",
+    "ar": "اسم التصميم"
+  },
+  "cert_background": {
+    "en": "Background",
+    "ar": "الخلفية"
+  },
+  "cert_reset_layout": {
+    "en": "Also reset the field layout",
+    "ar": "إعادة ضبط تخطيط الحقول أيضاً"
+  },
+  "cert_regenerate_from_theme": {
+    "en": "Regenerate from app theme",
+    "ar": "إعادة الإنشاء من ألوان التطبيق"
+  },
+  "cert_upload_template": {
+    "en": "Upload template image",
+    "ar": "رفع صورة قالب"
+  },
+  "cert_remove_background": {
+    "en": "Remove background",
+    "ar": "إزالة الخلفية"
+  },
+  "cert_design_saved": {
+    "en": "Design saved",
+    "ar": "تم حفظ التصميم"
+  },
+  "cert_design_saved_and_used": {
+    "en": "Saved — new certificates will use this design",
+    "ar": "تم الحفظ — ستستخدم الشهادات الجديدة هذا التصميم"
+  },
+  "cert_design_saved_not_attached": {
+    "en": "Saved, but could not be applied to this certificate",
+    "ar": "تم الحفظ لكن تعذر تطبيقه على هذه الشهادة"
+  },
+  "cert_discard_changes_title": {
+    "en": "Discard changes?",
+    "ar": "تجاهل التغييرات؟"
+  },
+  "cert_discard_changes_body": {
+    "en": "You have unsaved changes.",
+    "ar": "لديك تغييرات غير محفوظة."
+  },
+  "cert_discard": {
+    "en": "Discard",
+    "ar": "تجاهل"
+  },
+  "cert_font_cinzel": {
+    "en": "Cinzel (display serif)",
+    "ar": "Cinzel (عنوان)"
+  },
+  "cert_font_great_vibes": {
+    "en": "Great Vibes (script)",
+    "ar": "Great Vibes (خط يدوي)"
+  },
+  "cert_font_cormorant": {
+    "en": "Cormorant (italic)",
+    "ar": "Cormorant (مائل)"
+  },
+  "cert_font_tajawal": {
+    "en": "Tajawal",
+    "ar": "تجوال"
+  },
+  "cert_font_tajawal_medium": {
+    "en": "Tajawal Medium",
+    "ar": "تجوال متوسط"
+  },
+  "cert_font_tajawal_bold": {
+    "en": "Tajawal Bold",
+    "ar": "تجوال عريض"
+  },
+  "cert_font_amiri": {
+    "en": "Amiri (Arabic serif)",
+    "ar": "أميري"
+  },
+  "cert_font_amiri_bold": {
+    "en": "Amiri Bold",
+    "ar": "أميري عريض"
+  },
+  "cert_ph_student_name": {
+    "en": "Student name",
+    "ar": "اسم الطالب"
+  },
+  "cert_ph_course_name": {
+    "en": "Course name",
+    "ar": "اسم الدورة"
+  },
+  "cert_ph_certificate_title": {
+    "en": "Certificate title",
+    "ar": "عنوان الشهادة"
+  },
+  "cert_ph_teacher_name": {
+    "en": "Teacher name",
+    "ar": "اسم المدرس"
+  },
+  "cert_ph_date": {
+    "en": "Date",
+    "ar": "التاريخ"
+  },
+  "cert_ph_serial": {
+    "en": "Serial number",
+    "ar": "الرقم التسلسلي"
+  },
+  "cert_ph_attendance": {
+    "en": "Attendance (x / y)",
+    "ar": "الحضور (س / ص)"
+  },
+  "cert_ph_progress": {
+    "en": "Progress %",
+    "ar": "نسبة التقدم"
+  },
+  "cert_ph_org_name": {
+    "en": "Organization name",
+    "ar": "اسم المؤسسة"
+  },
+  "svc_organizations": {
+    "en": "Organizations",
+    "ar": "المؤسسات"
+  },
+  "svc_organizations_d": {
+    "en": "Review universities & faculties, approve, suspend, create org admins",
+    "ar": "مراجعة الجامعات والكليات واعتمادها وإيقافها وإنشاء مديريها"
+  },
+  "lr_reconnecting": {
+    "en": "Weak connection — reconnecting you…",
+    "ar": "الاتصال ضعيف — نعيد توصيلك…"
+  },
+  "lr_reconnected": {
+    "en": "You are back online",
+    "ar": "عاد الاتصال"
+  },
+  "lr_connection_lost_title": {
+    "en": "Connection lost",
+    "ar": "انقطع الاتصال"
+  },
+  "lr_connection_lost_body": {
+    "en": "We couldn't keep you in the class. Check your internet and join again from the lesson page.",
+    "ar": "لم نتمكن من إبقائك في المحاضرة. تحقق من الإنترنت وادخل مجدداً من صفحة الدرس."
+  },
+  "lr_removed_title": {
+    "en": "You were removed from the class",
+    "ar": "تم إخراجك من المحاضرة"
+  },
+  "lr_removed_body": {
+    "en": "The teacher removed you from this live class. Contact them if you think this is a mistake.",
+    "ar": "أخرجك المعلم من هذه المحاضرة المباشرة. تواصل معه إن كنت تظن أن هذا خطأ."
   }
 }

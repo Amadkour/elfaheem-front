@@ -333,6 +333,9 @@ class MyAuthProvider extends BaseProvider {
     'developer' => '/admin_dashboard',
     'teacher' => '/teacher_dashboard',
     'parent' => '/parent_dashboard',
+    // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
+    'org-admin' => '/org_dashboard',
+    'org-staff' => '/org_dashboard',
     _ => '/dashboard',
   };
 

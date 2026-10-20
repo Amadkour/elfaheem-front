@@ -16,6 +16,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
+import 'org_ui.dart';
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -23,7 +24,7 @@ class OrgSchedulePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
-    if (!s.can('schedule')) return EmptyState(t('لا تملك صلاحية عرض الجدول', 'You cannot view the timetable'), icon: Icons.lock_rounded);
+    if (!s.can('schedule')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الجدول', 'You cannot view the timetable'));
     return ChangeNotifierProvider(create: (_) => OrgScheduleProvider(s)..loadSetup(), child: const _ScheduleView());
   }
 }
@@ -265,10 +266,12 @@ Future<void> _loadForm(BuildContext context, OrgScheduleProvider p, Map<String, 
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader('${t((l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en'], (l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar'])}'),
-            DropdownButtonFormField<int?>(
-              initialValue: teacher,
-              decoration: InputDecoration(labelText: t('المدرس', 'Teacher'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [for (final u in teachers) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
+            OrgPickField<int>(
+              label: t('المدرس', 'Teacher'),
+              icon: Icons.person_rounded,
+              value: teacher,
+              allowNone: true,
+              options: {for (final u in teachers) asInt(u['id']): '${u['name']}'},
               onChanged: (v) => set(() => teacher = v),
             ),
             const SizedBox(height: 12),
@@ -283,10 +286,12 @@ Future<void> _loadForm(BuildContext context, OrgScheduleProvider p, Map<String, 
               if (tas.isEmpty) Text(t('لا يوجد معيدون', 'No assistants'), style: TextStyle(color: c.textLight)),
             ]),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              initialValue: adm,
-              decoration: InputDecoration(labelText: t('مساعد إداري (اختياري)', 'Admin assistant (optional)'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [DropdownMenuItem<int?>(value: null, child: Text(t('بدون', 'None'))), for (final u in adms) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
+            OrgPickField<int>(
+              label: t('مساعد إداري (اختياري)', 'Admin assistant (optional)'),
+              icon: Icons.badge_rounded,
+              value: adm,
+              allowNone: true,
+              options: {for (final u in adms) asInt(u['id']): '${u['name']}'},
               onChanged: (v) => set(() => adm = v),
             ),
             const SizedBox(height: 8),
@@ -410,7 +415,7 @@ class _TimetablesTab extends StatelessWidget {
     if (p.schedule != null) return const _Studio();
     return Stack(children: [
       p.schedules.isEmpty
-          ? EmptyState(t('لم تنشئ أي جدول بعد', 'No timetable yet'), icon: Icons.calendar_month_rounded)
+          ? OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم تنشئ أي جدول بعد', 'No timetable yet'))
           : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 90), children: [
               for (final x in p.schedules)
                 Padding(
@@ -539,7 +544,7 @@ class _StudioState extends State<_Studio> {
         ),
       Expanded(
         child: p.periods.isEmpty
-            ? EmptyState(t('أضف الفترات أولاً', 'Add periods first'))
+            ? OrgEmpty(icon: Icons.inbox_rounded, title: t('أضف الفترات أولاً', 'Add periods first'))
             : SingleChildScrollView(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -707,12 +712,12 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
   final labels = dayLabels();
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
-        DropdownButtonFormField<int?> pick(String label, int? v, List<Map<String, dynamic>> items, ValueChanged<int?> on, {bool allowNone = true}) =>
-            DropdownButtonFormField<int?>(
-              initialValue: v,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [if (allowNone) DropdownMenuItem<int?>(value: null, child: Text('—')), for (final u in items) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
+        Widget pick(String label, int? v, List<Map<String, dynamic>> items, ValueChanged<int?> on, {bool allowNone = true}) =>
+            OrgPickField<int>(
+              label: label,
+              value: v,
+              allowNone: allowNone,
+              options: {for (final u in items) asInt(u['id']): '${u['name']}'},
               onChanged: (x) => set(() => on(x)),
             );
         Future<void> save({bool force = false}) async {
@@ -736,11 +741,15 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(slot == null ? t('حصة جديدة', 'New slot') : t('تعديل الحصة', 'Edit slot')),
             if (slot == null)
-              DropdownButtonFormField<int>(
-                initialValue: course,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: t('الكورس', 'Course'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                items: [for (final l in courses) DropdownMenuItem(value: asInt(l['course_id']), child: Text(t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}', '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}')))],
+              OrgPickField<int>(
+                label: t('المقرر', 'Course'),
+                icon: Icons.menu_book_rounded,
+                value: course,
+                options: {
+                  for (final l in courses)
+                    asInt(l['course_id']): t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}',
+                        '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}')
+                },
                 onChanged: (v) => set(() {
                   course = v ?? course;
                   final l = courses.firstWhere((x) => asInt(x['course_id']) == course);
@@ -750,10 +759,11 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
             const SizedBox(height: 12),
             ChoiceRow<String>(options: {for (final d in orgDays.take(6)) d: labels[d]!}, value: day, onChanged: (v) => set(() => day = v)),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              initialValue: period,
-              decoration: InputDecoration(labelText: t('الفترة', 'Period'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [for (final x in p.periods) DropdownMenuItem(value: asInt(x['id']), child: Text('${x['label']}  (${x['start_time']}–${x['end_time']})'))],
+            OrgPickField<int>(
+              label: t('الفترة', 'Period'),
+              icon: Icons.schedule_rounded,
+              value: period,
+              options: {for (final x in p.periods) asInt(x['id']): '${x['label']}  (${x['start_time']}–${x['end_time']})'},
               onChanged: (v) => set(() => period = v ?? period),
             ),
             const SizedBox(height: 12),

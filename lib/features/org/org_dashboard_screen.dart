@@ -25,12 +25,18 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import '../admin/admin_premium_widgets.dart';
 import 'org_common.dart';
+import 'org_access_page.dart';
 import 'org_courses_page.dart';
+import 'org_departments_page.dart';
+import 'org_services_pages.dart';
+import 'org_status_screen.dart';
+import 'org_ui.dart';
 import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
@@ -68,17 +74,25 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     super.dispose();
   }
 
-  List<DashboardItem> _items() => [
+  /// Tabs follow MY rights: an admin assistant sees People/Courses/Timetable, a department clerk sees
+  /// Departments (only theirs), the org admin sees everything.
+  List<DashboardItem> _items(OrgSession s) => [
         DashboardItem(Icons.dashboard_outlined, Icons.dashboard_rounded, t('الرئيسية', 'Home'), null,
             const _OrgTab(title: 'org', child: OrgOverviewPage())),
-        DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
-            _OrgTab(title: t('الأعضاء', 'People'), child: const OrgPeoplePage())),
-        DashboardItem(Icons.menu_book_outlined, Icons.menu_book_rounded, t('الكورسات', 'Courses'), null,
-            _OrgTab(title: t('الكورسات', 'Courses'), child: const OrgCoursesPage())),
-        DashboardItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded, t('الجدول', 'Timetable'), null,
-            _OrgTab(title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage())),
-        DashboardItem(Icons.person_outline_rounded, Icons.person_rounded, t('حسابي', 'Account'), null,
-            _OrgTab(title: t('حسابي', 'Account'), child: const _OrgAccountPage())),
+        if (s.can('students') || s.can('teachers') || s.can('staff') || s.can('requests'))
+          DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
+              _OrgTab(title: t('الأعضاء', 'People'), child: const OrgPeoplePage())),
+        if (s.can('departments') || s.myDeptIds.isNotEmpty)
+          DashboardItem(Icons.apartment_outlined, Icons.apartment_rounded, t('الإدارات', 'Departments'), null,
+              _OrgTab(title: t('الإدارات', 'Departments'), child: const OrgDepartmentsPage())),
+        if (s.canAny('courses'))
+          DashboardItem(Icons.menu_book_outlined, Icons.menu_book_rounded, t('المقررات', 'Courses'), null,
+              _OrgTab(title: t('المقررات', 'Courses'), child: const OrgCoursesPage())),
+        if (s.can('schedule'))
+          DashboardItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded, t('الجدول', 'Timetable'), null,
+              _OrgTab(title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage())),
+        DashboardItem(Icons.widgets_outlined, Icons.widgets_rounded, t('المزيد', 'More'), null,
+            _OrgTab(title: t('المزيد', 'More'), child: const _OrgAccountPage())),
       ];
 
   @override
@@ -91,6 +105,10 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     }
     if (session.loaded && session.items.isEmpty) {
       return BasePage(child: _FirstOrganization());
+    }
+    if (session.currentId != null && !session.approved) {
+      // pending / rejected / suspended → a calm status page instead of 423 errors on every tab
+      return const BasePage(useWebCard: true, maxWith: 760, child: OrgStatusScreen());
     }
     return ChangeNotifierProvider<_OrgTabs>.value(
       value: _tabs,
@@ -107,7 +125,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
               final w = constraints.maxWidth;
               final isWide = w >= 1000;
               final isRail = kIsWeb && w >= 600;
-              final items = _items();
+              final items = _items(session);
               final current = tabs.currentTab.clamp(0, items.length - 1);
               void onTap(int i) => tabs.onChangeTab(i);
               if (isWide) {
@@ -139,7 +157,7 @@ class _OrgTab extends StatelessWidget {
       maxWith: 1100,
       appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false),
       child: s.currentId == null
-          ? EmptyState(t('اختر مؤسسة', 'Choose an organization'), icon: Icons.domain_rounded)
+          ? OrgEmpty(icon: Icons.domain_rounded, title: t('اختر مؤسسة', 'Choose an organization'))
           : ValueListenableBuilder<int>(
               valueListenable: s.epoch,
               builder: (_, e, _) => KeyedSubtree(key: ValueKey('${s.currentId}-$e'), child: child),
@@ -236,37 +254,54 @@ class _OrgOverviewPageState extends State<OrgOverviewPage> {
         else if (d == null)
           const Padding(padding: EdgeInsets.all(40), child: Center(child: AppLoadingIndicator(size: 56)))
         else ...[
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(spacing: 12, runSpacing: 12, children: [
-              _Stat(Icons.school_rounded, t('الطلاب', 'Students'), d['students'], c.primary),
-              _Stat(Icons.person_pin_rounded, t('المدرسون', 'Teachers'), d['teachers'], AdminPalette.violet.last),
-              _Stat(Icons.badge_rounded, t('الهيئة المعاونة', 'Staff'), d['staff'], AdminPalette.green.last),
-              _Stat(Icons.menu_book_rounded, t('الكورسات', 'Courses'), d['courses'], AdminPalette.indigo.last),
-              _Stat(Icons.how_to_reg_rounded, t('اشتراكات نشطة', 'Active enrollments'), d['active_enrollments'], c.success),
-              _Stat(Icons.account_tree_rounded, t('مؤسسات فرعية', 'Sub-organizations'), d['sub_organizations'], AdminPalette.rose.last),
-            ]),
-          ),
-          if (asInt(d['pending_requests']) > 0)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-              child: RowCard(
-                accent: c.warning,
-                onTap: () => context.read<_OrgTabs>().onChangeTab(1),
-                child: Row(children: [
-                  IconBadge(Icons.mark_email_unread_rounded, c.warning),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                        t('${d['pending_requests']} طلب انضمام ينتظر موافقتك', '${d['pending_requests']} join requests are waiting for you'),
-                        style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+          OrgGrid(children: [
+            OrgStatTile(icon: Icons.school_rounded, label: t('الطلاب', 'Students'), value: d['students'], color: c.primary),
+            OrgStatTile(icon: Icons.person_pin_rounded, label: t('هيئة التدريس', 'Teaching staff'), value: d['teachers'], color: c.purple),
+            OrgStatTile(icon: Icons.badge_rounded, label: t('الهيئة المعاونة', 'Assistants & staff'), value: d['staff'], color: c.accent2),
+            OrgStatTile(icon: Icons.menu_book_rounded, label: t('المقررات', 'Courses'), value: d['courses'], color: c.accent),
+            OrgStatTile(icon: Icons.how_to_reg_rounded, label: t('تسجيلات نشطة', 'Active enrollments'), value: d['active_enrollments'], color: c.success),
+            OrgStatTile(icon: Icons.account_tree_rounded, label: t('مؤسسات فرعية', 'Sub-organizations'), value: d['sub_organizations'], color: c.warning),
+          ]),
+          _Attention(a: asMap(d['attention'])),
+          if (asMapList(d['departments']).isNotEmpty) ...[
+            OrgSectionTitle(t('الإدارات', 'Departments'),
+                action: TextButton(
+                    onPressed: () => _goTab(context, t('الإدارات', 'Departments')),
+                    child: Text(t('عرض الكل', 'See all'), style: const TextStyle(fontFamily: 'tajawal')))),
+            SizedBox(
+              height: 92,
+              child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
+                for (final dep in asMapList(d['departments']))
+                  Container(
+                    width: 104,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgDepartmentHub(dept: dep)))),
+                      child: Column(children: [
+                        IconBadge(deptIcon(dep['icon']), hexColor(dep['color'], c.primary), size: 52),
+                        const SizedBox(height: 6),
+                        Text(orgNameOf(dep), maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                            style: TextStyle(fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w700, color: c.textDark)),
+                      ]),
+                    ),
                   ),
-                  Icon(Icons.chevron_right_rounded, color: c.textLight),
-                ]),
-              ),
+              ]),
             ),
+          ],
+          if (asMapList(d['recent_activity']).isNotEmpty) ...[
+            OrgSectionTitle(t('آخر النشاط', 'Recent activity')),
+            for (final a in asMapList(d['recent_activity']).take(5))
+              ListTile(
+                dense: true,
+                leading: Icon(Icons.history_rounded, color: c.textLight),
+                title: Text('${a['summary']}', style: TextStyle(fontFamily: 'tajawal', fontSize: 13, color: c.textDark)),
+                trailing: Text(relTime(a['created_at']), style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: c.textLight)),
+              ),
+          ],
         ],
-        if (s.isOrgAdmin)
+        if (s.can('sub_orgs', 'insert') || s.isOrgAdmin)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
             child: Row(children: [
@@ -293,39 +328,6 @@ class _OrgOverviewPageState extends State<OrgOverviewPage> {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat(this.icon, this.label, this.value, this.color);
-  final IconData icon;
-  final String label;
-  final dynamic value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final w = (MediaQuery.sizeOf(context).width.clamp(0, 1100) - 32 - 12) / 2;
-    return Container(
-      width: w > 170 ? w : double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.22)),
-      ),
-      child: Row(children: [
-        IconBadge(icon, color, size: 42),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${asInt(value)}', style: TextStyle(fontFamily: 'bahji', fontSize: 22, fontWeight: FontWeight.w800, color: c.textDark)),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
-          ]),
-        ),
-      ]),
-    );
-  }
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
 //  Account / settings tab
 // ═════════════════════════════════════════════════════════════════════════════
@@ -343,6 +345,8 @@ class _OrgAccountPage extends StatelessWidget {
       child: Column(children: [
         ProfileHeader(provider: p),
         const SizedBox(height: 24),
+        _OrgServicesGroup(s: s),
+        const SizedBox(height: 20),
         if (s.isOrgAdmin) ...[
           SettingsGroup(title: t('المؤسسة', 'Organization'), icon: Icons.domain_rounded, children: [
             SettingsTile(
@@ -357,12 +361,13 @@ class _OrgAccountPage extends StatelessWidget {
                 iconColor: AdminPalette.indigo.last,
                 label: t('تعديل بيانات المؤسسة', 'Edit organization'),
                 onTap: () => showOrgForm(context, edit: s.current)),
-            SettingsTile(
-                icon: Icons.add_business_rounded,
-                iconBg: AdminPalette.green.last.withAlpha(38),
-                iconColor: AdminPalette.green.last,
-                label: t('مؤسسة جديدة', 'New organization'),
-                onTap: () => showOrgForm(context)),
+            if (s.canCreateRoot)
+              SettingsTile(
+                  icon: Icons.add_business_rounded,
+                  iconBg: AdminPalette.green.last.withAlpha(38),
+                  iconColor: AdminPalette.green.last,
+                  label: t('مؤسسة جديدة', 'New organization'),
+                  onTap: () => showOrgForm(context)),
             SettingsTile(
                 icon: Icons.vpn_key_rounded,
                 iconBg: AdminPalette.violet.last.withAlpha(38),
@@ -431,11 +436,13 @@ Future<void> showOrgSwitcher(BuildContext context) async {
                   Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
                 ]),
               ),
+              if ('${o['status'] ?? 'approved'}' != 'approved')
+                StatusChip(statusLabel('${o['status']}'), statusColor(ctx, '${o['status']}')),
               if (o['id'] == s.currentId) Icon(Icons.check_circle_rounded, color: c.success),
             ]),
           ),
         ),
-      if (s.isOrgAdmin || s.items.isEmpty)
+      if (s.canCreateRoot)
         TextButton.icon(
           onPressed: () {
             Navigator.pop(ctx);
@@ -454,6 +461,12 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
   final en = TextEditingController(text: '${edit?['name_en'] ?? ''}');
   final desc = TextEditingController(text: '${edit?['description'] ?? ''}');
   final logo = TextEditingController(text: '${edit?['logo_url'] ?? ''}');
+  final license = TextEditingController(text: '${edit?['license_no'] ?? ''}');
+  final email = TextEditingController(text: '${edit?['contact_email'] ?? ''}');
+  final phone = TextEditingController(text: '${edit?['contact_phone'] ?? ''}');
+  final website = TextEditingController(text: '${edit?['website'] ?? ''}');
+  final address = TextEditingController(text: '${edit?['address'] ?? ''}');
+  final official = parentId == null && (edit == null || edit['parent_id'] == null);
   String type = '${edit?['type'] ?? (parentId == null ? 'university' : 'faculty')}';
   String mode = '${edit?['join_mode'] ?? 'approval'}';
   String color = '${edit?['color'] ?? ''}';
@@ -496,6 +509,17 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
             const SizedBox(height: 14),
             Field(controller: logo, label: t('رابط الشعار (اختياري)', 'Logo URL (optional)'), ltr: true),
             Field(controller: desc, label: t('نبذة (اختياري)', 'About (optional)'), maxLines: 3),
+            if (official) ...[
+              const SizedBox(height: 6),
+              Text(t('بيانات رسمية — تساعد فريق المنصة على اعتماد مؤسستك بسرعة', 'Official details — they help the platform team approve you quickly'),
+                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+              const SizedBox(height: 8),
+              Field(controller: license, label: t('رقم القرار / الترخيص', 'Decree / licence number')),
+              Field(controller: email, label: t('البريد الرسمي', 'Official e-mail'), ltr: true),
+              Field(controller: phone, label: t('هاتف التواصل', 'Contact phone'), ltr: true),
+              Field(controller: website, label: t('الموقع الإلكتروني', 'Website'), ltr: true),
+              Field(controller: address, label: t('العنوان', 'Address')),
+            ],
             const SizedBox(height: 6),
             PrimaryButton(
               isLoading: busy,
@@ -515,6 +539,13 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
                   if (logo.text.trim().isNotEmpty) 'logo_url': logo.text.trim(),
                   if (desc.text.trim().isNotEmpty) 'description': desc.text.trim(),
                   if (edit == null && parentId != null) 'parent_id': parentId,
+                  if (official) ...{
+                    'license_no': license.text.trim(),
+                    'contact_email': email.text.trim(),
+                    'contact_phone': phone.text.trim(),
+                    'website': website.text.trim(),
+                    'address': address.text.trim(),
+                  },
                 };
                 final ok = edit != null ? await s.updateOrg(body) : await s.createOrg(body);
                 if (ctx.mounted) {
@@ -567,4 +598,131 @@ Future<void> showJoinCode(BuildContext context) async {
           ]),
         );
       }));
+}
+
+
+/// Jumps to a dashboard tab by its label (tabs differ per person, so indexes are not fixed).
+void _goTab(BuildContext context, String label) {
+  final shell = context.findAncestorStateOfType<_OrgDashboardScreenState>();
+  if (shell == null) return;
+  final items = shell._items(context.read<OrgSession>());
+  final i = items.indexWhere((e) => e.label == label);
+  if (i >= 0) shell._tabs.onChangeTab(i);
+}
+
+/// "Needs your attention": only what is waiting, in plain words, one tap away.
+class _Attention extends StatelessWidget {
+  const _Attention({required this.a});
+  final Map<String, dynamic> a;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = context.read<OrgSession>();
+    Widget page(String title, Widget child) => ChangeNotifierProvider.value(
+        value: s, child: BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title), child: child));
+    final cards = <Widget>[
+      if (asInt(a['join_requests']) > 0)
+        OrgActionCard(
+          icon: Icons.mark_email_unread_rounded,
+          color: c.warning,
+          badge: asInt(a['join_requests']),
+          title: t('طلبات انضمام', 'Join requests'),
+          subtitle: t('أشخاص ينتظرون قبولك', 'People waiting for you to let them in'),
+          onTap: () => _goTab(context, t('الأعضاء', 'People')),
+        ),
+      if (asInt(a['open_complaints']) > 0)
+        OrgActionCard(
+          icon: Icons.support_agent_rounded,
+          color: asInt(a['overdue_complaints']) > 0 ? c.danger : c.primary,
+          badge: asInt(a['open_complaints']),
+          title: t('شكاوى مفتوحة', 'Open complaints'),
+          subtitle: asInt(a['overdue_complaints']) > 0
+              ? t('${a['overdue_complaints']} تجاوزت مهلة الرد', '${a['overdue_complaints']} past their reply time')
+              : t('كلها ضمن المهلة 👍', 'All within their reply time 👍'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => page(t('الشكاوى', 'Complaints'), const OrgComplaintsPage()))),
+        ),
+      if (asInt(a['pending_forms']) > 0)
+        OrgActionCard(
+          icon: Icons.assignment_late_rounded,
+          color: c.purple,
+          badge: asInt(a['pending_forms']),
+          title: t('طلبات تنتظر المراجعة', 'Requests to review'),
+          subtitle: t('نماذج أرسلها الطلاب والموظفون', 'Forms sent by students and staff'),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => page(t('النماذج', 'Forms'), const OrgFormsPage()))),
+        ),
+      if (asInt(a['pending_sub_orgs']) > 0)
+        OrgActionCard(
+          icon: Icons.account_tree_rounded,
+          color: c.accent,
+          badge: asInt(a['pending_sub_orgs']),
+          title: t('مؤسسات فرعية قيد المراجعة', 'Sub-organizations in review'),
+          subtitle: t('بانتظار اعتماد إدارة المنصة', 'Waiting for the platform team'),
+          onTap: () => showOrgSwitcher(context),
+        ),
+    ];
+    if (cards.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        child: RowCard(
+          accent: c.success,
+          child: Row(children: [
+            IconBadge(Icons.spa_rounded, c.success),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(t('لا شيء ينتظرك الآن — كل شيء على ما يرام 🌿', 'Nothing is waiting for you — all good 🌿'),
+                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+            ),
+          ]),
+        ),
+      );
+    }
+    return Column(children: [
+      OrgSectionTitle(t('يحتاج انتباهك', 'Needs your attention')),
+      OrgGrid(minTile: 300, children: cards),
+    ]);
+  }
+}
+
+/// Organization-wide services, roles and activity — shown on the "More" tab according to my rights.
+class _OrgServicesGroup extends StatelessWidget {
+  const _OrgServicesGroup({required this.s});
+  final OrgSession s;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    void open(String title, Widget child) => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+            value: s, child: BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title), child: child))));
+    Widget tile(IconData icon, Color col, String label, VoidCallback onTap) =>
+        SettingsTile(icon: icon, iconBg: col.withAlpha(38), iconColor: col, label: label, onTap: onTap);
+    final tiles = <Widget>[
+      if (s.can('announcements'))
+        tile(Icons.campaign_rounded, c.primary, t('إعلانات المؤسسة', 'Organization news'),
+            () => open(t('الإعلانات', 'Announcements'), const OrgAnnouncementsPage())),
+      if (s.can('forms'))
+        tile(Icons.assignment_rounded, AdminPalette.violet.last, t('النماذج العامة', 'Organization forms'),
+            () => open(t('النماذج', 'Forms'), const OrgFormsPage())),
+      if (s.can('complaints'))
+        tile(Icons.support_agent_rounded, AdminPalette.rose.last, t('كل الشكاوى', 'All complaints'),
+            () => open(t('الشكاوى', 'Complaints'), const OrgComplaintsPage())),
+      if (s.can('materials'))
+        tile(Icons.folder_copy_rounded, AdminPalette.teal.last, t('مكتبة المؤسسة', 'Organization library'),
+            () => open(t('المكتبة', 'Library'), const OrgMaterialsPage())),
+      if (s.canAny('certificates') || s.isOrgAdmin)
+        tile(Icons.workspace_premium_rounded, AdminPalette.orange.last, t('تصميمات الشهادات', 'Certificate designs'),
+            () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+      if (s.can('roles'))
+        tile(Icons.admin_panel_settings_rounded, AdminPalette.indigo.last, t('الأدوار والصلاحيات', 'Roles & privileges'),
+            () => open(t('الأدوار والصلاحيات', 'Roles & privileges'), const OrgAccessPage())),
+      if (s.can('audit'))
+        tile(Icons.history_rounded, AdminPalette.slate.last, t('سجل النشاط', 'Activity log'),
+            () => open(t('سجل النشاط', 'Activity log'), const OrgActivityPage())),
+    ];
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return SettingsGroup(title: t('خدمات المؤسسة', 'Organization services'), icon: Icons.widgets_rounded, children: tiles);
+  }
 }

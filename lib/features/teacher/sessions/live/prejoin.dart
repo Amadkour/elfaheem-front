@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'widgets/live_palette.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
@@ -73,26 +74,26 @@ class JoinArgs {
 // Design System (local, matches room.dart)
 // ─────────────────────────────────────────────────────────────────────────────
 class _DS {
-  static const bg = Color(0xFF060810);
-  static const surfaceHi = Color(0xFF151826);
-  static const cyan = Color(0xFF00D4FF);
-  static const indigo = Color(0xFF6B6EF9);
-  static const rose = Color(0xFFFF4F72);
+  static Color get bg => LivePalette.bg;
+  static Color get surfaceHi => LivePalette.surfaceHi;
+  static Color get cyan => LivePalette.accent;
+  static Color get indigo => LivePalette.accent2;
+  static Color get rose => LivePalette.danger;
   static const textHigh = Color(0xFFFFFFFF);
   static const textLow = Color(0x66FFFFFF);
   static const glass10 = Color(0x1AFFFFFF);
   static const glass15 = Color(0x26FFFFFF);
   static const glassBdr = Color(0x30FFFFFF);
 
-  static const camOnGrad = [Color(0xFF00D4FF), Color(0xFF6B6EF9)];
-  static const camOffGrad = [Color(0xFFFF4F72), Color(0xFFFF8C42)];
-  static const joinGrad = [
-    Color(0xFF00D4FF),
-    Color(0xFF6B6EF9),
+  static List<Color> get camOnGrad => [LivePalette.accent, LivePalette.accent2];
+  static List<Color> get camOffGrad => [LivePalette.danger, LivePalette.warning];
+  static List<Color> get joinGrad => [
+    LivePalette.accent,
+    LivePalette.accent2,
     Color(0xFF9B59F5),
   ];
-  static const micOnGrad = [Color(0xFF00E5A0), Color(0xFF00C4D4)];
-  static const micOffGrad = [Color(0xFFFF4F72), Color(0xFFFF8C42)];
+  static List<Color> get micOnGrad => [LivePalette.success, Color(0xFF00C4D4)];
+  static List<Color> get micOffGrad => [LivePalette.danger, LivePalette.warning];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -443,6 +444,7 @@ class _PreJoinPageState extends State<PreJoinPage>
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    LivePalette.sync(context);   // live classroom colours follow the app theme
     return Scaffold(
       key: const ValueKey('prejoin'),
       backgroundColor: _DS.bg,
@@ -714,7 +716,7 @@ class _PreJoinPageState extends State<PreJoinPage>
                     size: 14,
                   ),
                   const SizedBox(width: 4),
-                  const Text(
+                  Text(
                     '1080p',
                     style: TextStyle(
                       fontFamily: 'tajawal',
@@ -952,7 +954,7 @@ class _PreJoinPageState extends State<PreJoinPage>
               borderRadius: BorderRadius.circular(20),
               gradient: _busy
                   ? null
-                  : const LinearGradient(
+                  : LinearGradient(
                 colors: _DS.joinGrad,
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
@@ -1060,7 +1062,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.13 + 0.06 * math.cos(a * 0.7)),
       ),
       size.width * 0.58,
-      const Color(0xFF00D4FF).withValues(alpha: 0.09),
+      LivePalette.accent.withValues(alpha: 0.09),
     );
     _blob(
       canvas,
@@ -1069,7 +1071,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.24 + 0.08 * math.sin(a * 0.9)),
       ),
       size.width * 0.52,
-      const Color(0xFF6B6EF9).withValues(alpha: 0.08),
+      LivePalette.accent2.withValues(alpha: 0.08),
     );
     _blob(
       canvas,
@@ -1078,7 +1080,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.77 + 0.05 * math.cos(a * 0.5)),
       ),
       size.width * 0.48,
-      const Color(0xFF00E5A0).withValues(alpha: 0.06),
+      LivePalette.success.withValues(alpha: 0.06),
     );
     _blob(
       canvas,
@@ -1087,7 +1089,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.83 + 0.04 * math.sin(a * 0.8)),
       ),
       size.width * 0.44,
-      const Color(0xFFFF4F72).withValues(alpha: 0.05),
+      LivePalette.danger.withValues(alpha: 0.05),
     );
   }
 

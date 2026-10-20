@@ -20,7 +20,9 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
+import 'org_member_space.dart';
 import 'org_providers.dart';
+import 'org_ui.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home entry card
@@ -115,7 +117,7 @@ class _MembershipView extends StatelessWidget {
       child: !p.loaded
           ? const Center(child: AppLoadingIndicator(size: 64))
           : p.mine.isEmpty
-              ? EmptyState(t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet"), icon: Icons.domain_rounded)
+              ? OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet"))
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
                   for (final m in p.mine)
                     Padding(
@@ -149,7 +151,7 @@ class _OrgCard extends StatelessWidget {
     return RowCard(
       accent: col,
       onTap: status == 'active'
-          ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: o)))
+          ? () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: o)))
           : null,
       child: Row(children: [
         IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, col, size: 46),
@@ -296,7 +298,7 @@ class _CoursesBody extends StatelessWidget {
         if (p.isLoading && p.courses.isEmpty)
           const Padding(padding: EdgeInsets.all(40), child: Center(child: AppLoadingIndicator(size: 56)))
         else if (p.courses.isEmpty)
-          SizedBox(height: 240, child: EmptyState(t('لا توجد كورسات منشورة بعد', 'No published courses yet'), icon: Icons.menu_book_rounded))
+          SizedBox(height: 240, child: OrgEmpty(icon: Icons.menu_book_rounded, title: t('لا توجد كورسات منشورة بعد', 'No published courses yet')))
         else
           for (final row in p.courses)
             Padding(
@@ -356,7 +358,7 @@ class _TimetableView extends StatelessWidget {
       child: p.isLoading && p.timetables.isEmpty
           ? const Center(child: AppLoadingIndicator(size: 64))
           : p.timetables.isEmpty
-              ? EmptyState(t('لم يُنشر جدول بعد', 'No timetable published yet'), icon: Icons.calendar_month_rounded)
+              ? OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم يُنشر جدول بعد', 'No timetable published yet'))
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
                   for (final tt in p.timetables) ...[
                     Text('${(tt['schedule'] as Map)['name']}', style: c.h2),

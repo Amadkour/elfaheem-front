@@ -8,16 +8,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_recorder.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'live_palette.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared Design System tokens (mirrors PreJoinPage & RoomPage)
 // ─────────────────────────────────────────────────────────────────────────────
-const _cyan      = Color(0xFF00D4FF);
-const _rose      = Color(0xFFFF4F72);
-const _amber     = Color(0xFFFFB800);   // pause indicator
-const _emerald   = Color(0xFF00E5A0);   // recording active
+final _cyan      = LivePalette.accent;
+final _rose      = LivePalette.danger;
+final _amber     = LivePalette.warning;   // pause indicator
+final _emerald   = LivePalette.success;   // recording active
 const _textHigh  = Color(0xFFFFFFFF);
 const _textMid   = Color(0xB3FFFFFF);
 const _textLow   = Color(0x66FFFFFF);
@@ -585,7 +586,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
               border: Border.all(color: _rose.withValues(alpha: 0.5), width: 1.5),
               boxShadow: [BoxShadow(color: _rose.withValues(alpha: 0.3), blurRadius: 16)],
             ),
-            child: const Icon(Icons.call_end_rounded, color: _rose, size: 24),
+            child:  Icon(Icons.call_end_rounded, color: _rose, size: 24),
           ),
           const SizedBox(height: 5),
           Text('lr_end'.tr,

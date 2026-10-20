@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -36,7 +37,7 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
       future: _future,
       builder: (_, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: AppLoadingIndicator(size: 56));
         }
         final courses = AttendanceStore.instance.cachedCourses;
         if (courses.isEmpty) {
@@ -49,7 +50,7 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
                 const SizedBox(height: 14),
                 Text(attT('att_courses_empty'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'tajawal', color: Colors.grey.shade600, height: 1.5)),
+                    style: TextStyle(fontFamily: 'tajawal', color: context.colors.textMedium, height: 1.5)),
               ]),
             ),
           );
@@ -93,7 +94,7 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
                         const SizedBox(height: 2),
                         Text(attT('att_course_tap'),
                             style: TextStyle(
-                                fontFamily: 'tajawal', fontSize: 11.5, color: Colors.grey.shade600)),
+                                fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
                       ]),
                     ),
                     const Icon(CupertinoIcons.chevron_forward, size: 16),

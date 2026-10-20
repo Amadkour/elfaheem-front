@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'live_palette.dart';
 
 enum ParticipantTrackType {
   kUserMedia,
@@ -27,8 +28,8 @@ class ParticipantTrack {
 }
 
 // ── Design tokens (live room palette) ────────────────────────────────────────
-const _cyan    = Color(0xFF00D4FF);
-const _rose    = Color(0xFFFF4F72);
+final _cyan    = LivePalette.accent;
+final _rose    = LivePalette.danger;
 const _textMid = Color(0xB3FFFFFF);
 const _glass   = Color(0x33000000);
 

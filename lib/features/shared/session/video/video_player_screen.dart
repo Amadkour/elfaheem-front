@@ -1986,7 +1986,7 @@ class _StreamPickerSheet extends StatelessWidget {
           _SectionHeader(
             icon: Icons.headphones_rounded,
             label: 'audio_only'.tr,
-            color: Colors.tealAccent.shade400,
+            color: c.accent2,
           ),
           const SizedBox(height: 8),
           ...audioVariants.map((v) => _VariantTile(
@@ -2044,7 +2044,7 @@ class _VariantTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final accentColor =
-    variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
+    variant.isAudio ? c.accent2 : c.primary;
 
     return GestureDetector(
       onTap: () {
@@ -2188,7 +2188,7 @@ class _ActiveStreamBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (variant.isOriginal) return const SizedBox.shrink();
     final c = context.colors;
-    final color = variant.isAudio ? Colors.tealAccent.shade400 : c.primary;
+    final color = variant.isAudio ? c.accent2 : c.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

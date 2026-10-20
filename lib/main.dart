@@ -435,7 +435,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         : (offlineStart ? '/downloads' : auth.homeRoute));
 
     final isDark = context.watch<ProfileProvider>().darkMode;
-    final appName = RemoteConfigService.instance.appName;
+    // ONE app name everywhere: the name the super admin set on the dashboard ("About us" → AppIdentity,
+    // cached for offline/first frame); remote config is only the fallback before the very first fetch.
+    final appName = AppIdentity.instance.name.isNotEmpty
+        ? AppIdentity.instance.name
+        : RemoteConfigService.instance.appName;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       // Light icons (time/battery/signal) in the status bar, on every
@@ -924,7 +928,7 @@ class _SplashBodyState extends State<_SplashBody>
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    final c = _SplashPalette.of(context);
     final id = AppIdentity.instance;
 
     return ListenableBuilder(
@@ -1075,6 +1079,21 @@ class _SplashBodyState extends State<_SplashBody>
                             stops: const [0.6, 1.0],
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+
+                  // 6) Emerald arch holding the footer, with a fine gold hairline (brand signature).
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    height: MediaQuery.sizeOf(context).height * 0.24,
+                    child: IgnorePointer(
+                      child: _reveal(
+                        _footA,
+                        CustomPaint(painter: _ArchPainter(c.arch, c.archEdge, c.gold)),
+                        dy: 0.5,
                       ),
                     ),
                   ),
@@ -1315,8 +1334,8 @@ class _SplashBodyState extends State<_SplashBody>
                                         style: TextStyle(
                                           fontFamily: 'tajawal',
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: c.textMedium,
+                                          fontWeight: FontWeight.w600,
+                                          color: c.onArch,
                                         ),
                                       ),
                                     ),
@@ -1328,12 +1347,12 @@ class _SplashBodyState extends State<_SplashBody>
                                         height: 4,
                                         child: LinearProgressIndicator(
                                           minHeight: 4,
-                                          backgroundColor: c.primary.withValues(
-                                            alpha: 0.15,
+                                          backgroundColor: c.onArch.withValues(
+                                            alpha: 0.18,
                                           ),
                                           valueColor:
                                           AlwaysStoppedAnimation<Color>(
-                                            c.primary,
+                                            c.gold,
                                           ),
                                         ),
                                       ),
@@ -1346,7 +1365,7 @@ class _SplashBodyState extends State<_SplashBody>
                                           vertical: 4,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: c.primaryTint,
+                                          color: c.onArch.withValues(alpha: 0.14),
                                           borderRadius: BorderRadius.circular(
                                             20,
                                           ),
@@ -1357,7 +1376,7 @@ class _SplashBodyState extends State<_SplashBody>
                                             fontFamily: 'tajawal',
                                             fontSize: 11.5,
                                             letterSpacing: 0.6,
-                                            color: c.textLight,
+                                            color: c.onArch.withValues(alpha: 0.85),
                                           ),
                                         ),
                                       ),
@@ -1380,6 +1399,70 @@ class _SplashBodyState extends State<_SplashBody>
       },
     );
   }
+}
+
+/// Brand palette of the splash: cream canvas #FBF7EC + emerald #0F7B5F (fixed — independent of the live
+/// theme, so the first frame is always on-brand, before the theme has even loaded). Dark mode flips it:
+/// a deep emerald canvas with a cream arch.
+class _SplashPalette {
+  const _SplashPalette(this.isDark);
+  final bool isDark;
+
+  static const cream = Color(0xFFFBF7EC);
+  static const emerald = Color(0xFF0F7B5F);
+
+  static _SplashPalette of(BuildContext context) =>
+      _SplashPalette(MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
+  Color get background => isDark ? const Color(0xFF0B3D31) : cream;
+  Color get primary => isDark ? const Color(0xFF7FD3B6) : emerald;
+  Color get primaryLight => isDark ? const Color(0xFF2E9C7B) : const Color(0xFF4FB596);
+  Color get primaryDark => isDark ? const Color(0xFF06261E) : const Color(0xFF0A5A45);
+  Color get primaryTint => primary.withValues(alpha: isDark ? 0.18 : 0.10);
+  Color get textDark => isDark ? cream : const Color(0xFF0E2C24);
+  Color get textMedium => isDark ? cream.withValues(alpha: 0.78) : const Color(0xFF4D6A61);
+  Color get textLight => isDark ? cream.withValues(alpha: 0.6) : const Color(0xFF7C948C);
+  Color get arch => isDark ? emerald : emerald;
+  Color get archEdge => isDark ? const Color(0xFF14936F) : const Color(0xFF0A5A45);
+  Color get onArch => cream;
+  Color get gold => const Color(0xFFD9B46A);
+}
+
+/// Soft emerald arch along the bottom edge with a thin gold line on its crest.
+class _ArchPainter extends CustomPainter {
+  const _ArchPainter(this.color, this.edge, this.gold);
+  final Color color, edge, gold;
+
+  Path _crest(Size s, double lift) => Path()
+    ..moveTo(0, s.height * 0.42 + lift)
+    ..quadraticBezierTo(s.width * 0.5, -s.height * 0.10 + lift, s.width, s.height * 0.42 + lift);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final fill = _crest(size, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      fill,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [color, edge],
+        ).createShader(Offset.zero & size),
+    );
+    canvas.drawPath(
+      _crest(size, -7),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..color = gold.withValues(alpha: 0.75),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ArchPainter old) => old.color != color || old.gold != gold;
 }
 
 /// Fine dot grid; dots fade out near the centre so the logo stays the focus.

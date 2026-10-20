@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'attendance_strings.dart';
@@ -73,7 +74,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(attT('att_cancel'))),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
+              style: FilledButton.styleFrom(backgroundColor: context.colors.danger),
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(attT('att_t_close'))),
         ],
@@ -86,7 +87,8 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
   Widget build(BuildContext context) {
     final t = TeacherAttendanceController.instance;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B1F17),
+      // Projector mode: a deep shade of the app's OWN primary colour (follows the theme).
+      backgroundColor: Color.alphaBlend(Colors.black.withValues(alpha: 0.82), context.colors.primary),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: t,
@@ -129,7 +131,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                           child: CircularProgressIndicator(
                             value: (t.secondsLeft / rot).clamp(0.0, 1.0),
                             strokeWidth: 8,
-                            color: const Color(0xFF34D399),
+                            color: Color.lerp(context.colors.success, Colors.white, 0.25),
                             backgroundColor: Colors.white12,
                           ),
                         ),
@@ -187,7 +189,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                           )
                         : FilledButton.icon(
                             style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFDC2626),
+                                backgroundColor: context.colors.danger,
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                             onPressed: t.loading ? null : () => _confirmClose(t),

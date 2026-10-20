@@ -18,60 +18,106 @@ import 'package:network_info_plus/network_info_plus.dart';
 
 import 'attendance_models.dart';
 
+/// Why location evidence could not be read — shown to the person with a one-tap fix.
+enum LocationProblem { none, serviceOff, denied, deniedForever, noFix }
+
 class LocationEvidenceService {
-  /// Returns {lat, lng, bssid} with whatever could be read, or null when nothing was available.
+  /// What went wrong in the last collect() / here() call (none = fine).
+  LocationProblem lastProblem = LocationProblem.none;
+
+  /// Permission + service check, asking once when needed. Returns the problem (none = ready).
+  static Future<LocationProblem> ensureReady() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return LocationProblem.serviceOff;
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.deniedForever) return LocationProblem.deniedForever;
+      if (perm == LocationPermission.denied || perm == LocationPermission.unableToDetermine) {
+        return LocationProblem.denied;
+      }
+      return LocationProblem.none;
+    } catch (_) {
+      return LocationProblem.noFix;
+    }
+  }
+
+  /// Indoors a high-accuracy fix often times out: try high (10 s) → balanced (8 s) → a fix younger than 5 min.
+  static Future<Position?> _position() async {
+    for (final acc in const [LocationAccuracy.high, LocationAccuracy.medium]) {
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: LocationSettings(
+              accuracy: acc, timeLimit: Duration(seconds: acc == LocationAccuracy.high ? 10 : 8)),
+        );
+      } catch (_) {}
+    }
+    try {
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null && DateTime.now().difference(last.timestamp).inMinutes < 5) return last;
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<String?> _bssid() async {
+    if (kIsWeb) return null;   // a browser cannot read the Wi-Fi network; only GPS works on the web
+    try {
+      final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
+      // Android returns this placeholder when it may not read the real value (needs Location ON + permission).
+      if (b != null && b.isNotEmpty && b != '02:00:00:00:00:00') return b;
+    } catch (_) {}
+    return null;
+  }
+
+  /// Returns {lat, lng, bssid} with whatever could be read, or null when nothing was available
+  /// ([lastProblem] then says why).
   Future<Map<String, dynamic>?> collect(OpenWindow w) async {
+    lastProblem = LocationProblem.none;
     if (!w.needsLocation) return null;
     final out = <String, dynamic>{};
-
-    if (w.needsGps) {
-      try {
-        var perm = await Geolocator.checkPermission();
-        if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-        if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
-          final pos = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-                accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)),
-          );
+    // Android reveals the Wi-Fi BSSID only with Location permission AND Location switched on,
+    // so the same readiness check serves both factors.
+    final ready = await ensureReady();
+    if (ready == LocationProblem.none) {
+      if (w.needsGps) {
+        final pos = await _position();
+        if (pos != null) {
           out['lat'] = double.parse(pos.latitude.toStringAsFixed(5));
           out['lng'] = double.parse(pos.longitude.toStringAsFixed(5));
         }
-      } catch (_) {/* fall through to the next factor */}
+      }
+      if (w.needsWifi || out.isEmpty) {
+        final b = await _bssid();
+        if (b != null) out['bssid'] = b;
+      }
     }
-
-    // A browser cannot read the Wi-Fi network; only GPS works on the web.
-    if (!kIsWeb && (w.needsWifi || out.isEmpty)) {
-      try {
-        final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
-        // Android returns this placeholder when it may not read the real value.
-        if (b != null && b.isNotEmpty && b != '02:00:00:00:00:00') out['bssid'] = b;
-      } catch (_) {}
-    }
+    if (out.isEmpty) lastProblem = ready == LocationProblem.none ? LocationProblem.noFix : ready;
     return out.isEmpty ? null : out;
   }
 
   /// Teacher side: the phone's current position / Wi-Fi, used as the classroom reference.
   Future<({double? lat, double? lng, String? bssid})> here() async {
+    lastProblem = LocationProblem.none;
     double? lat, lng;
     String? bssid;
-    try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.always || perm == LocationPermission.whileInUse) {
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 12)),
-        );
+    final ready = await ensureReady();
+    if (ready == LocationProblem.none) {
+      final pos = await _position();
+      if (pos != null) {
         lat = double.parse(pos.latitude.toStringAsFixed(5));
         lng = double.parse(pos.longitude.toStringAsFixed(5));
       }
-    } catch (_) {}
-    if (!kIsWeb) {
-      try {
-        final b = (await NetworkInfo().getWifiBSSID())?.trim().toLowerCase();
-        if (b != null && b.isNotEmpty && b != '02:00:00:00:00:00') bssid = b;
-      } catch (_) {}
+      bssid = await _bssid();
     }
+    if (lat == null && bssid == null) lastProblem = ready == LocationProblem.none ? LocationProblem.noFix : ready;
     return (lat: lat, lng: lng, bssid: bssid);
   }
 }
+
+/// Translation key for a [LocationProblem] (shared by the student sheet and the teacher panel).
+String locationProblemKey(LocationProblem p, {bool teacher = false}) => switch (p) {
+      LocationProblem.serviceOff => 'att_err_gps_off',
+      LocationProblem.denied => 'att_err_location_denied',
+      LocationProblem.deniedForever => 'att_err_location_denied_forever',
+      LocationProblem.noFix => teacher ? 'att_err_teacher_location' : 'att_err_no_fix',
+      LocationProblem.none => 'att_err_generic',
+    };

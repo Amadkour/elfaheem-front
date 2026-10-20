@@ -22,6 +22,8 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'certificate_manager_provider.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
@@ -31,6 +33,7 @@ Future<void> showCertificateManagerSheet(
       required int certificateId,
       required String certificateTitle,
       String? templateUrl,
+      int? orgId, // set when the course belongs to an organization (designs of the org are offered)
     }) {
   final isWide = MediaQuery.of(context).size.width > 760;
 
@@ -46,6 +49,7 @@ Future<void> showCertificateManagerSheet(
         certificateId: certificateId,
         certificateTitle: certificateTitle,
         initialTemplateUrl: templateUrl,
+        orgId: orgId,
         isWide: isWide,
       ),
     ),
@@ -57,6 +61,7 @@ class _CertificateManagerBody extends StatefulWidget {
   final int certificateId;
   final String certificateTitle;
   final String? initialTemplateUrl;
+  final int? orgId;
   final bool isWide;
 
   const _CertificateManagerBody({
@@ -65,6 +70,7 @@ class _CertificateManagerBody extends StatefulWidget {
     required this.certificateTitle,
     required this.initialTemplateUrl,
     required this.isWide,
+    this.orgId,
   });
 
   @override
@@ -108,6 +114,18 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
     });
   }
 
+  /// Opens the certificate designer for this certificate (new design wizard if none is attached yet).
+  Future<void> _openDesigner() => openCertificateDesigner(
+        context,
+        certificateId: widget.certificateId,
+        orgId: widget.orgId,
+      );
+
+  /// Pick one of the saved designs (own / organization) for this certificate.
+  Future<void> _openDesignLibrary() => Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => CertificateDesignsScreen(orgId: widget.orgId, certificateId: widget.certificateId),
+      ));
+
   Future<void> _issueAll() async {
     final provider = context.read<CertificateManagerProvider>();
     final count = await provider.issueAll(widget.certificateId);
@@ -137,6 +155,8 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
       onPickTemplate: _pickTemplate,
       onRemoveTemplate: _removeTemplate,
       onIssueAll: _issueAll,
+      onOpenDesigner: _openDesigner,
+      onOpenDesignLibrary: _openDesignLibrary,
     );
 
     if (widget.isWide) {
@@ -190,6 +210,8 @@ class _Content extends StatelessWidget {
   final VoidCallback onPickTemplate;
   final VoidCallback onRemoveTemplate;
   final VoidCallback onIssueAll;
+  final VoidCallback onOpenDesigner;
+  final VoidCallback onOpenDesignLibrary;
 
   const _Content({
     required this.certificateId,
@@ -200,6 +222,8 @@ class _Content extends StatelessWidget {
     required this.onPickTemplate,
     required this.onRemoveTemplate,
     required this.onIssueAll,
+    required this.onOpenDesigner,
+    required this.onOpenDesignLibrary,
   });
 
   @override
@@ -213,6 +237,8 @@ class _Content extends StatelessWidget {
           onPick: onPickTemplate,
           onRemove: onRemoveTemplate,
           onIssueAll: onIssueAll,
+          onOpenDesigner: onOpenDesigner,
+          onOpenDesignLibrary: onOpenDesignLibrary,
         ));
     final studentsPane = ParentComponent(
       featureKey: 'certificates.students',
@@ -312,6 +338,8 @@ class _TemplatePane extends StatelessWidget {
   final VoidCallback onPick;
   final VoidCallback onRemove;
   final VoidCallback onIssueAll;
+  final VoidCallback onOpenDesigner;
+  final VoidCallback onOpenDesignLibrary;
 
   const _TemplatePane({
     required this.certificateTitle,
@@ -320,6 +348,8 @@ class _TemplatePane extends StatelessWidget {
     required this.onPick,
     required this.onRemove,
     required this.onIssueAll,
+    required this.onOpenDesigner,
+    required this.onOpenDesignLibrary,
   });
 
   @override
@@ -413,6 +443,20 @@ class _TemplatePane extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+          const SizedBox(height: 10),
+          // Certificate designer: draft from the app theme + logo + signature, or your own template;
+          // move / add / delete fields, fonts, sizes, colours, portrait or landscape.
+          ElevatedButton.icon(
+            onPressed: onOpenDesigner,
+            icon: const Icon(Icons.design_services_rounded, size: 16),
+            label: Text('cert_design_certificate_btn'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
+          ),
+          TextButton.icon(
+            onPressed: onOpenDesignLibrary,
+            icon: const Icon(Icons.collections_bookmark_outlined, size: 16),
+            label: Text('cert_choose_saved_design_btn'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
           ),
           const SizedBox(height: 18),
           Divider(color: Colors.black.withValues(alpha: 0.06)),

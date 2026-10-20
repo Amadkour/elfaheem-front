@@ -21,7 +21,7 @@ import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
-import '../shared/attendance/admin_data_lab_page.dart';
+import 'admin_data_lab_page.dart';
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_categories_page.dart';
@@ -31,6 +31,7 @@ import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_flags_settings_page.dart';
+import 'admin_organizations_page.dart';
 import 'admin_parent_link_settings_page.dart';
 import 'admin_parent_requests_page.dart';
 import 'admin_payment_page.dart';
@@ -124,6 +125,13 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
+        AdminService(
+          labelKey: 'svc_organizations',
+          descKey: 'svc_organizations_d',
+          icon: Icons.account_balance_rounded,
+          colors: AdminPalette.teal,
+          onTap: () => push(const AdminOrganizationsPage()),
+        ),
         AdminService(
           labelKey: 'send_message',
           descKey: 'svc_send_message_d',

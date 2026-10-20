@@ -19,6 +19,28 @@ String attT(String key, {Map<String, String>? args}) {
 
 /// key -> (Arabic, English)
 const Map<String, (String, String)> _fallback = {
+  // ── radios / location (v2: say exactly what to switch on) ──────────────
+  'att_err_gps_off': ('الموقع (GPS) مغلق — شغّله ثم ارجع وسنكمل تلقائياً',
+      'Location (GPS) is off — switch it on and come back, we\'ll continue automatically'),
+  'att_err_wifi_off': ('اتصل بشبكة Wi-Fi القاعة — المعلّم يتحقق من الشبكة',
+      'Connect to the classroom Wi-Fi — your teacher checks the network'),
+  'att_err_bluetooth_off': ('البلوتوث مغلق — نحتاجه للوصول لهاتف زميل قريب',
+      'Bluetooth is off — we need it to reach a classmate\'s phone nearby'),
+  'att_err_radios_off': ('بعض الإعدادات مغلقة — شغّلها من الأزرار بالأسفل وسنكمل تلقائياً',
+      'A few settings are off — switch them on below and we\'ll continue automatically'),
+  'att_err_location_denied': ('اسمح للتطبيق بمعرفة موقعك أثناء الاستخدام لتسجيل الحضور',
+      'Allow location while using the app to check in'),
+  'att_err_location_denied_forever': ('إذن الموقع مرفوض — افتح الإعدادات واسمح به',
+      'Location permission is blocked — open Settings and allow it'),
+  'att_err_no_fix': ('تعذّر تحديد موقعك داخل المبنى — اقترب من نافذة أو اتصل بشبكة القاعة وحاول مجدداً',
+      'We couldn\'t get your location indoors — move near a window or join the classroom Wi-Fi and retry'),
+  'att_turn_on_gps': ('تشغيل الموقع', 'Turn on location'),
+  'att_turn_on_wifi': ('الاتصال بالـ Wi-Fi', 'Connect to Wi-Fi'),
+  'att_turn_on_bluetooth': ('تشغيل البلوتوث', 'Turn on Bluetooth'),
+  'att_fix_auto_continue': ('بعد التشغيل ارجع للتطبيق — سنكمل تسجيل حضورك تلقائياً',
+      'Come back after switching it on — we\'ll finish your check-in automatically'),
+  'att_radio_hint_ios': ('اسحب من أعلى يمين الشاشة لمركز التحكم وشغّله من هناك',
+      'Swipe down from the top-right corner to Control Center and switch it on there'),
   // ── student: entry points ─────────────────────────────────────────────
   'att_btn_checkin': ('تسجيل الحضور', 'Check in'),
   'att_btn_checkin_now': ('سجّل حضورك الآن', 'Check in now'),

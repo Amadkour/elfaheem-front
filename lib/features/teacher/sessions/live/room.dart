@@ -12,6 +12,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'widgets/live_palette.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'widgets/controls.dart';
@@ -26,20 +28,20 @@ if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
 // ─────────────────────────────────────────────────────────────────────────────
-const _bg = Color(0xFF060810);
-const _surface = Color(0xFF0E1120);
-const _surfaceHi = Color(0xFF151826);
-const _cyan = Color(0xFF00D4FF);
-const _indigo = Color(0xFF6B6EF9);
-const _emerald = Color(0xFF00E5A0);
-const _rose = Color(0xFFFF4F72);
+Color get _bg => LivePalette.bg;
+Color get _surface => LivePalette.surface;
+Color get _surfaceHi => LivePalette.surfaceHi;
+Color get _cyan => LivePalette.accent;
+Color get _indigo => LivePalette.accent2;
+Color get _emerald => LivePalette.success;
+Color get _rose => LivePalette.danger;
 const _textHigh = Color(0xFFFFFFFF);
 const _textMid = Color(0xB3FFFFFF);
 const _textLow = Color(0x66FFFFFF);
 const _glass10 = Color(0x1AFFFFFF);
 const _glass15 = Color(0x26FFFFFF);
 const _glassBdr = Color(0x30FFFFFF);
-const _recRed = Color(0xFFFF4F72);
+Color get _recRed => LivePalette.danger;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models
@@ -489,6 +491,8 @@ class _RoomPageState extends State<RoomPage>
   void initState() {
     super.initState();
     _setUpListeners();
+    // A class can last hours: never let the phone sleep (it pauses camera / mic on many devices).
+    WakelockPlus.enable().catchError((_) {});
 
     // ── Animations ────────────────────────────────────────────────────────────
     _thumbBarAnim = AnimationController(
@@ -617,9 +621,46 @@ class _RoomPageState extends State<RoomPage>
 
   String get _recElapsedLabel => _formatElapsed(_recElapsedSeconds);
 
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _netBanner;
+
+  /// Weak network: tell people what is happening instead of showing a frozen picture.
+  void _showNetBanner(bool reconnecting) {
+    if (!mounted) return;
+    final m = ScaffoldMessenger.maybeOf(context);
+    if (m == null) return;
+    _netBanner?.close();
+    _netBanner = null;
+    final bar = SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: reconnecting ? _surfaceHi : _emerald.withValues(alpha: 0.95),
+      duration: reconnecting ? const Duration(minutes: 5) : const Duration(seconds: 2),
+      content: Row(children: [
+        if (reconnecting)
+          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _cyan))
+        else
+          const Icon(Icons.wifi_rounded, color: Colors.white, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text((reconnecting ? 'lr_reconnecting' : 'lr_reconnected').tr,
+              style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+        ),
+      ]),
+    );
+    final c = m.showSnackBar(bar);
+    if (reconnecting) _netBanner = c;
+  }
+
   @override
   void dispose() {
     widget.room.removeListener(_onRoomDidUpdate);
+    WakelockPlus.disable().catchError((_) {});
+    _netBanner?.close();
+    if (!widget.isTeacher) {
+      // Check-out time: without this every student's attendance showed "stayed 0 min" (check-out = join time).
+      widget.apiClient
+          .post('/api/v1/live-sessions/${widget.sessionId}/leave')
+          .then((_) {}, onError: (_) {});
+    }
     unawaited(_disposeRoomAsync());
     _thumbBarAnim.dispose();
     _recDotAnim.dispose();
@@ -1045,12 +1086,20 @@ class _RoomPageState extends State<RoomPage>
       final isTeacherEnd =
           event.reason == DisconnectReason.roomDeleted ||
               event.reason == DisconnectReason.serverShutdown;
+      final userLeft = event.reason == DisconnectReason.clientInitiated;
       WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
         if (isTeacherEnd && !widget.isTeacher && mounted) {
           await showDialog(
             context: context,
             barrierDismissible: false,
             builder: (_) => const _SessionEndedDialog(),
+          );
+        } else if (!isTeacherEnd && !userLeft && mounted) {
+          // Before: the room just closed with no explanation when the network dropped or the teacher removed you.
+          await showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => _ConnectionLostDialog(removed: event.reason == DisconnectReason.participantRemoved),
           );
         }
         if (mounted) Navigator.pop(context);
@@ -1071,6 +1120,8 @@ class _RoomPageState extends State<RoomPage>
     ..on<RoomAttemptReconnectEvent>(
           (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'),
     )
+    ..on<RoomReconnectingEvent>((_) => _showNetBanner(true))
+    ..on<RoomReconnectedEvent>((_) => _showNetBanner(false))
     ..on<LocalTrackPublishedEvent>((_) {
       _sortParticipants();
       // Cheap no-op if already bound to the current mic track (see
@@ -1473,6 +1524,7 @@ class _RoomPageState extends State<RoomPage>
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    LivePalette.sync(context);   // live classroom colours follow the app theme
     // Defensive: also ensured here, not just from the RoomConnectedEvent
     // handler — idempotent (no-ops once already running), and safe to call
     // during build since it only schedules a Timer, it doesn't call
@@ -1629,7 +1681,7 @@ class _RoomPageState extends State<RoomPage>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const CircularProgressIndicator(
+                          CircularProgressIndicator(
                             color: _cyan,
                             strokeWidth: 2.5,
                           ),
@@ -1942,7 +1994,7 @@ class _RoomPageState extends State<RoomPage>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF0E1120),
+            color: LivePalette.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _cyan.withValues(alpha: 0.5),
@@ -1966,7 +2018,7 @@ class _RoomPageState extends State<RoomPage>
                   opacity: v,
                   child: Container(
                     width: 8, height: 8,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       color: _cyan,
                       shape: BoxShape.circle,
                     ),
@@ -1974,7 +2026,7 @@ class _RoomPageState extends State<RoomPage>
                 ),
               ),
               const SizedBox(width: 8),
-              const Icon(Icons.screen_share_rounded, color: _cyan, size: 16),
+              Icon(Icons.screen_share_rounded, color: _cyan, size: 16),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -1993,7 +2045,7 @@ class _RoomPageState extends State<RoomPage>
                   padding: const EdgeInsets.only(right: 10),
                   child: Text(
                     _recElapsedLabel,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'tajawal',
                       color: _cyan,
                       fontWeight: FontWeight.w800,
@@ -2073,7 +2125,7 @@ class _RoomPageState extends State<RoomPage>
             dotColor: _recRed,
             dotOpacity: _recDotOpacity.value,
             pulsing: true,
-            children: const [
+            children: [
               Text(
                 'REC',
                 style: TextStyle(
@@ -2114,11 +2166,11 @@ class _RoomPageState extends State<RoomPage>
             pulsing    = true;
             stateLabel = 'lr_rec_recording'.tr;
           case RecState.paused:
-            dotColor   = const Color(0xFFFFB800);
+            dotColor   = LivePalette.warning;
             pulsing    = false;
             stateLabel = 'lr_rec_paused'.tr;
           case RecState.uploading:
-            dotColor   = const Color(0xFFFFB800);
+            dotColor   = LivePalette.warning;
             pulsing    = false;
             stateLabel = 'lr_rec_uploading'.tr;
           case RecState.done:
@@ -2299,7 +2351,7 @@ class _RoomPageState extends State<RoomPage>
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.people_rounded, color: _cyan, size: 18),
+                      Icon(Icons.people_rounded, color: _cyan, size: 18),
                       const SizedBox(width: 8),
                       const Text(
                         'Participants',
@@ -2312,7 +2364,7 @@ class _RoomPageState extends State<RoomPage>
                       ),
                       const Spacer(),
                       if (_loadingStudents)
-                        const SizedBox(
+                        SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
@@ -2622,7 +2674,7 @@ class _RoomPageState extends State<RoomPage>
                   child: LinearProgressIndicator(
                     value: (_currentQuestionIndex + 1) / quiz.questions.length,
                     backgroundColor: _glass10,
-                    valueColor: const AlwaysStoppedAnimation(_cyan),
+                    valueColor: AlwaysStoppedAnimation(_cyan),
                     minHeight: 4,
                   ),
                 ),
@@ -2683,7 +2735,7 @@ class _RoomPageState extends State<RoomPage>
                       ),
                     ),
                     child: selected
-                        ? const Icon(Icons.check_rounded, size: 13, color: _bg)
+                        ? Icon(Icons.check_rounded, size: 13, color: _bg)
                         : null,
                   ),
                   const SizedBox(width: 12),
@@ -2755,7 +2807,7 @@ class _RoomPageState extends State<RoomPage>
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         colors: [_cyan, _indigo],
                         begin: Alignment.centerLeft,
                         end: Alignment.centerRight,
@@ -2817,7 +2869,7 @@ class _RoomPageState extends State<RoomPage>
                 width: 2,
               ),
             ),
-            child: const Icon(Icons.check_rounded, color: _emerald, size: 36),
+            child: Icon(Icons.check_rounded, color: _emerald, size: 36),
           ),
           const SizedBox(height: 18),
           Text(
@@ -2845,7 +2897,7 @@ class _RoomPageState extends State<RoomPage>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 13),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [_cyan, _indigo]),
+                gradient: LinearGradient(colors: [_cyan, _indigo]),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [
                   BoxShadow(
@@ -3243,7 +3295,7 @@ class _ThumbnailCard extends StatelessWidget {
                         width: 7,
                         height: 7,
                         margin: const EdgeInsets.only(left: 4),
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _cyan,
                         ),
@@ -3312,11 +3364,11 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
       fit: StackFit.expand,
       children: [
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: RadialGradient(
               center: Alignment(0, -0.3),
               radius: 1.2,
-              colors: [Color(0xFF0D1533), Color(0xFF060810)],
+              colors: [Color(0xFF0D1533), LivePalette.bg],
             ),
           ),
         ),
@@ -3532,7 +3584,7 @@ class _ScreenShareBottomBar extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 colors: [_cyan, _indigo],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -3653,14 +3705,14 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
               width: 1.5,
             ),
           ),
-          child: const Icon(
+          child: Icon(
             Icons.screen_share_rounded,
             size: 32,
             color: _indigo,
           ),
         ),
         const SizedBox(height: 18),
-        const SizedBox(
+        SizedBox(
           width: 24,
           height: 24,
           child: CircularProgressIndicator(strokeWidth: 2, color: _cyan),
@@ -4042,7 +4094,7 @@ class _TeamsGridTile extends StatelessWidget {
                 ),
               ),
               if (data.isHost)
-                const Positioned(
+                Positioned(
                   top: 6,
                   right: 6,
                   child: Icon(Icons.workspace_premium_rounded,
@@ -4711,7 +4763,7 @@ class _SessionEndedDialog extends StatelessWidget {
               color: _rose.withValues(alpha: 0.12),
               border: Border.all(color: _rose.withValues(alpha: 0.4), width: 2),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.meeting_room_rounded,
               color: _rose,
               size: 34,
@@ -4745,7 +4797,7 @@ class _SessionEndedDialog extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   colors: [_cyan, _indigo],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
@@ -4791,7 +4843,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.13 + 0.06 * math.cos(a * 0.7)),
       ),
       size.width * 0.58,
-      const Color(0xFF00D4FF).withValues(alpha: 0.07),
+      LivePalette.accent.withValues(alpha: 0.07),
     );
     _blob(
       canvas,
@@ -4800,7 +4852,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.24 + 0.08 * math.sin(a * 0.9)),
       ),
       size.width * 0.52,
-      const Color(0xFF6B6EF9).withValues(alpha: 0.06),
+      LivePalette.accent2.withValues(alpha: 0.06),
     );
     _blob(
       canvas,
@@ -4809,7 +4861,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.77 + 0.05 * math.cos(a * 0.5)),
       ),
       size.width * 0.48,
-      const Color(0xFF00E5A0).withValues(alpha: 0.04),
+      LivePalette.success.withValues(alpha: 0.04),
     );
     _blob(
       canvas,
@@ -4818,7 +4870,7 @@ class _AuroraPainter extends CustomPainter {
         size.height * (0.83 + 0.04 * math.sin(a * 0.8)),
       ),
       size.width * 0.44,
-      const Color(0xFFFF4F72).withValues(alpha: 0.04),
+      LivePalette.danger.withValues(alpha: 0.04),
     );
   }
 
@@ -4857,4 +4909,56 @@ class NotificationChannelHelper {
       log('NotificationChannelHelper: ${e.message}');
     }
   }
+}
+
+/// Shown when the room closes for a reason other than "the teacher ended it" or "you left":
+/// a lost connection, or the teacher removed you. Same look as _SessionEndedDialog.
+class _ConnectionLostDialog extends StatelessWidget {
+  const _ConnectionLostDialog({required this.removed});
+  final bool removed;
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            color: _surfaceHi,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: _glassBdr, width: 1),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20)],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: (removed ? _rose : _cyan).withValues(alpha: 0.12),
+                border: Border.all(color: (removed ? _rose : _cyan).withValues(alpha: 0.4), width: 2),
+              ),
+              child: Icon(removed ? Icons.person_remove_rounded : Icons.wifi_off_rounded,
+                  color: removed ? _rose : _cyan, size: 34),
+            ),
+            const SizedBox(height: 20),
+            Text((removed ? 'lr_removed_title' : 'lr_connection_lost_title').tr,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
+            const SizedBox(height: 10),
+            Text((removed ? 'lr_removed_body' : 'lr_connection_lost_body').tr,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'tajawal', color: _textMid, height: 1.5)),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                    backgroundColor: _cyan, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('admin_ok'.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ]),
+        ),
+      );
 }

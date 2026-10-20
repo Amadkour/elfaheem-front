@@ -11,6 +11,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
+import 'org_ui.dart';
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -24,7 +25,7 @@ class OrgPeoplePage extends StatelessWidget {
       if (s.can('teachers')) ('teacher', t('المدرسون', 'Teachers'), 'teachers', 'teachers'),
       if (s.can('staff')) ('teacher_assistant,admin_assistant', t('الهيئة المعاونة', 'Staff'), 'staff', 'staff'),
     ];
-    if (tabs.isEmpty) return EmptyState(t('لا تملك صلاحية عرض الأعضاء', 'You cannot view members'), icon: Icons.lock_rounded);
+    if (tabs.isEmpty) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الأعضاء', 'You cannot view members'));
     return DefaultTabController(
       length: tabs.length,
       child: Column(children: [
