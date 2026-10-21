@@ -29,6 +29,7 @@ import 'course_reel_field.dart';
 import 'course_privacy_card.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -444,18 +445,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    showAppNotice(msg);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -1448,20 +1438,7 @@ class _EditCertificateTemplateCardState
     });
 
     if (url == null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'certificate_template_upload_failed'.tr,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-          ),
-          backgroundColor: context.colors.danger,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        ),
-      );
+      showAppNotice('certificate_template_upload_failed'.tr, error: true);
     }
   }
 

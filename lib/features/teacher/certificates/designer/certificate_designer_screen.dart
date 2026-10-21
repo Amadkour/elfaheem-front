@@ -33,6 +33,7 @@ import 'certificate_design_models.dart';
 import 'certificate_designer_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 final RegExp _arabicChars = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]');
 
@@ -45,11 +46,7 @@ Future<Uint8List?> _pickImage(BuildContext context) async {
 
 void _toast(BuildContext context, String message, {bool error = false}) {
   final c = context.colors;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(message, style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-    backgroundColor: error ? c.danger : c.success,
-    behavior: SnackBarBehavior.floating,
-  ));
+  showAppNotice(message, error: true);
 }
 
 /// Open the designer.
@@ -1304,7 +1301,7 @@ class _CustomizeBanner extends StatelessWidget {
               : () async {
                   final ok = await context.read<CertificateDesignerProvider>().customizeCopy(certificateId: certificateId);
                   if (ok && context.mounted) {
-                    ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('cert_copy_ready'.tr)));
+                    showAppNotice('cert_copy_ready'.tr);
                   }
                 },
           icon: const Icon(Icons.edit_rounded, size: 18),

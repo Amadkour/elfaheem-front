@@ -21,6 +21,7 @@ import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -849,19 +850,7 @@ class _CourseCardState extends State<_CourseCard> {
         widget.course.id,
       );
       if (mounted && deleted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'course_deleted'.tr,
-              style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-            ),
-            backgroundColor: context.colors.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
+        showAppNotice('course_deleted'.tr);
       }
     }
   }
@@ -877,9 +866,7 @@ class _CourseCardState extends State<_CourseCard> {
   Widget build(BuildContext context) {
     final c = widget.course;
     final isDraft = !c.isPublished;
-    final statusColor = isDraft
-        ? const Color(0xFFf59e0b)
-        : context.colors.accent2;
+    final statusColor = isDraft ? context.colors.warning : context.colors.success;
 
     return Container(
       decoration: BoxDecoration(
@@ -912,7 +899,7 @@ class _CourseCardState extends State<_CourseCard> {
           Stack(
             children: [
               AspectRatio(
-                aspectRatio: 16 / 9,
+                aspectRatio: 16 / 8.5,
                 child: AppNetworkImage(
                   url: c.imageUrl,
                   width: double.infinity,
@@ -935,9 +922,9 @@ class _CourseCardState extends State<_CourseCard> {
                   ),
                 ),
               ),
-              Positioned(
+              PositionedDirectional(
                 top: 10,
-                left: 10,
+                end: 10,
                 child: _GlassChip(
                   icon: c.type == 'live'
                       ? Icons.podcasts_rounded
@@ -946,9 +933,9 @@ class _CourseCardState extends State<_CourseCard> {
                   dark: true,
                 ),
               ),
-              Positioned(
+              PositionedDirectional(
                 top: 10,
-                right: 10,
+                start: 10,
                 child: _GlassChip(
                   icon: isDraft
                       ? Icons.edit_note_rounded
@@ -958,9 +945,9 @@ class _CourseCardState extends State<_CourseCard> {
                 ),
               ),
               if (c.rateSummary != null)
-                Positioned(
+                PositionedDirectional(
                   bottom: 10,
-                  left: 10,
+                  end: 10,
                   child: _GlassChip(
                     icon: Icons.star_rounded,
                     label: c.rateSummary!.average.toStringAsFixed(1),
@@ -1053,17 +1040,14 @@ class _CourseCardState extends State<_CourseCard> {
                 ? Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Divider(
-                        height: 1,
-                        color: Colors.black.withValues(alpha: 0.07),
-                      ),
+                      Divider(height: 1, color: context.colors.divider),
                       _ExtrasPanel(course: c),
                     ],
                   )
                 : const SizedBox.shrink(),
           ),
 
-          Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+          Divider(height: 1, color: context.colors.divider),
 
           // ── Premium management toolbar ────────────────────────────────
           Padding(
@@ -1151,7 +1135,7 @@ class _StatsGrid extends StatelessWidget {
         (
           Icons.access_time_rounded,
           '${c.totalHours.toStringAsFixed(0)}${'h'.tr}',
-          const Color(0xFFBA7517),
+          context.colors.accent2,
         ),
         (
           Icons.star_rounded,

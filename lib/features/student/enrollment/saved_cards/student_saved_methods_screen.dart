@@ -10,6 +10,7 @@ import '../../../../utils/widget/primary_button.dart';
 import '../../../../utils/widget/text_field.dart';
 import 'saved_payment_models.dart';
 import 'saved_methods_provider.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class StudentSavedMethodsScreen extends StatelessWidget {
   const StudentSavedMethodsScreen({super.key});
@@ -752,16 +753,7 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
       setState(() => _saving = false);
       if (r != null) {
         _bankCtrl.clear(); _nameCtrl.clear(); _ibanCtrl.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('bank_account_saved_success'.tr,
-                style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-            backgroundColor: context.colors.success,
-            behavior:        SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-          ),
-        );
+        showAppNotice('bank_account_saved_success'.tr);
       }
     }
   }

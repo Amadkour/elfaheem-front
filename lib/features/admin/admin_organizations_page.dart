@@ -227,6 +227,15 @@ Future<void> _openReview(BuildContext context, int id) async {
             if (status == 'suspended')
               PrimaryButton(isLoading: busy, label: t('إعادة التفعيل', 'Reactivate'), icon: Icons.play_circle_rounded,
                   iconBefore: true, onPressed: () => act('reactivate')),
+            const SizedBox(height: 10),
+            // who pays what in this organization (staff · admins · students; plans & prices)
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+              onPressed: () => _billingSheet(ctx, asInt(d['id']), orgNameOf(d)),
+              icon: const Icon(Icons.payments_rounded),
+              label: Text(t('رسوم العضوية', 'Membership fees'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+            ),
           ]),
         );
       }));
@@ -418,8 +427,25 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    if (!await confirm(ctx, message: t('إنشاء كلمة مرور جديدة؟ سيُسجَّل خروجه من كل الأجهزة.', 'Create a new password? They will be signed out everywhere.'))) return;
-                    final r = await OrgApi.i.post('$url/reset-password');
+                    // type a password, or leave it empty to generate a strong one — they are signed out everywhere
+                    final pwd = TextEditingController();
+                    final go = await showDialog<bool>(
+                      context: ctx,
+                      builder: (dc) => AlertDialog(
+                        title: Text(t('كلمة مرور جديدة', 'New password')),
+                        content: Column(mainAxisSize: MainAxisSize.min, children: [
+                          AppPasswordField(controller: pwd, label: t('اكتبها أو اتركها فارغة لتوليد واحدة قوية', 'Type it, or leave empty to generate a strong one'),
+                              required: false, showStrength: true, minLength: 8),
+                          Text(t('سيُسجَّل خروجه من كل الأجهزة.', 'They will be signed out on every device.'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+                        ]),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(dc, false), child: Text(t('إلغاء', 'Cancel'))),
+                          FilledButton(onPressed: () => Navigator.pop(dc, true), child: Text(t('حفظ', 'Save'))),
+                        ],
+                      ),
+                    );
+                    if (go != true) return;
+                    final r = await OrgApi.i.post('$url/reset-password', {if (pwd.text.isNotEmpty) 'password': pwd.text});
                     if (r is Map && ctx.mounted) await showPassword('${r['generated_password']}');
                   },
                   icon: const Icon(Icons.key_rounded),
@@ -444,6 +470,102 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                   ),
                 ),
             ]),
+          ]),
+        );
+      }));
+}
+
+
+/// Membership fees of one organization (platform admins): staff · admins · students (free / per course / per account
+/// with this organization's own plans and prices).
+Future<void> _billingSheet(BuildContext context, int orgId, String orgName) async {
+  final url = '$_base/$orgId/billing';
+  final b = await OrgApi.i.getMap(url);
+  if (b == null || !context.mounted) return;
+  bool staffFree = b['staff_free'] != false, adminsFree = b['admins_free'] != false, busy = false;
+  String students = '${b['students'] ?? 'per_account'}';
+  final platform = asMapList(b['platform_plans']);
+  final chosen = Map<String, dynamic>.from(asMap(b['plans']));
+  final prices = {for (final p in platform) '${p['code']}': TextEditingController(text: '${chosen['${p['code']}'] ?? p['price']}')};
+  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = ctx.colors;
+        Widget mode(String key, IconData icon, String title, String sub) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: () => set(() => students = key),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: students == key ? c.primary.withValues(alpha: 0.08) : c.cardBg,
+                    border: Border.all(color: students == key ? c.primary : c.divider, width: students == key ? 1.6 : 1),
+                  ),
+                  child: Row(children: [
+                    Icon(icon, color: students == key ? c.primary : c.textMedium),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(title, style: orgText(ctx, w: FontWeight.w800)),
+                      Text(sub, style: orgText(ctx, size: 12, color: c.textMedium)),
+                    ])),
+                    if (students == key) Icon(Icons.check_circle_rounded, color: c.primary),
+                  ]),
+                ),
+              ),
+            );
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SheetHeader('${t('رسوم العضوية', 'Membership fees')} · $orgName'),
+            OrgSwitchRow(title: t('مجاني لهيئة التدريس والموظفين', 'Free for teaching & admin staff'),
+                subtitle: t('عند الإيقاف يلزمهم اشتراك', 'When off they need a subscription'), value: staffFree, onChanged: (v) => set(() => staffFree = v)),
+            OrgSwitchRow(title: t('مجاني لمديري المؤسسة', 'Free for organization admins'), value: adminsFree, onChanged: (v) => set(() => adminsFree = v)),
+            const SizedBox(height: 10),
+            Text(t('الطلاب', 'Students'), style: orgText(ctx, w: FontWeight.w800)),
+            const SizedBox(height: 8),
+            mode('free', Icons.volunteer_activism_rounded, t('مجاني', 'Free'), t('بدون اشتراك، ومقررات المؤسسة بدون رسوم', 'No subscription; the organization\'s courses at no cost')),
+            mode('per_course', Icons.menu_book_rounded, t('بالمقرر', 'Per course'), t('بدون اشتراك حساب — يدفع الطالب لكل مقرر', 'No account subscription — each course is paid')),
+            mode('per_account', Icons.account_circle_rounded, t('بالحساب (اشتراك)', 'Per account (subscription)'), t('اشتراك بخطط وأسعار هذه المؤسسة', 'A subscription with this organization\'s plans & prices')),
+            if (students == 'per_account') ...[
+              const SizedBox(height: 6),
+              Text(t('الخطط المتاحة وأسعارها لهذه المؤسسة', 'Plans offered & their prices for this organization'),
+                  style: orgText(ctx, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
+              for (final p in platform)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(children: [
+                    Checkbox(value: chosen.containsKey('${p['code']}'),
+                        onChanged: (v) => set(() => v == true ? chosen['${p['code']}'] = p['price'] : chosen.remove('${p['code']}'))),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(t('${p['name_ar']}', '${p['name_en']}'), style: orgText(ctx, w: FontWeight.w700)),
+                      Text('${t('سعر المنصة', 'Platform price')}: ${p['price']} ${p['currency']}', style: orgText(ctx, size: 11.5, color: c.textLight)),
+                    ])),
+                    SizedBox(
+                      width: 110,
+                      child: TextField(
+                        controller: prices['${p['code']}'],
+                        enabled: chosen.containsKey('${p['code']}'),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(isDense: true, suffixText: '${p['currency']}'),
+                      ),
+                    ),
+                  ]),
+                ),
+            ],
+            const SizedBox(height: 16),
+            PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
+              set(() => busy = true);
+              final r = await OrgApi.i.put(url, {
+                'staff_free': staffFree, 'admins_free': adminsFree, 'students': students,
+                'plans': students == 'per_account'
+                    ? {for (final k in chosen.keys) k: double.tryParse(prices[k]?.text ?? '') ?? 0}
+                    : <String, double>{},
+              }, t('تم الحفظ — يطبَّق فوراً', 'Saved — applies right away'));
+              if (!ctx.mounted) return;
+              set(() => busy = false);
+              if (r != null) Navigator.pop(ctx);
+            }),
           ]),
         );
       }));

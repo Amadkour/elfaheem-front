@@ -97,7 +97,13 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                   // ── Avatar / profile header ──────────────────────────────
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: ProfileHeader(provider: p),
+                    child: ProfileHeader(
+                      provider: p,
+                      onEdit: () async {           // the avatar opens "edit account" (same as the tile)
+                        await _push(EditAccountScreen(isTeacher: p.role != 'student'));
+                        if (context.mounted) _refresh(context);
+                      },
+                    ),
                   ),
                   const SizedBox(height: 28),
 
@@ -500,8 +506,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
 
 class ProfileHeader extends StatelessWidget {
   final ProfileProvider provider;
+  final VoidCallback? onEdit;
 
-  const ProfileHeader({super.key, required this.provider});
+  const ProfileHeader({super.key, required this.provider, this.onEdit});
 
   @override
   Widget build(BuildContext context) => ParentComponent(
@@ -509,40 +516,98 @@ class ProfileHeader extends StatelessWidget {
     child: _featureContent(context),
   );
 
+  static String _roleLabel(String r) => {
+        'student': 'role_student', 'teacher': 'role_teacher', 'parent': 'role_parent', 'admin': 'role_admin',
+        'super_admin': 'role_super_admin', 'org-admin': 'role_org_admin', 'org_admin': 'role_org_admin',
+        'org-staff': 'role_org_staff', 'org_staff': 'role_org_staff', 'developer': 'role_developer',
+      }[r]?.tr ?? r;
+
+  /// Premium hero: gradient card, glowing avatar ring with a camera badge (edit), name, role badge, e-mail.
   Widget _featureContent(BuildContext context) {
-    return Column(
-      children: [
-        Stack(
-          alignment: Alignment.bottomLeft,
-          children: [
-            Container(
-              width: context.height / 8,
-              height: context.height / 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.colors.primary.withValues(alpha: 0.1),
-                border: Border.all(color: context.colors.primary, width: 2.5),
+    final c = context.colors;
+    final avatar = Container(
+      width: 104,
+      height: 104,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(colors: [Colors.white, c.accent2.withValues(alpha: 0.9)]),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 18, offset: const Offset(0, 8))],
+      ),
+      child: ClipOval(
+        child: provider.imageUrl.isNotEmpty
+            ? AppNetworkImage(url: provider.imageUrl, heroTag: "profile-user-${provider.id}")
+            : Container(
+                color: Colors.white,
+                alignment: Alignment.center,
+                child: Text(provider.name.isNotEmpty ? provider.name.characters.first.toUpperCase() : '?',
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 40, fontWeight: FontWeight.w800, color: c.primary)),
               ),
-              child: provider.imageUrl.isNotEmpty
-                  ? ClipOval(
-                child: AppNetworkImage(
-                  url: provider.imageUrl,
-                  heroTag: "profile-user-${provider.id}",
-                ),
-              )
-                  : Icon(
-                Icons.person_rounded,
-                size: 70,
-                color: context.colors.primary,
-              ),
+      ),
+    );
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(c.radiusLarge + 4),
+        gradient: LinearGradient(begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [c.primary, c.primaryDark]),
+        boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 24, offset: const Offset(0, 12))],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Stack(children: [
+        PositionedDirectional(top: -40, end: -30, child: _bubble(150, 0.08)),
+        PositionedDirectional(bottom: -50, start: -20, child: _bubble(130, 0.06)),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
+          child: Column(children: [
+            GestureDetector(
+              onTap: onEdit,
+              child: Stack(clipBehavior: Clip.none, children: [
+                avatar,
+                if (onEdit != null)
+                  PositionedDirectional(
+                    bottom: 2,
+                    end: 2,
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(color: c.accent2, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2.5)),
+                      child: const Icon(Icons.photo_camera_rounded, size: 15, color: Colors.white),
+                    ),
+                  ),
+              ]),
             ),
-          ],
+            const SizedBox(height: 14),
+            Text(provider.name, textAlign: TextAlign.center,
+                style: const TextStyle(fontFamily: 'tajawal', fontSize: 21, fontWeight: FontWeight.w800, color: Colors.white)),
+            const SizedBox(height: 8),
+            Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 6, children: [
+              if (provider.role.isNotEmpty)
+                _glass(Icons.verified_user_rounded, _roleLabel(provider.role)),
+              if (provider.email.isNotEmpty) _glass(Icons.alternate_email_rounded, provider.email, ltr: true),
+            ]),
+          ]),
         ),
-        const SizedBox(height: 12),
-        Text(provider.name, style: context.colors.h2.copyWith(fontSize: 20)),
-        const SizedBox(height: 4),
-        Text(provider.email, style: context.colors.caption),
-      ],
+      ]),
     );
   }
+
+  static Widget _bubble(double size, double a) => Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: a)),
+      );
+
+  static Widget _glass(IconData icon, String text, {bool ltr = false}) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14, color: Colors.white),
+          const SizedBox(width: 6),
+          Flexible(child: Text(text, overflow: TextOverflow.ellipsis, textDirection: ltr ? TextDirection.ltr : null,
+              style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.white))),
+        ]),
+      );
 }

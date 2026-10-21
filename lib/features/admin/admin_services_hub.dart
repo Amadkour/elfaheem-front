@@ -48,6 +48,7 @@ import 'admin_view_as_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -126,6 +127,20 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
+        AdminService(
+          labelKey: 'svc_datacenter',
+          descKey: 'svc_datacenter_d',
+          icon: Icons.insights_rounded,
+          colors: AdminPalette.indigo,
+          onTap: () => push(const DataCenterPage()),
+        ),
+        AdminService(
+          labelKey: 'svc_requirements',
+          descKey: 'svc_requirements_d',
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.green,
+          onTap: () => push(const AdminRequirementsPage()),
+        ),
         AdminService(
           labelKey: 'svc_ads',
           descKey: 'svc_ads_d',

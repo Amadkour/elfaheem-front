@@ -14,6 +14,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'my_certificate_model.dart';
 import 'my_certificates_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class MyCertificatesScreen extends StatelessWidget {
   const MyCertificatesScreen({super.key});
@@ -28,13 +29,7 @@ class MyCertificatesScreen extends StatelessWidget {
 bool _isArabic(BuildContext c) => Localizations.localeOf(c).languageCode == 'ar';
 
 void _toast(BuildContext context, String msg, {bool error = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(msg, style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-    backgroundColor: error ? context.colors.danger : context.colors.success,
-    behavior: SnackBarBehavior.floating,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-  ));
+  showAppNotice(msg, error: true);
 }
 
 class _View extends StatelessWidget {

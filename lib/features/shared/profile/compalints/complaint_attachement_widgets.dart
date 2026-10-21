@@ -28,6 +28,7 @@ import '../../../../config/app_config.dart';
 import '../../../../utils/widget/app_network_image.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Shared helpers
@@ -57,11 +58,7 @@ Future<void> _openExternally(BuildContext context, String url) async {
   if (uri == null) return;
   final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
   if (!ok && context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text('could_not_open_file'.tr,
-          style: const TextStyle(fontFamily: 'bahji')),
-      behavior: SnackBarBehavior.floating,
-    ));
+    showAppNotice('could_not_open_file'.tr);
   }
 }
 

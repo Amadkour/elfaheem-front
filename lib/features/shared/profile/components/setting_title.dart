@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
 
+/// One settings row: icon well · label · trailing (switch / chevron). Ink ripple, direction-aware chevron.
 class SettingsTile extends StatelessWidget {
   final IconData icon;
   final Color iconBg;
@@ -9,7 +10,6 @@ class SettingsTile extends StatelessWidget {
   final String label;
   final Widget? trailing;
   final VoidCallback? onTap;
-
   const SettingsTile({
     super.key,
     required this.icon,
@@ -22,44 +22,33 @@ class SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    final c = context.colors;
+    return InkWell(
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(
-          children: [
-
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, size: 18, color: iconColor),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: iconColor.withValues(alpha: 0.12)),
             ),
+            child: Icon(icon, size: 19, color: iconColor),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(label, style: c.label.copyWith(color: c.textDark, fontSize: 14.5, fontWeight: FontWeight.w600)),
+          ),
+          if (trailing != null) ...[
             const SizedBox(width: 10),
-            // Label on the right (RTL)
-            Expanded(
-              child: Text(label,
-                  style: context.colors.label
-                      .copyWith(color: context.colors.textDark, fontSize: 14)),
-            ),
-            const SizedBox(width: 12),
-            // Icon container on the left
-
-            if (trailing != null) ...[
-              const SizedBox(width: 10),
-              trailing!,
-            ] else if (onTap != null)
-               Padding(
-                padding: EdgeInsets.only(left: 4),
-                child: Icon(Icons.chevron_right_rounded,
-                    color: context.colors.textLight, size: 20),
-              ),
-          ],
-        ),
+            trailing!,
+          ] else if (onTap != null)
+            Icon(Directionality.of(context) == TextDirection.rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+                color: c.textLight, size: 22),
+        ]),
       ),
     );
   }

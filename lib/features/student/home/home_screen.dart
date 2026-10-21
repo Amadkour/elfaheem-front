@@ -26,6 +26,7 @@ import 'component/top_bar.dart';
 import '../../teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/org/org_home_tab.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -220,7 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
                     : ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: CustomScrollView(
+                  child: ListenableBuilder(
+                    listenable: homeTabs,
+                    builder: (context, _) => CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       // ── Top bar ──────────────────────────────────────────
@@ -248,6 +251,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      // ── My courses | My organization (members only) ──
+                      const SliverToBoxAdapter(child: HomeTabsBar()),
+                      if (homeTab.value == 1 && homeInOrg.value)
+                        const SliverToBoxAdapter(child: OrgHomeTab())
+                      else ...[
                       // ── Upcoming session banner ──────────────────────────
                       const SliverToBoxAdapter(
                         child: ParentComponent(
@@ -420,7 +428,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SliverToBoxAdapter(
                         child: SizedBox(height: 40),
                       ),
+                      ],
                     ],
+                  ),
                   ),
                 ),
               ),

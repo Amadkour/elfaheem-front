@@ -14920,5 +14920,89 @@
   "cert_designs_link_sub": {
     "en": "Design once, use it on all or some of your courses",
     "ar": "صمّم مرة واحدة واستخدمه لكل كورساتك أو بعضها"
+  },
+  "complaint_about": {
+    "en": "What is it about?",
+    "ar": "بخصوص ماذا؟"
+  },
+  "complaint_about_general": {
+    "en": "General",
+    "ar": "عامة"
+  },
+  "complaint_about_course_t": {
+    "en": "A course",
+    "ar": "كورس"
+  },
+  "complaint_about_teacher": {
+    "en": "A teacher",
+    "ar": "معلم"
+  },
+  "complaint_about_student": {
+    "en": "A student",
+    "ar": "طالب"
+  },
+  "complaint_about_staff": {
+    "en": "Platform staff",
+    "ar": "فريق المنصة"
+  },
+  "complaint_about_department": {
+    "en": "A department",
+    "ar": "إدارة / قسم"
+  },
+  "complaint_about_none": {
+    "en": "Nothing to choose here yet",
+    "ar": "لا توجد خيارات هنا بعد"
+  },
+  "change": {
+    "en": "Change",
+    "ar": "تغيير"
+  },
+  "complaint_move_to": {
+    "en": "Move to",
+    "ar": "نقل إلى"
+  },
+  "svc_datacenter": {
+    "en": "Data Center",
+    "ar": "مركز البيانات"
+  },
+  "svc_datacenter_d": {
+    "en": "All data, charts, export · parents import",
+    "ar": "كل البيانات والرسوم والتصدير · استيراد أولياء الأمور"
+  },
+  "svc_requirements": {
+    "en": "Platform requirements",
+    "ar": "مطالب المنصة"
+  },
+  "svc_requirements_d": {
+    "en": "Ask users to agree or read",
+    "ar": "اطلب من المستخدمين الموافقة أو الاطلاع"
+  },
+  "role_parent": {
+    "en": "Parent",
+    "ar": "ولي أمر"
+  },
+  "role_admin": {
+    "en": "Admin",
+    "ar": "مسؤول"
+  },
+  "role_super_admin": {
+    "en": "Super admin",
+    "ar": "مسؤول عام"
+  },
+  "role_org_admin": {
+    "en": "Organization admin",
+    "ar": "مدير مؤسسة"
+  },
+  "role_org_staff": {
+    "en": "Organization staff",
+    "ar": "موظف مؤسسة"
+  },
+  "role_developer": {
+    "en": "Developer",
+    "ar": "مطوّر"
+  },
+  "register_organization": {
+    "en": "Register an institution",
+    "ar": "تسجيل مؤسسة تعليمية"
   }
 }

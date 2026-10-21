@@ -25,6 +25,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'certificate_manager_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
@@ -151,18 +152,7 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
     final provider = context.read<CertificateManagerProvider>();
     final count = await provider.issueAll(widget.certificateId);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${'certificates_sent_count'.tr} $count',
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-        ),
-        backgroundColor: context.colors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    showAppNotice('${'certificates_sent_count'.tr} $count');
   }
 
   @override

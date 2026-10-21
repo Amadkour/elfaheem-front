@@ -14,6 +14,7 @@ import 'student_exam_result_screen.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class StudentExamQuizScreen extends StatefulWidget {
   const StudentExamQuizScreen({super.key});
@@ -589,19 +590,10 @@ class _ReviewFlagButton extends StatelessWidget {
         final wasFlagged = flagged;
         final err = await prov.toggleReviewFlag(question);
         messenger?.hideCurrentSnackBar();
-        messenger?.showSnackBar(SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
-          duration: const Duration(seconds: 2),
-          content: Text(
-            err ??
+        showAppNotice(err ??
                 (wasFlagged
                     ? tx('flag_review_removed')
-                    : tx('flag_review_added')),
-            style: examT(13, c: Colors.white),
-          ),
-        ));
+                    : tx('flag_review_added')));
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),

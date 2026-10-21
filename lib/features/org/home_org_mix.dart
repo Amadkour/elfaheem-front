@@ -19,6 +19,10 @@ import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import 'org_terms_pages.dart' show TermCard;
 import 'org_ui.dart';
 import 'org_availability_pages.dart' show AvailabilityRequestScreen;
+import 'org_academic_pages.dart' show MyAcademicPathPage;
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import '../admin/admin_list.dart' show IconBadge;
 
 class HomeOrgMix extends StatefulWidget {
   const HomeOrgMix({super.key});
@@ -86,13 +90,19 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: OrgActionCard(
-                icon: r['kind'] == 'form' ? Icons.edit_document : Icons.gavel_rounded,
+                icon: r['kind'] == 'form' ? Icons.edit_document : (r['kind'] == 'department_choice' ? Icons.how_to_vote_rounded : Icons.gavel_rounded),
                 color: c.warning,
                 title: '${r['title']}',
-                subtitle: r['kind'] == 'form' ? t('نموذج إلزامي', 'Mandatory form') : t('لائحة تحتاج موافقتك', 'Needs your agreement'),
+                subtitle: r['kind'] == 'form' ? t('نموذج إلزامي', 'Mandatory form')
+                    : (r['kind'] == 'department_choice' ? t('اختر قسمك العلمي', 'Choose your department') : t('لائحة تحتاج موافقتك', 'Needs your agreement')),
                 onTap: () async {
                   Navigator.pop(ctx);
-                  if (r['kind'] == 'form') {
+                  if (r['kind'] == 'platform') {
+                    await showPlatformRequirement(context, r);
+                  } else if (r['kind'] == 'department_choice') {
+                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => BasePage(useWebCard: true, maxWith: 760,
+                        appBar: ScreenAppBar(title: t('مساري الأكاديمي', 'My academic path')), child: MyAcademicPathPage(orgId: asInt(r['org_id'])))));
+                  } else if (r['kind'] == 'form') {
                     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgFormFillScreen(formId: asInt(r['id']))));
                   } else {
                     final t0 = await ApiClient().get('$orgBase/public/${r['org_id']}/terms');
@@ -117,11 +127,23 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
   Widget build(BuildContext context) {
     final m = _mix;
     final weight = asInt(m?['org_weight']);
-    if (m == null || weight <= 10) return const OrgHomeEntry();
+    final reqAll = asMapList(m?['required']).where((x) => x['kind'] != 'availability').toList();
+    if (m == null || weight <= 10) {
+      // not in any organization: platform requirements still need the person
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (reqAll.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: OrgActionCard(icon: Icons.notification_important_rounded, color: context.colors.warning, badge: reqAll.length,
+                title: t('مطلوب منك', 'Needs your action'), subtitle: '${reqAll.first['title']}', onTap: () => _showRequired(reqAll)),
+          ),
+        const OrgHomeEntry(),
+      ]);
+    }
     final c = context.colors;
-    final orgs = asMapList(m['organizations']);
     final req = asMapList(m['required']);
-    final full = weight >= 70;
+    // the organization itself now lives in its own home tab — here only what needs the person
+    if (req.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (req.isNotEmpty)
         Padding(
@@ -129,34 +151,41 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
           child: OrgActionCard(icon: Icons.notification_important_rounded, color: c.warning, badge: req.length,
               title: t('مطلوب منك', 'Needs your action'), subtitle: '${req.first['title']}', onTap: () => _showRequired(req)),
         ),
-      for (final o in orgs.take(full ? 3 : 1))
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: OrgActionCard(
-            icon: orgTypeIcons[o['type']] ?? Icons.account_balance_rounded,
-            color: orgColor(context, o),
-            title: orgNameOf(o),
-            subtitle: t('الأخبار · الإدارات · طلباتي · الشكاوى · اللوائح', 'News · departments · requests · complaints · rules'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: o))),
-          ),
-        ),
-      for (final n in _news.take(full ? 3 : 2))
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
-          child: Row(children: [
-            Icon(Icons.campaign_rounded, color: c.primary),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${n['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)),
-                Text('${orgNameOf(asMap(n['organization']))} · ${relTime(n['publish_at'])}', style: orgText(context, size: 11.5, color: c.textLight)),
-              ]),
-            ),
-          ]),
-        ),
-      if (full) const OrgHomeEntry(),
+
     ]);
   }
+}
+
+
+/// A requirement from the platform: read it, then "I agree" (ack) or "Got it" (info).
+Future<void> showPlatformRequirement(BuildContext context, Map<String, dynamic> r) async {
+  await showAdminSheet<void>(context, (ctx) {
+    final c = ctx.colors;
+    final ack = r['ack_kind'] != 'info';
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          IconBadge(ack ? Icons.fact_check_rounded : Icons.info_rounded, ack ? c.warning : c.primary, size: 46),
+          const SizedBox(width: 12),
+          Expanded(child: Text('${r['title']}', style: orgText(ctx, size: 17, w: FontWeight.w800))),
+        ]),
+        if ('${r['body'] ?? ''}'.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 14), child: Text('${r['body']}', style: orgText(ctx, color: c.textMedium))),
+        if ('${r['link_url'] ?? ''}'.isNotEmpty)
+          TextButton.icon(onPressed: () => openFileUrl('${r['link_url']}'), icon: const Icon(Icons.open_in_new_rounded), label: Text(t('فتح الرابط', 'Open the link'))),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          onPressed: () async {
+            try {
+              await ApiClient().post('/api/v1/requirements/${r['id']}/ack');
+              if (ctx.mounted) Navigator.pop(ctx);
+            } catch (_) {}
+          },
+          icon: Icon(ack ? Icons.check_rounded : Icons.thumb_up_alt_rounded),
+          label: Text(ack ? t('قرأت وأوافق', 'I have read and agree') : t('تم الاطلاع', 'Got it')),
+        ),
+      ]),
+    );
+  });
 }

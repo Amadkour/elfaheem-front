@@ -10,6 +10,7 @@ import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../student/analysis/student_analytics_profile_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -362,13 +363,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: examT(13, c: Colors.white)),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-    ));
+    showAppNotice(msg);
   }
 }
 

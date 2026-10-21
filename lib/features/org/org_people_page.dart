@@ -12,7 +12,8 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
-import 'package:flutter_education_app/design/app_inputs.dart';
+import 'org_member_form.dart';
+import 'org_v3.dart';
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -24,7 +25,7 @@ class OrgPeoplePage extends StatelessWidget {
     final tabs = <(String, String, String, String)>[
       if (s.can('students')) ('student', t('الطلاب', 'Students'), 'students', 'students'),
       if (s.can('teachers')) ('teacher', t('المدرسون', 'Teachers'), 'teachers', 'teachers'),
-      if (s.can('staff')) ('teacher_assistant,admin_assistant', t('الهيئة المعاونة', 'Staff'), 'staff', 'staff'),
+      if (s.can('staff')) ('teacher_assistant,admin_assistant,org_admin', t('الهيئة المعاونة والإدارة', 'Staff & admins'), 'staff', 'staff'),
     ];
     if (tabs.isEmpty) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الأعضاء', 'You cannot view members'));
     return DefaultTabController(
@@ -82,10 +83,16 @@ class _MembersView extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
         child: SearchBox(hint: t('بحث بالاسم أو البريد أو الهاتف', 'Search name, email or phone'), onChanged: p.setSearch),
       ),
-      if (kind != 'staff')
-        FilterChips<String>(
+      FilterChips<String>(
           value: p.status,
-          options: {'active': t('نشط', 'Active'), 'pending': t('طلبات الانضمام', 'Join requests'), 'rejected': t('مرفوض', 'Rejected')},
+          options: {
+            'active': t('نشط', 'Active'),
+            if (kind != 'staff') 'pending': t('طلبات الانضمام', 'Join requests'),
+            'scheduled': membershipStatusLabels()['scheduled']!,
+            'expired': membershipStatusLabels()['expired']!,
+            'suspended': membershipStatusLabels()['suspended']!,
+            if (kind != 'staff') 'rejected': t('مرفوض', 'Rejected'),
+          },
           onChanged: p.setStatusFilter,
         ),
       Padding(
@@ -115,7 +122,11 @@ class _MembersView extends StatelessWidget {
           child: FloatingActionButton.extended(
             heroTag: 'org_add_$kind',
             backgroundColor: c.primary,
-            onPressed: () => _openAdd(context, p, kind, s),
+            onPressed: () async {
+              final r = await showOrgMemberForm(context,
+                  roles: kind == 'students' ? const ['student'] : kind == 'teachers' ? const ['teacher'] : const ['teacher_assistant', 'admin_assistant', 'org_admin']);
+              if (r != null) p.refresh();
+            },
             icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
             label: Text(t('إضافة', 'Add'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
           ),
@@ -161,12 +172,15 @@ class _MemberTile extends StatelessWidget {
     final p = context.read<OrgMembersProvider>();
     final u = Map<String, dynamic>.from(row['user'] as Map);
     final role = '${row['role']}';
+    final eff = '${row['effective_status'] ?? row['status']}';
     final pending = row['status'] == 'pending';
+    final ended = eff == 'expired' || eff == 'suspended';
     final id = asInt(row['id']);
+    final depts = asMapList(row['departments']);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: RowCard(
-        accent: pending ? c.warning : null,
+        accent: pending ? c.warning : (ended ? c.danger : null),
         child: Row(children: [
           AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
           const SizedBox(width: 12),
@@ -177,9 +191,18 @@ class _MemberTile extends StatelessWidget {
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 StatusChip(_roleLabel(role), c.primary),
+                if (eff != 'active') StatusChip(membershipStatusLabels()[eff] ?? eff, statusColor(context, eff == 'scheduled' ? 'pending' : eff)),
                 if ((row['student_code'] ?? '').toString().isNotEmpty) InfoChip(Icons.tag_rounded, '${row['student_code']}', c.textMedium),
+                if (row['academic_level'] != null) InfoChip(Icons.stairs_rounded, '${row['academic_level']}', c.textMedium),
+                if (row['cohort'] != null) InfoChip(Icons.group_rounded, memberCohortLabels()['${row['cohort']}'] ?? '${row['cohort']}', c.textMedium),
+                for (final d in depts) InfoChip(Icons.apartment_rounded, '${d['title'] ?? ''}${d['is_head'] == true ? ' ★' : ''}'.trim().isEmpty ? '#${d['dept_id']}' : '${d['title'] ?? ''}${d['is_head'] == true ? ' ★' : ''}', c.textMedium),
                 if (u['is_active'] == false) StatusChip(t('معطّل', 'Disabled'), c.danger),
               ]),
+              if (!pending)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(membershipPeriodText(row), style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: ended ? c.danger : c.textLight)),
+                ),
             ]),
           ),
           if (pending && s.can('requests', 'update')) ...[
@@ -188,14 +211,35 @@ class _MemberTile extends StatelessWidget {
           ] else
             PopupMenuButton<String>(
               onSelected: (v) async {
-                if (v == 'perm') await _permissions(context, p, row);
-                if (v == 'code') await _editCode(context, p, row);
-                if (v == 'toggle') await p.update(id, {'is_active': u['is_active'] == false});
-                if (v == 'remove' && await confirm(context, message: t('إزالة العضو من المؤسسة؟ (حسابه لا يُحذف)', 'Remove from the organization? (the account stays)'), danger: true)) {
-                  await p.remove(id);
+                switch (v) {
+                  case 'perm':
+                    await _permissions(context, p, row);
+                  case 'code':
+                    await _editCode(context, p, row);
+                  case 'edit':
+                    if (await showOrgMemberForm(context, edit: row) != null) p.refresh();
+                  case 'extend':
+                    if (await showMembershipExtend(context, row) != null) p.refresh();
+                  case 'suspend':
+                    if (await confirm(context,
+                        message: t('إيقاف عضويته في هذه المؤسسة؟ تتوقف صلاحياته فيها فقط، ويمكن إعادة تفعيلها.',
+                            'Suspend their membership here? Only their access to this organization stops; it can be reactivated.'),
+                        danger: true)) {
+                      await p.update(id, {'status': 'suspended'});
+                    }
+                  case 'toggle':
+                    await p.update(id, {'is_active': u['is_active'] == false});
+                  case 'remove':
+                    if (await confirm(context, message: t('إزالة العضو من المؤسسة؟ (حسابه لا يُحذف)', 'Remove from the organization? (the account stays)'), danger: true)) {
+                      await p.remove(id);
+                    }
                 }
               },
               itemBuilder: (_) => [
+                if (s.can(module, 'update')) PopupMenuItem(value: 'edit', child: Text(t('بيانات العضوية', 'Membership details'))),
+                if (s.can(module, 'update'))
+                  PopupMenuItem(value: 'extend', child: Text(ended ? t('تمديد / إعادة تفعيل', 'Extend / reactivate') : t('تمديد العضوية', 'Extend membership'))),
+                if (s.can(module, 'update') && !ended) PopupMenuItem(value: 'suspend', child: Text(t('إيقاف العضوية', 'Suspend membership'))),
                 if (role == 'admin_assistant' && s.isOrgAdmin) PopupMenuItem(value: 'perm', child: Text(t('الصلاحيات', 'Permissions'))),
                 if (role == 'student' && s.can(module, 'update')) PopupMenuItem(value: 'code', child: Text(t('الرقم الجامعي', 'Student number'))),
                 if (s.can(module, 'update')) PopupMenuItem(value: 'toggle', child: Text(u['is_active'] == false ? t('تفعيل الحساب', 'Enable account') : t('تعطيل الحساب', 'Disable account'))),
@@ -211,73 +255,6 @@ class _MemberTile extends StatelessWidget {
 Future<void> _editCode(BuildContext context, OrgMembersProvider p, Map<String, dynamic> row) async {
   final v = await askText(context, title: t('الرقم الجامعي', 'Student number'), hint: '${row['student_code'] ?? ''}');
   if (v != null) await p.update(asInt(row['id']), {'student_code': v.trim()});
-}
-
-// ── add member ───────────────────────────────────────────────────────────────
-
-Future<void> _openAdd(BuildContext context, OrgMembersProvider p, String kind, OrgSession s) async {
-  final name = TextEditingController(), email = TextEditingController(), phone = TextEditingController(), code = TextEditingController(), pass = TextEditingController();
-  String role = kind == 'students' ? 'student' : kind == 'teachers' ? 'teacher' : 'teacher_assistant';
-  bool busy = false;
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SheetHeader(t('إضافة عضو', 'Add a member')),
-            if (kind == 'staff')
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: ChoiceRow<String>(
-                  options: {'teacher_assistant': _roleLabel('teacher_assistant'), 'admin_assistant': _roleLabel('admin_assistant')},
-                  value: role,
-                  onChanged: (v) => set(() => role = v),
-                ),
-              ),
-            AppEmailField(controller: email, label: t('البريد الإلكتروني', 'Email')),
-            Field(controller: name, label: t('الاسم (للحساب الجديد)', 'Name (for a new account)')),
-            AppPhoneField(controller: phone, label: t('الهاتف (اختياري)', 'Phone (optional)')),
-            if (role == 'student') Field(controller: code, label: t('الرقم الجامعي (اختياري)', 'Student number (optional)')),
-            Field(controller: pass, label: t('كلمة مرور (اتركها فارغة لتوليد واحدة)', 'Password (leave empty to generate)'), ltr: true),
-            const SizedBox(height: 4),
-            PrimaryButton(
-              isLoading: busy,
-              label: t('إضافة', 'Add'),
-              onPressed: () async {
-                if (!email.text.contains('@')) {
-                  toast(t('أدخل بريداً صحيحاً', 'Enter a valid email'), error: true);
-                  return;
-                }
-                set(() => busy = true);
-                final r = await p.add({
-                  'role': role,
-                  'email': email.text.trim(),
-                  if (name.text.trim().isNotEmpty) 'name': name.text.trim(),
-                  if (phone.text.trim().isNotEmpty) 'phone': phone.text.trim(),
-                  if (code.text.trim().isNotEmpty) 'student_code': code.text.trim(),
-                  if (pass.text.isNotEmpty) 'password': pass.text,
-                  if (role == 'admin_assistant') 'permissions': {'students': ['view'], 'teachers': ['view'], 'courses': ['view']},
-                });
-                if (!ctx.mounted) return;
-                set(() => busy = false);
-                if (r != null) {
-                  Navigator.pop(ctx);
-                  if (r['generated_password'] != null && context.mounted) {
-                    await showAdminSheet<void>(context, (c2) => Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-                          child: Column(mainAxisSize: MainAxisSize.min, children: [
-                            SheetHeader(t('بيانات الدخول', 'Login details')),
-                            SelectableText('${email.text.trim()}\n${r['generated_password']}', textDirection: TextDirection.ltr, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 8),
-                            Text(t('تظهر مرة واحدة فقط — انسخها الآن.', 'Shown once — copy it now.')),
-                          ]),
-                        ));
-                  }
-                }
-              },
-            ),
-          ]),
-        );
-      }));
 }
 
 // ── permission matrix (admin assistant) ─────────────────────────────────────

@@ -19,8 +19,9 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_services_pages.dart';
+import 'org_join_pages.dart' show OrgUnitJoinHub, canConfigureUnit;
+import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_ui.dart';
-import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 
@@ -31,6 +32,8 @@ const _featureIcons = {
   'materials': Icons.folder_copy_rounded,
   'data_lab': Icons.science_rounded,
   'certificates': Icons.workspace_premium_rounded,
+  'members': Icons.group_add_rounded,
+  'reports': Icons.insights_rounded,
 };
 
 Map<String, String> featureLabels() => {
@@ -40,6 +43,8 @@ Map<String, String> featureLabels() => {
       'materials': t('المكتبة', 'Library'),
       'data_lab': t('مختبر البيانات', 'Data Lab'),
       'certificates': t('الشهادات', 'Certificates'),
+      'members': t('الأعضاء والانضمام', 'Members & joining'),
+      'reports': t('التقارير', 'Reports'),
     };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -112,8 +117,9 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 100), children: [
-                      OrgSectionTitle(t('الإدارات والأقسام', 'Departments'),
-                          subtitle: t('${items.length} إدارة في ${s.name}', '${items.length} in ${s.name}')),
+                      OrgSectionTitle(t('الإدارات الخدمية', 'Service departments'),
+                          subtitle: t('${items.length} إدارة في ${s.name} — الأقسام العلمية في "الهيكل الأكاديمي"',
+                              '${items.length} in ${s.name} — academic departments are in "Academic structure"')),
                       OrgGrid(minTile: 300, children: [
                         for (final d in items)
                           _DeptCard(
@@ -215,6 +221,9 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final features = <String>{
     ...(edit == null ? featureLabels().keys : ((edit['features'] as List?) ?? const []).map((e) => '$e')),
   };
+  final origHead = asMap(edit?['head'])['id'] == null ? null : asInt(asMap(edit?['head'])['id']);
+  int? head = origHead;
+  final canHead = s.can('departments', edit == null ? 'insert' : 'update');
   bool busy = false, saved = false;
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
@@ -234,7 +243,15 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SheetHeader(edit == null ? t('إدارة جديدة', 'New department') : t('تعديل الإدارة', 'Edit department')),
+            SheetHeader(edit == null ? t('إدارة خدمية جديدة', 'New service department') : t('تعديل الإدارة', 'Edit department')),
+            if (edit == null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                    t('الإدارات الخدمية: الإرشاد الأكاديمي، شؤون الطلاب، الامتحانات والكنترول، الخريجين، الرعاية الصحية، الشكاوى… أما الأقسام العلمية (نظم المعلومات، علوم الحاسب…) فتُدار من "الهيكل الأكاديمي".',
+                        'Service departments: academic advising, student affairs, exams & control, alumni, healthcare, complaints… Academic departments (IS, CS, IT…) are managed in "Academic structure".'),
+                    style: orgText(ctx, size: 12, color: c.textLight)),
+              ),
             if (presets.isNotEmpty) ...[
               Text(t('ابدأ بإدارة جاهزة — أو اكتب اسماً خاصاً بالأسفل', 'Start from a ready-made one — or type your own below'),
                   style: orgText(ctx, size: 12.5, color: c.textMedium)),
@@ -257,6 +274,14 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
             Field(controller: desc, label: t('ماذا تقدم هذه الإدارة؟', 'What does it do?'), maxLines: 2),
+            if (canHead)
+              OrgMemberPickField(
+                label: t('رئيس / مدير الإدارة', 'Department head / manager'),
+                value: head,
+                initialName: asMap(edit?['head'])['name']?.toString(),
+                roles: const ['teacher', 'teacher_assistant', 'admin_assistant', 'org_admin'],
+                onChanged: (v) => set(() => head = v),
+              ),
             // the department's own logo (cropped, resized, public) — replaces the icon everywhere
             Row(children: [
               if ((logo ?? '').isNotEmpty)
@@ -358,6 +383,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   'office_hours': hours.text.trim(),
                   'email': email.text.trim(),
                   'phone': phone.text.trim(),
+                  if (canHead && head != null && head != origHead) 'head_user_id': head,
                 };
                 final r = edit == null
                     ? await OrgApi.i.post('${s.base}/departments', body, t('أُنشئت الإدارة 🎉', 'Department created 🎉'))
@@ -419,6 +445,9 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
       if (f.contains('certificates') && can('certificates'))
         (t('الشهادات', 'Certificates'), Icons.workspace_premium_rounded,
             CertificateDesignsScreen(orgId: asInt(s.currentId))),
+      if (f.contains('members') && (can('team') || canConfigureUnit(s, 'dept', _id)))
+        (t('الانضمام', 'Joining'), Icons.group_add_rounded,
+            OrgUnitJoinHub(unitType: 'dept', unitId: _id, title: orgNameOf(_d), features: f.toList(), embedded: true)),
     ];
 
     return DefaultTabController(

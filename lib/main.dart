@@ -829,6 +829,14 @@ class _SplashBodyState extends State<_SplashBody>
     return List<double>.generate(8, (_) => r.nextDouble() * math.pi * 2);
   })();
 
+  // Seamless hand-over from the NATIVE splash: the first frame shows the bare mark exactly where / as big as
+  // the native splash drew it (same artwork, 160 px, centred); it then glides into the card and fades into it.
+  late final AnimationController _intro = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1150),
+    value: _introPlayed ? 1.0 : 0.0,
+  )..forward();
+
   late final AnimationController _enter = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1600),
@@ -891,6 +899,7 @@ class _SplashBodyState extends State<_SplashBody>
 
   @override
   void dispose() {
+    _intro.dispose();
     _msgTimer?.cancel();
     _enter.dispose();
     _loop.dispose();
@@ -943,18 +952,16 @@ class _SplashBodyState extends State<_SplashBody>
         final tagline = id.tagline;
         final version = id.versionLabel;
 
-        final logoImage = AppNetworkImage(
-          url: id.logoUrl ?? 'assets/images/logo.png',
-          width: 92,
-          height: 92,
-          fit: BoxFit.contain,
-        );
+        // The SAME artwork as the native splash (assets/images/logo_mark.png → splash.png): the splash never
+        // swaps logos mid-way. (The dashboard logo is still used everywhere else in the app.)
+        final logoImage = Image.asset('assets/images/logo_mark.png', width: 92, height: 92, fit: BoxFit.contain);
 
         return Directionality(
           textDirection: pageDirection,
           child: Scaffold(
             backgroundColor: c.background,
-            body: Container(
+            body: Stack(children: [
+              Positioned.fill(child: Container(
               width: double.infinity,
               height: double.infinity,
               // Flat theme background colour (adapts to light / dark).
@@ -1398,7 +1405,26 @@ class _SplashBodyState extends State<_SplashBody>
                   ),
                 ],
               ),
-            ),
+            )),
+              // ── native → animated hand-over ──
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: AnimatedBuilder(
+                    animation: _intro,
+                    builder: (_, child) {
+                      final move = Curves.easeInOutCubic.transform(((_intro.value - 0.30) / 0.70).clamp(0.0, 1.0));
+                      final fade = Curves.easeOut.transform(((_intro.value - 0.55) / 0.45).clamp(0.0, 1.0));
+                      if (fade >= 1) return const SizedBox.shrink();
+                      return Opacity(
+                        opacity: 1 - fade,
+                        child: Center(child: Transform.scale(scale: 1 - (1 - 92 / 160) * move, child: child)),
+                      );
+                    },
+                    child: Image.asset('assets/images/logo_mark.png', width: 160, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+            ]),
           ),
         );
       },

@@ -13,6 +13,7 @@ import 'exam_files.dart';
 import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
@@ -525,16 +526,7 @@ class _HubViewState extends State<_HubView>
       );
 
   void _snack(String msg, Color color) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      showAppNotice(msg);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1460,14 +1452,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
 
   void _snack(String msg, Color color) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    showAppNotice(msg);
   }
 
   @override
@@ -1837,15 +1822,11 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
     if (_hasSchedule && _scheduleDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('snack_pick_start_date'.tr)));
+      showAppNotice('snack_pick_start_date'.tr);
       return;
     }
     if (_hasDeadline && _deadlineDate == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('snack_pick_deadline'.tr)));
+      showAppNotice('snack_pick_deadline'.tr);
       return;
     }
     final ok = await widget.provider.createExam(
@@ -2912,14 +2893,7 @@ PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
 
 void _toast(BuildContext context, String msg, Color color) {
   if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(msg, style: const TextStyle(fontFamily: 'bahji')),
-      backgroundColor: color,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
+  showAppNotice(msg);
 }
 
 /// Pick an .xlsx / .csv, upload it, show what was imported / skipped.

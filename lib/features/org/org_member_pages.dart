@@ -23,6 +23,8 @@ import 'org_common.dart';
 import 'org_member_space.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'org_academic_pages.dart' show orgCourseGate;
+import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home entry card
@@ -162,9 +164,15 @@ class _OrgCard extends StatelessWidget {
             Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
             const SizedBox(height: 6),
             StatusChip(
-              status == 'active' ? t('عضو', 'Member') : status == 'pending' ? t('بانتظار الموافقة', 'Waiting for approval') : t('مرفوض', 'Declined'),
+              status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : membershipStatusLabels()[status] ?? status,
               status == 'active' ? c.success : status == 'pending' ? c.warning : c.danger,
             ),
+            // only this organization's membership ended — the account and its other services keep working
+            if (status == 'expired' || status == 'suspended')
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(orgCodeText('membership_ended'), style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textMedium)),
+              ),
           ]),
         ),
         if (status == 'active') const Icon(Icons.chevron_right_rounded),
@@ -262,6 +270,14 @@ class _CoursesBody extends StatelessWidget {
   final Map<String, dynamic> org;
 
   Future<void> _open(BuildContext context, Map<String, dynamic> row) async {
+    // archived course → closed (request the last version); fresh / granted → open as usual
+    if (!await orgCourseGate(context, asInt(row['id'])) || !context.mounted) return;
+    // membership covers it: join at no cost
+    if (row['free_for_me'] == true && row['is_enrolled'] != true) {
+      if (!await confirm(context, message: t('هذا المقرر مجاني لأعضاء مؤسستك — انضم الآن؟', 'Free for your organization\'s members — join now?'))) return;
+      final r = await OrgApi.i.post('$orgBase/public/courses/${row['id']}/join-free', null, t('انضممت للمقرر 🎉', 'You joined the course 🎉'));
+      if (r == null || !context.mounted) return;
+    }
     try {
       final api = ApiClient();
       final json = await api.get('/api/v1/courses/${row['id']}');

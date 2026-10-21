@@ -269,7 +269,8 @@ class CertDesign {
   final String? signatureUrl;
   final String? logoUrl;
   final Map<String, dynamic> theme; // {color, dark, style}
-  final List<CertField> fields;
+  final List<CertField> fields;     // the layout being edited (see CertificateDesignerProvider)
+  final List<CertField> fieldsEn;   // English layout as stored ([] = same as Arabic)
   final bool canEdit;
 
   const CertDesign({
@@ -284,6 +285,7 @@ class CertDesign {
     this.logoUrl,
     this.theme = const {},
     this.fields = const [],
+    this.fieldsEn = const [],
     this.canEdit = true,
   });
 
@@ -306,6 +308,10 @@ class CertDesign {
             .whereType<Map>()
             .map((e) => CertField.fromJson(Map<String, dynamic>.from(e)))
             .toList(),
+        fieldsEn: ((j['fields_en'] as List?) ?? const [])
+            .whereType<Map>()
+            .map((e) => CertField.fromJson(Map<String, dynamic>.from(e)))
+            .toList(),
         canEdit: (j['can_edit'] as bool?) ?? false,
       );
 
@@ -321,6 +327,7 @@ class CertDesign {
     bool clearLogo = false,
     Map<String, dynamic>? theme,
     List<CertField>? fields,
+    List<CertField>? fieldsEn,
   }) =>
       CertDesign(
         id: id,
@@ -334,6 +341,7 @@ class CertDesign {
         logoUrl: clearLogo ? null : (logoUrl ?? this.logoUrl),
         theme: theme ?? this.theme,
         fields: fields ?? this.fields,
+        fieldsEn: fieldsEn ?? this.fieldsEn,
         canEdit: canEdit,
       );
 }

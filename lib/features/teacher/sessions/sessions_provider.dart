@@ -89,6 +89,17 @@ class TeacherCourseScreenProvider extends BaseProvider {
 
   List<TeacherSessionItem> get sessions => List.unmodifiable(_sessions);
 
+  /// all · lecture · section
+  String trackFilter = 'all';
+  void setTrackFilter(String v) {
+    trackFilter = v;
+    notifyListeners();
+  }
+
+  List<TeacherSessionItem> get visibleSessions =>
+      trackFilter == 'all' ? sessions : sessions.where((s) => s.track == trackFilter).toList();
+  bool get hasSections => _sessions.any((s) => s.track == 'section');
+
   int get sessionCount => _sessions.length;
 
   /// sessionId → the published exam(s) attached to that session. Parsed from
@@ -192,6 +203,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     String? scheduledAt,
     int durationMinutes = 60,
     int order = 0,
+    String track = 'lecture',
   }) async {
     _submitLoading = true;
     notifyListeners();
@@ -206,6 +218,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'scheduled_at': ?scheduledAt,
       'duration_minutes': durationMinutes,
       'order': order,
+      'track': track,
       },
       ),
       makLoading: false,
@@ -242,6 +255,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         String? scheduledAt,
         int? durationMinutes,
         int? order,
+        String? track,
       }) async {
     _submitLoading = true;
     notifyListeners();
@@ -255,6 +269,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'scheduled_at': ?scheduledAt,
       'duration_minutes': ?durationMinutes,
       'order': ?order,
+      'track': ?track,
       },
       ),
       makLoading: false,

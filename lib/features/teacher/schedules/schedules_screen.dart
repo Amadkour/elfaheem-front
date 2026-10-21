@@ -15,6 +15,7 @@ import '../../../utils/widget/primary_button.dart';
 import '../../admin/admin_common.dart' hide PrimaryButton;
 import 'schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1062,17 +1063,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
         endTime: _fmt(_end));
     if (mounted) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-            r != null ? 'appointment-added-successfully'.tr : 'something-went-wrong'.tr,
-            style: const TextStyle(
-                fontFamily: 'bahji', color: Colors.white)),
-        backgroundColor:
-        r != null ? context.colors.success : context.colors.danger,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12)),
-      ));
+      showAppNotice(r != null ? 'appointment-added-successfully'.tr : 'something-went-wrong'.tr, error: true);
     }
   }
 

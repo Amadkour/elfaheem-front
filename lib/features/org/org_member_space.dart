@@ -19,16 +19,19 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
 import 'org_providers.dart';
-import 'org_services_pages.dart' show ComplaintBubble, fieldIcons;
+import 'org_services_pages.dart' show ComplaintBubble;
 import 'org_ui.dart';
 import 'org_terms_pages.dart';
 import 'org_departments_page.dart' show DeptLogo;
-import 'package:flutter_education_app/design/app_inputs.dart';
+import 'org_academic_pages.dart' show MyAcademicPathPage;
+import 'org_dynamic_form.dart';
+import 'org_join_pages.dart' show OrgJoinUnitsTab;
 
 const _pub = '$orgBase/public';
 
 class OrgMemberSpace extends StatelessWidget {
-  const OrgMemberSpace({super.key, required this.org});
+  const OrgMemberSpace({super.key, required this.org, this.initialTab = 0});
+  final int initialTab;   // 0 news · 1 departments · 2 requests · 3 complaints · 4 regulations · 5 my path · 6 join
   final Map<String, dynamic> org;
 
   @override
@@ -37,7 +40,8 @@ class OrgMemberSpace extends StatelessWidget {
     final col = orgColor(context, org);
     final id = asInt(org['id']);
     return DefaultTabController(
-      length: 5,
+      length: 7,
+      initialIndex: initialTab.clamp(0, 6),
       child: BasePage(
         useWebCard: true,
         maxWith: 900,
@@ -66,6 +70,8 @@ class OrgMemberSpace extends StatelessWidget {
               Tab(icon: const Icon(Icons.assignment_rounded, size: 20), text: t('طلباتي', 'Requests')),
               Tab(icon: const Icon(Icons.support_agent_rounded, size: 20), text: t('شكاواي', 'Complaints')),
               Tab(icon: const Icon(Icons.gavel_rounded, size: 20), text: t('اللوائح', 'Regulations')),
+              Tab(icon: const Icon(Icons.route_rounded, size: 20), text: t('مساري', 'My path')),
+              Tab(icon: const Icon(Icons.group_add_rounded, size: 20), text: t('انضمام', 'Join')),
             ],
           ),
           Expanded(
@@ -75,6 +81,8 @@ class OrgMemberSpace extends StatelessWidget {
               _Requests(orgId: id),
               _MyComplaints(org: org),
               OrgTermsView(orgId: id),
+              MyAcademicPathPage(orgId: id),
+              OrgJoinUnitsTab(orgId: id),
             ]),
           ),
         ]),
@@ -346,8 +354,8 @@ class OrgFormFillScreen extends StatefulWidget {
 class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
   Map<String, dynamic>? _f;
   bool _failed = false, _busy = false;
-  final Map<String, dynamic> _answers = {};
-  final Map<String, TextEditingController> _ctrls = {};
+  final _answers = OrgFormAnswers();
+  Set<String> _missing = {};
 
   @override
   void initState() {
@@ -357,9 +365,7 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
 
   @override
   void dispose() {
-    for (final c in _ctrls.values) {
-      c.dispose();
-    }
+    _answers.dispose();
     super.dispose();
   }
 
@@ -372,22 +378,17 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
     });
   }
 
-  TextEditingController _c(String k) => _ctrls[k] ??= TextEditingController();
-
   Future<void> _submit() async {
     final fields = asMapList(_f?['fields']);
-    for (final f in fields) {
-      final k = '${f['key']}';
-      if (_ctrls.containsKey(k)) _answers[k] = _ctrls[k]!.text.trim();
-      final v = _answers[k];
-      final empty = v == null || v == '' || (v is List && v.isEmpty) || (f['type'] == 'checkbox' && v != true);
-      if (f['required'] == true && empty) {
-        toast(t('«${f['label']}» مطلوب', '"${f['label']}" is required'), error: true);
-        return;
-      }
+    final answers = _answers.collect(fields);
+    setState(() => _missing = _answers.missing(fields));
+    if (_missing.isNotEmpty) {
+      final f = fields.firstWhere((x) => _missing.contains('${x['key']}'));
+      toast(t('«${f['label']}» مطلوب', '"${f['label']}" is required'), error: true);
+      return;
     }
     setState(() => _busy = true);
-    final r = await OrgApi.i.post('$_pub/forms/${widget.formId}/responses', {'answers': _answers});
+    final r = await OrgApi.i.post('$_pub/forms/${widget.formId}/responses', {'answers': answers});
     if (!mounted) return;
     setState(() => _busy = false);
     if (r is Map) {
@@ -405,90 +406,13 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
     }
   }
 
-  Widget _field(Map<String, dynamic> f) {
-    final c = context.colors;
-    final k = '${f['key']}';
-    final label = '${f['label']}${f['required'] == true ? ' *' : ''}';
-    final help = '${f['help'] ?? ''}';
-    final opts = [for (final o in (f['options'] as List? ?? const [])) '$o'];
-    Widget input;
-    switch ('${f['type']}') {
-      case 'textarea':
-        input = Field(controller: _c(k), label: label, maxLines: 4);
-      case 'number':
-        input = Field(controller: _c(k), label: label, keyboard: TextInputType.number, ltr: true);
-      case 'email':
-        input = AppEmailField(controller: _c(k), label: label);
-      case 'phone':
-        input = AppPhoneField(controller: _c(k), label: label);
-      case 'select':
-        input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: orgText(context, w: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, runSpacing: 6, children: [
-            for (final o in opts)
-              ChoiceChip(label: Text(o, style: const TextStyle(fontFamily: 'tajawal')), selected: _answers[k] == o,
-                  onSelected: (_) => setState(() => _answers[k] = o)),
-          ]),
-        ]);
-      case 'multiselect':
-        final cur = {...((_answers[k] as List?) ?? const [])};
-        input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: orgText(context, w: FontWeight.w700)),
-          const SizedBox(height: 6),
-          Wrap(spacing: 8, runSpacing: 6, children: [
-            for (final o in opts)
-              FilterChip(label: Text(o, style: const TextStyle(fontFamily: 'tajawal')), selected: cur.contains(o),
-                  onSelected: (on) => setState(() => _answers[k] = on ? [...cur, o] : cur.where((x) => x != o).toList())),
-          ]),
-        ]);
-      case 'checkbox':
-        input = CheckboxListTile(
-          contentPadding: EdgeInsets.zero,
-          value: _answers[k] == true,
-          onChanged: (v) => setState(() => _answers[k] = v == true),
-          title: Text(label, style: orgText(context, w: FontWeight.w700)),
-          controlAffinity: ListTileControlAffinity.leading,
-        );
-      case 'date':
-        input = ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(fieldIcons['date'], color: c.primary),
-          title: Text(label, style: orgText(context, w: FontWeight.w700)),
-          subtitle: Text('${_answers[k] ?? t('اختر التاريخ', 'Pick a date')}'),
-          onTap: () async {
-            final d = await showDatePicker(context: context, firstDate: DateTime(1950), lastDate: DateTime(2100), initialDate: DateTime.now());
-            if (d != null) setState(() => _answers[k] = d.toIso8601String().substring(0, 10));
-          },
-        );
-      case 'file':
-        final files = asMapList(_answers[k]);
-        input = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: orgText(context, w: FontWeight.w700)),
-          Wrap(spacing: 6, children: [
-            for (final x in files)
-              InputChip(label: Text('${x['name']}'), onDeleted: () => setState(() => _answers[k] = files.where((y) => y != x).toList())),
-            ActionChip(
-              avatar: const Icon(Icons.attach_file_rounded, size: 16),
-              label: Text(t('إرفاق ملف', 'Attach a file')),
-              onPressed: () async {
-                final up = await orgPickAndUpload('$_pub/uploads');
-                if (up != null) setState(() => _answers[k] = [...files, {'name': up['name'], 'url': up['url']}]);
-              },
-            ),
-          ]),
-        ]);
-      default:
-        input = Field(controller: _c(k), label: label);
-    }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        input,
-        if (help.isNotEmpty) Text(help, style: orgText(context, size: 11.5, color: c.textLight)),
-      ]),
-    );
-  }
+  Widget _field(Map<String, dynamic> f) => OrgDynamicField(
+        field: f,
+        answers: _answers,
+        onChanged: () => setState(() {}),
+        error: _missing.contains('${f['key']}') ? t('مطلوب', 'Required') : null,
+        onUpload: () => orgPickAndUpload('$_pub/uploads'),
+      );
 
   @override
   Widget build(BuildContext context) {

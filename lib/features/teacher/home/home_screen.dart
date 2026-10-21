@@ -24,6 +24,7 @@ import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/org/org_home_tab.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -68,7 +69,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
         child: RefreshIndicator(
           color: context.colors.primary,
           onRefresh: () => context.read<TeacherHomeProvider>().init(),
-          child: CustomScrollView(
+          child: ListenableBuilder(
+            listenable: homeTabs,
+            builder: (context, _) => CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
@@ -84,7 +87,11 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                   child: ParentComponent(featureKey: 'teacher_home_topbar', child: _WebTopBar()),
                 ),
 
-              // ── Stats ────────────────────────────────────────────
+              // ── My courses | My organization (members only) ──
+              const SliverToBoxAdapter(child: HomeTabsBar(padding: EdgeInsets.fromLTRB(20, 0, 20, 16))),
+              if (homeTab.value == 1 && homeInOrg.value)
+                const SliverToBoxAdapter(child: OrgHomeTab())
+              else
               SliverToBoxAdapter(
                 child: ColoredBox(
                   color: context.colors.background,
@@ -208,6 +215,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

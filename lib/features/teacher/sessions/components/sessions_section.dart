@@ -14,6 +14,7 @@ import '../../../shared/session/material/session_material_widget.dart';
 import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// [SliverList] + header that lives inside the parent [CustomScrollView].
@@ -45,6 +46,19 @@ List<Widget> buildSessionsSlivers(
             ? const _LoadingState()
             : _EmptyState(key: const ValueKey('teacher_sessions.empty'), onAdd: onAdd),
       ),
+    // Lectures (teacher) · Sections (assistant) — only when the course has sections
+    if (provider.hasSections)
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        sliver: SliverToBoxAdapter(
+          child: SessionTrackTabs(
+            value: provider.trackFilter,
+            lectures: provider.sessions.where((s) => s.track != 'section').length,
+            sections: provider.sessions.where((s) => s.track == 'section').length,
+            onChanged: provider.setTrackFilter,
+          ),
+        ),
+      ),
     if (provider.sessions.isNotEmpty)
       SliverPadding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
@@ -54,13 +68,15 @@ List<Widget> buildSessionsSlivers(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             buildDefaultDragHandles: false,
-            itemCount: provider.sessions.length,
-            onReorderItem: (oldIndex, newIndex) =>
-                provider.reorderSessions(oldIndex, newIndex),
+            itemCount: provider.visibleSessions.length,
+            // re-ordering changes the course's real order → only in the "All" view
+            onReorderItem: (oldIndex, newIndex) {
+              if (provider.trackFilter == 'all') provider.reorderSessions(oldIndex, newIndex);
+            },
             itemBuilder: (ctx, i) => KeyedSubtree(
-              key: ValueKey('session_${provider.sessions[i].id}'),
+              key: ValueKey('session_${provider.visibleSessions[i].id}'),
               child: SessionMaterialCard(
-                session: provider.sessions[i],
+                session: provider.visibleSessions[i],
                 sessionNumber: i + 1,
                 course: course,
                 isTeacher: true,

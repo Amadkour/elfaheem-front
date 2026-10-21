@@ -192,7 +192,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
         : await OrgApi.i.put('${s.base}/access/roles/${widget.role!['id']}', body, t('حُفظت الصلاحيات', 'Saved'));
     if (!mounted) return;
     setState(() => _busy = false);
-    if (r != null) Navigator.pop(context);
+    if (r != null) Navigator.pop(context, r);   // the saved role (the member form selects a role created in place)
   }
 
   @override

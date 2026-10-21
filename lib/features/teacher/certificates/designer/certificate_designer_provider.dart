@@ -84,7 +84,7 @@ class CertificateDesignerProvider extends BaseProvider {
     final q = certificateId == null ? '' : '?certificate_id=$certificateId';
     final r = await run(() => _api.post('/api/v1/certificate-designs/$id/duplicate$q'));
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       notifyListeners();
       return true;
     }
@@ -94,7 +94,7 @@ class CertificateDesignerProvider extends BaseProvider {
   Future<bool> loadDesign(int designId) async {
     final r = await run(() => _api.get('/api/v1/certificate-designs/$designId'));
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       selectedId = null;
       dirty = false;
       notifyListeners();
@@ -107,7 +107,7 @@ class CertificateDesignerProvider extends BaseProvider {
   Future<bool> loadForCertificate(int certificateId) async {
     final r = await run(() => _api.get('/api/v1/certificates/$certificateId/design'));
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       selectedId = null;
       dirty = false;
       notifyListeners();
@@ -140,7 +140,7 @@ class CertificateDesignerProvider extends BaseProvider {
         }));
     busy = false;
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       selectedId = null;
       dirty = false;
       notifyListeners();
@@ -167,7 +167,7 @@ class CertificateDesignerProvider extends BaseProvider {
         }));
     busy = false;
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       dirty = false;
       notifyListeners();
       return true;
@@ -206,7 +206,7 @@ class CertificateDesignerProvider extends BaseProvider {
         }));
     busy = false;
     if (r is Map<String, dynamic>) {
-      design = CertDesign.fromJson(r);
+      _adopt(CertDesign.fromJson(r));
       dirty = false;
       notifyListeners();
       return true;
@@ -391,6 +391,10 @@ class CertificateDesignerProvider extends BaseProvider {
             ))
         .toList();
     design = d.copyWith(orientation: orientation, fields: moved);
+    // the other language's layout keeps its relative places too
+    _otherFields = _otherFields
+        ?.map((f) => f.copyWith(x: f.x * sx, w: f.w * sx, y: f.y * sy, h: f.isImage ? f.h * (sx < sy ? sx : sy) : f.h))
+        .toList();
     _touch();
     // A generated background has to be redrawn for the new page shape.
     if (d.backgroundKind == 'draft') {
@@ -409,7 +413,29 @@ class CertificateDesignerProvider extends BaseProvider {
     notifyListeners();
   }
 
+  // ── one layout per language ─────────────────────────────────────────────
+  // design.fields is ALWAYS the layout being edited; the other language's layout waits in _otherFields.
+  // Switching EN ⇄ ع swaps them, so every editing tool works on the active language unchanged.
+  List<CertField>? _otherFields;
+
+  List<CertField> get arabicFields => editArabic ? (design?.fields ?? const []) : (_otherFields ?? const []);
+  List<CertField> get englishFields => editArabic ? (_otherFields ?? const []) : (design?.fields ?? const []);
+
+  /// A design from the server: Arabic = fields, English = fields_en (a copy of the Arabic one when not set yet).
+  void _adopt(CertDesign d) {
+    final ar = d.fields;
+    final en = d.fieldsEn.isEmpty ? [for (final f in ar) f.copyWith()] : d.fieldsEn;
+    design = d.copyWith(fields: editArabic ? ar : en);
+    _otherFields = editArabic ? en : ar;
+  }
+
   void setEditArabic(bool v) {
+    if (v != editArabic && design != null) {
+      final current = design!.fields;
+      design = design!.copyWith(fields: _otherFields ?? [for (final f in current) f.copyWith()]);
+      _otherFields = current;
+      selectedId = null;
+    }
     editArabic = v;
     notifyListeners();
   }
@@ -629,7 +655,8 @@ class CertificateDesignerProvider extends BaseProvider {
           'name': d.name,
           'orientation': d.orientation,
           'theme': d.theme,
-          'fields': d.fields.map((f) => f.toJson()).toList(),
+          'fields': arabicFields.map((f) => f.toJson()).toList(),       // Arabic layout
+          'fields_en': englishFields.map((f) => f.toJson()).toList(),   // English layout
           if (d.backgroundUrl != null) ...{
             'background_url': d.backgroundUrl,
             'background_kind': d.backgroundKind,
@@ -641,7 +668,7 @@ class CertificateDesignerProvider extends BaseProvider {
     saving = false;
     if (r is Map<String, dynamic>) {
       final saved = CertDesign.fromJson(r);
-      design = saved.copyWith(); // server copy is the source of truth after saving
+      _adopt(saved); // server copy is the source of truth after saving (both languages)
       dirty = false;
       notifyListeners();
       return true;

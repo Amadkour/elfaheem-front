@@ -20,6 +20,7 @@ import '../../auth/auth_widgets.dart';
 import '../../auth/teacher_document_model.dart';
 import '../../auth/teacher_document_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class EditAccountScreen extends StatefulWidget {
   final bool isTeacher;
@@ -176,20 +177,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   }
 
   void _showSnack(String msg, Color color) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-          ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showAppNotice(msg);
 
   @override
   Widget build(BuildContext context) {

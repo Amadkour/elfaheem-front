@@ -10,6 +10,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'certificate_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class CertificateRequestsScreen extends StatelessWidget {
   const CertificateRequestsScreen({super.key});
@@ -80,11 +81,7 @@ class _RequestCard extends StatelessWidget {
     final p = context.read<CertificateRequestsProvider>();
     final busy = context.watch<CertificateRequestsProvider>().busyIds.contains(item.requestId);
 
-    void toast(String m, {bool error = false}) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(m, style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-          backgroundColor: error ? c.danger : c.success,
-          behavior: SnackBarBehavior.floating,
-        ));
+    void toast(String m, {bool error = false}) => showAppNotice(m, error: true);
 
     return Container(
       padding: const EdgeInsets.all(14),

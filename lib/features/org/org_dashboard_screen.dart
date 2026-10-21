@@ -37,12 +37,15 @@ import 'org_departments_page.dart';
 import 'org_services_pages.dart';
 import 'org_status_screen.dart';
 import 'org_ui.dart';
+import 'org_workspace.dart';
 import 'org_terms_pages.dart';
 import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'org_academic_pages.dart' show OrgAcademicPage;
+import 'org_join_pages.dart' show OrgJoinInboxPage;
 
 class _OrgTabs extends ChangeNotifier {
   int currentTab = 0;
@@ -252,6 +255,7 @@ class _OrgOverviewPageState extends State<OrgOverviewPage> {
             icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
           ),
         ),
+        const OrgWorkspace(),            // my departments + every area I can manage / view
         if (_failed)
           SizedBox(height: 260, child: ErrorRetry(message: t('تعذّر تحميل البيانات', 'Could not load data'), onRetry: _load))
         else if (d == null)
@@ -727,6 +731,10 @@ class _OrgServicesGroup extends StatelessWidget {
     Widget tile(IconData icon, Color col, String label, VoidCallback onTap) =>
         SettingsTile(icon: icon, iconBg: col.withAlpha(38), iconColor: col, label: label, onTap: onTap);
     final tiles = <Widget>[
+      // approvers can be unit managers or chosen assistants — the server lists only what I may decide
+      if (s.isOrgAdmin || s.canAny('departments') || s.can('academic') || s.myDeptIds.isNotEmpty)
+        tile(Icons.how_to_reg_rounded, c.warning, t('طلبات الانضمام للإدارات والأقسام', 'Department join requests'),
+            () => open(t('طلبات الانضمام', 'Join requests'), const OrgJoinInboxPage())),
       if (s.can('announcements'))
         tile(Icons.campaign_rounded, c.primary, t('إعلانات المؤسسة', 'Organization news'),
             () => open(t('الإعلانات', 'Announcements'), const OrgAnnouncementsPage())),
@@ -742,6 +750,9 @@ class _OrgServicesGroup extends StatelessWidget {
       if (s.canAny('certificates') || s.isOrgAdmin)
         tile(Icons.workspace_premium_rounded, AdminPalette.orange.last, t('تصميمات الشهادات', 'Certificate designs'),
             () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
+      if (s.can('academic'))
+        tile(Icons.school_rounded, AdminPalette.indigo.last, t('الهيكل الأكاديمي', 'Academic structure'),
+            () => open(t('الهيكل الأكاديمي', 'Academic structure'), const OrgAcademicPage())),
       if (s.can('terms'))
         tile(Icons.gavel_rounded, AdminPalette.orange.last, t('الشروط واللوائح', 'Terms & regulations'),
             () => open(t('الشروط واللوائح', 'Terms & regulations'), const OrgTermsAdminPage())),

@@ -20,6 +20,7 @@ import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 import 'certificate_design_models.dart';
 import 'certificate_designer_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
   final ApiClient _api;
@@ -233,12 +234,7 @@ class _DesignCard extends StatelessWidget {
                     : () async {
                         final ok = await context.read<CertificateDesignsProvider>().attach(certificateId!, design.id);
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text((ok ? 'cert_design_in_use' : 'certificate_action_failed').tr,
-                              style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-                          backgroundColor: ok ? c.success : c.danger,
-                          behavior: SnackBarBehavior.floating,
-                        ));
+                        showAppNotice((ok ? 'cert_design_in_use' : 'certificate_action_failed').tr, error: true);
                       },
                 icon: const Icon(Icons.check_rounded, size: 16),
                 label: Text('cert_use_design'.tr),

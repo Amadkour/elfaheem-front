@@ -27,6 +27,9 @@ import '../../../../utils/widget/text_field.dart';
 import 'complaint_attachement_widgets.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
@@ -48,6 +51,10 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   final _suggestionCtrl = TextEditingController();
 
   ComplaintCategory _category = ComplaintCategory.general;
+  // what / who it is about
+  late String _targetType = widget.courseId != null ? 'course' : 'general';
+  late int? _targetId = widget.courseId == null ? null : int.tryParse(widget.courseId!);
+  late String? _targetLabel = widget.courseTitle;
   ComplaintPriority _priority = ComplaintPriority.medium;
 
   bool _suggestionExpanded = false;
@@ -107,6 +114,9 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       category: _category,
       priority: _priority,
       courseId: widget.courseId,
+      targetType: _targetType,
+      targetId: _targetType == 'general' ? null : _targetId,
+      targetLabel: _targetLabel,
       suggestedSolution:
       _suggestionCtrl.text.trim().isEmpty ? null : _suggestionCtrl.text.trim(),
     );
@@ -158,6 +168,16 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
                 controller: _tabs,
                 children: [
                   _FormTab(
+                    target: ComplaintTargetPicker(
+                      type: _targetType,
+                      id: _targetId,
+                      label: _targetLabel,
+                      onChanged: (type, id, label) => setState(() {
+                        _targetType = type;
+                        _targetId = id;
+                        _targetLabel = label;
+                      }),
+                    ),
                     formKey: _formKey,
                     titleCtrl: _titleCtrl,
                     descCtrl: _descCtrl,
@@ -472,7 +492,9 @@ class _Badge extends StatelessWidget {
 // ══════════════════════════════════════════════════════════════════════════════
 
 class _FormTab extends StatelessWidget {
+  final Widget? target;   // "about": general · course · teacher · student · staff · department
   const _FormTab({
+    this.target,
     required this.formKey,
     required this.titleCtrl,
     required this.descCtrl,
@@ -527,6 +549,7 @@ class _FormTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+          if (target != null) target!,
                 _Hero(courseTitle: courseTitle),
 
                 // ── Title ──────────────────────────────────────────────
@@ -1737,5 +1760,105 @@ class _PriorityPicker extends StatelessWidget {
         ),
       ],
     ]);
+  }
+}
+
+/// "What is this about?" — general, or a course / teacher / student / staff member / department of YOUR world.
+class ComplaintTargetPicker extends StatefulWidget {
+  const ComplaintTargetPicker({super.key, required this.type, this.id, this.label, required this.onChanged});
+  final String type;
+  final int? id;
+  final String? label;
+  final void Function(String type, int? id, String? label) onChanged;
+
+  @override
+  State<ComplaintTargetPicker> createState() => _ComplaintTargetPickerState();
+}
+
+class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
+  Map<String, List<Map<String, dynamic>>> _cache = {};
+
+  static const _types = [
+    ('general', Icons.public_rounded, 'complaint_about_general'),
+    ('course', Icons.menu_book_rounded, 'complaint_about_course_t'),
+    ('teacher', Icons.person_pin_rounded, 'complaint_about_teacher'),
+    ('student', Icons.school_rounded, 'complaint_about_student'),
+    ('staff', Icons.support_agent_rounded, 'complaint_about_staff'),
+    ('department', Icons.apartment_rounded, 'complaint_about_department'),
+  ];
+
+  Future<void> _pick(String type) async {
+    if (type == 'general') return widget.onChanged('general', null, null);
+    var items = _cache[type];
+    if (items == null) {
+      try {
+        final r = await ApiClient().get('/api/v1/complaints/targets', queryParams: {'type': type});
+        items = [for (final x in ((r as Map)['items'] as List)) Map<String, dynamic>.from(x as Map)];
+        _cache = {..._cache, type: items};
+      } catch (_) {
+        items = const [];
+      }
+    }
+    if (!mounted) return;
+    if (items.isEmpty) {
+      showAppNotice('complaint_about_none'.tr, error: true);
+      return;
+    }
+    final picked = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      useSafeArea: true,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(_types.firstWhere((x) => x.$1 == type).$3.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 8),
+          Flexible(child: ListView(shrinkWrap: true, children: [
+            for (final x in items!)
+              Material(
+                type: MaterialType.transparency,
+                child: ListTile(title: Text('${x['label']}', style: const TextStyle(fontFamily: 'tajawal')), onTap: () => Navigator.pop(ctx, x)),
+              ),
+          ])),
+        ]),
+      ),
+    );
+    if (picked != null) widget.onChanged(type, (picked['id'] as num).toInt(), '${picked['label']}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('complaint_about'.tr, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+        const SizedBox(height: 8),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final x in _types)
+            ChoiceChip(
+              avatar: Icon(x.$2, size: 17, color: widget.type == x.$1 ? c.primary : c.textMedium),
+              label: Text(x.$3.tr, style: const TextStyle(fontFamily: 'tajawal')),
+              selected: widget.type == x.$1,
+              onSelected: (_) => _pick(x.$1),
+            ),
+        ]),
+        if (widget.type != 'general' && (widget.label ?? '').isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: c.primary.withValues(alpha: 0.25))),
+              child: Row(children: [
+                Icon(_types.firstWhere((x) => x.$1 == widget.type).$2, color: c.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(child: Text('${widget.label}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
+                TextButton(onPressed: () => _pick(widget.type), child: Text('change'.tr)),
+              ]),
+            ),
+          ),
+      ]),
+    );
   }
 }

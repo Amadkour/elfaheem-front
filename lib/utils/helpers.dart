@@ -9,6 +9,7 @@ import '../features/student/models.dart';
 import '../features/teacher/sessions/components/session_form_sheet.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Saudi Arabia Timezone  (AST = UTC+3, no DST)
@@ -110,6 +111,8 @@ class Helpers {
 
   /// Show snackbar message
   static void showMessage(String message, {bool isError = false}) {
+    // above every route (open sheets / dialogs no longer hide it) — falls back to the SnackBar below
+    if (showAppNotice(message, error: isError)) return;
     if (navigatorKey.currentContext == null) {
       return;
     }

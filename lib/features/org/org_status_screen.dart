@@ -11,7 +11,7 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
-import '../admin/admin_list.dart';
+import '../admin/admin_list.dart' show IconBadge;
 import 'org_common.dart';
 import 'org_dashboard_screen.dart' show showOrgForm, showOrgSwitcher;
 import 'org_providers.dart';

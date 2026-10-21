@@ -16,6 +16,7 @@ import 'widgets/live_palette.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'widgets/controls.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
@@ -1475,15 +1476,7 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   void _showSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: const TextStyle(color: _textHigh)),
-        backgroundColor: _surfaceHi,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 4),
-      ),
-    );
+    showAppNotice(msg);
   }
 
   Future<bool?> _showConfirmDialog({
