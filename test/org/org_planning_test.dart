@@ -64,9 +64,32 @@ void main() {
     });
 
     test('a group bigger than every fitting room is an error', () {
-      final r = planCourse(const CoursePlan(courseId: 7, expectedStudents: 90), load(room: 'lecture'), rooms);
+      final r = planCourse(const CoursePlan(courseId: 7, expectedStudents: 90, lectureGroupSize: 90), load(room: 'lecture'), rooms);
       expect(r.issues.map((i) => i.code), contains('no_room_fits'));
       expect(r.hasErrors, isTrue);
+    });
+
+    test('with no group size, groups = ceil(students / largest suitable room); labs use lab capacity', () {
+      const hall = [
+        {'id': 1, 'kind': 'hall', 'capacity': 200, 'is_active': true},
+        {'id': 2, 'kind': 'lab', 'capacity': 50, 'is_active': true},
+        {'id': 3, 'kind': 'hall', 'capacity': 900, 'is_active': false}, // inactive: never counted
+      ];
+      final r = planCourse(const CoursePlan(courseId: 7, expectedStudents: 500, countSource: 'manual'), load(room: 'hall', labs: 1, labRoom: 'lab'), hall);
+      expect(r.lectureGroups, 3);
+      expect(r.lectureSizes.every((s) => s <= 200), isTrue);
+      expect(r.labGroups, 10);
+      expect(r.labSizes.reduce((a, b) => a + b), 500); // nobody dropped
+      expect([r.autoLectureSize, r.autoLabSize], [200, 50]);
+      expect(r.hasErrors, isFalse);
+      expect(r.issues.map((i) => i.code), containsAll(['sized_by_room', 'estimate']));
+    });
+
+    test('an explicit group count is never silently raised: groups that do not fit stay an error', () {
+      final r = planCourse(const CoursePlan(courseId: 7, expectedStudents: 500, lectureGroups: 2), load(room: 'lecture'), rooms);
+      expect(r.lectureGroups, 2);
+      expect(r.autoLectureSize, isNull);
+      expect(r.issues.map((i) => i.code), contains('no_room_fits'));
     });
 
     test('a fixed group count under the size limit is flagged with the count that fits', () {

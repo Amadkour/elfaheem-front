@@ -3,7 +3,8 @@
 //
 //   ScheduleHealth        pure: dashboard numbers from GET …/validate, the generation report and the suggestions
 //   ScheduleSuggestion    one proposed change set (move / add period / add day / rooms / groups / staff / combined)
-//   SuggestionApi         Remote (…/schedules/{sid}/suggestions, docs/backend/scheduling-spec.md §1) · Mock (dev only)
+//   SuggestionApi         Remote (…/schedules/{sid}/suggestions, routers/organization/org_schedule_router.py) · Mock (dev only)
+//                         accepting a day / period / groups change answers 202 + a regeneration run, followed to its end
 //   ScheduleHorizon       settings.horizon — flexible (suggest, needs approval) or forced (admin sets the days)
 //   openScheduleOptimizer the page, opened from the timetable studio
 //
@@ -24,6 +25,7 @@ import '../admin/admin_list.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_planning.dart' show kOrgSchedulingMocks;
+import 'org_schedule_versions.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -137,7 +139,8 @@ class ScheduleSuggestion {
       impact: SuggestionImpact.fromJson(asMap(j['impact'])),
       introducedConflicts: asMapList(j['introduced_conflicts']),
       valid: v['valid'] is bool ? v['valid'] as bool : null,
-      violations: asMapList(v['hard_constraint_violations']),
+      // the server sends the violated rule types as strings; described conflicts are maps
+      violations: [for (final x in (v['hard_constraint_violations'] as List?) ?? const []) x is Map ? Map<String, dynamic>.from(x) : {'type': '$x', 'severity': 'error'}],
       permission: '${req['permission'] ?? 'schedule.update'}',
       needsApproval: req['approval'] == true,
       applicable: j['applicable'] != false,
@@ -190,9 +193,13 @@ class SuggestionList {
 
 /// Result of accept / batch apply.
 class SuggestionApplied {
-  const SuggestionApplied(this.items, {this.version, this.revisionId});
+  const SuggestionApplied(this.items, {this.version, this.revisionId, this.run});
   final List<ScheduleSuggestion> items;
   final int? version, revisionId;
+
+  /// A configuration change (day / period / groups) answers 202 with the regeneration run: the suggestion stays
+  /// "accepted" until that run ends and marks it applied or failed.
+  final Map<String, dynamic>? run;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -367,7 +374,9 @@ class RemoteSuggestionApi implements SuggestionApi {
     final m = asMap(r);
     final items = m['items'] is List ? asMapList(m['items']) : [asMap(m['suggestion'])];
     return SuggestionApplied(items.where((x) => x.isNotEmpty).map(ScheduleSuggestion.fromJson).toList(),
-        version: m['version'] == null ? null : asInt(m['version']), revisionId: asMap(m['revision'])['id'] == null ? null : asInt(asMap(m['revision'])['id']));
+        version: m['version'] == null ? null : asInt(m['version']),
+        revisionId: asMap(m['revision'])['id'] == null ? null : asInt(asMap(m['revision'])['id']),
+        run: m['run'] is Map ? asMap(m['run']) : null);
   }
 
   @override
@@ -586,8 +595,26 @@ IconData suggestionTypeIcon(String type) => switch (type) {
       _ => Icons.auto_fix_high_rounded,
     };
 
+/// What the suggestion keeps and what it gives up, from the server's own validation and soft-cost figures.
+String suggestionTradeOff(ScheduleSuggestion s) {
+  final i = s.impact;
+  final kept = s.valid == true
+      ? t('القيود الإلزامية محفوظة (الأهلية، السعة، التجهيزات، عدم التداخل، الأوقات غير المتاحة)', 'Hard rules kept (eligibility, capacity, facilities, no double booking, unavailable times)')
+      : s.valid == false
+          ? t('يخالف قيداً إلزامياً — لا يمكن تطبيقه', 'Breaks a hard rule — it cannot be applied')
+          : t('لم يتحقق الخادم من القيود بعد', 'The server has not checked the rules yet');
+  final before = i.softCostBefore, after = i.softCostAfter;
+  final soft = before == null || after == null
+      ? ''
+      : after > before
+          ? t(' · يخفّف تفضيلات مرنة (التكلفة +${(after - before).toStringAsFixed(1)})', ' · relaxes soft preferences (cost +${(after - before).toStringAsFixed(1)})')
+          : t(' · لا يخفّف أي تفضيل مرن', ' · relaxes no soft preference');
+  final config = s.expandsConfig ? t(' · يغيّر إعداد الجدول نفسه ويعيد توليد الحصص المتأثرة', ' · changes the timetable set-up itself and regenerates the affected sessions') : '';
+  return '$kept$soft$config';
+}
+
 String suggestionStatusLabel(String s) => switch (s) {
-      'pending' => t('بانتظار القرار', 'Pending'),
+      'pending' => t('مقترح', 'Suggested'),
       'accepted' => t('مقبول — جارٍ التطبيق', 'Accepted — applying'),
       'applied' => t('طُبّق', 'Applied'),
       'rejected' => t('مرفوض', 'Rejected'),
@@ -625,6 +652,7 @@ class _OptimizerPageState extends State<_OptimizerPage> {
   bool generating = false;
   String filter = 'pending';
   final busy = <String>{}; // suggestion ids in flight — a second tap never sends a second apply
+  final applying = <String>{}; // accepted, regeneration running
   final picked = <String>{};
 
   OrgScheduleProvider get p => widget.p;
@@ -675,12 +703,24 @@ class _OptimizerPageState extends State<_OptimizerPage> {
     setState(() => busy.addAll(ids));
     try {
       final r = ids.length == 1 ? await widget.api.accept(sid, ids.single, version: version) : await widget.api.applyBatch(sid, ids, version: version);
-      final failed = r.items.where((s) => s.status == 'failed' || s.status == 'invalidated').length;
-      toast(failed > 0
-          ? t('تعذّر تطبيق $failed من الاقتراحات — راجع حالتها', '$failed suggestion(s) could not be applied — see their status')
-          : (r.items.any((s) => s.status == 'accepted') ? t('قُبل — يجري التطبيق', 'Accepted — being applied') : t('طُبّق التغيير وحُفظت نسخة', 'Applied — a version was saved')), error: failed > 0);
       picked.removeAll(ids);
+      if (r.run != null) {
+        // a configuration change: success is only reported once the regeneration has run and the server says so
+        setState(() => applying.addAll(ids));
+        await _follow(r.run!);
+        setState(() => applying.removeAll(ids));
+      }
       await _refreshAll();
+      final now = [for (final s in data?.items ?? const <ScheduleSuggestion>[]) if (ids.contains(s.id)) s];
+      final failed = now.where((s) => s.status == 'failed' || s.status == 'invalidated').length;
+      final open = now.where((s) => s.status == 'accepted').length;
+      toast(
+          failed > 0
+              ? t('تعذّر تطبيق $failed من الاقتراحات — لم يتغير شيء منها، راجع السبب', '$failed suggestion(s) could not be applied — nothing of them changed, see why')
+              : open > 0
+                  ? t('قُبل — إعادة التوليد ما زالت تعمل', 'Accepted — the regeneration is still running')
+                  : t('طُبّق التغيير على الجدول وحُفظت نسخة', 'Applied to the timetable — a version was saved'),
+          error: failed > 0);
     } catch (e) {
       final x = ApiException.from(e);
       if (x.code == 'suggestion_invalid' && mounted) {
@@ -691,6 +731,17 @@ class _OptimizerPageState extends State<_OptimizerPage> {
       if (x.code == 'stale_version' || x.code == 'suggestion_stale' || x.code == 'suggestion_invalid' || x.code == 'suggestion_already_applied') await _refreshAll();
     }
     if (mounted) setState(() => busy.removeAll(ids));
+  }
+
+  /// Follows the regeneration an accepted configuration change started (GET …/runs/{id}) until it ends.
+  Future<void> _follow(Map<String, dynamic> run) async {
+    var r = run;
+    final rid = asInt(r['id']);
+    for (var i = 0; i < 300 && runIsOpen(r) && mounted; i++) {
+      await Future<void>.delayed(const Duration(seconds: 2));
+      final g = await orgCall(() => p.api.get('${p.base}/schedules/$sid/runs/$rid'), quiet: true);
+      if (g.ok) r = g.map;
+    }
   }
 
   Future<void> _reject(ScheduleSuggestion s) async {
@@ -807,6 +858,7 @@ class _OptimizerPageState extends State<_OptimizerPage> {
           ),
         ],
         _HorizonCard(p: p, canEdit: widget.canEdit && draft, canForce: widget.canApprove && draft),
+        RelaxationCard(p: p, canEdit: widget.canEdit && draft),
         OrgSectionTitle(
           t('الاقتراحات', 'Suggestions'),
           subtitle: t('كل اقتراح يُعاد التحقق منه على أحدث نسخة قبل التطبيق', 'Each one is revalidated on the latest version before it is applied'),
@@ -834,7 +886,7 @@ class _OptimizerPageState extends State<_OptimizerPage> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(children: [
-              for (final f in ['pending', 'applied', 'rejected', 'invalidated', 'failed', 'all'])
+              for (final f in ['pending', 'accepted', 'applied', 'rejected', 'invalidated', 'failed', 'all'])
                 Padding(
                   padding: const EdgeInsetsDirectional.only(end: 6),
                   child: ChoiceChip(
@@ -878,7 +930,7 @@ class _OptimizerPageState extends State<_OptimizerPage> {
           Icon(suggestionTypeIcon(s.type), color: color),
           const SizedBox(width: 8),
           Expanded(child: Text(s.title.isEmpty ? suggestionTypeLabel(s.type) : s.title, style: orgText(context, w: FontWeight.w800))),
-          OrgPill(suggestionStatusLabel(s.status), color: color),
+          OrgPill(applying.contains(s.id) ? t('يجري التطبيق…', 'Applying…') : suggestionStatusLabel(s.status), color: color),
         ]),
         const SizedBox(height: 4),
         Wrap(spacing: 6, runSpacing: 4, children: [
@@ -899,6 +951,7 @@ class _OptimizerPageState extends State<_OptimizerPage> {
         for (final ch in s.changes) Padding(padding: const EdgeInsets.only(top: 6), child: _changeLine(context, ch)),
         for (final l in _configLines(context, s.config)) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $l', style: orgText(context, size: 12.5))),
         Padding(padding: const EdgeInsets.only(top: 6), child: _impactLine(context, s.impact)),
+        Padding(padding: const EdgeInsets.only(top: 4), child: Text(suggestionTradeOff(s), style: orgText(context, size: 12, color: c.textMedium))),
         if (s.introducedConflicts.isNotEmpty || s.violations.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(t('ما يسببه هذا التغيير:', 'What this change causes:'), style: orgText(context, size: 12, w: FontWeight.w800, color: c.danger)),
@@ -976,7 +1029,11 @@ List<String> _configLines(BuildContext context, Map<String, dynamic> config) {
         'Study days: ${(days['before'] as List?)?.length ?? '—'} → ${(days['after'] as List?)?.length ?? '—'} (${names(days['after'])})'));
   }
   final per = asMap(config['periods']);
-  if (per.isNotEmpty) out.add(t('الفترات اليومية: ${per['before'] ?? '—'} ← ${per['after'] ?? '—'}', 'Periods per day: ${per['before'] ?? '—'} → ${per['after'] ?? '—'}'));
+  if (per['before'] != null || per['after'] != null) out.add(t('الفترات اليومية: ${per['before'] ?? '—'} ← ${per['after'] ?? '—'}', 'Periods per day: ${per['before'] ?? '—'} → ${per['after'] ?? '—'}'));
+  for (final x in asMapList(per['add'])) {
+    out.add(t('فترة جديدة (لكل جداول المؤسسة): ${x['label'] ?? ''} ${x['start_time'] ?? ''}–${x['end_time'] ?? ''}',
+        'New period (shared by every timetable): ${x['label'] ?? ''} ${x['start_time'] ?? ''}–${x['end_time'] ?? ''}'));
+  }
   for (final r in asMapList(asMap(config['rooms'])['add'])) {
     out.add(t('مكان جديد: ${r['name'] ?? ''} (${r['kind'] ?? ''}، ${r['capacity'] ?? '?'} مقعد)', 'New room: ${r['name'] ?? ''} (${r['kind'] ?? ''}, ${r['capacity'] ?? '?'} seats)'));
   }
@@ -1162,6 +1219,97 @@ class _HorizonCard extends StatelessWidget {
                         if (ctx.mounted) Navigator.pop(ctx);
                         toast(t('حُفظ — أُعيد التحقق من الجدول', 'Saved — the timetable was revalidated'));
                       },
+              ),
+            ]),
+          );
+        }));
+  }
+}
+
+/// The order relaxable restrictions give way in (settings.relaxation_priority). Hard rules are not in the list:
+/// they never relax. The server's solver today tells only assistants from teachers (settings.relax_order =
+/// role_then_experience); the full order ranks alternatives here and is stored for the server
+/// (docs/backend/scheduling-spec.md G1).
+class RelaxationCard extends StatelessWidget {
+  const RelaxationCard({super.key, required this.p, required this.canEdit});
+  final OrgScheduleProvider p;
+  final bool canEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final settings = asMap(p.schedule?['settings']);
+    final policy = RelaxationPolicy.fromSettings(settings);
+    return Column(children: [
+      OrgSectionTitle(t('أولوية التخفيف', 'Relaxation priority'),
+          subtitle: t('عند التعذر يُخفَّف الأعلى أولاً — والقيود الإلزامية لا تُخفَّف أبداً', 'When needed, the top one gives way first — hard rules never do'),
+          action: canEdit ? TextButton.icon(onPressed: () => _edit(context, policy), icon: const Icon(Icons.swap_vert_rounded), label: Text(t('ترتيب', 'Reorder'))) : null),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: RowCard(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (var i = 0; i < policy.order.length; i++) Text('${i + 1}. ${relaxTierLabel(policy.order[i])}', style: orgText(context, size: 12.5, w: FontWeight.w700)),
+            const SizedBox(height: 4),
+            Text(
+                settings['relax_order'] == 'role_then_experience'
+                    ? t('الخادم يطبّق حالياً: تفضيلات المعيدين قبل المدرسين (ثم الأقل خبرة). باقي الترتيب يُستخدم لترتيب البدائل.',
+                        'The server applies today: assistants\' preferences before teachers\' (then less experience). The rest of the order ranks the alternatives.')
+                    : t('الخادم لا يفرّق حالياً بين الأدوار عند التخفيف. الترتيب يُستخدم لترتيب البدائل.', 'The server does not tell roles apart when relaxing today. The order ranks the alternatives.'),
+                style: orgText(context, size: 11.5, color: c.textLight)),
+          ]),
+        ),
+      ),
+    ]);
+  }
+
+  Future<void> _edit(BuildContext context, RelaxationPolicy start) async {
+    var policy = start;
+    var busy = false;
+    String? err;
+    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          final c = ctx.colors;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SheetHeader(t('أولوية التخفيف', 'Relaxation priority')),
+              Text(t('الأول يُخفَّف أولاً. لا يدخل هنا: أهلية المدرس، سعة المكان، التجهيزات، عدم التداخل، الصلاحيات.',
+                  'The first gives way first. Never in this list: staff eligibility, room capacity, facilities, no double booking, permissions.'),
+                  style: orgText(ctx, size: 12, color: c.textMedium)),
+              const SizedBox(height: 8),
+              for (var i = 0; i < policy.order.length; i++)
+                Row(children: [
+                  Expanded(child: Text('${i + 1}. ${relaxTierLabel(policy.order[i])}', style: orgText(ctx, w: FontWeight.w700))),
+                  IconButton(onPressed: i == 0 ? null : () => set(() => policy = policy.move(policy.order[i], -1)), icon: const Icon(Icons.arrow_upward_rounded)),
+                  IconButton(onPressed: i == policy.order.length - 1 ? null : () => set(() => policy = policy.move(policy.order[i], 1)), icon: const Icon(Icons.arrow_downward_rounded)),
+                ]),
+              if (policy.rank('teacher_prefs') != policy.order.length - 1)
+                Text(t('تنبيه: تفضيلات المدرسين لم تعد الأخيرة.', 'Note: teacher preferences are no longer last.'), style: orgText(ctx, size: 12, color: c.warning)),
+              if (err != null) Text(err!, style: orgText(ctx, size: 12, color: c.danger)),
+              const SizedBox(height: 8),
+              PrimaryButton(
+                isLoading: busy,
+                label: t('حفظ', 'Save'),
+                onPressed: () async {
+                  set(() {
+                    busy = true;
+                    err = null;
+                  });
+                  final d = ScheduleDraft.fromJson(p.schedule!, allCourses: [for (final l in p.loads) asInt(l['course_id'])]);
+                  d.settings['relaxation_priority'] = policy.toJson();
+                  // the part the server's solver understands today
+                  d.settings['relax_order'] = policy.rank('assistant_prefs') < policy.rank('teacher_prefs') ? 'role_then_experience' : 'none';
+                  final r = await p.saveDraft(d);
+                  if (!r.ok) {
+                    set(() {
+                      busy = false;
+                      err = orgErrorText(r.error!);
+                    });
+                    return;
+                  }
+                  await p.open(asInt(p.schedule!['id']));
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  toast(t('حُفظ — يُطبّق في التوليد القادم', 'Saved — used by the next generation'));
+                },
               ),
             ]),
           );

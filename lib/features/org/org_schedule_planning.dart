@@ -140,9 +140,10 @@ class PlanIssue {
 }
 
 class CoursePlanResult {
-  const CoursePlanResult({required this.lectureSizes, required this.labSizes, required this.weeklyPeriods, required this.issues});
+  const CoursePlanResult({required this.lectureSizes, required this.labSizes, required this.weeklyPeriods, required this.issues, this.autoLectureSize, this.autoLabSize});
   final List<int> lectureSizes, labSizes;
   final int weeklyPeriods; // every group's sessions × periods
+  final int? autoLectureSize, autoLabSize; // group size taken from the largest suitable room (no size set); saved so the server agrees
   final List<PlanIssue> issues;
 
   int get lectureGroups => lectureSizes.length;
@@ -156,17 +157,40 @@ int largestRoom(List<Map<String, dynamic>> rooms, String? kind) => rooms
     .fold(0, (m, r) => asInt(r['capacity']) > m ? asInt(r['capacity']) : m);
 
 /// What [plan] means for one course whose requirements are [load] (the `/loads` row) given the organization's [rooms].
+/// Groups needed = ceil(students / maximum group size). With no size set, the maximum is the capacity of the largest
+/// suitable active room (lab capacity for labs): 500 students and a 200-seat hall → 3 lecture groups, never one group
+/// of 500. An explicit group count is kept as given and reported when its groups do not fit.
 CoursePlanResult planCourse(CoursePlan plan, Map<String, dynamic> load, List<Map<String, dynamic>> rooms) {
   final n = plan.students;
   final hasLab = asInt(load['lab_sessions_per_week']) > 0;
-  final lecN = plan.lectureGroups ?? groupsNeeded(n, plan.lectureGroupSize);
-  final labN = hasLab ? (plan.labGroups ?? groupsNeeded(n, plan.labGroupSize ?? plan.lectureGroupSize)) : 0;
+  final lecRoom = load['room_kind'] as String?, labRoom = (load['lab_room_kind'] as String?) ?? 'lab';
+  int? byRoom(String? kind) {
+    final cap = largestRoom(rooms, kind);
+    return cap > 0 ? cap : null;
+  }
+
+  final autoLec = plan.lectureGroupSize == null && plan.lectureGroups == null ? byRoom(lecRoom) : null;
+  final autoLab = hasLab && plan.labGroupSize == null && plan.lectureGroupSize == null && plan.labGroups == null ? byRoom(labRoom) : null;
+  final lecN = plan.lectureGroups ?? groupsNeeded(n, plan.lectureGroupSize ?? autoLec);
+  final labN = hasLab ? (plan.labGroups ?? groupsNeeded(n, plan.labGroupSize ?? plan.lectureGroupSize ?? autoLab)) : 0;
   final lec = splitGroups(n, lecN), lab = splitGroups(n, labN);
   final issues = <PlanIssue>[];
 
   if (n == 0) {
     issues.add(PlanIssue('info', 'no_students',
         t('لا يوجد طلاب مسجلون ولا تقدير — أدخل العدد المتوقع ليُحسب عدد المجموعات.', 'No enrolled students and no estimate — enter the expected number to size the groups.')));
+  } else if (plan.expectedStudents != null && plan.countSource != 'enrolled') {
+    issues.add(PlanIssue('info', 'estimate',
+        t('العدد ($n) تقدير${plan.countSource == 'history' ? ' من آخر طرح مكتمل' : ''} وليس التسجيل الفعلي (${plan.enrolledStudents}).',
+            'The count ($n) is an estimate${plan.countSource == 'history' ? ' from the last completed offering' : ''}, not the actual enrollment (${plan.enrolledStudents}).')));
+  }
+  if (n > 0 && autoLec != null && lecN > 1) {
+    issues.add(PlanIssue('info', 'sized_by_room',
+        t('لا حد محدد للمجموعة — قُسّمت المحاضرة إلى $lecN مجموعات حسب أكبر مكان مناسب ($autoLec مقعد).', 'No group size set — the lecture is split into $lecN groups by the largest suitable room ($autoLec seats).')));
+  }
+  if (n > 0 && autoLab != null && labN > 1) {
+    issues.add(PlanIssue('info', 'sized_by_room',
+        t('السكشن قُسّم إلى $labN مجموعات حسب سعة المعمل ($autoLab).', 'The lab is split into $labN groups by the lab capacity ($autoLab).')));
   }
   void overfull(String kind, int? size, List<int> sizes) {
     if (size != null && sizes.isNotEmpty && sizes.first > size) {
@@ -202,7 +226,7 @@ CoursePlanResult planCourse(CoursePlan plan, Map<String, dynamic> load, List<Map
 
   final weekly = lecN * asInt(load['sessions_per_week'], 1) * asInt(load['periods_per_session'], 1) +
       labN * asInt(load['lab_sessions_per_week']) * asInt(load['lab_periods_per_session'], 1);
-  return CoursePlanResult(lectureSizes: lec, labSizes: lab, weeklyPeriods: weekly, issues: issues);
+  return CoursePlanResult(lectureSizes: lec, labSizes: lab, weeklyPeriods: weekly, issues: issues, autoLectureSize: autoLec, autoLabSize: autoLab);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -540,8 +564,8 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
                         courseId: d.courseId,
                         enrolledStudents: d.enrolledStudents,
                         expectedStudents: d.expectedStudents,
-                        lectureGroupSize: d.lectureGroupSize,
-                        labGroupSize: d.labGroupSize,
+                        lectureGroupSize: d.lectureGroupSize ?? r.autoLectureSize,
+                        labGroupSize: d.labGroupSize ?? r.autoLabSize,
                         lectureGroups: d.lectureGroups,
                         labGroups: d.labGroups,
                         groupStaff: keep,

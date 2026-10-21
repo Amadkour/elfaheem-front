@@ -20,6 +20,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_availability_pages.dart';
 import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
+import 'org_schedule_copies.dart' show openTimetableCopies;
 import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
 import 'org_schedule_planning.dart' show openCoursePlans;
 import 'org_timetable_parts.dart';
@@ -569,6 +570,11 @@ class _StudioState extends State<_Studio> {
             avatar: Icon(Icons.insights_rounded, size: 18, color: errors > 0 ? c.danger : c.success),
             label: Text(errors > 0 ? t('تحسين الجدول ($errors)', 'Optimize ($errors)') : t('تحسين الجدول', 'Optimize')),
             onPressed: () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
+          ),
+          ActionChip(
+            avatar: Icon(Icons.content_copy_rounded, size: 18, color: c.primary),
+            label: Text(t('النسخ ونسخ الأعضاء', 'Copies & member copies')),
+            onPressed: () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update')),
           ),
           if (active && s.can('schedule', 'update'))
             ActionChip(

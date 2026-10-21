@@ -12,7 +12,7 @@ Flutter education platform (VOD courses, live sessions, attendance, organization
 flutter pub get
 flutter analyze                      # lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
 flutter run                          # add -d chrome for web
-flutter test                         # test/widget_test.dart is the stock counter template and will fail — there is no real test suite
+flutter test test/org/               # the real suite (org features); test/widget_test.dart is the stock counter template and fails
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 flutter build web && firebase deploy --only hosting
 dart run flutter_launcher_icons      # regenerate app icons
@@ -47,6 +47,18 @@ dart run flutter_native_splash:create  # regenerate splash screens (android/ios 
 **Native code** — Live sessions use LiveKit (`features/teacher/sessions/live/`). Screen recording and screen sharing use platform channels (`com.example.flutter_education_app/native_recorder`, `/radios`). The native side is `android/app/src/main/kotlin/.../ScreenCaptureService.kt` and `MainActivity.kt`, and on iOS `ios/Runner/AppDelegate.swift`, `LocalDebugRecorder.swift`, and the `ios/BroadcastUploadExtension` target. Recordings upload in chunks.
 
 **Organizations (`lib/features/org/`)** — The backend source is next door at `../back` (`routers/organization/`, `services/organization/`). Check payloads there; don't trust the notes alone. Shared logic lives in `org_v3.dart`: `orgCall` keeps `detail.code` and its extras, `orgErrorText` turns codes into bilingual text, and `JoinPolicyDraft` / `ScheduleDraft` build PUT bodies. Several org PUTs replace the whole object (join policy, schedule, room, program, academic settings), so always send every field. The server stores naive UTC: send `orgUtc()` and read `orgParseUtc()`. Org screens use `t(ar, en)` from `admin_common.dart` for inline strings instead of `translation.json`. Tests: `flutter test test/org/`.
+
+Timetables: `OrgScheduleProvider` (`org_providers.dart`) holds the open schedule, its slots, and the conflicts from `GET …/validate`. Its writes send `expected_version`, and a 409 `stale_version` reloads the timetable. The screens are split across these files:
+- `org_schedule_pages.dart`: the studio grid, with drag-and-drop slot moves;
+- `org_schedule_alternatives.dart`;
+- `org_schedule_planning.dart`: enrollment estimates and lecture/lab groups;
+- `org_schedule_optimizer.dart`: the health dashboard, suggestions (a configuration change answers 202 + a regeneration run), the days/periods policy and the relaxation priority;
+- `org_schedule_versions.dart`: pure ranking / diff / member-copy / CSV logic used by the alternatives and copies pages;
+- `org_schedule_copies.dart`: full copies (revisions) and per-member copies, with export.
+
+Pure logic in those files (`planCourse`, `ScheduleHealth`, `ScheduleHorizon`, `compareVersions`, `diffVersions`, `memberTimetable`) is what gets unit-tested, because `ApiClient` is a singleton and can't be faked.
+
+When a backend route may be missing, call it through an `XxxApi` interface with a `Remote…` and a `Mock…` implementation. The mock is used only with `--dart-define=ORG_SCHEDULING_MOCKS=true` (`kOrgSchedulingMocks`, which is always false in release builds). A missing route is detected with `orgEndpointMissing` (FastAPI's bare 404 "Not Found" or a 405), and the UI then says the feature needs a server update. Backend work still to be done is specified in `docs/backend/scheduling-spec.md`, which is written as a prompt for the backend agent. Never modify `../back` from this repo.
 
 **Web** — Code that is not web-safe sits behind `kIsWeb` checks or conditional-import stubs (`url_strategy_stub.dart` / `url_strategy_web.dart`, `web_notification_web.dart` using `package:web`). Do not import `dart:io`-only APIs from code that runs on web without such a guard.
 

@@ -8,7 +8,8 @@
 // Hard rules are enforced by the solver and never relaxed; only soft preferences (avoid / prefer) can be. Experience
 // is the member's recorded `experience_level` — when it is missing it is reported as "not recorded", never guessed.
 //
-// Ranking (rankScheduleAlternatives): fewest unplaced sessions → fewest TEACHER preferences relaxed (assistants'
+// Ranking (rankVersions, org_schedule_versions.dart): feasible → fewest unplaced → least relaxation of the most protected tier of
+// the timetable's relaxation priority → soft cost → fewest changes; ties by the older order (rankScheduleAlternatives): (assistants'
 // preferences are relaxed first) → lowest relaxation severity → relaxed people with LESS experience → lower soft cost.
 library;
 
@@ -22,6 +23,8 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
+import 'org_schedule_copies.dart' show saveTimetableCsv, timetableNamesOf;
+import 'org_schedule_versions.dart';
 import 'org_timetable_parts.dart' show ScheduleResultView, courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -169,6 +172,9 @@ class _Alt {
   Map<String, dynamic> summary = {};
   List<Map<String, dynamic>> slots = [];
   AltMetrics? metrics;
+  VersionMetrics? version;
+  VersionDiff? diff; // against the original timetable
+  String? duplicateOf; // the same sessions as this earlier alternative: not offered twice
 }
 
 /// Full-screen flow. Returns true when the timetable changed (an alternative was applied).
@@ -268,6 +274,7 @@ class _AlternativesPageState extends State<_AlternativesPage> {
                 'settings': {'prefer_senior_preferences': a.senior ?? (_originalSettings['prefer_senior_preferences'] == true)},
                 'keep_locked': true,
                 'seed': a.seed,
+                'persist_settings': false, // a trial: the timetable's own settings stay as they are
               }),
           quiet: true);
       if (!r.ok) {
@@ -308,7 +315,11 @@ class _AlternativesPageState extends State<_AlternativesPage> {
           ..revisionId = asInt(run['revision_id'])
           ..summary = asMap(rev.map['summary'])
           ..slots = asMapList(rev.map['items'])
-          ..metrics = AltMetrics.of(a.summary, _roleOf);
+          ..metrics = AltMetrics.of(a.summary, _roleOf)
+          ..version = _metricsOf(a.slots, a.summary)
+          ..diff = diffVersions(_originalSlots, a.slots);
+        final fp = versionFingerprint(a.slots);
+        a.duplicateOf = _alts.where((o) => o != a && o.metrics != null && o.duplicateOf == null && versionFingerprint(o.slots) == fp).map((o) => o.label).firstOrNull;
       });
     }
     await _putSettingsBack();
@@ -332,11 +343,30 @@ class _AlternativesPageState extends State<_AlternativesPage> {
     await orgCall(() => p.api.put(_s, body: d.toBody()), quiet: true);
   }
 
-  /// Ready alternatives, best first.
+  late final RelaxationPolicy _policy = RelaxationPolicy.fromSettings(_originalSettings);
+
+  VersionMetrics _metricsOf(List<Map<String, dynamic>> slots, Map<String, dynamic> summary, {List<Map<String, dynamic>>? conflicts}) => VersionMetrics.of(
+        slots: slots,
+        summary: summary,
+        conflicts: conflicts,
+        roleOf: _roleOf,
+        roomCount: p.rooms.where((r) => r['is_active'] != false && r['kind'] != 'office').length,
+        days: ScheduleDraft.fromJson(p.schedule!).days,
+        periodIds: [for (final x in p.periods) asInt(x['id'])],
+      );
+
+  /// Ready alternatives that are not a copy of another one, best first (rankVersions with the timetable's
+  /// relaxation priority; the older seniority-aware order breaks ties).
   List<int> get _ready {
-    final idx = [for (var i = 0; i < _alts.length; i++) if (_alts[i].metrics != null) i];
-    final order = rankScheduleAlternatives([for (final i in idx) _alts[i].metrics!]);
-    return [for (final o in order) idx[o]];
+    final idx = [for (var i = 0; i < _alts.length; i++) if (_alts[i].metrics != null && _alts[i].duplicateOf == null) i];
+    idx.sort((x, y) {
+      final a = _alts[x], b = _alts[y];
+      final c = compareVersions(a.version!, b.version!, _policy, changesA: a.diff!.total, changesB: b.diff!.total);
+      if (c != 0) return c;
+      final d = a.metrics!.compareTo(b.metrics!);
+      return d != 0 ? d : x.compareTo(y);
+    });
+    return idx;
   }
 
   Future<void> _restoreOriginal() async {
@@ -441,9 +471,11 @@ class _AlternativesPageState extends State<_AlternativesPage> {
             'Each alternative is a real generation under the same hard rules (no double-booked teacher, room or students; unavailable times stay forbidden). Only soft preferences differ, and assistants\' preferences are relaxed before teachers\'.'),
         style: orgText(context, size: 12.5, color: c.textMedium),
       ),
+      const SizedBox(height: 6),
+      Text(rankingExplanation(_policy), style: orgText(context, size: 11.5, color: c.textLight)),
       const SizedBox(height: 12),
       if (current != null) _CurrentCard(m: current),
-      for (final i in [...ready, for (var i = 0; i < _alts.length; i++) if (_alts[i].metrics == null) i])
+      for (final i in [...ready, for (var i = 0; i < _alts.length; i++) if (_alts[i].metrics == null || _alts[i].duplicateOf != null) i])
         _AltCard(
           alt: _alts[i],
           recommended: i == best,
@@ -451,9 +483,9 @@ class _AlternativesPageState extends State<_AlternativesPage> {
           current: current,
           changed: _alts[i].metrics == null ? 0 : slotChanges(_originalSlots, _alts[i].slots),
           roleOf: _roleOf,
-          onSelect: _alts[i].metrics == null || _phase != 'done' ? null : () => setState(() => _selected = i),
+          onSelect: _alts[i].metrics == null || _alts[i].duplicateOf != null || _phase != 'done' ? null : () => setState(() => _selected = i),
         ),
-      if (ready.length > 1) _CompareTable(alts: [for (final i in ready) _alts[i]], best: best == null ? null : _alts[best]),
+      if (ready.length > 1) _CompareTable(alts: [for (final i in ready) _alts[i]], best: best == null ? null : _alts[best], policy: _policy),
       const SizedBox(height: 16),
       if (_phase == 'ready')
         PrimaryButton(isLoading: false, icon: Icons.auto_awesome_rounded, iconBefore: true, label: t('ولّد ${_alts.length} بدائل', 'Generate ${_alts.length} alternatives'), onPressed: _generateAll),
@@ -564,6 +596,24 @@ class _AltCard extends StatelessWidget {
                 if (m != null && st.isNotEmpty) ...[const SizedBox(width: 6), OrgPill(resultStatusLabels()[st] ?? st, color: m.unplaced == 0 ? c.primary : c.warning)],
               ]),
               Text(alt.help, style: orgText(context, size: 11.5, color: c.textLight)),
+              if (alt.duplicateOf != null)
+                Text(t('مطابق تماماً لـ«${alt.duplicateOf}» — لا يُعرض كبديل مستقل', 'Identical to “${alt.duplicateOf}” — not offered as a separate alternative'),
+                    style: orgText(context, size: 12, color: c.warning)),
+              if (alt.diff != null && alt.duplicateOf == null) ...[
+                const SizedBox(height: 4),
+                Text(diffSummary(alt.diff!), style: orgText(context, size: 12, color: c.textMedium)),
+                if (alt.revisionId != null)
+                  Text('${t('معرّف النسخة', 'Version id')}: #${alt.revisionId}', style: orgText(context, size: 11.5, color: c.textLight)),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    onPressed: () => saveTimetableCsv('${p.schedule?['name'] ?? 'timetable'}-${alt.label}-rev${alt.revisionId ?? ''}',
+                        timetableCsv(sortSlots(alt.slots), timetableNamesOf(p), header: ['${p.schedule?['name'] ?? ''}', alt.label, '${t('معرّف النسخة', 'Version id')}: #${alt.revisionId}'])),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: Text(t('تصدير CSV', 'Export CSV')),
+                  ),
+                ),
+              ],
               if (alt.status == 'running') ...[const SizedBox(height: 8), LinearProgressIndicator(value: alt.progress == 0 ? null : alt.progress / 100)],
               if (alt.status == 'waiting') Text(t('في الانتظار', 'Waiting'), style: orgText(context, size: 12, color: c.textMedium)),
               if (alt.status == 'cancelled') Text(t('أُوقف', 'Stopped'), style: orgText(context, size: 12, color: c.textMedium)),
@@ -687,18 +737,74 @@ class _ProposedSlots extends StatelessWidget {
   }
 }
 
-class _CompareTable extends StatelessWidget {
-  const _CompareTable({required this.alts, required this.best});
+/// "3 times · 1 room · 2 staff changed · +Thursday" — what an alternative changes compared with the original.
+String diffSummary(VersionDiff d) {
+  if (d.isEmpty) return t('مطابق للجدول الأصلي', 'Same as the original timetable');
+  final days = dayLabelsPlain();
+  return [
+    if (d.timeChanged.isNotEmpty) t('${d.timeChanged.length} موعد', '${d.timeChanged.length} time(s)'),
+    if (d.roomChanged.isNotEmpty) t('${d.roomChanged.length} مكان', '${d.roomChanged.length} room(s)'),
+    if (d.staffChanged.isNotEmpty) t('${d.staffChanged.length} مدرس/معيد', '${d.staffChanged.length} staff'),
+    if (d.added.isNotEmpty) t('+${d.added.length} حصة', '+${d.added.length} session(s)'),
+    if (d.removed.isNotEmpty) t('−${d.removed.length} حصة', '−${d.removed.length} session(s)'),
+    for (final x in d.daysAdded) '+${days[x] ?? x}',
+    for (final x in d.daysRemoved) '−${days[x] ?? x}',
+    if (d.periodsAdded.isNotEmpty) t('+${d.periodsAdded.length} فترة مستخدمة', '+${d.periodsAdded.length} period(s) used'),
+    if (d.groupsChanged.isNotEmpty) t('${d.groupsChanged.length} تغيير مجموعات', '${d.groupsChanged.length} group change(s)'),
+  ].join(' · ');
+}
+
+class _CompareTable extends StatefulWidget {
+  const _CompareTable({required this.alts, required this.best, required this.policy});
   final List<_Alt> alts;
   final _Alt? best;
+  final RelaxationPolicy policy;
+
+  @override
+  State<_CompareTable> createState() => _CompareTableState();
+}
+
+class _CompareTableState extends State<_CompareTable> {
+  String sort = 'rank';
+  bool feasibleOnly = false;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final best = widget.best;
+    final rank = {for (var i = 0; i < widget.alts.length; i++) widget.alts[i]: i};
+    num key(_Alt a) => switch (sort) {
+          'unplaced' => a.version!.unplaced,
+          'teacher' => a.version!.relaxBy['teacher_prefs'] ?? 0,
+          'changes' => a.diff!.total,
+          'rooms' => -(a.version!.roomUse ?? 0),
+          'load' => a.version!.maxLoad,
+          _ => rank[a]!,
+        };
+    final alts = [for (final a in widget.alts) if (!feasibleOnly || a.version!.unplaced == 0) a]..sort((a, b) => key(a).compareTo(key(b)));
     TextStyle h = orgText(context, size: 12, w: FontWeight.w800);
     TextStyle v(bool b) => orgText(context, size: 12, w: b ? FontWeight.w800 : FontWeight.w500, color: b ? c.success : null);
+    String pct(double? x) => x == null ? '—' : '${(x * 100).toStringAsFixed(0)}%';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       OrgSectionTitle(t('مقارنة', 'Compare'), padding: const EdgeInsets.fromLTRB(4, 8, 4, 6)),
+      Wrap(spacing: 6, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        Text(t('ترتيب حسب', 'Sort by'), style: orgText(context, size: 12)),
+        for (final s in const ['rank', 'unplaced', 'teacher', 'changes', 'rooms', 'load'])
+          ChoiceChip(
+            label: Text(switch (s) {
+              'rank' => t('التوصية', 'Recommendation'),
+              'unplaced' => t('بلا مكان', 'Unplaced'),
+              'teacher' => t('تخفيف المدرسين', 'Teacher relaxation'),
+              'changes' => t('التغييرات', 'Changes'),
+              'rooms' => t('استخدام الأماكن', 'Room use'),
+              _ => t('أعلى حمل', 'Highest load'),
+            }),
+            selected: sort == s,
+            onSelected: (_) => setState(() => sort = s),
+          ),
+        FilterChip(label: Text(t('الكاملة فقط', 'Fully placed only')), selected: feasibleOnly, onSelected: (x) => setState(() => feasibleOnly = x)),
+      ]),
+      const SizedBox(height: 6),
       SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
@@ -708,24 +814,44 @@ class _CompareTable extends StatelessWidget {
           columnSpacing: 18,
           columns: [
             DataColumn(label: Text(t('البديل', 'Alternative'), style: h)),
-            DataColumn(label: Text(t('بلا مكان', 'Unplaced'), style: h), numeric: true),
-            DataColumn(label: Text(t('تخفيف للمدرسين', 'Teacher relax.'), style: h), numeric: true),
-            DataColumn(label: Text(t('تخفيف للمعيدين', 'Assistant relax.'), style: h), numeric: true),
-            DataColumn(label: Text(t('متوسط خبرة المتأثرين', 'Affected exp.'), style: h), numeric: true),
+            DataColumn(label: Text(t('محاضرات بلا مكان', 'Unplaced lect.'), style: h), numeric: true),
+            DataColumn(label: Text(t('سكاشن بلا مكان', 'Unplaced labs'), style: h), numeric: true),
+            for (final tier in widget.policy.protectedFirst.where((x) => alts.any((a) => (a.version!.relaxBy[x] ?? 0) > 0)))
+              DataColumn(label: Text('${t('تخفيف', 'Relax.')}: ${relaxTierLabel(tier)}', style: h), numeric: true),
             DataColumn(label: Text(t('التكلفة المرنة', 'Soft cost'), style: h), numeric: true),
+            DataColumn(label: Text(t('مواعيد تغيّرت', 'Times changed'), style: h), numeric: true),
+            DataColumn(label: Text(t('أماكن تغيّرت', 'Rooms changed'), style: h), numeric: true),
+            DataColumn(label: Text(t('مدرسون تغيّروا', 'Staff changed'), style: h), numeric: true),
+            DataColumn(label: Text(t('الأيام', 'Days'), style: h), numeric: true),
+            DataColumn(label: Text(t('استخدام الأماكن', 'Room use'), style: h), numeric: true),
+            DataColumn(label: Text(t('أعلى حمل أسبوعي', 'Max weekly load'), style: h), numeric: true),
+            DataColumn(label: Text(t('متوسط خبرة المتأثرين', 'Affected exp.'), style: h), numeric: true),
           ],
           rows: [
             for (final a in alts)
               DataRow(cells: [
                 DataCell(Text(a.label, style: v(a == best))),
-                DataCell(Text('${a.metrics!.unplaced}', style: v(a == best))),
-                DataCell(Text(a.metrics!.teacherSeverity.toStringAsFixed(0), style: v(a == best))),
-                DataCell(Text(a.metrics!.assistantSeverity.toStringAsFixed(0), style: v(a == best))),
+                DataCell(Text('${a.version!.unplacedLectures}', style: v(a == best))),
+                DataCell(Text('${a.version!.unplacedLabs}', style: v(a == best))),
+                for (final tier in widget.policy.protectedFirst.where((x) => alts.any((a) => (a.version!.relaxBy[x] ?? 0) > 0)))
+                  DataCell(Text((a.version!.relaxBy[tier] ?? 0).toStringAsFixed(0), style: v(a == best))),
+                DataCell(Text(a.version!.softCost?.toStringAsFixed(1) ?? '—', style: v(a == best))),
+                DataCell(Text('${a.diff!.timeChanged.length}', style: v(a == best))),
+                DataCell(Text('${a.diff!.roomChanged.length}', style: v(a == best))),
+                DataCell(Text('${a.diff!.staffChanged.length}', style: v(a == best))),
+                DataCell(Text('${a.version!.days.length}', style: v(a == best))),
+                DataCell(Text(pct(a.version!.roomUse), style: v(a == best))),
+                DataCell(Text('${a.version!.maxLoad}', style: v(a == best))),
                 DataCell(Text(a.metrics!.meanExperience?.toStringAsFixed(1) ?? '—', style: v(a == best))),
-                DataCell(Text(a.metrics!.softCost.toStringAsFixed(1), style: v(a == best))),
               ]),
           ],
         ),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+            t('البدائل لم يتحقق منها الخادم كجداول كاملة قبل التطبيق؛ التطبيق يعيد التحقق ويعرض أي تعارض.', 'Alternatives are not validated as whole timetables before applying; applying revalidates and shows any conflict.'),
+            style: orgText(context, size: 11.5, color: c.textLight)),
       ),
     ]);
   }
