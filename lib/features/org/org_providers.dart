@@ -404,6 +404,12 @@ class OrgScheduleProvider extends AdminBase {
     return r.ok;
   }
 
+  /// Saves the current slots (hand edits included) as a new version — POST …/revisions; an older server without the
+  /// route is told apart by [OrgCall.endpointMissing].
+  Future<OrgCall> saveSnapshot(String? label) => orgCall(
+      () => api.post('$base/schedules/${schedule!['id']}/revisions', body: {'label': (label ?? '').trim().isEmpty ? null : label!.trim()}),
+      quiet: true);
+
   /// Publishing: null when published; the server's hard conflicts when it refused (409 schedule_conflict).
   Future<List<Map<String, dynamic>>?> publish() async {
     final id = schedule!['id'];
@@ -523,6 +529,26 @@ class OrgScheduleProvider extends AdminBase {
   Future<List<Map<String, dynamic>>?> editSlot(int slotId, Map<String, dynamic> patch, {bool force = false}) =>
       _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$slotId', body: {...patch, if (force) 'force': true}));
 
+  /// Drag & drop: the slot shows in its new cell at once and goes back if the server refuses. Sends the version the
+  /// user is looking at, so a timetable someone else just changed answers stale_version instead of being overwritten.
+  Future<List<Map<String, dynamic>>?> moveSlot(Map<String, dynamic> slot, String day, int periodId, {bool force = false}) async {
+    final id = slot['id'];
+    final before = slots.firstWhere((x) => x['id'] == id, orElse: () => slot);
+    slots = [for (final x in slots) x['id'] == id ? {...x, 'day': day, 'period_id': periodId} : x];
+    notifyListeners();
+    final res = await _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$id', body: {
+          'day': day,
+          'period_id': periodId,
+          'expected_version': ?schedule!['version'],
+          if (force) 'force': true,
+        }));
+    if (res != null) {
+      slots = [for (final x in slots) x['id'] == id ? before : x];
+      notifyListeners();
+    }
+    return res;
+  }
+
   /// strategy when it clashes: keep · replace · shift (small change) · regenerate (no conflicts left)
   /// [overrideReason] (needs schedule.approve) allows a hard unavailability and leaves a warning; double bookings
   /// can never be overridden.
@@ -577,6 +603,11 @@ class OrgScheduleProvider extends AdminBase {
       if (e.code == 'schedule_conflict') {
         final detail = ApiException.asMap(e.body)?['detail'];
         return asMapList(detail is Map ? detail['conflicts'] : null);
+      }
+      if (e.code == 'stale_version') {
+        toast(orgErrorText(e), error: true);
+        await open(asInt(schedule!['id']));
+        return [<String, dynamic>{'type': 'error'}];
       }
       toast(e.message, error: true);
       return [<String, dynamic>{'type': 'error'}];

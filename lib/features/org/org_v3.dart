@@ -29,7 +29,13 @@ class OrgCall {
 
   /// The extra keys of a coded error: `{code, message, reasons, conflicts, run, …}`.
   Map<String, dynamic> get detail => asMap(ApiException.asMap(error?.body)?['detail']);
+
+  /// The server has no such route yet (FastAPI's bare 404 "Not Found" / 405) — not "this record is missing".
+  bool get endpointMissing => error != null && orgEndpointMissing(error!);
 }
+
+bool orgEndpointMissing(ApiException e) =>
+    e.statusCode == 405 || (e.statusCode == 404 && ApiException.asMap(e.body)?['detail'] == 'Not Found');
 
 /// Runs [fn]; on success toasts [ok] (when given), on failure toasts [orgErrorText] unless [quiet].
 /// Never throws — the screen decides what to do with [OrgCall.error].
@@ -160,6 +166,29 @@ Map<String, String> _codeTexts() => {
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),
       'published': t('تعديل الجدول المنشور يحتاج صلاحية الاعتماد', 'Editing a published timetable needs approval rights'),
       'generation_running': t('يوجد توليد جارٍ لهذا الجدول', 'A generation is already running for this timetable'),
+      'stale_version': t('عدّل مستخدم آخر هذا الجدول — حمّلنا أحدث نسخة، أعد المحاولة', 'Someone else changed this timetable — the latest version is loaded, try again'),
+      // suggestions & horizon (docs/backend/scheduling-spec.md)
+      'suggestion_stale': t('تغيّر الجدول منذ هذا الاقتراح — حدّثنا الاقتراحات، راجعها مجدداً', 'The timetable changed since this suggestion — suggestions were refreshed, review them again'),
+      'suggestion_invalid': t('لم يعد الاقتراح صالحاً على أحدث نسخة من الجدول', 'The suggestion is no longer valid on the latest timetable'),
+      'suggestion_already_applied': t('طُبّق هذا الاقتراح من قبل', 'This suggestion was already applied'),
+      'suggestion_not_pending': t('تم البت في هذا الاقتراح من قبل', 'This suggestion was already decided'),
+      'suggestion_not_found': t('الاقتراح غير موجود', 'Suggestion not found'),
+      'suggestions_overlap': t('اقتراحان يغيّران الحصة نفسها — طبّقهما كلٌّ على حدة', 'Two suggestions change the same session — apply them one at a time'),
+      'suggestion_running': t('يجري حساب الاقتراحات الآن', 'Suggestions are being computed'),
+      'horizon_exceeded': t('التغيير يتجاوز حدود الأيام / الفترات المسموح بها', 'The change exceeds the allowed days / periods'),
+      'expansion_not_allowed': t('اقتراح أيام أو فترات إضافية غير مسموح لهذا الجدول', 'Proposing extra days or periods is not allowed for this timetable'),
+      'suggestion_not_applicable': t('هذا الاقتراح نصيحة تُنفَّذ خارج الجدول (مثل فتح معمل) — لا يمكن تطبيقه تلقائياً', 'This is advice to act on outside the timetable (e.g. open a lab) — it cannot be applied automatically'),
+      'approval_required': t('هذا التغيير يحتاج صلاحية الاعتماد', 'This change needs approval rights'),
+      'bad_types': t('نوع اقتراح غير معروف', 'Unknown suggestion type'),
+      'bad_horizon':t('حدود الأيام / الفترات غير صحيحة', 'Invalid days / periods limits'),
+      'no_history': t('لا يوجد عدد طلاب من فصل سابق مكتمل لهذا المقرر', 'No completed previous offering of this course'),
+      // enrollment & groups
+      'schedule_not_found': t('الجدول غير موجود', 'Timetable not found'),
+      'course_not_in_schedule': t('المقرر ليس ضمن هذا الجدول', 'This course is not part of the timetable'),
+      'bad_plan': t('الأعداد يجب أن تكون 1 أو أكثر', 'Numbers must be 1 or more'),
+      'too_many_groups': t('عدد المجموعات كبير جداً (40 كحد أقصى)', 'Too many groups (40 at most)'),
+      'bad_group_staff': t('تعيين المدرسين للمجموعات غير صحيح — راجع أرقام المجموعات', 'The group staff do not match the groups — check the group numbers'),
+      'bad_group': t('رقم المجموعة غير موجود لهذا المقرر', 'That group does not exist for this course'),
       'generation_failed': t('فشل التوليد — لم يتغير شيء في الجدول', 'Generation failed — nothing in the timetable changed'),
       'not_running': t('التوليد انتهى بالفعل', 'The generation already finished'),
       'schedule_conflict': t('توجد تعارضات تمنع الحفظ', 'There are clashes that block this'),

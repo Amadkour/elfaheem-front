@@ -6,6 +6,7 @@
 //                   student-group availability; per staff member: availability (days × periods)
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -19,6 +20,8 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_availability_pages.dart';
 import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
+import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
+import 'org_schedule_planning.dart' show openCoursePlans;
 import 'org_timetable_parts.dart';
 import 'org_timetable_wizard.dart';
 import 'org_v3.dart';
@@ -512,6 +515,7 @@ class _StudioState extends State<_Studio> {
     final run = p.genRun;
     final running = runIsOpen(run);
     final result = asMap(sch['result']);
+    final editable = !active && !running && s.can('schedule', 'update');
 
     final courseNames = {for (final l in p.loads) asInt(l['course_id']): courseName(l)};
     final people = {for (final m in p.staff) asInt((m['user'] as Map)['id']): '${(m['user'] as Map)['name']}'};
@@ -556,6 +560,16 @@ class _StudioState extends State<_Studio> {
               onPressed: () => _extrasSheet(context, p, courseNames, p.rooms),
             ),
           ActionChip(avatar: Icon(Icons.history_rounded, size: 18, color: c.textMedium), label: Text(t('النسخ', 'Versions')), onPressed: () => _revisionsSheet(context, p)),
+          ActionChip(
+            avatar: Icon(Icons.groups_rounded, size: 18, color: c.purple),
+            label: Text(t('الطلاب والمجموعات', 'Enrollment & groups')),
+            onPressed: () => openCoursePlans(context, p, canEdit: s.can('schedule', 'update') && !active),
+          ),
+          ActionChip(
+            avatar: Icon(Icons.insights_rounded, size: 18, color: errors > 0 ? c.danger : c.success),
+            label: Text(errors > 0 ? t('تحسين الجدول ($errors)', 'Optimize ($errors)') : t('تحسين الجدول', 'Optimize')),
+            onPressed: () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
+          ),
           if (active && s.can('schedule', 'update'))
             ActionChip(
               avatar: Icon(Icons.unpublished_rounded, size: 18, color: c.warning),
@@ -641,6 +655,17 @@ class _StudioState extends State<_Studio> {
             ]),
           ),
         ),
+      if (editable && p.slots.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 2),
+          child: Row(children: [
+            Icon(Icons.open_with_rounded, size: 14, color: c.textLight),
+            const SizedBox(width: 6),
+            Expanded(
+                child: Text(t('اسحب أي حصة إلى خانة أخرى لنقلها (ضغطة مطوّلة على الهاتف)', 'Drag a session to another cell to move it (long-press on phones)'),
+                    style: orgText(context, size: 11.5, color: c.textLight))),
+          ]),
+        ),
       Expanded(
         child: p.periods.isEmpty
             ? OrgEmpty(icon: Icons.inbox_rounded, title: t('أضف الفترات أولاً', 'Add periods first'))
@@ -667,12 +692,15 @@ class _StudioState extends State<_Studio> {
                           ),
                           for (final d in days.take(6))
                             _Cell(
+                              day: d,
+                              periodId: asInt(per['id']),
                               slots: [for (final x in p.slots) if (x['day'] == d && x['period_id'] == per['id']) x],
                               conflict: hasConflict(d, asInt(per['id'])),
                               courseNames: courseNames,
                               rooms: rooms,
                               people: people,
-                              onTap: active || running || !s.can('schedule', 'update') ? null : (slot) => _slotSheet(context, p, slot, d, asInt(per['id'])),
+                              onTap: editable ? (slot) => _slotSheet(context, p, slot, d, asInt(per['id'])) : null,
+                              onDrop: editable ? (slot) => _moveSlot(context, p, slot, d, asInt(per['id'])) : null,
                             ),
                         ]),
                     ],
@@ -744,16 +772,33 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
   final draft = p.schedule?['status'] != 'active';
   await showAdminSheet<void>(context, (ctx) {
     final c = ctx.colors;
-    final src = {'generate': t('توليد', 'Generated'), 'restore': t('استعادة', 'Restored'), 'publish': t('نشر', 'Published')};
+    final src = {'generate': t('توليد', 'Generated'), 'restore': t('استعادة', 'Restored'), 'publish': t('نشر', 'Published'), 'manual': t('حفظ يدوي', 'Saved by hand')};
     return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
       SheetHeader(t('نسخ الجدول', 'Timetable versions')),
+      if (draft && context.read<OrgSession>().can('schedule', 'update'))
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            icon: const Icon(Icons.save_rounded),
+            label: Text(t('حفظ الوضع الحالي كنسخة', 'Save the current state as a version')),
+            onPressed: () async {
+              final r = await p.saveSnapshot(null);
+              if (r.ok) {
+                toast(t('حُفظت النسخة', 'Version saved'));
+                if (ctx.mounted) Navigator.pop(ctx);
+              } else {
+                toast(r.endpointMissing ? t('حفظ النسخ يدوياً يحتاج تحديثاً في الخادم.', 'Saving versions by hand needs a server update.') : orgErrorText(r.error!), error: true);
+              }
+            },
+          ),
+        ),
       if (items.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text(t('لا نسخ محفوظة بعد', 'No saved versions yet'), style: orgText(ctx, color: c.textMedium))),
       for (final r in items)
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: CircleAvatar(child: Text('${r['number']}')),
           title: Text('${src['${r['source']}'] ?? r['source']} · ${t('${r['slots']} حصة', '${r['slots']} slots')}', style: orgText(ctx, w: FontWeight.w700)),
-          subtitle: Text([shortDateTime('${r['created_at']}'), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
+          subtitle: Text([if (r['label'] != null) '${r['label']}', shortDateTime('${r['created_at']}'), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
               style: orgText(ctx, size: 12, color: c.textMedium)),
           trailing: draft
               ? TextButton(
@@ -784,29 +829,78 @@ Future<void> showPublishConflicts(BuildContext context, List<Map<String, dynamic
         ));
 
 class _Cell extends StatelessWidget {
-  const _Cell({required this.slots, required this.conflict, required this.courseNames, required this.rooms, required this.people, this.onTap});
+  const _Cell(
+      {required this.day, required this.periodId, required this.slots, required this.conflict, required this.courseNames, required this.rooms, required this.people, this.onTap, this.onDrop});
+  final String day;
+  final int periodId;
   final List<Map<String, dynamic>> slots;
   final bool conflict;
   final Map<int, String> courseNames, people, rooms;
   final void Function(Map<String, dynamic>? slot)? onTap;
+  /// a session from another cell was dropped here
+  final void Function(Map<String, dynamic> slot)? onDrop;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return GestureDetector(
-      onTap: onTap == null ? null : () => onTap!(null),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 64),
-        margin: const EdgeInsets.all(3),
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.primary.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.primary.withValues(alpha: 0.35)), width: conflict ? 1.8 : 1),
+    // a mouse drags straight away; on touch a plain drag would fight the grid's scrolling, so it needs a long press
+    final platform = Theme.of(context).platform;
+    final mouse = kIsWeb || platform == TargetPlatform.windows || platform == TargetPlatform.macOS || platform == TargetPlatform.linux;
+    return DragTarget<Map<String, dynamic>>(
+      onWillAcceptWithDetails: (d) => onDrop != null && (d.data['day'] != day || asInt(d.data['period_id']) != periodId),
+      onAcceptWithDetails: (d) => onDrop!(d.data),
+      builder: (context, hovering, _) => GestureDetector(
+        onTap: onTap == null ? null : () => onTap!(null),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          margin: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: hovering.isNotEmpty
+                ? c.primary.withValues(alpha: 0.22)
+                : (slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.primary.withValues(alpha: 0.10)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: hovering.isNotEmpty ? c.primary : (conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.primary.withValues(alpha: 0.35))),
+                width: conflict || hovering.isNotEmpty ? 1.8 : 1),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final x in slots)
+              if (onDrop == null)
+                _item(context, x)
+              else if (mouse)
+                Draggable<Map<String, dynamic>>(data: x, feedback: _feedback(context, x), childWhenDragging: Opacity(opacity: 0.35, child: _item(context, x)), child: _item(context, x))
+              else
+                LongPressDraggable<Map<String, dynamic>>(
+                    data: x, feedback: _feedback(context, x), childWhenDragging: Opacity(opacity: 0.35, child: _item(context, x)), child: _item(context, x)),
+          ]),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for (final x in slots)
-            GestureDetector(
+      ),
+    );
+  }
+
+  /// what follows the finger / pointer while dragging
+  Widget _feedback(BuildContext context, Map<String, dynamic> x) {
+    final c = context.colors;
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 144,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: c.primary.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Text(courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
+            maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: Colors.white)),
+      ),
+    );
+  }
+
+  Widget _item(BuildContext context, Map<String, dynamic> x) {
+    final c = context.colors;
+    return GestureDetector(
               onTap: onTap == null ? null : () => onTap!(x),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -821,14 +915,31 @@ class _Cell extends StatelessWidget {
                         decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
                         child: Text(t('سكشن', 'Lab'), style: TextStyle(fontFamily: 'tajawal', fontSize: 9.5, fontWeight: FontWeight.w800, color: c.purple)),
                       ),
+                    if (x['group_no'] != null)   // only once the server splits courses into groups
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 4),
+                        child: Text('${t('م', 'G')}${x['group_no']}', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: c.textMedium)),
+                      ),
                   ]),
                   Text('${people[asInt(x['teacher_id'])] ?? ''}${x['room_id'] == null ? '' : ' · ${rooms[asInt(x['room_id'])] ?? ''}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: c.textMedium)),
                 ]),
               ),
-            ),
-        ]),
-      ),
-    );
+            );
+  }
+}
+
+/// Drag & drop: move a slot to another cell. A hard clash asks before saving it anyway (draft only — publishing still
+/// refuses it); anything else the server refused puts the slot back.
+Future<void> _moveSlot(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> slot, String day, int period) async {
+  final res = await p.moveSlot(slot, day, period);
+  if (res == null) {
+    toast(t('نُقلت الحصة وثُبّتت', 'Session moved and locked'));
+    return;
+  }
+  if (res.isEmpty || res.first['type'] == 'error' || !context.mounted) return;
+  final choice = await showConflictPreview(context, res, canReplace: false, canRebuild: false);
+  if (choice == 'force' && context.mounted) {
+    if (await p.moveSlot(slot, day, period, force: true) == null) toast(t('نُقلت الحصة مع التعارض', 'Moved — the clash is flagged'));
   }
 }
 
