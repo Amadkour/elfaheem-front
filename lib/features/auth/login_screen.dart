@@ -439,7 +439,7 @@ class _PillSwitch extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 400),
           width: 72,
-          height: 38,
+          height: 38.0,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(40),

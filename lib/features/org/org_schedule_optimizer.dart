@@ -33,7 +33,7 @@ import 'org_v3.dart';
 //  Models
 // ═════════════════════════════════════════════════════════════════════════════
 
-const suggestionTypes = ['reschedule_session', 'add_period', 'add_day', 'add_room', 'reallocate_groups', 'reassign_staff', 'combined'];
+const suggestionTypes = ['reschedule_session', 'add_period', 'add_day', 'add_room', 'reallocate_groups', 'reassign_staff', 'combined', 'add_staff'];
 const suggestionStatuses = ['pending', 'accepted', 'applied', 'rejected', 'invalidated', 'failed'];
 
 String _bi(Map<String, dynamic> j, String key) {
@@ -581,6 +581,7 @@ String suggestionTypeLabel(String type) => switch (type) {
       'add_room' => t('مكان إضافي', 'Add / reconfigure rooms'),
       'reallocate_groups' => t('إعادة توزيع المجموعات', 'Reallocate groups'),
       'reassign_staff' => t('تغيير المدرس / المعيد', 'Reassign staff'),
+      'add_staff' => t('إضافة عضو جديد', 'Add a new member'),
       'combined' => t('تغييرات مجمّعة', 'Combined changes'),
       _ => type,
     };
@@ -592,6 +593,7 @@ IconData suggestionTypeIcon(String type) => switch (type) {
       'add_room' => Icons.meeting_room_rounded,
       'reallocate_groups' => Icons.workspaces_rounded,
       'reassign_staff' => Icons.swap_horiz_rounded,
+      'add_staff' => Icons.person_add_alt_1_rounded,
       _ => Icons.auto_fix_high_rounded,
     };
 

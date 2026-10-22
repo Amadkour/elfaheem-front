@@ -23,6 +23,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart' show dayLabels, downloadExcel;
 import 'org_providers.dart';
+import 'org_schedule_export.dart' show showTimetableExport;
 import 'org_schedule_versions.dart';
 import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
@@ -343,6 +344,22 @@ class _CopyDetailState extends State<_CopyDetail> {
       ],
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 6, children: [
+        FilledButton.icon(
+          onPressed: copy.slots.isEmpty
+              ? null
+              : () => showTimetableExport(context,
+                  slots: copy.slots,
+                  names: n,
+                  periods: p.periods,
+                  title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
+                  sourceLabel: copy.id == 0
+                      ? t('الجدول الحالي · الإصدار ${copy.version ?? '—'}', 'Live timetable · version ${copy.version ?? '—'}')
+                      : t('النسخة #${copy.id}${copy.label.isEmpty ? '' : ' «${copy.label}»'} · الإصدار ${copy.version ?? '—'}', 'Copy #${copy.id}${copy.label.isEmpty ? '' : ' “${copy.label}”'} · version ${copy.version ?? '—'}'),
+                  days: ScheduleDraft.fromJson(p.schedule ?? const {}).days,
+                  member: m),
+          icon: const Icon(Icons.auto_awesome_rounded),
+          label: Text(t('تصدير احترافي: إكسل · وورد · PDF', 'Premium export: Excel · Word · PDF')),
+        ),
         if (kind == 'full' || m != null)
           OutlinedButton.icon(
             onPressed: shown.isEmpty ? null : () => saveTimetableCsv('${p.schedule?['name'] ?? 'timetable'}-${m == null ? 'full' : memberLabel(m, n)}-v${copy.version ?? copy.id}', timetableCsv(shown, n, header: head)),

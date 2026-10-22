@@ -337,11 +337,13 @@ class OrgScheduleProvider extends AdminBase {
   // ── v3: generation as a job ──
 
   /// Starts a background generation and follows it until it ends. A run already in progress is followed instead.
-  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7}) async {
+  /// [persistSettings] false: [settings] apply to this run only (stored with its revision, not on the timetable).
+  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true}) async {
     final id = schedule!['id'];
     final r = await orgCall(
         () => api.post('$base/schedules/$id/generate',
-            queryParams: {'background': true}, body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed}),
+            queryParams: {'background': true},
+            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false}),
         quiet: true);
     final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
     if (run.isNotEmpty) {

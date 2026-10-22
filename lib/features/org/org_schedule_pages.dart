@@ -20,7 +20,9 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_availability_pages.dart';
 import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
-import 'org_schedule_copies.dart' show openTimetableCopies;
+import 'org_schedule_copies.dart' show openTimetableCopies, timetableNamesOf;
+import 'org_schedule_coverage.dart' show openCoverageRun;
+import 'org_schedule_export.dart' show showTimetableExport;
 import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
 import 'org_schedule_planning.dart' show openCoursePlans;
 import 'org_timetable_parts.dart';
@@ -576,6 +578,24 @@ class _StudioState extends State<_Studio> {
             label: Text(t('النسخ ونسخ الأعضاء', 'Copies & member copies')),
             onPressed: () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update')),
           ),
+          if (!active && s.can('schedule', 'update'))
+            ActionChip(
+              avatar: Icon(Icons.all_inclusive_rounded, size: 18, color: c.primary),
+              label: Text(t('توليد حتى الاكتمال', 'Generate until complete')),
+              onPressed: () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve')),
+            ),
+          if (s.can('schedule', 'export'))
+            ActionChip(
+              avatar: Icon(Icons.file_download_rounded, size: 18, color: c.primary),
+              label: Text(t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF')),
+              onPressed: () => showTimetableExport(context,
+                  slots: p.slots,
+                  names: timetableNamesOf(p),
+                  periods: p.periods,
+                  title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
+                  sourceLabel: t('الجدول الحالي · الإصدار ${p.schedule?['version'] ?? 0}', 'Live timetable · version ${p.schedule?['version'] ?? 0}'),
+                  days: ScheduleDraft.fromJson(p.schedule ?? const {}).days),
+            ),
           if (active && s.can('schedule', 'update'))
             ActionChip(
               avatar: Icon(Icons.unpublished_rounded, size: 18, color: c.warning),

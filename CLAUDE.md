@@ -19,7 +19,9 @@ dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)
 ```
 
-`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`, `main`) in `dependency_overrides`; `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment).
+`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`, `main`) in `dependency_overrides`; `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment). Don't add the `excel` package: it forces `archive` 3.x, which downgrades `image` and `flutter_launcher_icons`. That's why the timetable Excel/Word files are written by hand on top of `archive` 4.
+
+`EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart` writes `sample.xlsx`, `sample.docx` and `sample.pdf` into `<dir>`, so they can be opened in Office to check how they render.
 
 ## Architecture
 
@@ -54,11 +56,13 @@ Timetables: `OrgScheduleProvider` (`org_providers.dart`) holds the open schedule
 - `org_schedule_planning.dart`: enrollment estimates and lecture/lab groups;
 - `org_schedule_optimizer.dart`: the health dashboard, suggestions (a configuration change answers 202 + a regeneration run), the days/periods policy and the relaxation priority;
 - `org_schedule_versions.dart`: pure ranking / diff / member-copy / CSV logic used by the alternatives and copies pages;
-- `org_schedule_copies.dart`: full copies (revisions) and per-member copies, with export.
+- `org_schedule_copies.dart`: full copies (revisions) and per-member copies, with export;
+- `org_schedule_coverage.dart`: "generate until complete" — rounds of generate → options → apply (this timetable, or every timetable of the term via `RebalanceApi` → `POST …/schedules/rebalance` and its changesets) with rollback, until every session is placed or the creator says "Enough";
+- `org_schedule_export.dart`: Excel and Word written by hand (SpreadsheetML / WordprocessingML zipped with `archive`) and PDF via `package:pdf` with the bundled Tajawal / Bahij fonts — per teacher / assistant / room / group or one member, merged cells for multi-period sessions, summaries.
 
-Pure logic in those files (`planCourse`, `ScheduleHealth`, `ScheduleHorizon`, `compareVersions`, `diffVersions`, `memberTimetable`) is what gets unit-tested, because `ApiClient` is a singleton and can't be faked.
+Pure logic in those files (`planCourse`, `ScheduleHealth`, `ScheduleHorizon`, `compareVersions`, `diffVersions`, `memberTimetable`, `TimetableGrid`, `TimetableSummary`, `coverageLadder`) is what gets unit-tested, because `ApiClient` is a singleton and can't be faked.
 
-When a backend route may be missing, call it through an `XxxApi` interface with a `Remote…` and a `Mock…` implementation. The mock is used only with `--dart-define=ORG_SCHEDULING_MOCKS=true` (`kOrgSchedulingMocks`, which is always false in release builds). A missing route is detected with `orgEndpointMissing` (FastAPI's bare 404 "Not Found" or a 405), and the UI then says the feature needs a server update. Backend work still to be done is specified in `docs/backend/scheduling-spec.md`, which is written as a prompt for the backend agent. Never modify `../back` from this repo.
+When a backend route may be missing, call it through an `XxxApi` interface with a `Remote…` and a `Mock…` implementation. The mock is used only with `--dart-define=ORG_SCHEDULING_MOCKS=true` (`kOrgSchedulingMocks`, which is always false in release builds). A missing route is detected with `orgEndpointMissing` (FastAPI's bare 404 "Not Found" or a 405), and the UI then says the feature needs a server update. `docs/backend/scheduling-spec.md` specifies the scheduling backend work (G1–G5 are done in v3.4; G6 is optional). The backend may be changed when the task needs it. Follow `../back/CLAUDE.md`, add tests under `tests/org_v2/`, and record every org API contract change in `../back/FLUTTER_API_CHANGES.md`.
 
 **Web** — Code that is not web-safe sits behind `kIsWeb` checks or conditional-import stubs (`url_strategy_stub.dart` / `url_strategy_web.dart`, `web_notification_web.dart` using `package:web`). Do not import `dart:io`-only APIs from code that runs on web without such a guard.
 

@@ -8,10 +8,12 @@
 // restores everything from the server. The algorithm is the server's — this screen never claims a result it didn't send.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -25,6 +27,7 @@ import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
 import 'org_providers.dart';
 import 'org_schedule_pages.dart' show showAvailabilitySheet, showPeriodForm, showPublishConflicts;
+import 'org_schedule_planning.dart' show applyStudentCount, coursePlanApi, termCourseIds;
 import 'org_timetable_parts.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -53,6 +56,12 @@ class _TimetableWizardState extends State<TimetableWizard> {
   String _courseQuery = '';
   // generation options (sent with generate; the stored settings keep them too)
   bool _keepLocked = true;
+  // org courses (GET /courses): term_id links a course to the term it is planned for; null = could not be read
+  List<Map<String, dynamic>>? _orgCourses;
+  // students to plan for, for every selected course: enrolled (subscribed) or a manual count — saved as course plans
+  String _countMode = 'enrolled';
+  int? _manualCount;
+  bool _countDirty = false;
 
   OrgScheduleProvider get _p => context.read<OrgScheduleProvider>();
 
@@ -79,6 +88,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final p = _p;
     if (!p.loaded) await p.loadSetup();
     final all = p.loads.map((l) => asInt(l['course_id']));
+    unawaited(_loadOrgCourses());
     if (widget.scheduleId == null) {
       setState(() {
         _d = ScheduleDraft()..courseIds.addAll(all);
@@ -97,6 +107,68 @@ class _TimetableWizardState extends State<TimetableWizard> {
       _d = d;
       _saved = jsonEncode(d.toBody());
     });
+  }
+
+  /// Every page of the org's courses (≤ 100 per page). A user without courses.view reads the term from GET /loads
+  /// (`course.term_id`, servers since v3.4); without either the selection stays manual.
+  Future<void> _loadOrgCourses() async {
+    List<Map<String, dynamic>>? out = [];
+    for (var page = 1; page <= 20; page++) {
+      final r = await orgCall(() => _p.api.get('${_p.base}/courses', queryParams: {'size': 100, 'page': page}), quiet: true);
+      if (!r.ok) {
+        final fromLoads = [for (final l in _p.loads) {...asMap(l['course']), 'id': asInt(l['course_id'])}];
+        out = fromLoads.any((c) => c.containsKey('term_id')) ? fromLoads : null;
+        break;
+      }
+      out!.addAll(asMapList(r.map['items']));
+      if (page >= asInt(r.map['pages'], 1)) break;
+    }
+    if (mounted && out != null) setState(() => _orgCourses = out);
+    final id = _d?.id;
+    if (id == null) return;
+    // the count already chosen for this timetable: manual when every selected course has the same manual count
+    final plans = (await coursePlanApi(_p).list(id)).items;
+    final sel = [for (final c in _d!.courseIds) plans[c]];
+    if (mounted && sel.isNotEmpty && sel.every((x) => x?.countSource == 'manual' && x?.expectedStudents == sel.first?.expectedStudents)) {
+      setState(() {
+        _countMode = 'manual';
+        _manualCount = sel.first!.expectedStudents;
+      });
+    }
+  }
+
+  Set<int> _termCourses(int? termId) => termId == null || _orgCourses == null ? const {} : termCourseIds(_orgCourses!, termId).intersection({for (final l in _p.loads) asInt(l['course_id'])});
+
+  /// Selects exactly the courses planned for the chosen term; returns false when the term has none (selection kept).
+  bool _selectTermCourses(ScheduleDraft d) {
+    final ids = _termCourses(d.termId);
+    if (ids.isEmpty) return false;
+    d.courseIds
+      ..clear()
+      ..addAll(ids);
+    return true;
+  }
+
+  Future<bool> _saveStudentCount() async {
+    final d = _d!;
+    if (!_countDirty || _locked || d.id == null) return true;
+    if (_countMode == 'manual' && (_manualCount == null || _manualCount! < 1)) {
+      setState(() => _error = t('اكتب عدد الطلاب (1 أو أكثر)', 'Type the number of students (1 or more)'));
+      return false;
+    }
+    setState(() => _busy = true);
+    try {
+      final api = coursePlanApi(_p);
+      final existing = (await api.list(d.id!)).items;
+      await api.saveAll(d.id!, applyStudentCount(existing, d.courseIds, source: _countMode, count: _manualCount));
+      _countDirty = false;
+      return true;
+    } catch (e) {
+      if (mounted) setState(() => _error = orgErrorText(ApiException.from(e)));
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   bool get _dirty => _d != null && jsonEncode(_d!.toBody()) != _saved;
@@ -135,6 +207,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       // a new timetable is first saved when leaving the courses step — so courses can still be created there
       final firstSaveLater = _step == 0 && _d!.id == null;
       if (!firstSaveLater && !await _persist()) return;
+      if (_step == 1 && !await _saveStudentCount()) return;
     }
     setState(() {
       _error = null;
@@ -279,6 +352,9 @@ class _TimetableWizardState extends State<TimetableWizard> {
               ? (_) {}
               : (v) => setState(() {
                     d.termId = v;
+                    // a new timetable starts with exactly the term's courses; an existing one keeps its selection
+                    // (the courses step offers the same switch)
+                    if (d.id == null) _selectTermCourses(d);
                     final term = p.terms.where((x) => asInt(x['id']) == v).firstOrNull;
                     // the dates must fall inside the term — start from its dates
                     if (term != null) {
@@ -316,6 +392,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final c = context.colors;
     final q = _courseQuery.trim().toLowerCase();
     final shown = p.loads.where((l) => q.isEmpty || '${courseName(l)} ${asMap(l['course'])['code'] ?? ''}'.toLowerCase().contains(q)).toList();
+    final termIds = _termCourses(d.termId);
     return Section(
       title: t('المقررات (${d.courseIds.length})', 'Courses (${d.courseIds.length})'),
       icon: Icons.menu_book_rounded,
@@ -347,9 +424,12 @@ class _TimetableWizardState extends State<TimetableWizard> {
           ),
         ]),
         if (p.loads.isEmpty) OrgEmpty(icon: Icons.menu_book_rounded, title: t('لا مقررات في المؤسسة بعد', 'No courses yet')),
+        if (d.termId != null) _termBar(context, d, termIds),
         Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final l in shown)
+          // the term's courses first, then the rest — every course stays selectable
+          for (final l in [...shown.where((l) => termIds.contains(asInt(l['course_id']))), ...shown.where((l) => !termIds.contains(asInt(l['course_id'])))])
             FilterChip(
+              avatar: termIds.contains(asInt(l['course_id'])) ? Icon(Icons.event_available_rounded, size: 16, color: c.primary) : null,
               label: Text('${'${asMap(l['course'])['code'] ?? ''}'.isEmpty ? '' : '${asMap(l['course'])['code']} · '}${courseName(l)}',
                   style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
               selected: d.courseIds.contains(asInt(l['course_id'])),
@@ -357,8 +437,79 @@ class _TimetableWizardState extends State<TimetableWizard> {
             ),
         ]),
         if (d.courseIds.isEmpty) Text(t('اختر مقرراً واحداً على الأقل', 'Pick at least one course'), style: orgText(context, size: 12, color: c.warning)),
+        const SizedBox(height: 14),
+        _studentCount(context, d),
       ]),
     );
+  }
+
+  Widget _termBar(BuildContext context, ScheduleDraft d, Set<int> termIds) {
+    final c = context.colors;
+    final exact = termIds.isNotEmpty && d.courseIds.length == termIds.length && d.courseIds.containsAll(termIds);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(children: [
+        Icon(Icons.event_available_rounded, size: 18, color: c.primary),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            _orgCourses == null
+                ? t('تعذّر قراءة فصول المقررات — اختر المقررات يدوياً.', 'Could not read the courses\' terms — pick the courses by hand.')
+                : termIds.isEmpty
+                    ? t('لا مقرر مخطط لهذا الفصل — اختر المقررات يدوياً.', 'No course is planned for this term — pick the courses by hand.')
+                    : t('${termIds.length} مقرر مخطط لهذا الفصل${exact ? ' — مختارة كلها فقط' : ''}', '${termIds.length} course(s) planned for this term${exact ? ' — exactly these are selected' : ''}'),
+            style: orgText(context, size: 12.5, color: c.textMedium),
+          ),
+        ),
+        if (termIds.isNotEmpty && !exact && !_locked)
+          TextButton(onPressed: () => setState(() => _selectTermCourses(d)), child: Text(t('مقررات الفصل فقط', 'Only the term\'s courses'))),
+      ]),
+    );
+  }
+
+  /// How many students each selected course is planned for: its subscribed (enrolled) students or one typed count.
+  /// Saved as the courses' plans when leaving this step; per-course changes stay in "Enrollment & groups".
+  Widget _studentCount(BuildContext context, ScheduleDraft d) {
+    final c = context.colors;
+    void set(String mode) => setState(() {
+          _countMode = mode;
+          _countDirty = true;
+        });
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(t('عدد الطلاب لكل مقرر', 'Students per course'), style: orgText(context, size: 13, w: FontWeight.w800)),
+      const SizedBox(height: 6),
+      SegmentedButton<String>(
+        segments: [
+          ButtonSegment(value: 'enrolled', icon: const Icon(Icons.how_to_reg_rounded), label: Text(t('الطلاب المشتركون', 'Subscribed students'))),
+          ButtonSegment(value: 'manual', icon: const Icon(Icons.edit_rounded), label: Text(t('عدد يدوي', 'Manual count'))),
+        ],
+        selected: {_countMode},
+        onSelectionChanged: _locked ? null : (v) => set(v.first),
+      ),
+      if (_countMode == 'manual') ...[
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 220,
+          child: TextFormField(
+            initialValue: _manualCount?.toString() ?? '',
+            enabled: !_locked,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(labelText: t('عدد الطلاب', 'Number of students'), isDense: true, prefixIcon: const Icon(Icons.groups_rounded)),
+            onChanged: (v) => setState(() {
+              _manualCount = int.tryParse(v.trim());
+              _countDirty = true;
+            }),
+          ),
+        ),
+      ],
+      const SizedBox(height: 4),
+      Text(
+          _countMode == 'manual'
+              ? t('يُطبَّق على كل المقررات المختارة (${d.courseIds.length})، وتُحسب المجموعات منه وفق سعة الأماكن.',
+                  'Applied to every selected course (${d.courseIds.length}); groups are sized from it by room capacity.')
+              : t('يُستخدم عدد المشتركين الفعليين في كل مقرر.', 'Each course uses its actual number of subscribed students.'),
+          style: orgText(context, size: 12, color: c.textMedium)),
+    ]);
   }
 
   // ── C ──

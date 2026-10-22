@@ -116,7 +116,33 @@ class CoursePlan {
       };
 
   Map<String, dynamic> toJson() => {'course_id': courseId, 'enrolled_students': enrolledStudents, ...toBody(), if (history != null) 'history': history!.toJson()};
+
+  /// The same plan with another student count: `enrolled` (the subscribed students — no estimate is sent) or
+  /// `manual` with [count]. Group sizes, counts and staff are kept.
+  CoursePlan withCount(String source, int? count) => CoursePlan(
+        courseId: courseId,
+        enrolledStudents: enrolledStudents,
+        expectedStudents: source == 'manual' ? count : null,
+        lectureGroupSize: lectureGroupSize,
+        labGroupSize: labGroupSize,
+        lectureGroups: lectureGroups,
+        labGroups: labGroups,
+        groupStaff: groupStaff,
+        countSource: source,
+        history: history,
+      );
 }
+
+/// The plans to save when the wizard sets one student count for every selected course; [existing] keeps each
+/// course's other planning fields (a PUT replaces the whole plan).
+List<CoursePlan> applyStudentCount(Map<int, CoursePlan> existing, Iterable<int> courseIds, {required String source, int? count}) =>
+    [for (final id in courseIds) (existing[id] ?? CoursePlan(courseId: id)).withCount(source, count)];
+
+/// The courses planned for [termId] (org course `term_id`, GET /orgs/{id}/courses).
+Set<int> termCourseIds(List<Map<String, dynamic>> courses, int termId) => {
+      for (final c in courses)
+        if (c['term_id'] != null && asInt(c['term_id']) == termId) asInt(c['id'])
+    };
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Planner (pure)
@@ -245,6 +271,9 @@ abstract class CoursePlanApi {
 
   /// Returns the saved plan, or throws [ApiException] (server text in `message`).
   Future<CoursePlan> save(int scheduleId, CoursePlan plan);
+
+  /// All or nothing (PUT …/course-plans): every plan is validated, then all are saved together.
+  Future<List<CoursePlan>> saveAll(int scheduleId, List<CoursePlan> plans);
 }
 
 class RemoteCoursePlanApi implements CoursePlanApi {
@@ -267,6 +296,14 @@ class RemoteCoursePlanApi implements CoursePlanApi {
   @override
   Future<CoursePlan> save(int scheduleId, CoursePlan plan) async =>
       CoursePlan.fromJson(asMap(await api.put('$base/schedules/$scheduleId/course-plans/${plan.courseId}', body: plan.toBody())));
+
+  @override
+  Future<List<CoursePlan>> saveAll(int scheduleId, List<CoursePlan> plans) async {
+    final r = await api.put('$base/schedules/$scheduleId/course-plans', body: {
+      'items': [for (final p in plans) {'course_id': p.courseId, ...p.toBody()}]
+    });
+    return asMapList(asMap(r)['items']).map(CoursePlan.fromJson).toList();
+  }
 }
 
 /// In-memory stand-in for development. Keeps what is saved until the app restarts.
@@ -282,6 +319,16 @@ class MockCoursePlanApi implements CoursePlanApi {
       if (v != null && v < 1) throw ApiException(statusCode: 422, message: t('القيم يجب أن تكون 1 أو أكثر', 'Values must be 1 or more'), code: 'bad_plan');
     }
     return (_store[scheduleId] ??= {})[plan.courseId] = plan;
+  }
+
+  @override
+  Future<List<CoursePlan>> saveAll(int scheduleId, List<CoursePlan> plans) async {
+    for (final p in plans) {
+      if (p.expectedStudents != null && p.expectedStudents! < 1) {
+        throw ApiException(statusCode: 422, message: t('القيم يجب أن تكون 1 أو أكثر', 'Values must be 1 or more'), code: 'bad_plan');
+      }
+    }
+    return [for (final p in plans) await save(scheduleId, p)];
   }
 }
 
