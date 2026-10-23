@@ -2164,7 +2164,9 @@ class _ToggleTile extends StatelessWidget {
             Text(sub, style: dlText(11.5, c: c.textMedium, h: 1.4)),
           ]),
         ),
-        Switch(value: on, activeTrackColor: color, onChanged: onChanged),
+        const SizedBox(width: 8),
+        AppSwitch(value: on, activeColor: color, onChanged: onChanged, semanticLabel: title),
+        const SizedBox(width: 4),
       ]),
     );
   }

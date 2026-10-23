@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -83,6 +84,9 @@ Future<void> main() async {
 /// work, then ALWAYS starts the real app. The error screen ([_FatalApp]) is
 /// shown only when startup fails.
 Future<void> _bootstrap() async {
+  // Decode the splash artwork first (bounded): the native splash stays up meanwhile, so Flutter's first
+  // frame already shows the logo exactly where the native one was — no blank flash.
+  await _SplashArt.preload().timeout(const Duration(milliseconds: 800), onTimeout: () {});
   runApp(const _BootApp());
 
   try {
@@ -98,6 +102,7 @@ Future<void> _bootstrap() async {
   }
 
   try {
+    _BootProgress.stage = 1;
     _runApp();
   } catch (e, s) {
     debugPrint('[bootstrap:runApp] $e\n$s');
@@ -174,6 +179,8 @@ Future<T?> _safe<T>(
   } catch (e) {
     debugPrint('[init:$name] $e');
     return null;
+  } finally {
+    _BootProgress.steps++; // splash progress only
   }
 }
 
@@ -254,13 +261,7 @@ class _BootAppState extends State<_BootApp> {
   Widget build(BuildContext context) {
     final theme = _theme;
     if (theme == null) {
-      return const MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body: Center(child: CircularProgressIndicator()),
-        ),
-      );
+      return const _PremiumLoadingScreen(); // the splash needs no theme: same frame either way
     }
     return ThemeConfigScope(provider: theme, child: const _PremiumLoadingScreen());
   }
@@ -441,7 +442,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         ? AppIdentity.instance.name
         : RemoteConfigService.instance.appName;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
+    // The splash dissolves over the first app frame instead of being cut away.
+    return _SplashHandOff(child: AnnotatedRegion<SystemUiOverlayStyle>(
       // Light icons (time/battery/signal) in the status bar, on every
       // screen — set once here instead of per-screen, since individual
       // AppBars/Scaffolds would otherwise need to remember to set this
@@ -519,7 +521,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
               .toList(),
         ),
       ),
-    );
+    ));
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
@@ -805,723 +807,323 @@ class _PremiumLoadingScreen extends StatelessWidget {
   }
 }
 
-/// Built below the MaterialApp (and the ThemeConfigScope above it), so
-/// context.colors can resolve here.
+/// Boot progress shown by the splash. Visual only: it never influences how the init steps run.
+abstract final class _BootProgress {
+  /// Finished [_safe] init steps.
+  static int steps = 0;
+
+  /// 0 core init · 1 app mounted (live theme loading) · 2 ready → hand-off.
+  static int stage = 0;
+
+  // language, firebase, remoteConfig, notifications, connectivity (+ offlineVideos, attendanceCourses, crashlytics).
+  static int get _expected => kIsWeb ? 5 : 8;
+
+  static double get target => switch (stage) {
+        0 => 0.06 + 0.62 * (steps / _expected).clamp(0.0, 1.0),
+        1 => 0.82,
+        _ => 1.0,
+      };
+}
+
+/// The native splash artwork, decoded BEFORE the first Flutter frame so that frame already shows the logo
+/// (no blank flash between the native splash and Flutter's).
+abstract final class _SplashArt {
+  static const asset = 'assets/images/splash.png';
+
+  /// flutter_native_splash treats the source image as 4x (Android xxxhdpi, iOS @3x = ¾, web light-4x):
+  /// assets/images/splash.png is 1040×1000 px → 260×250 logical px, centred on the whole window on every
+  /// platform (android_gravity / ios_content_mode: center, fullscreen, web `.center`).
+  static const Size size = Size(260, 250);
+
+  static ui.Image? image;
+
+  static Future<void> preload() async {
+    try {
+      final views = WidgetsBinding.instance.platformDispatcher.views;
+      final dpr = views.isEmpty ? 3.0 : views.first.devicePixelRatio;
+      final data = await rootBundle.load(asset);
+      final codec = await ui.instantiateImageCodec(
+        data.buffer.asUint8List(),
+        targetWidth: (size.width * dpr).round().clamp(1, 1040),
+      );
+      image = (await codec.getNextFrame()).image;
+    } catch (e) {
+      debugPrint('[splash] preload: $e');
+    }
+  }
+
+  static Widget widget(Size s) {
+    final img = image;
+    if (img != null) {
+      return RawImage(image: img, width: s.width, height: s.height, fit: BoxFit.fill, filterQuality: FilterQuality.medium);
+    }
+    return Image.asset(asset, width: s.width, height: s.height, fit: BoxFit.fill, gaplessPlayback: true);
+  }
+}
+
+/// THE splash, shared by the instant boot screen, the live-theme loading screen and the hand-off overlay.
 ///
-/// Branded from the dashboard's "About us" data (AppIdentity: cached from the last launch,
-/// so it is already right on the first frame; before the very first fetch it falls back to
-/// the bundled logo + the remote-config name).
+/// Frame 1 is pixel-identical to the native splash (same artwork, 260×250 logical px, centred, #FBF7EC /
+/// #0F7B5F). Every value is derived from one shared clock, so re-mounting between those three screens never
+/// restarts or jumps the animation:
+///  * 0–0.35 s  perfectly still (the native frame);
+///  * then      a soft breathing scale + glow behind the mark, and a light shimmer sweeping across it;
+///  * > 1.5 s   (slow start only) a calm progress bar + message fade in below the logo;
+///  * [exit]    the mark zooms gently and fades while the canvas dissolves into the first app screen.
+/// Reduced motion (MediaQuery.disableAnimations): no breathing / shimmer / zoom — only fades.
 class _SplashBody extends StatefulWidget {
-  const _SplashBody();
+  const _SplashBody({this.exit});
+
+  /// Hand-off progress 0 → 1 (null while still loading).
+  final Animation<double>? exit;
 
   @override
   State<_SplashBody> createState() => _SplashBodyState();
 }
 
-class _SplashBodyState extends State<_SplashBody>
-    with TickerProviderStateMixin {
-  // Shared by the instant boot splash and the theme-loading splash, so the hand-over between
-  // them neither replays the intro nor makes the logo jump.
-  static bool _introPlayed = false;
-  static final Stopwatch _clock = Stopwatch()..start();
-  static final List<double> _phShared = (() {
-    final r = math.Random();
-    return List<double>.generate(8, (_) => r.nextDouble() * math.pi * 2);
-  })();
+class _SplashBodyState extends State<_SplashBody> with SingleTickerProviderStateMixin {
+  static const _cream = Color(0xFFFBF7EC);
+  static const _emerald = Color(0xFF0F7B5F);
+  static const _still = 0.35, _indicatorAt = 1.5;
 
-  // Seamless hand-over from the NATIVE splash: the first frame shows the bare mark exactly where / as big as
-  // the native splash drew it (same artwork, 160 px, centred); it then glides into the card and fades into it.
-  late final AnimationController _intro = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1150),
-    value: _introPlayed ? 1.0 : 0.0,
-  )..forward();
+  static final Stopwatch _clock = Stopwatch();
+  static double _shown = 0, _lastT = 0, _lastTarget = -1, _targetAt = 0;
 
-  late final AnimationController _enter = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1600),
-    value: _introPlayed ? 1.0 : 0.0,
-  );
+  static const _msgAr = ['نجهّز لك كل شيء…', 'لحظات ونكون معك', 'نحضّر تجربتك…'];
+  static const _msgEn = ['Getting everything ready…', 'Just a moment…', 'Preparing your experience…'];
 
-  late final AnimationController _loop = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 3200),
-  )..repeat(reverse: true);
-
-  // Continuous clock for the organic random logo drift (never loops/snaps).
-  late final AnimationController _drift = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 86400),
-  )..forward();
-
-  // Random phases per launch: the logo wanders differently every time.
-  late final List<double> _ph = _phShared;
-
-  late final Animation<double> _greetA = _step(0.00, 0.35);
-  late final Animation<double> _logoA = _step(0.10, 0.60, Curves.easeOutBack);
-  late final Animation<double> _nameA = _step(0.35, 0.75);
-  late final Animation<double> _tagA = _step(0.50, 0.90);
-  late final Animation<double> _footA = _step(0.65, 1.00);
-  late final Animation<double> _float = CurvedAnimation(
-    parent: _loop,
-    curve: Curves.easeInOut,
-  );
-
-  Animation<double> _step(
-      double s,
-      double e, [
-        Curve curve = Curves.easeOutCubic,
-      ]) => CurvedAnimation(
-    parent: _enter,
-    curve: Interval(s, e, curve: curve),
-  );
-
-  static const _messages = [
-    'نجهّز لك كل شيء…',
-    'لحظات ونكون معك',
-    'نحضّر تجربتك بكل حب',
-    'شكراً لصبرك 💛',
-  ];
-  int _msgIndex = 0;
-  Timer? _msgTimer;
+  late final AnimationController _tick = AnimationController(vsync: this, duration: const Duration(seconds: 1))
+    ..repeat();
 
   @override
   void initState() {
     super.initState();
-    if (!_introPlayed) {
-      _enter.forward().whenComplete(() => _introPlayed = true);
+    if (!_clock.isRunning) _clock.start();
+  }
+
+  @override
+  void dispose() {
+    _tick.dispose();
+    super.dispose();
+  }
+
+  double get _t => _clock.elapsedMicroseconds / 1e6;
+
+  /// Eases the bar toward the boot stage, creeping slowly inside a long step so it never looks frozen.
+  static void _advance(double t) {
+    final dt = (t - _lastT).clamp(0.0, 0.25);
+    _lastT = t;
+    final target = _BootProgress.target;
+    if (target != _lastTarget) {
+      _lastTarget = target;
+      _targetAt = t;
     }
-    _msgTimer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
+    final creep = target >= 1 ? 0.0 : 0.09 * (1 - math.exp(-(t - _targetAt) / 5));
+    final goal = math.min(0.97, target + creep);
+    final next = _shown + (goal - _shown) * (1 - math.exp(-dt * (target >= 1 ? 9 : 2.6)));
+    _shown = target >= 1 ? math.max(_shown, next) : math.max(_shown, math.min(next, goal));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.maybeOf(context);
+    final reduce = mq?.disableAnimations ?? false;
+    final dark = (mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark;
+    final bg = dark ? _emerald : _cream;
+    final accent = dark ? _cream : _emerald;
+    final en = AppConfig.lang == 'en';
+    final msgs = en ? _msgEn : _msgAr;
+    final exit = widget.exit;
+
+    return Directionality(
+      textDirection: en ? TextDirection.ltr : TextDirection.rtl,
+      child: DefaultTextStyle(
+        style: const TextStyle(decoration: TextDecoration.none),
+        child: Semantics(
+          label: en ? 'Loading' : 'جارٍ التحميل',
+          child: LayoutBuilder(builder: (context, box) {
+            final w = box.maxWidth.isFinite ? box.maxWidth : _SplashArt.size.width + 32;
+            final h = box.maxHeight.isFinite ? box.maxHeight : _SplashArt.size.height + 32;
+            // Native size on every real screen; only a window smaller than the artwork scales it down.
+            final fit = math
+                .min(1.0, math.min((w - 32) / _SplashArt.size.width, (h - 32) / _SplashArt.size.height))
+                .clamp(0.2, 1.0);
+            final art = _SplashArt.size * fit;
+            final logo = RepaintBoundary(child: _SplashArt.widget(art));
+            // The visible mark spans ~32–68 % of the artwork's height: sit the indicator just below it.
+            final indicatorTop = (h / 2 + art.height * 0.18 + 40).clamp(0.0, math.max(0.0, h - 56)).toDouble();
+            final barW = math.min(150.0, math.max(0.0, w - 32));
+
+            return AnimatedBuilder(
+              animation: exit == null ? _tick : Listenable.merge([_tick, exit]),
+              builder: (context, _) {
+                final t = _t;
+                _advance(t);
+                final x = exit?.value ?? 0.0;
+
+                final ramp = reduce ? 0.0 : Curves.easeInOut.transform(((t - _still) / 0.8).clamp(0.0, 1.0));
+                final breath = 0.5 - 0.5 * math.cos(2 * math.pi * math.max(0.0, t - _still) / 2.8);
+                final scale = 1 + 0.028 * ramp * breath + (reduce ? 0.0 : 0.12 * Curves.easeOutCubic.transform(x));
+                final cyc = (t - 0.8) % 3.4;
+                final sweep = (!reduce && t > 0.8 && cyc < 1.2 && x == 0)
+                    ? Curves.easeInOutSine.transform(cyc / 1.2)
+                    : -1.0;
+                final glowA = (dark ? 0.16 : 0.11) * ramp * (0.55 + 0.45 * breath) * (1 - x);
+                final bgA = 1 - Curves.easeInOut.transform(x);
+                final logoA = 1 - Curves.easeInCubic.transform(x);
+                final appear = reduce ? (t > _indicatorAt ? 1.0 : 0.0) : ((t - _indicatorAt) / 0.5).clamp(0.0, 1.0);
+                final indA = appear * (1 - (x * 2.2).clamp(0.0, 1.0));
+                final msgIndex = (math.max(0.0, t - _indicatorAt) / 2.6).floor() % msgs.length;
+                final glow = art.width * 1.45;
+
+                return Stack(fit: StackFit.expand, children: [
+                  ColoredBox(color: bg.withValues(alpha: bgA)),
+                  Center(
+                    child: IgnorePointer(
+                      child: Container(
+                        width: glow,
+                        height: glow,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(colors: [
+                            accent.withValues(alpha: glowA),
+                            accent.withValues(alpha: 0),
+                          ]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Opacity(
+                      opacity: logoA,
+                      child: Transform.scale(
+                        scale: scale,
+                        child: ShaderMask(
+                          blendMode: BlendMode.srcATop,
+                          shaderCallback: (r) {
+                            const clear = Color(0x00FFFFFF);
+                            if (sweep < 0) return const LinearGradient(colors: [clear, clear]).createShader(r);
+                            final c = -0.35 + 1.7 * sweep;
+                            return LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [clear, Colors.white.withValues(alpha: dark ? 0.32 : 0.48), clear],
+                              stops: [(c - 0.14).clamp(0.0, 1.0), c.clamp(0.0, 1.0), (c + 0.14).clamp(0.0, 1.0)],
+                            ).createShader(r);
+                          },
+                          child: logo,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: indicatorTop,
+                    child: Visibility(
+                      visible: indA > 0,
+                      child: Opacity(
+                        opacity: indA,
+                        child: Column(mainAxisSize: MainAxisSize.min, children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: SizedBox(
+                              width: barW,
+                              height: 3,
+                              child: ColoredBox(
+                                color: accent.withValues(alpha: 0.16),
+                                child: Align(
+                                  alignment: AlignmentDirectional.centerStart,
+                                  child: FractionallySizedBox(
+                                    widthFactor: _shown.clamp(0.0, 1.0),
+                                    heightFactor: 1,
+                                    child: ColoredBox(color: accent.withValues(alpha: 0.85)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          AnimatedSwitcher(
+                            duration: reduce ? Duration.zero : const Duration(milliseconds: 450),
+                            child: Text(
+                              msgs[msgIndex],
+                              key: ValueKey(msgIndex),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'tajawal',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.none,
+                                color: dark ? _cream.withValues(alpha: 0.85) : const Color(0xFF4D6A61),
+                              ),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ]);
+              },
+            );
+          }),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lays the splash over the first real app frame and dissolves it (scale + fade), so the app appears out of
+/// the splash instead of replacing it in one cut. Plays once per launch.
+class _SplashHandOff extends StatefulWidget {
+  const _SplashHandOff({required this.child});
+  final Widget child;
+
+  @override
+  State<_SplashHandOff> createState() => _SplashHandOffState();
+}
+
+class _SplashHandOffState extends State<_SplashHandOff> with SingleTickerProviderStateMixin {
+  static bool _done = false;
+
+  late final AnimationController _out =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
+
+  @override
+  void initState() {
+    super.initState();
+    if (_done) return;
+    _BootProgress.stage = 2;
+    // Let the app paint its first frame underneath, then dissolve the splash.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      setState(() => _msgIndex = (_msgIndex + 1) % _messages.length);
+      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+        _out.duration = const Duration(milliseconds: 220);
+      }
+      _out.forward().whenComplete(() {
+        _done = true;
+        if (mounted) setState(() {});
+      });
     });
   }
 
   @override
   void dispose() {
-    _intro.dispose();
-    _msgTimer?.cancel();
-    _enter.dispose();
-    _loop.dispose();
-    _drift.dispose();
+    _done = true;
+    _out.dispose();
     super.dispose();
   }
 
-  String get _greeting {
-    final h = DateTime.now().hour;
-    if (h < 5) return 'ليلة هادئة 🌙';
-    if (h < 12) return 'صباح الخير ☀️';
-    if (h < 17) return 'طاب يومك 🌤️';
-    if (h < 21) return 'مساء الخير 🌇';
-    return 'مساء النور 🌙';
-  }
-
-  double get _t => _clock.elapsedMicroseconds / 1000000.0;
-
-  Widget _reveal(Animation<double> a, Widget child, {double dy = 0.18}) {
-    return FadeTransition(
-      opacity: a,
-      child: SlideTransition(
-        position: Tween<Offset>(
-          begin: Offset(0, dy),
-          end: Offset.zero,
-        ).animate(a),
-        child: child,
-      ),
-    );
-  }
-
-  Widget _glow(double size, Color color) => Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      gradient: RadialGradient(colors: [color, color.withValues(alpha: 0)]),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
-    final c = _SplashPalette.of(context);
-    final id = AppIdentity.instance;
-
-    return ListenableBuilder(
-      listenable: id,
-      builder: (context, _) {
-        final name = id.name.isNotEmpty ? id.name : _safeAppName();
-        final tagline = id.tagline;
-        final version = id.versionLabel;
-
-        // The SAME artwork as the native splash (assets/images/logo_mark.png → splash.png): the splash never
-        // swaps logos mid-way. (The dashboard logo is still used everywhere else in the app.)
-        final logoImage = Image.asset('assets/images/logo_mark.png', width: 92, height: 92, fit: BoxFit.contain);
-
-        return Directionality(
-          textDirection: pageDirection,
-          child: Scaffold(
-            backgroundColor: c.background,
-            body: Stack(children: [
-              Positioned.fill(child: Container(
-              width: double.infinity,
-              height: double.infinity,
-              // Flat theme background colour (adapts to light / dark).
-              color: c.background,
-              child: Stack(
-                children: [
-                  // ══ Premium background (all layers derive from the theme) ══
-
-                  // 1) Gentle top/bottom primary wash over the flat background.
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            c.primary.withValues(alpha: c.isDark ? 0.12 : 0.08),
-                            Colors.transparent,
-                            c.primary.withValues(alpha: c.isDark ? 0.14 : 0.09),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 2) Fine dot grid that fades out toward the centre.
-                  Positioned.fill(
-                    child: RepaintBoundary(
-                      child: CustomPaint(
-                        painter: _DotGridPainter(
-                          color: c.primary.withValues(
-                            alpha: c.isDark ? 0.22 : 0.16,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 3) Drifting primary glows.
-                  AnimatedBuilder(
-                    animation: _drift,
-                    builder: (_, _) {
-                      final t = _t;
-                      return Stack(
-                        children: [
-                          PositionedDirectional(
-                            top: -120 + 26 * math.sin(t * 0.30 + _ph[0]),
-                            end: -110 + 20 * math.sin(t * 0.23 + _ph[1]),
-                            child: _glow(
-                              380,
-                              c.primary.withValues(
-                                alpha: c.isDark ? 0.24 : 0.16,
-                              ),
-                            ),
-                          ),
-                          PositionedDirectional(
-                            bottom: -140 + 24 * math.sin(t * 0.27 + _ph[2]),
-                            start: -100 + 18 * math.sin(t * 0.21 + _ph[3]),
-                            child: _glow(
-                              360,
-                              c.primaryLight.withValues(
-                                alpha: c.isDark ? 0.20 : 0.22,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-
-                  // 4) Breathing spotlight + concentric rings behind the logo.
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: AnimatedBuilder(
-                        animation: _float,
-                        builder: (_, _) {
-                          final p = _float.value;
-                          Widget ring(double size, double alpha) => Container(
-                            width: size,
-                            height: size,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: c.primary.withValues(alpha: alpha),
-                                width: 1,
-                              ),
-                            ),
-                          );
-                          return Center(
-                            child: Transform.scale(
-                              scale: 1 + 0.05 * p,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  _glow(
-                                    460,
-                                    c.primary.withValues(
-                                      alpha: c.isDark ? 0.26 : 0.17,
-                                    ),
-                                  ),
-                                  ring(280, c.isDark ? 0.20 : 0.14),
-                                  ring(400, c.isDark ? 0.14 : 0.09),
-                                  ring(540, c.isDark ? 0.09 : 0.05),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-
-                  // 5) Soft vignette for depth.
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: RadialGradient(
-                            center: Alignment.center,
-                            radius: 1.15,
-                            colors: [
-                              Colors.transparent,
-                              (c.isDark ? Colors.black : c.primaryDark)
-                                  .withValues(alpha: c.isDark ? 0.35 : 0.10),
-                            ],
-                            stops: const [0.6, 1.0],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 6) Emerald arch holding the footer, with a fine gold hairline (brand signature).
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: MediaQuery.sizeOf(context).height * 0.24,
-                    child: IgnorePointer(
-                      child: _reveal(
-                        _footA,
-                        CustomPaint(painter: _ArchPainter(c.arch, c.archEdge, c.gold)),
-                        dy: 0.5,
-                      ),
-                    ),
-                  ),
-
-                  SafeArea(
-                    child: Column(
-                      children: [
-                        // ── Top half: greeting ──
-                        Expanded(
-                          child: Align(
-                            alignment: Alignment.topCenter,
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 20),
-                              child: _reveal(
-                                _greetA,
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: c.primaryTint,
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: c.primary.withValues(alpha: 0.18),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    _greeting,
-                                    style: TextStyle(
-                                      fontFamily: 'tajawal',
-                                      fontSize: 13.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: c.primary,
-                                    ),
-                                  ),
-                                ),
-                                dy: -0.4,
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        // ── Logo: exactly centred (both halves are Expanded) ──
-                        ScaleTransition(
-                          scale: Tween<double>(
-                            begin: 0.8,
-                            end: 1,
-                          ).animate(_logoA),
-                          child: FadeTransition(
-                            opacity: CurvedAnimation(
-                              parent: _enter,
-                              curve: const Interval(0.1, 0.45),
-                            ),
-                            child: AnimatedBuilder(
-                              animation: Listenable.merge([_drift, _float]),
-                              child: logoImage,
-                              builder: (_, image) {
-                                final t = _t;
-                                final dx =
-                                    12 * math.sin(t * 0.90 + _ph[0]) +
-                                        6 * math.sin(t * 1.70 + _ph[1]);
-                                final dy =
-                                    14 * math.sin(t * 1.10 + _ph[2]) +
-                                        6 * math.sin(t * 2.10 + _ph[3]);
-                                final tilt =
-                                    0.05 * math.sin(t * 0.80 + _ph[4]) +
-                                        0.02 * math.sin(t * 1.90 + _ph[5]);
-                                final breathe =
-                                    1 + 0.025 * math.sin(t * 1.30 + _ph[6]);
-                                final p = _float.value;
-
-                                return Transform.translate(
-                                  offset: Offset(dx, dy),
-                                  child: Transform.rotate(
-                                    angle: tilt,
-                                    child: Transform.scale(
-                                      scale: breathe,
-                                      child: SizedBox(
-                                        width: 200,
-                                        height: 200,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            // pulsing halo in primary
-                                            Container(
-                                              width: 150 + 46 * p,
-                                              height: 150 + 46 * p,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                BorderRadius.circular(
-                                                  46 + 10 * p,
-                                                ),
-                                                border: Border.all(
-                                                  color: c.primary.withValues(
-                                                    alpha: 0.30 * (1 - p),
-                                                  ),
-                                                  width: 1.6,
-                                                ),
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 136,
-                                              height: 136,
-                                              padding: const EdgeInsets.all(20),
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                borderRadius:
-                                                BorderRadius.circular(40),
-                                                border: Border.all(
-                                                  color: c.primaryLight
-                                                      .withValues(alpha: 0.55),
-                                                  width: 3,
-                                                ),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: c.primary.withValues(
-                                                      alpha: 0.28,
-                                                    ),
-                                                    blurRadius: 36,
-                                                    offset: Offset(
-                                                      -dx * 0.5,
-                                                      16 - dy * 0.4,
-                                                    ),
-                                                  ),
-                                                  BoxShadow(
-                                                    color: c.primaryLight
-                                                        .withValues(
-                                                      alpha: 0.30,
-                                                    ),
-                                                    blurRadius: 60,
-                                                    spreadRadius: 2,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: image,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-
-                        // ── Bottom half: name, tagline, then footer ──
-                        Expanded(
-                          child: Column(
-                            children: [
-                              const SizedBox(height: 6),
-                              _reveal(
-                                _nameA,
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 32,
-                                  ),
-                                  child: Text(
-                                    name,
-                                    textAlign: TextAlign.center,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontFamily: 'tajawal',
-                                      fontSize: 30,
-                                      fontWeight: FontWeight.w800,
-                                      color: c.textDark,
-                                      height: 1.2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (tagline.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                _reveal(
-                                  _tagA,
-                                  Column(
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 3,
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            colors: [c.primary, c.primaryLight],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            3,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 40,
-                                        ),
-                                        child: Text(
-                                          tagline,
-                                          textAlign: TextAlign.center,
-                                          maxLines: 3,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontFamily: 'tajawal',
-                                            fontSize: 15.5,
-                                            height: 1.6,
-                                            color: c.textMedium,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              const Spacer(),
-                              _reveal(
-                                _footA,
-                                Column(
-                                  children: [
-                                    AnimatedSwitcher(
-                                      duration: const Duration(
-                                        milliseconds: 450,
-                                      ),
-                                      transitionBuilder: (child, anim) =>
-                                          FadeTransition(
-                                            opacity: anim,
-                                            child: SlideTransition(
-                                              position: Tween<Offset>(
-                                                begin: const Offset(0, 0.4),
-                                                end: Offset.zero,
-                                              ).animate(anim),
-                                              child: child,
-                                            ),
-                                          ),
-                                      child: Text(
-                                        _messages[_msgIndex],
-                                        key: ValueKey(_msgIndex),
-                                        style: TextStyle(
-                                          fontFamily: 'tajawal',
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: c.onArch,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(4),
-                                      child: SizedBox(
-                                        width: 120,
-                                        height: 4,
-                                        child: LinearProgressIndicator(
-                                          minHeight: 4,
-                                          backgroundColor: c.onArch.withValues(
-                                            alpha: 0.18,
-                                          ),
-                                          valueColor:
-                                          AlwaysStoppedAnimation<Color>(
-                                            c.gold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    if (version.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: c.onArch.withValues(alpha: 0.14),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          'v$version',
-                                          style: TextStyle(
-                                            fontFamily: 'tajawal',
-                                            fontSize: 11.5,
-                                            letterSpacing: 0.6,
-                                            color: c.onArch.withValues(alpha: 0.85),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                dy: 0.3,
-                              ),
-                              const SizedBox(height: 22),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            )),
-              // ── native → animated hand-over ──
-              Positioned.fill(
-                child: IgnorePointer(
-                  child: AnimatedBuilder(
-                    animation: _intro,
-                    builder: (_, child) {
-                      final move = Curves.easeInOutCubic.transform(((_intro.value - 0.30) / 0.70).clamp(0.0, 1.0));
-                      final fade = Curves.easeOut.transform(((_intro.value - 0.55) / 0.45).clamp(0.0, 1.0));
-                      if (fade >= 1) return const SizedBox.shrink();
-                      return Opacity(
-                        opacity: 1 - fade,
-                        child: Center(child: Transform.scale(scale: 1 - (1 - 92 / 160) * move, child: child)),
-                      );
-                    },
-                    child: Image.asset('assets/images/logo_mark.png', width: 160, fit: BoxFit.contain),
-                  ),
-                ),
-              ),
-            ]),
-          ),
-        );
-      },
-    );
+    // The app stays the FIRST child at all times, so removing the overlay never re-mounts it.
+    return Stack(fit: StackFit.expand, textDirection: TextDirection.ltr, children: [
+      widget.child,
+      if (!_done) Positioned.fill(child: IgnorePointer(child: _SplashBody(exit: _out))),
+    ]);
   }
-}
-
-/// Brand palette of the splash: cream canvas #FBF7EC + emerald #0F7B5F (fixed — independent of the live
-/// theme, so the first frame is always on-brand, before the theme has even loaded). Dark mode flips it:
-/// a deep emerald canvas with a cream arch.
-class _SplashPalette {
-  const _SplashPalette(this.isDark);
-  final bool isDark;
-
-  static const cream = Color(0xFFFBF7EC);
-  static const emerald = Color(0xFF0F7B5F);
-
-  static _SplashPalette of(BuildContext context) =>
-      _SplashPalette(MediaQuery.platformBrightnessOf(context) == Brightness.dark);
-
-  Color get background => isDark ? const Color(0xFF0B3D31) : cream;
-  Color get primary => isDark ? const Color(0xFF7FD3B6) : emerald;
-  Color get primaryLight => isDark ? const Color(0xFF2E9C7B) : const Color(0xFF4FB596);
-  Color get primaryDark => isDark ? const Color(0xFF06261E) : const Color(0xFF0A5A45);
-  Color get primaryTint => primary.withValues(alpha: isDark ? 0.18 : 0.10);
-  Color get textDark => isDark ? cream : const Color(0xFF0E2C24);
-  Color get textMedium => isDark ? cream.withValues(alpha: 0.78) : const Color(0xFF4D6A61);
-  Color get textLight => isDark ? cream.withValues(alpha: 0.6) : const Color(0xFF7C948C);
-  Color get arch => isDark ? emerald : emerald;
-  Color get archEdge => isDark ? const Color(0xFF14936F) : const Color(0xFF0A5A45);
-  Color get onArch => cream;
-  Color get gold => const Color(0xFFD9B46A);
-}
-
-/// Soft emerald arch along the bottom edge with a thin gold line on its crest.
-class _ArchPainter extends CustomPainter {
-  const _ArchPainter(this.color, this.edge, this.gold);
-  final Color color, edge, gold;
-
-  Path _crest(Size s, double lift) => Path()
-    ..moveTo(0, s.height * 0.42 + lift)
-    ..quadraticBezierTo(s.width * 0.5, -s.height * 0.10 + lift, s.width, s.height * 0.42 + lift);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final fill = _crest(size, 0)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(
-      fill,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [color, edge],
-        ).createShader(Offset.zero & size),
-    );
-    canvas.drawPath(
-      _crest(size, -7),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = gold.withValues(alpha: 0.75),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_ArchPainter old) => old.color != color || old.gold != gold;
-}
-
-/// Fine dot grid; dots fade out near the centre so the logo stays the focus.
-class _DotGridPainter extends CustomPainter {
-  final Color color;
-
-  const _DotGridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const gap = 26.0;
-    final center = Offset(size.width / 2, size.height / 2);
-    final maxDist = math.sqrt(center.dx * center.dx + center.dy * center.dy);
-    final paint = Paint();
-    for (double y = gap / 2; y < size.height; y += gap) {
-      for (double x = gap / 2; x < size.width; x += gap) {
-        final d =
-            (Offset(x, y) - center).distance / maxDist; // 0 centre → 1 corner
-        final fade = ((d - 0.25) / 0.75).clamp(0.0, 1.0);
-        if (fade <= 0) continue;
-        paint.color = color.withValues(alpha: color.a * fade);
-        canvas.drawCircle(Offset(x, y), 1.1, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DotGridPainter old) => old.color != color;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1648,13 +1250,5 @@ class _NotFoundScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-/// RemoteConfigService may not be initialised yet while the boot splash is showing.
-String _safeAppName() {
-  try {
-    return RemoteConfigService.instance.appName;
-  } catch (_) {
-    return '';
   }
 }

@@ -139,11 +139,11 @@ class _ColumnsSheet extends StatelessWidget {
                     ),
                     SizedBox(
                       width: 70,
-                      child: Switch(value: !col.isHidden, activeTrackColor: c.primary, onChanged: (v) => _flag(col, hidden: !v)),
+                      child: Center(child: AppSwitch(value: !col.isHidden, activeColor: c.primary, onChanged: (v) => _flag(col, hidden: !v))),
                     ),
                     SizedBox(
                       width: 70,
-                      child: Switch(value: col.visibleToStudents, activeTrackColor: c.success, onChanged: (v) => _flag(col, students: v)),
+                      child: Center(child: AppSwitch(value: col.visibleToStudents, activeColor: c.success, onChanged: (v) => _flag(col, students: v))),
                     ),
                     SizedBox(
                       width: 36,

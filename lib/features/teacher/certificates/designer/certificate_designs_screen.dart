@@ -274,14 +274,11 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
           Text('cert_use_for_courses'.tr, style: c.h3),
           const SizedBox(height: 4),
           Text('cert_use_for_courses_hint'.tr, style: c.caption),
-          Material(
-            type: MaterialType.transparency,
-            child: SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              value: all,
-              onChanged: (v) => set(() => all = v),
-              title: Text('cert_all_my_courses'.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-            ),
+          AppSwitchTile(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            value: all,
+            onChanged: (v) => set(() => all = v),
+            title: 'cert_all_my_courses'.tr,
           ),
           if (!all)
             Flexible(

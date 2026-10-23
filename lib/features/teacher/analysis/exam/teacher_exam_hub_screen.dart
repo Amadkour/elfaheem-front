@@ -2783,10 +2783,10 @@ class _Toggle extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          trailing: Switch.adaptive(
+          trailing: AppSwitch(
             value: value,
             onChanged: onChanged,
-            activeColor: context.colors.primary,
+            semanticLabel: label,
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14),
         ),

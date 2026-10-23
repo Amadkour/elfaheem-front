@@ -517,12 +517,8 @@ class PremiumSwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: c.primary,
-            thumbColor: const WidgetStatePropertyAll(Colors.white),
-          ),
+          const SizedBox(width: 10),
+          AppSwitch(value: value, onChanged: onChanged, semanticLabel: title),
         ],
       ),
     );

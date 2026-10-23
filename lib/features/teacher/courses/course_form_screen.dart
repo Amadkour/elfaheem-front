@@ -2007,9 +2007,9 @@ class _StatusCard extends StatelessWidget {
             if (isLoading)
               AppLoadingIndicator()
             else
-              Switch(
+              AppSwitch(
                 value: isPublished,
-                activeThumbColor: context.colors.primary,
+                semanticLabel: 'status_published'.tr,
                 onChanged: (_) => onToggle(),
               ),
           ],

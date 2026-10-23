@@ -513,15 +513,12 @@ class _MorePageState extends State<_MorePage> {
                         iconBg: c.darkIconBg,
                         iconColor: c.textDark,
                         label: 'dark_mode'.tr,
-                        trailing: Switch.adaptive(
+                        trailing: AppSwitch(
                           value: p.darkMode,
                           onChanged: (b) async {
                             await p.changeMode(b);
                           },
-                          activeThumbColor: c.primary,
-                          thumbColor: const WidgetStatePropertyAll(
-                            Colors.white,
-                          ),
+                          semanticLabel: 'dark_mode'.tr,
                         ),
                       ),
                     ],

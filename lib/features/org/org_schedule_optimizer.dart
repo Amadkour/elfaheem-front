@@ -1174,16 +1174,14 @@ class _HorizonCard extends StatelessWidget {
                     icon: const Icon(Icons.add_circle_outline_rounded)),
                 if (h.maxPeriods != null) TextButton(onPressed: () => set(() => h = h.copyWith(maxPeriods: () => null)), child: Text(t('بلا حد', 'No limit'))),
               ]),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
+              AppSwitchTile(
                 value: h.allowExpansion,
-                title: Text(t('السماح باقتراح أيام / فترات إضافية', 'Allow proposals for extra days / periods')),
+                title: t('السماح باقتراح أيام / فترات إضافية', 'Allow proposals for extra days / periods'),
                 onChanged: (v) => set(() => h = h.copyWith(allowExpansion: v)),
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
+              AppSwitchTile(
                 value: h.autoApplyApproved,
-                title: Text(t('تطبيق التوسيع فور اعتماده', 'Apply an expansion as soon as it is approved')),
+                title: t('تطبيق التوسيع فور اعتماده', 'Apply an expansion as soon as it is approved'),
                 onChanged: canForce ? (v) => set(() => h = h.copyWith(autoApplyApproved: v)) : null,
               ),
               if (forced && (days.length != startDays.length || !days.containsAll(startDays)))

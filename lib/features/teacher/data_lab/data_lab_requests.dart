@@ -406,7 +406,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
           else
             Tooltip(
               message: q.isActive ? _tr('dl_q_switch_off', 'Switch this question off') : _tr('dl_q_switch_on', 'Ask it again'),
-              child: Switch.adaptive(value: q.isActive, activeTrackColor: c.success, onChanged: (v) => _toggle(f, q, v)),
+              child: AppSwitch(value: q.isActive, activeColor: c.success, onChanged: (v) => _toggle(f, q, v)),
             ),
         ]),
       ),

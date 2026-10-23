@@ -17,6 +17,8 @@
 //   nothing yet      → AppEmpty                        loading       → AppListSkeleton (not a spinner)
 //   tip / warning    → AppBanner                       quick actions → AppPill
 //   form             → AppField / AppPicker / AppSwitchRow / AppPrimaryButton
+//   on/off toggle    → AppSwitch / AppSwitchTile (the ONLY switch look in the app — never Switch/SwitchListTile)
+//   any time / date  → AppTime.time / date / dateTime (UTC instant) · AppTime.clock("HH:MM") (12h/24h + timezone)
 //   sheet / confirm  → showAppSheet / appConfirm       status        → AppBadgePill
 library;
 
@@ -27,6 +29,8 @@ import '../features/admin/admin_common.dart' as admin;
 import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
+export 'app_switch.dart';
+export '../core/app_time.dart';
 export '../features/org/org_ui.dart'
     show hexColor, statusColor, statusLabel, priorityColor, priorityLabel, relTime, permsFromJson, permsToJson,
         fileSizeLabel;

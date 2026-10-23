@@ -800,12 +800,9 @@ Future<void> _accountSheet(
                       ),
                       ...fields(),
                       if (existing == null)
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'admin_make_default'.tr,
-                            style: const TextStyle(fontFamily: 'tajawal'),
-                          ),
+                        AppSwitchTile(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          title: 'admin_make_default'.tr,
                           value: makeDefault,
                           onChanged: (v) => setS(() => makeDefault = v),
                         ),

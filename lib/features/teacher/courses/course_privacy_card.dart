@@ -92,7 +92,8 @@ class _CoursePrivacyCardState extends State<CoursePrivacyCard> {
                   ),
                 ]),
               ),
-              Switch(value: priv, onChanged: widget.onChanged),
+              const SizedBox(width: 8),
+              AppSwitch(value: priv, onChanged: widget.onChanged, semanticLabel: 'cas_private_course'.tr),
             ]),
             if (priv) ...[
               const SizedBox(height: 12),

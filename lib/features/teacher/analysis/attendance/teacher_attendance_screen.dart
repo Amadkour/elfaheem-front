@@ -558,11 +558,12 @@ class _StudentTile extends StatelessWidget {
           ),
           ),
         ),
-        Switch.adaptive(
+        AppSwitch(
           value: present,
-          activeTrackColor: c.success,
-          inactiveThumbColor: kDanger,
+          activeColor: c.success,
+          inactiveColor: kDanger,
           onChanged: onToggle,
+          semanticLabel: student.name,
         ),
       ]),
     );

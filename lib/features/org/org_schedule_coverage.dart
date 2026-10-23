@@ -537,19 +537,15 @@ class _CoveragePageState extends State<_CoveragePage> {
               color: c.warning),
         _Meter(state: st, remaining: remaining, hasResult: hasResult, round: round),
         const SizedBox(height: 10),
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
+        AppSwitchTile(
           value: breakRules,
           onChanged: generating ? null : (v) => setState(() => breakRules = v),
-          title: Text(t('اسمح بكسر القيود حسب الأولوية', 'Allow breaking rules by priority'), style: orgText(context, w: FontWeight.w700)),
-          subtitle: Text(
-            hasResult && round > 0 && breakRules && !st.rulesBroken
-                ? t('الخادم الحالي لم يطبّق كسر القيود في الجولة الأخيرة (يحتاج تحديثاً) — طُبّقت التفضيلات المرنة فقط.',
-                    'The server did not break rules in the last round (it needs an update) — only soft preferences were relaxed.')
-                : t('كل القيود قابلة للكسر بترتيب الأولوية ما عدا: حصتان في المكان نفسه بالوقت نفسه، وعضو يدرّس مقرراً آخر بالوقت نفسه.',
-                    'Every rule may be broken in priority order except: two sessions in one room at the same time, and a member teaching another course at the same time.'),
-            style: orgText(context, size: 12, color: c.textMedium),
-          ),
+          title: t('اسمح بكسر القيود حسب الأولوية', 'Allow breaking rules by priority'),
+          subtitle: hasResult && round > 0 && breakRules && !st.rulesBroken
+              ? t('الخادم الحالي لم يطبّق كسر القيود في الجولة الأخيرة (يحتاج تحديثاً) — طُبّقت التفضيلات المرنة فقط.',
+                  'The server did not break rules in the last round (it needs an update) — only soft preferences were relaxed.')
+              : t('كل القيود قابلة للكسر بترتيب الأولوية ما عدا: حصتان في المكان نفسه بالوقت نفسه، وعضو يدرّس مقرراً آخر بالوقت نفسه.',
+                  'Every rule may be broken in priority order except: two sessions in one room at the same time, and a member teaching another course at the same time.'),
         ),
         const SizedBox(height: 6),
         if (hasResult && st.broken > 0) ...[

@@ -21,6 +21,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'dart:typed_data';
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -410,15 +411,7 @@ class OrgSwitchRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Material(type: MaterialType.transparency, child: SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      value: value,
-      onChanged: onChanged,
-      activeThumbColor: c.primary,
-      title: Text(title, style: orgText(context, w: FontWeight.w700)),
-      subtitle: subtitle == null ? null : Text(subtitle!, style: orgText(context, size: 12, color: c.textMedium)),
-    ));
+    return AppSwitchTile(title: title, subtitle: subtitle, value: value, onChanged: onChanged);
   }
 }
 

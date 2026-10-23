@@ -180,9 +180,9 @@ class _FormState extends State<_Form> {
                 if (type == 'select')
                   TextField(controller: opts, decoration: InputDecoration(labelText: 'pl_options'.tr, helperText: 'a, b, c')),
               ],
-              SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('pl_required'.tr),
+              AppSwitchTile(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  title: 'pl_required'.tr,
                   value: required,
                   onChanged: (v) => setD(() => required = v)),
             ]),

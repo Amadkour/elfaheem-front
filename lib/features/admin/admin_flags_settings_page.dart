@@ -111,21 +111,17 @@ class _ViewState extends State<_View> {
                     title: 'admin_flags_students_section'.tr,
                     icon: Icons.bookmark_rounded,
                     children: [
-                      SwitchListTile(
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         value: _allowReview,
                         onChanged: (v) => setState(() => _allowReview = v),
-                        title: Text(
-                          'admin_flags_allow_review'.tr,
-                          style: const TextStyle(fontFamily: 'bahji'),
-                        ),
+                        title: 'admin_flags_allow_review'.tr,
                       ),
-                      SwitchListTile(
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         value: _allowRead,
                         onChanged: (v) => setState(() => _allowRead = v),
-                        title: Text(
-                          'admin_flags_allow_read'.tr,
-                          style: const TextStyle(fontFamily: 'bahji'),
-                        ),
+                        title: 'admin_flags_allow_read'.tr,
                       ),
                       _NumField(
                         controller: _limitExam,

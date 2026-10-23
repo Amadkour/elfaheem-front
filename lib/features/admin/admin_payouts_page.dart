@@ -875,12 +875,9 @@ class _TeacherTile extends StatelessWidget {
                         value: enabled,
                         onChanged: (v) => setS(() => enabled = v),
                       ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          'admin_custom_methods_for_this_teacher'.tr,
-                          style: const TextStyle(fontFamily: 'tajawal'),
-                        ),
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        title: 'admin_custom_methods_for_this_teacher'.tr,
                         value: restrict,
                         onChanged: (v) => setS(() => restrict = v),
                       ),
@@ -1003,51 +1000,21 @@ class _SettingsViewState extends State<_SettingsView> {
           ),
           child: Column(
             children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_allow_all_teachers_to_withdraw'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  p.all
-                      ? 'admin_every_teacher_can_add_an_account_and'.tr
-                      : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_allow_all_teachers_to_withdraw'.tr,
+                subtitle: p.all
+                    ? 'admin_every_teacher_can_add_an_account_and'.tr
+                    : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
                 value: p.all,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: (v) => p.save({'payouts_enabled_for_all': v}),
               ),
               const Divider(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_automatic_transfer_moyasar_paymob'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  'admin_on_approval_the_money_is_sent'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_automatic_transfer_moyasar_paymob'.tr,
+                subtitle: 'admin_on_approval_the_money_is_sent'.tr,
                 value: p.auto,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: (v) => p.save({'payout_auto_enabled': v}),
               ),
             ],

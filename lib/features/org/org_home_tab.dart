@@ -7,6 +7,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -35,7 +36,7 @@ Future<Map<String, dynamic>?> _mix({bool refresh = false}) async {
     final r = await ApiClient().get('/api/v1/home/mix');
     if (r is Map) {
       _mixCache = Map<String, dynamic>.from(r);
-      homeInOrg.value = asMapList(_mixCache!['organizations']).isNotEmpty;
+      homeInOrg.value = AppConfig.orgsEnabled && asMapList(_mixCache!['organizations']).isNotEmpty;
     }
   } catch (_) {}
   return _mixCache;
@@ -63,6 +64,16 @@ class _HomeTabsBarState extends State<HomeTabsBar> {
     return ListenableBuilder(
       listenable: homeTabs,
       builder: (context, _) {
+        if (!AppConfig.orgsEnabled || AppConfig.disableList.contains('home.org_tab')) {
+          // organizations switched off by the platform: drop the tab and fall back to "My courses"
+          if (homeInOrg.value || homeTab.value != 0) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              homeTab.value = 0;
+              homeInOrg.value = false;
+            });
+          }
+          return const SizedBox.shrink();
+        }
         if (!homeInOrg.value) return const SizedBox.shrink();
         final c = context.colors;
         final org = asMapList(_mixCache?['organizations']).firstOrNull ?? const {};

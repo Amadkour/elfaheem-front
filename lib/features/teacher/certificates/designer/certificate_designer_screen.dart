@@ -923,13 +923,12 @@ class _FieldPanelState extends State<_FieldPanel> {
               ),
           ]),
           _LabeledSlider(label: 'cert_letter_spacing'.tr, value: f.letterSpacing, min: 0, max: 20, decimals: 1, onChanged: (v) => edit((x) => x.copyWith(letterSpacing: v))),
-          Material(type: MaterialType.transparency, child: SwitchListTile(
+          AppSwitchTile(
             dense: true,
-            contentPadding: EdgeInsets.zero,
-            title: Text('cert_auto_fit'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
+            title: 'cert_auto_fit'.tr,
             value: f.shrink,
             onChanged: (v) => edit((x) => x.copyWith(shrink: v)),
-          )),
+          ),
           Row(children: [
             Text('cert_max_lines'.tr, style: c.caption),
             const Spacer(),
@@ -1174,13 +1173,12 @@ class _PagePanelState extends State<_PagePanel> {
               for (final s in const ['classic', 'modern', 'dark'])
                 ChoiceChip(label: Text('cert_style_$s'.tr), selected: _style == s, onSelected: (_) => setState(() => _style = s)),
             ]),
-            Material(type: MaterialType.transparency, child: SwitchListTile(
+            AppSwitchTile(
               dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text('cert_reset_layout'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
+              title: 'cert_reset_layout'.tr,
               value: _resetFields,
               onChanged: (v) => setState(() => _resetFields = v),
-            )),
+            ),
             Wrap(spacing: 8, runSpacing: 8, children: [
               ElevatedButton.icon(
                 onPressed: () async {

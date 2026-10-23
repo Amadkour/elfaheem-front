@@ -148,9 +148,10 @@ class _VersionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch(
+              const SizedBox(width: 8),
+              AppSwitch(
                 value: active,
-                activeTrackColor: c.success,
+                activeColor: c.success,
                 onChanged: (_) async {
                   if (!active && asBool(v['force_update'])) {
                     final ok = await confirm(

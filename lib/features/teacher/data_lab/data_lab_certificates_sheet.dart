@@ -240,9 +240,10 @@ class _CertSheetState extends State<_CertSheet> {
                         style: dlText(12, w: FontWeight.w600, c: c.textDark, h: 1.4),
                       ),
                     ),
-                    Switch(
+                    const SizedBox(width: 8),
+                    AppSwitch(
                       value: _resend,
-                      activeTrackColor: c.warning,
+                      activeColor: c.warning,
                       onChanged: (v) {
                         setState(() => _resend = v);
                         _check();

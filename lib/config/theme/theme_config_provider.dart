@@ -28,6 +28,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_time.dart';
 import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
@@ -36,6 +37,7 @@ import 'theme_config_model.dart';
 // get the new default instead of the old cached one.
 const _kCacheKey = 'theme_config_v2';
 const _kDisableListCacheKey = 'disable_list_v1';
+const _kPlatformCacheKey = 'platform_settings_v1';
 
 /// Detects which platform string to send to the API.
 String get _currentPlatform {
@@ -717,9 +719,13 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       final disableItems = (json['disable_list'] as List<dynamic>? ?? [])
           .map((e) => e.toString())
           .toList();
-      AppConfig.disableList = disableItems;
+      final platformSettings = json['platform'] is Map
+          ? Map<String, dynamic>.from(json['platform'] as Map)
+          : <String, dynamic>{};
+      _applyPlatformSettings(platformSettings);
+      AppConfig.setDisableList(disableItems);
 
-      await _saveCache(_model!, disableItems);
+      await _saveCache(_model!, disableItems, platformSettings);
       _serverUnreachable = false;
       _error = null;
       _lastFetchAt = DateTime.now();
@@ -748,25 +754,58 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         _model = ThemeConfigModel.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       }
 
+      final platformRaw = prefs.getString(_kPlatformCacheKey);
+      if (platformRaw != null) {
+        final decoded = jsonDecode(platformRaw);
+        if (decoded is Map) _applyPlatformSettings(Map<String, dynamic>.from(decoded));
+      } else {
+        _applyPlatformSettings(const {}); // new install: Africa/Cairo · 12h until the server answers
+      }
+
       final disableRaw = prefs.getString(_kDisableListCacheKey);
       if (disableRaw != null) {
-        AppConfig.disableList = (jsonDecode(disableRaw) as List<dynamic>)
+        AppConfig.setDisableList((jsonDecode(disableRaw) as List<dynamic>)
             .map((e) => e.toString())
-            .toList();
+            .toList());
       }
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache load error: $e');
     }
   }
 
-  Future<void> _saveCache(ThemeConfigModel model, List<String> disableItems) async {
+  Future<void> _saveCache(ThemeConfigModel model, List<String> disableItems,
+      Map<String, dynamic> platformSettings) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_kCacheKey, jsonEncode(model.toJson()));
       await prefs.setString(_kDisableListCacheKey, jsonEncode(disableItems));
+      if (platformSettings.isNotEmpty) {
+        await prefs.setString(_kPlatformCacheKey, jsonEncode(platformSettings));
+      }
     } catch (e) {
       debugPrint('[ThemeConfigProvider] cache save error: $e');
     }
+  }
+
+  // ── Platform settings (super admin) ───────────────────────────────────────
+
+  /// Last `platform` block of the theme response: {orgs_enabled, timezone, time_format, org_creation_fee}.
+  Map<String, dynamic> _platform = const {};
+  Map<String, dynamic> get platformSettings => _platform;
+
+  /// Organization creation fee as the server announced it ({required, amount, currency, methods}).
+  Map<String, dynamic> get orgCreationFee =>
+      _platform['org_creation_fee'] is Map ? Map<String, dynamic>.from(_platform['org_creation_fee'] as Map) : const {};
+
+  /// Applies the organizations master switch and the platform timezone / time format. An old server that
+  /// sends no `platform` block keeps organizations ON and the Cairo / 12h defaults.
+  void _applyPlatformSettings(Map<String, dynamic> p) {
+    if (p.isNotEmpty) _platform = p;
+    AppTime.configurePlatform(
+      zone: (p['timezone'] as String?) ?? AppTime.fallbackZone,
+      timeFormat: (p['time_format'] as String?) ?? '12h',
+    );
+    AppConfig.setOrgsEnabled(p['orgs_enabled'] != false);
   }
 }
 

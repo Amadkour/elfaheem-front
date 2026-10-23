@@ -51,18 +51,13 @@ class _View extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('admin_subscription_required'.tr,
-                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                subtitle: Text(
-                  p.required
-                      ? 'admin_students_without_an_active'.tr
-                      : 'admin_default_the_app_is_free_for_every'.tr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
-                ),
+              AppSwitchTile(
+                title: 'admin_subscription_required'.tr,
+                subtitle: p.required
+                    ? 'admin_students_without_an_active'.tr
+                    : 'admin_default_the_app_is_free_for_every'.tr,
                 value: p.required,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: !p.settingsLoaded
                     ? null
                     : (v) async {
@@ -172,10 +167,11 @@ class _PlanRow extends StatelessWidget {
         style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Switch(
+        AppSwitch(
           value: plan.isActive,
-          activeTrackColor: c.primary,
+          activeColor: c.primary,
           onChanged: (v) => p.savePlan(plan.code, {'is_active': v}),
+          semanticLabel: plan.name,
         ),
         IconButton(icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
       ]),

@@ -396,7 +396,7 @@ class _OrgAccountPage extends StatelessWidget {
               iconBg: c.darkIconBg,
               iconColor: c.textDark,
               label: 'dark_mode'.tr,
-              trailing: Switch.adaptive(value: p.darkMode, onChanged: (b) async => p.changeMode(b), activeThumbColor: c.primary)),
+              trailing: AppSwitch(value: p.darkMode, onChanged: (b) async => p.changeMode(b), semanticLabel: 'dark_mode'.tr)),
         ]),
         const SizedBox(height: 20),
         SettingsGroup(title: 'exit'.tr, icon: Icons.exit_to_app_rounded, itemBackground: c.danger.withAlpha(30), children: [

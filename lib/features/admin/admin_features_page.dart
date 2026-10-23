@@ -563,10 +563,11 @@ class _FeatureRow extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch(
+              const SizedBox(width: 8),
+              AppSwitch(
                 // ON = visible everywhere, OFF = hidden on at least one platform
                 value: !hiddenAnywhere,
-                activeTrackColor: c.success,
+                activeColor: c.success,
                 onChanged: busy ? null : (visible) => p.set(f.key, !visible),
               ),
             ],
@@ -615,9 +616,10 @@ class _FeatureRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                Switch(
+                const SizedBox(width: 8),
+                AppSwitch(
                   value: allowed,
-                  activeTrackColor: c.success,
+                  activeColor: c.success,
                   onChanged: busy ? null : (v) => p.setAllowToAdmin(f.key, v),
                 ),
               ],
@@ -842,29 +844,21 @@ class _AddFeatureDialogState extends State<_AddFeatureDialog> {
                 ),
               ),
               const SizedBox(height: 6),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
+              AppSwitchTile(
                 dense: true,
                 value: _allow,
-                activeTrackColor: c.success,
+                activeColor: c.success,
                 onChanged: _saving ? null : (v) => setState(() => _allow = v),
-                title: Text(
-                  isAr ? 'السماح للمدير بالتحكم بها' : 'Let admins manage it',
-                  style: label(c.textDark),
-                ),
+                title: isAr ? 'السماح للمدير بالتحكم بها' : 'Let admins manage it',
               ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
+              AppSwitchTile(
                 dense: true,
                 value: _hideNow,
-                activeTrackColor: c.warning,
+                activeColor: c.warning,
                 onChanged: _saving ? null : (v) => setState(() => _hideNow = v),
-                title: Text(
-                  isAr
-                      ? 'إخفاؤها الآن على كل المنصات'
-                      : 'Hide it now on all platforms',
-                  style: label(c.textDark),
-                ),
+                title: isAr
+                    ? 'إخفاؤها الآن على كل المنصات'
+                    : 'Hide it now on all platforms',
               ),
               if (_err != null)
                 Padding(

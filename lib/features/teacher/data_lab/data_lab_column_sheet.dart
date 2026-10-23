@@ -774,7 +774,9 @@ class _SwitchTile extends StatelessWidget {
             Text(sub, style: dlText(11, c: c.textMedium, h: 1.35)),
           ]),
         ),
-        Switch(value: value, activeTrackColor: c.primary, onChanged: onChanged),
+        const SizedBox(width: 8),
+        AppSwitch(value: value, activeColor: c.primary, onChanged: onChanged, semanticLabel: title),
+        const SizedBox(width: 4),
       ]),
     );
   }
