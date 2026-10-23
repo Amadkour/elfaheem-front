@@ -38,6 +38,7 @@ import 'org_member_space.dart' show OrgMemberSpace;
 import 'org_people_page.dart' show OrgPeoplePage;
 import 'org_providers.dart' show OrgSession;
 import 'org_schedule_pages.dart' show OrgSchedulePage;
+import 'org_registrar_member.dart' show openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 
@@ -368,6 +369,12 @@ class _OrgBody extends StatelessWidget {
         AppPill(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => _space(context, org, 1)),
         AppPill(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => _space(context, org, 4)),
         if (roles.contains('student')) AppPill(icon: Icons.route_rounded, label: t('مساري', 'My path'), onTap: () => _space(context, org, 5)),
+        if (roles.contains('student')) ...[
+          AppPill(icon: Icons.how_to_reg_rounded, label: t('تسجيل المقررات', 'Course registration'), onTap: () => openRegistration(context, orgId)),
+          AppPill(icon: Icons.history_edu_rounded, label: t('سجلي الأكاديمي', 'My academic record'), onTap: () => openRecord(context, orgId)),
+        ],
+        if (roles.contains('teacher') || roles.contains('teacher_assistant'))
+          AppPill(icon: Icons.grading_rounded, label: t('رصد الدرجات', 'Grade entry'), onTap: () => openTeaching(context, orgId)),
         AppPill(icon: Icons.group_add_rounded, label: t('انضمام لقسم', 'Join a department'), onTap: () => _space(context, org, 6)),
       ],
       if (manage != null) ...[

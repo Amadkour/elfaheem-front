@@ -90,6 +90,7 @@ String examConflictText(String type) => switch (type) {
       'students_clash' => t('امتحانان لطلاب مشتركين في الوقت نفسه', 'Two exams at once for the same students'),
       'room_double_booked' => t('مكان عليه امتحانان في الوقت نفسه', 'A room holds two exams at once'),
       'room_too_small' => t('الأماكن لا تكفي عدد الطلاب', 'The rooms can\'t seat all students'),
+      'practical_exam_room' => t('امتحان عملي في غير معمله', 'A practical exam outside its lab'),
       'invigilator_double_booked' => t('مراقب في امتحانين في الوقت نفسه', 'An invigilator in two exams at once'),
       'invigilator_unavailable' => t('مراقب في وقت غير متاح له', 'An invigilator at a time they are unavailable'),
       'missing_invigilator' => t('مراقب واحد على الأقل لكل مكان', 'At least one invigilator per room'),

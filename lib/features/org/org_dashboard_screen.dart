@@ -37,6 +37,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
+import 'org_registrar_staff.dart' show OrgRegistrarPage;
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart' show DataCenterPage;
 
@@ -278,6 +279,8 @@ List<_Sub> _academicSubs(OrgSession s, String role) => [
       if (s.canAny('courses')) ('courses', t('المقررات', 'Courses'), Icons.menu_book_rounded, const OrgCoursesPage()),
       if (s.can('academic'))
         ('structure', t('الهيكل الأكاديمي', 'Academic structure'), Icons.account_tree_rounded, const OrgAcademicPage()),
+      if (s.can('academic'))
+        ('registrar', t('التسجيل والدرجات', 'Registrar'), Icons.how_to_reg_rounded, const OrgRegistrarPage()),
       if (role == 'teacher_assistant') ('sections', t('سكاشني', 'My sections'), Icons.science_rounded, const OrgSectionsPage()),
     ];
 

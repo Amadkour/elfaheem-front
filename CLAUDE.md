@@ -12,20 +12,22 @@ Flutter education platform (VOD courses, live sessions, attendance, organization
 flutter pub get
 flutter analyze                      # lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
 flutter run                          # add -d chrome for web
-flutter test test/org/               # the real suite (org features); test/widget_test.dart is the stock counter template and fails
+flutter test test/org/ test/export/ test/ui/   # the real suites; test/widget_test.dart is the stock counter template and fails
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 flutter build web && firebase deploy --only hosting
 dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)
 ```
 
-`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`, `main`) in `dependency_overrides`; `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment). Don't add the `excel` package: it forces `archive` 3.x, which downgrades `image` and `flutter_launcher_icons`. That's why the timetable Excel/Word files are written by hand on top of `archive` 4.
+`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`, `main`) in `dependency_overrides`; `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment). Don't add the `excel` package: it forces `archive` 3.x, which downgrades `image` and `flutter_launcher_icons`. That's why every Excel/Word file is written by hand on top of `archive` 4. When adding a package, check that `pubspec.lock` gains only that package and nothing gets downgraded.
 
 `EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart` writes `sample.xlsx`, `sample.docx` and `sample.pdf` into `<dir>`, so they can be opened in Office to check how they render.
 
+`test/ui/layout_harness.dart` (`expectNoLayoutErrors`) pumps a widget at 320×640 and 1400×900, in Arabic and English, with `textScaler` 1.3, and fails on any overflow or layout exception. Use it for new widgets: "no overflow on any screen size" is a project requirement.
+
 ## Architecture
 
-**Startup (`lib/main.dart`)** — `_bootstrap()` paints a boot splash immediately, runs `_initCore()` (storage, `assets/translation.json`, Firebase, Remote Config, connectivity, offline videos, …) with each step wrapped in `_safe(name, fn, seconds:)` timeouts so one slow service never blocks launch, then runs the real app. Only a storage failure shows `_FatalApp`. Routing is a single `onGenerateRoute: _router` switch over named routes; the initial route comes from `MyAuthProvider.homeRoute`, which maps the user role (`admin`/`super-admin`/`developer` → `/admin_dashboard`, `teacher`, `parent`, `org-admin`/`org-staff` → `/org_dashboard`, otherwise student `/dashboard`). Offline start-ups route to `/downloads` (or student dashboard + downloads on top).
+**Startup (`lib/main.dart`)** — `_bootstrap()` paints a boot splash immediately, runs `_initCore()` (storage, `assets/translation.json`, Firebase, Remote Config, connectivity, offline videos, …) with each step wrapped in `_safe(name, fn, seconds:)` timeouts so one slow service never blocks launch, then runs the real app. Only a storage failure shows `_FatalApp`. Routing is a single `onGenerateRoute: _router` switch over named routes; the initial route comes from `MyAuthProvider.homeRoute`, which maps the user role (`admin`/`super-admin`/`developer` → `/admin_dashboard`, `teacher`, `parent`, `org-admin`/`org-staff` → `/org_dashboard`, but org-staff who manage nothing → `/org_member`, from a cached per-user decision; otherwise student `/dashboard`). Offline start-ups route to `/downloads` (or student dashboard + downloads on top).
 
 **Features (`lib/features/<role>/`)** — `student`, `teacher`, `parent`, `admin`, `org`, plus `shared` (attendance, notifications, profile, subscription, downloads, upload, guest, …) and `auth`. Each role has its own dashboard screen.
 
@@ -40,7 +42,18 @@ dart run flutter_native_splash:create  # regenerate splash screens (android/ios 
 
 **Server-driven theme & feature flags** — `ThemeConfigProvider` (`lib/config/theme/`) loads the theme from `GET /api/v1/theme/{platform}` and builds `materialTheme()`. Always read colors via `context.colors`, never hard-coded colors. The same response sets `AppConfig.disableList` (feature kill-switch ids, e.g. `profile.logout`, `teacher_tab_analysis`). To make UI switchable, wrap it in `ParentComponent(featureKey: '...')` (hides it), or give a `BasePage` a `ValueKey('<id>')` (shows a "coming soon" page). `AppConfig.setDisableList` rebuilds the whole widget tree when the list changes.
 
-**UI kit** — New screens should use `lib/design/app_kit.dart` (role-neutral aliases over the Data Lab / org / admin widgets: `AppHero`, `AppCard`, `AppStatTile`, `AppEmpty`, `AppListSkeleton` rather than spinners, `AppBanner`, `AppField`, `showAppSheet`, `appConfirm`, …; the header comment of that file has the full usage table) and wrap pages in `BasePage` (`lib/utils/widget/base_page.dart`), which handles the background, kill-switch, and the global upload-progress footer.
+The disable list has layers. The effective list combines:
+- the platform list from the theme response;
+- the open organization's list (`AppConfig.setOrgDisableList`);
+- `AppConfig.orgEntryKeys`, while the super admin has organizations switched off (`AppConfig.orgsEnabled` / `setOrgsEnabled`, from `orgs_enabled` in the theme response).
+
+A super-admin OFF always wins, because an organization can only add keys. Hidden features disappear rather than greying out. With organizations off, the server answers 403 `orgs_disabled` on org routes, and `/org_dashboard` is wrapped in `OrgsGate`. The theme response's `platform_settings` also sets the platform timezone and 12h/24h (`AppTime.configurePlatform`).
+
+**UI kit** — New screens should use `lib/design/app_kit.dart` (role-neutral aliases over the Data Lab / org / admin widgets: `AppHero`, `AppCard`, `AppStatTile`, `AppEmpty`, `AppListSkeleton` rather than spinners, `AppBanner`, `AppField`, `showAppSheet`, `appConfirm`, …; the header comment of that file has the full usage table) and wrap pages in `BasePage` (`lib/utils/widget/base_page.dart`), which handles the background, kill-switch, and the global upload-progress footer. App-wide rules the kit enforces:
+- **Switches:** only `AppSwitch` / `AppSwitchTile` (`app_switch.dart`), never `Switch`/`SwitchListTile`.
+- **Dropdowns:** only `AppDropdown`.
+- **Displayed times and dates:** always go through `AppTime` (`lib/core/app_time.dart`, re-exported by the kit), which applies the platform or organization timezone and the 12h/24h choice. `AppTime.configureOrg` is set when an organization is opened and cleared when it is left.
+- **Table exports:** use `showAppExportSheet(context, AppTableExport)` (`app_table_export.dart`, writers in `lib/design/export/`). It offers Excel, Word and PDF with a column picker, RTL and Arabic fonts, and remembers the last choice per table. Admin `PagedList`s take an `export:` option that fetches every page before exporting.
 
 **Localization** — Strings live in `assets/translation.json` as `{ "key": { "en": "...", "ar": "..." } }`. Use `translate('key')` or `'key'.tr`; a missing key falls back to the key itself. Add both `en` and `ar` for every new key. Current language is `AppConfig.lang` (switched by `LangProvider`); use `pageDirection` for RTL/LTR.
 
@@ -48,21 +61,34 @@ dart run flutter_native_splash:create  # regenerate splash screens (android/ios 
 
 **Native code** — Live sessions use LiveKit (`features/teacher/sessions/live/`). Screen recording and screen sharing use platform channels (`com.example.flutter_education_app/native_recorder`, `/radios`). The native side is `android/app/src/main/kotlin/.../ScreenCaptureService.kt` and `MainActivity.kt`, and on iOS `ios/Runner/AppDelegate.swift`, `LocalDebugRecorder.swift`, and the `ios/BroadcastUploadExtension` target. Recordings upload in chunks.
 
-**Organizations (`lib/features/org/`)** — The backend source is next door at `../back` (`routers/organization/`, `services/organization/`). Check payloads there; don't trust the notes alone. Shared logic lives in `org_v3.dart`: `orgCall` keeps `detail.code` and its extras, `orgErrorText` turns codes into bilingual text, and `JoinPolicyDraft` / `ScheduleDraft` build PUT bodies. Several org PUTs replace the whole object (join policy, schedule, room, program, academic settings), so always send every field. The server stores naive UTC: send `orgUtc()` and read `orgParseUtc()`. Org screens use `t(ar, en)` from `admin_common.dart` for inline strings instead of `translation.json`. Tests: `flutter test test/org/`.
+**Organizations (`lib/features/org/`)** — The backend source is next door at `../back` (`routers/organization/`, `services/organization/`). Check payloads there; don't trust the notes alone. Shared logic lives in `org_v3.dart`: `orgCall` keeps `detail.code` and its extras, `orgErrorText` turns codes into bilingual text, and `JoinPolicyDraft` / `ScheduleDraft` build PUT bodies. Several org PUTs replace the whole object (join policy, schedule, room, program, academic settings), so always send every field. The server stores naive UTC: send `orgUtc()` and read `orgParseUtc()`. Org screens use `t(ar, en)` from `admin_common.dart` for inline strings instead of `translation.json`. When you add a server error code, map it in `orgErrorText`. Tests: `flutter test test/org/`.
+
+Entry points by role:
+- **Org admins** use `org_dashboard_screen.dart`: sections, with counts from one `GET …/dashboard` call. A department or academic program opens `org_department_dashboard.dart`.
+- **Members** get `org_member_dashboard.dart`, which serves members of several organizations, and the unified inbox (`lib/features/shared/inbox/unified_inbox.dart`, `GET /me/inbox`).
+- **Mode:** `AppModeController.instance` (`lib/core/app_mode.dart`) holds the Organization/Individual mode and the selected organization. Notification taps that carry `org_id` call `openOrg(id)` before routing.
+
+Other org areas:
+- **Joining:** codes and requests, `org_access_joining.dart`, QR scan via `mobile_scanner` in `org_join_scan.dart`, mobile only.
+- **Academic levels and prerequisites:** pure logic in `org_levels.dart`, screens in `org_levels_pages.dart`.
+- **Announcements with engagement analytics:** `org_announcements.dart`, which includes the embeddable `OrgAnnouncementFeed`.
+- **Platform and organization settings:** `admin_platform_*` and `org_platform_settings_page.dart`; the creation fee is in `org_creation_fee.dart`.
 
 Timetables: `OrgScheduleProvider` (`org_providers.dart`) holds the open schedule, its slots, and the conflicts from `GET …/validate`. Its writes send `expected_version`, and a 409 `stale_version` reloads the timetable. The screens are split across these files:
+- `org_schedule_hub.dart`: the guided 4-step flow (Set up → Generate → Review & fix → Publish & share) around the studio;
 - `org_schedule_pages.dart`: the studio grid, with drag-and-drop slot moves;
-- `org_schedule_alternatives.dart`;
+- `org_schedule_alternatives.dart`, `org_schedule_relaxation.dart`: up to 3 "break a rule" alternatives, ranked and compared side by side;
+- `org_schedule_exams.dart`, `org_my_exams.dart`: midterm/final exam timetables and the member's own exams. A published exam window pauses the term's weekly classes (`pause_weekly`). That pause is applied where the app computes today's and the next sessions, because no server route expands weekly slots into dates;
 - `org_schedule_planning.dart`: enrollment estimates and lecture/lab groups;
 - `org_schedule_optimizer.dart`: the health dashboard, suggestions (a configuration change answers 202 + a regeneration run), the days/periods policy and the relaxation priority;
-- `org_schedule_versions.dart`: pure ranking / diff / member-copy / CSV logic used by the alternatives and copies pages;
+- `org_schedule_versions.dart`: pure ranking / diff / member-copy logic used by the alternatives and copies pages;
 - `org_schedule_copies.dart`: full copies (revisions) and per-member copies, with export;
 - `org_schedule_coverage.dart`: "generate until complete" — rounds of generate → options → apply (this timetable, or every timetable of the term via `RebalanceApi` → `POST …/schedules/rebalance` and its changesets) with rollback, until every session is placed or the creator says "Enough";
 - `org_schedule_export.dart`: Excel and Word written by hand (SpreadsheetML / WordprocessingML zipped with `archive`) and PDF via `package:pdf` with the bundled Tajawal / Bahij fonts — per teacher / assistant / room / group or one member, merged cells for multi-period sessions, summaries.
 
 Pure logic in those files (`planCourse`, `ScheduleHealth`, `ScheduleHorizon`, `compareVersions`, `diffVersions`, `memberTimetable`, `TimetableGrid`, `TimetableSummary`, `coverageLadder`) is what gets unit-tested, because `ApiClient` is a singleton and can't be faked.
 
-When a backend route may be missing, call it through an `XxxApi` interface with a `Remote…` and a `Mock…` implementation. The mock is used only with `--dart-define=ORG_SCHEDULING_MOCKS=true` (`kOrgSchedulingMocks`, which is always false in release builds). A missing route is detected with `orgEndpointMissing` (FastAPI's bare 404 "Not Found" or a 405), and the UI then says the feature needs a server update. `docs/backend/scheduling-spec.md` specifies the scheduling backend work (G1–G5 are done in v3.4; G6 is optional). The backend may be changed when the task needs it. Follow `../back/CLAUDE.md`, add tests under `tests/org_v2/`, and record every org API contract change in `../back/FLUTTER_API_CHANGES.md`.
+When a backend route may be missing, call it through an `XxxApi` interface with a `Remote…` and a `Mock…` implementation. The mock is used only with `--dart-define=ORG_SCHEDULING_MOCKS=true` (`kOrgSchedulingMocks`, which is always false in release builds). A missing route is detected with `orgEndpointMissing` (FastAPI's bare 404 "Not Found" or a 405), and the UI then says the feature needs a server update. `docs/backend/scheduling-spec.md` specifies the scheduling backend work (G1–G5 are done in v3.4; G6 is optional). The backend may be changed when the task needs it. Follow `../back/CLAUDE.md`, add tests under `tests/org_v2/`, and record every org API contract change in `../back/FLUTTER_API_CHANGES.md`. The backend tests are standalone e2e scripts. Run them with Python 3.12 and `PYTHONUTF8=1`, for example `PYTHONUTF8=1 ../back/.venv312/Scripts/python ../back/tests/org_v2/e2e_org_v2.py` (or `py -3.12`). The `.venv312` folder is local and git-ignored.
 
 **Web** — Code that is not web-safe sits behind `kIsWeb` checks or conditional-import stubs (`url_strategy_stub.dart` / `url_strategy_web.dart`, `web_notification_web.dart` using `package:web`). Do not import `dart:io`-only APIs from code that runs on web without such a guard.
 
