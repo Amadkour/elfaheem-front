@@ -16,6 +16,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
+import 'org_platform_context.dart';
 import 'org_v3.dart';
 
 const orgBase = '/api/v1/org';
@@ -102,12 +103,14 @@ class OrgSession extends AdminBase {
       }
     }
     loaded = true;
+    OrgPlatformContext.open(approved ? currentId : null);   // org timezone / 12h-24h + org feature offs
     notifyListeners();
   }
 
   void select(int id) {
     if (id == currentId) return;
     currentId = id;
+    OrgPlatformContext.open(approved ? id : null);
     epoch.value++;
     notifyListeners();
   }

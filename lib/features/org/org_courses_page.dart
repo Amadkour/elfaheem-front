@@ -13,6 +13,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'org_academic_pages.dart' show CourseArchiveScreen;
+import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
 
 /// Active members of one role (up to 200) — used by the pickers.
 Future<List<Map<String, dynamic>>> orgPeople(OrgSession s, String role, {String? search}) async {
@@ -70,9 +71,9 @@ class _CoursesView extends StatelessWidget {
               onPressed: () => importExcelFlow(context, 'enrollments').then((_) => p.refresh()),
             ),
           ActionChip(
-            avatar: Icon(Icons.download_rounded, size: 18, color: c.success),
+            avatar: Icon(Icons.ios_share_rounded, size: 18, color: c.success),
             label: Text(t('تصدير الكورسات', 'Export courses'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
-            onPressed: () => downloadExcel(context, 'export/courses'),
+            onPressed: () => exportPagedList(context, p, (rows) => orgCoursesExport(rows, orgName: s.name)),
           ),
           ActionChip(
             avatar: Icon(Icons.download_rounded, size: 18, color: c.success),

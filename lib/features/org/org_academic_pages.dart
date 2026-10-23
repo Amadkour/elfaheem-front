@@ -20,6 +20,7 @@ import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_join_pages.dart' show OrgUnitJoinHub;
+import 'org_levels_pages.dart' show MyLevelCard, OrgLevelsTab, showEnrollBlock;
 import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
 
@@ -76,6 +77,7 @@ class _OrgAcademicPageState extends State<OrgAcademicPage> {
     final hasDepts = _settings!['has_departments'] == true;
     final tabs = <(String, IconData, Widget)>[
       (t('التقويم', 'Calendar'), Icons.calendar_month_rounded, _Calendar(terms: _terms, base: _a, onChanged: _load)),
+      (t('المستويات', 'Levels'), Icons.stairs_rounded, const OrgLevelsTab()),
       if (hasDepts) (t('الأقسام العلمية', 'Departments'), Icons.account_tree_rounded,
           _Programs(programs: _programs, courses: _courses, staff: _staff, base: _a, onChanged: _load)),
       (t('التخرج والإعدادات', 'Graduation & settings'), Icons.school_rounded,
@@ -704,9 +706,16 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
+  int _loads = 0;   // pull-to-refresh also reloads the level card
+
   Future<void> _load() async {
     final r = await OrgApi.i.getMap('$_pub/${widget.orgId}/my-path');
-    if (mounted) setState(() => _p = r);
+    if (mounted) {
+      setState(() {
+        _p = r;
+        _loads++;
+      });
+    }
   }
 
   Future<void> _choose() async {
@@ -814,6 +823,8 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
           ]),
         ),
         const SizedBox(height: 12),
+        MyLevelCard(key: ValueKey('lvl_${widget.orgId}_$_loads'), orgId: widget.orgId),
+        const SizedBox(height: 12),
         if (p['can_choose'] == true)
           OrgActionCard(icon: Icons.how_to_vote_rounded, color: c.warning, title: t('اختر قسمك العلمي', 'Choose your department'),
               subtitle: t('اجتزت متطلبات الالتحاق — حان وقت الاختيار', 'You passed the entry courses — time to choose'), onTap: _choose),
@@ -851,7 +862,17 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
   } catch (_) {
     return true;                          // no academic data → open as before
   }
-  if (a == null || a['state'] == 'open') return true;
+  if (a == null || a['state'] == 'open') {
+    // department / course prerequisites: explain kindly instead of a bare refusal at enrollment
+    try {
+      final e = await ApiClient().get('$_pub/courses/$courseId/eligibility');
+      if (e is Map && e['allowed'] == false && context.mounted) {
+        await showEnrollBlock(context, asMap(e['reason']));
+        return false;
+      }
+    } catch (_) {}
+    return true;
+  }
   if (a['state'] == 'archived_granted') {
     toast(t('الأرشيف مفتوح لك حتى ${shortDate('${a['until']}')}', 'The archive is open to you until ${shortDate('${a['until']}')}'));
     return true;

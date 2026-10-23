@@ -56,6 +56,17 @@ Future<OrgCall> orgCall(Future<dynamic> Function() fn, {String? ok, bool quiet =
 // ═════════════════════════════════════════════════════════════════════════════
 
 Map<String, String> _codeTexts() => {
+      // platform settings (super admin): master switch · creation fee · org features · region
+      'orgs_disabled': t('خدمة المؤسسات متوقفة حالياً من إدارة المنصة', 'Organizations are currently unavailable on this platform'),
+      'org_fee_required': t('ادفع رسوم إنشاء المؤسسة أولاً ثم أرسل الطلب', 'Pay the organization fee first, then send the request'),
+      'fee_already_paid': t('لديك دفعة صالحة بالفعل — يمكنك إرسال الطلب', 'You already have a valid payment — you can send the request'),
+      'fee_under_review': t('إيصال التحويل قيد المراجعة — سنخبرك فور اعتماده', 'Your receipt is being reviewed — we\'ll tell you once it\'s approved'),
+      'fee_method_unavailable': t('طريقة الدفع هذه غير متاحة الآن', 'This payment method isn\'t available right now'),
+      'fee_currency_mismatch': t('بوابة الدفع لا تدعم عملة الرسوم', 'The payment gateway doesn\'t support the fee currency'),
+      'gateway_error': t('تعذّر فتح صفحة الدفع — حاول بعد قليل', 'Couldn\'t open the payment page — try again shortly'),
+      'feature_not_org_manageable': t('هذه الميزة لا تُدار من المؤسسة', 'This feature isn\'t managed by organizations'),
+      'feature_locked_by_parent': t('أوقفتها المؤسسة الأم — تُدار من هناك', 'Switched off by the parent organization — managed there'),
+      'bad_timezone': t('منطقة زمنية غير معروفة', 'Unknown timezone'),
       // organization review / access
       'org_not_approved': t('المؤسسة بانتظار اعتماد إدارة المنصة', 'The organization is waiting for platform approval'),
       'org_forbidden': t('لا تملك صلاحية لهذا الإجراء في هذه المؤسسة', 'You don\'t have the right to do this in this organization'),
@@ -226,6 +237,8 @@ String joinReasonText(Map<String, dynamic> r) =>
       'answer_conflict': t('إجابتك لا تطابق بياناتك المسجّلة لدى المؤسسة', 'Your answer doesn\'t match the record the institution holds'),
       'answer_not_allowed': t('هذه الإجابة لا تستوفي الشرط', 'This answer doesn\'t meet the condition'),
       'entry_courses': t('لم تجتز متطلبات الالتحاق بعد', 'You haven\'t passed the entry courses yet'),
+      'entry_rules': t('لم تستوفِ شروط القبول في هذا القسم بعد', 'You don\'t meet this department\'s admission rules yet'),
+      'level_program': t('هذا القسم غير متاح في مستواك الدراسي الحالي', 'This department isn\'t open at your current level'),
       'full': t('اكتمل العدد', 'It is full'),
       'unverified': t('بياناتك غير مسجّلة بعد لدى المؤسسة — سيتحقق منها المسؤول', 'The institution has no record of this yet — a staff member will verify it'),
       'inactive_unit': t('الوحدة غير متاحة', 'The unit is not available'),

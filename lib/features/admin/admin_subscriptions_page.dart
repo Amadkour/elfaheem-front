@@ -18,6 +18,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminSubscriptionsExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 
@@ -105,6 +106,7 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child: PagedList<AdminSubscriptionsProvider>(
+        export: adminSubscriptionsExport,
         header: header,
         countIcon: Icons.card_membership_rounded,
         emptyText: 'admin_no_subscription_requests'.tr,

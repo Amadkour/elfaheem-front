@@ -14,6 +14,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_member_form.dart';
 import 'org_v3.dart';
+import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -104,7 +105,7 @@ class _MembersView extends StatelessWidget {
             }),
             _Act(Icons.description_outlined, t('نموذج الملف', 'Template'), c.textMedium, () => downloadExcel(context, 'template/$kind')),
           ],
-          if (s.can(module, 'view')) _Act(Icons.download_rounded, t('تصدير Excel', 'Export Excel'), c.success, () => downloadExcel(context, 'export/$kind')),
+          if (s.can(module, 'export')) _Act(Icons.ios_share_rounded, t('تصدير Excel · Word · PDF', 'Export Excel · Word · PDF'), c.success, () => exportPagedList(context, p, (rows) => orgMembersExport(kind, rows, orgName: s.name))),
         ]),
       ),
     ]);

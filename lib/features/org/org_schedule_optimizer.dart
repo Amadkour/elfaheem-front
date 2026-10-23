@@ -1034,8 +1034,8 @@ List<String> _configLines(BuildContext context, Map<String, dynamic> config) {
   final per = asMap(config['periods']);
   if (per['before'] != null || per['after'] != null) out.add(t('الفترات اليومية: ${per['before'] ?? '—'} ← ${per['after'] ?? '—'}', 'Periods per day: ${per['before'] ?? '—'} → ${per['after'] ?? '—'}'));
   for (final x in asMapList(per['add'])) {
-    out.add(t('فترة جديدة (لكل جداول المؤسسة): ${x['label'] ?? ''} ${x['start_time'] ?? ''}–${x['end_time'] ?? ''}',
-        'New period (shared by every timetable): ${x['label'] ?? ''} ${x['start_time'] ?? ''}–${x['end_time'] ?? ''}'));
+    out.add(t('فترة جديدة (لكل جداول المؤسسة): ${x['label'] ?? ''} ${periodRange(asMap(x))}',
+        'New period (shared by every timetable): ${x['label'] ?? ''} ${periodRange(asMap(x))}'));
   }
   for (final r in asMapList(asMap(config['rooms'])['add'])) {
     out.add(t('مكان جديد: ${r['name'] ?? ''} (${r['kind'] ?? ''}، ${r['capacity'] ?? '?'} مقعد)', 'New room: ${r['name'] ?? ''} (${r['kind'] ?? ''}, ${r['capacity'] ?? '?'} seats)'));

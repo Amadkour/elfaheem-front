@@ -3,11 +3,14 @@
 // Department services — staff side. Every page works for the whole organization (deptId == null) or for ONE
 // department (deptId set): same widgets, same look, rights checked with OrgSession.can(module, action, deptId).
 //
-//   OrgAnnouncementsPage   ads & news: draft → publish (approve) · audience · pin · push
+//   OrgAnnouncementsPage   → org_announcements.dart (re-exported)
 //   OrgFormsPage           requests / surveys / applications → OrgFormBuilderScreen · OrgFormResponsesScreen
 //   OrgMaterialsPage       department library (files or links, team-only or for members)
 //   OrgComplaintsPage      inbox with SLA → OrgComplaintThreadScreen (reply · internal note · assign · transfer)
 library;
+
+// Announcements moved to org_announcements.dart (point 17); re-exported so existing imports keep working.
+export 'org_announcements.dart' show OrgAnnouncementsPage, showAnnouncementEditor, showCreateAnnouncementSheet;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -22,27 +25,7 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
-import 'package:flutter_education_app/design/app_image_cropper.dart';
 
-String _q(int? deptId) => deptId == null ? '' : '?dept_id=$deptId';
-
-Map<String, String> _annCategories() => {
-      'news': t('خبر', 'News'),
-      'event': t('فعالية', 'Event'),
-      'deadline': t('موعد نهائي', 'Deadline'),
-      'urgent': t('عاجل', 'Urgent'),
-      'job': t('فرصة عمل', 'Job'),
-      'alumni': t('خريجون', 'Alumni'),
-    };
-
-const _annIcons = {
-  'news': Icons.campaign_rounded,
-  'event': Icons.event_rounded,
-  'deadline': Icons.alarm_rounded,
-  'urgent': Icons.priority_high_rounded,
-  'job': Icons.work_rounded,
-  'alumni': Icons.workspace_premium_rounded,
-};
 
 /// Shared FAB style.
 Widget _fab(BuildContext context, String tag, String label, IconData icon, VoidCallback onTap) {
@@ -54,214 +37,6 @@ Widget _fab(BuildContext context, String tag, String label, IconData icon, VoidC
     icon: Icon(icon, color: Colors.white),
     label: Text(label, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
   );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  Announcements
-// ═════════════════════════════════════════════════════════════════════════════
-
-class OrgAnnouncementsPage extends StatelessWidget {
-  const OrgAnnouncementsPage({super.key, this.deptId});
-  final int? deptId;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.read<OrgSession>();
-    return ChangeNotifierProvider(
-      create: (_) => OrgPaged('${s.base}/announcements', {'dept_id': deptId})..refresh(),
-      child: _AnnList(deptId: deptId),
-    );
-  }
-}
-
-class _AnnList extends StatelessWidget {
-  const _AnnList({this.deptId});
-  final int? deptId;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = context.watch<OrgSession>();
-    final p = context.read<OrgPaged>();
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: s.can('announcements', 'insert', deptId)
-          ? _fab(context, 'ann_new', t('إعلان جديد', 'New announcement'), Icons.add_rounded,
-              () => showAnnouncementEditor(context, deptId: deptId, onSaved: p.refresh))
-          : null,
-      body: PagedList<OrgPaged>(
-        emptyText: t('لا إعلانات بعد — شارك أول خبر مع مجتمعك', 'No announcements yet — share the first news'),
-        itemBuilder: (context, row) => _AnnCard(row: row, deptId: deptId),
-      ),
-    );
-  }
-}
-
-class _AnnCard extends StatelessWidget {
-  const _AnnCard({required this.row, this.deptId});
-  final Map<String, dynamic> row;
-  final int? deptId;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final s = context.read<OrgSession>();
-    final p = context.read<OrgPaged>();
-    final dept = row['dept_id'] == null ? null : asInt(row['dept_id']);
-    final status = '${row['status']}';
-    final cat = '${row['category']}';
-    final url = '${s.base}/announcements/${row['id']}';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 5, 16, 5),
-      child: RowCard(
-        accent: row['is_pinned'] == true ? c.warning : null,
-        onTap: s.can('announcements', 'update', dept)
-            ? () => showAnnouncementEditor(context, deptId: dept, edit: row, onSaved: p.refresh)
-            : null,
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          IconBadge(_annIcons[cat] ?? Icons.campaign_rounded, cat == 'urgent' ? c.danger : c.primary, size: 42),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                if (row['is_pinned'] == true) Icon(Icons.push_pin_rounded, size: 15, color: c.warning),
-                Expanded(child: Text('${row['title']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: orgText(context, w: FontWeight.w800))),
-              ]),
-              if ('${row['body'] ?? ''}'.isNotEmpty)
-                Text('${row['body']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: orgText(context, size: 12.5, color: c.textMedium)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: [
-                StatusChip(statusLabel(status), statusColor(context, status)),
-                OrgPill(_annCategories()[cat] ?? cat),
-                if (asInt(row['views']) > 0) OrgPill('${row['views']} 👁', color: c.textMedium),
-                OrgPill(relTime(row['publish_at'] ?? row['created_at']), color: c.textLight),
-              ]),
-            ]),
-          ),
-          PopupMenuButton<String>(
-            onSelected: (v) async {
-              if (v == 'delete') {
-                if (!await confirm(context, message: t('حذف الإعلان نهائياً؟', 'Delete this announcement?'), danger: true)) return;
-                if (await OrgApi.i.del(url, t('تم الحذف', 'Deleted')) != null) p.refresh();
-                return;
-              }
-              final r = await OrgApi.i.post('$url/$v', null,
-                  v == 'publish' ? t('نُشر الإعلان 🎉', 'Published 🎉') : t('تم', 'Done'));
-              if (r is Map) p.replaceRow(Map<String, dynamic>.from(r));
-            },
-            itemBuilder: (_) => [
-              if (s.can('announcements', 'approve', dept) && status != 'published')
-                PopupMenuItem(value: 'publish', child: Text(t('نشر الآن', 'Publish now'))),
-              if (s.can('announcements', 'approve', dept) && status == 'published')
-                PopupMenuItem(value: 'unpublish', child: Text(t('إيقاف النشر', 'Unpublish'))),
-              if (s.can('announcements', 'approve', dept) && status != 'archived')
-                PopupMenuItem(value: 'archive', child: Text(t('أرشفة', 'Archive'))),
-              if (s.can('announcements', 'delete', dept))
-                PopupMenuItem(value: 'delete', child: Text(t('حذف', 'Delete'), style: TextStyle(color: c.danger))),
-            ],
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
-Future<void> showAnnouncementEditor(BuildContext context,
-    {int? deptId, Map<String, dynamic>? edit, required VoidCallback onSaved}) async {
-  final s = context.read<OrgSession>();
-  final title = TextEditingController(text: '${edit?['title'] ?? ''}');
-  final body = TextEditingController(text: '${edit?['body'] ?? ''}');
-  final link = TextEditingController(text: '${edit?['link_url'] ?? ''}');
-  String cat = '${edit?['category'] ?? 'news'}';
-  bool pinned = edit?['is_pinned'] == true, notify = edit?['notify'] == true, busy = false;
-  String? image = edit?['image_url'] as String?;
-  Map<String, dynamic> audience = asMap(edit?['audience']).isEmpty
-      ? {'roles': <String>[], 'sub_orgs': true}
-      : asMap(edit?['audience']);
-  final canPublish = s.can('announcements', 'approve', deptId);
-
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-        final c = ctx.colors;
-        Future<void> save({bool publish = false}) async {
-          if (title.text.trim().length < 2) {
-            toast(t('اكتب عنواناً واضحاً', 'Write a clear title'), error: true);
-            return;
-          }
-          set(() => busy = true);
-          final b = {
-            'title': title.text.trim(),
-            'body': body.text.trim(),
-            'category': cat,
-            'is_pinned': pinned,
-            'notify': notify,
-            'audience': audience,
-            'image_url': image,
-            'link_url': link.text.trim().isEmpty ? null : link.text.trim(),
-            if (edit == null) 'dept_id': deptId,
-          };
-          var r = edit == null
-              ? await OrgApi.i.post('${s.base}/announcements', b, publish ? null : t('حُفظت المسودة', 'Draft saved'))
-              : await OrgApi.i.put('${s.base}/announcements/${edit['id']}', b, publish ? null : t('تم الحفظ', 'Saved'));
-          if (r is Map && publish) {
-            r = await OrgApi.i.post('${s.base}/announcements/${r['id']}/publish', null, t('نُشر الإعلان 🎉', 'Published 🎉'));
-          }
-          if (!ctx.mounted) return;
-          set(() => busy = false);
-          if (r != null) {
-            onSaved();
-            Navigator.pop(ctx);
-          }
-        }
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SheetHeader(edit == null ? t('إعلان جديد', 'New announcement') : t('تعديل الإعلان', 'Edit announcement')),
-            ChoiceRow<String>(label: t('النوع', 'Type'), options: _annCategories(), value: cat, onChanged: (v) => set(() => cat = v)),
-            Field(controller: title, label: t('العنوان', 'Title')),
-            Field(controller: body, label: t('التفاصيل', 'Details'), maxLines: 5),
-            Field(controller: link, label: t('رابط (اختياري)', 'Link (optional)'), ltr: true),
-            Row(children: [
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final f = await orgPickAndUpload('${s.base}/uploads', extensions: const ['png', 'jpg', 'jpeg', 'webp'], context: ctx, cropShape: CropShape.wide);
-                  if (f != null) set(() => image = '${f['url']}');
-                },
-                icon: const Icon(Icons.image_rounded),
-                label: Text(image == null ? t('إضافة صورة', 'Add image') : t('تغيير الصورة', 'Change image')),
-              ),
-              if (image != null) ...[
-                const SizedBox(width: 8),
-                ClipRRect(borderRadius: BorderRadius.circular(10),
-                    child: Image.network(image!, width: 52, height: 40, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const SizedBox.shrink())),
-                IconButton(onPressed: () => set(() => image = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
-              ],
-            ]),
-            const SizedBox(height: 10),
-            OrgAudiencePicker(value: audience, onChanged: (v) => set(() => audience = v)),
-            OrgSwitchRow(title: t('تثبيت في الأعلى', 'Pin to the top'), value: pinned, onChanged: (v) => set(() => pinned = v)),
-            OrgSwitchRow(
-                title: t('إشعار فوري عند النشر', 'Send a push when published'),
-                subtitle: t('للأمور المهمة فقط حتى لا نُزعج أحداً', 'Keep it for what matters, so nobody gets spammed'),
-                value: notify,
-                onChanged: (v) => set(() => notify = v)),
-            const SizedBox(height: 10),
-            if (canPublish)
-              PrimaryButton(isLoading: busy, label: t('حفظ ونشر', 'Save & publish'), icon: Icons.send_rounded,
-                  iconBefore: true, onPressed: () => save(publish: true)),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: busy ? null : () => save(),
-              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-              child: Text(canPublish ? t('حفظ كمسودة', 'Save as draft') : t('حفظ وإرسال للاعتماد', 'Save for approval'),
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-            ),
-          ]),
-        );
-      }));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

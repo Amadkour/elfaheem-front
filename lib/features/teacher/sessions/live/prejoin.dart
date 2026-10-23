@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:developer';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'widgets/live_palette.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -878,35 +879,14 @@ class _PreJoinPageState extends State<PreJoinPage>
                     size: 19,
                   ),
                 ),
-                // Mini toggle
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  width: 38,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(11),
-                    gradient: isActive
-                        ? LinearGradient(colors: gradColors)
-                        : null,
-                    color: isActive ? null : _DS.glass15,
-                    border: isActive
-                        ? null
-                        : Border.all(color: _DS.glassBdr, width: 1),
-                  ),
-                  child: AnimatedAlign(
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
-                    alignment: isActive
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Container(
-                      margin: const EdgeInsets.all(3),
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
+                // Mini toggle — display only; the whole card handles the tap.
+                IgnorePointer(
+                  child: ExcludeSemantics(
+                    child: AppSwitch(
+                      value: isActive,
+                      onChanged: (_) {},
+                      activeColor: gradColors.first,
+                      inactiveColor: _DS.glass15,
                     ),
                   ),
                 ),

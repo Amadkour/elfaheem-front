@@ -27,6 +27,11 @@ import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
 import 'org_schedule_planning.dart' show openCoursePlans;
 import 'org_timetable_parts.dart';
 import 'org_timetable_wizard.dart';
+import 'org_timetable_time.dart';
+import 'org_schedule_hub.dart';
+import 'org_schedule_relaxation.dart' show openBreakAlternatives;
+import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
+import 'package:flutter_education_app/core/app_time.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -90,14 +95,14 @@ class _SetupTab extends StatelessWidget {
         icon: Icons.schedule_rounded,
         trailing: s.can('schedule', 'insert') ? IconButton(onPressed: () => showPeriodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
         child: p.periods.isEmpty
-            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف فترات اليوم الدراسي (مثال: 08:30 – 10:00).', 'Add the teaching periods of the day (e.g. 08:30 – 10:00).')))
+            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف فترات اليوم الدراسي (مثال: ${AppTime.clockRange('08:30', '10:00')}).', 'Add the teaching periods of the day (e.g. ${AppTime.clockRange('08:30', '10:00')}).')))
             : Column(children: [
                 for (final x in p.periods)
                   ListTile(
                     dense: true,
                     leading: CircleAvatar(radius: 16, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${x['order']}', style: TextStyle(color: c.primary, fontWeight: FontWeight.w800))),
                     title: Text('${x['label']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-                    subtitle: Text('${x['start_time']} – ${x['end_time']}', textDirection: TextDirection.ltr),
+                    subtitle: Text(periodRange(asMap(x))),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showPeriodForm(context, p, x)),
                       if (s.can('schedule', 'delete')) IconButton(icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger), onPressed: () async {
@@ -157,8 +162,7 @@ class _SetupTab extends StatelessWidget {
 
 Future<void> showPeriodForm(BuildContext context, OrgScheduleProvider p, Map<String, dynamic>? e) async {
   final label = TextEditingController(text: '${e?['label'] ?? ''}');
-  final from = TextEditingController(text: '${e?['start_time'] ?? '08:30'}');
-  final to = TextEditingController(text: '${e?['end_time'] ?? '10:00'}');
+  String from = '${e?['start_time'] ?? '08:30'}', to = '${e?['end_time'] ?? '10:00'}';
   bool busy = false;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -166,13 +170,13 @@ Future<void> showPeriodForm(BuildContext context, OrgScheduleProvider p, Map<Str
           SheetHeader(e == null ? t('فترة جديدة', 'New period') : t('تعديل الفترة', 'Edit period')),
           Field(controller: label, label: t('الاسم (مثال: الأولى)', 'Name (e.g. First)')),
           Row(children: [
-            Expanded(child: Field(controller: from, label: t('من (HH:MM)', 'From (HH:MM)'), ltr: true, keyboard: TextInputType.datetime)),
+            Expanded(child: ClockField(label: t('يبدأ', 'Starts'), value: from, onChanged: (v) => set(() => from = v))),
             const SizedBox(width: 10),
-            Expanded(child: Field(controller: to, label: t('إلى (HH:MM)', 'To (HH:MM)'), ltr: true, keyboard: TextInputType.datetime)),
+            Expanded(child: ClockField(label: t('ينتهي', 'Ends'), value: to, onChanged: (v) => set(() => to = v))),
           ]),
           PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
             set(() => busy = true);
-            final ok = await p.savePeriod(e == null ? null : asInt(e['id']), {'label': label.text.trim(), 'start_time': from.text.trim(), 'end_time': to.text.trim()});
+            final ok = await p.savePeriod(e == null ? null : asInt(e['id']), {'label': label.text.trim(), 'start_time': from, 'end_time': to});
             if (ctx.mounted) {
               set(() => busy = false);
               if (ok) Navigator.pop(ctx);
@@ -491,6 +495,29 @@ class _Studio extends StatefulWidget {
 
 class _StudioState extends State<_Studio> {
   int? _followed;
+  TimetableStage? _stage; // the step whose tools are shown (null = the step the timetable is on)
+
+  Future<void> _publish(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> result, int errors, Map<int, String> courseNames) async {
+    if (errors > 0) {
+      toast(t('عالج التعارضات الإلزامية قبل النشر', 'Fix the hard clashes before publishing'), error: true);
+      return _issuesSheet(context, p, courseNames);
+    }
+    final st = '${result['status'] ?? ''}';
+    if ((st == 'partial' || st == 'infeasible') &&
+        !await confirm(context, message: t('النتيجة: ${resultStatusLabels()[st]}. النشر رغم الحصص غير المجدولة؟', 'Result: ${resultStatusLabels()[st]}. Publish with sessions still unplaced?'))) {
+      return;
+    }
+    final res = await p.publish();
+    if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
+  }
+
+  void _export(BuildContext context, OrgScheduleProvider p) => showTimetableExport(context,
+      slots: p.slots,
+      names: timetableNamesOf(p),
+      periods: p.periods,
+      title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
+      sourceLabel: t('الجدول الحالي · الإصدار ${p.schedule?['version'] ?? 0}', 'Live timetable · version ${p.schedule?['version'] ?? 0}'),
+      days: ScheduleDraft.fromJson(p.schedule ?? const {}).days);
 
   @override
   void didChangeDependencies() {
@@ -524,6 +551,28 @@ class _StudioState extends State<_Studio> {
     final people = {for (final m in p.staff) asInt((m['user'] as Map)['id']): '${(m['user'] as Map)['name']}'};
     final rooms = {for (final r in p.rooms) asInt(r['id']): '${r['name']}'};
 
+    final scoped = {for (final x in (sch['course_ids'] as List?) ?? const []) asInt(x)};
+    final noTeacher = p.loads.where((l) => (scoped.isEmpty || scoped.contains(asInt(l['course_id']))) && l['teacher_id'] == null).length;
+    final stats = asMap(result['stats']);
+    final unplaced = stats['sessions_required'] == null ? 0 : (asInt(stats['sessions_required']) - asInt(stats['sessions_placed'])).clamp(0, 1 << 30);
+    final journey = TimetableJourney.of(periods: p.periods.length, rooms: p.rooms.length, noTeacher: noTeacher, slots: p.slots.length,
+        result: result, hard: errors, active: active, running: running);
+    final stage = _stage ?? journey.current;
+    final nextText = nextStepText(journey.next, unplaced: unplaced, hard: errors, broken: asMapList(result['broken']).length, noTeacher: noTeacher);
+    final canEdit = s.can('schedule', 'update') && !active;
+    final VoidCallback? nextAction = switch (journey.next) {
+      NextAction.addPeriods => s.can('schedule', 'insert') ? () => showPeriodForm(context, p, null) : null,
+      NextAction.addRooms => s.can('schedule', 'insert') ? () => showRoomForm(context, p, null) : null,
+      NextAction.assignTeachers => () => DefaultTabController.maybeOf(context)?.animateTo(1),
+      NextAction.generate => canEdit ? () => _generateSheet(context, p) : null,
+      NextAction.completeCoverage => canEdit ? () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve')) : null,
+      NextAction.fixClashes => () => _issuesSheet(context, p, courseNames),
+      NextAction.compareRules => canEdit ? () => openBreakAlternatives(context, p) : null,
+      NextAction.publish => s.can('schedule', 'approve') ? () => _publish(context, p, result, errors, courseNames) : null,
+      NextAction.share => s.can('schedule', 'export') ? () => _export(context, p) : () => openTimetableCopies(context, p, canEdit: false),
+      NextAction.wait => null,
+    };
+
     // a clash covers every period it overlaps (period_ids), not only the one it starts in
     bool hasConflict(String day, int period) => p.conflicts.any((x) =>
         x['day'] == day && (((x['period_ids'] as List?) ?? const []).map(asInt).contains(period) || x['period_id'] == period || x['period_id'] == null));
@@ -540,93 +589,65 @@ class _StudioState extends State<_Studio> {
         ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        child: Wrap(spacing: 8, runSpacing: 6, children: [
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: TimetableStepper(journey: journey, selected: stage, onSelect: (x) => setState(() => _stage = x)),
+      ),
+      if (s.can('schedule', 'update') || active)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: NextStepBanner(
+            title: nextText.$1,
+            body: nextText.$2,
+            action: nextText.$3,
+            tone: journey.tone,
+            onAction: nextAction,
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        child: StudioActionBar(stage: stage, actions: [
+          // 1 · set up
           if (s.can('schedule', 'update') && !active)
-            ActionChip(
-              avatar: Icon(Icons.tune_rounded, size: 18, color: c.primary),
-              label: Text(t('الإعداد', 'Setup')),
-              onPressed: () => widget.onSetup(asInt(sch['id'])),
-            ),
-          if (s.can('schedule', 'update') && !active)
-            ActionChip(
-              avatar: running ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.auto_awesome_rounded, size: 18, color: c.primary),
-              label: Text(running ? t('جارٍ التوليد…', 'Generating…') : t('توليد تلقائي', 'Auto-generate'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-              onPressed: running ? null : () => _generateSheet(context, p),
-            ),
-          if (s.can('schedule', 'insert') && !active)
-            ActionChip(avatar: Icon(Icons.add_rounded, size: 18, color: c.primary), label: Text(t('إضافة حصة', 'Add a slot')), onPressed: () => _slotSheet(context, p, null, null, null)),
+            StudioAction(TimetableStage.setup, Icons.tune_rounded, t('إعدادات الجدول (الأيام والمقررات)', 'Timetable settings (days & courses)'), () => widget.onSetup(asInt(sch['id']))),
+          StudioAction(TimetableStage.setup, Icons.groups_rounded, t('الطلاب والمجموعات', 'Enrollment & groups'),
+              () => openCoursePlans(context, p, canEdit: s.can('schedule', 'update') && !active), color: c.purple),
           if (s.can('schedule', 'insert'))
-            ActionChip(
-              avatar: Icon(Icons.event_available_rounded, size: 18, color: c.accent2),
-              label: Text(t('فترات خاصة', 'Special periods')),
-              onPressed: () => _extrasSheet(context, p, courseNames, p.rooms),
-            ),
-          ActionChip(avatar: Icon(Icons.history_rounded, size: 18, color: c.textMedium), label: Text(t('النسخ', 'Versions')), onPressed: () => _revisionsSheet(context, p)),
-          ActionChip(
-            avatar: Icon(Icons.groups_rounded, size: 18, color: c.purple),
-            label: Text(t('الطلاب والمجموعات', 'Enrollment & groups')),
-            onPressed: () => openCoursePlans(context, p, canEdit: s.can('schedule', 'update') && !active),
-          ),
-          ActionChip(
-            avatar: Icon(Icons.insights_rounded, size: 18, color: errors > 0 ? c.danger : c.success),
-            label: Text(errors > 0 ? t('تحسين الجدول ($errors)', 'Optimize ($errors)') : t('تحسين الجدول', 'Optimize')),
-            onPressed: () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
-          ),
-          ActionChip(
-            avatar: Icon(Icons.content_copy_rounded, size: 18, color: c.primary),
-            label: Text(t('النسخ ونسخ الأعضاء', 'Copies & member copies')),
-            onPressed: () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update')),
-          ),
-          if (!active && s.can('schedule', 'update'))
-            ActionChip(
-              avatar: Icon(Icons.all_inclusive_rounded, size: 18, color: c.primary),
-              label: Text(t('توليد حتى الاكتمال', 'Generate until complete')),
-              onPressed: () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve')),
-            ),
-          if (s.can('schedule', 'export'))
-            ActionChip(
-              avatar: Icon(Icons.file_download_rounded, size: 18, color: c.primary),
-              label: Text(t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF')),
-              onPressed: () => showTimetableExport(context,
-                  slots: p.slots,
-                  names: timetableNamesOf(p),
-                  periods: p.periods,
-                  title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
-                  sourceLabel: t('الجدول الحالي · الإصدار ${p.schedule?['version'] ?? 0}', 'Live timetable · version ${p.schedule?['version'] ?? 0}'),
-                  days: ScheduleDraft.fromJson(p.schedule ?? const {}).days),
-            ),
-          if (active && s.can('schedule', 'update'))
-            ActionChip(
-              avatar: Icon(Icons.unpublished_rounded, size: 18, color: c.warning),
-              label: Text(t('إيقاف النشر', 'Unpublish')),
-              onPressed: () async {
-                if (await confirm(context, message: t('إيقاف نشر الجدول؟ يعود مسودة ولا يراه الطلاب.', 'Unpublish? It becomes a draft and students stop seeing it.'))) {
-                  await p.setActive(false);
-                }
-              },
-            ),
+            StudioAction(TimetableStage.setup, Icons.event_available_rounded, t('فترات خاصة (تعويضية)', 'Special periods (make-up)'),
+                () => _extrasSheet(context, p, courseNames, p.rooms), color: c.accent2),
+          // 2 · generate
+          if (s.can('schedule', 'update') && !active) ...[
+            StudioAction(TimetableStage.generate, Icons.auto_awesome_rounded, running ? t('جارٍ التوليد…', 'Generating…') : t('توليد تلقائي', 'Auto-generate'),
+                running ? null : () => _generateSheet(context, p), busy: running),
+            StudioAction(TimetableStage.generate, Icons.all_inclusive_rounded, t('توليد حتى الاكتمال', 'Generate until complete'),
+                running ? null : () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve'))),
+            StudioAction(TimetableStage.generate, Icons.alt_route_rounded, t('استكشف بدائل', 'Explore alternatives'), running ? null : () => openScheduleAlternatives(context)),
+            StudioAction(TimetableStage.generate, Icons.balance_rounded, t('أي قاعدة تتنازل عنها؟', 'Which rule should give way?'),
+                running ? null : () => openBreakAlternatives(context, p)),
+          ],
+          // 3 · review & fix
+          if (s.can('schedule', 'insert') && !active)
+            StudioAction(TimetableStage.review, Icons.add_rounded, t('إضافة حصة', 'Add a slot'), () => _slotSheet(context, p, null, null, null)),
+          StudioAction(TimetableStage.review, errors > 0 ? Icons.error_rounded : Icons.rule_rounded,
+              t('التعارضات ($errors · $warns)', 'Clashes ($errors · $warns)'), () => _issuesSheet(context, p, courseNames), color: errors > 0 ? c.danger : c.success),
+          StudioAction(TimetableStage.review, Icons.insights_rounded, t('تحسين الجدول', 'Optimize'),
+              () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
+              color: errors > 0 ? c.danger : c.success),
+          StudioAction(TimetableStage.review, Icons.history_rounded, t('النسخ السابقة', 'Versions'), () => _revisionsSheet(context, p), color: c.textMedium),
+          // 4 · publish & share
           if (!active && s.can('schedule', 'approve'))
-            ActionChip(
-              avatar: Icon(Icons.publish_rounded, size: 18, color: c.success),
-              label: Text(t('نشر للجميع', 'Publish')),
-              onPressed: running
-                  ? null
-                  : () async {
-                      if (errors > 0) {
-                        toast(t('عالج التعارضات الإلزامية قبل النشر', 'Fix the hard clashes before publishing'), error: true);
-                        return _issuesSheet(context, p, courseNames);
-                      }
-                      final st = '${result['status'] ?? ''}';
-                      if ((st == 'partial' || st == 'infeasible') &&
-                          !await confirm(context, message: t('النتيجة: ${resultStatusLabels()[st]}. النشر رغم الحصص غير المجدولة؟', 'Result: ${resultStatusLabels()[st]}. Publish with sessions still unplaced?'))) {
-                        return;
-                      }
-                      final res = await p.publish();
-                      if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
-                    },
-            ),
-          ActionChip(avatar: Icon(Icons.download_rounded, size: 18, color: c.success), label: Text(t('تصدير Excel', 'Export Excel')), onPressed: () => downloadExcel(context, 'export/schedule', {'schedule_id': sch['id']})),
+            StudioAction(TimetableStage.publish, Icons.publish_rounded, t('نشر للجميع', 'Publish'), running ? null : () => _publish(context, p, result, errors, courseNames), color: c.success),
+          if (active && s.can('schedule', 'update'))
+            StudioAction(TimetableStage.publish, Icons.unpublished_rounded, t('إيقاف النشر', 'Unpublish'), () async {
+              if (await confirm(context, message: t('إيقاف نشر الجدول؟ يعود مسودة ولا يراه الطلاب.', 'Unpublish? It becomes a draft and students stop seeing it.'))) {
+                await p.setActive(false);
+              }
+            }, color: c.warning),
+          if (s.can('schedule', 'export'))
+            StudioAction(TimetableStage.publish, Icons.file_download_rounded, t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'), () => _export(context, p)),
+          StudioAction(TimetableStage.publish, Icons.content_copy_rounded, t('نسخ لكل مدرس ومجموعة', 'Copies for each teacher & group'),
+              () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update'))),
+          StudioAction(TimetableStage.publish, Icons.download_rounded, t('تصدير Excel (الخادم)', 'Excel export (server)'),
+              () => downloadExcel(context, 'export/schedule', {'schedule_id': sch['id']}), color: c.success),
         ]),
       ),
       if (run != null && (running || run['schedule_id'] == null || asInt(run['schedule_id']) == asInt(sch['id'])) && (running || run['status'] == 'failed'))
@@ -713,7 +734,7 @@ class _StudioState extends State<_Studio> {
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                             child: Column(children: [
                               Text('${per['label']}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 12, color: c.textDark)),
-                              Text('${per['start_time']}', style: TextStyle(fontSize: 10.5, color: c.textLight)),
+                              Text(clockOf(per['start_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: c.textLight)),
                             ]),
                           ),
                           for (final d in days.take(6))
@@ -824,7 +845,7 @@ Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async 
           contentPadding: EdgeInsets.zero,
           leading: CircleAvatar(child: Text('${r['number']}')),
           title: Text('${src['${r['source']}'] ?? r['source']} · ${t('${r['slots']} حصة', '${r['slots']} slots')}', style: orgText(ctx, w: FontWeight.w700)),
-          subtitle: Text([if (r['label'] != null) '${r['label']}', shortDateTime('${r['created_at']}'), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
+          subtitle: Text([if (r['label'] != null) '${r['label']}', stampOf(r['created_at']), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
               style: orgText(ctx, size: 12, color: c.textMedium)),
           trailing: draft
               ? TextButton(
@@ -1072,7 +1093,7 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
               label: t('الفترة', 'Period'),
               icon: Icons.schedule_rounded,
               value: period,
-              options: {for (final x in p.periods) asInt(x['id']): '${x['label']}  (${x['start_time']}–${x['end_time']})'},
+              options: {for (final x in p.periods) asInt(x['id']): '${x['label']}  (${periodRange(asMap(x))})'},
               onChanged: (v) => set(() => period = v ?? period),
             ),
             const SizedBox(height: 12),
@@ -1129,7 +1150,7 @@ Future<void> _extrasSheet(BuildContext context, OrgScheduleProvider p, Map<int, 
                     const SizedBox(width: 10),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${e['title'] ?? courseNames[asInt(e['course_id'])] ?? ''}', style: orgText(ctx, w: FontWeight.w800)),
-                      Text('${courseNames[asInt(e['course_id'])] ?? ''} · ${shortDate('${e['date']}')} · ${e['start_time']}–${e['end_time']}',
+                      Text('${courseNames[asInt(e['course_id'])] ?? ''} · ${calendarDate(e['date'])} · ${AppTime.clockRange('${e['start_time']}', '${e['end_time']}')}',
                           style: orgText(ctx, size: 12, color: c.textMedium)),
                     ])),
                     IconButton(icon: Icon(Icons.event_busy_rounded, color: c.danger), onPressed: () async {
@@ -1171,7 +1192,7 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
             Row(children: [
               Expanded(child: OutlinedButton.icon(
                 icon: const Icon(Icons.event_rounded),
-                label: Text(date == null ? t('التاريخ', 'Date') : shortDate(date!.toIso8601String())),
+                label: Text(date == null ? t('التاريخ', 'Date') : calendarDate(date!.toIso8601String())),
                 onPressed: () async {
                   final d = await showDatePicker(context: ctx, firstDate: DateTime.now().subtract(const Duration(days: 1)),
                       lastDate: DateTime(2100), initialDate: date ?? DateTime.now());
@@ -1180,17 +1201,17 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
               )),
               const SizedBox(width: 6),
               Expanded(child: OutlinedButton(
-                child: Text(from == null ? t('من', 'From') : hm(from!)),
+                child: Text(from == null ? t('من', 'From') : AppTime.clock(hm(from!)), maxLines: 1, overflow: TextOverflow.ellipsis),
                 onPressed: () async {
-                  final x = await showTimePicker(context: ctx, initialTime: from ?? const TimeOfDay(hour: 10, minute: 0));
+                  final x = timeOfDayOf(await pickClock(ctx, from == null ? '10:00' : hm(from!)));
                   if (x != null) set(() => from = x);
                 },
               )),
               const SizedBox(width: 6),
               Expanded(child: OutlinedButton(
-                child: Text(to == null ? t('إلى', 'To') : hm(to!)),
+                child: Text(to == null ? t('إلى', 'To') : AppTime.clock(hm(to!)), maxLines: 1, overflow: TextOverflow.ellipsis),
                 onPressed: () async {
-                  final x = await showTimePicker(context: ctx, initialTime: to ?? const TimeOfDay(hour: 11, minute: 30));
+                  final x = timeOfDayOf(await pickClock(ctx, to == null ? '11:30' : hm(to!)));
                   if (x != null) set(() => to = x);
                 },
               )),

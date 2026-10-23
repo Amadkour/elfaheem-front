@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
@@ -303,13 +304,10 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               iconBg: c.successTint,
                               iconColor: c.success,
                               label: 'notifications'.tr,
-                              trailing: Switch.adaptive(
+                              trailing: AppSwitch(
                                 value: p.notificationsEnabled,
                                 onChanged: p.toggleNotifications,
-                                activeThumbColor: context.colors.primary,
-                                thumbColor: const WidgetStatePropertyAll(
-                                  Colors.white,
-                                ),
+                                semanticLabel: 'notifications'.tr,
                               ),
                             ),
                           ),
@@ -330,15 +328,12 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               iconBg: c.darkIconBg,
                               iconColor: c.textDark,
                               label: 'dark_mode'.tr,
-                              trailing: Switch.adaptive(
+                              trailing: AppSwitch(
                                 value: p.darkMode,
                                 onChanged: (b) async {
                                   await p.changeMode(b);
                                 },
-                                activeThumbColor: context.colors.primary,
-                                thumbColor: const WidgetStatePropertyAll(
-                                  Colors.white,
-                                ),
+                                semanticLabel: 'dark_mode'.tr,
                               ),
                             ),
                           ),

@@ -27,6 +27,7 @@ import 'package:flutter_education_app/features/student/courses/details/course_de
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -35,10 +36,11 @@ import '../../ads/ads_pages.dart' show AdCard;
 import '../../org/home_org_mix.dart' show showPlatformRequirement;
 import '../../org/org_academic_pages.dart' show MyAcademicPathPage;
 import '../../org/org_availability_pages.dart' show AvailabilityRequestScreen;
-import '../../org/org_dashboard_screen.dart' ;
+import '../../org/org_member_dashboard.dart' show openOrgApproval;
 import '../../org/org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import '../../org/org_terms_pages.dart' show TermCard;
 import '../../org/org_v3.dart' show orgParseUtc;
+import '../../parent/parent_dashboard_screen.dart' show ParentTabProvider;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model + pure logic (unit-tested)
@@ -845,7 +847,12 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
       await _openAd(context, x);
       return false;
     case 'parent_link':
-      if (await nav.maybePop() == false) nav.pushNamed('/parent_dashboard');
+      // inside the parent dashboard → its "Link" tab; from the full inbox page → back to the dashboard
+      try {
+        context.read<ParentTabProvider>().onChangeTab(3);
+      } catch (_) {
+        if (nav.canPop()) nav.pop();
+      }
       return false;
   }
   return false;
@@ -867,7 +874,7 @@ Future<void> _showRequest(BuildContext context, InboxItem x) => showAppSheet<voi
           ]),
           if (sent != null) ...[
             const SizedBox(height: 12),
-            AppInfoRow(icon: Icons.send_rounded, label: 'inbox_sent_on'.tr, value: AppTime.dateTime(sent.toUtc())),
+            AppInfoRow(Icons.send_rounded, '${'inbox_sent_on'.tr}: ${AppTime.dateTime(sent.toUtc())}'),
           ],
           if (x.subtitle.isNotEmpty) ...[
             const SizedBox(height: 12),

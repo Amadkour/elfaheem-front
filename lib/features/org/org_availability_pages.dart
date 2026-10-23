@@ -15,6 +15,9 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'org_timetable_time.dart';
+import 'org_v3.dart' show orgParseUtc;
 
 Map<String, String> _days() => {
       'saturday': t('السبت', 'Sat'), 'sunday': t('الأحد', 'Sun'), 'monday': t('الاثنين', 'Mon'), 'tuesday': t('الثلاثاء', 'Tue'),
@@ -77,11 +80,11 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(Icons.event_rounded, color: c.primary),
                 title: Text(t('آخر موعد للإرسال', 'Deadline')),
-                subtitle: Text(shortDateTime(deadline.toIso8601String())),
+                subtitle: Text(AppTime.dateTime(deadline.toUtc())),
                 onTap: () async {
                   final d = await showDatePicker(context: ctx, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)), initialDate: deadline);
                   if (d == null || !ctx.mounted) return;
-                  final tm = await showTimePicker(context: ctx, initialTime: const TimeOfDay(hour: 23, minute: 59));
+                  final tm = timeOfDayOf(await pickClock(ctx, '23:59'));
                   set(() => deadline = DateTime(d.year, d.month, d.day, tm?.hour ?? 23, tm?.minute ?? 59));
                 },
               ),
@@ -153,7 +156,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                             const SizedBox(height: 4),
                             Wrap(spacing: 6, runSpacing: 4, children: [
                               OrgPill('${it['submitted']} / ${it['targeted']}', icon: Icons.how_to_reg_rounded, color: c.success),
-                              OrgPill('${t('حتى', 'until')} ${shortDateTime('${it['deadline']}')}', icon: Icons.timer_rounded, color: c.warning),
+                              OrgPill('${t('حتى', 'until')} ${_stamp(it['deadline'])}', icon: Icons.timer_rounded, color: c.warning),
                               OrgPill('${it['min_cells']}–${it['max_cells'] ?? '∞'}', icon: Icons.grid_view_rounded),
                             ]),
                           ]),
@@ -265,7 +268,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                         Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: const TextStyle(fontFamily: 'tajawal', color: Colors.white))),
                       const SizedBox(height: 10),
                       Wrap(spacing: 8, runSpacing: 6, children: [
-                        _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${shortDateTime('${r['deadline']}')}'),
+                        _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
                         _chip(Icons.grid_view_rounded, maxC == null ? t('$minC فترات على الأقل', 'At least $minC periods') : t('من $minC إلى $maxC فترات', '$minC – $maxC periods')),
                       ]),
                     ]),
@@ -287,7 +290,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                           rows: [
                             for (final p in asMapList(r['periods']))
                               DataRow(cells: [
-                                DataCell(Text('${p['label']}\n${p['start_time']}–${p['end_time']}', style: orgText(context, size: 11.5))),
+                                DataCell(Text('${p['label']}\n${AppTime.clockRange('${p['start_time']}', '${p['end_time']}')}', style: orgText(context, size: 11.5))),
                                 for (final d in (r['days'] as List))
                                   DataCell(Center(
                                     child: InkWell(
@@ -339,4 +342,9 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
           Text(text, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 12)),
         ]),
       );
+}
+
+String _stamp(Object? iso) {
+  final d = orgParseUtc(iso);
+  return d == null ? '—' : AppTime.dateTime(d);
 }

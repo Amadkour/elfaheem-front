@@ -26,7 +26,10 @@ import 'api_client.dart';
 enum AppMode { individual, organization }
 
 class AppModeController extends ChangeNotifier {
-  AppModeController._();
+  AppModeController._() {
+    // the org master switch flips at runtime (theme / platform settings) → show / hide the switch at once
+    AppConfig.orgsEnabledNotifier.addListener(notifyListeners);
+  }
   static final AppModeController instance = AppModeController._();
 
   static const String overviewPath = '/api/v1/org/public/me/overview';
@@ -74,6 +77,9 @@ class AppModeController extends ChangeNotifier {
 
   /// Total of what waits in every organization (badge on the switcher while in Individual mode).
   int get pendingTotal => _id(_overview['pending_total']) ?? 0;
+
+  /// Loaded, and no organization gives this person any management right (routing of org-staff → '/org_member').
+  bool get managesNothing => loaded && entries.isNotEmpty && entries.every((e) => e['manage'] == null);
 
   /// What waits in one organization (to do + approvals).
   static int pendingOf(Map<String, dynamic> entry) =>

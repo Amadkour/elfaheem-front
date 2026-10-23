@@ -20,6 +20,7 @@
 //   on/off toggle    → AppSwitch / AppSwitchTile (the ONLY switch look in the app — never Switch/SwitchListTile)
 //   any time / date  → AppTime.time / date / dateTime (UTC instant) · AppTime.clock("HH:MM") (12h/24h + timezone)
 //   sheet / confirm  → showAppSheet / appConfirm       status        → AppBadgePill
+//   table export     → showAppExportSheet(context, AppTableExport(...))  (Excel · Word · PDF + column picker)
 library;
 
 import 'package:flutter/material.dart';
@@ -30,6 +31,7 @@ import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
 export 'app_switch.dart';
+export 'app_table_export.dart' show showAppExportSheet, exportAppTable, AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone;
 export '../core/app_time.dart';
 export '../features/org/org_ui.dart'
     show hexColor, statusColor, statusLabel, priorityColor, priorityLabel, relTime, permsFromJson, permsToJson,

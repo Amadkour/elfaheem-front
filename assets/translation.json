@@ -1,4 +1,232 @@
 {
+  "inbox_title": {
+    "en": "Inbox",
+    "ar": "صندوق الوارد"
+  },
+  "inbox_seg_todo": {
+    "en": "To do",
+    "ar": "مطلوب منك"
+  },
+  "inbox_seg_news": {
+    "en": "Announcements",
+    "ar": "الإعلانات"
+  },
+  "inbox_seg_offers": {
+    "en": "Offers",
+    "ar": "العروض"
+  },
+  "inbox_seg_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "inbox_empty_todo_title": {
+    "en": "You're all caught up",
+    "ar": "لا شيء ينتظرك الآن"
+  },
+  "inbox_empty_todo_msg": {
+    "en": "New forms, requests and approvals will show up here.",
+    "ar": "ستظهر هنا النماذج والطلبات والموافقات الجديدة فور وصولها."
+  },
+  "inbox_empty_news_title": {
+    "en": "No announcements yet",
+    "ar": "لا إعلانات بعد"
+  },
+  "inbox_empty_news_msg": {
+    "en": "News from your institution will appear here.",
+    "ar": "ستجد هنا أخبار مؤسستك فور نشرها."
+  },
+  "inbox_empty_offers_title": {
+    "en": "No offers right now",
+    "ar": "لا عروض حالياً"
+  },
+  "inbox_empty_offers_msg": {
+    "en": "Courses and offers picked for you will appear here.",
+    "ar": "ستظهر هنا العروض والكورسات المختارة لك."
+  },
+  "inbox_empty_done_title": {
+    "en": "Nothing sent yet",
+    "ar": "لم ترسل شيئاً بعد"
+  },
+  "inbox_empty_done_msg": {
+    "en": "Requests you send are tracked here with their status.",
+    "ar": "تُتابَع هنا طلباتك المرسلة وحالتها."
+  },
+  "inbox_failed": {
+    "en": "We couldn't load your inbox",
+    "ar": "تعذّر تحميل صندوق الوارد"
+  },
+  "inbox_retry": {
+    "en": "Try again",
+    "ar": "إعادة المحاولة"
+  },
+  "inbox_overdue": {
+    "en": "Overdue",
+    "ar": "متأخر"
+  },
+  "inbox_due_soon": {
+    "en": "Due soon",
+    "ar": "قريب الموعد"
+  },
+  "inbox_mandatory": {
+    "en": "Required",
+    "ar": "إلزامي"
+  },
+  "inbox_due_in": {
+    "en": "Due in {t}",
+    "ar": "باقي {t}"
+  },
+  "inbox_overdue_by": {
+    "en": "Overdue by {t}",
+    "ar": "متأخر {t}"
+  },
+  "inbox_ends_in": {
+    "en": "Ends in {t}",
+    "ar": "ينتهي خلال {t}"
+  },
+  "inbox_unit_m": {
+    "en": "{n} min",
+    "ar": "{n} دقيقة"
+  },
+  "inbox_unit_h": {
+    "en": "{n} h",
+    "ar": "{n} ساعة"
+  },
+  "inbox_unit_d": {
+    "en": "{n} d",
+    "ar": "{n} يوم"
+  },
+  "inbox_see_all": {
+    "en": "See all",
+    "ar": "عرض الكل"
+  },
+  "inbox_hide": {
+    "en": "Hide",
+    "ar": "إخفاء"
+  },
+  "inbox_status_review": {
+    "en": "Under review",
+    "ar": "قيد المراجعة"
+  },
+  "inbox_status_approved": {
+    "en": "Approved",
+    "ar": "مقبول"
+  },
+  "inbox_status_rejected": {
+    "en": "Needs changes",
+    "ar": "يحتاج تعديل"
+  },
+  "inbox_status_closed": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "inbox_kind_form": {
+    "en": "Form",
+    "ar": "نموذج"
+  },
+  "inbox_kind_survey": {
+    "en": "Survey",
+    "ar": "استبيان"
+  },
+  "inbox_kind_availability": {
+    "en": "Your available periods",
+    "ar": "مواعيدك المتاحة"
+  },
+  "inbox_kind_terms": {
+    "en": "Regulation to accept",
+    "ar": "لائحة تحتاج موافقتك"
+  },
+  "inbox_kind_department_choice": {
+    "en": "Choose your department",
+    "ar": "اختر قسمك العلمي"
+  },
+  "inbox_kind_platform": {
+    "en": "From the platform",
+    "ar": "من المنصة"
+  },
+  "inbox_kind_request": {
+    "en": "My request",
+    "ar": "طلبي"
+  },
+  "inbox_kind_complaint_reply": {
+    "en": "New reply",
+    "ar": "رد جديد"
+  },
+  "inbox_kind_approval": {
+    "en": "Waiting for your decision",
+    "ar": "بانتظار قرارك"
+  },
+  "inbox_kind_announcement": {
+    "en": "Announcement",
+    "ar": "إعلان"
+  },
+  "inbox_kind_ad": {
+    "en": "Offer",
+    "ar": "عرض"
+  },
+  "inbox_kind_parent_link": {
+    "en": "Link request",
+    "ar": "طلب ربط"
+  },
+  "inbox_appr_forms": {
+    "en": "{n} requests waiting for your review",
+    "ar": "{n} طلبات تنتظر مراجعتك"
+  },
+  "inbox_appr_complaints": {
+    "en": "{n} open complaints in your area",
+    "ar": "{n} شكاوى مفتوحة في نطاقك"
+  },
+  "inbox_appr_join": {
+    "en": "{n} people asking to join",
+    "ar": "{n} طلبات انضمام للمؤسسة"
+  },
+  "inbox_appr_units": {
+    "en": "{n} department join requests",
+    "ar": "{n} طلبات انضمام لأقسام"
+  },
+  "inbox_assigned_to_me": {
+    "en": "{n} assigned to you",
+    "ar": "{n} مسندة إليك"
+  },
+  "inbox_preview_clear": {
+    "en": "Nothing needs you right now 🌿",
+    "ar": "لا شيء ينتظرك الآن 🌿"
+  },
+  "inbox_preview_todo": {
+    "en": "{n} to do",
+    "ar": "{n} مطلوب منك"
+  },
+  "inbox_preview_overdue": {
+    "en": "{n} overdue",
+    "ar": "{n} متأخر"
+  },
+  "inbox_preview_soon": {
+    "en": "{n} due soon",
+    "ar": "{n} قريب الموعد"
+  },
+  "inbox_ref": {
+    "en": "Ref.",
+    "ar": "رقم"
+  },
+  "inbox_sent_on": {
+    "en": "Sent",
+    "ar": "أُرسل"
+  },
+  "inbox_reviewer_note": {
+    "en": "Reviewer's note",
+    "ar": "ملاحظة المراجع"
+  },
+  "inbox_details": {
+    "en": "Details",
+    "ar": "التفاصيل"
+  },
+  "inbox_all_news": {
+    "en": "All news",
+    "ar": "كل الأخبار"
+  },
+  "inbox_open_failed": {
+    "en": "Couldn't open it",
+    "ar": "تعذّر الفتح"
+  },
   "email": {
     "en": "E-mail",
     "ar": "البريد الاكتروني"
@@ -10957,6 +11185,14 @@
     "ar": "إظهار ميزات التطبيق أو إخفاؤها",
     "en": "Show or hide app features"
   },
+  "svc_platform_settings": {
+    "ar": "إعدادات المنصة",
+    "en": "Platform settings"
+  },
+  "svc_platform_settings_d": {
+    "ar": "المؤسسات ورسوم إنشائها، الوقت والمنطقة، والميزات",
+    "en": "Organizations and their fee, time & region, and features"
+  },
   "svc_flags_d": {
     "ar": "حدود علامات المراجعة والقراءة",
     "en": "Review and read flag limits"
@@ -15004,5 +15240,117 @@
   "register_organization": {
     "en": "Register an institution",
     "ar": "تسجيل مؤسسة تعليمية"
+  },
+  "tx_generated": {
+    "en": "Generated",
+    "ar": "أُنشئ"
+  },
+  "tx_filters": {
+    "en": "Filters",
+    "ar": "التصفية"
+  },
+  "tx_total": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "tx_subtotal": {
+    "en": "Subtotal",
+    "ar": "المجموع الفرعي"
+  },
+  "tx_rows": {
+    "en": "rows",
+    "ar": "صف"
+  },
+  "tx_no_rows": {
+    "en": "No rows to export",
+    "ar": "لا توجد صفوف للتصدير"
+  },
+  "tx_export": {
+    "en": "Export",
+    "ar": "تصدير"
+  },
+  "tx_export_downloaded": {
+    "en": "File downloaded",
+    "ar": "تم تنزيل الملف"
+  },
+  "tx_export_saved": {
+    "en": "Saved to",
+    "ar": "حُفظ في"
+  },
+  "tx_export_failed": {
+    "en": "Could not create the file",
+    "ar": "تعذّر إنشاء الملف"
+  },
+  "tx_export_as_excel": {
+    "en": "Export to Excel",
+    "ar": "تصدير إلى Excel"
+  },
+  "tx_export_as_word": {
+    "en": "Export to Word",
+    "ar": "تصدير إلى Word"
+  },
+  "tx_export_as_pdf": {
+    "en": "Export to PDF",
+    "ar": "تصدير إلى PDF"
+  },
+  "tx_filters_applied": {
+    "en": "filters applied",
+    "ar": "تصفية مطبقة"
+  },
+  "tx_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "tx_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "tx_columns_lower": {
+    "en": "columns",
+    "ar": "عمود"
+  },
+  "tx_select_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "tx_select_none": {
+    "en": "None",
+    "ar": "لا شيء"
+  },
+  "tx_search_columns": {
+    "en": "Search columns",
+    "ar": "ابحث في الأعمدة"
+  },
+  "tx_pick_one_column": {
+    "en": "Pick at least one column",
+    "ar": "اختر عمودًا واحدًا على الأقل"
+  },
+  "tx_no_columns_match": {
+    "en": "No column matches",
+    "ar": "لا يوجد عمود مطابق"
+  },
+  "tx_landscape": {
+    "en": "landscape",
+    "ar": "أفقي"
+  },
+  "tx_portrait": {
+    "en": "portrait",
+    "ar": "رأسي"
+  },
+  "tx_format_excel_hint": {
+    "en": "Filters & formulas",
+    "ar": "فلاتر وصيغ"
+  },
+  "tx_format_word_hint": {
+    "en": "Editable document",
+    "ar": "مستند قابل للتعديل"
+  },
+  "tx_format_pdf_hint": {
+    "en": "Ready to print",
+    "ar": "جاهز للطباعة"
+  },
+  "tx_column_locked": {
+    "en": "Always exported",
+    "ar": "يُصدَّر دائمًا"
   }
 }

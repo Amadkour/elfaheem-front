@@ -17,6 +17,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminUsersExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'admin_view_as_page.dart' show startViewAs;
@@ -92,6 +93,7 @@ class _UsersView extends StatelessWidget {
     );
 
     final list = PagedList<AdminUsersProvider>(
+      export: (rows) => adminUsersExport(role, rows),
       header: header,
       emptyText: isStudent
           ? 'admin_no_students_found'.tr

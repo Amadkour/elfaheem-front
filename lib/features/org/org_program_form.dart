@@ -13,6 +13,8 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import 'org_courses_page.dart' show showOrgCourseForm;
+import 'org_levels.dart' show PrereqRule;
+import 'org_levels_pages.dart' show PrereqRulesEditor;
 import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_providers.dart';
 import 'org_ui.dart';
@@ -79,6 +81,10 @@ class _ProgramFormState extends State<_ProgramForm> {
   late final Set<int> _entry = _ids('entry_course_ids'), _req = _ids('required_course_ids'), _elec = _ids('elective_course_ids');
   late int _minE = asInt(p?['min_electives'] ?? 0);
   late bool _active = p?['is_active'] != false;
+  // extra admission rules ({type, params}) on top of the entry courses — checked on joining AND on every course enrollment
+  late final List<PrereqRule> _rules = [
+    for (final r in asMapList(p?['prerequisites'])) PrereqRule.fromJson(r),
+  ];
   late List<Map<String, dynamic>>? _courses = widget.courses;
   Map<String, String> _errors = {};
   String? _banner;
@@ -142,6 +148,7 @@ class _ProgramFormState extends State<_ProgramForm> {
       'description': _desc.text.trim().isEmpty ? null : _desc.text.trim(),
       'capacity': cap, 'min_electives': _minE, 'is_active': _active,
       'entry_course_ids': _entry.toList(), 'required_course_ids': _req.toList(), 'elective_course_ids': _elec.toList(),
+      'prerequisites': [for (final r in _rules) r.toJson()],
     };
     final s = context.read<OrgSession>();
     final a = '${s.base}/academic/programs';
@@ -212,6 +219,18 @@ class _ProgramFormState extends State<_ProgramForm> {
                 selected: _entry,
                 onChanged: () => setState(() {}),
                 onCreate: () => _createCourse(_entry),
+              ),
+              const SizedBox(height: 10),
+              Text(t('شروط إضافية للقسم', 'More department rules'), style: orgText(context, size: 13, w: FontWeight.w800)),
+              Text(t('مثل عدد الساعات أو المتوسط — تُطلب للانضمام وللتسجيل في أي مقرر من مقررات القسم، حتى بعد الانتقال لمستوى أعلى.',
+                      'Like hours or an average — required to join and to enroll in any of its courses, even after moving up a level.'),
+                  style: orgText(context, size: 11.5, color: c.textLight)),
+              const SizedBox(height: 6),
+              PrereqRulesEditor(
+                rules: _rules,
+                courses: courses,
+                emptyText: t('لا شروط إضافية', 'No extra rules'),
+                onChanged: () => setState(() {}),
               ),
             ]),
             _Section(

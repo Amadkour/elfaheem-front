@@ -13,6 +13,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -594,7 +595,6 @@ class _AdminFormState extends State<_AdminForm> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -622,13 +622,9 @@ class _AdminFormState extends State<_AdminForm> {
                         ? 'admin_new_password_optional'.tr
                         : 'password'.tr, required: !editing),
                   if (editing)
-                    SwitchListTile.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      activeThumbColor: c.primary,
-                      title: Text(
-                        'exam_status_active'.tr,
-                        style: TextStyle(fontFamily: 'tajawal', color: c.textDark),
-                      ),
+                    AppSwitchTile(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      title: 'exam_status_active'.tr,
                       value: _active,
                       onChanged: (v) => setState(() => _active = v),
                     ),

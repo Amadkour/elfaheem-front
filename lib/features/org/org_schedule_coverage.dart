@@ -35,6 +35,8 @@ import 'org_schedule_copies.dart' show timetableNamesOf;
 import 'org_schedule_optimizer.dart';
 import 'org_schedule_planning.dart' show kOrgSchedulingMocks;
 import 'org_schedule_versions.dart';
+import 'org_schedule_relaxation.dart' show openBreakAlternatives;
+import 'org_timetable_parts.dart' show showLoadForm;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -46,7 +48,11 @@ import 'org_v3.dart';
 const untouchableReasons = {'rooms_busy', 'teacher_busy'};
 
 /// What the creator can do about an unplaced session, cheapest first.
-const coverageSteps = ['break_by_priority', 'rearrange_all', 'add_member', 'add_time', 'add_room'];
+const coverageSteps = ['assign_staff', 'break_by_priority', 'rearrange_all', 'add_member', 'add_time', 'add_room'];
+
+/// Loads the server never schedules until their staff is fixed (schedule_context `invalid` / no teacher): no
+/// generation round, broken rule, time or room can place them — only assigning an eligible member can.
+const staffingReasons = {'no_teacher', 'teacher_not_eligible', 'assistant_not_eligible', 'no_lab_instructor'};
 
 class UnplacedSession {
   const UnplacedSession({required this.courseId, required this.kind, this.groupNo, required this.missing, required this.reason, this.blocking = const {}, this.teacherId});
@@ -56,6 +62,7 @@ class UnplacedSession {
   final Map<String, int> blocking; // reason → how many candidate times it blocked
 
   bool get untouchable => untouchableReasons.contains(reason);
+  bool get needsStaff => staffingReasons.contains(reason);
 
   factory UnplacedSession.fromJson(Map<String, dynamic> j) => UnplacedSession(
         courseId: asInt(j['course_id']),
@@ -100,6 +107,7 @@ const relaxationModeAllButDoubleBooking = 'all_but_double_booking';
 
 /// The options for one unplaced session, in the order they are offered.
 List<String> coverageLadder(UnplacedSession u) => switch (u.reason) {
+      'no_teacher' || 'teacher_not_eligible' || 'assistant_not_eligible' || 'no_lab_instructor' => const ['assign_staff'],
       'rooms_busy' || 'teacher_busy' => const ['rearrange_all', 'add_member', 'add_time', 'add_room'],
       'teacher_unavailable' || 'teacher_day_limit' => const ['break_by_priority', 'add_member', 'add_time'],
       'students_clash' || 'students_busy_elsewhere' || 'students_unavailable' => const ['break_by_priority', 'rearrange_all', 'add_time'],
@@ -145,6 +153,7 @@ String staffWindowsText(Map<String, dynamic> config, List<Map<String, dynamic>> 
 }
 
 String coverageStepLabel(String s) => switch (s) {
+      'assign_staff' => t('تعيين مدرس / معيد مؤهل للمقرر', 'Assign an eligible teacher / assistant'),
       'break_by_priority' => t('كسر القيد حسب الأولوية', 'Break the rule by priority'),
       'rearrange_all' => t('إعادة ترتيب الجداول المتعارضة', 'Rearrange the conflicting timetables'),
       'add_member' => t('إضافة عضو (مدرس / معيد آخر)', 'Add a member (another teacher / assistant)'),
@@ -164,6 +173,10 @@ String unplacedReasonText(String r) => switch (r) {
       'course_already_there' => t('لا توجد أوقات كافية لعدد الحصص', 'Not enough distinct times for the number of sessions'),
       'no_consecutive_periods' => t('الحصة تحتاج فترات متتالية أكثر مما في اليوم', 'Needs more consecutive periods than a day has'),
       'removed_by_hand' => t('حُذفت من الجدول يدوياً', 'Removed from the timetable by hand'),
+      'no_teacher' => t('لا يوجد مدرس معيّن للمقرر', 'No teacher is assigned to the course'),
+      'teacher_not_eligible' => t('المدرس المعيّن غير مؤهل لتدريس المقرر (العضوية أو القسم)', 'The assigned teacher cannot teach this course (membership or department)'),
+      'assistant_not_eligible' => t('المعيد المعيّن غير مؤهل للسكشن', 'The assigned assistant cannot teach this lab'),
+      'no_lab_instructor' => t('لا يوجد معيد للسكشن (ولا يُسمح للمدرس بتدريسه)', 'No assistant for the lab (and the teacher may not teach it)'),
       _ => t('لا يوجد وقت متاح', 'No free time'),
     };
 
@@ -185,7 +198,7 @@ class Changeset {
 abstract class RebalanceApi {
   /// Re-optimizes every draft timetable of [termId] together (or [scheduleIds]), after applying [suggestionId] to the
   /// origin timetable. Throws [ApiException]; a missing route is told apart by [orgEndpointMissing].
-  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions});
+  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions, Map<String, dynamic>? settings});
   Future<Changeset> get(String id);
   Future<Changeset> rollback(String id);
 }
@@ -198,8 +211,9 @@ class RemoteRebalanceApi implements RebalanceApi {
   Map<String, dynamic> _cs(dynamic r) => asMap(asMap(r)['changeset']).isEmpty ? asMap(r) : asMap(asMap(r)['changeset']);
 
   @override
-  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions}) async =>
+  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions, Map<String, dynamic>? settings}) async =>
       Changeset.fromJson(_cs(await api.post('$base/schedules/rebalance', body: {
+        'settings': ?settings,
         'origin_schedule_id': originId,
         'term_id': ?termId,
         'suggestion_id': ?suggestionId,
@@ -218,7 +232,7 @@ class MockRebalanceApi implements RebalanceApi {
   final _store = <String, Changeset>{};
 
   @override
-  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions}) async {
+  Future<Changeset> rebalance({required int originId, int? termId, String? suggestionId, required Map<int, int?> versions, Map<String, dynamic>? settings}) async {
     final id = 'mock-${_store.length + 1}';
     return _store[id] = Changeset(id: id, status: 'applied', mock: true, items: [
       {'schedule_id': originId, 'version_before': versions[originId], 'version_after': (versions[originId] ?? 0) + 1}
@@ -290,6 +304,20 @@ class _CoveragePageState extends State<_CoveragePage> {
 
   bool get covered => hasResult && remaining == 0;
 
+  /// The loop's mode for this run only — sent with every step (generate, rebalance) so no step un-places what the
+  /// previous one placed by breaking rules (the server also inherits it from the last report).
+  Map<String, dynamic>? get _runSettings => breakRules ? const {'relaxation_mode': relaxationModeAllButDoubleBooking} : null;
+
+  Future<void> _compareRules() async {
+    if (await openBreakAlternatives(context, p) && mounted) {
+      steps.add(_Step(t('تطبيق بديل بكسر قاعدة', 'Applied a rule-relaxed alternative')));
+      remainingAfterApply = null;
+      options = null;
+      setState(() {});
+      if (!state.covered) await _loadOptions();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -319,7 +347,7 @@ class _CoveragePageState extends State<_CoveragePage> {
       if (snap.ok && rev['id'] != null) steps.add(_Step(t('نقطة البداية', 'Start point'), revisionBeforeId: asInt(rev['id'])));
     }
     final r = await p.startGeneration(
-      settings: breakRules ? {'relaxation_mode': relaxationModeAllButDoubleBooking} : null,
+      settings: _runSettings,
       persistSettings: false,
       seed: seed,
     );
@@ -435,7 +463,7 @@ class _CoveragePageState extends State<_CoveragePage> {
 
   Future<void> _applyEverywhere(ScheduleSuggestion s) async {
     try {
-      final cs = await widget.rebalance.rebalance(originId: sid, termId: p.schedule?['term_id'] == null ? null : asInt(p.schedule!['term_id']), suggestionId: s.id, versions: {sid: version});
+      final cs = await widget.rebalance.rebalance(originId: sid, termId: p.schedule?['term_id'] == null ? null : asInt(p.schedule!['term_id']), suggestionId: s.id, versions: {sid: version}, settings: _runSettings);
       steps.add(_Step(s.title.isEmpty ? suggestionTypeLabel(s.type) : s.title, changeset: cs, allTimetables: true));
       await p.open(sid);
       await _loadOptions();
@@ -457,7 +485,7 @@ class _CoveragePageState extends State<_CoveragePage> {
     if (busyId != null) return;
     setState(() => busyId = 'rebalance');
     try {
-      final cs = await widget.rebalance.rebalance(originId: sid, termId: asInt(p.schedule!['term_id']), versions: {sid: version});
+      final cs = await widget.rebalance.rebalance(originId: sid, termId: asInt(p.schedule!['term_id']), versions: {sid: version}, settings: _runSettings);
       steps.add(_Step(coverageStepLabel('rearrange_all'), changeset: cs, allTimetables: true));
       remainingAfterApply = null;
       await p.open(sid);
@@ -555,6 +583,18 @@ class _CoveragePageState extends State<_CoveragePage> {
                   st.brokenByTier.entries.map((e) => '${relaxTierLabel(e.key)} ${e.value}').join(' · '),
               color: c.warning),
           const SizedBox(height: 6),
+          if (draft)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: AppActionCard(
+                icon: Icons.balance_rounded,
+                color: c.primary,
+                title: t('قارن: أي قاعدة تتنازل عنها؟', 'Compare: which rule should give way?'),
+                subtitle: t('حتى 3 نسخ كاملة، كل منها تكسر قاعدة واحدة فقط — مرتبة من الأقل إزعاجاً، مع معاينة وتطبيق بضغطة.',
+                    'Up to 3 complete versions, each bending one rule only — least disruptive first, with a preview and one-tap apply.'),
+                onTap: generating || busyId != null ? null : _compareRules,
+              ),
+            ),
         ],
         if (covered)
           AppBanner(icon: Icons.verified_rounded, text: t('كل الحصص مجدولة.', 'Every session is placed.'), color: c.success)
@@ -587,7 +627,20 @@ class _CoveragePageState extends State<_CoveragePage> {
         if (hasResult && st.unplaced.isNotEmpty && !covered) ...[
           OrgSectionTitle(t('ما لم يُجدول ولماذا', 'What is unplaced and why'),
               subtitle: remainingAfterApply != null ? t('التفاصيل من آخر توليد', 'Details from the last generation') : null),
-          for (final u in st.unplaced) _UnplacedCard(u: u, names: names),
+          for (final u in st.unplaced)
+            _UnplacedCard(
+              u: u,
+              names: names,
+              onAssign: u.needsStaff && draft
+                  ? () async {
+                      final load = p.loads.where((l) => asInt(l['course_id']) == u.courseId).firstOrNull;
+                      if (load == null) return;
+                      if (await showLoadForm(context, p, load) && mounted) {
+                        appToast(t('حُفظ — ابدأ جولة جديدة لجدولته', 'Saved — start another round to place it'));
+                      }
+                    }
+                  : null,
+            ),
         ],
         if (hasResult && !covered) ...[
           OrgSectionTitle(t('الخيارات', 'Options'), subtitle: t('مرتبة: إعادة الترتيب ← عضو ← موعد ← مكان', 'In order: rearrange → member → time → room')),
@@ -676,9 +729,10 @@ class _Meter extends StatelessWidget {
 }
 
 class _UnplacedCard extends StatelessWidget {
-  const _UnplacedCard({required this.u, required this.names});
+  const _UnplacedCard({required this.u, required this.names, this.onAssign});
   final UnplacedSession u;
   final TimetableNames names;
+  final VoidCallback? onAssign;
 
   @override
   Widget build(BuildContext context) {
@@ -695,6 +749,11 @@ class _UnplacedCard extends StatelessWidget {
         Text(unplacedReasonText(u.reason), style: orgText(context, size: 12.5)),
         const SizedBox(height: 4),
         Text('${t('الحل بالترتيب: ', 'What to try, in order: ')}${coverageLadder(u).map(coverageStepLabel).join(' ← ')}', style: orgText(context, size: 12, color: c.textMedium)),
+        if (onAssign != null)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(onPressed: onAssign, icon: const Icon(Icons.person_add_alt_1_rounded, size: 18), label: Text(t('عيّن الآن', 'Assign now'))),
+          ),
       ]),
     );
   }

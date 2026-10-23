@@ -624,6 +624,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         thumbColor: on(Colors.white, Colors.white),
         trackColor: on(p, divider),
         trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+        // Safety net for any stray Material Switch: same white knob + check as AppSwitch.
+        thumbIcon: WidgetStateProperty.resolveWith((s) =>
+            s.contains(WidgetState.selected) ? Icon(Icons.check_rounded, size: 14, color: p) : null),
       ),
       sliderTheme: base.sliderTheme.copyWith(
           activeTrackColor: p, thumbColor: p, inactiveTrackColor: p.withValues(alpha: 0.18)),
@@ -719,8 +722,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       final disableItems = (json['disable_list'] as List<dynamic>? ?? [])
           .map((e) => e.toString())
           .toList();
-      final platformSettings = json['platform'] is Map
-          ? Map<String, dynamic>.from(json['platform'] as Map)
+      final platformSettings = json['platform_settings'] is Map
+          ? Map<String, dynamic>.from(json['platform_settings'] as Map)
           : <String, dynamic>{};
       _applyPlatformSettings(platformSettings);
       AppConfig.setDisableList(disableItems);

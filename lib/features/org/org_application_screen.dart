@@ -6,7 +6,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
@@ -16,6 +18,7 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 
 import '../admin/admin_common.dart';
 import 'org_common.dart';
+import 'org_creation_fee.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -44,6 +47,9 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
   String _type = 'university';
   bool _busy = false;
   String? _error;
+  // creation fee (super-admin setting): the request can be sent only once a usable payment exists
+  bool _feeOk = true;
+  String? _feeToken;
 
   @override
   void dispose() {
@@ -60,6 +66,7 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
     if (pw != null) return pw;
     if (_pass.text != _pass2.text) return t('كلمتا المرور غير متطابقتين', 'The passwords don\'t match');
     if (_ar.text.trim().isEmpty && _en.text.trim().isEmpty) return t('اكتب اسم المؤسسة', 'Enter the organization\'s name');
+    if (!_feeOk) return orgCodeText('org_fee_required');
     return null;
   }
 
@@ -89,6 +96,7 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
                 'website': ?txt(_website),
                 'address': ?txt(_address),
               },
+              'fee_token': ?_feeToken,
             }),
         quiet: true);
     if (!mounted) return;
@@ -105,6 +113,15 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    if (!AppConfig.orgsEnabled) {
+      return BasePage(
+        appBar: ScreenAppBar(title: t('تسجيل مؤسسة تعليمية', 'Register an institution')),
+        child: AppEmpty(
+            icon: Icons.domain_disabled_rounded,
+            title: t('تسجيل المؤسسات متوقف حالياً', 'Institution sign-up is paused'),
+            message: t('أوقفت إدارة المنصة خدمة المؤسسات مؤقتاً. جرّب لاحقاً.', 'The platform team has paused organizations for now. Please try again later.')),
+      );
+    }
     Text label(String s) => Text(s, style: orgText(context, size: 13, w: FontWeight.w800, color: c.textMedium));
     return BasePage(
       useWebCard: true,
@@ -149,6 +166,16 @@ class _OrgApplicationScreenState extends State<OrgApplicationScreen> {
             decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
             child: Text(_error!, style: orgText(context, size: 12.5, color: c.danger)),
           ),
+        OrgCreationFeePanel(
+          email: () => _email.text,
+          onReady: (ok, token) {
+            if (!mounted) return;
+            setState(() {
+              _feeOk = ok;
+              _feeToken = token;
+            });
+          },
+        ),
         PrimaryButton(isLoading: _busy, label: t('إرسال الطلب', 'Send the application'), icon: Icons.send_rounded, iconBefore: true, onPressed: _busy ? null : _submit),
       ]),
     );

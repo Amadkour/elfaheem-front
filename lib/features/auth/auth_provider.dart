@@ -10,6 +10,7 @@ import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
+import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 
@@ -335,7 +336,8 @@ class MyAuthProvider extends BaseProvider {
     'parent' => '/parent_dashboard',
     // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
     'org-admin' => '/org_dashboard',
-    'org-staff' => '/org_dashboard',
+    // … unless the member dashboard already knows this staff member manages nothing (e.g. an assistant only)
+    'org-staff' => AppModeController.instance.managesNothing ? '/org_member' : '/org_dashboard',
     _ => '/dashboard',
   };
 
@@ -868,6 +870,7 @@ class MyAuthProvider extends BaseProvider {
 
   Future<void> logout() async {
     ViewAsState.instance.stop(); // never carry view-as into the next session
+    AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,
     // failed with 401, and this device kept receiving the previous user's pushes.
     try {

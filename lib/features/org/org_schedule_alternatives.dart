@@ -23,7 +23,8 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
-import 'org_schedule_copies.dart' show saveTimetableCsv, timetableNamesOf;
+import 'org_schedule_copies.dart' show timetableNamesOf;
+import 'org_table_export.dart' show showTimetableTableExport;
 import 'org_schedule_versions.dart';
 import 'org_timetable_parts.dart' show ScheduleResultView, courseName;
 import 'org_ui.dart';
@@ -607,10 +608,14 @@ class _AltCard extends StatelessWidget {
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: TextButton.icon(
-                    onPressed: () => saveTimetableCsv('${p.schedule?['name'] ?? 'timetable'}-${alt.label}-rev${alt.revisionId ?? ''}',
-                        timetableCsv(sortSlots(alt.slots), timetableNamesOf(p), header: ['${p.schedule?['name'] ?? ''}', alt.label, '${t('معرّف النسخة', 'Version id')}: #${alt.revisionId}'])),
+                    onPressed: () => showTimetableTableExport(context,
+                        id: 'org.schedule.alternative',
+                        title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')} · ${alt.label}',
+                        slots: sortSlots(alt.slots),
+                        names: timetableNamesOf(p),
+                        meta: ['${t('معرّف النسخة', 'Version id')}: #${alt.revisionId}']),
                     icon: const Icon(Icons.download_rounded, size: 18),
-                    label: Text(t('تصدير CSV', 'Export CSV')),
+                    label: Text(t('تصدير', 'Export')),
                   ),
                 ),
               ],
@@ -727,7 +732,7 @@ class _ProposedSlots extends StatelessWidget {
           Padding(
             padding: const EdgeInsetsDirectional.only(start: 8, bottom: 2),
             child: Text(
-              '${periods[asInt(s['period_id'])]?['label'] ?? ''} ${periods[asInt(s['period_id'])]?['start_time'] ?? ''} · ${courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}'}'
+              '${periods[asInt(s['period_id'])]?['label'] ?? ''} ${clockOf(periods[asInt(s['period_id'])]?['start_time'])} · ${courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}'}'
               '${s['kind'] == 'lab' ? ' (${t('عملي', 'lab')})' : ''} · ${rooms[asInt(s['room_id'])] ?? ''} · ${people[asInt(s['teacher_id'])] ?? ''}',
               style: orgText(context, size: 11.5, color: c.textMedium),
             ),

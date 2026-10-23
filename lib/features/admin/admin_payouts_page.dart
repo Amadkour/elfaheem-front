@@ -23,6 +23,7 @@ import '../../utils/widget/primary_button.dart';
 import '../teacher/profile/payout/teacher_payouts_screen.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminWithdrawalsExport;
 import 'admin_models.dart';
 import 'receipt_viewer.dart';
 import 'admin_providers.dart';
@@ -80,6 +81,7 @@ class _RequestsView extends StatelessWidget {
     final p = context.watch<AdminPayoutRequestsProvider>();
 
     return PagedList<AdminPayoutRequestsProvider>(
+      export: adminWithdrawalsExport,
       countIcon: Icons.account_balance_wallet_rounded,
       emptyText: 'admin_no_requests'.tr,
       header: Column(

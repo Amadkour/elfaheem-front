@@ -15,7 +15,7 @@ import '../admin/admin_common.dart';
 import 'org_common.dart';
 import 'org_providers.dart' show orgBase;
 import 'org_member_pages.dart' show OrgHomeEntry;
-import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
+import 'org_member_space.dart' show OrgFormFillScreen;
 import 'org_terms_pages.dart' show TermCard;
 import 'org_ui.dart';
 import 'org_availability_pages.dart' show AvailabilityRequestScreen;
@@ -35,7 +35,6 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
   static bool _requiredShown = false;   // once per app session
   static bool _blockingOpen = false;
   Map<String, dynamic>? _mix;
-  List<Map<String, dynamic>> _news = const [];
 
   @override
   void initState() {
@@ -49,10 +48,7 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
       if (!mounted || r is! Map) return;
       final mix = Map<String, dynamic>.from(r);
       setState(() => _mix = mix);
-      if (asInt(mix['org_weight']) >= 50) {
-        final f = await ApiClient().get('/api/v1/org/public/me/feed', queryParams: {'size': 3});
-        if (mounted && f is Map) setState(() => _news = asMapList(f['items']));
-      }
+      // (organization news now lives on the organization's own home tab — no feed call here)
       final req = asMapList(mix['required']);
       // BLOCKING: availability requests open as a frozen screen until submitted (every time, not once per session)
       final block = req.where((x) => x['kind'] == 'availability').toList();

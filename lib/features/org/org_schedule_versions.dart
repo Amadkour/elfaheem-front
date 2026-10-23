@@ -13,6 +13,10 @@ library;
 
 import 'dart:convert';
 
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:intl/intl.dart';
+
 import '../admin/admin_common.dart';
 import 'org_providers.dart' show orgDays;
 import 'org_v3.dart';
@@ -424,8 +428,8 @@ List<int> timetableCsv(List<Map<String, dynamic>> slots, TimetableNames n, {List
     b.writeln([
       days[s['day']] ?? s['day'],
       p['label'] ?? '#${s['period_id']}',
-      p['start_time'],
-      p['end_time'],
+      clockOf(p['start_time']),
+      clockOf(p['end_time']),
       n.course(s['course_id']),
       s['kind'] == 'lab' ? t('عملي', 'Lab') : t('محاضرة', 'Lecture'),
       s['group_no'] ?? 1,
@@ -448,3 +452,32 @@ Map<String, String> dayLabelsPlain() => {
       'thursday': t('الخميس', 'Thursday'),
       'friday': t('الجمعة', 'Friday'),
     };
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Times of the timetable feature — every one goes through AppTime (12h / 24h + the organization's timezone)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// "HH:MM" wall clock of the organization (a period, a sitting) → "8:30 AM" / "08:30". Never converted.
+String clockOf(Object? hhmm) => AppTime.clock(hhmm == null ? null : '$hhmm');
+
+/// A period's or a sitting's time range: "8:00 – 9:30 AM".
+String periodRange(Map<String, dynamic> p) => AppTime.clockRange(p['start_time'] as String?, p['end_time'] as String?);
+
+/// A server timestamp (naive UTC ISO) → "23 Oct 2026 · 8:30 AM" in the effective zone; "—" when missing.
+String stampOf(Object? iso) {
+  final d = orgParseUtc(iso);
+  return d == null ? '—' : AppTime.dateTime(d);
+}
+
+/// A calendar date ("2026-12-27", no time) → "Sun 27 Dec 2026" — never shifted by a timezone.
+String calendarDate(Object? iso, {String pattern = 'EEE d MMM y'}) {
+  final s = '${iso ?? ''}';
+  final d = DateTime.tryParse(s.length >= 10 ? s.substring(0, 10) : s);
+  if (d == null) return s.isEmpty ? '—' : s;
+  AppTime.toZone(DateTime.utc(2000)); // loads the date-symbol data (Arabic month names)
+  try {
+    return DateFormat(pattern, AppConfig.lang).format(d);
+  } catch (_) {
+    return DateFormat(pattern).format(d);
+  }
+}

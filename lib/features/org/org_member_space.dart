@@ -24,6 +24,7 @@ import 'org_ui.dart';
 import 'org_terms_pages.dart';
 import 'org_departments_page.dart' show DeptLogo;
 import 'org_academic_pages.dart' show MyAcademicPathPage;
+import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
 
@@ -76,7 +77,7 @@ class OrgMemberSpace extends StatelessWidget {
           ),
           Expanded(
             child: TabBarView(children: [
-              _Feed(orgId: id),
+              OrgAnnouncementFeed(orgId: id),   // point 17: views · reactions · deep links
               _Directory(org: org),
               _Requests(orgId: id),
               _MyComplaints(org: org),
@@ -119,78 +120,6 @@ mixin _Loader<T extends StatefulWidget> on State<T> {
         onRetry: load,
         child: items == null ? const SizedBox.shrink() : RefreshIndicator(onRefresh: load, child: builder(items!)),
       );
-}
-
-// ═════════════════════════ News ═════════════════════════
-
-class _Feed extends StatefulWidget {
-  const _Feed({required this.orgId});
-  final int orgId;
-
-  @override
-  State<_Feed> createState() => _FeedState();
-}
-
-class _FeedState extends State<_Feed> with _Loader<_Feed> {
-  @override
-  String get url => '$_pub/me/feed';
-
-  @override
-  Map<String, dynamic> get query => {'org_id': widget.orgId};
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return body((list) => list.isEmpty
-        ? ListView(children: [
-            OrgEmpty(icon: Icons.campaign_rounded, title: t('لا أخبار بعد', 'No news yet'),
-                message: t('ستجد هنا إعلانات مؤسستك وإداراتها فور نشرها', "Your institution's news will appear here")),
-          ])
-        : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
-            for (final a in list)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: c.cardBg,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: a['category'] == 'urgent' ? c.danger.withValues(alpha: 0.5) : c.divider),
-                  boxShadow: c.cardShadow,
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if ('${a['image_url'] ?? ''}'.isNotEmpty)
-                    AspectRatio(
-                      aspectRatio: 16 / 8,
-                      child: Image.network('${a['image_url']}', fit: BoxFit.cover, errorBuilder: (_, _, _) => const SizedBox.shrink()),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        if (a['is_pinned'] == true) ...[Icon(Icons.push_pin_rounded, size: 15, color: c.warning), const SizedBox(width: 4)],
-                        Expanded(
-                          child: Text(asMap(a['department']).isEmpty ? orgNameOf(asMap(a['organization'])) : orgNameOf(asMap(a['department'])),
-                              style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
-                        ),
-                        Text(relTime(a['publish_at']), style: orgText(context, size: 11, color: c.textLight)),
-                      ]),
-                      const SizedBox(height: 6),
-                      Text('${a['title']}', style: orgText(context, size: 15.5, w: FontWeight.w800)),
-                      if ('${a['body'] ?? ''}'.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text('${a['body']}', style: orgText(context, color: c.textMedium)),
-                      ],
-                      if ('${a['link_url'] ?? ''}'.isNotEmpty)
-                        TextButton.icon(
-                            onPressed: () => openFileUrl('${a['link_url']}'),
-                            icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                            label: Text(t('التفاصيل', 'Details'), style: const TextStyle(fontFamily: 'tajawal'))),
-                    ]),
-                  ),
-                ]),
-              ),
-          ]));
-  }
 }
 
 // ═════════════════════════ Departments directory ═════════════════════════

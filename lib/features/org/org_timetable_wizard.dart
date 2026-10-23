@@ -31,6 +31,7 @@ import 'org_schedule_planning.dart' show applyStudentCount, coursePlanApi, termC
 import 'org_timetable_parts.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 class TimetableWizard extends StatefulWidget {
   const TimetableWizard({super.key, this.scheduleId});
@@ -593,7 +594,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                         on == true ? avoidPeriods.add(asInt(x['id'])) : avoidPeriods.remove(asInt(x['id']));
                         d.settings['avoid_period_ids'] = avoidPeriods.toList()..sort();
                       }),
-              title: Text('${x['label']}  ${x['start_time']}–${x['end_time']}', style: orgText(context, w: FontWeight.w700)),
+              title: Text('${x['label']}  ${AppTime.clockRange('${x['start_time']}', '${x['end_time']}')}', style: orgText(context, w: FontWeight.w700)),
               subtitle: Text(t('يُتجنب إن أمكن', 'avoid if possible'), style: orgText(context, size: 11.5, color: c.textLight)),
             ),
         ]),

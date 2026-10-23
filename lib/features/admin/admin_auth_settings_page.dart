@@ -3,6 +3,7 @@
 // Open it from the admin services (Support & security):
 //   Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAuthSettingsPage()));
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -145,15 +146,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
   }
 
   // ── pieces ───────────────────────────────────────────────────────────────
-  Widget _switch(bool value, ValueChanged<bool> onChanged) {
-    final c = context.colors;
-    return Switch.adaptive(
-      value: value,
-      onChanged: onChanged,
-      activeThumbColor: c.primary,
-      thumbColor: const WidgetStatePropertyAll(Colors.white),
-    );
-  }
+  Widget _switch(bool value, ValueChanged<bool> onChanged) => AppSwitch(value: value, onChanged: onChanged);
 
   Widget _wayTile(VerifyWay w) {
     final on = _ways.contains(w.name);

@@ -29,6 +29,7 @@ import 'admin_common.dart';
 import 'admin_content_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_platform_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_flags_settings_page.dart';
 import 'admin_organizations_page.dart';
@@ -332,6 +333,13 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.palette_rounded,
           colors: AdminPalette.violet,
           onTap: () => push(const AdminThemePage()),
+        ),
+        AdminService(
+          labelKey: 'svc_platform_settings',
+          descKey: 'svc_platform_settings_d',
+          icon: Icons.settings_suggest_rounded,
+          colors: AdminPalette.indigo,
+          onTap: () => push(const AdminPlatformSettingsPage()),
         ),
         AdminService(
           labelKey: 'features',

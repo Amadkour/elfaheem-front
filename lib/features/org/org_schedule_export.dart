@@ -30,6 +30,7 @@ import '../admin/admin_common.dart';
 import 'org_providers.dart' show orgDays;
 import 'org_schedule_versions.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model (pure)
@@ -268,7 +269,7 @@ List<String> sessionLines(Map<String, dynamic> s, ExportView v, TimetableNames n
 
 String periodHeader(Map<String, dynamic> p) {
   final a = _hhmm(p['start_time']), b = _hhmm(p['end_time']);
-  return '${p['label'] ?? ''}${a.isEmpty ? '' : '\n$a–$b'}';
+  return '${p['label'] ?? ''}${a.isEmpty ? '' : '\n${AppTime.clockRange(a, b)}'}';
 }
 
 /// Calm, print-friendly pairs: (fill, accent). A course keeps its colour across every sheet of the file.
@@ -299,7 +300,7 @@ List<(String, String)> summaryKpis(TimetableSummary s) => [
       (t('الساعات', 'Hours'), s.hours.toStringAsFixed(s.hours == s.hours.roundToDouble() ? 0 : 1)),
       (t('أيام الدوام', 'Days'), '${s.days}'),
       (t('أكثر الأيام', 'Busiest day'), s.busiestDay == null ? '—' : '${_dayName(s.busiestDay!)} (${s.byDay[s.busiestDay]})'),
-      (t('من – إلى', 'First – last'), s.first == null ? '—' : '${s.first} – ${s.last}'),
+      (t('من – إلى', 'First – last'), s.first == null ? '—' : AppTime.clockRange(s.first, s.last)),
     ];
 
 List<String> courseTableHeader() => [t('المقرر', 'Course'), t('محاضرات', 'Lectures'), t('عملي', 'Labs'), t('فترات', 'Periods'), t('ساعات', 'Hours'), t('أماكن', 'Rooms')];
@@ -507,7 +508,7 @@ Uint8List timetableXlsx(ExportBook book) {
     }
     x.merge(0, 0, 1, width, '${s.title} · ${s.kindLabel}', title);
     x.height(0, 34);
-    x.merge(1, 0, 1, width, '${book.title} · ${book.subtitle} · ${shortDateTime(book.generatedAt.toIso8601String())}', sub);
+    x.merge(1, 0, 1, width, '${book.title} · ${book.subtitle} · ${AppTime.dateTime(book.generatedAt.toUtc())}', sub);
     var r = 3;
     x.put(r, 0, t('اليوم', 'Day'), head);
     for (var c = 0; c < s.grid.periods.length; c++) {
@@ -585,7 +586,7 @@ Uint8List timetableXlsx(ExportBook book) {
     }
     o.merge(0, 0, 1, h.length, book.title, title);
     o.height(0, 34);
-    o.merge(1, 0, 1, h.length, '${book.subtitle} · ${book.sheets.length} ${t('ورقة', 'sheets')} · ${shortDateTime(book.generatedAt.toIso8601String())}', sub);
+    o.merge(1, 0, 1, h.length, '${book.subtitle} · ${book.sheets.length} ${t('ورقة', 'sheets')} · ${AppTime.dateTime(book.generatedAt.toUtc())}', sub);
     for (var c = 0; c < h.length; c++) {
       o.put(3, c, h[c], head);
     }
@@ -683,7 +684,7 @@ Uint8List timetableDocx(ExportBook book) {
     body.write(w.para(w.run(subtitle, italic: true, color: mutedHex, halfPt: 16), after: 160));
   }
 
-  final stamp = shortDateTime(book.generatedAt.toIso8601String());
+  final stamp = AppTime.dateTime(book.generatedAt.toUtc());
   if (book.sheets.length > 1) {
     heading(book.title, '${book.subtitle} · ${book.sheets.length} ${t('عضو', 'members')} · $stamp');
     body.write(smallTable(overviewHeader(), [for (final s in book.sheets) overviewRow(s)]));
@@ -773,7 +774,7 @@ Future<Uint8List> timetablePdf(ExportBook book, {required ByteData regular, requ
   final doc = pw.Document(title: book.title, creator: 'NextBrain', theme: pw.ThemeData.withFont(base: pw.Font.ttf(regular), bold: pw.Font.ttf(bold)));
   final dir = book.rtl ? pw.TextDirection.rtl : pw.TextDirection.ltr;
   final colours = courseColours(book.sheets.expand((s) => s.slots));
-  final stamp = shortDateTime(book.generatedAt.toIso8601String());
+  final stamp = AppTime.dateTime(book.generatedAt.toUtc());
   final format = PdfPageFormat.a4.landscape;
 
   pw.Widget header(String title, String subtitle) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [

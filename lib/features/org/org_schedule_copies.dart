@@ -26,8 +26,10 @@ import 'org_providers.dart';
 import 'org_schedule_export.dart' show showTimetableExport;
 import 'org_schedule_versions.dart';
 import 'org_timetable_parts.dart' show courseName;
+import 'org_table_export.dart' show showTimetableTableExport;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 TimetableNames timetableNamesOf(OrgScheduleProvider p) => TimetableNames(
       courses: {for (final l in p.loads) asInt(l['course_id']): courseName(l)},
@@ -187,7 +189,7 @@ class _CopiesPageState extends State<_CopiesPage> {
                         [
                           sourceLabel(cp.source),
                           if (cp.version != null) '${t('الإصدار', 'version')} ${cp.version}',
-                          if (cp.createdAt != null) shortDateTime(cp.createdAt!.toIso8601String()),
+                          if (cp.createdAt != null) AppTime.dateTime(cp.createdAt!),
                         ].join(' · '),
                         style: orgText(context, size: 12, color: c.textMedium)),
                   ]),
@@ -287,7 +289,7 @@ class _CopyDetailState extends State<_CopyDetail> {
       '${p.schedule?['name'] ?? ''}',
       '${t('النسخة', 'Copy')}: ${widget.live ? t('الجدول الحالي', 'live timetable') : '#${copy.id} ${copy.label}'}',
       '${t('الإصدار', 'Version')}: ${copy.version ?? '—'}',
-      if (copy.createdAt != null) '${t('أُنشئت', 'Created')}: ${shortDateTime(copy.createdAt!.toIso8601String())}',
+      if (copy.createdAt != null) '${t('أُنشئت', 'Created')}: ${AppTime.dateTime(copy.createdAt!)}',
       if (m != null) '${memberKindLabel(m.kind)}: ${memberLabel(m, n)}',
     ];
 
@@ -362,9 +364,16 @@ class _CopyDetailState extends State<_CopyDetail> {
         ),
         if (kind == 'full' || m != null)
           OutlinedButton.icon(
-            onPressed: shown.isEmpty ? null : () => saveTimetableCsv('${p.schedule?['name'] ?? 'timetable'}-${m == null ? 'full' : memberLabel(m, n)}-v${copy.version ?? copy.id}', timetableCsv(shown, n, header: head)),
-            icon: const Icon(Icons.download_rounded),
-            label: Text(t('تصدير CSV', 'Export CSV')),
+            onPressed: shown.isEmpty
+                ? null
+                : () => showTimetableTableExport(context,
+                    id: 'org.schedule.copy.sessions',
+                    title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')} · ${m == null ? t('كامل', 'Full') : memberLabel(m, n)} · v${copy.version ?? copy.id}',
+                    slots: shown,
+                    names: n,
+                    meta: head),
+            icon: const Icon(Icons.table_view_rounded),
+            label: Text(t('تصدير قائمة الحصص', 'Export the session list')),
           ),
         if (kind != 'full' && members.isNotEmpty)
           OutlinedButton.icon(
@@ -388,8 +397,14 @@ class _CopyDetailState extends State<_CopyDetail> {
         rows.add({...s, '_member': memberLabel(m, n)});
       }
     }
-    saveTimetableCsv('${p.schedule?['name'] ?? 'timetable'}-${memberKindLabel(kind)}-v${copy.version ?? copy.id}',
-        timetableCsv(rows, n, header: head, extra: (s) => {memberKindLabel(kind): '${s['_member']}'}));
+    showTimetableTableExport(context,
+        id: 'org.schedule.copy.members',
+        title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')} · ${memberKindLabel(kind)} · v${copy.version ?? copy.id}',
+        slots: rows,
+        names: n,
+        meta: head,
+        memberKey: '_member',
+        memberLabel: memberKindLabel(kind));
   }
 
   Widget _slotLine(BuildContext context, Map<String, dynamic> s, TimetableNames n) {
@@ -399,7 +414,7 @@ class _CopyDetailState extends State<_CopyDetail> {
       padding: const EdgeInsets.only(bottom: 6),
       child: RowCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${dayLabels()['${s['day']}'] ?? s['day']} · ${per['label'] ?? '#${s['period_id']}'} ${per['start_time'] ?? ''}–${per['end_time'] ?? ''}',
+          Text('${dayLabels()['${s['day']}'] ?? s['day']} · ${per['label'] ?? '#${s['period_id']}'} ${periodRange(asMap(per))}',
               style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
           Text('${n.course(s['course_id'])} · ${s['kind'] == 'lab' ? t('سكشن', 'Lab') : t('محاضرة', 'Lecture')} G${s['group_no'] ?? 1}', style: orgText(context, w: FontWeight.w700)),
           Text(

@@ -244,14 +244,14 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     final card = [u['location'], u['office_hours'], u['email'], u['phone']].any((x) => '${x ?? ''}'.trim().isNotEmpty);
     return [
       if (_isDept && s.currentId != null) ...[
-        AppSectionTitle(t('إعلانات القسم', 'Department news')),
+        _Title(t('إعلانات القسم', 'Department news')),
         Padding(
           padding: pad,
           child: OrgAnnouncementFeed(orgId: s.currentId!, deptId: widget.unitId, limit: 3, compact: true),
         ),
       ],
       if (subs.isNotEmpty) ...[
-        AppSectionTitle(t('الإدارات الفرعية', 'Sub-departments'), subtitle: t('${subs.length} تابعة لهذه الإدارة', '${subs.length} under this department')),
+        _Title(t('الإدارات الفرعية', 'Sub-departments'), subtitle: t('${subs.length} تابعة لهذه الإدارة', '${subs.length} under this department')),
         Padding(
           padding: pad,
           child: Column(children: [
@@ -272,7 +272,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
         ),
       ],
       if (_isDept) ...[
-        AppSectionTitle(t('بطاقة الإدارة', 'Department card'), subtitle: t('هكذا يراها الطلاب في الدليل', 'How students see it in the directory')),
+        _Title(t('بطاقة الإدارة', 'Department card'), subtitle: t('هكذا يراها الطلاب في الدليل', 'How students see it in the directory')),
         Padding(
           padding: pad,
           child: AppCard(
@@ -288,7 +288,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           ),
         ),
       ] else ...[
-        AppSectionTitle(t('عن القسم', 'About')),
+        _Title(t('عن القسم', 'About')),
         Padding(
           padding: pad,
           child: AppCard(
@@ -565,7 +565,7 @@ class _RequestsTabState extends State<_RequestsTab> {
     // join requests
     if (decide || _can['configure_join'] == true) {
       final total = asInt(st['pending_join_requests']);
-      children.add(AppSectionTitle(t('طلبات الانضمام', 'Join requests'),
+      children.add(_Title(t('طلبات الانضمام', 'Join requests'),
           subtitle: total == 0 ? t('لا أحد ينتظر', 'No one is waiting') : t('$total ينتظرون ردّك', '$total waiting for you'),
           trailing: TextButton(onPressed: widget.onSeeAll, child: Text(t('الكل والإعداد', 'All & settings')))));
       if (!decide && joins.isNotEmpty) {
@@ -612,7 +612,7 @@ class _RequestsTabState extends State<_RequestsTab> {
     // forms submitted within this department
     if (_can['view_forms'] == true) {
       final total = asInt(st['pending_forms']);
-      children.add(AppSectionTitle(t('نماذج وطلبات للمراجعة', 'Forms to review'),
+      children.add(_Title(t('نماذج وطلبات للمراجعة', 'Forms to review'),
           subtitle: total == 0 ? t('كل الطلبات تمت مراجعتها', 'Everything is reviewed') : t('$total بانتظار المراجعة', '$total waiting for review'),
           trailing: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -655,7 +655,7 @@ class _RequestsTabState extends State<_RequestsTab> {
     // academic: "choose your department" requests
     if (_can['decide_program_choices'] == true) {
       final total = asInt(st['pending_program_choices']);
-      children.add(AppSectionTitle(t('طلبات اختيار القسم', 'Department choices'),
+      children.add(_Title(t('طلبات اختيار القسم', 'Department choices'),
           subtitle: total == 0 ? t('لا طلبات معلّقة', 'Nothing pending') : t('$total طالب اختار هذا القسم', '$total students chose this department')));
       for (final r in choices) {
         final user = asMap(r['user']);
@@ -799,7 +799,7 @@ class _UsersTab extends StatelessWidget {
       ]);
     }
     return _TabList(onRefresh: onChanged, children: [
-      AppSectionTitle(isDept ? t('المنضمّون للإدارة', 'People who joined') : t('طلاب القسم', 'Students of the department'),
+      _Title(isDept ? t('المنضمّون للإدارة', 'People who joined') : t('طلاب القسم', 'Students of the department'),
           subtitle: total > rows.length ? t('أحدث ${rows.length} من $total', 'Latest ${rows.length} of $total') : t('$total شخص', '$total people')),
       for (final r in rows)
         _PersonRow(
@@ -857,7 +857,7 @@ class _TeamTab extends StatelessWidget {
     final rows = asMapList(d['team']);
     final total = asInt(asMap(d['stats'])['staff']);
     return _TabList(onRefresh: onRefresh, children: [
-      AppSectionTitle(isDept ? t('فريق الإدارة', 'Department team') : t('هيئة التدريس بالقسم', 'Department faculty'),
+      _Title(isDept ? t('فريق الإدارة', 'Department team') : t('هيئة التدريس بالقسم', 'Department faculty'),
           subtitle: isDept
               ? t('صلاحياتهم تنطبق على هذه الإدارة فقط', 'Their rights apply to this department only')
               : t('المدرسون والمعيدون المنتسبون للقسم', 'Teachers and assistants affiliated with it'),
@@ -921,4 +921,18 @@ class _PersonRow extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Section title with the page's side gutter.
+class _Title extends StatelessWidget {
+  const _Title(this.title, {this.subtitle, this.trailing});
+  final String title;
+  final String? subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: AppSectionTitle(title, subtitle: subtitle, trailing: trailing),
+      );
 }

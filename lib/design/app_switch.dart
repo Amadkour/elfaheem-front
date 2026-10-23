@@ -120,6 +120,7 @@ class AppSwitchTile extends StatelessWidget {
     this.padding = const EdgeInsets.symmetric(vertical: 8),
     this.dense = false,
     this.subtitleWidget,
+    this.inactiveColor,
   });
 
   final String title;
@@ -131,6 +132,9 @@ class AppSwitchTile extends StatelessWidget {
   final bool value;
   final ValueChanged<bool>? onChanged;
   final Color? activeColor;
+
+  /// Track colour when off; see [AppSwitch.inactiveColor].
+  final Color? inactiveColor;
   final EdgeInsetsGeometry padding;
   final bool dense;
 
@@ -172,7 +176,13 @@ class AppSwitchTile extends StatelessWidget {
               ]),
             ),
             const SizedBox(width: 12),
-            AppSwitch(value: value, onChanged: onChanged, activeColor: activeColor, semanticLabel: title),
+            AppSwitch(
+              value: value,
+              onChanged: onChanged,
+              activeColor: activeColor,
+              inactiveColor: inactiveColor,
+              semanticLabel: title,
+            ),
           ]),
         ),
       ),

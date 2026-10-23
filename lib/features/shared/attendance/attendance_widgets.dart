@@ -9,6 +9,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -671,7 +672,7 @@ class RelayHostTile extends StatelessWidget {
           ),
           p.starting
               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2))
-              : Switch.adaptive(value: p.enabled, onChanged: (v) => p.setEnabled(v)),
+              : AppSwitch(value: p.enabled, onChanged: (v) => p.setEnabled(v)),
         ]),
         if (p.enabled && p.helped > 0)
           Align(
@@ -824,14 +825,11 @@ class _TeacherSheet extends StatelessWidget {
                 ),
             ]),
             const SizedBox(height: 6),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
+            AppSwitchTile(
               value: p.allowWeb,
               onChanged: p.setAllowWeb,
-              title: Text(attT('att_t_allow_web'),
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-              subtitle: Text(attT('att_t_allow_web_hint'),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+              title: attT('att_t_allow_web'),
+              subtitle: attT('att_t_allow_web_hint'),
             ),
             _LocationSetup(p: p),
             ])),
@@ -969,13 +967,11 @@ class _LocationSetup extends StatelessWidget {
   Widget build(BuildContext context) {
     final grey = TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      SwitchListTile.adaptive(
-        contentPadding: EdgeInsets.zero,
+      AppSwitchTile(
         value: p.useLocation,
         onChanged: (v) => _toggle(context, v),
-        title: Text(attT('att_t_location'),
-            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-        subtitle: Text(attT(kIsWeb ? 'att_t_location_hint_web' : 'att_t_location_hint'), style: grey),
+        title: attT('att_t_location'),
+        subtitle: attT(kIsWeb ? 'att_t_location_hint_web' : 'att_t_location_hint'),
       ),
       if (p.useLocation) ...[
         Row(children: [

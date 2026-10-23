@@ -1,6 +1,7 @@
 // lib/features/org/org_departments_page.dart
 //
-//   OrgDepartmentsPage   every department I can see, as warm cards with live counters + "New department"
+//   OrgDepartmentsPage   every department I can see (sub-departments under their parent, plus the academic
+//                        departments when I may see them) — tapping one opens its dashboard (org_department_dashboard.dart)
 //   showDepartmentWizard ready-made departments (HR, Finance, الإرشاد الأكاديمي, Controls …) or a custom one
 //   OrgDepartmentHub     one department: Overview · Team · Ads · Forms · Complaints · Library · Data Lab · Certificates
 //                        (a tab exists only when the service is switched on AND I have the right in that department)
@@ -17,12 +18,14 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
+import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_providers.dart';
 import 'org_services_pages.dart';
 import 'org_join_pages.dart' show OrgUnitJoinHub, canConfigureUnit;
 import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 
 const _featureIcons = {
@@ -60,6 +63,7 @@ class OrgDepartmentsPage extends StatefulWidget {
 
 class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
   List<Map<String, dynamic>>? _items;
+  List<Map<String, dynamic>> _programs = const [];
   bool _failed = false, _canCreate = false;
 
   @override
@@ -69,13 +73,45 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
   }
 
   Future<void> _load() async {
-    final r = await OrgApi.i.getMap('${context.read<OrgSession>().base}/departments');
+    final s = context.read<OrgSession>();
+    final r = await OrgApi.i.getMap('${s.base}/departments');
+    // academic departments are edited in "Academic structure"; listed here for people who may see them
+    final p = s.can('academic') ? await OrgApi.i.getMap('${s.base}/academic/programs') : null;
     if (!mounted) return;
     setState(() {
       _items = r == null ? _items : asMapList(r['items']);
+      _programs = p == null ? _programs : asMapList(p['items']).where((x) => x['is_active'] != false).toList();
       _canCreate = r?['can_create'] == true;
       _failed = r == null && _items == null;
     });
+  }
+
+  /// Parents first, each followed by its own sub-departments (any depth), so the tree reads top-down.
+  List<(Map<String, dynamic>, int)> _ordered(List<Map<String, dynamic>> items) {
+    final ids = {for (final d in items) asInt(d['id'])};
+    final kids = <int, List<Map<String, dynamic>>>{};
+    final roots = <Map<String, dynamic>>[];
+    for (final d in items) {
+      final p = d['parent_id'] == null ? null : asInt(d['parent_id']);
+      if (p == null || !ids.contains(p)) {
+        roots.add(d);
+      } else {
+        (kids[p] ??= []).add(d);
+      }
+    }
+    final out = <(Map<String, dynamic>, int)>[];
+    final seen = <int>{};
+    void walk(Map<String, dynamic> d, int depth) {
+      if (!seen.add(asInt(d['id']))) return;
+      out.add((d, depth));
+      for (final k in kids[asInt(d['id'])] ?? const <Map<String, dynamic>>[]) {
+        walk(k, depth + 1);
+      }
+    }
+    for (final r in roots) {
+      walk(r, 0);
+    }
+    return out;
   }
 
   @override
@@ -118,19 +154,38 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 100), children: [
                       OrgSectionTitle(t('الإدارات الخدمية', 'Service departments'),
-                          subtitle: t('${items.length} إدارة في ${s.name} — الأقسام العلمية في "الهيكل الأكاديمي"',
-                              '${items.length} in ${s.name} — academic departments are in "Academic structure"')),
+                          subtitle: t('${items.length} إدارة في ${s.name} — اضغط أي إدارة لفتح لوحتها',
+                              '${items.length} in ${s.name} — tap one to open its dashboard')),
                       OrgGrid(minTile: 300, children: [
-                        for (final d in items)
+                        for (final (d, depth) in _ordered(items))
                           _DeptCard(
                             d: d,
+                            parentName: depth == 0
+                                ? null
+                                : orgNameOf(items.firstWhere((x) => asInt(x['id']) == asInt(d['parent_id']),
+                                    orElse: () => const <String, dynamic>{})),
+                            subCount: items.where((x) => x['parent_id'] != null && asInt(x['parent_id']) == asInt(d['id'])).length,
                             onTap: () async {
-                              await Navigator.of(context).push(MaterialPageRoute(
-                                  builder: (_) => ChangeNotifierProvider.value(value: s, child: OrgDepartmentHub(dept: d))));
+                              await openDepartmentDashboard(context, unitType: 'dept', unitId: asInt(d['id']), seed: d);
                               _load();
                             },
                           ),
                       ]),
+                      if (_programs.isNotEmpty) ...[
+                        OrgSectionTitle(t('الأقسام العلمية', 'Academic departments'),
+                            subtitle: t('${_programs.length} قسم — الهيكل والمقررات في "الهيكل الأكاديمي"',
+                                '${_programs.length} — structure and courses live in "Academic structure"')),
+                        OrgGrid(minTile: 300, children: [
+                          for (final p in _programs)
+                            _ProgramCard(
+                              p: p,
+                              onTap: () async {
+                                await openDepartmentDashboard(context, unitType: 'program', unitId: asInt(p['id']), seed: p);
+                                _load();
+                              },
+                            ),
+                        ]),
+                      ],
                     ]),
                   ),
       ),
@@ -139,9 +194,11 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
 }
 
 class _DeptCard extends StatelessWidget {
-  const _DeptCard({required this.d, required this.onTap});
+  const _DeptCard({required this.d, required this.onTap, this.parentName, this.subCount = 0});
   final Map<String, dynamic> d;
   final VoidCallback onTap;
+  final String? parentName;
+  final int subCount;
 
   @override
   Widget build(BuildContext context) {
@@ -182,11 +239,63 @@ class _DeptCard extends StatelessWidget {
               if (attention > 0) OrgPill(t('$attention تنتظر', '$attention waiting'), color: c.warning),
             ]),
             const SizedBox(height: 12),
-            Wrap(spacing: 6, runSpacing: 6, children: [
+            Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              if ((parentName ?? '').isNotEmpty)
+                OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: Icons.subdirectory_arrow_left_rounded, color: c.textMedium),
+              if (subCount > 0) OrgPill(t('$subCount فرعية', '$subCount sub'), icon: Icons.account_tree_rounded, color: col),
               OrgPill(t('${asInt(counts['team'])} في الفريق', '${asInt(counts['team'])} team'), icon: Icons.groups_rounded, color: col),
               for (final f in (d['features'] as List? ?? const []))
                 Icon(_featureIcons['$f'] ?? Icons.circle, size: 18, color: c.textLight),
             ]),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// An academic department (OrgProgram): structure is edited in "Academic structure"; the card opens its dashboard.
+class _ProgramCard extends StatelessWidget {
+  const _ProgramCard({required this.p, required this.onTap});
+  final Map<String, dynamic> p;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final mgr = asMap(p['manager']);
+    return Material(
+      color: c.cardBg,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: c.purple.withValues(alpha: 0.25)),
+            gradient: LinearGradient(
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
+              colors: [c.purple.withValues(alpha: 0.10), c.cardBg, c.cardBg],
+            ),
+          ),
+          child: Row(children: [
+            IconBadge(Icons.school_rounded, c.purple, size: 48),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(orgNameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 15.5, w: FontWeight.w800)),
+                Text(mgr.isEmpty ? t('لم يُعيَّن مدير بعد', 'No manager yet') : '${t('المدير', 'Manager')}: ${mgr['name']}',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
+                const SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  if ('${p['code'] ?? ''}'.isNotEmpty) OrgPill('${p['code']}', icon: Icons.tag_rounded, color: c.purple),
+                  OrgPill(t('${asInt(p['students'])} طالب', '${asInt(p['students'])} students'), icon: Icons.people_alt_rounded, color: c.primary),
+                ]),
+              ]),
+            ),
           ]),
         ),
       ),
@@ -224,6 +333,23 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
   final origHead = asMap(edit?['head'])['id'] == null ? null : asInt(asMap(edit?['head'])['id']);
   int? head = origHead;
   final canHead = s.can('departments', edit == null ? 'insert' : 'update');
+  // "part of" another department: a structure change (org-level right); never itself or its own subtree
+  int parent = asInt(edit?['parent_id']);
+  var parents = <Map<String, dynamic>>[];
+  if (canHead) {
+    final all = asMapList((await OrgApi.i.getMap('${s.base}/departments'))?['items']);
+    final own = edit == null ? null : asInt(edit['id']);
+    final blocked = <int>{?own};
+    var grew = own != null;
+    while (grew) {
+      grew = false;
+      for (final d in all) {
+        if (d['parent_id'] != null && blocked.contains(asInt(d['parent_id'])) && blocked.add(asInt(d['id']))) grew = true;
+      }
+    }
+    parents = all.where((d) => !blocked.contains(asInt(d['id']))).toList();
+    if (!context.mounted) return false;
+  }
   bool busy = false, saved = false;
   const palette = ['#0F7B5F', '#2563EB', '#7C3AED', '#DB2777', '#EA580C', '#0891B2', '#CA8A04', '#475569'];
 
@@ -274,6 +400,20 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
             Field(controller: ar, label: t('الاسم بالعربية', 'Arabic name')),
             Field(controller: en, label: t('الاسم بالإنجليزية', 'English name'), ltr: true),
             Field(controller: desc, label: t('ماذا تقدم هذه الإدارة؟', 'What does it do?'), maxLines: 2),
+            if (canHead && parents.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: AppDropdown<int>(
+                  value: parent,
+                  decoration: InputDecoration(labelText: t('تتبع إدارة أخرى؟', 'Part of another department?')),
+                  items: [
+                    DropdownMenuItem(value: 0, child: Text(t('لا — إدارة رئيسية', 'No — a top-level department'))),
+                    for (final p in parents)
+                      DropdownMenuItem(value: asInt(p['id']), child: Text(orgNameOf(p), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ],
+                  onChanged: (v) => set(() => parent = v ?? 0),
+                ),
+              ),
             if (canHead)
               OrgMemberPickField(
                 label: t('رئيس / مدير الإدارة', 'Department head / manager'),
@@ -384,6 +524,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                   'email': email.text.trim(),
                   'phone': phone.text.trim(),
                   if (canHead && head != null && head != origHead) 'head_user_id': head,
+                  if (canHead && (edit != null || parent != 0)) 'parent_id': parent == 0 ? null : parent,
                 };
                 final r = edit == null
                     ? await OrgApi.i.post('${s.base}/departments', body, t('أُنشئت الإدارة 🎉', 'Department created 🎉'))
@@ -418,6 +559,13 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
   late Map<String, dynamic> _d = widget.dept;
 
   int get _id => asInt(_d['id']);
+
+  @override
+  void initState() {
+    super.initState();
+    // the caller may hand over a light map (e.g. from the department dashboard) — fetch the full record
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+  }
 
   Future<void> _reload() async {
     final r = await OrgApi.i.getMap('${context.read<OrgSession>().base}/departments/$_id');

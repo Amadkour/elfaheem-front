@@ -51,6 +51,8 @@ import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
 import 'features/student/courses/details/course_detail_screen.dart';
 import 'features/org/org_dashboard_screen.dart';
+import 'features/org/org_member_dashboard.dart' show OrgMemberDashboardScreen;
+import 'features/org/orgs_unavailable_gate.dart';
 import 'features/student/courses/details/course_link_loader.dart';
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
@@ -575,8 +577,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         return _fade(const _Guard(child: TeacherDashboardScreen()), settings);
       case '/admin_dashboard':
         return _fade(const _Guard(child: AdminDashboardScreen()), settings);
+      case '/org_member': // member dashboard (Organization mode as a page); arguments: org id (deep link)
+        return _fade(_Guard(child: OrgsGate(child: OrgMemberDashboardScreen(orgId: settings.arguments is int ? settings.arguments as int : null))), settings);
       case '/org_dashboard':
-        return _fade(const _Guard(child: OrgDashboardScreen()), settings);
+        return _fade(const _Guard(child: OrgsGate(child: OrgDashboardScreen())), settings);
       case '/parent_dashboard':
         return _fade(const _Guard(child: ParentDashboardScreen()), settings);
       case '/subscription':
