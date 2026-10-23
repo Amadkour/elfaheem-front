@@ -6,6 +6,8 @@
 //                   student-group availability; per staff member: availability (days × periods)
 library;
 
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -20,20 +22,19 @@ import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_availability_pages.dart';
-import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
 import 'org_schedule_copies.dart' show openTimetableCopies, timetableNamesOf;
-import 'org_schedule_coverage.dart' show openCoverageRun;
 import 'org_schedule_export.dart' show showTimetableExport;
-import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
 import 'org_schedule_planning.dart' show openCoursePlans;
 import 'org_timetable_parts.dart';
 import 'org_timetable_wizard.dart';
 import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
+import 'org_schedule_generate.dart';
+import 'org_schedule_grid.dart';
+import 'org_schedule_groups.dart' show openStudentGroups;
 import 'org_schedule_exams.dart' show openExamTimetables;
 import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
 import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat, AppBanner, AppActionCard;
-import 'org_schedule_relaxation.dart' show openBreakAlternatives;
 import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'org_v3.dart';
@@ -544,12 +545,48 @@ class _Studio extends StatefulWidget {
 
 class _StudioState extends State<_Studio> {
   int? _followed;
-  TimetableStage? _stage; // the step whose tools are shown (null = the step the timetable is on)
+  GridFilter _filter = GridFilter.none;
+  List<Map<String, dynamic>> _studentGroups = const [];
+  String? _studentName;
+
+  /// Student filter: search the organization's students, then their group in every course of the term.
+  Future<void> _pickStudent(BuildContext context, OrgScheduleProvider p) async {
+    final term = p.schedule?['term_id'];
+    if (term == null) {
+      toast(t('اربط الجدول بفصل دراسي لتصفية حسب الطالب.', 'Link the timetable to a term to filter by student.'), error: true);
+      return;
+    }
+    final q = await askText(context, title: t('ابحث عن طالب (الاسم أو البريد)', 'Find a student (name or e-mail)'));
+    if (q == null || q.trim().isEmpty || !context.mounted) return;
+    final r = await orgCall(() => p.api.get('${p.base}/members', queryParams: {'role': 'student', 'search': q.trim(), 'size': 20}));
+    final found = asMapList(r.map['items']);
+    if (!r.ok || !context.mounted) return;
+    if (found.isEmpty) return toast(t('لا نتائج', 'No match'), error: true);
+    final pick = await showAdminSheet<Map<String, dynamic>>(
+        context,
+        (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+              SheetHeader(t('اختر الطالب', 'Choose the student')),
+              for (final m in found)
+                ListTile(
+                    title: Text('${asMap(m['user'])['name']}'),
+                    subtitle: Text('${m['student_code'] ?? asMap(m['user'])['gmail'] ?? ''}'),
+                    onTap: () => Navigator.pop(ctx, m)),
+            ]));
+    if (pick == null || !context.mounted) return;
+    final uid = asMap(pick['user'])['id'];
+    final g = await orgCall(() => p.api.get('${p.base}/registrar/terms/$term/students/$uid/groups'));
+    if (!g.ok || !mounted) return;
+    setState(() {
+      _studentGroups = asMapList(g.map['items']);
+      _studentName = '${asMap(pick['user'])['name']}';
+      _filter = GridFilter(GridFilterKind.student, '$uid');
+    });
+  }
 
   Future<void> _publish(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> result, int errors, Map<int, String> courseNames) async {
     if (errors > 0) {
       toast(t('عالج التعارضات الإلزامية قبل النشر', 'Fix the hard clashes before publishing'), error: true);
-      return _issuesSheet(context, p, courseNames);
+      return showGenerationResult(context, p, courseNames, canEdit: true);
     }
     final st = '${result['status'] ?? ''}';
     if ((st == 'partial' || st == 'infeasible') &&
@@ -606,40 +643,75 @@ class _StudioState extends State<_Studio> {
     final unplaced = stats['sessions_required'] == null ? 0 : (asInt(stats['sessions_required']) - asInt(stats['sessions_placed'])).clamp(0, 1 << 30);
     final journey = TimetableJourney.of(periods: p.periods.length, rooms: p.rooms.length, noTeacher: noTeacher, slots: p.slots.length,
         result: result, hard: errors, active: active, running: running);
-    final stage = _stage ?? journey.current;
-    final nextText = nextStepText(journey.next, unplaced: unplaced, hard: errors, broken: asMapList(result['broken']).length, noTeacher: noTeacher);
+    final nextText = nextStepText(journey.next, unplaced: unplaced, hard: errors, pending: GenerationOutcome.of(result).pending.length, noTeacher: noTeacher);
     final canEdit = s.can('schedule', 'update') && !active;
     final VoidCallback? nextAction = switch (journey.next) {
       NextAction.addPeriods => s.can('schedule', 'insert') ? () => showPeriodForm(context, p, null) : null,
       NextAction.addRooms => s.can('schedule', 'insert') ? () => showRoomForm(context, p, null) : null,
       NextAction.assignTeachers => () => DefaultTabController.maybeOf(context)?.animateTo(1),
-      NextAction.generate => canEdit ? () => _generateSheet(context, p) : null,
-      NextAction.completeCoverage => canEdit ? () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve')) : null,
-      NextAction.fixClashes => () => _issuesSheet(context, p, courseNames),
-      NextAction.compareRules => canEdit ? () => openBreakAlternatives(context, p) : null,
+      NextAction.generate => canEdit ? () => showGenerateSheet(context, p) : null,
+      NextAction.reviewResult || NextAction.fixClashes => () => showGenerationResult(context, p, courseNames, canEdit: canEdit),
       NextAction.publish => s.can('schedule', 'approve') ? () => _publish(context, p, result, errors, courseNames) : null,
       NextAction.share => s.can('schedule', 'export') ? () => _export(context, p) : () => openTimetableCopies(context, p, canEdit: false),
       NextAction.wait => null,
     };
 
-    // a clash covers every period it overlaps (period_ids), not only the one it starts in
-    bool hasConflict(String day, int period) => p.conflicts.any((x) =>
-        x['day'] == day && (((x['period_ids'] as List?) ?? const []).map(asInt).contains(period) || x['period_id'] == period || x['period_id'] == null));
+    // one index per build: cells never scan every slot; one conflict marker per covered cell
+    final cohorts = <int, Set<String>>{
+      for (final l in p.loads) asInt(l['course_id']): {for (final x in asMapList(asMap(l['course'])['cohorts'])) '${x['program_id']}|${x['level']}'}
+    };
+    String programName(dynamic v, dynamic id) => v is List && v.length == 2 ? t('${v[0] ?? v[1]}', '${v[1] ?? v[0]}') : '#$id';
+    final cohortNames = <String, String>{
+      for (final l in p.loads)
+        for (final x in asMapList(asMap(l['course'])['cohorts']))
+          '${x['program_id']}|${x['level']}': '${programName(x['program'], x['program_id'])}${x['level'] == null ? '' : ' · ${x['level']}'}'
+    };
+    final index = indexSlots(p.slots.where((x) => _filter.keeps(x, cohorts: cohorts, studentGroups: _studentGroups)));
+    final clash = conflictCells(p.conflicts, [for (final x in p.periods) asInt(x['id'])]);
+    final groupNames = <String, String>{
+      for (final x in p.slots)
+        if (x['group_no'] != null) '${x['kind'] ?? 'lecture'}|${x['group_no']}': '${x['kind'] == 'lab' ? t('معمل', 'Lab') : t('نظري', 'Theory')} ${x['group_no']}'
+    };
+    Map<String, String> staffOptions(String key) =>
+        {for (final id in {for (final x in p.slots) if (x[key] != null) asInt(x[key])}) '$id': people[id] ?? '#$id'};
+    final more = <(IconData, String, VoidCallback)>[
+      if (s.can('schedule', 'update') && !active)
+        (Icons.tune_rounded, t('إعدادات الجدول (الأيام والمقررات)', 'Timetable settings (days & courses)'), () => widget.onSetup(asInt(sch['id']))),
+      (Icons.groups_rounded, t('الأعداد وتقسيم المجموعات', 'Enrollment & group sizes'), () => openCoursePlans(context, p, canEdit: canEdit)),
+      (Icons.diversity_3_rounded, t('مجموعات الطلاب', 'Student groups'), () => openStudentGroups(context, p)),
+      if (s.can('schedule', 'insert'))
+        (Icons.event_available_rounded, t('فترات خاصة (تعويضية)', 'Special periods (make-up)'), () => _extrasSheet(context, p, courseNames, p.rooms)),
+      (Icons.history_rounded, t('النسخ السابقة', 'Versions'), () => _revisionsSheet(context, p)),
+      if (s.can('schedule', 'export')) (Icons.file_download_rounded, t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'), () => _export(context, p)),
+      (Icons.content_copy_rounded, t('نسخ لكل مدرس ومجموعة', 'Copies for each teacher & group'), () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update'))),
+      if (active && s.can('schedule', 'update'))
+        (Icons.unpublished_rounded, t('إيقاف النشر', 'Unpublish'), () async {
+          if (await confirm(context, message: t('إيقاف نشر الجدول؟ يعود مسودة ولا يراه الطلاب.', 'Unpublish? It becomes a draft and students stop seeing it.'))) {
+            await p.setActive(false);
+          }
+        }),
+    ];
 
     return Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
         child: Row(children: [
           IconButton(onPressed: p.closeSchedule, icon: const Icon(Icons.arrow_back_rounded)),
-          Expanded(child: Text('${sch['name']}', style: c.h2.copyWith(fontSize: 16))),
+          Expanded(child: Text('${sch['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontSize: 16))),
           StatusChip(
               {'active': t('منشور', 'Published'), 'draft': t('مسودة', 'Draft'), 'archived': t('مؤرشف', 'Archived')}['${sch['status']}'] ?? '${sch['status']}',
               active ? c.success : c.warning),
+          PopupMenuButton<int>(
+            tooltip: t('المزيد', 'More'),
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (i) => more[i].$3(),
+            itemBuilder: (_) => [
+              for (var i = 0; i < more.length; i++)
+                PopupMenuItem<int>(
+                    value: i, child: Row(children: [Icon(more[i].$1, size: 18), const SizedBox(width: 10), Flexible(child: Text(more[i].$2))])),
+            ],
+          ),
         ]),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
-        child: TimetableStepper(journey: journey, selected: stage, onSelect: (x) => setState(() => _stage = x)),
       ),
       // published exam windows of this term pause these weekly sessions on their dates (exam timetable: pause_weekly)
       if (examPausesOf(sch).isNotEmpty)
@@ -647,126 +719,66 @@ class _StudioState extends State<_Studio> {
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
           child: examPauseBanner(context, examPausesOf(sch), padding: const EdgeInsets.only(bottom: 4), myExamsAction: false),
         ),
-      if (s.can('schedule', 'update') || active)
+      if ((s.can('schedule', 'update') || active) && journey.next != NextAction.wait)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-          child: NextStepBanner(
-            title: nextText.$1,
-            body: nextText.$2,
-            action: nextText.$3,
-            tone: journey.tone,
-            onAction: nextAction,
-          ),
+          child: NextStepBanner(title: nextText.$1, body: nextText.$2, action: nextText.$3, tone: journey.tone, onAction: nextAction),
         ),
+      // one toolbar: the actions used every time; everything else is under ⋮
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-        child: StudioActionBar(stage: stage, actions: [
-          // 1 · set up
-          if (s.can('schedule', 'update') && !active)
-            StudioAction(TimetableStage.setup, Icons.tune_rounded, t('إعدادات الجدول (الأيام والمقررات)', 'Timetable settings (days & courses)'), () => widget.onSetup(asInt(sch['id']))),
-          StudioAction(TimetableStage.setup, Icons.groups_rounded, t('الطلاب والمجموعات', 'Enrollment & groups'),
-              () => openCoursePlans(context, p, canEdit: s.can('schedule', 'update') && !active), color: c.purple),
-          if (s.can('schedule', 'insert'))
-            StudioAction(TimetableStage.setup, Icons.event_available_rounded, t('فترات خاصة (تعويضية)', 'Special periods (make-up)'),
-                () => _extrasSheet(context, p, courseNames, p.rooms), color: c.accent2),
-          // 2 · generate
-          if (s.can('schedule', 'update') && !active) ...[
-            StudioAction(TimetableStage.generate, Icons.auto_awesome_rounded, running ? t('جارٍ التوليد…', 'Generating…') : t('توليد تلقائي', 'Auto-generate'),
-                running ? null : () => _generateSheet(context, p), busy: running),
-            StudioAction(TimetableStage.generate, Icons.all_inclusive_rounded, t('توليد حتى الاكتمال', 'Generate until complete'),
-                running ? null : () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve'))),
-            StudioAction(TimetableStage.generate, Icons.alt_route_rounded, t('استكشف بدائل', 'Explore alternatives'), running ? null : () => openScheduleAlternatives(context)),
-            StudioAction(TimetableStage.generate, Icons.balance_rounded, t('أي قاعدة تتنازل عنها؟', 'Which rule should give way?'),
-                running ? null : () => openBreakAlternatives(context, p)),
-          ],
-          // 3 · review & fix
+        child: Wrap(spacing: 8, runSpacing: 6, children: [
+          if (canEdit)
+            ActionChip(
+              avatar: running
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.auto_awesome_rounded, size: 18, color: c.primary),
+              label: Text(running ? t('جارٍ التوليد…', 'Generating…') : t('توليد الجدول', 'Generate timetable')),
+              onPressed: running ? null : () => showGenerateSheet(context, p),
+            ),
           if (s.can('schedule', 'insert') && !active)
-            StudioAction(TimetableStage.review, Icons.add_rounded, t('إضافة حصة', 'Add a slot'), () => _slotSheet(context, p, null, null, null)),
-          StudioAction(TimetableStage.review, errors > 0 ? Icons.error_rounded : Icons.rule_rounded,
-              t('التعارضات ($errors · $warns)', 'Clashes ($errors · $warns)'), () => _issuesSheet(context, p, courseNames), color: errors > 0 ? c.danger : c.success),
-          StudioAction(TimetableStage.review, Icons.insights_rounded, t('تحسين الجدول', 'Optimize'),
-              () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
-              color: errors > 0 ? c.danger : c.success),
-          StudioAction(TimetableStage.review, Icons.history_rounded, t('النسخ السابقة', 'Versions'), () => _revisionsSheet(context, p), color: c.textMedium),
-          // 4 · publish & share
+            ActionChip(
+                avatar: Icon(Icons.add_rounded, size: 18, color: c.primary),
+                label: Text(t('إضافة حصة', 'Add session')),
+                onPressed: editable ? () => _slotSheet(context, p, null, null, null) : null),
+          ActionChip(
+            avatar: Icon(errors > 0 ? Icons.error_rounded : Icons.fact_check_rounded, size: 18, color: errors > 0 ? c.danger : (warns > 0 ? c.warning : c.success)),
+            label: Text(t('النتيجة والتعارضات ($errors · $warns)', 'Result & conflicts ($errors · $warns)')),
+            onPressed: () => showGenerationResult(context, p, courseNames, canEdit: canEdit),
+          ),
           if (!active && s.can('schedule', 'approve'))
-            StudioAction(TimetableStage.publish, Icons.publish_rounded, t('نشر للجميع', 'Publish'), running ? null : () => _publish(context, p, result, errors, courseNames), color: c.success),
-          if (active && s.can('schedule', 'update'))
-            StudioAction(TimetableStage.publish, Icons.unpublished_rounded, t('إيقاف النشر', 'Unpublish'), () async {
-              if (await confirm(context, message: t('إيقاف نشر الجدول؟ يعود مسودة ولا يراه الطلاب.', 'Unpublish? It becomes a draft and students stop seeing it.'))) {
-                await p.setActive(false);
-              }
-            }, color: c.warning),
-          if (s.can('schedule', 'export'))
-            StudioAction(TimetableStage.publish, Icons.file_download_rounded, t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'), () => _export(context, p)),
-          StudioAction(TimetableStage.publish, Icons.content_copy_rounded, t('نسخ لكل مدرس ومجموعة', 'Copies for each teacher & group'),
-              () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update'))),
-          StudioAction(TimetableStage.publish, Icons.download_rounded, t('تصدير Excel (الخادم)', 'Excel export (server)'),
-              () => downloadExcel(context, 'export/schedule', {'schedule_id': sch['id']}), color: c.success),
+            ActionChip(
+                avatar: Icon(Icons.publish_rounded, size: 18, color: c.success),
+                label: Text(t('نشر', 'Publish')),
+                onPressed: running ? null : () => _publish(context, p, result, errors, courseNames)),
         ]),
       ),
       if (run != null && (running || run['schedule_id'] == null || asInt(run['schedule_id']) == asInt(sch['id'])) && (running || run['status'] == 'failed'))
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: GenerationRunCard(run: run, onCancel: running ? () => p.cancelGeneration() : null),
+          child: GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
         ),
-      if (!running && result.isNotEmpty)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+        child: TimetableFilterBar(
+          filter: _filter,
+          options: {
+            GridFilterKind.cohort: cohortNames,
+            GridFilterKind.teacher: staffOptions('teacher_id'),
+            GridFilterKind.assistant: staffOptions('assistant_id'),
+            GridFilterKind.room: {for (final e in rooms.entries) '${e.key}': e.value},
+            GridFilterKind.group: groupNames,
+          },
+          onChanged: (f) => f.kind == GridFilterKind.student ? _pickStudent(context, p) : setState(() => _filter = f),
+        ),
+      ),
+      if (_filter.kind == GridFilterKind.student && _studentName != null)
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: RowCard(
-            accent: switch ('${result['status']}') { 'feasible' => c.success, 'feasible_relaxed' => c.primary, 'partial' => c.warning, _ => c.danger },
-            onTap: () => showAdminSheet<void>(
-                context,
-                (ctx) => SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        SheetHeader(t('نتيجة آخر توليد', 'Last generation result')),
-                        ScheduleResultView(result: result, courseNames: courseNames, people: people),
-                      ]),
-                    )),
-            child: Row(children: [
-              const Icon(Icons.fact_check_rounded),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                    '${resultStatusLabels()['${result['status']}'] ?? result['status']} · '
-                    '${t('${asMap(result['stats'])['sessions_placed'] ?? '?'} من ${asMap(result['stats'])['sessions_required'] ?? '?'} حصة', '${asMap(result['stats'])['sessions_placed'] ?? '?'} of ${asMap(result['stats'])['sessions_required'] ?? '?'} sessions')}',
-                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
-              ),
-              if (result['status'] != 'feasible' && sch['status'] != 'active' && s.can('schedule', 'update'))
-                IconButton(
-                  tooltip: t('استكشف بدائل', 'Explore alternatives'),
-                  icon: Icon(Icons.alt_route_rounded, color: c.primary),
-                  onPressed: () => openScheduleAlternatives(context),
-                ),
-              const Icon(Icons.chevron_right_rounded),
-            ]),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: InputChip(label: Text(_studentName!), onDeleted: () => setState(() => _filter = GridFilter.none)),
           ),
-        ),
-      if (errors + warns > 0 || p.warnings.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-          child: RowCard(
-            accent: errors > 0 ? c.danger : c.warning,
-            onTap: () => _issuesSheet(context, p, courseNames),
-            child: Row(children: [
-              Icon(errors > 0 ? Icons.error_rounded : Icons.warning_amber_rounded, color: errors > 0 ? c.danger : c.warning),
-              const SizedBox(width: 10),
-              Expanded(child: Text(t('$errors تعارض إلزامي · $warns تنبيه · ${p.warnings.length} لم يُجدول', '$errors hard clashes · $warns warnings · ${p.warnings.length} not placed'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
-              const Icon(Icons.chevron_right_rounded),
-            ]),
-          ),
-        ),
-      if (editable && p.slots.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 0, 18, 2),
-          child: Row(children: [
-            Icon(Icons.open_with_rounded, size: 14, color: c.textLight),
-            const SizedBox(width: 6),
-            Expanded(
-                child: Text(t('اسحب أي حصة إلى خانة أخرى لنقلها (ضغطة مطوّلة على الهاتف)', 'Drag a session to another cell to move it (long-press on phones)'),
-                    style: orgText(context, size: 11.5, color: c.textLight))),
-          ]),
         ),
       Expanded(
         child: p.periods.isEmpty
@@ -781,7 +793,10 @@ class _StudioState extends State<_Studio> {
                     children: [
                       TableRow(children: [
                         const SizedBox(),
-                        for (final d in days.take(6)) Padding(padding: const EdgeInsets.all(6), child: Text(labels[d]!, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark))),
+                        for (final d in days.take(6))
+                          Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: Text(labels[d]!, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark))),
                       ]),
                       for (final per in p.periods)
                         TableRow(children: [
@@ -796,8 +811,8 @@ class _StudioState extends State<_Studio> {
                             _Cell(
                               day: d,
                               periodId: asInt(per['id']),
-                              slots: [for (final x in p.slots) if (x['day'] == d && x['period_id'] == per['id']) x],
-                              conflict: hasConflict(d, asInt(per['id'])),
+                              slots: index[(d, asInt(per['id']))] ?? const [],
+                              conflict: clash.contains((d, asInt(per['id']))),
                               courseNames: courseNames,
                               rooms: rooms,
                               people: people,
@@ -811,60 +826,6 @@ class _StudioState extends State<_Studio> {
               ),
       ),
     ]);
-  }
-
-  Future<void> _generateSheet(BuildContext context, OrgScheduleProvider p) async {
-    final settings = Map<String, dynamic>.from(asMap(p.schedule?['settings']));
-    bool keep = true, senior = settings['prefer_senior_preferences'] == true, busy = false;
-    final limit = TextEditingController(text: '${settings['time_limit_s'] ?? 8}');
-    final attempts = TextEditingController(text: '${settings['attempts'] ?? 8}');
-    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          final c = ctx.colors;
-          return SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SheetHeader(t('توليد الجدول', 'Generate the timetable')),
-              Text(t('يعمل التوليد على الخادم. إن فشل أو أُلغي يبقى الجدول كما هو، والجدول المنشور لا يُعاد توليده.',
-                  'Generation runs on the server. If it fails or is cancelled the timetable stays as it is; a published timetable is never regenerated.'),
-                  style: orgText(ctx, size: 12, color: c.textMedium)),
-              OrgSwitchRow(title: t('الإبقاء على الحصص المثبّتة', 'Keep locked sessions'), value: keep, onChanged: (v) => set(() => keep = v)),
-              OrgSwitchRow(
-                  title: t('تقديم تفضيلات الأقدم خبرة', 'Favor more experienced staff\'s preferences'),
-                  subtitle: t('من سنوات الخبرة المسجّلة فقط — التفضيلات المرنة فقط', 'Recorded experience only — soft preferences only'),
-                  value: senior,
-                  onChanged: (v) => set(() => senior = v)),
-              Row(children: [
-                Expanded(child: Field(controller: limit, label: t('مدة البحث (ث)', 'Time limit (s)'), keyboard: TextInputType.number, ltr: true)),
-                const SizedBox(width: 8),
-                Expanded(child: Field(controller: attempts, label: t('المحاولات', 'Attempts'), keyboard: TextInputType.number, ltr: true)),
-              ]),
-              PrimaryButton(
-                isLoading: busy,
-                label: t('ابدأ التوليد', 'Start generating'),
-                icon: Icons.auto_awesome_rounded,
-                iconBefore: true,
-                onPressed: () async {
-                  set(() => busy = true);
-                  final r = await p.startGeneration(
-                      keepLocked: keep,
-                      settings: {
-                        'prefer_senior_preferences': senior,
-                        'time_limit_s': int.tryParse(limit.text.trim()) ?? 8,
-                        'attempts': (int.tryParse(attempts.text.trim()) ?? 8).clamp(1, 50),
-                      });
-                  if (!ctx.mounted) return;
-                  set(() => busy = false);
-                  if (r.ok || r.code == 'generation_running') {
-                    Navigator.pop(ctx);
-                    if (!r.ok) toast(orgErrorText(r.error!));
-                  } else {
-                    toast(orgErrorText(r.error!), error: true);
-                  }
-                },
-              ),
-            ]),
-          );
-        }));
   }
 }
 
@@ -958,15 +919,14 @@ class _Cell extends StatelessWidget {
           margin: const EdgeInsets.all(3),
           padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
-            color: hovering.isNotEmpty
-                ? c.primary.withValues(alpha: 0.22)
-                : (slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.primary.withValues(alpha: 0.10)),
+            color: hovering.isNotEmpty ? c.primary.withValues(alpha: 0.22) : (slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.cardBg),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: hovering.isNotEmpty ? c.primary : (conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.primary.withValues(alpha: 0.35))),
-                width: conflict || hovering.isNotEmpty ? 1.8 : 1),
+                color: hovering.isNotEmpty ? c.primary : (conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.divider)),
+                width: conflict || hovering.isNotEmpty ? 2 : 1),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (conflict) Align(alignment: AlignmentDirectional.topEnd, child: Icon(Icons.error_rounded, size: 14, color: c.danger)),
             for (final x in slots)
               if (onDrop == null)
                 _item(context, x)
@@ -1002,10 +962,17 @@ class _Cell extends StatelessWidget {
 
   Widget _item(BuildContext context, Map<String, dynamic> x) {
     final c = context.colors;
+    final col = x['kind'] == 'lab' ? c.purple : c.primary;     // one colour per session type
     return GestureDetector(
               onTap: onTap == null ? null : () => onTap!(x),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsetsDirectional.fromSTEB(6, 3, 4, 3),
+                decoration: BoxDecoration(
+                  color: col.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(8),
+                  border: BorderDirectional(start: BorderSide(color: col, width: 3)),
+                ),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     if (x['locked'] == true) Icon(Icons.push_pin_rounded, size: 11, color: c.primary),
@@ -1030,37 +997,25 @@ class _Cell extends StatelessWidget {
   }
 }
 
-/// Drag & drop: move a slot to another cell. A hard clash asks before saving it anyway (draft only — publishing still
-/// refuses it); anything else the server refused puts the slot back.
+/// Drag & drop: a move that breaks a hard rule is refused with one line (the slot goes back); a move that only
+/// breaks a soft rule is saved and the warning is shown.
 Future<void> _moveSlot(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> slot, String day, int period) async {
   final res = await p.moveSlot(slot, day, period);
   if (res == null) {
-    toast(t('نُقلت الحصة وثُبّتت', 'Session moved and locked'));
+    final soft = p.conflicts.where((x) => x['severity'] != 'error' && ((x['slot_ids'] as List?) ?? const []).map(asInt).contains(asInt(slot['id'])));
+    soft.isEmpty
+        ? toast(t('نُقلت الحصة وثُبّتت', 'Session moved and locked'))
+        : toast('${t('نُقلت مع تنبيه', 'Moved with a warning')}: ${conflictLine(soft.first)}');
     return;
   }
-  if (res.isEmpty || res.first['type'] == 'error' || !context.mounted) return;
-  final choice = await showConflictPreview(context, res, canReplace: false, canRebuild: false);
-  if (choice == 'force' && context.mounted) {
-    if (await p.moveSlot(slot, day, period, force: true) == null) toast(t('نُقلت الحصة مع التعارض', 'Moved — the clash is flagged'));
-  }
+  if (res.isEmpty || res.first['type'] == 'error') return;
+  final hard = res.firstWhere((x) => x['severity'] == 'error', orElse: () => res.first);
+  toast('${t('لا يمكن النقل', 'Cannot move')}: ${conflictLine(hard)}', error: true);
 }
 
-Future<void> _issuesSheet(BuildContext context, OrgScheduleProvider p, Map<int, String> names) async {
-  await showAdminSheet<void>(context, (ctx) {
-    final c = ctx.colors;
-    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-      SheetHeader(t('التعارضات والتنبيهات', 'Conflicts & warnings')),
-      for (final w in p.warnings)
-        ListTile(
-          dense: true,
-          leading: Icon(Icons.info_rounded, color: c.warning),
-          title: Text('${names[asInt(w['course_id'])] ?? '#${w['course_id']}'}${w['kind'] == 'lab' ? ' · ${t('سكشن', 'lab')}' : ''} — ${scheduleReasonText('${w['type']}')}'),
-          subtitle: '${w['reason'] ?? ''}'.isEmpty ? null : Text(scheduleReasonText('${w['reason']}')),
-        ),
-      ConflictList(conflicts: p.conflicts, courseNames: names),
-    ]);
-  });
-}
+/// One short line for a described conflict (server text_ar / text_en, else its type).
+String conflictLine(Map<String, dynamic> x) => t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}') +
+    (((x['courses'] as List?) ?? const []).isEmpty ? '' : ' — ${(x['courses'] as List).join('، ')}');
 
 /// Add a slot (slot == null) or edit / move / delete one. Hard conflicts ask before forcing.
 Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String, dynamic>? slot, String? day0, int? period0) async {
@@ -1076,6 +1031,10 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
   int? teacher = slot?['teacher_id'] == null ? null : asInt(slot!['teacher_id']);
   int? assistant = slot?['assistant_id'] == null ? null : asInt(slot!['assistant_id']);
   int? adm = slot?['admin_assistant_id'] == null ? null : asInt(slot!['admin_assistant_id']);
+  String kind = '${slot?['kind'] ?? 'lecture'}';
+  int? group = slot?['group_no'] == null ? null : asInt(slot!['group_no']);
+  Map<String, dynamic>? check; // the server's instant verdict (dry_run) on the form as it is
+  Timer? debounce;
   bool busy = false;
   if (slot == null) {
     final l = courses.firstWhere((x) => asInt(x['course_id']) == course);
@@ -1085,19 +1044,42 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
   final canApprove = context.read<OrgSession>().can('schedule', 'approve');
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
+        Map<String, dynamic> form() => {
+              'day': day,
+              'period_id': period,
+              'room_id': room,
+              'teacher_id': teacher,
+              'assistant_id': assistant,
+              'admin_assistant_id': adm,
+              'group_no': group,
+              if (slot == null) ...{'course_id': course, 'kind': kind},
+            };
+        // every change is checked on the server (nothing written), so conflicts show while the form is filled in
+        void recheck() {
+          debounce?.cancel();
+          debounce = Timer(const Duration(milliseconds: 350), () async {
+            final r = await p.previewSlot(form(), slotId: slot == null ? null : asInt(slot['id']));
+            if (ctx.mounted) set(() => check = r);
+          });
+        }
+
+        if (check == null && debounce == null) recheck();
         Widget pick(String label, int? v, List<Map<String, dynamic>> items, ValueChanged<int?> on, {bool allowNone = true}) =>
             OrgPickField<int>(
               label: label,
               value: v,
               allowNone: allowNone,
               options: {for (final u in items) asInt(u['id']): '${u['name']}'},
-              onChanged: (x) => set(() => on(x)),
+              onChanged: (x) {
+                set(() => on(x));
+                recheck();
+              },
             );
         Future<void> save({bool force = false, bool replace = false, String? strategy, String? overrideReason}) async {
           set(() => busy = true);
-          final body = {'day': day, 'period_id': period, 'room_id': room, 'teacher_id': teacher, 'assistant_id': assistant, 'admin_assistant_id': adm};
+          final body = {...form()}..remove('course_id')..remove('kind');
           final res = slot == null
-              ? await p.addSlot({...body, 'course_id': course}, force: force, replace: replace, strategy: strategy, overrideReason: overrideReason)
+              ? await p.addSlot({...body, 'course_id': course, 'kind': kind}, force: force, replace: replace, strategy: strategy, overrideReason: overrideReason)
               : await p.editSlot(asInt(slot['id']), body, force: force);
           if (!ctx.mounted) return;
           set(() => busy = false);
@@ -1135,22 +1117,49 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                     asInt(l['course_id']): t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}',
                         '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}')
                 },
-                onChanged: (v) => set(() {
-                  course = v ?? course;
-                  final l = courses.firstWhere((x) => asInt(x['course_id']) == course);
-                  teacher = l['teacher_id'] == null ? null : asInt(l['teacher_id']);
-                }),
+                onChanged: (v) {
+                  set(() {
+                    course = v ?? course;
+                    final l = courses.firstWhere((x) => asInt(x['course_id']) == course);
+                    teacher = l['teacher_id'] == null ? null : asInt(l['teacher_id']);
+                  });
+                  recheck();
+                },
               ),
+            if (slot == null) ...[
+              const SizedBox(height: 12),
+              ChoiceRow<String>(
+                label: t('النوع', 'Type'),
+                options: {'lecture': t('محاضرة', 'Lecture'), 'lab': t('معمل / سكشن', 'Lab / section')},
+                value: kind,
+                onChanged: (v) {
+                  set(() => kind = v);
+                  recheck();
+                },
+              ),
+            ],
             const SizedBox(height: 12),
-            ChoiceRow<String>(options: {for (final d in orgDays.take(6)) d: labels[d]!}, value: day, onChanged: (v) => set(() => day = v)),
+            ChoiceRow<String>(
+                options: {for (final d in orgDays.take(6)) d: labels[d]!},
+                value: day,
+                onChanged: (v) {
+                  set(() => day = v);
+                  recheck();
+                }),
             const SizedBox(height: 12),
             OrgPickField<int>(
               label: t('الفترة', 'Period'),
               icon: Icons.schedule_rounded,
               value: period,
               options: {for (final x in p.periods) asInt(x['id']): '${x['label']}  (${periodRange(asMap(x))})'},
-              onChanged: (v) => set(() => period = v ?? period),
+              onChanged: (v) {
+                set(() => period = v ?? period);
+                recheck();
+              },
             ),
+            const SizedBox(height: 12),
+            pick(t('المجموعة (فارغ = مجموعة واحدة)', 'Group (empty = one group)'), group,
+                [for (var g = 1; g <= 12; g++) {'id': g, 'name': '$g'}], (v) => group = v),
             const SizedBox(height: 12),
             pick(t('القاعة', 'Room'), room, [for (final r in p.rooms) {'id': r['id'], 'name': '${r['name']} (${r['capacity']})'}], (v) => room = v),
             const SizedBox(height: 12),
@@ -1159,7 +1168,25 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
             pick(t('المعيد', 'Assistant'), assistant, p.staffOf('teacher_assistant'), (v) => assistant = v),
             const SizedBox(height: 12),
             pick(t('المساعد الإداري', 'Admin assistant'), adm, p.staffOf('admin_assistant'), (v) => adm = v),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            // instant validation in plain language: hard rules block (red), soft ones warn (amber)
+            if (check != null)
+              for (final x in asMapList(check!['conflicts']).take(5))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Icon(x['severity'] == 'error' ? Icons.block_rounded : Icons.warning_amber_rounded, size: 16, color: x['severity'] == 'error' ? c.danger : c.warning),
+                    const SizedBox(width: 6),
+                    Expanded(child: Text(conflictLine(x), style: orgText(ctx, size: 12.5))),
+                  ]),
+                ),
+            if (check != null && asMapList(check!['conflicts']).isEmpty)
+              Row(children: [
+                Icon(Icons.check_circle_rounded, size: 16, color: c.success),
+                const SizedBox(width: 6),
+                Text(t('لا تعارض', 'No conflict'), style: orgText(ctx, size: 12.5, color: c.success)),
+              ]),
+            const SizedBox(height: 12),
             PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () => save()),
             if (slot != null) ...[
               const SizedBox(height: 8),

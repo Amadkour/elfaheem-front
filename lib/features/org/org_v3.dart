@@ -204,6 +204,8 @@ Map<String, String> _codeTexts() => {
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),
       'published': t('تعديل الجدول المنشور يحتاج صلاحية الاعتماد', 'Editing a published timetable needs approval rights'),
       'generation_running': t('يوجد توليد جارٍ لهذا الجدول', 'A generation is already running for this timetable'),
+      'proposals_pending': t('اقبل أو ارفض كل قاعدة مكسورة مقترحة قبل النشر', 'Accept or reject every proposed rule break before publishing'),
+      'proposal_not_found': t('الاقتراح لم يعد موجوداً — أعد التحميل', 'The proposal no longer exists — reload'),
       'stale_version': t('عدّل مستخدم آخر هذا الجدول — حمّلنا أحدث نسخة، أعد المحاولة', 'Someone else changed this timetable — the latest version is loaded, try again'),
       // suggestions & horizon (docs/backend/scheduling-spec.md)
       'suggestion_stale': t('تغيّر الجدول منذ هذا الاقتراح — حدّثنا الاقتراحات، راجعها مجدداً', 'The timetable changed since this suggestion — suggestions were refreshed, review them again'),
@@ -239,6 +241,10 @@ String orgCodeText(String code) => _codeTexts()[code] ?? code;
 /// A short, translated sentence for any [ApiException] the org API can raise.
 String orgErrorText(ApiException e) {
   final c = e.code;
+  if (c == 'generation_blocked') {        // schedule_auto.preconditions: the exact reasons, in the user's language
+    final rs = asMapList(asMap(ApiException.asMap(e.body)?['detail'])['reasons']);
+    if (rs.isNotEmpty) return rs.map((r) => t('${r['text_ar']}', '${r['text_en']}')).join(' · ');
+  }
   if (c != null) {
     final txt = _codeTexts()[c];
     if (txt != null) {

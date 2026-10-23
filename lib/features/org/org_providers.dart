@@ -341,12 +341,12 @@ class OrgScheduleProvider extends AdminBase {
 
   /// Starts a background generation and follows it until it ends. A run already in progress is followed instead.
   /// [persistSettings] false: [settings] apply to this run only (stored with its revision, not on the timetable).
-  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true}) async {
+  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true, bool complete = false}) async {
     final id = schedule!['id'];
     final r = await orgCall(
         () => api.post('$base/schedules/$id/generate',
             queryParams: {'background': true},
-            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false}),
+            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false, if (complete) 'complete': true}),
         quiet: true);
     final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
     if (run.isNotEmpty) {
@@ -371,6 +371,18 @@ class OrgScheduleProvider extends AdminBase {
         await loadSetup();
       }
     });
+  }
+
+  /// Accept (keep) or reject (remove) the sessions of generated blocks that broke a flexible rule.
+  Future<OrgCall> decideProposals(List<String> blockIds, {required bool accept}) async {
+    final id = schedule!['id'];
+    final r = await orgCall(() => api.post('$base/schedules/$id/proposals/decide',
+        body: {'block_ids': blockIds, 'accept': accept, 'expected_version': ?schedule!['version']}));
+    if (r.ok) {
+      _apply(r.map);
+      await validate();
+    }
+    return r;
   }
 
   Future<OrgCall> cancelGeneration() async {
@@ -563,6 +575,20 @@ class OrgScheduleProvider extends AdminBase {
       notifyListeners();
     }
     return res;
+  }
+
+  /// Instant check of a session being added / edited (dry_run: nothing is written) → {valid, conflicts}.
+  Future<Map<String, dynamic>?> previewSlot(Map<String, dynamic> body, {int? slotId}) async {
+    final id = schedule?['id'];
+    if (id == null) return null;
+    try {
+      final r = slotId == null
+          ? await api.post('$base/schedules/$id/slots', body: body, queryParams: {'dry_run': true})
+          : await api.put('$base/schedules/$id/slots/$slotId', body: body, queryParams: {'dry_run': true});
+      return asMap(r);
+    } on ApiException {
+      return null;
+    }
   }
 
   /// strategy when it clashes: keep · replace · shift (small change) · regenerate (no conflicts left)

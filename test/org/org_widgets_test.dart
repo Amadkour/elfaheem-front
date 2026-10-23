@@ -6,7 +6,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/org/org_dynamic_form.dart';
 import 'package:flutter_education_app/features/org/org_join_pages.dart';
 import 'package:flutter_education_app/features/org/org_timetable_parts.dart';
-import 'package:flutter_education_app/features/org/org_timetable_wizard.dart' show GenerationRunCard;
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget host(Widget child) {
@@ -94,14 +94,18 @@ void main() {
   });
 
   group('generation & results', () {
-    testWidgets('a running job can be cancelled; a finished one cannot', (tester) async {
-      await tester.pumpWidget(host(GenerationRunCard(run: const {'status': 'running', 'progress': 40}, onCancel: () {})));
-      expect(find.text('Generating'), findsOneWidget);
+    testWidgets('a running job shows its live counters and can be cancelled', (tester) async {
+      await tester.pumpWidget(host(GenerationLivePanel(run: const {
+        'status': 'running',
+        'progress': 40,
+        'summary': {'live': true, 'round': 2, 'rounds_max': 6, 'unplaced': 3, 'top': [{'reason': 'rooms_busy', 'n': 2}]},
+      }, onCancel: () {})));
+      expect(find.text('Round 2 of 6 · 3 session(s) unplaced'), findsOneWidget);
+      expect(find.textContaining('Every fitting room is taken'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-      await tester.pumpWidget(host(const GenerationRunCard(run: {'status': 'succeeded', 'result_status': 'partial'})));
+      await tester.pumpWidget(host(const GenerationLivePanel(run: {'status': 'failed', 'error': 'no_periods'})));
       expect(find.text('Cancel'), findsNothing);
-      expect(find.text('Partial — some sessions not placed'), findsOneWidget);
+      expect(find.text('Generation failed — nothing changed'), findsOneWidget);
     });
 
     testWidgets('a partial result lists what is missing, why, and the suggestions', (tester) async {

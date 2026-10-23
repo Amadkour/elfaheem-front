@@ -6,6 +6,8 @@ import 'package:flutter_education_app/features/admin/admin_platform_widgets.dart
 import 'package:flutter_education_app/features/org/org_announcements.dart';
 import 'package:flutter_education_app/features/org/org_levels.dart';
 import 'package:flutter_education_app/features/org/org_levels_pages.dart';
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
+import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,21 +54,35 @@ void main() {
     );
   });
 
-  testWidgets('timetable stepper, next-step banner and action bar', (tester) async {
-    final journey = TimetableJourney.of(periods: 6, rooms: 4, noTeacher: 2, slots: 40, result: const {}, hard: 3, active: false);
+  testWidgets('generation live panel', (tester) async {
     await expectNoLayoutErrors(
       tester,
       () => ListView(padding: const EdgeInsets.all(16), children: [
-        TimetableStepper(journey: journey, selected: TimetableStage.review, onSelect: (_) {}),
-        const SizedBox(height: 12),
+        GenerationLivePanel(run: const {
+          'status': 'running',
+          'progress': 50,
+          'summary': {'live': true, 'round': 3, 'rounds_max': 6, 'unplaced': 12, 'top': [{'reason': 'students_busy_elsewhere', 'n': 7}, {'reason': 'no_room_fits', 'n': 5}]},
+        }, onCancel: () {}),
+        GenerationLivePanel(run: {'status': 'failed', 'error': '$longEn $longAr'}),
+      ]),
+    );
+  });
+
+  testWidgets('timetable next-step banner and filter bar', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(padding: const EdgeInsets.all(16), children: [
         NextStepBanner(title: '$longAr $longEn', body: '$longEn. $longAr', action: 'إصلاح التعارضات الآن', tone: 2, onAction: () {}),
         const SizedBox(height: 12),
-        StudioActionBar(stage: TimetableStage.review, actions: [
-          for (final s in TimetableStage.values) ...[
-            StudioAction(s, Icons.auto_awesome_rounded, 'توليد الجدول تلقائياً حتى يكتمل', () {}),
-            StudioAction(s, Icons.compare_arrows_rounded, 'Compare rules that may give way', () {}, busy: true),
-          ],
-        ]),
+        TimetableFilterBar(
+          filter: const GridFilter(GridFilterKind.teacher, '1'),
+          options: {
+            GridFilterKind.cohort: {'1|L1': '$longAr · L1'},
+            GridFilterKind.teacher: {'1': longEn},
+            GridFilterKind.room: {'2': longAr},
+          },
+          onChanged: (_) {},
+        ),
       ]),
     );
   });

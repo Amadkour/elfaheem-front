@@ -1,97 +1,24 @@
-// Timetable workstream: break alternatives ranking (≤ 3), the guided journey, the coverage ladder for staffing gaps,
+// Timetable workstream: the single Generate action (rules, outcome, live run), the guided journey,
 // exam windows / agenda, and every timetable time going through AppTime (12h by default, 24h when configured).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/org/org_schedule_coverage.dart';
 import 'package:flutter_education_app/features/org/org_schedule_exams.dart';
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
+import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
+import 'package:flutter_education_app/features/org/org_schedule_groups.dart';
 import 'package:flutter_education_app/features/org/org_schedule_export.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
-import 'package:flutter_education_app/features/org/org_schedule_relaxation.dart';
 import 'package:flutter_education_app/features/org/org_schedule_versions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> b(String rule, String tier, String block, {int? user, int course = 1}) =>
     {'rule': rule, 'tier': tier, 'block_id': block, 'course_id': course, 'kind': 'lecture', 'group_no': null, 'user_id': ?user};
 
-BreakAlternative alt(int id, String? rule, List<Map<String, dynamic>> broken, {int placed = 5, int required = 5, int rank = 0}) => BreakAlternative(
-      revisionId: id,
-      rule: rule,
-      rank: rank,
-      slots: const [],
-      result: {
-        'broken': broken,
-        'stats': {'sessions_required': required, 'sessions_placed': placed},
-      },
-    );
-
 void main() {
   setUp(() {
     AppConfig.lang = 'en';
     AppTime.configureOrg(null, null);
     AppTime.configurePlatform(timeFormat: '12h');
-  });
-
-  group('break alternatives', () {
-    final student = alt(1, 'students_clash', [b('students_clash', 'student_prefs', 'B1')]);
-    final teacher = alt(2, 'teacher_unavailable', [b('teacher_unavailable', 'teacher_prefs', 'B1', user: 7)]);
-    final rooms2 = alt(3, 'room_capacity', [b('room_capacity', 'rooms', 'B1'), b('room_capacity', 'rooms', 'B2', course: 2)]);
-    final rooms1 = alt(4, 'room_kind', [b('room_kind', 'rooms', 'B1')]);
-    final short = alt(5, 'x', const [], placed: 4);
-
-    test('least disruptive first, at most 3, only rank 1 is recommended', () {
-      final r = rankBreakAlternatives([teacher, rooms2, student, rooms1, short]);
-      expect(r.map((a) => a.rule), ['students_clash', 'room_kind', 'room_capacity']);
-      expect(r.map((a) => a.rank), [1, 2, 3]);
-      expect(r.map((a) => a.recommended), [true, false, false]);
-      expect(r.length, maxBreakAlternatives);
-    });
-
-    test('a version leaving sessions unplaced always ranks after complete ones', () {
-      final r = rankBreakAlternatives([short, teacher], cap: 5);
-      expect(r.first.rule, 'teacher_unavailable');
-      expect(r.last.unplaced, 1);
-    });
-
-    test('the relaxation priority decides which tier is protected', () {
-      final protectStudents = RelaxationPolicy(['rooms', 'add_capacity', 'assistant_prefs', 'other_soft', 'teacher_prefs', 'student_prefs']);
-      final r = rankBreakAlternatives([student, rooms1, rooms2], policy: protectStudents);
-      expect(r.map((a) => a.rule), ['room_kind', 'room_capacity', 'students_clash']);
-    });
-
-    test('ties: fewer sessions, then fewer people affected', () {
-      final one = alt(1, 'a', [b('teacher_unavailable', 'teacher_prefs', 'B1', user: 7)]);
-      final noPerson = alt(2, 'b', [b('teacher_unavailable', 'teacher_prefs', 'B1')]);
-      expect(rankBreakAlternatives([one, noPerson]).first.revisionId, 2);
-      expect(one.sessionsAffected, 1);
-      expect(one.peopleAffected, 1);
-    });
-
-    test('health: placed share minus rule penalties, clamped', () {
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const []), 100);
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const ['student_prefs']), 98);
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const ['teacher_prefs']), 96); // most protected
-      expect(versionHealthScore(required: 10, placed: 5, brokenTiers: List.filled(40, 'teacher_prefs')), 0);
-      expect(versionHealthScore(required: 0, placed: 0, brokenTiers: const []), 100);
-    });
-
-    test('reads the server revision (summary.break_alternative + summary.result)', () {
-      final a = BreakAlternative.fromRevision({
-        'id': 9,
-        'items': [
-          {'course_id': 1, 'day': 'sunday', 'period_id': 1}
-        ],
-        'summary': {
-          'break_alternative': {'rule': 'room_kind', 'rank': 2, 'recommended': false},
-          'result': {
-            'broken': [b('room_kind', 'rooms', 'B1')],
-            'broken_by_tier': {'rooms': 1},
-            'stats': {'sessions_required': 3, 'sessions_placed': 3}
-          },
-        },
-      });
-      expect([a.revisionId, a.rule, a.rank, a.slots.length, a.byTier['rooms'], a.unplaced], [9, 'room_kind', 2, 1, 1, 0]);
-      expect(breakRuleLabel('room_kind'), isNot('room_kind'));
-    });
   });
 
   group('journey', () {
@@ -112,33 +39,95 @@ void main() {
     test('generate → complete → fix → publish → share', () {
       expect(j().next, NextAction.generate);
       expect(j(running: true).next, NextAction.wait);
-      expect(j(slots: 8, result: res(10, 8)).next, NextAction.completeCoverage);
+      expect(j(slots: 8, result: res(10, 8)).next, NextAction.reviewResult);
       expect(j(slots: 10, result: res(10, 10), hard: 2).next, NextAction.fixClashes);
       expect(j(slots: 10, result: res(10, 10)).next, NextAction.publish);
-      expect(j(slots: 10, result: res(10, 10, broken: [b('room_kind', 'rooms', 'B1')])).next, NextAction.compareRules);
+      expect(j(slots: 10, result: res(10, 10, broken: [{...b('room_kind', 'rooms', 'B1'), 'decision': null}])).next, NextAction.reviewResult);
+      expect(j(slots: 10, result: res(10, 10, broken: [{...b('room_kind', 'rooms', 'B1'), 'decision': 'accepted'}])).next, NextAction.publish);
       final pub = j(slots: 10, result: res(10, 10), active: true);
       expect([pub.next, pub.current, pub.done.length], [NextAction.share, TimetableStage.publish, 4]);
     });
 
     test('every next step has words in both languages', () {
       for (final a in NextAction.values) {
-        final (title, body, _) = nextStepText(a, unplaced: 3, hard: 1, broken: 2, noTeacher: 1);
+        final (title, body, _) = nextStepText(a, unplaced: 3, hard: 1, pending: 2, noTeacher: 1);
         expect(title, isNotEmpty);
         expect(body, isNotEmpty);
       }
     });
   });
 
-  group('generation loop', () {
-    test('a course without (eligible) staff is never offered time / room / rule breaking', () {
-      for (final r in staffingReasons) {
-        final u = UnplacedSession.fromJson({'course_id': 1, 'missing': 1, 'type': r});
-        expect(u.needsStaff, isTrue);
-        expect(coverageLadder(u), ['assign_staff']);
-        expect(unplacedReasonText(r), isNot('No free time'));
-      }
-      expect(coverageLadder(const UnplacedSession(courseId: 1, kind: 'lecture', missing: 1, reason: 'teacher_busy')).first, 'rearrange_all');
+  group('single generate', () {
+    test('fixed rules are never sent; unlockable ones default to locked, larger hall to flexible', () {
+      final f = rulesFlexible(const {});
+      expect(f, {'instructor_availability': false, 'assistant_availability': false, 'rooms_and_times': false, 'larger_hall': true});
+      expect(rulesFlexible(const {'rules': {'instructor_availability': 'flexible', 'larger_hall': 'locked'}})['instructor_availability'], isTrue);
+      expect(generationRules.where((r) => r.fixed).map((r) => r.key), ['room_double', 'person_double', 'lab_only', 'capacity']);
+      expect(generationRules.where((r) => r.fixed && r.unlockable), isEmpty);
     });
+
+    test('outcome: missing sessions and pending proposals only (old results have no decision)', () {
+      final o = GenerationOutcome.of({
+        'stats': {'sessions_required': 5, 'sessions_placed': 3},
+        'unscheduled': [{'course_id': 1, 'missing': 2, 'reason': 'rooms_busy'}],
+        'broken': [{...b('room_kind', 'rooms', 'B1'), 'decision': null}, {...b('room_kind', 'rooms', 'B2'), 'decision': 'accepted'}, b('teacher_unavailable', 'teacher_prefs', 'B3')],
+        'complete': {'stopped': 'no_progress'},
+      });
+      expect([o.missing, o.pending.length, o.stopped], [2, 1, 'no_progress']);
+    });
+
+    test('live counters only from a live summary; every reason has a cause and a fix', () {
+      expect(LiveRun.of({'summary': {'status': 'feasible'}}), isNull);
+      final l = LiveRun.of({'summary': {'live': true, 'round': 2, 'unplaced': 4, 'top': [{'reason': 'rooms_busy', 'n': 3}]}})!;
+      expect([l.round, l.roundsMax, l.unplaced, l.top.first.$1], [2, 6, 4, 'rooms_busy']);
+      for (final r in [...staffingReasons, 'rooms_busy', 'teacher_busy', 'no_room_fits', 'proposal_rejected']) {
+        expect(unplacedReasonText(r), isNot('No free time'));
+        expect(unplacedFixText(r), isNotEmpty);
+      }
+    });
+  });
+
+  group('studio grid', () {
+    final a = {'id': 1, 'course_id': 7, 'day': 'sunday', 'period_id': 1, 'teacher_id': 5, 'assistant_id': null, 'room_id': 2, 'kind': 'lecture', 'group_no': 1};
+    final b = {'id': 2, 'course_id': 7, 'day': 'sunday', 'period_id': 2, 'teacher_id': 6, 'assistant_id': 9, 'room_id': 3, 'kind': 'lab', 'group_no': 2};
+    final c = {'id': 3, 'course_id': 8, 'day': 'monday', 'period_id': 1, 'teacher_id': 5, 'room_id': 2, 'kind': 'lecture', 'group_no': null};
+
+    test('one filter at a time: instructor, TA, room, group, program/level, student', () {
+      List<int> ids(GridFilter f, {List<Map<String, dynamic>> sg = const []}) =>
+          [for (final x in [a, b, c]) if (f.keeps(x, cohorts: {7: {'1|L2'}}, studentGroups: sg)) x['id'] as int];
+      expect(ids(GridFilter.none), [1, 2, 3]);
+      expect(ids(const GridFilter(GridFilterKind.teacher)), [1, 2, 3], reason: 'no value chosen yet keeps everything');
+      expect(ids(const GridFilter(GridFilterKind.teacher, '5')), [1, 3]);
+      expect(ids(const GridFilter(GridFilterKind.assistant, '9')), [2]);
+      expect(ids(const GridFilter(GridFilterKind.room, '2')), [1, 3]);
+      expect(ids(const GridFilter(GridFilterKind.group, 'lab|2')), [2]);
+      expect(ids(const GridFilter(GridFilterKind.cohort, '1|L2')), [1, 2]);
+      expect(ids(const GridFilter(GridFilterKind.student, '42'), sg: [{'course_id': 7, 'lecture_group': 1, 'lab_group': 3}, {'course_id': 8}]), [1, 3]);
+    });
+
+    test('index by cell; a conflict marks every period it covers, or the whole day when it has none', () {
+      final idx = indexSlots([a, b, c]);
+      expect(idx[('sunday', 1)]!.single['id'], 1);
+      expect(idx[('monday', 2)], isNull);
+      final cells = conflictCells([
+        {'day': 'sunday', 'period_ids': [1, 2]},
+        {'day': 'monday'},
+      ], [1, 2, 3]);
+      expect(cells, {('sunday', 1), ('sunday', 2), ('monday', 1), ('monday', 2), ('monday', 3)});
+    });
+  });
+
+  test('group roster: one row per student, labelled by group', () {
+    final rows = rosterRows({
+      'groups': [
+        {'kind': 'lecture', 'group_no': 1, 'students': [{'student': {'name': 'Amy'}, 'student_code': 'S1'}]},
+        {'kind': 'lab', 'group_no': 2, 'students': [{'student': {'name': 'Bob'}}]},
+      ]
+    });
+    expect(rows, [
+      {'group': 'Theory 1', 'name': 'Amy', 'code': 'S1'},
+      {'group': 'Lab 2', 'name': 'Bob', 'code': ''},
+    ]);
   });
 
   group('exams', () {

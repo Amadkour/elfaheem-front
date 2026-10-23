@@ -24,7 +24,7 @@ import '../admin/admin_list.dart';
 import 'org_availability_pages.dart' show OrgAvailabilityRequestsPage;
 import 'org_common.dart' show dayLabels;
 import 'org_courses_page.dart' show showOrgCourseForm;
-import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
+import 'org_schedule_generate.dart' show GenerationLivePanel, showGenerationResult;
 import 'org_providers.dart';
 import 'org_schedule_pages.dart' show showAvailabilitySheet, showPeriodForm, showPublishConflicts, publishWithConsent;
 import 'org_schedule_planning.dart' show applyStudentCount, coursePlanApi, termCourseIds;
@@ -222,7 +222,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final d = _d!;
     setState(() => _busy = true);
     await p.open(d.id!);
-    final r = await p.startGeneration(settings: d.settings, keepLocked: _keepLocked);
+    final r = await p.startGeneration(settings: d.settings, keepLocked: _keepLocked, complete: true);
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -879,20 +879,20 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final running = runIsOpen(run);
     final result = asMap(sch['result']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (run != null) GenerationRunCard(run: run, onCancel: running ? () => p.cancelGeneration() : null),
+      if (run != null && (running || run['status'] == 'failed')) GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
       const SizedBox(height: 10),
       if (!running && run?['status'] == 'failed')
         RowCard(accent: c.danger, child: Text(t('فشل التوليد ولم يتغير شيء في الجدول. ${run?['error'] ?? ''}', 'Generation failed and nothing in the timetable changed. ${run?['error'] ?? ''}'))),
       if (!running && run?['status'] == 'cancelled')
         RowCard(accent: c.warning, child: Text(t('أُلغي التوليد — الجدول كما كان.', 'Generation cancelled — the timetable is as it was.'))),
       if (!running && result.isNotEmpty) ScheduleResultView(result: result, courseNames: courseNames, people: people),
-      if (!running && result.isNotEmpty && result['status'] != 'feasible' && sch['status'] != 'active' && context.read<OrgSession>().can('schedule', 'update'))
+      if (!running && result.isNotEmpty && sch['status'] != 'active')
         Padding(
           padding: const EdgeInsets.only(top: 10),
           child: FilledButton.tonalIcon(
-            onPressed: () => openScheduleAlternatives(context),
-            icon: const Icon(Icons.alt_route_rounded),
-            label: Text(t('استكشف بدائل لحل التعارض', 'Explore alternatives')),
+            onPressed: () => showGenerationResult(context, p, courseNames, canEdit: context.read<OrgSession>().can('schedule', 'update')),
+            icon: const Icon(Icons.fact_check_rounded),
+            label: Text(t('النتيجة والاقتراحات', 'Result & proposals')),
           ),
         ),
       if (!running && p.conflicts.isNotEmpty) ...[
@@ -998,36 +998,3 @@ class _TextInState extends State<_TextIn> {
 }
 
 /// The server's generation job: status · progress · cancel.
-class GenerationRunCard extends StatelessWidget {
-  const GenerationRunCard({super.key, required this.run, this.onCancel});
-  final Map<String, dynamic> run;
-  final VoidCallback? onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final st = '${run['status']}';
-    final open = runIsOpen(run);
-    final pct = run['progress'] == null ? null : asInt(run['progress']).clamp(0, 100) / 100;
-    final col = switch (st) { 'succeeded' => c.success, 'failed' => c.danger, 'cancelled' => c.warning, _ => c.primary };
-    return RowCard(
-      accent: col,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(open ? Icons.autorenew_rounded : (st == 'succeeded' ? Icons.check_circle_rounded : Icons.info_rounded), color: col),
-          const SizedBox(width: 8),
-          Expanded(child: Text(runStatusLabels()[st] ?? st, style: orgText(context, w: FontWeight.w800))),
-          if (run['result_status'] != null) StatusChip(resultStatusLabels()['${run['result_status']}'] ?? '${run['result_status']}', col),
-          if (onCancel != null) TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
-        ]),
-        if (open) ...[
-          const SizedBox(height: 8),
-          LinearProgressIndicator(value: pct),
-          const SizedBox(height: 4),
-          Text(t('يعمل التوليد على الخادم — يمكنك مغادرة الصفحة والعودة لاحقاً.', 'Generation runs on the server — you can leave and come back.'),
-              style: orgText(context, size: 11.5, color: c.textLight)),
-        ],
-      ]),
-    );
-  }
-}
