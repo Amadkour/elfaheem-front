@@ -120,7 +120,7 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
 
   Future<void> _decide(Map<String, dynamic> d, String verdict, {Map<String, dynamic>? action}) async {
     final note = TextEditingController();
-    final ok = await showAppSheet<bool>(context, (ctx) => Padding(
+    final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(verdict == 'reject' ? t('رفض', 'Reject') : t('تنفيذ', 'Apply'),
@@ -284,7 +284,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
 
   Future<void> _capacity(Map<String, dynamic> s) async {
     final ctrl = TextEditingController(text: '${s['capacity']}');
-    final ok = await showAppSheet<bool>(context, (ctx) => Padding(
+    final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('سعة الشعبة', 'Section capacity'), subtitle: '${_courseTitle(asMap(_courses['${s['course_id']}']))} · ${sectionLabel(s)}'),
@@ -766,8 +766,8 @@ class _ProgramSheetState extends State<_ProgramSheet> {
 
   Future<void> _addGroup() async {
     final key = TextEditingController(), ar = TextEditingController(), en = TextEditingController(), min = TextEditingController();
-    final ok = await showAppSheet<bool>(context, (ctx) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+    final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('مجموعة متطلبات', 'Requirement group'),
                 subtitle: t('مثال: university · faculty · major · elective · free', 'e.g. university · faculty · major · elective · free')),
@@ -926,8 +926,8 @@ class _StaffTabState extends State<_StaffTab> with _Loads {
   Future<void> _edit(Map<String, dynamic> m) async {
     String? rank = m['academic_rank'] as String?;
     final cap = TextEditingController(text: m['max_weekly_hours'] == null ? '' : '${m['max_weekly_hours']}');
-    final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+    final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle('${asMap(m['user'])['name'] ?? ''}'),
             AppDropdown<String?>(
@@ -1034,8 +1034,8 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
     final min = TextEditingController(text: '${g['min'] ?? ''}');
     final pts = TextEditingController(text: '${g['points'] ?? ''}');
     var pass = i != null && '${_rules?['pass_letter']}' == '${g['letter']}';
-    final res = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+    final res = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle(t('تقدير', 'Letter grade')),
             AppField(controller: letter, label: t('الحرف', 'Letter'), ltr: true),

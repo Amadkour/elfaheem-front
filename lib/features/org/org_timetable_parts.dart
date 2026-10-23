@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -242,6 +243,7 @@ Future<void> showFacilityTypes(BuildContext context, OrgScheduleProvider p) asyn
             context: ctx,
             builder: (d) => AlertDialog(
               title: Text(i == null ? t('نوع جديد', 'New type') : t('تعديل النوع', 'Edit type')),
+              scrollable: true,
               content: Column(mainAxisSize: MainAxisSize.min, children: [
                 Field(controller: key, label: t('المفتاح (حروف إنجليزية صغيرة)', 'Key (lowercase letters)'), ltr: true, enabled: i == null),
                 Field(controller: ar, label: t('الاسم بالعربية', 'Arabic label')),
@@ -469,8 +471,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                 ),
             ]),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            AppHScroll(
               child: Table(defaultColumnWidth: const FixedColumnWidth(62), children: [
                 TableRow(children: [
                   const SizedBox(),

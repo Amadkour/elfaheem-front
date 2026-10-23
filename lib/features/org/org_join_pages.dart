@@ -398,7 +398,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               Field(controller: _capacity, label: t('الحد الأقصى للأعضاء (اختياري)', 'Maximum members (optional)'), keyboard: TextInputType.number, ltr: true),
             ]),
           ),
-          if (d.method == 'approval') ...[
+          if (d.needsApprover) ...[
             const SizedBox(height: 12),
             Section(
               title: t('من يعتمد الطلبات', 'Who approves'),
@@ -830,6 +830,11 @@ class JoinRequestCard extends StatelessWidget {
             ),
             StatusChip(requestStatusLabels()[status] ?? status, statusColor(context, status)),
           ]),
+          if (row['code_verified'] == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: OrgPill(t('✓ الكود صحيح', '✓ Code verified'), color: c.success),
+            ),
           if (verify && pending)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -1005,7 +1010,7 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
     String? err;
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('لدي كود انضمام', 'I have a join code')),
@@ -1046,7 +1051,9 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
                   final joined = r.map['joined'] == true;
                   toast(joined
                       ? t('انضممت إلى ${orgNameOf(asMap(r.map['unit']))} 🎉', 'You joined ${orgNameOf(asMap(r.map['unit']))} 🎉')
-                      : t('أُرسل طلبك وهو قيد المراجعة', 'Your request was sent and is being reviewed'));
+                      : r.map['code_verified'] == true
+                          ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
+                          : t('أُرسل طلبك وهو قيد المراجعة', 'Your request was sent and is being reviewed'));
                   _load();
                 },
               ),
@@ -1285,6 +1292,8 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                   'auto' => t('إذا انطبقت عليك الشروط تنضم مباشرة بعد تحقق الخادم.', 'If you meet the conditions you join right away, after the server checks.'),
                   'approval' => t('يُرسل طلبك للمسؤول ليقبله أو يرفضه، وتصلك النتيجة.', 'Your request goes to the person in charge, who accepts or rejects it — you\'ll be told.'),
                   'code' => t('تحتاج كود الانضمام الذي أعطته لك الإدارة.', 'You need the join code the department gave you.'),
+                  'code_req' => t('تحتاج كود الانضمام وموافقة المسؤول معاً: الكود الصحيح يرسل طلبك، ثم يقرر المسؤول.',
+                      'You need the join code AND an approval: a valid code sends your request, then the person in charge decides.'),
                   _ => '',
                 }),
             if (_fields.isNotEmpty) ...[
@@ -1331,7 +1340,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
             const SizedBox(height: 8),
             PrimaryButton(
               isLoading: _busy,
-              label: method == 'approval' ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
+              label: unitNeedsApproval(pol) ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
               onPressed: _busy || _check?['status'] == 'ineligible' ? null : _join,
             ),
           ],
@@ -1361,7 +1370,12 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
     return Column(children: [
       IconBadge(joined ? Icons.celebration_rounded : Icons.hourglass_top_rounded, joined ? c.success : c.warning, size: 64),
       const SizedBox(height: 12),
-      Text(joined ? t('تم الانضمام 🎉', 'You\'re in 🎉') : t('أُرسل طلبك', 'Your request was sent'),
+      Text(
+          joined
+              ? t('تم الانضمام 🎉', 'You\'re in 🎉')
+              : r['code_verified'] == true
+                  ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
+                  : t('أُرسل طلبك', 'Your request was sent'),
           style: orgText(context, size: 18, w: FontWeight.w800), textAlign: TextAlign.center),
       const SizedBox(height: 6),
       Text(

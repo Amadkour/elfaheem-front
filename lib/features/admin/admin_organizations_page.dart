@@ -432,6 +432,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                     final go = await showDialog<bool>(
                       context: ctx,
                       builder: (dc) => AlertDialog(
+                        scrollable: true,
                         title: Text(t('كلمة مرور جديدة', 'New password')),
                         content: Column(mainAxisSize: MainAxisSize.min, children: [
                           AppPasswordField(controller: pwd, label: t('اكتبها أو اتركها فارغة لتوليد واحدة قوية', 'Type it, or leave empty to generate a strong one'),

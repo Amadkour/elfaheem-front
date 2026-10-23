@@ -23,6 +23,8 @@ import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_levels_pages.dart' show MyLevelCard, OrgLevelsTab, showEnrollBlock;
 import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
+import 'org_suggestions.dart' show OrgTermSuggestions;
+import '../shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 
 const _pub = '$orgBase/public';
 Map<String, String> termKinds() => {'term1': t('الفصل الأول', 'Term 1'), 'term2': t('الفصل الثاني', 'Term 2'), 'summer': t('الصيفي', 'Summer')};
@@ -102,12 +104,14 @@ class _Calendar extends StatelessWidget {
   final String base;
   final VoidCallback onChanged;
 
-  Future<void> _edit(BuildContext context, [Map<String, dynamic>? term]) async {
+  /// The term form. [draft] = an auto-create suggestion: the form returns the edited values instead of saving.
+  Future<Map<String, dynamic>?> _edit(BuildContext context, [Map<String, dynamic>? term, bool draft = false]) async {
     final now = DateTime.now();
     final y = now.month >= 8 ? now.year : now.year - 1;
     final year = TextEditingController(text: '${term?['year_label'] ?? '$y/${y + 1}'}');
     String kind = '${term?['kind'] ?? 'term1'}';
     DateTime? start = DateTime.tryParse('${term?['start_date'] ?? ''}'), end = DateTime.tryParse('${term?['end_date'] ?? ''}');
+    Map<String, dynamic>? out;
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           Future<void> pick(bool isStart) async {
             final d = await showDatePicker(context: ctx, firstDate: DateTime(2020), lastDate: DateTime(2100),
@@ -117,7 +121,7 @@ class _Calendar extends StatelessWidget {
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SheetHeader(term == null ? t('فصل دراسي جديد', 'New term') : t('تعديل الفصل', 'Edit term')),
+              SheetHeader(draft ? t('تعديل المسودة', 'Edit the draft') : term == null ? t('فصل دراسي جديد', 'New term') : t('تعديل الفصل', 'Edit term')),
               Field(controller: year, label: t('العام الدراسي (2026/2027)', 'Academic year (2026/2027)'), ltr: true),
               ChoiceRow<String>(label: t('الفصل', 'Term'), options: termKinds(), value: kind, onChanged: (v) => set(() => kind = v)),
               Row(children: [
@@ -128,18 +132,33 @@ class _Calendar extends StatelessWidget {
                     label: Text(end == null ? t('النهاية', 'Ends') : shortDate(end!.toIso8601String())))),
               ]),
               const SizedBox(height: 14),
-              PrimaryButton(isLoading: false, label: t('حفظ', 'Save'), onPressed: () async {
+              PrimaryButton(isLoading: false, label: draft ? t('اعتماد بعد التعديل', 'Approve with changes') : t('حفظ', 'Save'), onPressed: () async {
                 if (start == null || end == null) return toast(t('حدد البداية والنهاية', 'Pick both dates'), error: true);
-                final b = {'year_label': year.text.trim(), 'kind': kind, 'start_date': start!.toIso8601String().substring(0, 10),
+                final b = <String, dynamic>{'year_label': year.text.trim(), 'kind': kind, 'start_date': start!.toIso8601String().substring(0, 10),
                   'end_date': end!.toIso8601String().substring(0, 10)};
+                if (draft) {
+                  out = b;
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  return;
+                }
                 final r = term == null ? await OrgApi.i.post('$base/terms', b, t('أُضيف الفصل', 'Term added')) : await OrgApi.i.put('$base/terms/${term['id']}', b, t('تم', 'Saved'));
                 if (r != null && ctx.mounted) Navigator.pop(ctx);
               }),
             ]),
           );
         }));
-    onChanged();
+    if (!draft) onChanged();
+    return out;
   }
+
+  /// "Auto-generate" · "Create manually" + the server's term drafts (Approve / Edit / Reject).
+  Widget _suggestions(BuildContext context) => OrgTermSuggestions(
+        orgBase: base.substring(0, base.length - '/academic'.length),
+        onChanged: onChanged,
+        onCreateManually: () => _edit(context),
+        editDraft: (d) => _edit(context, d, true),
+        kindLabel: (k) => termKinds()[k] ?? k,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -153,10 +172,14 @@ class _Calendar extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(heroTag: 'term_new', onPressed: () => _edit(context),
           icon: const Icon(Icons.add_rounded), label: Text(t('فصل جديد', 'New term'))),
       body: years.isEmpty
-          ? OrgEmpty(icon: Icons.calendar_month_rounded, title: t('ابدأ بالتقويم الأكاديمي', 'Start with the academic calendar'),
-              message: t('أضف الأعوام والفصول (الأول، الثاني، الصيفي) بتواريخها، ثم سجّل المقررات في كل فصل.', 'Add years and terms (1, 2, summer) with dates, then offer courses in each term.'),
-              actionLabel: t('فصل جديد', 'New term'), onAction: () => _edit(context))
+          ? ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+              _suggestions(context),
+              OrgEmpty(icon: Icons.calendar_month_rounded, title: t('ابدأ بالتقويم الأكاديمي', 'Start with the academic calendar'),
+                  message: t('أضف الأعوام والفصول (الأول، الثاني، الصيفي) بتواريخها، ثم سجّل المقررات في كل فصل.', 'Add years and terms (1, 2, summer) with dates, then offer courses in each term.'),
+                  actionLabel: t('فصل جديد', 'New term'), onAction: () => _edit(context)),
+            ])
           : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
+              _suggestions(context),
               for (final e in years.entries) ...[
                 OrgSectionTitle('${t('العام', 'Year')} ${e.key}', padding: const EdgeInsets.fromLTRB(4, 14, 4, 6)),
                 for (final term in e.value)
@@ -882,7 +905,7 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
   await showAdminSheet<void>(context, (ctx) {
     final c = ctx.colors;
     final reason = TextEditingController();
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
         SheetHeader(t('المقرر في الأرشيف', 'This course is archived')),
@@ -905,6 +928,17 @@ Future<bool> orgCourseGate(BuildContext context, int courseId) async {
           }),
         ] else
           Text(t('ستُفتح نسخة جديدة عند تسجيل المقرر في فصل قادم.', 'A fresh version opens when the course is offered in an upcoming term.'), style: orgText(ctx, color: c.textMedium)),
+        // course profile: read-only archive with this course's access mode (automatic · request · code)
+        const SizedBox(height: 8),
+        TextButton.icon(
+          icon: const Icon(Icons.dashboard_customize_rounded),
+          label: Text(t('ملف المقرر والأرشيف (كود / وصول تلقائي)', 'Course profile & archive (code / automatic access)')),
+          onPressed: () {
+            Navigator.pop(ctx);
+            Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => CourseProfileScreen(courseId: courseId, initialTab: 'archive')));
+          },
+        ),
       ]),
     );
   });

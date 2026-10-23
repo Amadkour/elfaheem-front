@@ -1,0 +1,231 @@
+// lib/core/attention/attention_service.dart
+//
+// Badge counts for every tab, from ONE server call: GET /api/v1/me/attention
+// (back: services/attention_service.py). The server computes every item from live state, so an
+// item is gone as soon as its problem is fixed; this service only keeps the last answer.
+//
+//   AttentionService.instance.count(AttentionTabs.orgPeople, orgId: 12)   → badge number
+//   AttentionService.instance.items(AttentionTabs.home)                    → items with deep links
+//   AttentionService.instance.refresh()                                     → reload now
+//
+// Refreshes: every 60 s while the app is in front, on app resume, on route push/return
+// (TopRouteObserver → onRouteChanged, throttled), and on live events (silent FCM pushes).
+// Listen with ListenableBuilder(listenable: AttentionService.instance, …) (or AttentionBadge); polling runs only
+// while something listens.
+library;
+
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
+
+import '../../utils/live_events.dart';
+import '../api_client.dart';
+
+/// Stable tab keys (same list as the server's TABS). Add new ones on both sides.
+class AttentionTabs {
+  AttentionTabs._();
+
+  /// Personal to-do list (inbox "To do": forms, availability, terms, platform requirements, exams, replies).
+  static const home = 'home';
+  /// Unread complaint replies (students, teachers, parents).
+  static const profile = 'profile';
+  static const parentLink = 'parent.link';
+  static const parentAlerts = 'parent.alerts';
+  static const adminSupport = 'admin.support';
+  static const adminFinance = 'admin.finance';
+  static const orgPeople = 'org.people';
+  /// Department choices, registrar decisions and auto-create suggestions (drafts to approve).
+  static const orgAcademics = 'org.academics';
+  static const orgTimetable = 'org.timetable';
+  static const orgServices = 'org.services';
+  static const orgSettings = 'org.settings';
+
+  /// Org dashboard section key ('people', 'academics', …) → tab key.
+  static const orgSection = <String, String>{
+    'people': orgPeople,
+    'academics': orgAcademics,
+    'timetable': orgTimetable,
+    'services': orgServices,
+    'settings': orgSettings,
+  };
+
+  static const all = [home, profile, parentLink, parentAlerts, adminSupport, adminFinance, orgPeople, orgAcademics,
+    orgTimetable, orgServices, orgSettings];
+}
+
+class AttentionItem {
+  AttentionItem(Map<String, dynamic> m)
+      : raw = m,
+        key = '${m['key'] ?? ''}',
+        kind = '${m['kind'] ?? ''}',
+        tab = '${m['tab'] ?? ''}',
+        orgId = m['org_id'] == null ? null : int.tryParse('${m['org_id']}'),
+        count = int.tryParse('${m['count'] ?? 1}') ?? 1,
+        titleAr = '${m['title'] ?? ''}',
+        titleEn = '${m['title_en'] ?? m['title'] ?? ''}',
+        subtitle = m['subtitle']?.toString(),
+        severity = '${m['severity'] ?? 'info'}',
+        route = '${m['route'] ?? ''}',
+        entityId = m['entity_id'] == null ? null : int.tryParse('${m['entity_id']}'),
+        action = m['action'] is Map ? Map<String, dynamic>.from(m['action'] as Map) : const {};
+
+  final Map<String, dynamic> raw;
+  final String key, kind, tab, titleAr, titleEn, severity, route;
+  final String? subtitle;
+  final int? orgId, entityId;
+  final int count;
+  final Map<String, dynamic> action;
+
+  String get actionType => '${action['type'] ?? ''}';
+  bool get isSuggestion => kind == 'suggestion';
+}
+
+/// Where the org dashboard should go next (set by a deep link, consumed by the dashboard).
+class OrgTabRequest {
+  const OrgTabRequest(this.orgId, this.section, this.sub);
+  final int orgId;
+  final String section;
+  final String? sub;
+}
+
+class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
+  AttentionService._();
+
+  /// Polling runs only while something listens (a badge on screen), so tests and logged-out screens stay idle.
+  @override
+  void addListener(VoidCallback listener) {
+    super.addListener(listener);
+    if (_timer != null) return;
+    WidgetsBinding.instance.addObserver(this);
+    _timer = Timer.periodic(pollEvery, (_) => refresh(quiet: true));
+    _live = LiveEvents.instance.listen(LiveEvents.silentTypes, (_) => refresh(quiet: true));
+    refresh(quiet: true);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    if (!hasListeners) _stop();
+  }
+
+  void _stop() {
+    _timer?.cancel();
+    _timer = null;
+    _live?.cancel();
+    _live = null;
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  static final AttentionService instance = AttentionService._();
+  static const pollEvery = Duration(seconds: 60);
+  static const _minGap = Duration(seconds: 15);
+
+  Timer? _timer;
+  StreamSubscription<LiveEvent>? _live;
+  List<AttentionItem> _items = const [];
+  List<AttentionItem> _focusItems = const [];
+  int? _focusOrg;
+  DateTime? _last;
+  Future<void>? _running;
+
+  /// Deep link into the org dashboard: it listens and jumps to the section.
+  final ValueNotifier<OrgTabRequest?> orgTabRequest = ValueNotifier(null);
+
+  /// Org dashboards call this with the open organization (null when leaving) so `count(…, orgId:)` is exact
+  /// even for platform admins (who manage every org and get them only per org).
+  void focusOrg(int? orgId) {
+    if (orgId == _focusOrg) return;
+    _focusOrg = orgId;
+    _focusItems = const [];
+    refresh(quiet: true);
+  }
+
+  List<AttentionItem> _pool(int? orgId) {
+    if (orgId != null && orgId == _focusOrg && _focusItems.isNotEmpty) return _focusItems;
+    return _items;
+  }
+
+  /// Badge number of a tab. With [orgId]: only that organization's items.
+  int count(String tabKey, {int? orgId}) {
+    var n = 0;
+    for (final x in _pool(orgId)) {
+      if (x.tab == tabKey && (orgId == null || x.orgId == orgId)) n += x.count;
+    }
+    return n;
+  }
+
+  /// Items of a tab, most urgent first (server order).
+  List<AttentionItem> items(String tabKey, {int? orgId}) =>
+      [for (final x in _pool(orgId)) if (x.tab == tabKey && (orgId == null || x.orgId == orgId)) x];
+
+  int get total => _items.fold(0, (s, x) => s + x.count);
+
+  Future<void> refresh({bool quiet = false}) {
+    if (quiet && _last != null && DateTime.now().difference(_last!) < const Duration(seconds: 5)) {
+      return Future.value();
+    }
+    return _running ??= _load().whenComplete(() => _running = null);
+  }
+
+  Future<void> _load() async {
+    _last = DateTime.now();
+    final api = ApiClient();
+    String? token;
+    try {
+      token = await api.accessToken;
+    } catch (_) {}
+    if (token == null || token.isEmpty) {
+      if (_items.isNotEmpty || _focusItems.isNotEmpty) {
+        _items = const [];
+        _focusItems = const [];
+        notifyListeners();
+      }
+      return;
+    }
+    final focus = _focusOrg;
+    try {
+      final res = await Future.wait([
+        api.get('/api/v1/me/attention'),
+        if (focus != null) api.get('/api/v1/me/attention', queryParams: {'org_id': focus}),
+      ]);
+      _items = _parse(res[0]);
+      if (focus != null && focus == _focusOrg) _focusItems = _parse(res[1]);
+      notifyListeners();
+    } catch (e) {
+      // keep the last answer: a failed poll never blanks the badges
+      if (kDebugMode) debugPrint('[attention] $e');
+    }
+  }
+
+  static List<AttentionItem> _parse(dynamic r) {
+    final list = r is Map ? r['items'] : null;
+    if (list is! List) return const [];
+    return [for (final m in list) if (m is Map) AttentionItem(Map<String, dynamic>.from(m))];
+  }
+
+  /// TopRouteObserver calls this on push/pop: coming back from a screen usually means something was handled.
+  void onRouteChanged() {
+    if (!hasListeners) return;
+    if (_last == null || DateTime.now().difference(_last!) >= _minGap) refresh(quiet: true);
+  }
+
+  /// Forget everything (logout).
+  void clear() {
+    _items = const [];
+    _focusItems = const [];
+    _focusOrg = null;
+    notifyListeners();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) refresh(quiet: true);
+  }
+
+  @override
+  void dispose() {
+    _stop();
+    super.dispose();
+  }
+}

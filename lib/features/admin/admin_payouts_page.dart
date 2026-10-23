@@ -474,6 +474,7 @@ class _ResolveDialogState extends State<_ResolveDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
+        scrollable: true,
         title: Text(
           'admin_resolve_unconfirmed_transfer'.tr,
           style: const TextStyle(fontFamily: 'tajawal'),

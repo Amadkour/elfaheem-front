@@ -62,6 +62,7 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: AlertDialog(
+        scrollable: true,
         backgroundColor: c.cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Row(children: [

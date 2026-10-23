@@ -15376,5 +15376,261 @@
   "tx_column_locked": {
     "en": "Always exported",
     "ar": "يُصدَّر دائمًا"
+  },
+  "ctx_personal": {
+    "en": "Personal",
+    "ar": "حسابي الشخصي"
+  },
+  "ctx_current": {
+    "en": "Current space",
+    "ar": "المساحة الحالية"
+  },
+  "ctx_in_org": {
+    "en": "You're in",
+    "ar": "أنت الآن في"
+  },
+  "ctx_personal_space": {
+    "en": "Your space",
+    "ar": "مساحتك"
+  },
+  "ctx_exit": {
+    "en": "Back to your personal space",
+    "ar": "العودة إلى حسابك الشخصي"
+  },
+  "ctx_switch_title": {
+    "en": "Switch space",
+    "ar": "تبديل المساحة"
+  },
+  "ctx_personal_hint": {
+    "en": "Your own courses and sessions",
+    "ar": "كورساتك وجلساتك الخاصة"
+  },
+  "ctx_organizations": {
+    "en": "Your organizations",
+    "ar": "مؤسساتك"
+  },
+  "home_greet_morning": {
+    "en": "Good morning",
+    "ar": "صباح الخير"
+  },
+  "home_greet_afternoon": {
+    "en": "Good afternoon",
+    "ar": "طاب يومك"
+  },
+  "home_greet_evening": {
+    "en": "Good evening",
+    "ar": "مساء الخير"
+  },
+  "home_live": {
+    "en": "Live now",
+    "ar": "مباشر الآن"
+  },
+  "home_next": {
+    "en": "Next up",
+    "ar": "التالي"
+  },
+  "home_until": {
+    "en": "Until",
+    "ar": "حتى"
+  },
+  "home_todo": {
+    "en": "To do",
+    "ar": "مطلوب منك"
+  },
+  "home_todo_clear": {
+    "en": "You're all caught up",
+    "ar": "لا شيء ينتظرك"
+  },
+  "home_todo_hint": {
+    "en": "Forms, requests and replies waiting",
+    "ar": "نماذج وطلبات وردود بانتظارك"
+  },
+  "home_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "home_today_sessions": {
+    "en": "Today's sessions",
+    "ar": "جلسات اليوم"
+  },
+  "home_full_timetable": {
+    "en": "Full timetable",
+    "ar": "الجدول كاملاً"
+  },
+  "home_no_classes_today": {
+    "en": "No classes today",
+    "ar": "لا محاضرات اليوم"
+  },
+  "home_no_classes_hint": {
+    "en": "Plan ahead: your whole week is in the timetable",
+    "ar": "خطط مسبقاً: أسبوعك كله في الجدول"
+  },
+  "home_extra_session": {
+    "en": "Extra",
+    "ar": "إضافية"
+  },
+  "home_lab": {
+    "en": "Lab",
+    "ar": "سكشن"
+  },
+  "home_capacity": {
+    "en": "Up to {n} students",
+    "ar": "حتى {n} طالب"
+  },
+  "home_needs_you": {
+    "en": "Needs you",
+    "ar": "يحتاج انتباهك"
+  },
+  "home_t_attendance": {
+    "en": "Attendance not taken",
+    "ar": "حضور لم يُسجَّل"
+  },
+  "home_t_attendance_hint": {
+    "en": "Past sessions with no attendance",
+    "ar": "جلسات سابقة بلا حضور"
+  },
+  "home_t_grading": {
+    "en": "Waiting for grades",
+    "ar": "بانتظار التصحيح"
+  },
+  "home_t_grading_hint": {
+    "en": "Submissions not graded yet",
+    "ar": "تسليمات لم تُصحَّح بعد"
+  },
+  "home_t_material": {
+    "en": "Material missing",
+    "ar": "مواد ناقصة"
+  },
+  "home_t_material_hint": {
+    "en": "Past sessions with no material",
+    "ar": "جلسات سابقة بلا مواد"
+  },
+  "home_t_requests": {
+    "en": "Enrollment requests",
+    "ar": "طلبات الالتحاق"
+  },
+  "home_t_requests_hint": {
+    "en": "Students waiting for approval",
+    "ar": "طلاب بانتظار الموافقة"
+  },
+  "home_no_sessions_today": {
+    "en": "No sessions today",
+    "ar": "لا جلسات اليوم"
+  },
+  "home_no_sessions_today_hint": {
+    "en": "A good day to prepare material or add a session",
+    "ar": "يوم مناسب لتجهيز المواد أو إضافة جلسة"
+  },
+  "home_t_no_courses": {
+    "en": "Create your first course",
+    "ar": "أنشئ كورسك الأول"
+  },
+  "home_t_no_courses_hint": {
+    "en": "Your courses and their students appear here",
+    "ar": "ستظهر هنا كورساتك وطلابها"
+  },
+  "home_t_free_day": {
+    "en": "No sessions on your calendar today",
+    "ar": "لا جلسات في يومك اليوم"
+  },
+  "home_t_day_done": {
+    "en": "All of today's sessions are done",
+    "ar": "انتهت جلسات اليوم كلها"
+  },
+  "home_t_sessions_today": {
+    "en": "sessions today",
+    "ar": "جلسات اليوم"
+  },
+  "home_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "home_rating": {
+    "en": "Rating",
+    "ar": "التقييم"
+  },
+  "home_s_start_learning": {
+    "en": "Start learning",
+    "ar": "ابدأ التعلم"
+  },
+  "home_s_start_learning_hint": {
+    "en": "Pick your first course",
+    "ar": "اختر كورسك الأول"
+  },
+  "home_s_continue": {
+    "en": "Continue learning",
+    "ar": "تابع التعلم"
+  },
+  "home_s_free_today": {
+    "en": "Your day is free",
+    "ar": "يومك متاح"
+  },
+  "home_s_free_hint": {
+    "en": "Use it to catch up on recorded sessions",
+    "ar": "استغله لمتابعة الجلسات المسجلة"
+  },
+  "home_org_waiting": {
+    "en": "Waiting in your organizations",
+    "ar": "بانتظارك في مؤسساتك"
+  },
+  "home_org_waiting_hint": {
+    "en": "Open the organization to see it",
+    "ar": "افتح المؤسسة لتراه"
+  },
+  "home_downloads": {
+    "en": "Downloads",
+    "ar": "التنزيلات"
+  },
+  "home_starts_in": {
+    "en": "Starts in {t}",
+    "ar": "تبدأ بعد {t}"
+  },
+  "home_ends_in": {
+    "en": "Ends in {t}",
+    "ar": "تنتهي بعد {t}"
+  },
+  "home_min": {
+    "en": "{n} min",
+    "ar": "{n} د"
+  },
+  "home_h_min": {
+    "en": "{h} h {m} min",
+    "ar": "{h} س {m} د"
+  },
+  "home_s_no_courses": {
+    "en": "No courses yet",
+    "ar": "لا كورسات بعد"
+  },
+  "home_s_no_courses_hint": {
+    "en": "Enroll in a course and it shows up here",
+    "ar": "اشترك في كورس وسيظهر هنا"
+  },
+  "home_s_browse": {
+    "en": "Browse courses",
+    "ar": "تصفح الكورسات"
+  },
+  "home_admin_sub": {
+    "en": "Here is the platform today",
+    "ar": "هذه حال المنصة اليوم"
+  },
+  "home_admin_pulse": {
+    "en": "Platform pulse",
+    "ar": "نبض المنصة"
+  },
+  "home_admin_waiting": {
+    "en": "items wait for your decision",
+    "ar": "عناصر بانتظار قرارك"
+  },
+  "home_admin_clear": {
+    "en": "Nothing waits for your decision",
+    "ar": "لا شيء بانتظار قرارك"
+  },
+  "home_admin_numbers": {
+    "en": "Platform numbers",
+    "ar": "أرقام المنصة"
+  },
+  "home_admin_more": {
+    "en": "More",
+    "ar": "المزيد"
   }
 }

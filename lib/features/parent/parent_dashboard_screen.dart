@@ -11,6 +11,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
     show SettingsTile;
@@ -73,9 +74,14 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     _alerts.load(silent: true);
   }
 
+  void _onAttention() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    AttentionService.instance.addListener(_onAttention);   // Children tab badge = my to-dos (GET /me/attention)
     _items = [
       DashboardItem(
         Icons.family_restroom_outlined,
@@ -127,6 +133,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
 
   @override
   void dispose() {
+    AttentionService.instance.removeListener(_onAttention);
     _tabs.dispose();
     _link.dispose();
     _alerts.dispose();
@@ -152,9 +159,14 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         final pending = context.select<ParentLinkProvider, int>((p) => p.pendingCount);
         final unreadAlerts = context.select<ParentAlertsProvider, int>((p) => p.unread);
         for (final it in _items) {
-          it.badge = it.label == 'pl_tab_link'
-              ? pending
-              : (it.label == 'pl_tab_alerts' ? unreadAlerts : 0);
+          final att = AttentionService.instance;
+          it.badge = switch (it.label) {
+            'pl_tab_link' => pending > 0 ? pending : att.count(AttentionTabs.parentLink),
+            'pl_tab_alerts' => unreadAlerts > 0 ? unreadAlerts : att.count(AttentionTabs.parentAlerts),
+            'pl_tab_children' => att.count(AttentionTabs.home),
+            'pl_tab_more' => att.count(AttentionTabs.profile),
+            _ => 0,
+          };
         }
         return PopScope(
           canPop: tabs.currentTab == 0,

@@ -353,6 +353,10 @@ class _OrgRequestCard extends StatelessWidget {
               ]),
             ),
           ]),
+          if (row['code_verified'] == true) ...[
+            const SizedBox(height: 6),
+            AppBadgePill(t('الكود صحيح', 'Code verified'), color: c.success, icon: Icons.verified_rounded),
+          ],
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 6, children: [
             FilledButton.icon(onPressed: busy ? null : () => onDecide(true), icon: const Icon(Icons.check_rounded), label: Text(t('قبول', 'Accept'))),
@@ -738,7 +742,7 @@ class _JoinSettingsTab extends StatefulWidget {
 }
 
 class _JoinSettingsTabState extends State<_JoinSettingsTab> {
-  bool? _paused, _requests, _auto;
+  bool? _paused, _requests, _auto, _withCode;
   String? _unit;
   bool _busy = false;
 
@@ -747,12 +751,16 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
     if (s == null || _paused != null) return;
     final mode = '${s['join_mode']}';
     _paused = mode == 'closed';
-    _requests = mode == 'open' || mode == 'approval';
+    _requests = mode == 'open' || mode == 'approval' || mode == 'code_req';
     _auto = mode == 'open';
+    _withCode = mode == 'code_req';
     _unit = '${s['unit_default'] ?? 'closed'}';
   }
 
-  String get _mode => _paused! ? 'closed' : (_requests! ? (_auto! ? 'open' : 'approval') : 'code');
+  /// `code_req` = a valid code AND an approval (the code only submits the request).
+  String get _mode => _paused!
+      ? 'closed'
+      : (_requests! ? (_auto! ? 'open' : (_withCode! ? 'code_req' : 'approval')) : 'code');
 
   Future<void> _save() async {
     final s = context.read<OrgSession>();
@@ -774,7 +782,10 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
         : _requests!
             ? (_auto!
                 ? t('أي طالب أو مدرس يطلب الانضمام يُقبل فوراً، والأكواد تعمل.', 'Anyone who asks is accepted at once; codes work too.')
-                : t('الطلبات تصلك لتقبلها أو ترفضها، والأكواد تعمل.', 'Requests come to you to accept or reject; codes work too.'))
+                : _withCode!
+                    ? t('يلزم كود صالح وطلب معاً: الكود يرسل الطلب فقط، ثم تقبله أو ترفضه. الطلب بلا كود يُرفض.',
+                        'A valid code AND a request: the code only sends the request, then you accept or reject it. Requests without a code are refused.')
+                    : t('الطلبات تصلك لتقبلها أو ترفضها، والأكواد تعمل.', 'Requests come to you to accept or reject; codes work too.'))
             : t('الانضمام بالأكواد فقط — لا تظهر المؤسسة كخيار «طلب انضمام».', 'Codes only — people can\'t send a request.');
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
       AppCard(
@@ -802,7 +813,18 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
                 title: t('قبول تلقائي', 'Auto-accept'),
                 subtitle: t('يُقبل كل طلب فوراً دون مراجعة', 'Every request is accepted at once, no review'),
                 value: _auto!,
-                onChanged: (v) => setState(() => _auto = v),
+                onChanged: (v) => setState(() {
+                  _auto = v;
+                  if (v) _withCode = false;
+                }),
+              ),
+            if (_requests! && !_auto!)
+              AppSwitchTile(
+                icon: Icons.qr_code_2_rounded,
+                title: t('الطلب يحتاج كوداً صالحاً', 'Requests need a valid code'),
+                subtitle: t('كود + طلب: الكود وحده لا يكفي، والطلب بلا كود يُرفض', 'Code + request: a code alone isn\'t enough, and a request without one is refused'),
+                value: _withCode!,
+                onChanged: (v) => setState(() => _withCode = v),
               ),
           ],
           const SizedBox(height: 6),
@@ -820,6 +842,8 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
             ('approval', Icons.how_to_reg_rounded, t('بطلب وموافقة', 'Request + approval'), t('مدير القسم أو إدارة المؤسسة يقبل الطلب', 'The department manager or org admins decide')),
             ('auto', Icons.bolt_rounded, t('قبول تلقائي', 'Auto-accept'), t('يُقبل فوراً عند استيفاء الشروط', 'Accepted at once when eligible')),
             ('code', Icons.qr_code_2_rounded, t('بكود دعوة', 'Invitation code'), t('بكود يصدره القسم', 'With a code the department issues')),
+            ('code_req', Icons.verified_user_rounded, t('كود + طلب وموافقة', 'Code + request'),
+                t('الكود الصحيح يرسل الطلب، ثم يقرر المعتمد', 'A valid code sends the request, then an approver decides')),
           ])
             Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -957,12 +981,14 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
     if (!r.ok) {
       if (r.code == 'code_required') {
         toast(t('هذه المؤسسة تقبل الانضمام بالكود فقط — اطلبه منها ثم أدخله بالأعلى', 'This organization joins by code only — ask it for one and enter it above'), error: true);
+      } else if (r.code == 'request_code_required') {
+        toast(t('هذه المؤسسة تحتاج كوداً صالحاً مع الطلب — أدخل الكود بالأعلى ليُرسل طلبك', 'This organization needs a valid code with the request — enter it above to send your request'), error: true);
       } else {
         toast(joinErrorText(r), error: true);
       }
       return;
     }
-    await _outcome({'kind': 'org', 'status': r.map['status'], 'organization': r.map['organization'] ?? o});
+    await _outcome({'kind': 'org', 'status': r.map['status'], 'code_verified': r.map['code_verified'], 'organization': r.map['organization'] ?? o});
     _loadStatus();
     _search(_q.text);
   }
@@ -973,11 +999,14 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
         final pending = isOrg ? m['status'] == 'pending' : m['joined'] != true;
         final name = isOrg ? orgNameOf(asMap(m['organization'])) : orgNameOf(asMap(m['unit']));
         final dept = asMap(m['department']);
+        final verified = m['code_verified'] == true;
         final (icon, color, title, body) = pending
             ? (
-                Icons.hourglass_top_rounded,
+                verified ? Icons.verified_rounded : Icons.hourglass_top_rounded,
                 c.warning,
-                t('وصل طلبك ✉️', 'Request sent ✉️'),
+                verified
+                    ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
+                    : t('وصل طلبك ✉️', 'Request sent ✉️'),
                 t('طلبك للانضمام إلى «$name» قيد المراجعة. سنرسل لك إشعاراً فور القرار، وتتابعه من «طلباتي».',
                     'Your request to join "$name" is being reviewed. We\'ll notify you once it\'s decided — follow it under "My requests".'),
               )
@@ -1174,8 +1203,9 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
         ? AppBadgePill(t('عضو', 'Member'), color: c.success, icon: Icons.check_rounded)
         : my == 'pending'
             ? AppBadgePill(t('قيد المراجعة', 'Pending'), color: c.warning)
-            : mode == 'code'
-                ? AppBadgePill(t('بكود فقط', 'Code only'), color: c.textMedium, icon: Icons.qr_code_2_rounded)
+            : mode == 'code' || mode == 'code_req'
+                ? AppBadgePill(mode == 'code' ? t('بكود فقط', 'Code only') : t('كود + موافقة', 'Code + approval'),
+                    color: c.textMedium, icon: Icons.qr_code_2_rounded)
                 : FilledButton(
                     onPressed: _busy ? null : () => _request(o),
                     child: Text(mode == 'open' ? t('انضم', 'Join') : t('اطلب', 'Request')),
@@ -1195,7 +1225,9 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                     ? t('قبول فوري', 'Instant join')
                     : mode == 'approval'
                         ? t('بموافقة الإدارة', 'Needs approval')
-                        : t('اطلب الكود من المؤسسة', 'Ask the institution for a code'),
+                        : mode == 'code_req'
+                            ? t('أدخل كود المؤسسة بالأعلى ليُرسل طلبك، ثم تقرر الإدارة', 'Enter the institution\'s code above to send a request, then it decides')
+                            : t('اطلب الكود من المؤسسة', 'Ask the institution for a code'),
                 style: orgText(context, size: 12, color: c.textMedium),
               ),
             ]),

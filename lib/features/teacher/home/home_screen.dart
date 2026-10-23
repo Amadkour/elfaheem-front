@@ -1,32 +1,46 @@
+// lib/features/teacher/home/home_screen.dart — the INSTRUCTOR home.
+//
+//   header      greeting · name · notifications · ContextSwitcher (Personal ↔ organizations, exit to personal)
+//   Personal:   hero = the teaching day as a ribbon (today's sessions, "now" marker, next session) + key figures
+//               needs you  attendance not taken · grading · material missing · enrollment requests (+ new course)
+//               today      timeline of today's sessions → the course
+//               shortcuts  courses · timetable · analytics · new course
+//               upcoming   the live queue (start / join, countdowns) for ongoing + coming sessions
+//               courses    the course strip
+//               inbox · ads · organizations
+//   Organization: OrgMemberHome of the selected organization.
+// Data: TeacherHomeProvider (GET /api/v1/teacher/dashboard: stats, courses, schedule, pending).
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/context_switcher.dart';
+import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/org/home_org_mix.dart';
+import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
+import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
+
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/top_route_observer.dart';
-import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
-import '../../student/courses/details/components/app_responsive.dart';
 import '../../student/dashboard/dashboard_screen.dart';
-import '../../student/home/component/home_section_header.dart';
 import '../../student/models.dart';
 import '../courses/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
-import 'package:flutter_education_app/features/org/home_org_mix.dart';
-import 'package:flutter_education_app/features/ads/ads_pages.dart';
-import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
-import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show AppModeSwitcher, OrgMemberHome;
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
+import '../../student/courses/details/components/app_responsive.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -35,8 +49,19 @@ class TeacherHomeScreen extends StatefulWidget {
   State<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
 }
 
-class _TeacherHomeScreenState extends State<TeacherHomeScreen>
-    with AutomaticKeepAliveClientMixin {
+/// UTC instant of a weekly session on its scheduled date ("HH:MM" is UTC on the server).
+DateTime teacherSessionUtc(ScheduleSession s, String hhmm) {
+  final p = hhmm.split(':');
+  final d = s.scheduledDate;
+  return DateTime.utc(d.year, d.month, d.day, int.tryParse(p[0]) ?? 0, p.length > 1 ? int.tryParse(p[1]) ?? 0 : 0);
+}
+
+int _wallMin(DateTime utc) {
+  final w = AppTime.toZone(utc);
+  return w.hour * 60 + w.minute;
+}
+
+class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -44,24 +69,42 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (context.read<TeacherHomeProvider>().homeCourses.isEmpty ||
-          topRouteObserver.previousRouteName == '/login') {
+      if (context.read<TeacherHomeProvider>().homeCourses.isEmpty || topRouteObserver.previousRouteName == '/login') {
         context.read<TeacherHomeProvider>().init();
       }
     });
   }
 
-  void _openAllCourses() {
-    context.read<TeacherDashboardProvider>().onChangeTab(1);
-    // Navigator.of(context).push(_zoomOutRoute(const TeacherCoursesScreen()));
+  void _tab(int i) => context.read<TeacherDashboardProvider>().onChangeTab(i);
+
+  void _openCourse(TeacherCourse course) => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) => TeacherCourseScreenProvider(initialCourse: course),
+            child: TeacherSessionsScreen(),
+          ),
+        ),
+      );
+
+  void _openCourseId(int id) {
+    final c = context.read<TeacherHomeProvider>().homeCourses.where((x) => x.id == id).firstOrNull;
+    c == null ? _tab(1) : _openCourse(c);
+  }
+
+  void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CourseFormScreen()));
+
+  Future<void> _refresh() async {
+    await context.read<TeacherHomeProvider>().init();
+    AppModeController.instance.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final provider = context.watch<TeacherHomeProvider>();
-    final loading = provider.isLoading;
-    final isWide = context.showSidebar;
+    final user = context.watch<MyAuthProvider>().currentUser;
+    final unread = context.watch<NotificationsProvider>().unreadCount;
 
     return BasePage(
       key: const ValueKey('teacher_home'),
@@ -70,157 +113,49 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
       child: SafeArea(
         child: RefreshIndicator(
           color: context.colors.primary,
-          onRefresh: () => context.read<TeacherHomeProvider>().init(),
+          onRefresh: _refresh,
           child: ListenableBuilder(
             listenable: Listenable.merge([homeTabs, AppModeController.instance]),
             builder: (context, _) => CustomScrollView(
-            physics: const BouncingScrollPhysics(
-              parent: AlwaysScrollableScrollPhysics(),
-            ),
-            slivers: [
-              // ── Top bar ─────────────────────────────────────────
-              if (!isWide) ...[
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              slivers: [
                 SliverToBoxAdapter(
-                  child: ParentComponent(featureKey: 'teacher_home_topbar', child: _TopBar()),
-                ),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-              ] else
-                SliverToBoxAdapter(
-                  child: ParentComponent(featureKey: 'teacher_home_topbar', child: _WebTopBar()),
-                ),
-
-              // ── My courses | My organization (members only) ──
-              // ── Individual | Organization mode (members only, org switch on) ──
-              const SliverToBoxAdapter(child: AppModeSwitcher(padding: EdgeInsets.fromLTRB(20, 0, 20, 16))),
-              if (AppModeController.instance.isOrg)
-                const SliverToBoxAdapter(child: OrgMemberHome())
-              else
-              SliverToBoxAdapter(
-                child: ColoredBox(
-                  color: context.colors.background,
-                  child: Column(
-                    children: [
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_stats'),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: loading
-                              ? const _StatsShimmer()
-                              : StatsRow(stats: provider.stats, isFull: false),
+                  child: _Width(
+                    child: ParentComponent(
+                      featureKey: 'teacher_home_topbar',
+                      child: HomeEntrance(
+                        index: 0,
+                        child: HomeHeader(
+                          name: user?.name ?? 'sir'.tr,
+                          leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+                          actions: [NotificationIcon(unreadCount: unread)],
+                          contextSwitcher: const ContextSwitcher(),
                         ),
                       ),
-                      const SizedBox(height: 20),
-
-                      // ── Ads (platform / allowed teachers) ────────────────
-                      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
-                      // ── Inbox: forms / requests / approvals / news / offers in one prioritized place ──
-                      const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
-                      // ── Add course button ────────────────────────────────
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_add_course'),
-
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: _AddCourseButton(),
-                        ),
-                      ),
-                      SizedBox(height: 16),
-
-                      // ── Organizations (join a university / faculty) ─────
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_org'),
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const HomeOrgMix(),
-                        ),
-                      ),
-                      SizedBox(height: 24),
-
-                      // ── Courses ──────────────────────────────────────────
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_courses_header'),
-
-                          child: SectionHeader(
-                            title: 'courses'.tr,
-                            actionLabel: 'show_all'.tr,
-                            icon: Icon(
-                              Icons.fullscreen_rounded,
-                              color: context.colors.primary,
-                            ),
-                            onAction: _openAllCourses,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 14),
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_courses_row'),
-
-                          child: loading
-                              ? const CoursesShimmer(count: 4)
-                              : HomeCourseList(
-                            courses: provider.homeCourses
-                                .take(8)
-                                .map((e) => e.toCourseModel)
-                                .toList(),
-                            isTeacher: context
-                                .read<MyAuthProvider>()
-                                .isTeacher,
-                            onTap: (CourseModel c) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ChangeNotifierProvider(
-                                    create: (_) =>
-                                        TeacherCourseScreenProvider(
-                                          initialCourse: c.toTeacherModel,
-                                        ),
-                                    child: TeacherSessionsScreen(),
-                                  ),
-                                ),
-                              );
-                            },
-                            pageName: 'teacher-home-my-courses',
-                            hasMore: false,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 26),
-
-                      // ── Schedule ─────────────────────────────────────────
-                      ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_schedule'),
-
-                          child: SectionHeader(
-                            title: 'hs_schedule_title'.tr,
-                            actionLabel: 'hs_upcoming'.tr,
-                            onAction: () => context
-                                .read<TeacherDashboardProvider>()
-                                .onChangeTab(2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      loading
-                          ? const _ScheduleShimmer()
-                          : ParentComponent(
-                        child: ContentBox(
-                          key: ValueKey('teacher_home_schedule'),
-
-                          child: ScheduleQueueList(
-                            sessions: provider.schedule,
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 36),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                if (AppModeController.instance.isOrg)
+                  const SliverToBoxAdapter(child: _Width(child: OrgMemberHome(showPickerInHero: false)))
+                else
+                  SliverToBoxAdapter(
+                    child: _Width(
+                      child: TeacherHomeBody(
+                        loading: provider.isLoading,
+                        stats: provider.stats,
+                        schedule: provider.schedule,
+                        pending: provider.pending,
+                        courses: provider.homeCourses,
+                        onTab: _tab,
+                        onOpenCourse: _openCourse,
+                        onOpenCourseId: _openCourseId,
+                        onNewCourse: _newCourse,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -228,83 +163,249 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
   }
 }
 
-// ── Web top bar ───────────────────────────────────────────────────────────────
+/// Centered, max 1100 wide (web) — phones use the full width.
+class _Width extends StatelessWidget {
+  const _Width({required this.child});
+  final Widget child;
 
-class _WebTopBar extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      Center(child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 1100), child: child));
+}
+
+/// The Personal side of the instructor home (no providers inside → layout-tested on its own).
+class TeacherHomeBody extends StatelessWidget {
+  const TeacherHomeBody({
+    super.key,
+    required this.loading,
+    required this.stats,
+    required this.schedule,
+    required this.pending,
+    required this.courses,
+    required this.onTab,
+    required this.onOpenCourse,
+    required this.onOpenCourseId,
+    required this.onNewCourse,
+    this.showFeeds = true,
+  });
+
+  final bool loading;
+  final TeacherStats stats;
+  final List<ScheduleSession> schedule;
+  final Map<String, int> pending;
+  final List<TeacherCourse> courses;
+  final ValueChanged<int> onTab; // 1 courses · 2 timetable · 3 analytics
+  final ValueChanged<TeacherCourse> onOpenCourse;
+  final ValueChanged<int> onOpenCourseId;
+  final VoidCallback onNewCourse;
+
+  /// Inbox / ads / organizations (network widgets) — off in layout tests.
+  final bool showFeeds;
+
   @override
   Widget build(BuildContext context) {
-    final name = context.watch<MyAuthProvider>().currentUser?.name ?? 'sir'.tr;
-    return Container(
-      height: 56,
-      color: context.colors.background,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Row(
-        children: [
-          Text(
-            '${'welcome'.tr} $name 👋',
-            style: context.colors.h2.copyWith(fontSize: 16),
+    final c = context.colors;
+    final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
+    final upcoming = schedule.where((s) => !s.isToday || s.isOngoing || s.isLive).toList();
+    final items = [
+      for (final s in today)
+        HomeAgendaItem(
+          start: AppTime.time(teacherSessionUtc(s, s.startTime)),
+          end: AppTime.time(teacherSessionUtc(s, s.endTime)),
+          startMin: _wallMin(teacherSessionUtc(s, s.startTime)),
+          endMin: _wallMin(teacherSessionUtc(s, s.endTime)),
+          live: s.isOngoing || s.isLive,
+          title: s.courseName,
+          subtitle: s.maxStudents == null ? null : 'home_capacity'.tr.replaceAll('{n}', '${s.maxStudents}'),
+          onTap: () => onOpenCourseId(s.courseId),
+        ),
+    ];
+    int p(String k) => pending[k] ?? 0;
+    var i = 1;
+    Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // ── hero: the teaching day
+      enter(loading
+          ? const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: AppShimmer(child: AppSkeletonBox(height: 220, radius: 28)))
+          : _TeachingDayHero(items: items, stats: stats, onTap: () => onTab(2))),
+      const SizedBox(height: 28),
+
+      // ── what needs you
+      enter(HomeSectionTitle('home_needs_you'.tr,
+          count: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests'))),
+      enter(HomeActionGrid(children: [
+        const HomeTodoCard(),
+        HomeActionCard(
+          icon: Icons.how_to_reg_rounded,
+          title: 'home_t_attendance'.tr,
+          subtitle: 'home_t_attendance_hint'.tr,
+          count: p('attendance_missing'),
+          tone: c.warning,
+          onTap: () => onTab(1),
+        ),
+        HomeActionCard(
+          icon: Icons.grading_rounded,
+          title: 'home_t_grading'.tr,
+          subtitle: 'home_t_grading_hint'.tr,
+          count: p('grading'),
+          tone: c.purple,
+          onTap: () => onTab(1),
+        ),
+        HomeActionCard(
+          icon: Icons.upload_file_rounded,
+          title: 'home_t_material'.tr,
+          subtitle: 'home_t_material_hint'.tr,
+          count: p('materials_missing'),
+          tone: c.accent2,
+          onTap: () => onTab(1),
+        ),
+        HomeActionCard(
+          icon: Icons.person_add_alt_1_rounded,
+          title: 'home_t_requests'.tr,
+          subtitle: 'home_t_requests_hint'.tr,
+          count: p('enrollment_requests'),
+          tone: c.primary,
+          onTap: () => onTab(1),
+        ),
+      ])),
+      const SizedBox(height: 28),
+
+      // ── today
+      enter(HomeSectionTitle('home_today_sessions'.tr, count: items.length, actionLabel: 'home_full_timetable'.tr, onAction: () => onTab(2))),
+      enter(HomeAgenda(
+        loading: loading,
+        items: items,
+        emptyTitle: 'home_no_sessions_today'.tr,
+        emptyMessage: 'home_no_sessions_today_hint'.tr,
+        emptyActionLabel: 'home_full_timetable'.tr,
+        onEmptyAction: () => onTab(2),
+      )),
+      const SizedBox(height: 28),
+
+      // ── shortcuts
+      enter(HomeShortcuts(items: [
+        HomeShortcut(icon: Icons.menu_book_rounded, label: 'my_courses'.tr, onTap: () => onTab(1), featureKey: 'teacher_tab_my_courses'),
+        HomeShortcut(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, onTap: () => onTab(2), featureKey: 'teacher_tab_my_schedule'),
+        HomeShortcut(icon: Icons.insights_rounded, label: 'analysis'.tr, onTap: () => onTab(3), featureKey: 'teacher_tab_analysis'),
+        HomeShortcut(icon: Icons.add_circle_outline_rounded, label: 'hs_add_course'.tr, onTap: onNewCourse),
+      ])),
+      const SizedBox(height: 28),
+
+      // ── upcoming (live queue: start / join + countdowns)
+      if (!loading && upcoming.isNotEmpty) ...[
+        HomeSectionTitle('hs_upcoming'.tr, count: upcoming.length, actionLabel: 'show_all'.tr, onAction: () => onTab(2)),
+        ParentComponent(
+          child: ContentBox(key: const ValueKey('teacher_home_schedule'), child: ScheduleQueueList(sessions: upcoming)),
+        ),
+        const SizedBox(height: 28),
+      ],
+
+      // ── courses
+      HomeSectionTitle('my_courses'.tr, count: courses.length, actionLabel: 'show_all'.tr, onAction: () => onTab(1)),
+      if (loading)
+        const CoursesShimmer(count: 4)
+      else if (courses.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: AppEmpty(
+            icon: Icons.auto_stories_rounded,
+            title: 'home_t_no_courses'.tr,
+            message: 'home_t_no_courses_hint'.tr,
+            actionLabel: 'hs_add_course'.tr,
+            onAction: onNewCourse,
           ),
-        ],
-      ),
-    );
+        )
+      else
+        ParentComponent(
+          child: ContentBox(
+            key: const ValueKey('teacher_home_courses_row'),
+            child: HomeCourseList(
+              courses: courses.take(8).map((e) => e.toCourseModel).toList(),
+              isTeacher: true,
+              onTap: (CourseModel m) => onOpenCourse(m.toTeacherModel),
+              pageName: 'teacher-home-my-courses',
+              hasMore: false,
+            ),
+          ),
+        ),
+      const SizedBox(height: 24),
+
+      if (showFeeds) ...[
+        const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
+        const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+        const ParentComponent(
+          child: ContentBox(key: ValueKey('teacher_home_org'), padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix()),
+        ),
+      ],
+      const SizedBox(height: 36),
+    ]);
   }
 }
 
-// ── Mobile top bar ────────────────────────────────────────────────────────────
+/// The instructor's hero: how many sessions today, what is next, the day as a ribbon, three key figures.
+class _TeachingDayHero extends StatelessWidget {
+  const _TeachingDayHero({required this.items, required this.stats, required this.onTap});
+  final List<HomeAgendaItem> items;
+  final TeacherStats stats;
+  final VoidCallback onTap;
 
-class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final unread = context.watch<NotificationsProvider>().unreadCount;
-
-    final name = context.watch<MyAuthProvider>().currentUser?.name ?? 'sir'.tr;
-    final initial = name.isNotEmpty ? name[0] : '؟';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: context.colors.primaryGradient,
-              boxShadow: [
-                BoxShadow(
-                  color: context.colors.primary.withValues(alpha: 0.38),
-                  blurRadius: 14,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                fontFamily: 'bahji',
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
+    final on = homeOnHero(context);
+    final now = homeNow();
+    final nowMin = now.hour * 60 + now.minute;
+    final live = items.where((x) => x.live).firstOrNull;
+    final next = live ?? items.where((x) => (x.startMin ?? -1) > nowMin).firstOrNull;
+    final String line;
+    if (items.isEmpty) {
+      line = 'home_t_free_day'.tr;
+    } else if (live != null) {
+      line = '${'home_live'.tr} · ${live.title}';
+    } else if (next != null) {
+      line = '${'home_next'.tr} · ${next.title} · ${next.start}';
+    } else {
+      line = 'home_t_day_done'.tr;
+    }
+    return HomeHeroCard(
+      onTap: onTap,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          HomeHeroTag('home_today'.tr, icon: Icons.wb_sunny_rounded),
+          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'hs_good_morning'.tr,
-                  style: context.colors.caption.copyWith(fontSize: 12),
-                ),
-                Text(name, style: context.colors.h2.copyWith(fontSize: 18)),
-              ],
+            child: Text(AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: appText(12, w: FontWeight.w600, c: on.withValues(alpha: 0.85))),
+          ),
+        ]),
+        const SizedBox(height: 14),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Text('${items.length}', style: appText(44, w: FontWeight.w900, c: on, h: 1)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text('home_t_sessions_today'.tr,
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: on, h: 1.2)),
             ),
           ),
-          // Notification bell
-          NotificationIcon(unreadCount: unread),
-        ],
-      ),
+        ]),
+        const SizedBox(height: 6),
+        Text(line, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: on.withValues(alpha: 0.9))),
+        const SizedBox(height: 16),
+        HomeDayRibbon(items: items, nowMin: nowMin),
+        const SizedBox(height: 16),
+        Row(children: [
+          Expanded(child: HomeHeroFigure(value: '${stats.totalStudents}', label: 'home_students'.tr)),
+          Expanded(child: HomeHeroFigure(value: '${stats.totalCourses}', label: 'courses'.tr)),
+          Expanded(child: HomeHeroFigure(value: stats.overallRating.toStringAsFixed(1), label: 'home_rating'.tr)),
+        ]),
+      ]),
     );
   }
 }
@@ -364,25 +465,6 @@ class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
   );
 }
 
-class _StatsShimmer extends StatelessWidget {
-  const _StatsShimmer();
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: List.generate(
-      3,
-          (i) => Expanded(
-        child: Padding(
-          padding: EdgeInsets.only(left: i < 2 ? 12 : 0),
-          child: const Shimmer(width: double.infinity, height: 90),
-        ),
-      ),
-    ),
-  );
-}
-
-// `CoursesShimmer` (horizontal-row shimmer, above) is what the home screen
-// uses while loading — matching the horizontally-scrolling course row below.
 class CoursesShimmer extends StatelessWidget {
   const CoursesShimmer({super.key, this.width, this.height, this.count});
 
@@ -400,189 +482,6 @@ class CoursesShimmer extends StatelessWidget {
       separatorBuilder: (_, _) => const SizedBox(width: 14),
       itemBuilder: (_, _) =>
           Shimmer(width: width ?? 170, height: height ?? 200),
-    ),
-  );
-}
-
-class _TeacherHomeCourseTile extends StatefulWidget {
-  final TeacherCourse course;
-
-  const _TeacherHomeCourseTile({required this.course});
-
-  @override
-  State<_TeacherHomeCourseTile> createState() => _TeacherHomeCourseTileState();
-}
-
-class _TeacherHomeCourseTileState extends State<_TeacherHomeCourseTile> {
-  bool _opening = false;
-
-  Future<void> _open() async {
-    if (_opening) return;
-    setState(() => _opening = true);
-
-    final c = widget.course;
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) => TeacherCourseScreenProvider(initialCourse: c),
-          child: TeacherSessionsScreen(),
-        ),
-      ),
-    );
-
-    if (mounted) setState(() => _opening = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = widget.course;
-    final isDraft = !c.isPublished;
-
-    return GestureDetector(
-      onTap: _open,
-      child: Container(
-        decoration: BoxDecoration(
-          color: context.colors.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AspectRatio(
-                  aspectRatio: 16 / 10,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      AppNetworkImage(
-                        url: c.imageUrl,
-                        width: double.infinity,
-                        borderRadius: BorderRadius.zero,
-                        heroTag: 'teacher-home-${c.id}',
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 7,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDraft
-                                ? const Color(0xFFf59e0b)
-                                : context.colors.accent2,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            isDraft ? 'status_draft'.tr : 'status_published'.tr,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'bahji',
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        (AppConfig.lang=='ar'? c.titleAr:c.titleEn)??'',
-                        style: context.colors.h3.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.people_alt_rounded,
-                            size: 12,
-                            color: context.colors.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${c.studentsCount}',
-                            style: context.colors.caption.copyWith(
-                              fontSize: 11,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Icon(
-                            Icons.video_library_rounded,
-                            size: 12,
-                            color: context.colors.textMedium,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${c.sessionsCount}',
-                            style: context.colors.caption.copyWith(
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-
-            // ── Tap-loading overlay — blocks a second tap while the
-            //    sessions screen is opening/showing ────────────────────────
-            if (_opening)
-              Container(
-                color: Colors.black.withValues(alpha: 0.28),
-                alignment: Alignment.center,
-                child: const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    valueColor: AlwaysStoppedAnimation(Colors.white),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScheduleShimmer extends StatelessWidget {
-  const _ScheduleShimmer();
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: List.generate(
-      2,
-          (i) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-        child: const Shimmer(width: double.infinity, height: 150),
-      ),
     ),
   );
 }
@@ -733,43 +632,3 @@ class _StatCard extends StatelessWidget {
   );
 }
 
-// ── Add course button ─────────────────────────────────────────────────────────
-
-class _AddCourseButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
-    child: Container(
-      height: 54,
-      decoration: BoxDecoration(
-        color: context.colors.accent2.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.40),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.add_circle_outline_rounded, color: Colors.white, size: 22),
-          const SizedBox(width: 10),
-          Text(
-            'hs_add_course'.tr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              fontFamily: 'bahji',
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}

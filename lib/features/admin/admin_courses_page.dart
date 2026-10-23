@@ -406,6 +406,7 @@ class _CourseDetailState extends State<_CourseDetail> {
         builder: (ctx, setS) => Directionality(
           textDirection: dir,
           child: AlertDialog(
+            scrollable: true,
             title: Text('admin_change_access_code'.tr,
                 style: const TextStyle(fontFamily: 'tajawal')),
             content: Column(

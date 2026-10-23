@@ -131,6 +131,20 @@ void main() {
       expect(unitNeedsCode({'method': 'auto', 'code_required': false}), isFalse);
       expect(unitNeedsCode({'method': 'approval'}), isFalse);
     });
+
+    test('code_req needs a code AND an approver, and sends the approver fields', () {
+      expect(unitNeedsCode({'method': 'code_req'}), isTrue);
+      expect(unitNeedsApproval({'method': 'code_req'}), isTrue);
+      expect(unitNeedsApproval({'method': 'code'}), isFalse);
+      final d = JoinPolicyDraft(method: 'code_req', approver: 'assistants', assistantIds: {7, 3});
+      expect(d.needsApprover, isTrue);
+      final b = d.toBody();
+      expect(b['method'], 'code_req');
+      expect(b['approver'], 'assistants');
+      expect(b['assistant_ids'], [3, 7]);
+      expect(JoinPolicyDraft(method: 'code_req', approver: 'assistants').validate(), 'Pick at least one assistant');
+      expect(orgCodeText('request_code_required'), isNot('request_code_required'));
+    });
   });
 
   group('schedule draft', () {

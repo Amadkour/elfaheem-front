@@ -159,6 +159,8 @@ Map<String, String> _codeTexts() => {
       'code_exhausted': t('استُنفد عدد استخدامات الكود', 'The code has no uses left'),
       'code_other_unit': t('هذا الكود لوحدة أخرى', 'This code belongs to another unit'),
       'code_required': t('الانضمام لهذه الوحدة بكود فقط', 'This unit is joined with a code only'),
+      'request_code_required': t('أدخل كود الانضمام الصحيح لإرسال طلبك — يلزم الكود وموافقة الإدارة معاً',
+          'Enter a valid join code to send your request — both a code and an approval are needed'),
       'not_eligible': t('لا تنطبق عليك شروط الانضمام', 'You don\'t meet the joining conditions'),
       'already_pending': t('لديك طلب قيد المراجعة بالفعل', 'You already have a pending request'),
       'already_in_program': t('أنت مسجّل في قسم علمي آخر', 'You are already in another academic department'),
@@ -199,6 +201,9 @@ Map<String, String> _codeTexts() => {
       'lab_needs_assistant': t('السكشن يحتاج معيداً (أو اسمح للمدرس بتدريسه من الإعدادات)', 'The lab needs an assistant (or allow teachers to teach labs in settings)'),
       // schedules
       'bad_dates': t('تاريخ البداية يجب أن يسبق النهاية', 'The start date must be before the end'),
+      'term_exists': t('هذا الفصل موجود بالفعل لهذا العام', 'This term already exists for the year'),
+      'term_overlap': t('يتداخل مع فصل موجود', 'Overlaps an existing term'),
+      'bad_draft': t('المسودة غير صالحة', 'The draft is not valid'),
       'outside_term': t('التواريخ خارج حدود الفصل الدراسي', 'The dates are outside the term'),
       'bad_days': t('أيام غير صحيحة', 'Invalid days'),
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),
@@ -340,6 +345,7 @@ Map<String, String> joinMethodLabels() => {
       'auto': t('قبول تلقائي', 'Automatic'),
       'approval': t('بموافقة', 'With approval'),
       'code': t('بكود دعوة', 'Invitation code'),
+      'code_req': t('كود + طلب وموافقة', 'Code + request'),
     };
 
 String joinMethodHelp(String m) => switch (m) {
@@ -348,6 +354,8 @@ String joinMethodHelp(String m) => switch (m) {
       'approval' => t('يصل الطلب للمعتمد المحدد بالأسفل ليقبله أو يرفضه.', 'The request goes to the approver below, who accepts or rejects it.'),
       'code' => t('ينضم من لديه كود صالح وتنطبق عليه الشروط. أدِر الأكواد من تبويب "الأكواد".',
           'People with a valid code who meet the conditions join. Manage codes in the "Codes" tab.'),
+      'code_req' => t('يلزم كود صالح وطلب معاً: الكود يرسل الطلب فقط، ثم يقبله المعتمد أو يرفضه.',
+          'A valid code AND a request: the code only sends the request, then the approver accepts or rejects it.'),
       _ => t('لا أحد يستطيع طلب الانضمام الآن.', 'Nobody can ask to join right now.'),
     };
 
@@ -500,7 +508,8 @@ class JoinPolicyDraft {
         fields: [for (final f in asMapList(p['fields'])) Map<String, dynamic>.from(f)],
       );
 
-  bool get needsApprover => method == 'approval';
+  /// `approval` and `code_req` (a valid code AND an approval) both need an approver.
+  bool get needsApprover => method == 'approval' || method == 'code_req';
 
   /// Audience narrowing by cohort / level only makes sense for students.
   bool get targetsStudents => roles.contains('student');
@@ -546,8 +555,13 @@ class JoinPolicyDraft {
   }
 }
 
-/// The code a member must type: only when the method is `code` (or the server says one is required).
-bool unitNeedsCode(Map<String, dynamic> policy) => policy['code_required'] == true || policy['method'] == 'code';
+/// The code a member must type: when the method is `code` or `code_req` (or the server says one is required).
+bool unitNeedsCode(Map<String, dynamic> policy) =>
+    policy['code_required'] == true || policy['method'] == 'code' || policy['method'] == 'code_req';
+
+/// `code_req`: the code only submits the request — an approver still decides.
+bool unitNeedsApproval(Map<String, dynamic> policy) =>
+    policy['needs_approval'] == true || policy['method'] == 'approval' || policy['method'] == 'code_req';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Schedule draft

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/student/models.dart';
@@ -27,6 +28,7 @@ class TopRouteObserver extends NavigatorObserver {
       _awaitingAutoRoute = false;
     }
     _refreshShortcut();
+    AttentionService.instance.onRouteChanged();   // badges: a new screen / back from one
   }
 
   @override
@@ -39,6 +41,7 @@ class TopRouteObserver extends NavigatorObserver {
     if (identical(route, _autoRoute)) _autoRoute = null;
     _leaveIfReady();
     _refreshShortcut();
+    AttentionService.instance.onRouteChanged();
   }
 
   @override

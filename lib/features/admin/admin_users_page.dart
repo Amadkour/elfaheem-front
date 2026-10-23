@@ -804,6 +804,7 @@ Future<void> _grantDialog(
       builder: (ctx, setS) => Directionality(
         textDirection: dir,
         child: AlertDialog(
+          scrollable: true,
           title: Text(
             'admin_grant_subscription'.tr,
             style: const TextStyle(fontFamily: 'tajawal'),

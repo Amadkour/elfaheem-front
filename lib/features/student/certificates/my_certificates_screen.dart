@@ -317,6 +317,7 @@ class _Actions extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
+        scrollable: true,
         title: Text('request_certificate'.tr),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('request_certificate_hint'.tr),

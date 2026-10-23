@@ -559,10 +559,15 @@ class TeacherDashboardData {
   final List<TeacherCourse> courses;
   final List<ScheduleSession> schedule;
 
+  /// What waits for the teacher (home "pending" cards): attendance_missing · materials_missing · grading ·
+  /// enrollment_requests. Empty on an older server.
+  final Map<String, int> pending;
+
   const TeacherDashboardData({
     required this.stats,
     required this.courses,
     required this.schedule,
+    this.pending = const {},
   });
 
   factory TeacherDashboardData.fromJson(Map<String, dynamic> j) {
@@ -575,6 +580,11 @@ class TeacherDashboardData {
       (j['schedule'] as List? ?? j['upcoming_sessions'] as List? ?? [])
           .map((e) => ScheduleSession.fromJson(e as Map<String, dynamic>))
           .toList(),
+      pending: {
+        if (j['pending'] is Map)
+          for (final e in (j['pending'] as Map).entries)
+            if (e.value is num) '${e.key}': (e.value as num).toInt(),
+      },
     );
   }
 }

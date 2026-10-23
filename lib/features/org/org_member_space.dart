@@ -606,7 +606,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
   Future<void> _rate() async {
     int stars = 5;
     final note = TextEditingController();
-    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => Padding(
+    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('كيف كانت تجربتك؟', 'How was your experience?')),

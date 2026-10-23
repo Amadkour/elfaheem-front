@@ -509,7 +509,7 @@ class AdminAdsPage extends StatelessWidget {
     bool enabled = s['teacher_ads_enabled'] == true, approval = s['requires_approval'] != false;
     final price = TextEditingController(text: '${s['price_per_day'] ?? 0}');
     final days = TextEditingController(text: '${s['max_days'] ?? 30}');
-    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => Padding(
+    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('إعلانات المعلمين', 'Teacher ads')),

@@ -1437,7 +1437,7 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
             child: Material(
               color: c.cardBg,
               borderRadius: BorderRadius.circular(24),
-              child: Padding(
+              child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(8, 14, 8, 10),
                 child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Padding(
@@ -2354,7 +2354,7 @@ class _ValueCell extends StatelessWidget {
               child: Material(
                 color: c.cardBg,
                 borderRadius: BorderRadius.circular(24),
-                child: Padding(
+                child: SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                   child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [

@@ -35,6 +35,8 @@ import 'components/content.dart';
 import 'components/share_link.dart';
 import 'components/student_course_hero.dart';
 import 'course_detail_provider.dart';
+import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner;
 import 'growth_tr.dart';
 
 /// Below this width we use the single-column (phone/tablet) layout.
@@ -184,6 +186,20 @@ List<Widget> _contentSlivers(
   final highlights = _highlights(context, c);
   return [
     const SliverToBoxAdapter(child: _MetaRow()),
+    if (c.isEnrolled && int.tryParse(c.id) != null) // course profile: progress per part, attendance, certificates, archive
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: AppBanner(
+            icon: Icons.dashboard_customize_rounded,
+            text: gt('ملف المقرر: تقدّمك وحضورك وشهاداتك', 'Course profile: your progress, attendance and certificates'),
+            action: TextButton(
+              onPressed: () => openCourseProfile(context, int.parse(c.id)),
+              child: Text(gt('فتح', 'Open')),
+            ),
+          ),
+        ),
+      ),
     if (showChips && highlights.isNotEmpty)
       SliverToBoxAdapter(
         child: Padding(

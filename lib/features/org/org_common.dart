@@ -46,6 +46,7 @@ Map<String, String> joinModeLabels() => {
       'open': t('مفتوح للجميع', 'Open to everyone'),
       'approval': t('بموافقة المدير', 'Needs approval'),
       'code': t('بكود فقط', 'Code only'),
+      'code_req': t('كود + طلب وموافقة', 'Code + request'),
       'closed': t('مغلق', 'Closed'),
     };
 
@@ -204,7 +205,7 @@ class OrgHero extends StatelessWidget {
 
 /// Excel · PDF · Word — one sheet for every organization export.
 Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>? query]) async {
-  final fmt = await showAdminSheet<String>(context, (ctx) => Padding(
+  final fmt = await showAdminSheet<String>(context, (ctx) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SheetHeader(t('تصدير بصيغة', 'Export as')),

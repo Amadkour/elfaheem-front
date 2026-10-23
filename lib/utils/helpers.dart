@@ -183,6 +183,7 @@ class Helpers {
     builder: (_) => Directionality(
       textDirection: Helpers.pageDirection,
       child: AlertDialog(
+        scrollable: true,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),

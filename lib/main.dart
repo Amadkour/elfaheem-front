@@ -20,6 +20,7 @@ import 'package:flutter_education_app/url_strategy_stub.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart' show AppScrollBehavior;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
@@ -45,6 +46,7 @@ import 'features/shared/guest/guest_state.dart';
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
+import 'features/shared/course_profile/course_profile_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
@@ -462,6 +464,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           navigatorObservers: [topRouteObserver],
           title: appName,
           debugShowCheckedModeBanner: false,
+          scrollBehavior: const AppScrollBehavior(), // mouse / trackpad can drag every scrollable (web, desktop)
           theme: tc.materialTheme(dark: false),
           darkTheme: tc.materialTheme(dark: true),
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
@@ -603,6 +606,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         );
       case '/notifications':
         return _fade(const _Guard(child: NotificationsScreen()), settings);
+      case '/course-profile': // arguments: course id (int) — one profile page for every role
+        final cid = settings.arguments;
+        if (cid is! int) return _fade(const _Guard(child: _RedirectHome()), settings);
+        return _fade(_Guard(child: CourseProfileScreen(courseId: cid)), settings);
       default:
         debugPrint(
           'Unknown route: ${settings.name} args=${settings.arguments}',

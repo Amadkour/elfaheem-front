@@ -373,6 +373,22 @@ class OrgScheduleProvider extends AdminBase {
     });
   }
 
+  /// Saves settings.rules ({key: locked|flexible}) on the timetable. PUT replaces the whole timetable, so every field
+  /// is sent as stored (course_ids null = every course stays null).
+  Future<OrgCall> saveRules(Map<String, String> rules) async {
+    final s = schedule!;
+    final id = asInt(s['id']);
+    final body = {
+      ...ScheduleDraft.fromJson(s).toBody(),
+      'course_ids': s['course_ids'],
+      'settings': {...asMap(s['settings']), 'rules': rules},
+      'expected_version': ?s['version'],
+    };
+    final r = await orgCall(() => api.put('$base/schedules/$id', body: body), ok: t('حُفظت القواعد', 'Rules saved'), quiet: true);
+    if (r.ok) await open(id);
+    return r;
+  }
+
   /// Accept (keep) or reject (remove) the sessions of generated blocks that broke a flexible rule.
   Future<OrgCall> decideProposals(List<String> blockIds, {required bool accept}) async {
     final id = schedule!['id'];
@@ -669,6 +685,12 @@ class OrgScheduleProvider extends AdminBase {
       toast(on ? t('تم نشر الجدول للجميع', 'Timetable published') : t('تم إيقاف النشر', 'Unpublished'));
       if (r is Map) _apply({...r, 'items': slots});
       await loadSetup();
+      if (!on) {
+        // back to a plain Draft: fresh slots / result / conflicts and no leftover run, so Create and Publish work again
+        genRun = null;
+        await open(asInt(id));
+        await resumeRunIfAny();
+      }
       return true;
     } on ApiException catch (e) {
       toast(e.message, error: true);

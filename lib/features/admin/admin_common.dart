@@ -333,7 +333,15 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
               ),
             ),
             // bottom safe area: content never sits under the home indicator / gesture bar
-            Flexible(child: SafeArea(top: false, child: builder(ctx))),
+            // The sheet is already lifted above the keyboard, so the content sees no view insets
+            // (content that padded itself by viewInsets again got squeezed twice and overflowed).
+            Flexible(
+              child: MediaQuery.removeViewInsets(
+                context: ctx,
+                removeBottom: true,
+                child: SafeArea(top: false, child: Builder(builder: builder)),
+              ),
+            ),
           ]),
           ),
         )),
