@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
+import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
 import 'view_as_state.dart';
@@ -51,6 +52,9 @@ class AppNavigator {
         return;
       case 'subscription':
         await nav.pushNamed('/subscription');
+        return;
+      case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
+        await nav.push(MaterialPageRoute(builder: (_) => const MyExamsScreen()));
         return;
       case 'profile':
         await nav.pushNamed('/profile');

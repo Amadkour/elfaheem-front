@@ -86,6 +86,8 @@ dependencies:
   device_info_plus: ^13.3.0
   uuid: any
   qr_flutter: ^4.1.0
+  # Camera QR scanner for organization join codes (org_join_scan.dart).
+  mobile_scanner: ^7.4.2
   # Relay-based offline attendance: short-range link (BLE + Wi-Fi Direct) between an offline
   # student and an online classmate. Android only; needs Google Play services.
   nearby_connections: ^4.0.0

@@ -14,6 +14,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../org/org_levels_pages.dart' show showEnrollBlock;
 import 'enrollment_models.dart';
 import 'enrollment_widgets.dart';
 import 'payment_flow_provider.dart' show EnrollStep;
@@ -94,8 +95,18 @@ class _RoadmapBody extends StatelessWidget {
     // Paid courses in the bundle + card payments closed by the admin → can't check out.
     final blocked = quote != null && quote.payableCount > 0 && !p.cardAvailable;
 
+    // organization prerequisites (403 roadmap_prerequisites): explain once in the enrolment-blocked sheet
+    final prereq = p.block;
+    if (prereq != null && p.takeBlockToShow()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) showEnrollBlock(context, prereq);
+      });
+    }
+
     Widget content;
-    if (p.loadFailed) {
+    if (prereq != null) {
+      content = _PrereqBlocked(reason: prereq);
+    } else if (p.loadFailed) {
       content = Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text('roadmap_load_failed'.tr, style: c.h3),
@@ -144,7 +155,7 @@ class _RoadmapBody extends StatelessWidget {
           EnrollConfirmBar(
             label: _label(quote, p.currencySymbol),
             loading: p.isLoading,
-            onTap: (quote.nothingToDo || blocked) ? null : () => p.confirm(context),
+            onTap: (quote.nothingToDo || blocked || prereq != null) ? null : () => p.confirm(context),
           ),
       ]),
     );
@@ -155,6 +166,43 @@ class _RoadmapBody extends StatelessWidget {
     final fees = q.fees;
     if (fees == null) return '${'roadmap_enroll_free_prefix'.tr} ${q.freeCount} ${'roadmap_course_unit'.tr}';
     return '${'roadmap_enroll_and_pay'.tr} ${fees.fmt(fees.total)} $symbol';
+  }
+}
+
+class _PrereqBlocked extends StatelessWidget {
+  final Map<String, dynamic> reason;
+  const _PrereqBlocked({required this.reason});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final blocked = (reason['blocked'] as List?)?.length ?? 0;
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(color: c.warning.withValues(alpha: .12), shape: BoxShape.circle),
+            child: Icon(Icons.lock_clock_rounded, color: c.warning, size: 36),
+          ),
+          const SizedBox(height: 14),
+          Text('roadmap_prereq_title'.tr, style: c.h3, textAlign: TextAlign.center),
+          const SizedBox(height: 6),
+          Text(
+            blocked > 0 ? '${'roadmap_prereq_body'.tr} ($blocked)' : 'roadmap_prereq_body'.tr,
+            style: c.caption.copyWith(height: 1.6),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: 220,
+            child: SoftOutlineButton(label: 'roadmap_prereq_see_why'.tr, onTap: () => showEnrollBlock(context, reason)),
+          ),
+        ]),
+      ),
+    );
   }
 }
 

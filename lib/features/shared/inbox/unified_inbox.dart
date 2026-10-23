@@ -38,6 +38,7 @@ import '../../org/org_academic_pages.dart' show MyAcademicPathPage;
 import '../../org/org_availability_pages.dart' show AvailabilityRequestScreen;
 import '../../org/org_member_dashboard.dart' show openOrgApproval;
 import '../../org/org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
+import '../../org/org_my_exams.dart' show MyExamsScreen;
 import '../../org/org_terms_pages.dart' show TermCard;
 import '../../org/org_v3.dart' show orgParseUtc;
 import '../../parent/parent_dashboard_screen.dart' show ParentTabProvider;
@@ -92,7 +93,7 @@ String inboxUrgency(InboxItem x, DateTime now) {
   if (x.kind == 'approval' && x.serverUrgency == 'overdue') return 'overdue';
   if (due != null) {
     final left = due.difference(now);
-    if (left.isNegative) return x.kind == 'ad' ? 'normal' : 'overdue';
+    if (left.isNegative) return x.kind == 'ad' || x.kind == 'exam' ? 'normal' : 'overdue'; // an exam that started is on now
     if (left <= const Duration(hours: 72)) return 'due_soon';
   }
   final created = x.createdAt;
@@ -140,6 +141,7 @@ String? inboxCountdown(InboxItem x, DateTime now) {
   if (due == null) return null;
   final left = due.difference(now);
   if (x.kind == 'ad') return left.isNegative ? null : 'inbox_ends_in'.tr.replaceAll('{t}', inboxSpan(left));
+  if (x.kind == 'exam') return left.isNegative ? null : 'inbox_starts_in'.tr.replaceAll('{t}', inboxSpan(left));
   return left.isNegative
       ? 'inbox_overdue_by'.tr.replaceAll('{t}', inboxSpan(left))
       : 'inbox_due_in'.tr.replaceAll('{t}', inboxSpan(left));
@@ -258,6 +260,7 @@ IconData _kindIcon(InboxItem x) => switch (x.kind) {
       'announcement' => x.data['is_pinned'] == true ? Icons.push_pin_rounded : Icons.campaign_rounded,
       'ad' => Icons.local_offer_rounded,
       'parent_link' => Icons.family_restroom_rounded,
+      'exam' => Icons.event_note_rounded,
       _ => Icons.notifications_rounded,
     };
 
@@ -273,11 +276,18 @@ String _kindLabel(InboxItem x) => switch (x.kind) {
       'announcement' => 'inbox_kind_announcement'.tr,
       'ad' => 'inbox_kind_ad'.tr,
       'parent_link' => 'inbox_kind_parent_link'.tr,
+      'exam' => 'inbox_kind_exam'.tr,
       _ => '',
     };
 
 /// Approvals are counted server-side; the human sentence is built here (both languages).
 String _title(InboxItem x) {
+  if (x.kind == 'exam') {
+    final m = asMap(x.data['course']);
+    final ar = '${m['name_ar'] ?? ''}', en = '${m['name_en'] ?? ''}';
+    final name = AppConfig.lang == 'ar' ? (ar.isNotEmpty ? ar : en) : (en.isNotEmpty ? en : ar);
+    return name.isEmpty ? x.title : name;
+  }
   if (x.kind != 'approval') return x.title;
   final n = '${asInt(x.data['count'])}';
   final key = switch ('${x.action['what']}') {
@@ -296,6 +306,7 @@ String _title(InboxItem x) {
     'approved' => ('inbox_status_approved'.tr, c.success),
     'rejected' => ('inbox_status_rejected'.tr, c.danger),
     'resolved' || 'closed' => ('inbox_status_closed'.tr, c.success),
+    'invigilator' when x.kind == 'exam' => ('inbox_exam_invigilate'.tr, c.primary),
     _ => null,
   };
 }
@@ -395,7 +406,7 @@ class InboxCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
                       if (overdue) AppTag('inbox_overdue'.tr, c.danger, icon: Icons.error_outline_rounded),
-                      if (u == 'due_soon' && x.kind != 'ad') AppTag('inbox_due_soon'.tr, c.warning, icon: Icons.schedule_rounded),
+                      if (u == 'due_soon' && x.kind != 'ad' && x.kind != 'exam') AppTag('inbox_due_soon'.tr, c.warning, icon: Icons.schedule_rounded),
                       if (x.required && x.segment == InboxSegment.todo) AppTag('inbox_mandatory'.tr, c.danger, icon: Icons.priority_high_rounded),
                       if (status != null) AppTag(status.$1, status.$2),
                       if (x.kind == 'approval' && asInt(x.data['assigned_to_me']) > 0)
@@ -845,6 +856,9 @@ Future<bool> openInboxItem(BuildContext context, InboxItem x) async {
       return false;
     case 'ad':
       await _openAd(context, x);
+      return false;
+    case 'exam':
+      await nav.push(MaterialPageRoute(builder: (_) => MyExamsScreen(orgId: a['org_id'] == null ? null : asInt(a['org_id']))));
       return false;
     case 'parent_link':
       // inside the parent dashboard → its "Link" tab; from the full inbox page → back to the dashboard

@@ -1061,37 +1061,74 @@ class _ProgramReadiness extends StatelessWidget {
 }
 
 /// Friendly "why can't I join this course" sheet. Returns after the student closes it.
+/// Also the roadmap purchase (`roadmap_prerequisites`): one card per blocked course with its own reasons.
 Future<void> showEnrollBlock(BuildContext context, Map<String, dynamic> reason) => showAppSheet<void>(context, (ctx) {
       final c = ctx.colors;
-      final prog = asMap(reason['program']);
       final names = asMap(reason['course_names']);
-      final rules = [for (final r in asMapList(reason['unmet'])) RuleResult.fromJson(r)];
-      final missing = ((reason['missing_course_ids'] as List?) ?? const []).map((e) => asInt(e)).toList();
+      final roadmap = reason['code'] == 'roadmap_prerequisites';
+      final blocked = asMapList(reason['blocked']);
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          AppSheetHeader(t('خطوة قبل التسجيل', 'One step before you join')),
-          AppBanner(
-            icon: Icons.lock_clock_rounded,
-            color: c.warning,
-            text: reason['code'] == 'department_prerequisites'
-                ? t('هذا المقرر تابع لقسم ${prog['code'] ?? ''} — استوفِ متطلبات القسم أولاً، حتى لو انتقلت لمستوى أعلى.',
-                    'This course belongs to the ${prog['code'] ?? ''} department — meet its prerequisites first, even if your level moved up.')
-                : t('أكمل المقررات السابقة المطلوبة لهذا المقرر أولاً.', 'Finish the courses this one requires first.'),
-          ),
-          const SizedBox(height: 8),
-          for (final r in rules) _RuleRow(result: r, courses: names),
-          for (final id in missing)
-            Padding(
-              padding: const EdgeInsets.only(top: 6),
-              child: Row(children: [
-                Icon(Icons.radio_button_unchecked_rounded, size: 18, color: c.warning),
-                const SizedBox(width: 8),
-                Expanded(child: Text(_courseLabel(names, id), style: orgText(ctx, size: 12.5, w: FontWeight.w600))),
-              ]),
+          AppSheetHeader(roadmap ? t('خطوة قبل شراء المسار', 'One step before you buy this roadmap') : t('خطوة قبل التسجيل', 'One step before you join')),
+          if (!roadmap)
+            ..._blockDetails(ctx, reason, names)
+          else ...[
+            AppBanner(
+              icon: Icons.route_rounded,
+              color: c.warning,
+              text: t('${blocked.length} من مقررات هذا المسار لها متطلبات لم تستوفها بعد — لن يُخصم أي مبلغ قبل استيفائها.',
+                  '${blocked.length} course(s) in this roadmap have requirements you haven\'t met yet — nothing is charged until they\'re met.'),
             ),
+            const SizedBox(height: 8),
+            for (final b in blocked)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: AppCard(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      if ((b['code'] ?? '').toString().isNotEmpty) ...[AppBadgePill('${b['code']}', color: c.primary), const SizedBox(width: 8)],
+                      Expanded(
+                        child: Text(t('${b['name_ar'] ?? b['name_en']}', '${b['name_en'] ?? b['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(ctx, w: FontWeight.w800)),
+                      ),
+                      Icon(Icons.lock_rounded, size: 18, color: c.warning),
+                    ]),
+                    const SizedBox(height: 6),
+                    ..._blockDetails(ctx, asMap(b['reason']), {...names, ...asMap(asMap(b['reason'])['course_names'])}),
+                  ]),
+                ),
+              ),
+          ],
           const SizedBox(height: 16),
           AppPrimaryButton(label: t('حسناً', 'Got it'), onPressed: () => Navigator.pop(ctx)),
         ]),
       );
     });
+
+List<Widget> _blockDetails(BuildContext ctx, Map<String, dynamic> reason, Map<String, dynamic> names) {
+  final c = ctx.colors;
+  final prog = asMap(reason['program']);
+  final rules = [for (final r in asMapList(reason['unmet'])) RuleResult.fromJson(r)];
+  final missing = ((reason['missing_course_ids'] as List?) ?? const []).map((e) => asInt(e)).toList();
+  return [
+    AppBanner(
+      icon: Icons.lock_clock_rounded,
+      color: c.warning,
+      text: reason['code'] == 'department_prerequisites'
+          ? t('هذا المقرر تابع لقسم ${prog['code'] ?? ''} — استوفِ متطلبات القسم أولاً، حتى لو انتقلت لمستوى أعلى.',
+              'This course belongs to the ${prog['code'] ?? ''} department — meet its prerequisites first, even if your level moved up.')
+          : t('أكمل المقررات السابقة المطلوبة لهذا المقرر أولاً.', 'Finish the courses this one requires first.'),
+    ),
+    const SizedBox(height: 8),
+    for (final r in rules) _RuleRow(result: r, courses: names),
+    for (final id in missing)
+      Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(children: [
+          Icon(Icons.radio_button_unchecked_rounded, size: 18, color: c.warning),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_courseLabel(names, id), style: orgText(ctx, size: 12.5, w: FontWeight.w600))),
+        ]),
+      ),
+  ];
+}

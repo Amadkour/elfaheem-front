@@ -68,6 +68,7 @@ Map<String, String> _codeTexts() => {
       // prerequisites (every enrol path: join, paid checkout, staff / Excel enrolment)
       'course_prerequisites': t('أكمل المقررات السابقة المطلوبة لهذا المقرر أولاً', 'Complete the courses this course requires first'),
       'department_prerequisites': t('هذا المقرر تابع لقسم علمي له متطلبات لم تستوفها بعد', 'This course belongs to an academic department whose requirements you haven\'t met yet'),
+      'roadmap_prerequisites': t('بعض مقررات هذا المسار لها متطلبات لم تستوفها بعد', 'Some courses in this roadmap have requirements you haven\'t met yet'),
       'levels_inherited': t('المستويات موروثة من المؤسسة الأم — عدّلها هناك', 'Levels come from the parent organization — edit them there'),
       // announcements
       'ann_unavailable': t('الإعلان غير متاح', 'This announcement is not available'),

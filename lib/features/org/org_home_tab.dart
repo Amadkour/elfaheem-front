@@ -20,6 +20,7 @@ import 'org_availability_pages.dart' show AvailabilityRequestScreen;
 import 'org_common.dart';
 import 'org_departments_page.dart' show DeptLogo, featureLabels;
 import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace, showComplaintComposer;
+import 'org_my_exams.dart' show appToday, examPauseBanner, examPauseOn, examPausesOf;
 import 'org_providers.dart' show orgBase;
 import 'org_ui.dart';
 import 'home_org_mix.dart' show showPlatformRequirement;
@@ -135,6 +136,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
   Map<String, dynamic>? _mixData;
   int? _orgId;
   List<Map<String, dynamic>> _news = const [], _depts = const [], _week = const [], _extras = const [];
+  List<Map<String, dynamic>> _scheds = const []; // /schedule/me timetables (their exam_pauses)
   bool _loading = true;
 
   @override
@@ -165,6 +167,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
       _news = asMapList(res[0]?['items']).where((n) => asInt(asMap(n['organization'])['id'], id) == id).take(3).toList();
       _depts = asMapList(res[1]?['items']);
       _week = [for (final s in sched) ...asMapList(s['items'])];
+      _scheds = sched;
       _extras = [for (final s in sched) ...asMapList(s['extras'])];
       _loading = false;
     });
@@ -215,7 +218,13 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     if (org.isEmpty) return const SizedBox.shrink();
     final orgs = asMapList(_mixData?['organizations']);
     final req = asMapList(_mixData?['required']).where((r) => asInt(r['org_id'], _orgId ?? 0) == _orgId).toList();
-    final today = _week.where((x) => x['day'] == _today()).toList()..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
+    // weekly sessions of a timetable whose term is in a published exam window today are paused (member_exams.py)
+    final day = appToday();
+    final today = [
+      for (final s in _scheds)
+        if (examPauseOn(day, examPausesOf(s)) == null) ...asMapList(s['items']).where((x) => x['day'] == _today()),
+    ]..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
+    final pauses = {for (final s in _scheds) for (final p in examPausesOf(s)) asInt(p['exam_schedule_id']): p}.values.toList();
     final todayStr = DateTime.now().toIso8601String().substring(0, 10);
     final todayExtras = _extras.where((e) => e['date'] == todayStr).toList();
     final upcoming = _extras.where((e) => '${e['date']}'.compareTo(todayStr) > 0).take(3).toList();
@@ -284,6 +293,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
               // ── today ──
               _title(t('اليوم', 'Today'), Icons.today_rounded, c.primary,
                   action: _week.isEmpty ? null : (t('الأسبوع كاملاً', 'Full week'), () => _weekSheet(context))),
+              examPauseBanner(context, pauses),
               if (today.isEmpty && todayExtras.isEmpty)
                 _soft(Icons.wb_sunny_rounded, t('لا محاضرات اليوم — استمتع بيومك 🌿', 'No classes today — enjoy your day 🌿'))
               else ...[

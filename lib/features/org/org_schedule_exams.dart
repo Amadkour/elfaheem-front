@@ -19,6 +19,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart';
+import 'org_my_exams.dart' show examPauseText;
 import 'org_providers.dart';
 import 'org_schedule_copies.dart' show timetableNamesOf;
 import 'org_schedule_export.dart' show showExamExport;
@@ -379,6 +380,7 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
   final sittings = [for (final s in (existing?['sittings'] as List? ?? defaultSittings)) Map<String, dynamic>.from(s as Map)];
   bool cohorts = existing?['cohort_source'] == 'timetables';
   int? maxPerDay = existing?['max_per_day'] == null ? null : asInt(existing!['max_per_day']);
+  bool pauseWeekly = existing?['pause_weekly'] != false; // default on (server default too)
   final name = TextEditingController(text: '${existing?['name'] ?? ''}');
   bool busy = false;
   String? error;
@@ -442,6 +444,14 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
               value: cohorts,
               onChanged: (v) => set(() => cohorts = v),
             ),
+            AppSwitchTile(
+              icon: Icons.event_busy_rounded,
+              title: t('إيقاف المحاضرات الأسبوعية أثناء الامتحانات', 'Pause weekly classes during exams'),
+              subtitle: t('بعد النشر لا تُعقد محاضرات الجدول الأسبوعي لهذا الفصل في أيام فترة الامتحانات (دون حذف أي محاضرة).',
+                  'Once published, the weekly timetable of this term holds no classes on the dates of the exam window (nothing is deleted).'),
+              value: pauseWeekly,
+              onChanged: (v) => set(() => pauseWeekly = v),
+            ),
             Text(t('أقصى عدد امتحانات للطالب في اليوم', 'Most exams a student sits in one day'), style: orgText(ctx, w: FontWeight.w700)),
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 6, children: [
@@ -469,6 +479,7 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
                         'sittings': sittings,
                         'cohort_source': cohorts ? 'timetables' : 'enrollments',
                         'max_per_day': maxPerDay,
+                        'pause_weekly': pauseWeekly,
                         // the PUT replaces every field: keep the course list this form doesn't edit
                         if (existing != null) 'course_ids': existing['course_ids'],
                         if (existing != null) 'expected_version': existing['version'],
@@ -682,6 +693,14 @@ class _ExamPageState extends State<_ExamPage> {
           AppBanner(icon: Icons.error_outline_rounded, text: t('حُرّك امتحان يدوياً فسبّب تعارضاً — انقله أو ولّد من جديد.', 'A hand move caused a clash — move it or generate again.'), color: c.danger)
         else
           AppBanner(icon: Icons.check_circle_rounded, text: t('كل الامتحانات في أماكنها دون تعارض — جاهز للنشر.', 'Every exam is placed with no clash — ready to publish.'), color: c.success),
+        const SizedBox(height: 8),
+        AppBanner(
+          icon: ex['pause_weekly'] == false ? Icons.event_repeat_rounded : Icons.event_busy_rounded,
+          text: ex['pause_weekly'] == false
+              ? t('المحاضرات الأسبوعية تستمر أثناء الامتحانات.', 'Weekly classes continue during the exams.')
+              : '${examPauseText(ex)}${active ? '' : t(' (بعد النشر)', ' (once published)')}',
+          color: ex['pause_weekly'] == false ? c.textMedium : c.primary,
+        ),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (widget.canEdit && !active)

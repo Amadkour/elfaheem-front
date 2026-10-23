@@ -17,9 +17,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
-import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';

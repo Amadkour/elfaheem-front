@@ -11,7 +11,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../config/app_config.dart';
-import '../../../../../config/theme/app_theme.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';

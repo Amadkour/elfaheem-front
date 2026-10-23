@@ -30,6 +30,7 @@ import 'org_timetable_wizard.dart';
 import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
 import 'org_schedule_exams.dart' show openExamTimetables;
+import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
 import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat, AppBanner, AppActionCard;
 import 'org_schedule_relaxation.dart' show openBreakAlternatives;
 import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
@@ -639,6 +640,12 @@ class _StudioState extends State<_Studio> {
         padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
         child: TimetableStepper(journey: journey, selected: stage, onSelect: (x) => setState(() => _stage = x)),
       ),
+      // published exam windows of this term pause these weekly sessions on their dates (exam timetable: pause_weekly)
+      if (examPausesOf(sch).isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: examPauseBanner(context, examPausesOf(sch), padding: const EdgeInsets.only(bottom: 4), myExamsAction: false),
+        ),
       if (s.can('schedule', 'update') || active)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),

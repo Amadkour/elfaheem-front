@@ -18,6 +18,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
+import 'org_my_exams.dart' show openMyExams;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show ComplaintBubble;
 import 'org_ui.dart';
@@ -58,6 +59,10 @@ class OrgMemberSpace extends StatelessWidget {
               tooltip: t('جدولي', 'My timetable'),
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen())),
               icon: const Icon(Icons.calendar_month_rounded)),
+          IconButton(
+              tooltip: t('امتحاناتي', 'My exams'),
+              onPressed: () => openMyExams(context, orgId: id),
+              icon: const Icon(Icons.event_note_rounded)),
         ]),
         child: Column(children: [
           OrgHero(org: org, subtitle: t('مرحباً بك في مجتمعك 👋', 'Welcome to your community 👋')),

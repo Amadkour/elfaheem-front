@@ -167,6 +167,18 @@
     "en": "Link request",
     "ar": "طلب ربط"
   },
+  "inbox_kind_exam": {
+    "en": "Upcoming exam",
+    "ar": "امتحان قادم"
+  },
+  "inbox_starts_in": {
+    "en": "Starts in {t}",
+    "ar": "يبدأ خلال {t}"
+  },
+  "inbox_exam_invigilate": {
+    "en": "You invigilate",
+    "ar": "أنت مراقب"
+  },
   "inbox_appr_forms": {
     "en": "{n} requests waiting for your review",
     "ar": "{n} طلبات تنتظر مراجعتك"
@@ -4544,6 +4556,18 @@
   "roadmap_load_failed": {
     "en": "Couldn't load the roadmap",
     "ar": "تعذّر تحميل المسار"
+  },
+  "roadmap_prereq_title": {
+    "en": "A step before this roadmap",
+    "ar": "خطوة قبل هذا المسار"
+  },
+  "roadmap_prereq_body": {
+    "en": "Some courses in this roadmap have requirements you haven't met yet. Nothing was charged.",
+    "ar": "بعض مقررات هذا المسار لها متطلبات لم تستوفها بعد. لم يُخصم أي مبلغ."
+  },
+  "roadmap_prereq_see_why": {
+    "en": "See what's missing",
+    "ar": "اعرض ما ينقصك"
   },
   "roadmap_all_enrolled": {
     "en": "You're enrolled in every course on the roadmap",

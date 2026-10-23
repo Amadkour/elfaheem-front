@@ -20,6 +20,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_member_space.dart';
+import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
@@ -320,6 +321,7 @@ class _TimetableView extends StatelessWidget {
                   for (final tt in p.timetables) ...[
                     Text('${(tt['schedule'] as Map)['name']}', style: c.h2),
                     const SizedBox(height: 8),
+                    examPauseBanner(context, examPausesOf(tt)),
                     for (final day in orgDays)
                       if (asMapList(tt['items']).any((x) => x['day'] == day)) ...[
                         Padding(

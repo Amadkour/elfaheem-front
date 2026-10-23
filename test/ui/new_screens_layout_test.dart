@@ -117,6 +117,21 @@ void main() {
     );
   });
 
+  testWidgets('roadmap prerequisites sheet', (tester) async {
+    final roadmap = {
+      'code': 'roadmap_prerequisites',
+      'blocked': [
+        for (final i in [1, 2]) {'course_id': i, 'name_ar': longAr, 'name_en': longEn, 'code': 'CS20$i', 'reason': _reason},
+      ],
+      'course_names': _reason['course_names'],
+    };
+    await expectNoLayoutErrors(
+      tester,
+      () => Builder(builder: (context) => Center(child: TextButton(onPressed: () => showEnrollBlock(context, roadmap), child: const Text('open')))),
+      act: (tester) => tester.tap(find.text('open')),
+    );
+  });
+
   testWidgets('announcement cards', (tester) async {
     Map<String, dynamic> ann(int id, {String category = 'news', bool pinned = false}) => {
           'id': id,

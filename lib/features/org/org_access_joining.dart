@@ -24,6 +24,7 @@ import 'package:share_plus/share_plus.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
 import 'org_join_pages.dart' show JoinRequestCard, OrgUnitJoinScreen, unitKindLabel;
+import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
@@ -455,8 +456,8 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
             AppBanner(
               icon: Icons.visibility_off_rounded,
               color: c.warning,
-              text: t('يظهر الكود كاملاً مرة واحدة فقط — انسخه أو شاركه الآن. يقرأ الطلاب رمز QR بكاميرا الهاتف ثم يُدخلون الكود في شاشة «انضمام».',
-                  'The full code is shown only once — copy or share it now. Students read the QR with their phone camera, then enter the code on the "Join" screen.'),
+              text: t('يظهر الكود كاملاً مرة واحدة فقط — انسخه أو شاركه الآن. يمسح الأعضاء رمز QR بزر «مسح رمز QR» في شاشة «انضمام» أو يُدخلون الكود فيها.',
+                  'The full code is shown only once — copy or share it now. Members scan the QR with "Scan QR" on the "Join" screen, or type the code there.'),
             ),
           ]),
         );
@@ -914,6 +915,17 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
     setState(() => _results = r.ok ? asMapList(r.map['items']) : const []);
   }
 
+  /// "Scan QR": the camera fills in the code and submits it (the manual field stays).
+  Future<void> _scanCode() async {
+    final code = await openJoinScanner(context);
+    if (!mounted || code == null) return;
+    setState(() {
+      _code.text = code;
+      _codeError = null;
+    });
+    await _joinCode();
+  }
+
   Future<void> _joinCode() async {
     final code = _code.text.trim();
     if (code.length < 4) return setState(() => _codeError = t('أدخل الكود كاملاً', 'Enter the whole code'));
@@ -1068,6 +1080,21 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
               ),
               const SizedBox(height: 10),
               AppPrimaryButton(label: t('انضمام', 'Join'), icon: Icons.login_rounded, busy: _busy, onPressed: _busy ? null : _joinCode),
+              if (joinScannerAvailable) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _busy ? null : _scanCode,
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: Text(t('مسح رمز QR', 'Scan QR')),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ],
             ]),
           ),
           if (orgReqs.isNotEmpty || unitReqs.isNotEmpty) ...[
