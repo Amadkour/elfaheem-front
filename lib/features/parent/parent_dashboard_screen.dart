@@ -23,6 +23,7 @@ import 'package:flutter_education_app/features/student/dashboard/dashboard_scree
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart'
     show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
@@ -78,10 +79,23 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     if (mounted) setState(() {});
   }
 
+  /// Deep links (attention items): 'parent_alerts' → Alerts tab, 'parent_link' → Link tab.
+  void _onTabRequested() {
+    final i = switch (AppNavigator.requestedTab.value) {
+      'parent_alerts' => 2,
+      'parent_link' => 3,
+      _ => -1,
+    };
+    if (i < 0) return;
+    AppNavigator.requestedTab.value = null;
+    _tabs.onChangeTab(i);
+  }
+
   @override
   void initState() {
     super.initState();
     AttentionService.instance.addListener(_onAttention);   // Children tab badge = my to-dos (GET /me/attention)
+    AppNavigator.requestedTab.addListener(_onTabRequested);
     _items = [
       DashboardItem(
         Icons.family_restroom_outlined,
@@ -134,6 +148,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   @override
   void dispose() {
     AttentionService.instance.removeListener(_onAttention);
+    AppNavigator.requestedTab.removeListener(_onTabRequested);
     _tabs.dispose();
     _link.dispose();
     _alerts.dispose();

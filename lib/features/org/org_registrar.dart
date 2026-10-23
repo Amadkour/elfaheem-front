@@ -179,6 +179,8 @@ String decisionKindText(String? k) => switch (k) {
       'allocation_tie' => t('تساوٍ عند حد القبول', 'Tie at the admission cut-off'),
       'allocation_done' => t('توزيع الأقسام بالجدارة', 'Departments allocated by merit'),
       'missing_term' => t('فصل ناقص — مسودة جاهزة', 'Missing term — draft ready'),
+      'missing_offerings' => t('مقررات فصل غير مطروحة — مسودة جاهزة', 'Term without offerings — draft ready'),
+      'missing_periods' => t('فترات اليوم ناقصة — مسودة جاهزة', 'No periods — draft ready'),
       _ => k ?? '',
     };
 
@@ -196,6 +198,8 @@ String decisionActionText(Map<String, dynamic>? a) => switch (a?['action']) {
       'graduate' => t('اعتماد التخرج', 'Approve graduation'),
       'program_seat' => t('مقعد إضافي وقبولهم', 'Add seats and admit them'),
       'keep' => t('الإبقاء كما هو', 'Keep as it is'),
+      'open_offerings' => t('طرح ${(a?['params']?['course_ids'] as List?)?.length ?? 0} مقرر', 'Offer ${(a?['params']?['course_ids'] as List?)?.length ?? 0} courses'),
+      'create_periods' => t('إنشاء فترات اليوم', 'Create the day periods'),
       'create_term' => t('إنشاء الفصل ${a?['params']?['year_label'] ?? ''}', 'Create the term ${a?['params']?['year_label'] ?? ''}'),
       'none' || null => t('لا إجراء', 'No action'),
       _ => '${a?['action']}',

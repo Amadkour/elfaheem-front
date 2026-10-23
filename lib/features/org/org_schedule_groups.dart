@@ -135,6 +135,27 @@ class _GroupsPageState extends State<_GroupsPage> {
             ]));
   }
 
+  /// Per-student view: search a student, then their lecture / lab group in every course of the term.
+  Future<void> _findStudent() async {
+    final q = await askText(context, title: t('ابحث عن طالب (الاسم أو البريد)', 'Find a student (name or e-mail)'));
+    if (q == null || q.trim().isEmpty || !mounted) return;
+    final r = await orgCall(() => widget.p.api.get('${widget.p.base}/members', queryParams: {'role': 'student', 'search': q.trim(), 'size': 20}));
+    final found = asMapList(r.map['items']);
+    if (!r.ok || !mounted) return;
+    if (found.isEmpty) return toast(t('لا نتائج', 'No match'), error: true);
+    final pick = found.length == 1
+        ? found.first
+        : await showAdminSheet<Map<String, dynamic>>(
+            context,
+            (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+                  SheetHeader(t('اختر الطالب', 'Choose the student')),
+                  for (final m in found)
+                    ListTile(title: Text('${asMap(m['user'])['name']}'), subtitle: Text('${m['student_code'] ?? ''}'), onTap: () => Navigator.pop(ctx, m)),
+                ]));
+    if (pick == null || !mounted) return;
+    await _studentCourses({'student': asMap(pick['user'])});
+  }
+
   void _export() {
     final name = courseName(courses.firstWhere((l) => asInt(l['course_id']) == course, orElse: () => const {}));
     showAppExportSheet(
@@ -159,6 +180,10 @@ class _GroupsPageState extends State<_GroupsPage> {
     final canEdit = context.read<OrgSession>().can('schedule', 'update');
     final groups = asMapList(data?['groups']);
     return ListView(padding: const EdgeInsets.all(16), children: [
+      Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: TextButton.icon(onPressed: _findStudent, icon: const Icon(Icons.person_search_rounded), label: Text(t('مجموعات طالب', 'A student\'s groups'))),
+      ),
       AppDropdown<int>(
         value: course,
         hint: Text(t('اختر المقرر', 'Choose a course')),

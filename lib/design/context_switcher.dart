@@ -28,7 +28,8 @@ import '../features/org/org_ui.dart' show orgNameOf;
 /// Feature key that hides the organization side of the home screens (platform kill-switch).
 const String kContextSwitchFeature = 'home.org_tab';
 
-bool contextSwitchVisible(AppModeController ctl) => ctl.available && !AppConfig.disableList.contains(kContextSwitchFeature);
+bool contextSwitchVisible(AppModeController ctl) =>
+    ctl.available && !AppConfig.disableList.contains(kContextSwitchFeature);
 
 /// What waits in every organization except the one open now (badge on the pill).
 int pendingElsewhere(AppModeController ctl) {
@@ -96,20 +97,42 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
               onTap: canPick ? () => showContextSwitcherSheet(context, allowPersonal: widget.allowPersonal) : null,
               child: Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(5, 5, 12, 5),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  _ContextMark(icon: inOrg ? (orgTypeIcons[org['type']] ?? Icons.account_balance_rounded) : Icons.person_rounded, tone: tone),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      if (!widget.compact)
-                        Text(inOrg ? 'ctx_in_org'.tr : 'ctx_personal_space'.tr,
-                            maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, w: FontWeight.w600, c: c.textLight)),
-                      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
-                    ]),
-                  ),
-                  if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
-                  if (canPick) ...[const SizedBox(width: 2), Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium)],
-                ]),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ContextMark(
+                      icon: inOrg ? (orgTypeIcons[org['type']] ?? Icons.account_balance_rounded) : Icons.person_rounded,
+                      tone: tone,
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!widget.compact)
+                            Text(
+                              inOrg ? 'ctx_in_org'.tr : 'ctx_personal_space'.tr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: appText(10.5, w: FontWeight.w600, c: c.textLight),
+                            ),
+                          Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: appText(13.5, w: FontWeight.w800, c: c.textDark),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
+                    if (canPick) ...[
+                      const SizedBox(width: 2),
+                      Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -117,30 +140,47 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
 
         if (!inOrg || !widget.allowPersonal || widget.compact) return pill;
         // Inside an organization: the way back is always one visible tap.
-        return Row(mainAxisSize: MainAxisSize.min, children: [
-          Flexible(child: pill),
-          const SizedBox(width: 8),
-          Tooltip(
-            message: 'ctx_exit'.tr,
-            child: Material(
-              color: c.primaryTint,
-              shape: const StadiumBorder(),
-              child: InkWell(
-                key: const ValueKey('ctx.exit'),
-                customBorder: const StadiumBorder(),
-                onTap: () => ctl.setMode(AppMode.individual),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.logout_rounded, size: 16, color: c.primary, textDirection: TextDirection.ltr),
-                    const SizedBox(width: 6),
-                    Text('ctx_personal'.tr, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.primary)),
-                  ]),
+        return LayoutBuilder(
+          builder: (context, box) {
+            final narrow = box.maxWidth < 400; // phones: the exit button keeps only its icon (tooltip says it all)
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(child: pill),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'ctx_exit'.tr,
+                  child: Material(
+                    color: c.primaryTint,
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      key: const ValueKey('ctx.exit'),
+                      customBorder: const StadiumBorder(),
+                      onTap: () => ctl.setMode(AppMode.individual),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.logout_rounded, size: 18, color: c.primary, textDirection: TextDirection.ltr),
+                            if (!narrow) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                'ctx_personal'.tr,
+                                maxLines: 1,
+                                style: appText(12.5, w: FontWeight.w800, c: c.primary),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-          ),
-        ]);
+              ],
+            );
+          },
+        );
       },
     );
   }
@@ -154,46 +194,52 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
     Widget check(bool on) => on ? Icon(Icons.check_circle_rounded, color: c.success) : const SizedBox.shrink();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader('ctx_switch_title'.tr),
-        if (allowPersonal)
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppSheetHeader('ctx_switch_title'.tr),
+          if (allowPersonal)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: AppActionCard(
+                key: const ValueKey('ctx.sheet.personal'),
+                icon: Icons.person_rounded,
+                color: c.primary,
+                title: 'ctx_personal'.tr,
+                subtitle: 'ctx_personal_hint'.tr,
+                trailing: check(!ctl.isOrg),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ctl.setMode(AppMode.individual);
+                },
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.only(bottom: 14),
-            child: AppActionCard(
-              key: const ValueKey('ctx.sheet.personal'),
-              icon: Icons.person_rounded,
-              color: c.primary,
-              title: 'ctx_personal'.tr,
-              subtitle: 'ctx_personal_hint'.tr,
-              trailing: check(!ctl.isOrg),
-              onTap: () {
-                Navigator.pop(ctx);
-                ctl.setMode(AppMode.individual);
-              },
+            padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
+            child: Text(
+              'ctx_organizations'.tr,
+              style: appText(12, w: FontWeight.w800, c: c.textLight),
             ),
           ),
-        Padding(
-          padding: const EdgeInsetsDirectional.only(start: 4, bottom: 8),
-          child: Text('ctx_organizations'.tr, style: appText(12, w: FontWeight.w800, c: c.textLight)),
-        ),
-        for (final e in ctl.liveEntries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: AppActionCard(
-              key: ValueKey('ctx.sheet.org.${asInt(asMap(e['organization'])['id'])}'),
-              icon: orgTypeIcons[asMap(e['organization'])['type']] ?? Icons.account_balance_rounded,
-              color: orgColor(ctx, asMap(e['organization'])),
-              title: orgNameOf(asMap(e['organization'])),
-              subtitle: orgRolesLine(e),
-              badge: AppModeController.pendingOf(e),
-              trailing: check(ctl.isOrg && asInt(asMap(e['organization'])['id']) == ctl.currentOrgId),
-              onTap: () {
-                Navigator.pop(ctx);
-                ctl.setMode(AppMode.organization, orgId: asInt(asMap(e['organization'])['id']));
-              },
+          for (final e in ctl.liveEntries)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: AppActionCard(
+                key: ValueKey('ctx.sheet.org.${asInt(asMap(e['organization'])['id'])}'),
+                icon: orgTypeIcons[asMap(e['organization'])['type']] ?? Icons.account_balance_rounded,
+                color: orgColor(ctx, asMap(e['organization'])),
+                title: orgNameOf(asMap(e['organization'])),
+                subtitle: orgRolesLine(e),
+                badge: AppModeController.pendingOf(e),
+                trailing: check(ctl.isOrg && asInt(asMap(e['organization'])['id']) == ctl.currentOrgId),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ctl.setMode(AppMode.organization, orgId: asInt(asMap(e['organization'])['id']));
+                },
+              ),
             ),
-          ),
-      ]),
+        ],
+      ),
     );
   });
 }
@@ -205,11 +251,11 @@ class _ContextMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(color: tone.withValues(alpha: 0.14), shape: BoxShape.circle),
-        child: Icon(icon, size: 17, color: tone),
-      );
+    width: 32,
+    height: 32,
+    decoration: BoxDecoration(color: tone.withValues(alpha: 0.14), shape: BoxShape.circle),
+    child: Icon(icon, size: 17, color: tone),
+  );
 }
 
 class _Count extends StatelessWidget {
@@ -219,8 +265,11 @@ class _Count extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-        child: Text(n > 99 ? '99+' : '$n', style: appText(11, w: FontWeight.w800, c: context.colors.button.color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
+    child: Text(
+      n > 99 ? '99+' : '$n',
+      style: appText(11, w: FontWeight.w800, c: context.colors.button.color),
+    ),
+  );
 }

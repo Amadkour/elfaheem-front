@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/admin/admin_platform_widgets.dart
 import 'package:flutter_education_app/features/org/org_announcements.dart';
 import 'package:flutter_education_app/features/org/org_levels.dart';
 import 'package:flutter_education_app/features/org/org_levels_pages.dart';
+import 'package:flutter_education_app/features/org/org_schedule_board.dart';
 import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
 import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
@@ -65,6 +66,37 @@ void main() {
         }, onCancel: () {}),
         GenerationLivePanel(run: {'status': 'failed', 'error': '$longEn $longAr'}),
       ]),
+    );
+  });
+
+  testWidgets('timetable conflicts panel', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(padding: const EdgeInsets.all(16), children: [
+        ConflictsPanel(conflicts: const [], onTap: () {}),
+        ConflictsPanel(conflicts: [
+          for (final x in ['room_double_booked', 'staff_busy_elsewhere', 'preference_not_preferred', 'room_missing_capabilities'])
+            {'type': x, 'severity': x.startsWith('pref') ? 'warning' : 'error'},
+        ], onTap: () {}),
+      ]),
+    );
+  });
+
+  testWidgets('timetable board: sticky header and period column, seven days', (tester) async {
+    const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    final periods = [for (var i = 0; i < 7; i++) {'id': i + 1, 'label': 'P${i + 1} $longEn', 'start_time': '0${i + 1}:00'}];
+    await expectNoLayoutErrors(
+      tester,
+      () => TimetableBoard(
+        days: days,
+        periods: periods,
+        dayLabel: (d) => '$d $longAr',
+        periodLabel: (p) => Text('${p['label']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+        rowSessions: (pid) => pid == 2 ? 3 : 1,
+        cell: (d, p, h) => SingleChildScrollView(
+          child: Column(children: [for (var i = 0; i < (asIntOr(p['id']) == 2 ? 3 : 1); i++) Text('$longEn $longAr', maxLines: 2, overflow: TextOverflow.ellipsis)]),
+        ),
+      ),
     );
   });
 
@@ -202,3 +234,5 @@ final _reason = <String, dynamic>{
   ],
   'missing_course_ids': [2],
 };
+
+int asIntOr(Object? v) => v is int ? v : int.tryParse('$v') ?? 0;

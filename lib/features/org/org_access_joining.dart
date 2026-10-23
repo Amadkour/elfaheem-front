@@ -23,6 +23,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
+import 'org_access_page.dart' show OrgAccessPage;
 import 'org_join_pages.dart' show JoinRequestCard, OrgUnitJoinScreen, unitKindLabel;
 import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
 import 'org_providers.dart';
@@ -119,6 +120,10 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
   String _filter = 'all';
   final Set<String> _sel = {};          // "org:12" · "unit:7"
   bool _busy = false;
+  bool _tipHidden = false;
+
+  /// From this many waiting requests, the admin is advised to share the approval permission.
+  static const _shareLoadAt = 5;
 
   @override
   bool get wantKeepAlive => true;
@@ -168,13 +173,15 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
     if (!mounted) return;
     final s = context.read<OrgSession>();
     setState(() => _busy = true);
-    var done = 0;
+    var done = 0, unplaced = 0;
     final failed = <String>[];
     final body = {'decision': approve ? 'approve' : 'reject', 'note': ?note};
     if (orgIds.isNotEmpty) {
       final r = await orgCall(() => s.api.post('${s.base}/join/requests/bulk', body: {...body, 'ids': orgIds}), quiet: true);
       if (r.ok) {
-        done += asMapList(r.map['done']).length;
+        final rows = asMapList(r.map['done']);
+        done += rows.length;
+        unplaced += rows.where((x) => x['department'] is Map && asMap(x['department'])['placed'] != true).length;
         failed.addAll(asMapList(r.map['failed']).map((f) => '${f['message'] ?? ''}'));
       } else {
         failed.add(orgErrorText(r.error!));
@@ -199,6 +206,9 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
     });
     if (done > 0) {
       toast(approve ? t('قُبل $done طلباً وأُبلغ أصحابها 🎉', '$done accepted — applicants notified 🎉') : t('رُفض $done طلباً وأُبلغ أصحابها', '$done rejected — applicants notified'));
+    }
+    if (unplaced > 0) {
+      toast(t('$unplaced لم يُضَف لقسم الكود (الشروط أو السعة) — بقي عضواً عاماً', '$unplaced not placed in the code\'s department (rules or capacity) — kept as general members'));
     }
     if (failed.isNotEmpty) {
       toast(t('تعذّر ${failed.length}: ${failed.toSet().take(2).join(' — ')}', '${failed.length} couldn\'t be done: ${failed.toSet().take(2).join(' — ')}'), error: true);
@@ -232,7 +242,34 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
     if (_org == null || _units == null) return const AppListSkeleton();
     final rows = _all;
     final selecting = _sel.isNotEmpty;
+    final s = context.watch<OrgSession>();
+    final shareTip = s.isOrgAdmin && !_tipHidden && (_org!.length + _units!.length) >= _shareLoadAt;
     return Column(children: [
+      if (shareTip)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+          child: AppBanner(
+            icon: Icons.diversity_3_rounded,
+            text: t('طلبات كثيرة تنتظرك. وزّع العمل: امنح صلاحية «اعتماد طلبات الانضمام» لأحد الموظفين من الأدوار والصلاحيات.',
+                'Many requests are waiting. Share the load: give a staff member the "Approve join requests" permission in Roles & privileges.'),
+            action: Wrap(children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ChangeNotifierProvider.value(
+                        value: s,
+                        child: BasePage(useWebCard: true, maxWith: 1100,
+                            appBar: ScreenAppBar(title: t('الأدوار والصلاحيات', 'Roles & privileges')), child: const OrgAccessPage())))),
+                child: Text(t('منح الصلاحية', 'Give permission')),
+              ),
+              IconButton(
+                tooltip: t('إخفاء', 'Hide'),
+                visualDensity: VisualDensity.compact,
+                onPressed: () => setState(() => _tipHidden = true),
+                icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
+              ),
+            ]),
+          ),
+        ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
         child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [

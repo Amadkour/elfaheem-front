@@ -204,6 +204,7 @@ Map<String, String> _codeTexts() => {
       'term_exists': t('هذا الفصل موجود بالفعل لهذا العام', 'This term already exists for the year'),
       'term_overlap': t('يتداخل مع فصل موجود', 'Overlaps an existing term'),
       'bad_draft': t('المسودة غير صالحة', 'The draft is not valid'),
+      'periods_exist': t('للمؤسسة فترات بالفعل', 'The organization already has periods'),
       'outside_term': t('التواريخ خارج حدود الفصل الدراسي', 'The dates are outside the term'),
       'bad_days': t('أيام غير صحيحة', 'Invalid days'),
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),

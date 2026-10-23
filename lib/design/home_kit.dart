@@ -156,7 +156,7 @@ class HomeSectionTitle extends StatelessWidget {
     final c = context.colors;
     return Padding(
       padding: padding ?? const EdgeInsets.fromLTRB(20, 0, 12, 10),
-      child: Row(children: [
+      child: LayoutBuilder(builder: (context, box) => Row(children: [
         Container(width: 4, height: 18, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(4))),
         const SizedBox(width: 10),
         Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
@@ -165,17 +165,20 @@ class HomeSectionTitle extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
-            child: Text('$count', style: appText(12, w: FontWeight.w800, c: c.primary)),
+            child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: c.primary)),
           ),
         ],
         const Spacer(),
         if (actionLabel != null && onAction != null)
-          TextButton(
-            onPressed: onAction,
-            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-            child: Text(actionLabel!, maxLines: 1, style: appText(13, w: FontWeight.w700, c: c.primary)),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: box.maxWidth * 0.42),
+            child: TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.primary)),
+            ),
           ),
-      ]),
+      ])),
     );
   }
 }

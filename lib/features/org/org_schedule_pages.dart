@@ -595,6 +595,7 @@ class _StudioState extends State<_Studio> {
         !await confirm(context, message: t('النتيجة: ${resultStatusLabels()[st]}. النشر رغم الحصص غير المجدولة؟', 'Result: ${resultStatusLabels()[st]}. Publish with sessions still unplaced?'))) {
       return;
     }
+    if (!context.mounted) return;
     final res = await publishWithConsent(context, p);
     if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
   }

@@ -443,7 +443,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
   String brush = 'unavailable';
   bool busy = false;
   String? err;
-  final days = scheduleDays.take(6).toList();
+  final days = scheduleDays.toList();
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Color col(String? m) => switch (m) { 'unavailable' => c.danger, 'prefer' => c.success, 'avoid' => c.warning, _ => c.inputBg };

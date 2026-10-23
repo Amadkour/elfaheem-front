@@ -58,12 +58,32 @@ void main() {
   });
 
   group('single generate', () {
-    test('fixed rules are never sent; unlockable ones default to locked, larger hall to flexible', () {
+    test('fixed rules are never sent; soft rules default to flexible, availability rules to locked; break order', () {
       final f = rulesFlexible(const {});
-      expect(f, {'instructor_availability': false, 'assistant_availability': false, 'rooms_and_times': false, 'larger_hall': true});
+      expect(f, {
+        'compact': true, 'preferred': true, 'soft_availability': true, 'extra_times': true, 'larger_hall': true,
+        'rooms_and_times': false, 'assistant_availability': false, 'instructor_availability': false,
+      });
       expect(rulesFlexible(const {'rules': {'instructor_availability': 'flexible', 'larger_hall': 'locked'}})['instructor_availability'], isTrue);
       expect(generationRules.where((r) => r.fixed).map((r) => r.key), ['room_double', 'person_double', 'lab_only', 'capacity']);
       expect(generationRules.where((r) => r.fixed && r.unlockable), isEmpty);
+      // the order rules give way (schedule_jobs.BREAK_ORDER); last resorts are suggestions only, never switchable
+      expect(breakOrder.map((r) => r.key).take(5), ['compact', 'preferred', 'soft_availability', 'extra_times', 'larger_hall']);
+      expect(generationRules.where((r) => r.suggestionOnly && r.unlockable), isEmpty);
+    });
+
+    test('conflict digest: hard / soft counts and the top three types', () {
+      final d = ConflictDigest.of([
+        {'type': 'room_double_booked', 'severity': 'error'},
+        {'type': 'room_double_booked', 'severity': 'error'},
+        {'type': 'preference_avoided', 'severity': 'warning'},
+        {'type': 'teacher_overloaded', 'severity': 'warning'},
+        {'type': 'students_clash', 'severity': 'error'},
+      ]);
+      expect([d.hard, d.soft, d.total], [3, 2, 5]);
+      expect(d.top.first, ('room_double_booked', 2));
+      expect(d.top.length, 3);
+      expect(conflictTypeText('room_double_booked'), isNot(contains('_')));
     });
 
     test('outcome: missing sessions and pending proposals only (old results have no decision)', () {

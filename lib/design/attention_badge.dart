@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../core/app_mode.dart';
 import '../core/attention/attention_service.dart';
+import '../features/admin/enrollment_request/teacher_transfers_screen.dart' show TeacherTransfersScreen;
 import '../features/shared/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
 import '../main.dart' show navigatorKey;
 import '../utils/top_route_observer.dart' show topRouteObserver;
@@ -146,11 +147,22 @@ Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallb
       } else {
         onOpen?.call();
       }
-    case 'transfers' || 'parent_alerts' || '':
+    case 'transfers':
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherTransfersScreen()));
+    case 'parent_alerts':
+      _requestShellTab('parent_alerts');
+    case '':
       onOpen?.call();
     default:
       if (!context.mounted) return;
       await openInboxItem(context, InboxItem({...x.raw, 'segment': 'todo', 'org_id': orgId, 'action': a}));
   }
   AttentionService.instance.refresh();
+}
+
+/// Tabs inside a role dashboard: back to the root, then the dashboard switches (AppNavigator.requestedTab).
+void _requestShellTab(String id) {
+  navigatorKey.currentState?.popUntil((r) => r.isFirst);
+  AppNavigator.requestedTab.value = null;
+  AppNavigator.requestedTab.value = id;
 }
