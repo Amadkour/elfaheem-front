@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../config/app_config.dart';
+import '../../../design/app_switch.dart';
 
 
 class CoursePrivacyCard extends StatefulWidget {

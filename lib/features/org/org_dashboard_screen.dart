@@ -27,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 
+import '../../design/app_switch.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import '../admin/admin_premium_widgets.dart';

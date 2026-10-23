@@ -6,6 +6,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
+import '../../../../design/app_switch.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';

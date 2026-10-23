@@ -26,6 +26,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';

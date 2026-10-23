@@ -35,7 +35,7 @@ import '../../ads/ads_pages.dart' show AdCard;
 import '../../org/home_org_mix.dart' show showPlatformRequirement;
 import '../../org/org_academic_pages.dart' show MyAcademicPathPage;
 import '../../org/org_availability_pages.dart' show AvailabilityRequestScreen;
-import '../../org/org_member_dashboard.dart' show openOrgApproval;
+import '../../org/org_dashboard_screen.dart' ;
 import '../../org/org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import '../../org/org_terms_pages.dart' show TermCard;
 import '../../org/org_v3.dart' show orgParseUtc;

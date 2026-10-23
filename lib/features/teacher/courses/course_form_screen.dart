@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
+import '../../../design/app_switch.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
