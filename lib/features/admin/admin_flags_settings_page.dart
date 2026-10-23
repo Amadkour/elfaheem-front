@@ -13,6 +13,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
+import '../../design/app_switch.dart';
 import '../../utils/widget/base_page.dart';
 import 'admin_providers.dart';
 
@@ -111,21 +112,17 @@ class _ViewState extends State<_View> {
                     title: 'admin_flags_students_section'.tr,
                     icon: Icons.bookmark_rounded,
                     children: [
-                      SwitchListTile(
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         value: _allowReview,
                         onChanged: (v) => setState(() => _allowReview = v),
-                        title: Text(
-                          'admin_flags_allow_review'.tr,
-                          style: const TextStyle(fontFamily: 'bahji'),
-                        ),
+                        title: 'admin_flags_allow_review'.tr,
                       ),
-                      SwitchListTile(
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                         value: _allowRead,
                         onChanged: (v) => setState(() => _allowRead = v),
-                        title: Text(
-                          'admin_flags_allow_read'.tr,
-                          style: const TextStyle(fontFamily: 'bahji'),
-                        ),
+                        title: 'admin_flags_allow_read'.tr,
                       ),
                       _NumField(
                         controller: _limitExam,
@@ -145,10 +142,10 @@ class _ViewState extends State<_View> {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: Text(
                           'admin_flags_limit_hint'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                         ),
                       ),
@@ -177,10 +174,10 @@ class _ViewState extends State<_View> {
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                         child: Text(
                           'admin_flags_teacher_hint'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'bahji',
                             fontSize: 12,
-                            color: Colors.grey,
+                            color: context.colors.textLight,
                           ),
                         ),
                       ),
@@ -308,7 +305,7 @@ class _NumField extends StatelessWidget {
           color: enabled ? c.cardBg : c.cardBg.withOpacity(0.55),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: enabled ? c.primary.withOpacity(0.22) : Colors.grey.withOpacity(0.2),
+            color: enabled ? c.primary.withOpacity(0.22) : context.colors.textLight.withOpacity(0.2),
           ),
         ),
         child: Row(
@@ -320,7 +317,7 @@ class _NumField extends StatelessWidget {
                   fontFamily: 'bahji',
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: enabled ? null : Colors.grey,
+                  color: enabled ? null : context.colors.textLight,
                 ),
               ),
             ),
@@ -335,7 +332,7 @@ class _NumField extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 10),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: enabled ? c.primary.withOpacity(0.09) : Colors.grey.withOpacity(0.08),
+                color: enabled ? c.primary.withOpacity(0.09) : context.colors.textLight.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -344,7 +341,7 @@ class _NumField extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w800,
-                  color: enabled ? c.primary : Colors.grey,
+                  color: enabled ? c.primary : context.colors.textLight,
                 ),
               ),
             ),
@@ -375,7 +372,7 @@ class _CounterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final primary = context.colors.primary;
     return Material(
-      color: enabled ? primary : Colors.grey.withOpacity(0.12),
+      color: enabled ? primary : context.colors.textLight.withOpacity(0.12),
       borderRadius: BorderRadius.circular(11),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -386,7 +383,7 @@ class _CounterButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 20,
-            color: enabled ? Colors.white : Colors.grey,
+            color: enabled ? Colors.white : context.colors.textLight,
           ),
         ),
       ),

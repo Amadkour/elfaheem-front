@@ -9,13 +9,15 @@
 //   OrgMembershipProvider teacher / student side: search · join · my organizations · org courses · my timetable
 library;
 
-import 'dart:typed_data';
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
+import 'org_platform_context.dart';
+import 'org_v3.dart';
 
 const orgBase = '/api/v1/org';
 
@@ -50,12 +52,43 @@ class OrgSession extends AdminBase {
 
   bool get isOrgAdmin => const ['org_admin', 'platform_admin'].contains(current?['my_role']);
 
-  /// Is [action] on [module] allowed for me in the selected organization?
-  bool can(String module, [String action = 'view']) {
+  /// v2: may I create a new ROOT organization (university …)? Sub-organizations need `sub_orgs.insert`.
+  bool canCreateRoot = false;
+
+  /// pending | approved | rejected | suspended (an ancestor's suspension counts too).
+  String get status => '${current?['status'] ?? 'approved'}';
+  bool get approved => status == 'approved';
+
+  static String _alias(String module, String action) =>
+      module == 'requests' && action == 'update' ? 'approve' : action;   // v1 call sites keep working
+
+  /// Is [action] on [module] allowed for me in the selected organization — org-wide, or inside [deptId]?
+  bool can(String module, [String action = 'view', int? deptId]) {
     if (isOrgAdmin) return true;
+    final a = _alias(module, action);
     final p = current?['permissions'];
-    if (p is Map && p[module] is List) return (p[module] as List).contains(action);
+    if (p is Map && p[module] is List && (p[module] as List).contains(a)) return true;
+    if (deptId != null) {
+      final d = current?['dept_permissions'];
+      final m = d is Map ? d['$deptId'] : null;
+      if (m is Map && m[module] is List) return (m[module] as List).contains(a);
+    }
     return false;
+  }
+
+  /// Org-wide OR in at least one department (to decide whether a menu entry is shown at all).
+  bool canAny(String module, [String action = 'view']) {
+    if (can(module, action)) return true;
+    final d = current?['dept_permissions'];
+    if (d is! Map) return false;
+    final a = _alias(module, action);
+    return d.values.any((m) => m is Map && m[module] is List && (m[module] as List).contains(a));
+  }
+
+  /// Departments where I have any right (empty for org-wide people — they see every department).
+  Set<int> get myDeptIds {
+    final d = current?['dept_permissions'];
+    return d is Map ? {for (final k in d.keys) int.tryParse('$k') ?? -1} : <int>{};
   }
 
   String get base => '$orgBase/orgs/$currentId';
@@ -64,17 +97,20 @@ class OrgSession extends AdminBase {
     final r = await run(() => api.get('$orgBase/mine'));
     if (r is Map) {
       items = asMapList(r['items']);
+      canCreateRoot = r['can_create_root'] == true;
       if (!keepSelection || !items.any((o) => o['id'] == currentId)) {
         currentId = items.isEmpty ? null : asInt(items.first['id']);
       }
     }
     loaded = true;
+    OrgPlatformContext.open(approved ? currentId : null);   // org timezone / 12h-24h + org feature offs
     notifyListeners();
   }
 
   void select(int id) {
     if (id == currentId) return;
     currentId = id;
+    OrgPlatformContext.open(approved ? id : null);
     epoch.value++;
     notifyListeners();
   }
@@ -99,6 +135,18 @@ class OrgSession extends AdminBase {
     final r = await call(() => api.delete(base), ok: t('تم الحذف', 'Deleted'));
     if (r != null) await load(keepSelection: false);
     return r != null;
+  }
+
+  /// Sends a rejected application back for review.
+  Future<bool> resubmit() async {
+    final r = await call(() => api.post('$base/resubmit'), ok: t('أُعيد إرسال الطلب للمراجعة', 'Sent back for review'));
+    if (r != null) await load();
+    return r != null;
+  }
+
+  Future<Map<String, dynamic>?> details() async {
+    final r = await run(() => api.get(base), makLoading: false);
+    return r is Map ? Map<String, dynamic>.from(r) : null;
   }
 
   Future<String?> regenerateCode() async {
@@ -228,6 +276,13 @@ class OrgScheduleProvider extends AdminBase {
 
   String get base => session.base;
 
+  // v3: facility types · academic terms · generation runs
+  List<String> builtinKinds = const ['lecture', 'lab', 'hall', 'office', 'other'];
+  List<Map<String, dynamic>> facilityTypes = [], terms = [];
+  Map<String, dynamic>? genRun;      // the run being followed (queued / running / just finished)
+  Timer? _poll;
+  bool _disposed = false;
+
   Future<void> loadSetup() async {
     final rs = await Future.wait([
       run(() => api.get('$base/periods'), makLoading: false),
@@ -236,15 +291,142 @@ class OrgScheduleProvider extends AdminBase {
       run(() => api.get('$base/schedules'), makLoading: false),
       run(() => api.get('$orgBase/orgs/${session.currentId}/members',
           queryParams: {'role': 'teacher,teacher_assistant,admin_assistant', 'size': 100}), makLoading: false),
+      orgCall(() => api.get('$base/facility-types'), quiet: true),
+      orgCall(() => api.get('$base/academic/terms'), quiet: true),
     ]);
+    if (_disposed) return;
     List<Map<String, dynamic>> items(dynamic r) => r is Map ? asMapList(r['items']) : [];
     periods = items(rs[0]);
     rooms = items(rs[1]);
     loads = items(rs[2]);
     schedules = items(rs[3]);
     staff = items(rs[4]);
+    final ft = rs[5] as OrgCall, tm = rs[6] as OrgCall;
+    if (ft.ok) {
+      builtinKinds = [for (final k in (ft.map['builtin'] as List? ?? const [])) '$k'];
+      facilityTypes = asMapList(ft.map['items']);
+    }
+    terms = asMapList(tm.map['items']);
     loaded = true;
     notifyListeners();
+  }
+
+  /// kind key → label (built-in kinds + the organization's own facility types).
+  Map<String, String> get kindLabels => {
+        for (final k in builtinKinds) k: roomKindLabel(k),
+        for (final f in facilityTypes) '${f['key']}': t('${f['label_ar'] ?? f['key']}', '${f['label_en'] ?? f['label_ar'] ?? f['key']}'),
+      };
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  // ── v3: schedule scope (full replacement) ──
+
+  /// POST (new) or PUT (existing) the whole draft. Returns the call; on success the list is refreshed.
+  Future<OrgCall> saveDraft(ScheduleDraft d) async {
+    final r = await orgCall(() => d.id == null ? api.post('$base/schedules', body: d.toBody()) : api.put('$base/schedules/${d.id}', body: d.toBody()),
+        quiet: true);
+    if (r.ok) {
+      d.id = asInt(r.map['id']);
+      await loadSetup();
+    }
+    return r;
+  }
+
+  // ── v3: generation as a job ──
+
+  /// Starts a background generation and follows it until it ends. A run already in progress is followed instead.
+  /// [persistSettings] false: [settings] apply to this run only (stored with its revision, not on the timetable).
+  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true}) async {
+    final id = schedule!['id'];
+    final r = await orgCall(
+        () => api.post('$base/schedules/$id/generate',
+            queryParams: {'background': true},
+            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false}),
+        quiet: true);
+    final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
+    if (run.isNotEmpty) {
+      genRun = run;
+      notifyListeners();
+      _follow(asInt(id), asInt(run['id']));
+    }
+    return r;
+  }
+
+  void _follow(int scheduleId, int runId) {
+    _poll?.cancel();
+    _poll = Timer.periodic(const Duration(seconds: 2), (tm) async {
+      final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
+      if (_disposed) return tm.cancel();
+      if (!r.ok) return;           // transient: keep following (the server releases stale runs itself)
+      genRun = r.map;
+      notifyListeners();
+      if (!runIsOpen(genRun)) {
+        tm.cancel();
+        if (schedule?['id'] == scheduleId) await open(scheduleId);   // slots + result as stored by the server
+        await loadSetup();
+      }
+    });
+  }
+
+  Future<OrgCall> cancelGeneration() async {
+    final run = genRun;
+    if (run == null || schedule == null) return const OrgCall(null);
+    final r = await orgCall(() => api.post('$base/schedules/${schedule!['id']}/runs/${run['id']}/cancel'));
+    if (r.ok) {
+      genRun = r.map;
+      notifyListeners();
+    }
+    return r;
+  }
+
+  /// When a studio is opened, a run that is still going on the server is picked up again.
+  Future<void> resumeRunIfAny() async {
+    final id = schedule?['id'];
+    if (id == null) return;
+    final r = await orgCall(() => api.get('$base/schedules/$id/runs'), quiet: true);
+    final runs = asMapList(r.map['items']);
+    genRun = runs.isEmpty ? null : runs.first;
+    notifyListeners();
+    if (runIsOpen(genRun)) _follow(asInt(id), asInt(genRun!['id']));
+  }
+
+  // ── v3: revisions ──
+
+  Future<List<Map<String, dynamic>>> revisions() async {
+    final r = await orgCall(() => api.get('$base/schedules/${schedule!['id']}/revisions'));
+    return asMapList(r.map['items']);
+  }
+
+  Future<bool> restoreRevision(int revId) async {
+    final r = await orgCall(() => api.post('$base/schedules/${schedule!['id']}/revisions/$revId/restore'),
+        ok: t('استُعيدت النسخة', 'Version restored'));
+    if (r.ok) await open(asInt(schedule!['id']));
+    return r.ok;
+  }
+
+  /// Saves the current slots (hand edits included) as a new version — POST …/revisions; an older server without the
+  /// route is told apart by [OrgCall.endpointMissing].
+  Future<OrgCall> saveSnapshot(String? label) => orgCall(
+      () => api.post('$base/schedules/${schedule!['id']}/revisions', body: {'label': (label ?? '').trim().isEmpty ? null : label!.trim()}),
+      quiet: true);
+
+  /// Publishing: null when published; the server's hard conflicts when it refused (409 schedule_conflict).
+  Future<List<Map<String, dynamic>>?> publish() async {
+    final id = schedule!['id'];
+    final r = await orgCall(() => api.post('$base/schedules/$id/activate'), ok: t('تم نشر الجدول للجميع', 'Timetable published'), quiet: true);
+    if (r.ok) {
+      _apply({...r.map, 'items': slots});
+      await loadSetup();
+      return null;
+    }
+    if (r.code == 'schedule_conflict') return asMapList(r.detail['conflicts']);
+    toast(orgErrorText(r.error!), error: true);
+    return const [];
   }
 
   List<Map<String, dynamic>> staffOf(String role) =>
@@ -283,8 +465,17 @@ class OrgScheduleProvider extends AdminBase {
     return r != null;
   }
 
-  Future<Map<String, dynamic>?> createSchedule(String name, String? term) async {
-    final r = await call(() => api.post('$base/schedules', body: {'name': name, if (term != null && term.isNotEmpty) 'term_label': term}));
+  Future<Map<String, dynamic>?> createSchedule(String name, String? term,
+      {DateTime? start, DateTime? end, List<int>? courseIds, List<String>? days}) async {
+    String? d(DateTime? x) => x?.toIso8601String().substring(0, 10);
+    final r = await call(() => api.post('$base/schedules', body: {
+          'name': name,
+          if (term != null && term.isNotEmpty) 'term_label': term,
+          if (start != null) 'start_date': d(start),
+          if (end != null) 'end_date': d(end),
+          if (courseIds != null && courseIds.isNotEmpty) 'course_ids': courseIds,
+          if (days != null && days.isNotEmpty) 'settings': {'days': days},
+        }));
     if (r is Map) await loadSetup();
     return r is Map ? Map<String, dynamic>.from(r) : null;
   }
@@ -343,8 +534,70 @@ class OrgScheduleProvider extends AdminBase {
   Future<List<Map<String, dynamic>>?> editSlot(int slotId, Map<String, dynamic> patch, {bool force = false}) =>
       _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$slotId', body: {...patch, if (force) 'force': true}));
 
-  Future<List<Map<String, dynamic>>?> addSlot(Map<String, dynamic> body, {bool force = false}) =>
-      _slotCall(() => api.post('$base/schedules/${schedule!['id']}/slots', body: {...body, if (force) 'force': true}));
+  /// Drag & drop: the slot shows in its new cell at once and goes back if the server refuses. Sends the version the
+  /// user is looking at, so a timetable someone else just changed answers stale_version instead of being overwritten.
+  Future<List<Map<String, dynamic>>?> moveSlot(Map<String, dynamic> slot, String day, int periodId, {bool force = false}) async {
+    final id = slot['id'];
+    final before = slots.firstWhere((x) => x['id'] == id, orElse: () => slot);
+    slots = [for (final x in slots) x['id'] == id ? {...x, 'day': day, 'period_id': periodId} : x];
+    notifyListeners();
+    final res = await _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$id', body: {
+          'day': day,
+          'period_id': periodId,
+          'expected_version': ?schedule!['version'],
+          if (force) 'force': true,
+        }));
+    if (res != null) {
+      slots = [for (final x in slots) x['id'] == id ? before : x];
+      notifyListeners();
+    }
+    return res;
+  }
+
+  /// strategy when it clashes: keep · replace · shift (small change) · regenerate (no conflicts left)
+  /// [overrideReason] (needs schedule.approve) allows a hard unavailability and leaves a warning; double bookings
+  /// can never be overridden.
+  Future<List<Map<String, dynamic>>?> addSlot(Map<String, dynamic> body,
+          {bool force = false, bool replace = false, String? strategy, String? overrideReason}) =>
+      _slotCall(() => api.post('$base/schedules/${schedule!['id']}/slots', body: {
+            ...body,
+            if (force) 'force': true,
+            'override_reason': ?overrideReason,
+            if (replace) 'replace_conflicts': true,
+            'strategy': ?strategy,
+          }));
+
+  // ── special periods (one-off sessions) ──
+  List<Map<String, dynamic>> extras = [];
+
+  Future<void> loadExtras() async {
+    final id = schedule?['id'];
+    if (id == null) return;
+    final r = await run(() => api.get('$base/schedules/$id/extras'), makLoading: false);
+    extras = r is Map ? asMapList(r['items']) : [];
+    notifyListeners();
+  }
+
+  /// null = saved; otherwise the clashes the server reported.
+  Future<List<Map<String, dynamic>>?> addExtra(Map<String, dynamic> body) async {
+    try {
+      await api.post('$base/schedules/${schedule!['id']}/extras', body: body);
+      await loadExtras();
+      toast(t('أُضيفت الفترة وأُبلغ الطلاب والمدرس 📅', 'Added — students and the teacher were notified 📅'));
+      return null;
+    } on ApiException catch (e) {
+      final detail = ApiException.asMap(e.body)?['detail'];
+      if (detail is Map && detail['conflicts'] is List) return asMapList(detail['conflicts']);
+      toast(e.message, error: true);
+      return [<String, dynamic>{'type': 'error'}];
+    }
+  }
+
+  Future<void> deleteExtra(int id) async {
+    final r = await call(() => api.delete('$base/schedules/${schedule!['id']}/extras/$id'),
+        ok: t('أُلغيت الفترة وأُبلغ الطلاب', 'Cancelled — students were notified'));
+    if (r != null) await loadExtras();
+  }
 
   Future<List<Map<String, dynamic>>?> _slotCall(Future<dynamic> Function() fn) async {
     try {
@@ -355,6 +608,11 @@ class OrgScheduleProvider extends AdminBase {
       if (e.code == 'schedule_conflict') {
         final detail = ApiException.asMap(e.body)?['detail'];
         return asMapList(detail is Map ? detail['conflicts'] : null);
+      }
+      if (e.code == 'stale_version') {
+        toast(orgErrorText(e), error: true);
+        await open(asInt(schedule!['id']));
+        return [<String, dynamic>{'type': 'error'}];
       }
       toast(e.message, error: true);
       return [<String, dynamic>{'type': 'error'}];
@@ -407,11 +665,23 @@ class OrgMembershipProvider extends AdminBase {
   /// → 'active' | 'pending' | null (failed; the reason was toasted)
   Future<String?> join({int? orgId, String? code}) async {
     try {
-      final r = await api.post('$orgBase/public/join', body: {if (orgId != null) 'org_id': orgId, if (code != null) 'code': code});
+      // a code goes through the one-box endpoint: organization codes (role / department defaults), the legacy
+      // organization code and department codes all work there
+      final r = code != null
+          ? await api.post('$orgBase/public/join/code', body: {'code': code})
+          : await api.post('$orgBase/public/join', body: {'org_id': ?orgId});
       await loadMine();
+      if (r is Map && r['kind'] == 'unit') {
+        if (r['needs_form'] == true) {
+          toast(t('هذا كود قسم له نموذج — افتحه من صفحة المؤسسة ← الأقسام', 'This department code has a form — open it from the organization page → Departments'));
+          return null;
+        }
+        return r['joined'] == true ? 'active' : 'pending';
+      }
       return r is Map ? r['status']?.toString() : null;
     } on ApiException catch (e) {
-      toast(e.message, error: true);
+      // membership_ended: only this organization's membership is over — the account keeps working
+      toast(orgErrorText(e), error: true);
       return e.code == 'code_required' ? 'code_required' : null;
     }
   }
@@ -434,3 +704,76 @@ class OrgMembershipProvider extends AdminBase {
     notifyListeners();
   }
 }
+
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  v2 generic helpers — used by departments · services · roles · member space · platform review
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// Any paged list of the v2 API: `OrgPaged('${session.base}/complaints', {'status': 'active'})`.
+/// The server's extra keys (stats, folders, form …) are in [extra].
+class OrgPaged extends AdminPagedProvider {
+  OrgPaged(this._path, [Map<String, dynamic>? filters]) : _filters = {...?filters};
+  final String _path;
+  final Map<String, dynamic> _filters;
+
+  @override
+  String get path => _path;
+
+  @override
+  Map<String, dynamic> get filters => _filters;
+
+  Future<void> setFilter(String key, Object? value) {
+    if (value == null || '$value'.isEmpty) {
+      _filters.remove(key);
+    } else {
+      _filters[key] = value;
+    }
+    return refresh();
+  }
+
+  /// Replaces one row in place after a mutation (no reload, no scroll jump).
+  void replaceRow(Map<String, dynamic> row) {
+    final i = rows.indexWhere((r) => r['id'] == row['id']);
+    if (i >= 0) {
+      rows[i] = row;
+      notifyListeners();
+    }
+  }
+}
+
+/// Thin mutation helper with the app's toasts: `final r = await OrgApi.i.post(url, body, ok: '…')`.
+/// Returns the decoded body (or true) on success, null on failure (the server message was toasted).
+class OrgApi extends AdminBase {
+  OrgApi._();
+  static final OrgApi i = OrgApi._();
+
+  Future<Map<String, dynamic>?> getMap(String path, [Map<String, dynamic>? query]) async {
+    try {
+      final r = await api.get(path, queryParams: query);
+      return r is Map ? Map<String, dynamic>.from(r) : null;
+    } on ApiException catch (e) {
+      toast(e.message, error: true);
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<dynamic> post(String path, [Map<String, dynamic>? body, String? ok]) =>
+      call(() => api.post(path, body: body ?? const {}), ok: ok);
+
+  Future<dynamic> put(String path, Map<String, dynamic> body, [String? ok]) => call(() => api.put(path, body: body), ok: ok);
+
+  Future<dynamic> del(String path, [String? ok]) => call(() => api.delete(path), ok: ok);
+}
+
+String roomKindLabel(String k) =>
+    {
+      'lecture': t('قاعة محاضرات', 'Lecture room'),
+      'lab': t('معمل', 'Lab'),
+      'hall': t('مدرج', 'Hall'),
+      'office': t('مكتب', 'Office'),
+      'other': t('أخرى', 'Other'),
+    }[k] ??
+    k;

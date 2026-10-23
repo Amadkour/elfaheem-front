@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 /// icon_name (stored in the DB) → icon. Use the same map in
 /// additional_register_screen so the teacher sees the icon the admin picked.
@@ -430,7 +431,7 @@ class _AdminRequiredDocumentsPageState
 
     Widget body;
     if (_loading) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator(size: 56));
     } else if (_error != null) {
       body = ErrorRetry(message: _error!, onRetry: _load);
     } else if (_items.isEmpty) {

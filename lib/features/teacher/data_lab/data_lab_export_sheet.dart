@@ -319,6 +319,7 @@ class _Dest extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 Future<void> showFileReadySheet(BuildContext context, DlExportFile file) => showModalBottomSheet<void>(
+      useSafeArea: true,
   context: context,
   isScrollControlled: true,
   backgroundColor: Colors.transparent,

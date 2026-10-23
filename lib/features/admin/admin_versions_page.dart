@@ -6,6 +6,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
@@ -148,9 +149,10 @@ class _VersionCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Switch(
+              const SizedBox(width: 8),
+              AppSwitch(
                 value: active,
-                activeTrackColor: c.success,
+                activeColor: c.success,
                 onChanged: (_) async {
                   if (!active && asBool(v['force_update'])) {
                     final ok = await confirm(

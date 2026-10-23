@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -241,7 +242,9 @@ class _Switch extends StatelessWidget {
             Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis, style: dlText(11.5, c: c.textMedium, h: 1.35)),
           ]),
         ),
-        Switch(value: value, activeTrackColor: color, onChanged: onChanged),
+        const SizedBox(width: 8),
+        AppSwitch(value: value, activeColor: color, onChanged: onChanged, semanticLabel: title),
+        const SizedBox(width: 4),
       ]),
     );
   }

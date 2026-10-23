@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'live_palette.dart';
 
 // Live-room palette
-const _cyan   = Color(0xFF00D4FF);
+final _cyan   = LivePalette.accent;
 const _glass  = Color(0x1AFFFFFF);
 const _bdr    = Color(0x30FFFFFF);
 
@@ -11,7 +12,7 @@ class NoVideoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: const Color(0xFF060810),
+    color: LivePalette.bg,
     alignment: Alignment.center,
     child: LayoutBuilder(
       builder: (ctx, constraints) {

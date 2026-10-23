@@ -191,7 +191,7 @@ class _StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCompleted = status == CourseStatus.completed;
-    final color = isCompleted ? context.colors.accent2 : const Color(0xFF4DA6FF);
+    final color = isCompleted ? context.colors.accent2 : context.colors.primaryLight;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(

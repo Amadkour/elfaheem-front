@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/course/private_flag.dart';
 import 'package:flutter_education_app/features/student/models.dart'
     show CourseModel, AppCurrencyX, DiscountInfoX;
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
-import '../../../../utils/widget/app_network_image.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import '../profile/course_instractor_profile.dart';
 import 'course_price_tag.dart';
 

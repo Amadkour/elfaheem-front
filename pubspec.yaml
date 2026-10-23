@@ -86,6 +86,8 @@ dependencies:
   device_info_plus: ^13.3.0
   uuid: any
   qr_flutter: ^4.1.0
+  # Camera QR scanner for organization join codes (org_join_scan.dart).
+  mobile_scanner: ^7.4.2
   # Relay-based offline attendance: short-range link (BLE + Wi-Fi Direct) between an offline
   # student and an online classmate. Android only; needs Google Play services.
   nearby_connections: ^4.0.0
@@ -94,6 +96,8 @@ dependencies:
   geolocator: ^14.0.1
   connectivity_plus: ^7.3.1
   network_info_plus: ^8.2.1
+  pdf: ^3.13.1
+  archive: ^4.5.2
 dependency_overrides:
   flutter_webrtc:
     git:
@@ -110,6 +114,88 @@ flutter:
     - assets/images/
     - assets/translation.json
   fonts:
+    # certificate fonts — the SAME static files the server renders with (preview == issued certificate)
+    - family: CertCinzel
+      fonts:
+        - asset: assets/fonts/cert/Cinzel-SemiBold.ttf
+    - family: CertGreatVibes
+      fonts:
+        - asset: assets/fonts/cert/GreatVibes-Regular.ttf
+    - family: CertCormorantItalic
+      fonts:
+        - asset: assets/fonts/cert/CormorantGaramond-MediumItalic.ttf
+    - family: CertCormorant
+      fonts:
+        - asset: assets/fonts/cert/CormorantGaramond-SemiBold.ttf
+    - family: CertPlayfair
+      fonts:
+        - asset: assets/fonts/cert/PlayfairDisplay-Regular.ttf
+    - family: CertPlayfairBold
+      fonts:
+        - asset: assets/fonts/cert/PlayfairDisplay-Bold.ttf
+    - family: CertPlayfairItalic
+      fonts:
+        - asset: assets/fonts/cert/PlayfairDisplay-Italic.ttf
+    - family: CertEBGaramond
+      fonts:
+        - asset: assets/fonts/cert/EBGaramond-Regular.ttf
+    - family: CertPinyon
+      fonts:
+        - asset: assets/fonts/cert/PinyonScript-Regular.ttf
+    - family: CertBaskerville
+      fonts:
+        - asset: assets/fonts/cert/LibreBaskerville-Regular.ttf
+    - family: CertBaskervilleBold
+      fonts:
+        - asset: assets/fonts/cert/LibreBaskerville-Bold.ttf
+    - family: CertTajawalMedium
+      fonts:
+        - asset: assets/fonts/cert/Tajawal-Medium.ttf
+    - family: CertTajawalBold
+      fonts:
+        - asset: assets/fonts/cert/Tajawal-Bold.ttf
+    - family: CertAmiri
+      fonts:
+        - asset: assets/fonts/cert/Amiri-Regular.ttf
+    - family: CertAmiriBold
+      fonts:
+        - asset: assets/fonts/cert/Amiri-Bold.ttf
+    - family: CertArefRuqaa
+      fonts:
+        - asset: assets/fonts/cert/ArefRuqaa-Regular.ttf
+    - family: CertArefRuqaaBold
+      fonts:
+        - asset: assets/fonts/cert/ArefRuqaa-Bold.ttf
+    - family: CertScheherazade
+      fonts:
+        - asset: assets/fonts/cert/ScheherazadeNew-Regular.ttf
+    - family: CertScheherazadeBold
+      fonts:
+        - asset: assets/fonts/cert/ScheherazadeNew-Bold.ttf
+    - family: CertReemKufi
+      fonts:
+        - asset: assets/fonts/cert/ReemKufi-Medium.ttf
+    - family: CertReemKufiBold
+      fonts:
+        - asset: assets/fonts/cert/ReemKufi-Bold.ttf
+    - family: CertElMessiri
+      fonts:
+        - asset: assets/fonts/cert/ElMessiri-Medium.ttf
+    - family: CertElMessiriBold
+      fonts:
+        - asset: assets/fonts/cert/ElMessiri-Bold.ttf
+    - family: CertCairo
+      fonts:
+        - asset: assets/fonts/cert/Cairo-Medium.ttf
+    - family: CertCairoBold
+      fonts:
+        - asset: assets/fonts/cert/Cairo-ExtraBold.ttf
+    - family: CertMarkazi
+      fonts:
+        - asset: assets/fonts/cert/MarkaziText-Medium.ttf
+    - family: CertMarkaziBold
+      fonts:
+        - asset: assets/fonts/cert/MarkaziText-Bold.ttf
     - family: bahji
       fonts:
         - asset: assets/fonts/Bahij_TheSansArabic-Bold.ttf
@@ -161,8 +247,8 @@ flutter_launcher_icons:
 # Run: dart run flutter_native_splash:create
 # ─────────────────────────────────────────────────────────────────────────────
 flutter_native_splash:
-  color: "#FBF7EC"
-  color_dark: "#0C1511"
+  color: "#FBF7EC"          # brand cream  (light)
+  color_dark: "#0F7B5F"     # brand emerald (dark)
 
   image: assets/images/splash.png
   image_dark: assets/images/splash.png
@@ -175,10 +261,12 @@ flutter_native_splash:
   # Android 12+ specific configuration (required for newer Android versions)
   android_12:
     image: assets/images/splash_android12.png
-    icon_background_color: "#D4FEFD"
-    color: "#D4FEFD"
-    color_dark: "#D4FEFD"
+    icon_background_color: "#FBF7EC"
+    icon_background_color_dark: "#0F7B5F"
+    color: "#FBF7EC"
+    color_dark: "#0F7B5F"
   web: true
 dev_dependencies:
   flutter_test: any
   flutter_launcher_icons: ^0.14.3
+  xml: 7.0.1

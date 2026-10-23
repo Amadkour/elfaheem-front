@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
@@ -577,7 +578,7 @@ class _MethodCardState extends State<_MethodCard> {
     final method = asStr(m['method']);
     final enabled = asBool(m['enabled']);
     final summary = _summary(m, method);
-    final warn = Colors.amber.shade800;
+    final warn = context.colors.warning;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -629,9 +630,10 @@ class _MethodCardState extends State<_MethodCard> {
                     _StatusPill(enabled: enabled),
                   ]),
                 ),
-                Switch(
+                const SizedBox(width: 8),
+                AppSwitch(
                   value: enabled,
-                  activeTrackColor: c.primary,
+                  activeColor: c.primary,
                   onChanged: (v) {
                     if (v && summary.incomplete) {
                       toast('admin_method_details_required'.tr, error: true);
@@ -844,17 +846,20 @@ class _MethodFormState extends State<_MethodForm> {
 
   Widget _switchTile(String labelKey, bool value, ValueChanged<bool> onChanged) {
     final c = context.colors;
-    return SwitchListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-      value: value,
-      activeTrackColor: c.primary,
-      onChanged: onChanged,
-      tileColor: c.cardBg,
-      shape: RoundedRectangleBorder(
+    return Container(
+      decoration: BoxDecoration(
+        color: c.cardBg,
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: c.divider),
+        border: Border.all(color: c.divider),
       ),
-      title: Text(labelKey.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5)),
+      child: AppSwitchTile(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        value: value,
+        activeColor: c.primary,
+        onChanged: onChanged,
+        title: labelKey.tr,
+        dense: true,
+      ),
     );
   }
 

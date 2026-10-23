@@ -39,7 +39,7 @@
 			<string>_https._tcp</string>
 		</array>
 		<key>NSCameraUsageDescription</key>
-		<string>$(PRODUCT_NAME) uses your camera</string>
+		<string>$(PRODUCT_NAME) uses your camera for live classes and to scan organization join QR codes.</string>
 		<key>NSLocalNetworkUsageDescription</key>
 		<string>This app requires local network access for realtime audio and video communication.</string>
 		<key>NSBluetoothAlwaysUsageDescription</key>

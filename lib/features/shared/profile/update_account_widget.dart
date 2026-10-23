@@ -9,17 +9,18 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../config/app_config.dart' as Helpers;
-import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/editable_image.dart';
-import '../../../../utils/widget/primary_button.dart';
-import '../../../../utils/widget/text_field.dart';
+import 'package:flutter_education_app/config/app_config.dart' as Helpers;
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/editable_image.dart';
+import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/utils/widget/text_field.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
 import '../../auth/teacher_document_model.dart';
 import '../../auth/teacher_document_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class EditAccountScreen extends StatefulWidget {
   final bool isTeacher;
@@ -176,20 +177,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   }
 
   void _showSnack(String msg, Color color) =>
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            msg,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-          ),
-          backgroundColor: color,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          margin: const EdgeInsets.all(16),
-        ),
-      );
+      showAppNotice(msg);
 
   @override
   Widget build(BuildContext context) {
@@ -1179,6 +1167,7 @@ class _ManagedRequirementRow extends StatelessWidget {
   void _showPicker(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(
@@ -1391,6 +1380,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
   void _showPicker(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(

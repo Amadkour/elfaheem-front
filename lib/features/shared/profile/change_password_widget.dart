@@ -15,9 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/password_text_field.dart';
-import '../../../../utils/widget/primary_button.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/password_text_field.dart';
+import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
@@ -25,6 +25,7 @@ import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
 import '../../auth/login_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen(
@@ -166,14 +167,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }
 
   void _showSnack(String msg, Color color) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(msg,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.all(16),
-      ));
+      showAppNotice(msg);
 
   // ── Build ─────────────────────────────────────────────────────────────────
 

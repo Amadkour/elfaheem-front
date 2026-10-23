@@ -20,6 +20,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 
 /// How long every admin search box waits after the LAST keystroke before it
@@ -82,7 +83,9 @@ final GlobalKey<ScaffoldMessengerState> rootMessengerKey =
 GlobalKey<ScaffoldMessengerState>();
 
 void toast(String message, {bool error = false}) {
-  // 1) preferred: the app-level messenger (no BuildContext involved)
+  // 0) above EVERY route (sheets / dialogs included) — a SnackBar sat behind open overlays
+  if (showAppNotice(message, error: error)) return;
+  // 1) fallback: the app-level messenger (no BuildContext involved)
   final messenger = rootMessengerKey.currentState;
   if (messenger != null) {
     messenger
@@ -315,7 +318,8 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
-            Flexible(child: builder(ctx)),
+            // bottom safe area: content never sits under the home indicator / gesture bar
+            Flexible(child: SafeArea(top: false, child: builder(ctx))),
           ]),
         ),
       ),

@@ -14,6 +14,8 @@ import 'auth_widgets.dart';
 import 'forget_screen.dart';
 import 'google_auth_flow.dart';
 import 'register_screen.dart';
+import '../../utils/widget/parent_component.dart';
+import '../org/org_application_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -294,6 +296,17 @@ class _LoginScreenState extends State<LoginScreen> {
               context,
             ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
           ),
+          // institutions apply here; the platform team approves them before any dashboard opens
+          ParentComponent(
+            featureKey: 'register.organization',
+            child: Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgApplicationScreen())),
+                icon: const Icon(Icons.domain_add_rounded, size: 18),
+                label: Text('register_organization'.tr),
+              ),
+            ),
+          ),
           SizedBox(height: heightUnit * 1.5),
 
           // ── Continue with Google ─────────────────────────────────────────
@@ -426,7 +439,7 @@ class _PillSwitch extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 400),
           width: 72,
-          height: 38,
+          height: 38.0,
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(40),

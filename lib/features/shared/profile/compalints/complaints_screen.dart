@@ -311,6 +311,8 @@ class _ComplaintsScreenState extends State<ComplaintsScreen> {
             myId: myId,
             busy: busy,
             onTap: () => _openDetail(cm.id),
+            // staff move a complaint along without opening it
+            onStatus: staff ? (st) => context.read<ComplaintProvider>().updateStatus(cm.id, st) : null,
           );
 
           if (!_canSwipe(cm, staff, myId)) {
@@ -626,6 +628,7 @@ class _FilterRow extends StatelessWidget {
   void _openCategorySheet(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(
@@ -993,6 +996,7 @@ class _ComplaintCard extends StatelessWidget {
     required this.myId,
     required this.onTap,
     this.busy = false,
+    this.onStatus,
   });
 
   final ComplaintModel complaint;
@@ -1000,6 +1004,7 @@ class _ComplaintCard extends StatelessWidget {
   final int myId;
   final bool busy;
   final VoidCallback onTap;
+  final ValueChanged<ComplaintStatus>? onStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -1076,6 +1081,25 @@ class _ComplaintCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                if (onStatus != null)
+                  PopupMenuButton<ComplaintStatus>(
+                    tooltip: 'complaint_move_to'.tr,
+                    icon: Icon(Icons.more_vert_rounded, color: c.textLight),
+                    onSelected: onStatus,
+                    itemBuilder: (_) => [
+                      // only the moves that make sense from where it is now
+                      for (final st in ComplaintStatus.values)
+                        if (st != cm.status && !(cm.status == ComplaintStatus.closed && st == ComplaintStatus.open))
+                          PopupMenuItem(
+                            value: st,
+                            child: Row(children: [
+                              Icon(Icons.circle, size: 10, color: _statusClr(st)),
+                              const SizedBox(width: 8),
+                              Text(_statusTxt(st)),
+                            ]),
+                          ),
+                    ],
+                  ),
               ],
             ),
             const SizedBox(height: 12),
@@ -1121,6 +1145,12 @@ class _ComplaintCard extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
+                if ((cm.targetLabel ?? '').isNotEmpty && cm.targetType != 'general')
+                  _MetaChip(
+                    icon: _targetIcon(cm.targetType),
+                    label: cm.targetLabel!,
+                    color: c.purple,
+                  ),
                 _MetaChip(
                   icon: Icons.flag_rounded,
                   label: _priorityTxt(cm.priority),
@@ -1152,10 +1182,63 @@ class _ComplaintCard extends StatelessWidget {
                   ),
               ],
             ),
+            const SizedBox(height: 14),
+            _Journey(status: cm.status),
           ],
         ),
       ),
     );
+  }
+}
+
+IconData _targetIcon(String? t) => switch (t) {
+      'course' => Icons.menu_book_rounded,
+      'teacher' => Icons.person_pin_rounded,
+      'student' => Icons.school_rounded,
+      'staff' => Icons.support_agent_rounded,
+      'department' => Icons.apartment_rounded,
+      _ => Icons.public_rounded,
+    };
+
+/// Open → In progress → Resolved → Closed: where this complaint stands, at a glance.
+class _Journey extends StatelessWidget {
+  const _Journey({required this.status});
+  final ComplaintStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    const steps = [ComplaintStatus.open, ComplaintStatus.inProgress, ComplaintStatus.resolved, ComplaintStatus.closed];
+    final at = steps.indexOf(status);
+    final tone = _statusClr(status);
+    return Row(children: [
+      for (var i = 0; i < steps.length; i++) ...[
+        Column(mainAxisSize: MainAxisSize.min, children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            width: i == at ? 16 : 10,
+            height: i == at ? 16 : 10,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i <= at ? tone : c.divider,
+              border: i == at ? Border.all(color: tone.withValues(alpha: 0.25), width: 3) : null,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(_statusTxt(steps[i]),
+              style: c.caption.copyWith(fontSize: 10, fontWeight: i == at ? FontWeight.w800 : FontWeight.w500,
+                  color: i <= at ? c.textDark : c.textLight)),
+        ]),
+        if (i < steps.length - 1)
+          Expanded(
+            child: Container(
+              height: 2,
+              margin: const EdgeInsets.only(bottom: 16),
+              color: i < at ? tone : c.divider,
+            ),
+          ),
+      ],
+    ]);
   }
 }
 
@@ -1864,6 +1947,7 @@ class _ReplyInput extends StatelessWidget {
   void _showImagePicker(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(

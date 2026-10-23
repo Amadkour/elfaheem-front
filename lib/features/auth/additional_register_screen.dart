@@ -670,6 +670,7 @@ class _UploadButton extends StatelessWidget {
   void _showPicker(BuildContext context) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(
@@ -1000,6 +1001,7 @@ class _CustomDocEntryRow extends StatelessWidget {
   void _showPicker(BuildContext context, {required String email}) {
     final c = context.colors;
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: c.cardBg,
       shape: const RoundedRectangleBorder(

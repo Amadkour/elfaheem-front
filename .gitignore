@@ -63,3 +63,5 @@ app.*.symbols
 
 # Obfuscation
 app.*.map.json
+# Widget Preview related
+.widget_preview/

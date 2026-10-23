@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, showAdminSheet, SheetHeader;
 
+import '../../../design/app_switch.dart';
 import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
@@ -96,6 +97,7 @@ class _StyleSheetState extends State<_StyleSheet> {
 
   Future<void> _editRule([int? index]) async {
     final r = await showModalBottomSheet<DlRule>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -280,18 +282,17 @@ class _StyleSheetState extends State<_StyleSheet> {
             if (col.isNumber)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
-                child: SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
+                child: AppSwitchTile(
                   value: _s.scale,
-                  activeTrackColor: c.primary,
+                  activeColor: c.primary,
                   onChanged: (v) => _set(_s.copyWith(scale: v)),
-                  title: Text(_tr('dl_scale', 'Colour scale'), style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
-                  subtitle: Row(children: [
+                  title: _tr('dl_scale', 'Colour scale'),
+                  subtitleWidget: Row(children: [
                     for (final v in const [0.0, 25.0, 50.0, 75.0, 100.0])
                       Container(
                         width: 22,
                         height: 8,
-                        margin: const EdgeInsetsDirectional.only(end: 3, top: 6),
+                        margin: const EdgeInsetsDirectional.only(end: 3, top: 2),
                         decoration: BoxDecoration(color: dlScaleColor(context, v), borderRadius: BorderRadius.circular(4)),
                       ),
                     const SizedBox(width: 8),
@@ -625,13 +626,12 @@ class _SheetLookSheet extends StatelessWidget {
                 DlChoiceChip(label: _tr('dl_avg_off', 'Hidden'), icon: Icons.visibility_off_rounded, selected: p.avgPlace == 'off', onTap: () => p.setSheetLook(avgPlace: 'off')),
               ]),
               if (p.avgPlace != 'off')
-                SwitchListTile.adaptive(
-                  contentPadding: EdgeInsets.zero,
+                AppSwitchTile(
                   value: p.avgHighlight,
-                  activeTrackColor: c.primary,
+                  activeColor: c.primary,
                   onChanged: (v) => p.setSheetLook(avgHighlight: v),
-                  title: Text(_tr('dl_avg_highlight', 'Highlight the averages'), style: dlText(13.5, w: FontWeight.w800, c: c.textDark)),
-                  subtitle: Text(_tr('dl_avg_highlight_sub', 'Tinted band and numbers in pills.'), style: dlText(11.5, c: c.textMedium)),
+                  title: _tr('dl_avg_highlight', 'Highlight the averages'),
+                  subtitle: _tr('dl_avg_highlight_sub', 'Tinted band and numbers in pills.'),
                 ),
               DlSectionTitle(_tr('dl_look_font', 'Default font')),
               Wrap(spacing: 8, runSpacing: 8, children: [

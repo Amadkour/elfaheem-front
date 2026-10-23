@@ -264,7 +264,7 @@ class _NewBadgeIcon extends StatelessWidget {
       width: 52,
       height: 52,
       decoration: BoxDecoration(
-        color: Colors.pink.shade400,
+        color: context.colors.danger,
         borderRadius: BorderRadius.circular(14),
       ),
       child: const Center(

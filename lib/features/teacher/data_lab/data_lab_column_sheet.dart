@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, confirm, showAdminSheet, SheetHeader;
 
+import '../../../design/app_switch.dart';
 import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
@@ -774,7 +775,9 @@ class _SwitchTile extends StatelessWidget {
             Text(sub, style: dlText(11, c: c.textMedium, h: 1.35)),
           ]),
         ),
-        Switch(value: value, activeTrackColor: c.primary, onChanged: onChanged),
+        const SizedBox(width: 8),
+        AppSwitch(value: value, activeColor: c.primary, onChanged: onChanged, semanticLabel: title),
+        const SizedBox(width: 4),
       ]),
     );
   }

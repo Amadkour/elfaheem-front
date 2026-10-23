@@ -1,4 +1,244 @@
 {
+  "inbox_title": {
+    "en": "Inbox",
+    "ar": "صندوق الوارد"
+  },
+  "inbox_seg_todo": {
+    "en": "To do",
+    "ar": "مطلوب منك"
+  },
+  "inbox_seg_news": {
+    "en": "Announcements",
+    "ar": "الإعلانات"
+  },
+  "inbox_seg_offers": {
+    "en": "Offers",
+    "ar": "العروض"
+  },
+  "inbox_seg_done": {
+    "en": "Done",
+    "ar": "تم"
+  },
+  "inbox_empty_todo_title": {
+    "en": "You're all caught up",
+    "ar": "لا شيء ينتظرك الآن"
+  },
+  "inbox_empty_todo_msg": {
+    "en": "New forms, requests and approvals will show up here.",
+    "ar": "ستظهر هنا النماذج والطلبات والموافقات الجديدة فور وصولها."
+  },
+  "inbox_empty_news_title": {
+    "en": "No announcements yet",
+    "ar": "لا إعلانات بعد"
+  },
+  "inbox_empty_news_msg": {
+    "en": "News from your institution will appear here.",
+    "ar": "ستجد هنا أخبار مؤسستك فور نشرها."
+  },
+  "inbox_empty_offers_title": {
+    "en": "No offers right now",
+    "ar": "لا عروض حالياً"
+  },
+  "inbox_empty_offers_msg": {
+    "en": "Courses and offers picked for you will appear here.",
+    "ar": "ستظهر هنا العروض والكورسات المختارة لك."
+  },
+  "inbox_empty_done_title": {
+    "en": "Nothing sent yet",
+    "ar": "لم ترسل شيئاً بعد"
+  },
+  "inbox_empty_done_msg": {
+    "en": "Requests you send are tracked here with their status.",
+    "ar": "تُتابَع هنا طلباتك المرسلة وحالتها."
+  },
+  "inbox_failed": {
+    "en": "We couldn't load your inbox",
+    "ar": "تعذّر تحميل صندوق الوارد"
+  },
+  "inbox_retry": {
+    "en": "Try again",
+    "ar": "إعادة المحاولة"
+  },
+  "inbox_overdue": {
+    "en": "Overdue",
+    "ar": "متأخر"
+  },
+  "inbox_due_soon": {
+    "en": "Due soon",
+    "ar": "قريب الموعد"
+  },
+  "inbox_mandatory": {
+    "en": "Required",
+    "ar": "إلزامي"
+  },
+  "inbox_due_in": {
+    "en": "Due in {t}",
+    "ar": "باقي {t}"
+  },
+  "inbox_overdue_by": {
+    "en": "Overdue by {t}",
+    "ar": "متأخر {t}"
+  },
+  "inbox_ends_in": {
+    "en": "Ends in {t}",
+    "ar": "ينتهي خلال {t}"
+  },
+  "inbox_unit_m": {
+    "en": "{n} min",
+    "ar": "{n} دقيقة"
+  },
+  "inbox_unit_h": {
+    "en": "{n} h",
+    "ar": "{n} ساعة"
+  },
+  "inbox_unit_d": {
+    "en": "{n} d",
+    "ar": "{n} يوم"
+  },
+  "inbox_see_all": {
+    "en": "See all",
+    "ar": "عرض الكل"
+  },
+  "inbox_hide": {
+    "en": "Hide",
+    "ar": "إخفاء"
+  },
+  "inbox_status_review": {
+    "en": "Under review",
+    "ar": "قيد المراجعة"
+  },
+  "inbox_status_approved": {
+    "en": "Approved",
+    "ar": "مقبول"
+  },
+  "inbox_status_rejected": {
+    "en": "Needs changes",
+    "ar": "يحتاج تعديل"
+  },
+  "inbox_status_closed": {
+    "en": "Closed",
+    "ar": "مغلق"
+  },
+  "inbox_kind_form": {
+    "en": "Form",
+    "ar": "نموذج"
+  },
+  "inbox_kind_survey": {
+    "en": "Survey",
+    "ar": "استبيان"
+  },
+  "inbox_kind_availability": {
+    "en": "Your available periods",
+    "ar": "مواعيدك المتاحة"
+  },
+  "inbox_kind_terms": {
+    "en": "Regulation to accept",
+    "ar": "لائحة تحتاج موافقتك"
+  },
+  "inbox_kind_department_choice": {
+    "en": "Choose your department",
+    "ar": "اختر قسمك العلمي"
+  },
+  "inbox_kind_platform": {
+    "en": "From the platform",
+    "ar": "من المنصة"
+  },
+  "inbox_kind_request": {
+    "en": "My request",
+    "ar": "طلبي"
+  },
+  "inbox_kind_complaint_reply": {
+    "en": "New reply",
+    "ar": "رد جديد"
+  },
+  "inbox_kind_approval": {
+    "en": "Waiting for your decision",
+    "ar": "بانتظار قرارك"
+  },
+  "inbox_kind_announcement": {
+    "en": "Announcement",
+    "ar": "إعلان"
+  },
+  "inbox_kind_ad": {
+    "en": "Offer",
+    "ar": "عرض"
+  },
+  "inbox_kind_parent_link": {
+    "en": "Link request",
+    "ar": "طلب ربط"
+  },
+  "inbox_kind_exam": {
+    "en": "Upcoming exam",
+    "ar": "امتحان قادم"
+  },
+  "inbox_starts_in": {
+    "en": "Starts in {t}",
+    "ar": "يبدأ خلال {t}"
+  },
+  "inbox_exam_invigilate": {
+    "en": "You invigilate",
+    "ar": "أنت مراقب"
+  },
+  "inbox_appr_forms": {
+    "en": "{n} requests waiting for your review",
+    "ar": "{n} طلبات تنتظر مراجعتك"
+  },
+  "inbox_appr_complaints": {
+    "en": "{n} open complaints in your area",
+    "ar": "{n} شكاوى مفتوحة في نطاقك"
+  },
+  "inbox_appr_join": {
+    "en": "{n} people asking to join",
+    "ar": "{n} طلبات انضمام للمؤسسة"
+  },
+  "inbox_appr_units": {
+    "en": "{n} department join requests",
+    "ar": "{n} طلبات انضمام لأقسام"
+  },
+  "inbox_assigned_to_me": {
+    "en": "{n} assigned to you",
+    "ar": "{n} مسندة إليك"
+  },
+  "inbox_preview_clear": {
+    "en": "Nothing needs you right now 🌿",
+    "ar": "لا شيء ينتظرك الآن 🌿"
+  },
+  "inbox_preview_todo": {
+    "en": "{n} to do",
+    "ar": "{n} مطلوب منك"
+  },
+  "inbox_preview_overdue": {
+    "en": "{n} overdue",
+    "ar": "{n} متأخر"
+  },
+  "inbox_preview_soon": {
+    "en": "{n} due soon",
+    "ar": "{n} قريب الموعد"
+  },
+  "inbox_ref": {
+    "en": "Ref.",
+    "ar": "رقم"
+  },
+  "inbox_sent_on": {
+    "en": "Sent",
+    "ar": "أُرسل"
+  },
+  "inbox_reviewer_note": {
+    "en": "Reviewer's note",
+    "ar": "ملاحظة المراجع"
+  },
+  "inbox_details": {
+    "en": "Details",
+    "ar": "التفاصيل"
+  },
+  "inbox_all_news": {
+    "en": "All news",
+    "ar": "كل الأخبار"
+  },
+  "inbox_open_failed": {
+    "en": "Couldn't open it",
+    "ar": "تعذّر الفتح"
+  },
   "email": {
     "en": "E-mail",
     "ar": "البريد الاكتروني"
@@ -4316,6 +4556,18 @@
   "roadmap_load_failed": {
     "en": "Couldn't load the roadmap",
     "ar": "تعذّر تحميل المسار"
+  },
+  "roadmap_prereq_title": {
+    "en": "A step before this roadmap",
+    "ar": "خطوة قبل هذا المسار"
+  },
+  "roadmap_prereq_body": {
+    "en": "Some courses in this roadmap have requirements you haven't met yet. Nothing was charged.",
+    "ar": "بعض مقررات هذا المسار لها متطلبات لم تستوفها بعد. لم يُخصم أي مبلغ."
+  },
+  "roadmap_prereq_see_why": {
+    "en": "See what's missing",
+    "ar": "اعرض ما ينقصك"
   },
   "roadmap_all_enrolled": {
     "en": "You're enrolled in every course on the roadmap",
@@ -10957,6 +11209,14 @@
     "ar": "إظهار ميزات التطبيق أو إخفاؤها",
     "en": "Show or hide app features"
   },
+  "svc_platform_settings": {
+    "ar": "إعدادات المنصة",
+    "en": "Platform settings"
+  },
+  "svc_platform_settings_d": {
+    "ar": "المؤسسات ورسوم إنشائها، الوقت والمنطقة، والميزات",
+    "en": "Organizations and their fee, time & region, and features"
+  },
   "svc_flags_d": {
     "ar": "حدود علامات المراجعة والقراءة",
     "en": "Review and read flag limits"
@@ -14264,5 +14524,857 @@
   "dl_copy": {
     "en": "Copy",
     "ar": "نسخ"
+  },
+  "cert_designer_title": {
+    "en": "Certificate designer",
+    "ar": "مصمم الشهادات"
+  },
+  "cert_designs_title": {
+    "en": "Certificate designs",
+    "ar": "تصميمات الشهادات"
+  },
+  "cert_new_design": {
+    "en": "New design",
+    "ar": "تصميم جديد"
+  },
+  "cert_no_designs": {
+    "en": "No designs yet",
+    "ar": "لا توجد تصميمات بعد"
+  },
+  "cert_edit_design": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "cert_use_design": {
+    "en": "Use for this certificate",
+    "ar": "استخدام لهذه الشهادة"
+  },
+  "cert_design_in_use": {
+    "en": "Design applied to this certificate",
+    "ar": "تم تطبيق التصميم على هذه الشهادة"
+  },
+  "cert_scope_org": {
+    "en": "Organization",
+    "ar": "المؤسسة"
+  },
+  "cert_scope_personal": {
+    "en": "Personal",
+    "ar": "شخصي"
+  },
+  "cert_delete_design_title": {
+    "en": "Delete design?",
+    "ar": "حذف التصميم؟"
+  },
+  "cert_delete_design_body": {
+    "en": "Certificates using it go back to the default template.",
+    "ar": "الشهادات التي تستخدمه ستعود للقالب الافتراضي."
+  },
+  "cert_design_certificate_btn": {
+    "en": "Design certificate",
+    "ar": "تصميم الشهادة"
+  },
+  "cert_choose_saved_design_btn": {
+    "en": "Choose a saved design",
+    "ar": "اختيار تصميم محفوظ"
+  },
+  "cert_wizard_intro": {
+    "en": "Start with a draft built from your app theme, logo and signature, or insert your own template. Everything can be edited afterwards.",
+    "ar": "ابدأ بمسودة مبنية على ألوان التطبيق والشعار والتوقيع، أو أدرج قالبك الخاص. يمكنك تعديل كل شيء لاحقاً."
+  },
+  "cert_orientation": {
+    "en": "Page orientation",
+    "ar": "اتجاه الصفحة"
+  },
+  "cert_orientation_landscape": {
+    "en": "Landscape",
+    "ar": "أفقي"
+  },
+  "cert_orientation_portrait": {
+    "en": "Portrait",
+    "ar": "رأسي"
+  },
+  "cert_style": {
+    "en": "Style",
+    "ar": "النمط"
+  },
+  "cert_style_classic": {
+    "en": "Classic",
+    "ar": "كلاسيكي"
+  },
+  "cert_style_modern": {
+    "en": "Modern",
+    "ar": "عصري"
+  },
+  "cert_style_dark": {
+    "en": "Dark",
+    "ar": "داكن"
+  },
+  "cert_logo": {
+    "en": "Logo",
+    "ar": "الشعار"
+  },
+  "cert_upload_logo": {
+    "en": "Upload logo",
+    "ar": "رفع الشعار"
+  },
+  "cert_logo_org_hint": {
+    "en": "If you skip this, the organization logo is used.",
+    "ar": "إن تجاهلت هذا فسيُستخدم شعار المؤسسة."
+  },
+  "cert_signature": {
+    "en": "Signature",
+    "ar": "التوقيع"
+  },
+  "cert_upload_signature": {
+    "en": "Upload signature photo",
+    "ar": "رفع صورة التوقيع"
+  },
+  "cert_signature_hint": {
+    "en": "Photograph your signature on white paper — the background is removed automatically.",
+    "ar": "صوّر توقيعك على ورقة بيضاء — تتم إزالة الخلفية تلقائياً."
+  },
+  "cert_signature_ink": {
+    "en": "Ink colour",
+    "ar": "لون الحبر"
+  },
+  "cert_signature_strength": {
+    "en": "Background removal strength",
+    "ar": "قوة إزالة الخلفية"
+  },
+  "cert_signature_failed": {
+    "en": "No signature found in the image — use a clearer photo.",
+    "ar": "لم يتم العثور على توقيع في الصورة — استخدم صورة أوضح."
+  },
+  "cert_generate_draft": {
+    "en": "Generate draft from app theme",
+    "ar": "إنشاء مسودة من ألوان التطبيق"
+  },
+  "cert_use_my_template": {
+    "en": "Use my own template image",
+    "ar": "استخدام صورة قالبي الخاص"
+  },
+  "cert_start_blank": {
+    "en": "Start with a blank page",
+    "ar": "البدء بصفحة فارغة"
+  },
+  "cert_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "cert_add_text": {
+    "en": "Text",
+    "ar": "نص"
+  },
+  "cert_add_dynamic": {
+    "en": "Dynamic field",
+    "ar": "حقل ديناميكي"
+  },
+  "cert_add_signature": {
+    "en": "Signature",
+    "ar": "التوقيع"
+  },
+  "cert_add_logo": {
+    "en": "Logo",
+    "ar": "الشعار"
+  },
+  "cert_add_line": {
+    "en": "Line",
+    "ar": "خط"
+  },
+  "cert_upload_signature_first": {
+    "en": "Upload a signature first (Page tab).",
+    "ar": "ارفع توقيعاً أولاً (تبويب الصفحة)."
+  },
+  "cert_upload_logo_first": {
+    "en": "Upload a logo first (Page tab).",
+    "ar": "ارفع شعاراً أولاً (تبويب الصفحة)."
+  },
+  "cert_tab_field": {
+    "en": "Field",
+    "ar": "الحقل"
+  },
+  "cert_tab_layers": {
+    "en": "Layers",
+    "ar": "الطبقات"
+  },
+  "cert_tab_page": {
+    "en": "Page",
+    "ar": "الصفحة"
+  },
+  "cert_select_field_hint": {
+    "en": "Tap an element on the certificate to edit it.",
+    "ar": "اضغط على أي عنصر في الشهادة لتعديله."
+  },
+  "cert_no_fields": {
+    "en": "No fields yet — add text, signature or logo from the toolbar.",
+    "ar": "لا توجد حقول — أضف نصاً أو توقيعاً أو شعاراً من الشريط."
+  },
+  "cert_layers_hint": {
+    "en": "Drag to rearrange. Lower in the list = on top.",
+    "ar": "اسحب لإعادة الترتيب. الأسفل في القائمة = في الأعلى."
+  },
+  "cert_field_text": {
+    "en": "Text (use {student_name} …)",
+    "ar": "النص (استخدم {student_name} …)"
+  },
+  "cert_field_text_ar": {
+    "en": "Arabic wording (optional)",
+    "ar": "النص بالعربية (اختياري)"
+  },
+  "cert_field_text_ar_hint": {
+    "en": "Used for the Arabic version of the certificate",
+    "ar": "يُستخدم في النسخة العربية من الشهادة"
+  },
+  "cert_font": {
+    "en": "Font",
+    "ar": "الخط"
+  },
+  "cert_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "cert_width": {
+    "en": "Width",
+    "ar": "العرض"
+  },
+  "cert_height": {
+    "en": "Height",
+    "ar": "الارتفاع"
+  },
+  "cert_thickness": {
+    "en": "Thickness",
+    "ar": "السماكة"
+  },
+  "cert_color": {
+    "en": "Colour",
+    "ar": "اللون"
+  },
+  "cert_align": {
+    "en": "Alignment",
+    "ar": "المحاذاة"
+  },
+  "cert_letter_spacing": {
+    "en": "Letter spacing",
+    "ar": "تباعد الحروف"
+  },
+  "cert_opacity": {
+    "en": "Opacity",
+    "ar": "الشفافية"
+  },
+  "cert_auto_fit": {
+    "en": "Shrink to fit the box",
+    "ar": "تصغير الخط ليناسب المربع"
+  },
+  "cert_max_lines": {
+    "en": "Max lines",
+    "ar": "أقصى عدد أسطر"
+  },
+  "cert_center": {
+    "en": "Centre",
+    "ar": "توسيط"
+  },
+  "cert_duplicate": {
+    "en": "Duplicate",
+    "ar": "تكرار"
+  },
+  "cert_bring_forward": {
+    "en": "Forward",
+    "ar": "للأمام"
+  },
+  "cert_send_backward": {
+    "en": "Backward",
+    "ar": "للخلف"
+  },
+  "cert_design_name": {
+    "en": "Design name",
+    "ar": "اسم التصميم"
+  },
+  "cert_background": {
+    "en": "Background",
+    "ar": "الخلفية"
+  },
+  "cert_reset_layout": {
+    "en": "Also reset the field layout",
+    "ar": "إعادة ضبط تخطيط الحقول أيضاً"
+  },
+  "cert_regenerate_from_theme": {
+    "en": "Regenerate from app theme",
+    "ar": "إعادة الإنشاء من ألوان التطبيق"
+  },
+  "cert_upload_template": {
+    "en": "Upload template image",
+    "ar": "رفع صورة قالب"
+  },
+  "cert_remove_background": {
+    "en": "Remove background",
+    "ar": "إزالة الخلفية"
+  },
+  "cert_design_saved": {
+    "en": "Design saved",
+    "ar": "تم حفظ التصميم"
+  },
+  "cert_design_saved_and_used": {
+    "en": "Saved — new certificates will use this design",
+    "ar": "تم الحفظ — ستستخدم الشهادات الجديدة هذا التصميم"
+  },
+  "cert_design_saved_not_attached": {
+    "en": "Saved, but could not be applied to this certificate",
+    "ar": "تم الحفظ لكن تعذر تطبيقه على هذه الشهادة"
+  },
+  "cert_discard_changes_title": {
+    "en": "Discard changes?",
+    "ar": "تجاهل التغييرات؟"
+  },
+  "cert_discard_changes_body": {
+    "en": "You have unsaved changes.",
+    "ar": "لديك تغييرات غير محفوظة."
+  },
+  "cert_discard": {
+    "en": "Discard",
+    "ar": "تجاهل"
+  },
+  "cert_font_cinzel": {
+    "en": "Cinzel (Roman capitals)",
+    "ar": "سنزل — حروف رومانية"
+  },
+  "cert_font_great_vibes": {
+    "en": "Great Vibes (script)",
+    "ar": "جريت فايبز — خط يد"
+  },
+  "cert_font_cormorant": {
+    "en": "Cormorant Garamond",
+    "ar": "كورمورانت"
+  },
+  "cert_font_tajawal": {
+    "en": "Tajawal",
+    "ar": "تجوال"
+  },
+  "cert_font_tajawal_medium": {
+    "en": "Tajawal Medium",
+    "ar": "تجوال متوسط"
+  },
+  "cert_font_tajawal_bold": {
+    "en": "Tajawal Bold",
+    "ar": "تجوال عريض"
+  },
+  "cert_font_amiri": {
+    "en": "Amiri (Naskh)",
+    "ar": "أميري — نسخ"
+  },
+  "cert_font_amiri_bold": {
+    "en": "Amiri Bold",
+    "ar": "أميري عريض"
+  },
+  "cert_ph_student_name": {
+    "en": "Student name",
+    "ar": "اسم الطالب"
+  },
+  "cert_ph_course_name": {
+    "en": "Course name",
+    "ar": "اسم الدورة"
+  },
+  "cert_ph_certificate_title": {
+    "en": "Certificate title",
+    "ar": "عنوان الشهادة"
+  },
+  "cert_ph_teacher_name": {
+    "en": "Teacher name",
+    "ar": "اسم المدرس"
+  },
+  "cert_ph_date": {
+    "en": "Date",
+    "ar": "التاريخ"
+  },
+  "cert_ph_serial": {
+    "en": "Serial number",
+    "ar": "الرقم التسلسلي"
+  },
+  "cert_ph_attendance": {
+    "en": "Attendance (x / y)",
+    "ar": "الحضور (س / ص)"
+  },
+  "cert_ph_progress": {
+    "en": "Progress %",
+    "ar": "نسبة التقدم"
+  },
+  "cert_ph_org_name": {
+    "en": "Organization name",
+    "ar": "اسم المؤسسة"
+  },
+  "svc_organizations": {
+    "en": "Organizations",
+    "ar": "المؤسسات"
+  },
+  "svc_organizations_d": {
+    "en": "Review universities & faculties, approve, suspend, create org admins",
+    "ar": "مراجعة الجامعات والكليات واعتمادها وإيقافها وإنشاء مديريها"
+  },
+  "lr_reconnecting": {
+    "en": "Weak connection — reconnecting you…",
+    "ar": "الاتصال ضعيف — نعيد توصيلك…"
+  },
+  "lr_reconnected": {
+    "en": "You are back online",
+    "ar": "عاد الاتصال"
+  },
+  "lr_connection_lost_title": {
+    "en": "Connection lost",
+    "ar": "انقطع الاتصال"
+  },
+  "lr_connection_lost_body": {
+    "en": "We couldn't keep you in the class. Check your internet and join again from the lesson page.",
+    "ar": "لم نتمكن من إبقائك في المحاضرة. تحقق من الإنترنت وادخل مجدداً من صفحة الدرس."
+  },
+  "lr_removed_title": {
+    "en": "You were removed from the class",
+    "ar": "تم إخراجك من المحاضرة"
+  },
+  "lr_removed_body": {
+    "en": "The teacher removed you from this live class. Contact them if you think this is a mistake.",
+    "ar": "أخرجك المعلم من هذه المحاضرة المباشرة. تواصل معه إن كنت تظن أن هذا خطأ."
+  },
+  "cert_current_design": {
+    "en": "Design in use",
+    "ar": "التصميم المستخدم"
+  },
+  "cert_default_template": {
+    "en": "Students get the default template",
+    "ar": "يحصل الطلاب على القالب الافتراضي"
+  },
+  "cert_edit_design_btn": {
+    "en": "Edit the design",
+    "ar": "تعديل التصميم"
+  },
+  "cert_remove_design": {
+    "en": "Use default",
+    "ar": "استخدام الافتراضي"
+  },
+  "account_not_verified": {
+    "en": "Your account is not verified yet",
+    "ar": "حسابك غير مفعّل بعد"
+  },
+  "admin_custom_module": {
+    "en": "Custom module",
+    "ar": "وحدة مخصصة"
+  },
+  "admin_custom_module_name": {
+    "en": "Module name",
+    "ar": "اسم الوحدة"
+  },
+  "admin_custom_module_name_hint": {
+    "en": "e.g. Library",
+    "ar": "مثلاً: المكتبة"
+  },
+  "admin_enter_custom_module_name": {
+    "en": "Enter the module name",
+    "ar": "اكتب اسم الوحدة"
+  },
+  "admin_payments_hero_hint": {
+    "en": "Review transfers, confirm payments and follow every payment from one place",
+    "ar": "راجع التحويلات وأكّد المدفوعات وتابع كل عملية دفع من مكان واحد"
+  },
+  "audio_only": {
+    "en": "Audio only",
+    "ar": "صوت فقط"
+  },
+  "complaint_about_course": {
+    "en": "About a course",
+    "ar": "بخصوص كورس"
+  },
+  "complaint_hero_sub": {
+    "en": "Tell us what happened — we read every message and reply as soon as we can",
+    "ar": "أخبرنا بما حدث — نقرأ كل رسالة ونرد في أقرب وقت"
+  },
+  "complaint_hero_title": {
+    "en": "We're listening",
+    "ar": "نحن نسمعك"
+  },
+  "course_hero_setting": {
+    "en": "Course settings",
+    "ar": "إعدادات الدورة"
+  },
+  "course_passcode_hint": {
+    "en": "Enter the course passcode",
+    "ar": "أدخل رمز الدورة"
+  },
+  "course_passcode_title": {
+    "en": "This course is protected",
+    "ar": "هذه الدورة محمية برمز"
+  },
+  "course_passcode_wrong": {
+    "en": "Wrong passcode — try again",
+    "ar": "الرمز غير صحيح — حاول مرة أخرى"
+  },
+  "course_reel_unsupported_type": {
+    "en": "This file type is not supported for the course reel",
+    "ar": "نوع الملف غير مدعوم للفيديو التعريفي"
+  },
+  "default_plan_label": {
+    "en": "Default plan",
+    "ar": "الخطة الافتراضية"
+  },
+  "edit": {
+    "en": "Edit",
+    "ar": "تعديل"
+  },
+  "edit_session_subtitle": {
+    "en": "Update the lesson details",
+    "ar": "حدّث بيانات الدرس"
+  },
+  "empty_calender": {
+    "en": "Nothing scheduled for this day",
+    "ar": "لا مواعيد في هذا اليوم"
+  },
+  "new_session_subtitle": {
+    "en": "Add a new lesson to the course",
+    "ar": "أضف درساً جديداً للدورة"
+  },
+  "reject": {
+    "en": "Reject",
+    "ar": "رفض"
+  },
+  "stream_quality": {
+    "en": "Stream quality",
+    "ar": "جودة البث"
+  },
+  "verified_documents": {
+    "en": "Verified documents",
+    "ar": "مستندات موثّقة"
+  },
+  "video": {
+    "en": "Video",
+    "ar": "فيديو"
+  },
+  "cert_readonly_design": {
+    "en": "This design is shared with you, so it can't be edited here. Make your own copy to change positions, alignment, fonts and colours.",
+    "ar": "هذا التصميم مشترك معك ولا يمكن تعديله هنا. أنشئ نسختك الخاصة لتغيير المواضع والمحاذاة والخطوط والألوان."
+  },
+  "cert_customize_copy": {
+    "en": "Customize my copy",
+    "ar": "تخصيص نسختي"
+  },
+  "cert_copy_ready": {
+    "en": "Your copy is ready and attached to this certificate — edit it freely",
+    "ar": "نسختك جاهزة ومرتبطة بهذه الشهادة — عدّلها كما تشاء"
+  },
+  "cert_my_designs": {
+    "en": "My certificate designs",
+    "ar": "تصميمات شهاداتي"
+  },
+  "logout_confirm": {
+    "en": "Sign out of your account?",
+    "ar": "تسجيل الخروج من حسابك؟"
+  },
+  "cert_font_cormorant_italic": {
+    "en": "Cormorant Italic",
+    "ar": "كورمورانت مائل"
+  },
+  "cert_font_playfair": {
+    "en": "Playfair Display",
+    "ar": "بلاي فير"
+  },
+  "cert_font_playfair_bold": {
+    "en": "Playfair Display Bold",
+    "ar": "بلاي فير عريض"
+  },
+  "cert_font_playfair_italic": {
+    "en": "Playfair Italic",
+    "ar": "بلاي فير مائل"
+  },
+  "cert_font_eb_garamond": {
+    "en": "EB Garamond",
+    "ar": "غاراموند"
+  },
+  "cert_font_pinyon_script": {
+    "en": "Pinyon Script (formal)",
+    "ar": "بينيون — خط رسمي"
+  },
+  "cert_font_baskerville": {
+    "en": "Baskerville",
+    "ar": "باسكرفيل"
+  },
+  "cert_font_baskerville_bold": {
+    "en": "Baskerville Bold",
+    "ar": "باسكرفيل عريض"
+  },
+  "cert_font_aref_ruqaa": {
+    "en": "Aref Ruqaa",
+    "ar": "عارف رقعة"
+  },
+  "cert_font_aref_ruqaa_bold": {
+    "en": "Aref Ruqaa Bold",
+    "ar": "عارف رقعة عريض"
+  },
+  "cert_font_scheherazade": {
+    "en": "Scheherazade",
+    "ar": "شهرزاد"
+  },
+  "cert_font_scheherazade_bold": {
+    "en": "Scheherazade Bold",
+    "ar": "شهرزاد عريض"
+  },
+  "cert_font_reem_kufi": {
+    "en": "Reem Kufi",
+    "ar": "ريم كوفي"
+  },
+  "cert_font_reem_kufi_bold": {
+    "en": "Reem Kufi Bold",
+    "ar": "ريم كوفي عريض"
+  },
+  "cert_font_el_messiri": {
+    "en": "El Messiri",
+    "ar": "المسيري"
+  },
+  "cert_font_el_messiri_bold": {
+    "en": "El Messiri Bold",
+    "ar": "المسيري عريض"
+  },
+  "cert_font_cairo": {
+    "en": "Cairo",
+    "ar": "القاهرة"
+  },
+  "cert_font_cairo_bold": {
+    "en": "Cairo Extra Bold",
+    "ar": "القاهرة عريض"
+  },
+  "cert_font_markazi": {
+    "en": "Markazi Text",
+    "ar": "مركزي"
+  },
+  "cert_font_markazi_bold": {
+    "en": "Markazi Text Bold",
+    "ar": "مركزي عريض"
+  },
+  "svc_ads": {
+    "en": "Ads",
+    "ar": "الإعلانات"
+  },
+  "svc_ads_d": {
+    "en": "Home-screen slider, teacher ads, prices & approval",
+    "ar": "شريط الإعلانات وإعلانات المعلمين والأسعار والمراجعة"
+  },
+  "my_ads": {
+    "en": "My ads",
+    "ar": "إعلاناتي"
+  },
+  "cert_add_photo": {
+    "en": "Student photo",
+    "ar": "صورة الطالب"
+  },
+  "cert_use_for_courses": {
+    "en": "Use for courses",
+    "ar": "استخدامه للكورسات"
+  },
+  "cert_use_for_courses_hint": {
+    "en": "Certificates of these courses use this design automatically; otherwise the premium automatic certificate is issued.",
+    "ar": "شهادات هذه الكورسات تستخدم هذا التصميم تلقائياً؛ وإلا تُصدر الشهادة التلقائية الفاخرة."
+  },
+  "cert_all_my_courses": {
+    "en": "All my courses",
+    "ar": "كل كورساتي"
+  },
+  "cert_designs_link_title": {
+    "en": "Certificate designs",
+    "ar": "تصميمات الشهادات"
+  },
+  "cert_designs_link_sub": {
+    "en": "Design once, use it on all or some of your courses",
+    "ar": "صمّم مرة واحدة واستخدمه لكل كورساتك أو بعضها"
+  },
+  "complaint_about": {
+    "en": "What is it about?",
+    "ar": "بخصوص ماذا؟"
+  },
+  "complaint_about_general": {
+    "en": "General",
+    "ar": "عامة"
+  },
+  "complaint_about_course_t": {
+    "en": "A course",
+    "ar": "كورس"
+  },
+  "complaint_about_teacher": {
+    "en": "A teacher",
+    "ar": "معلم"
+  },
+  "complaint_about_student": {
+    "en": "A student",
+    "ar": "طالب"
+  },
+  "complaint_about_staff": {
+    "en": "Platform staff",
+    "ar": "فريق المنصة"
+  },
+  "complaint_about_department": {
+    "en": "A department",
+    "ar": "إدارة / قسم"
+  },
+  "complaint_about_none": {
+    "en": "Nothing to choose here yet",
+    "ar": "لا توجد خيارات هنا بعد"
+  },
+  "change": {
+    "en": "Change",
+    "ar": "تغيير"
+  },
+  "complaint_move_to": {
+    "en": "Move to",
+    "ar": "نقل إلى"
+  },
+  "svc_datacenter": {
+    "en": "Data Center",
+    "ar": "مركز البيانات"
+  },
+  "svc_datacenter_d": {
+    "en": "All data, charts, export · parents import",
+    "ar": "كل البيانات والرسوم والتصدير · استيراد أولياء الأمور"
+  },
+  "svc_requirements": {
+    "en": "Platform requirements",
+    "ar": "مطالب المنصة"
+  },
+  "svc_requirements_d": {
+    "en": "Ask users to agree or read",
+    "ar": "اطلب من المستخدمين الموافقة أو الاطلاع"
+  },
+  "role_parent": {
+    "en": "Parent",
+    "ar": "ولي أمر"
+  },
+  "role_admin": {
+    "en": "Admin",
+    "ar": "مسؤول"
+  },
+  "role_super_admin": {
+    "en": "Super admin",
+    "ar": "مسؤول عام"
+  },
+  "role_org_admin": {
+    "en": "Organization admin",
+    "ar": "مدير مؤسسة"
+  },
+  "role_org_staff": {
+    "en": "Organization staff",
+    "ar": "موظف مؤسسة"
+  },
+  "role_developer": {
+    "en": "Developer",
+    "ar": "مطوّر"
+  },
+  "register_organization": {
+    "en": "Register an institution",
+    "ar": "تسجيل مؤسسة تعليمية"
+  },
+  "tx_generated": {
+    "en": "Generated",
+    "ar": "أُنشئ"
+  },
+  "tx_filters": {
+    "en": "Filters",
+    "ar": "التصفية"
+  },
+  "tx_total": {
+    "en": "Total",
+    "ar": "الإجمالي"
+  },
+  "tx_subtotal": {
+    "en": "Subtotal",
+    "ar": "المجموع الفرعي"
+  },
+  "tx_rows": {
+    "en": "rows",
+    "ar": "صف"
+  },
+  "tx_no_rows": {
+    "en": "No rows to export",
+    "ar": "لا توجد صفوف للتصدير"
+  },
+  "tx_export": {
+    "en": "Export",
+    "ar": "تصدير"
+  },
+  "tx_export_downloaded": {
+    "en": "File downloaded",
+    "ar": "تم تنزيل الملف"
+  },
+  "tx_export_saved": {
+    "en": "Saved to",
+    "ar": "حُفظ في"
+  },
+  "tx_export_failed": {
+    "en": "Could not create the file",
+    "ar": "تعذّر إنشاء الملف"
+  },
+  "tx_export_as_excel": {
+    "en": "Export to Excel",
+    "ar": "تصدير إلى Excel"
+  },
+  "tx_export_as_word": {
+    "en": "Export to Word",
+    "ar": "تصدير إلى Word"
+  },
+  "tx_export_as_pdf": {
+    "en": "Export to PDF",
+    "ar": "تصدير إلى PDF"
+  },
+  "tx_filters_applied": {
+    "en": "filters applied",
+    "ar": "تصفية مطبقة"
+  },
+  "tx_format": {
+    "en": "Format",
+    "ar": "الصيغة"
+  },
+  "tx_columns": {
+    "en": "Columns",
+    "ar": "الأعمدة"
+  },
+  "tx_columns_lower": {
+    "en": "columns",
+    "ar": "عمود"
+  },
+  "tx_select_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "tx_select_none": {
+    "en": "None",
+    "ar": "لا شيء"
+  },
+  "tx_search_columns": {
+    "en": "Search columns",
+    "ar": "ابحث في الأعمدة"
+  },
+  "tx_pick_one_column": {
+    "en": "Pick at least one column",
+    "ar": "اختر عمودًا واحدًا على الأقل"
+  },
+  "tx_no_columns_match": {
+    "en": "No column matches",
+    "ar": "لا يوجد عمود مطابق"
+  },
+  "tx_landscape": {
+    "en": "landscape",
+    "ar": "أفقي"
+  },
+  "tx_portrait": {
+    "en": "portrait",
+    "ar": "رأسي"
+  },
+  "tx_format_excel_hint": {
+    "en": "Filters & formulas",
+    "ar": "فلاتر وصيغ"
+  },
+  "tx_format_word_hint": {
+    "en": "Editable document",
+    "ar": "مستند قابل للتعديل"
+  },
+  "tx_format_pdf_hint": {
+    "en": "Ready to print",
+    "ar": "جاهز للطباعة"
+  },
+  "tx_column_locked": {
+    "en": "Always exported",
+    "ar": "يُصدَّر دائمًا"
   }
 }

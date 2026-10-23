@@ -74,7 +74,7 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
           headerSliverBuilder: (ctx, _) => [
             SliverToBoxAdapter(
               child: ExamHero(
-                colors: const [Color(0xFF4A148C), kViolet],
+                colors: [context.colors.purple, kViolet],
                 child: Column(children: [
                   ExamHeroBar(
                     title: widget.courseTitle,
@@ -94,7 +94,7 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 10),
                     HeroStat(
                       icon: Icons.menu_book_rounded,
-                      color: const Color(0xFF80D8FF),
+                      color: context.colors.primaryLight,
                       value: '${p.read.length}',
                       label: tx('flag_read_bank'),
                     ),

@@ -71,7 +71,7 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
           Align( alignment:Alignment.centerRight ,child: Text(body, style: c.body)),
-          if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption.copyWith(color: Colors.red,fontSize: 14,fontWeight: FontWeight.w600))],
+          if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption.copyWith(color: context.colors.danger,fontSize: 14,fontWeight: FontWeight.w600))],
         ]),
         actions: [
           TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('dev_close'.tr)),

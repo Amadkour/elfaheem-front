@@ -17,9 +17,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../config/theme/app_theme.dart';
 import '../../config/theme/theme_config_provider.dart';
-import '../../utils/widget/phone_field.dart';
 import '../../utils/widget/primary_button.dart';
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';
@@ -30,6 +28,7 @@ import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'google_auth_flow.dart';
 import 'verify_way.dart';
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
@@ -90,6 +89,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _openTerms() async {
     context.read<AboutTermsProvider>().clearSelection();
     final accepted = await showModalBottomSheet<bool>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -248,12 +248,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           const SizedBox(height: 20),
 
           // Email
-          IconTextField(
-            controller: _emailController,
-            label: 'email'.tr,
-            icon: Icons.email_outlined,
-            keyboard: TextInputType.emailAddress,
-          ),
+          AppEmailField(controller: _emailController, label: 'email'.tr),
           const SizedBox(height: 20),
 
           // Phone — always shown when the admin verifies accounts by phone,

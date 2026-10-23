@@ -151,7 +151,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               Row(children: [
                 HeroStat(
                   icon: Icons.timer_outlined,
-                  color: const Color(0xFF80D8FF),
+                  color: context.colors.primaryLight,
                   value: tx('exam_n_minutes', {'n': exam.duration ?? 0}),
                   label: tx('exam_duration'),
                 ),
@@ -329,7 +329,7 @@ class _ScoreCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           ExamStatBox('${exam.answeredCount} / ${exam.questionCount}',
-              tx('exam_you_answered'), Colors.blueGrey),
+              tx('exam_you_answered'), context.colors.primary),
         ]),
         if (exam.submissionCount > 0) ...[
           const SizedBox(height: 12),

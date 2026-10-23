@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../config/app_config.dart' as Helpers;
-import '../../../../utils/widget/app_network_image.dart';
-import '../../../../utils/widget/app_bar.dart';
+import 'package:flutter_education_app/config/app_config.dart' as Helpers;
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
+import '../../../utils/widget/app_bar.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'rewards_provider.dart';
 
@@ -67,8 +67,8 @@ class _OverviewView extends StatelessWidget {
                         width:  double.infinity,
                         height: 220,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF5B8FFF), Color(0xFF8B6FFF)],
+                          gradient: LinearGradient(
+                            colors: [context.colors.primaryLight, context.colors.primaryLight],
                             begin:  Alignment.topLeft,
                             end:    Alignment.bottomRight,
                           ),
@@ -104,8 +104,8 @@ class _OverviewView extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const Icon(Icons.emoji_events_rounded,
-                                size: 100, color: Colors.amber),
+                            Icon(Icons.emoji_events_rounded,
+                                size: 100, color: context.colors.warning),
                           ],
                         ),
                       ),

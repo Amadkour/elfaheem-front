@@ -147,6 +147,8 @@ class ComplaintModel {
   final String? userImage;
   final int? courseId;
   final String? courseTitle;
+  final String? targetType;   // general · course · teacher · student · staff · department
+  final String? targetLabel;  // e.g. the teacher's name
   final String title;
   final String description;
   final String? suggestedSolution; // ← NEW  optional student-proposed fix
@@ -169,6 +171,8 @@ class ComplaintModel {
     this.userImage,
     this.courseId,
     this.courseTitle,
+    this.targetType,
+    this.targetLabel,
     required this.title,
     required this.description,
     this.suggestedSolution,         // ← NEW
@@ -192,6 +196,8 @@ class ComplaintModel {
     userImage: j['user_image'],
     courseId: j['course_id'],
     courseTitle: j['course_title'],
+    targetType: j['target_type'] as String?,
+    targetLabel: j['target_label'] as String?,
     title: j['title'],
     description: j['description'],
     suggestedSolution: j['suggested_solution'] as String?, // ← NEW

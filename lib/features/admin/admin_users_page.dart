@@ -17,9 +17,11 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminUsersExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'admin_view_as_page.dart' show startViewAs;
+import 'package:flutter_education_app/design/app_inputs.dart';
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key, required this.role, this.embedded = false});
@@ -91,6 +93,7 @@ class _UsersView extends StatelessWidget {
     );
 
     final list = PagedList<AdminUsersProvider>(
+      export: (rows) => adminUsersExport(role, rows),
       header: header,
       emptyText: isStudent
           ? 'admin_no_students_found'.tr
@@ -1043,16 +1046,7 @@ class _UserFormState extends State<_UserForm> {
                         ? 'admin_name_is_required'.tr
                         : null,
                   ),
-                  Field(
-                    controller: _email,
-                    label: 'admin_email'.tr,
-                    keyboard: TextInputType.emailAddress,
-                    ltr: true,
-                    validator: (v) =>
-                        (v == null || !v.contains('@') || !v.contains('.'))
-                        ? 'admin_invalid_email'.tr
-                        : null,
-                  ),
+                  AppEmailField(controller: _email, label: 'admin_email'.tr),
                   PhoneInputField(controller: _phone, label: 'admin_phone'.tr),
                   if (!editing && role == 'teacher')
                     Field(
@@ -1060,19 +1054,9 @@ class _UserFormState extends State<_UserForm> {
                       label: 'admin_experience_years'.tr,
                       keyboard: TextInputType.number,
                     ),
-                  Field(
-                    controller: _password,
-                    label: editing
+                  AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr
-                        : 'password'.tr,
-                    obscure: true,
-                    validator: (v) {
-                      if (editing && (v == null || v.isEmpty)) return null;
-                      return (v == null || v.length < 6)
-                          ? 'admin_at_least_6_characters'.tr
-                          : null;
-                    },
-                  ),
+                        : 'password'.tr, required: !editing),
                   PrimaryButton(
                     label: 'save'.tr,
                     isLoading: busy,

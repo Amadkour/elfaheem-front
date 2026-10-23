@@ -6,7 +6,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_config.dart';
 import '../../core/api_client.dart';
+import '../../core/app_mode.dart';
+import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
 import 'view_as_state.dart';
@@ -50,6 +53,9 @@ class AppNavigator {
       case 'subscription':
         await nav.pushNamed('/subscription');
         return;
+      case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
+        await nav.push(MaterialPageRoute(builder: (_) => const MyExamsScreen()));
+        return;
       case 'profile':
         await nav.pushNamed('/profile');
       case 'my_courses':
@@ -72,6 +78,8 @@ class AppNavigator {
       if (r is! Map) return;
       final module = r['module']?.toString();
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
+      final orgId = int.tryParse('${r['org_id'] ?? ''}');
+      if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
       await openModule(module, targetId: courseId);
     } catch (_) {/* tapping must never crash */}
   }
@@ -81,9 +89,25 @@ class AppNavigator {
     if (ViewAsState.active) return;
     final module = data['module']?.toString();
     final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? ''}');
+    final orgId = int.tryParse('${data['org_id'] ?? ''}');
+    if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) return openModule(module, targetId: target);
     if (target != null) return openCourse(target);
     await navigatorKey.currentState?.pushNamed('/notifications');
+  }
+
+  /// Organization notification (push data / tap target carry `org_id`): open that organization in Organization
+  /// mode BEFORE routing, so the screen it leads to shows that organization (its timezone and feature offs too).
+  /// Returns true when it already navigated (nothing more specific to open: back to the home root, now in that
+  /// organization).
+  static Future<bool> _openOrgFirst(int orgId, bool homeOnly) async {
+    if (!AppConfig.orgsEnabled) return false;
+    try {
+      await AppModeController.instance.openOrg(orgId);
+    } catch (_) {/* never block the tap */}
+    if (!homeOnly) return false;
+    navigatorKey.currentState?.popUntil((r) => r.isFirst);
+    return true;
   }
 
   static String get homeRoute {

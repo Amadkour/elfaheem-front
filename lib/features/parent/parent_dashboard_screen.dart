@@ -26,6 +26,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';
@@ -278,7 +279,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                     SettingsTile(
                       icon: Icons.language_rounded,
                       iconBg: c.purpleTint,
-                      iconColor: const Color(0xFF8B6FFF),
+                      iconColor: context.colors.primaryLight,
                       label: 'change_language'.tr,
                       onTap: () => _push(const ChangeLanguageScreen()),
                     ),
@@ -287,11 +288,10 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                       iconBg: c.darkIconBg,
                       iconColor: c.textDark,
                       label: 'dark_mode'.tr,
-                      trailing: Switch.adaptive(
+                      trailing: AppSwitch(
                         value: p.darkMode,
                         onChanged: (b) async => await p.changeMode(b),
-                        activeThumbColor: c.primary,
-                        thumbColor: const WidgetStatePropertyAll(Colors.white),
+                        semanticLabel: 'dark_mode'.tr,
                       ),
                     ),
                     SettingsTile(

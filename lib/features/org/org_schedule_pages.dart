@@ -6,6 +6,7 @@
 //                   student-group availability; per staff member: availability (days × periods)
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -16,6 +17,27 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
+import 'org_ui.dart';
+import 'org_availability_pages.dart';
+import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
+import 'org_schedule_copies.dart' show openTimetableCopies, timetableNamesOf;
+import 'org_schedule_coverage.dart' show openCoverageRun;
+import 'org_schedule_export.dart' show showTimetableExport;
+import 'org_schedule_optimizer.dart' show openScheduleOptimizer;
+import 'org_schedule_planning.dart' show openCoursePlans;
+import 'org_timetable_parts.dart';
+import 'org_timetable_wizard.dart';
+import 'org_timetable_time.dart';
+import 'org_schedule_hub.dart';
+import 'org_schedule_exams.dart' show openExamTimetables;
+import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat, AppBanner, AppActionCard;
+import 'org_schedule_relaxation.dart' show openBreakAlternatives;
+import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
+import 'package:flutter_education_app/core/app_time.dart';
+import 'org_v3.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -23,7 +45,7 @@ class OrgSchedulePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.read<OrgSession>();
-    if (!s.can('schedule')) return EmptyState(t('لا تملك صلاحية عرض الجدول', 'You cannot view the timetable'), icon: Icons.lock_rounded);
+    if (!s.can('schedule')) return OrgEmpty(icon: Icons.lock_rounded, title: t('لا تملك صلاحية عرض الجدول', 'You cannot view the timetable'));
     return ChangeNotifierProvider(create: (_) => OrgScheduleProvider(s)..loadSetup(), child: const _ScheduleView());
   }
 }
@@ -49,7 +71,11 @@ class _ScheduleView extends StatelessWidget {
             labelColor: Colors.white,
             unselectedLabelColor: c.textMedium,
             labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13),
-            tabs: [Tab(text: t('الجداول', 'Timetables'), height: 40), Tab(text: t('التخطيط', 'Planning'), height: 40), Tab(text: t('الإعداد', 'Setup'), height: 40)],
+            tabs: [
+              Tab(text: t('الجداول', 'Timetables'), height: 40),
+              Tab(text: t('المقررات والهيئة', 'Courses & staff'), height: 40),
+              Tab(text: t('الفترات والأماكن', 'Periods & rooms'), height: 40),
+            ],
           ),
         ),
         const Expanded(child: TabBarView(children: [_TimetablesTab(), _PlanningTab(), _SetupTab()])),
@@ -74,18 +100,18 @@ class _SetupTab extends StatelessWidget {
       Section(
         title: t('الفترات الدراسية', 'Periods'),
         icon: Icons.schedule_rounded,
-        trailing: s.can('schedule', 'insert') ? IconButton(onPressed: () => _periodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
+        trailing: s.can('schedule', 'insert') ? IconButton(onPressed: () => showPeriodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
         child: p.periods.isEmpty
-            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف فترات اليوم الدراسي (مثال: 08:30 – 10:00).', 'Add the teaching periods of the day (e.g. 08:30 – 10:00).')))
+            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف فترات اليوم الدراسي (مثال: ${AppTime.clockRange('08:30', '10:00')}).', 'Add the teaching periods of the day (e.g. ${AppTime.clockRange('08:30', '10:00')}).')))
             : Column(children: [
                 for (final x in p.periods)
                   ListTile(
                     dense: true,
                     leading: CircleAvatar(radius: 16, backgroundColor: c.primary.withValues(alpha: 0.12), child: Text('${x['order']}', style: TextStyle(color: c.primary, fontWeight: FontWeight.w800))),
                     title: Text('${x['label']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-                    subtitle: Text('${x['start_time']} – ${x['end_time']}', textDirection: TextDirection.ltr),
+                    subtitle: Text(periodRange(asMap(x))),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => _periodForm(context, p, x)),
+                      if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showPeriodForm(context, p, x)),
                       if (s.can('schedule', 'delete')) IconButton(icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger), onPressed: () async {
                         if (await confirm(context, message: t('حذف الفترة؟', 'Delete this period?'), danger: true)) p.deletePeriod(asInt(x['id']));
                       }),
@@ -95,23 +121,44 @@ class _SetupTab extends StatelessWidget {
       ),
       const SizedBox(height: 16),
       Section(
-        title: t('القاعات والأماكن', 'Rooms & places'),
+        title: t('القاعات والمعامل والمكاتب', 'Rooms, labs & offices'),
         icon: Icons.meeting_room_rounded,
-        trailing: s.can('schedule', 'insert') ? IconButton(onPressed: () => _roomForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
+        trailing: s.can('schedule', 'insert')
+            ? Row(mainAxisSize: MainAxisSize.min, children: [
+                IconButton(tooltip: t('أنواع الأماكن', 'Facility types'), onPressed: () => showFacilityTypes(context, p), icon: const Icon(Icons.category_rounded)),
+                IconButton(onPressed: () => showRoomForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)),
+              ])
+            : null,
         child: p.rooms.isEmpty
-            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف القاعات والمعامل وسعة كل منها.', 'Add halls, labs and their capacity.')))
+            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف القاعات والمعامل والمكاتب وسعة كل منها.', 'Add halls, labs, offices and their capacity.')))
             : Column(children: [
                 for (final r in p.rooms)
                   ListTile(
                     dense: true,
-                    leading: IconBadge(r['kind'] == 'lab' ? Icons.science_rounded : Icons.meeting_room_rounded, c.primary, size: 36),
-                    title: Text('${r['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-                    subtitle: Text('${_kindLabel('${r['kind']}')} · ${r['capacity']}${(r['building'] ?? '').toString().isEmpty ? '' : ' · ${r['building']}'}'),
+                    leading: IconBadge(r['kind'] == 'lab' ? Icons.science_rounded : r['kind'] == 'office' ? Icons.chair_rounded : Icons.meeting_room_rounded,
+                        r['is_active'] == false ? c.textLight : c.primary, size: 36),
+                    title: Text('${'${r['code'] ?? ''}'.isEmpty ? '' : '${r['code']} · '}${r['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                    subtitle: Text([
+                      p.kindLabels['${r['kind']}'] ?? '${r['kind']}',
+                      '${r['capacity']}',
+                      if ('${r['building'] ?? ''}'.isNotEmpty) '${r['building']}',
+                      if ('${r['location'] ?? ''}'.isNotEmpty) '${r['location']}',
+                      if (r['exclusive'] == false) t('مشترك', 'shared'),
+                      if (((r['capabilities'] as List?) ?? const []).isNotEmpty) (r['capabilities'] as List).join(', '),
+                      if (r['is_active'] == false) t('موقوف', 'inactive'),
+                    ].join(' · ')),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                      if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => _roomForm(context, p, r)),
-                      if (s.can('schedule', 'delete')) IconButton(icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger), onPressed: () async {
-                        if (await confirm(context, message: t('حذف القاعة؟', 'Delete this room?'), danger: true)) p.deleteRoom(asInt(r['id']));
-                      }),
+                      if (s.can('schedule', 'update') && r['kind'] == 'office')
+                        IconButton(tooltip: t('الموجودون بالمكتب', 'Office occupants'), icon: const Icon(Icons.groups_rounded, size: 20), onPressed: () => showOfficeMembers(context, p, r)),
+                      if (s.can('schedule', 'update'))
+                        IconButton(
+                          tooltip: t('الفترات المتاحة لهذا المكان', 'When this place is available'),
+                          icon: const Icon(Icons.event_available_rounded, size: 20),
+                          onPressed: () => showAvailabilitySheet(context, p, 'room', asInt(r['id']), '${t('أوقات إتاحة', 'Available periods of')} ${r['name']}'),
+                        ),
+                      if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showRoomForm(context, p, r)),
+                      if (s.can('schedule', 'delete'))
+                        IconButton(icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger), onPressed: () => deleteRoom(context, p, r)),
                     ]),
                   ),
               ]),
@@ -120,12 +167,9 @@ class _SetupTab extends StatelessWidget {
   }
 }
 
-String _kindLabel(String k) => {'lecture': t('قاعة محاضرات', 'Lecture room'), 'lab': t('معمل', 'Lab'), 'hall': t('مدرج', 'Hall'), 'other': t('أخرى', 'Other')}[k] ?? k;
-
-Future<void> _periodForm(BuildContext context, OrgScheduleProvider p, Map<String, dynamic>? e) async {
+Future<void> showPeriodForm(BuildContext context, OrgScheduleProvider p, Map<String, dynamic>? e) async {
   final label = TextEditingController(text: '${e?['label'] ?? ''}');
-  final from = TextEditingController(text: '${e?['start_time'] ?? '08:30'}');
-  final to = TextEditingController(text: '${e?['end_time'] ?? '10:00'}');
+  String from = '${e?['start_time'] ?? '08:30'}', to = '${e?['end_time'] ?? '10:00'}';
   bool busy = false;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -133,13 +177,13 @@ Future<void> _periodForm(BuildContext context, OrgScheduleProvider p, Map<String
           SheetHeader(e == null ? t('فترة جديدة', 'New period') : t('تعديل الفترة', 'Edit period')),
           Field(controller: label, label: t('الاسم (مثال: الأولى)', 'Name (e.g. First)')),
           Row(children: [
-            Expanded(child: Field(controller: from, label: t('من (HH:MM)', 'From (HH:MM)'), ltr: true, keyboard: TextInputType.datetime)),
+            Expanded(child: ClockField(label: t('يبدأ', 'Starts'), value: from, onChanged: (v) => set(() => from = v))),
             const SizedBox(width: 10),
-            Expanded(child: Field(controller: to, label: t('إلى (HH:MM)', 'To (HH:MM)'), ltr: true, keyboard: TextInputType.datetime)),
+            Expanded(child: ClockField(label: t('ينتهي', 'Ends'), value: to, onChanged: (v) => set(() => to = v))),
           ]),
           PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
             set(() => busy = true);
-            final ok = await p.savePeriod(e == null ? null : asInt(e['id']), {'label': label.text.trim(), 'start_time': from.text.trim(), 'end_time': to.text.trim()});
+            final ok = await p.savePeriod(e == null ? null : asInt(e['id']), {'label': label.text.trim(), 'start_time': from, 'end_time': to});
             if (ctx.mounted) {
               set(() => busy = false);
               if (ok) Navigator.pop(ctx);
@@ -149,36 +193,6 @@ Future<void> _periodForm(BuildContext context, OrgScheduleProvider p, Map<String
       )));
 }
 
-Future<void> _roomForm(BuildContext context, OrgScheduleProvider p, Map<String, dynamic>? e) async {
-  final name = TextEditingController(text: '${e?['name'] ?? ''}');
-  final cap = TextEditingController(text: '${e?['capacity'] ?? 40}');
-  final building = TextEditingController(text: '${e?['building'] ?? ''}');
-  String kind = '${e?['kind'] ?? 'lecture'}';
-  bool busy = false;
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SheetHeader(e == null ? t('قاعة جديدة', 'New room') : t('تعديل القاعة', 'Edit room')),
-          Field(controller: name, label: t('الاسم', 'Name')),
-          ChoiceRow<String>(options: {'lecture': _kindLabel('lecture'), 'lab': _kindLabel('lab'), 'hall': _kindLabel('hall'), 'other': _kindLabel('other')}, value: kind, onChanged: (v) => set(() => kind = v)),
-          const SizedBox(height: 12),
-          Field(controller: cap, label: t('السعة', 'Capacity'), keyboard: TextInputType.number, ltr: true),
-          Field(controller: building, label: t('المبنى (اختياري)', 'Building (optional)')),
-          PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
-            if (name.text.trim().isEmpty) return;
-            set(() => busy = true);
-            final ok = await p.saveRoom(e == null ? null : asInt(e['id']), {
-              'name': name.text.trim(), 'kind': kind, 'capacity': int.tryParse(cap.text) ?? 30,
-              if (building.text.trim().isNotEmpty) 'building': building.text.trim(),
-            });
-            if (ctx.mounted) {
-              set(() => busy = false);
-              if (ok) Navigator.pop(ctx);
-            }
-          }),
-        ]),
-      )));
-}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Planning: loads + availability
@@ -193,50 +207,75 @@ class _PlanningTab extends StatelessWidget {
     final s = context.watch<OrgSession>();
     final c = context.colors;
     final canEdit = s.can('schedule', 'update');
-    String nameOf(int? id) {
-      if (id == null) return '—';
-      for (final m in p.staff) {
-        final u = m['user'] as Map;
-        if (asInt(u['id']) == id) return '${u['name']}';
-      }
-      return '#$id';
-    }
+    final people = {for (final m in p.staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']}'};
 
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
       if (p.periods.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: RowCard(accent: c.warning, child: Text(t('أضف الفترات أولاً من تبويب "الإعداد" ليظهر التخطيط كاملاً.', 'Add periods in the "Setup" tab first.'))),
+          child: RowCard(accent: c.warning, child: Text(t('أضف الفترات أولاً من تبويب "الفترات والأماكن" ليظهر التخطيط كاملاً.', 'Add periods in the "Periods & rooms" tab first.'))),
         ),
       Section(
-        title: t('متطلبات الكورسات', 'Course requirements'),
+        title: t('متطلبات المقررات', 'Course requirements'),
         icon: Icons.fact_check_rounded,
         child: p.loads.isEmpty
-            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('لا توجد كورسات في المؤسسة.', 'No courses in this organization.')))
+            ? Padding(padding: const EdgeInsets.all(12), child: Text(t('لا توجد مقررات في المؤسسة.', 'No courses in this organization.')))
             : Column(children: [
                 for (final l in p.loads)
                   ListTile(
-                    onTap: canEdit ? () => _loadForm(context, p, l) : null,
-                    title: Text(t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}', '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
-                    subtitle: Text('${nameOf(l['teacher_id'] == null ? null : asInt(l['teacher_id']))} · ${l['sessions_per_week']}× ${t('أسبوعياً', 'per week')} · ${l['periods_per_session']} ${t('فترة', 'period(s)')}'),
+                    onTap: canEdit
+                        ? () => showLoadForm(context, p, l,
+                            onStudentAvailability: () => showAvailabilitySheet(context, p, 'course', asInt(l['course_id']), t('أوقات حضور طلاب المقرر', 'When this course\'s students can attend')))
+                        : null,
+                    title: Text(courseName(l), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                    subtitle: Text([
+                      l['teacher_id'] == null ? t('بلا مدرس', 'no teacher') : (people[asInt(l['teacher_id'])] ?? '#${l['teacher_id']}'),
+                      '${asInt(l['sessions_per_week'], 1)}× ${t('أسبوعياً', 'per week')}',
+                      '${asInt(l['periods_per_session'], 1)} ${t('فترة', 'period(s)')}',
+                      if (asInt(l['lab_sessions_per_week']) > 0) t('${l['lab_sessions_per_week']} سكشن', '${l['lab_sessions_per_week']} lab(s)'),
+                    ].join(' · '), style: TextStyle(color: loadHints(l).isEmpty ? null : c.warning)),
                     trailing: const Icon(Icons.chevron_right_rounded),
                   ),
               ]),
       ),
       const SizedBox(height: 16),
       Section(
-        title: t('أوقات التواجد (الهيئة التدريسية والمعاونة)', 'Staff availability'),
+        title: t('أوقات التواجد والتفضيلات', 'Staff availability & preferences'),
+        trailing: TextButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider.value(
+                  value: context.read<OrgSession>(),
+                  child: BasePage(useWebCard: true, maxWith: 900,
+                      appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests')),
+                      child: const OrgAvailabilityRequestsPage())))),
+          icon: const Icon(Icons.send_rounded, size: 18),
+          label: Text(t('اطلبها منهم', 'Ask them')),
+        ),
         icon: Icons.event_available_rounded,
         child: p.staff.isEmpty
             ? Padding(padding: const EdgeInsets.all(12), child: Text(t('أضف مدرسين وهيئة معاونة أولاً.', 'Add teachers and staff first.')))
             : Column(children: [
+                Text(t('"أوقات التواجد" و"غير متاح" قيود إلزامية؛ "مفضّل" و"يتجنبه" تفضيلات مرنة.', '"Available periods" and "unavailable" are hard rules; "preferred" and "avoid" are soft.'),
+                    style: orgText(context, size: 12, color: c.textMedium)),
                 for (final m in p.staff)
                   ListTile(
-                    onTap: canEdit ? () => _availabilitySheet(context, p, 'user', asInt((m['user'] as Map)['id']), '${(m['user'] as Map)['name']}') : null,
-                    leading: AdminAvatar(name: '${(m['user'] as Map)['name']}', url: (m['user'] as Map)['image_url'] as String?, size: 36),
-                    title: Text('${(m['user'] as Map)['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                    leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 36),
+                    title: Text('${asMap(m['user'])['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
                     subtitle: Text({'teacher': t('مدرس', 'Teacher'), 'teacher_assistant': t('معيد', 'Teaching assistant'), 'admin_assistant': t('مساعد إداري', 'Admin assistant')}['${m['role']}'] ?? ''),
-                    trailing: const Icon(Icons.event_rounded),
+                    trailing: canEdit
+                        ? Wrap(children: [
+                            IconButton(
+                              tooltip: t('أوقات التواجد', 'Available periods'),
+                              icon: const Icon(Icons.event_rounded),
+                              onPressed: () => showAvailabilitySheet(context, p, 'user', asInt(asMap(m['user'])['id']), '${asMap(m['user'])['name']}'),
+                            ),
+                            IconButton(
+                              tooltip: t('التفضيلات', 'Preferences'),
+                              icon: Icon(Icons.tune_rounded, color: c.primary),
+                              onPressed: () => showStaffPrefs(context, p, asInt(asMap(m['user'])['id']), '${asMap(m['user'])['name']}'),
+                            ),
+                          ])
+                        : null,
                   ),
               ]),
       ),
@@ -244,85 +283,73 @@ class _PlanningTab extends StatelessWidget {
   }
 }
 
-Future<void> _loadForm(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> l) async {
-  final teachers = p.staffOf('teacher'), tas = p.staffOf('teacher_assistant'), adms = p.staffOf('admin_assistant');
-  int? teacher = l['teacher_id'] == null ? null : asInt(l['teacher_id']);
-  int? adm = l['admin_assistant_id'] == null ? null : asInt(l['admin_assistant_id']);
-  final assistants = <int>{...((l['assistant_ids'] as List?) ?? const []).map(asInt)};
-  int sessions = asInt(l['sessions_per_week'], 1), span = asInt(l['periods_per_session'], 1);
-  String? room = l['room_kind'] as String?;
-  bool busy = false;
-  final cid = asInt(l['course_id']);
-  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-        final c = ctx.colors;
-        Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
-              Expanded(child: Text(label, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
-              IconButton(onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              Text('$v', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              IconButton(onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
-            ]);
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            SheetHeader('${t((l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en'], (l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar'])}'),
-            DropdownButtonFormField<int?>(
-              initialValue: teacher,
-              decoration: InputDecoration(labelText: t('المدرس', 'Teacher'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [for (final u in teachers) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
-              onChanged: (v) => set(() => teacher = v),
-            ),
-            const SizedBox(height: 12),
-            Text(t('المعيدون (اختياري)', 'Teaching assistants (optional)'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
-            Wrap(spacing: 8, children: [
-              for (final u in tas)
-                FilterChip(
-                  label: Text('${u['name']}'),
-                  selected: assistants.contains(asInt(u['id'])),
-                  onSelected: (on) => set(() => on ? assistants.add(asInt(u['id'])) : assistants.remove(asInt(u['id']))),
-                ),
-              if (tas.isEmpty) Text(t('لا يوجد معيدون', 'No assistants'), style: TextStyle(color: c.textLight)),
-            ]),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              initialValue: adm,
-              decoration: InputDecoration(labelText: t('مساعد إداري (اختياري)', 'Admin assistant (optional)'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [DropdownMenuItem<int?>(value: null, child: Text(t('بدون', 'None'))), for (final u in adms) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
-              onChanged: (v) => set(() => adm = v),
-            ),
-            const SizedBox(height: 8),
-            stepper(t('عدد المحاضرات أسبوعياً', 'Sessions per week'), sessions, 1, 14, (v) => sessions = v),
-            stepper(t('فترات المحاضرة الواحدة', 'Periods per session'), span, 1, 6, (v) => span = v),
-            ChoiceRow<String>(
-              label: t('نوع القاعة', 'Room type'),
-              options: {'any': t('أي قاعة', 'Any'), 'lecture': _kindLabel('lecture'), 'lab': _kindLabel('lab'), 'hall': _kindLabel('hall')},
-              value: room ?? 'any',
-              onChanged: (v) => set(() => room = v == 'any' ? null : v),
-            ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: () => _availabilitySheet(context, p, 'course', cid, t('أوقات حضور طلاب الكورس', 'When this course\'s students can attend')),
-              icon: const Icon(Icons.groups_rounded),
-              label: Text(t('أوقات حضور الطلاب', 'Student availability')),
-            ),
-            const SizedBox(height: 12),
-            PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () async {
-              set(() => busy = true);
-              final ok = await p.saveLoad(cid, {
-                'teacher_id': teacher, 'assistant_ids': assistants.toList(), 'admin_assistant_id': adm,
-                'sessions_per_week': sessions, 'periods_per_session': span, 'room_kind': room,
-              });
-              if (ctx.mounted) {
-                set(() => busy = false);
-                if (ok) Navigator.pop(ctx);
-              }
-            }),
-          ]),
+/// Days × periods grid. Empty selection = "available at any time".
+/// Conflict preview: what clashes, in plain words — remove the clashing slots of THIS timetable, add anyway, or cancel.
+Future<String?> showConflictPreview(BuildContext context, List<Map<String, dynamic>> conflicts,
+    {bool canReplace = true, bool canRebuild = true, bool canOverride = false}) {
+  final removable = conflicts.any((x) => (x['removable_slot_ids'] as List? ?? const []).isNotEmpty);
+  final elsewhere = conflicts.any((x) => x['elsewhere'] == true);
+  return showAdminSheet<String>(context, (ctx) {
+    final c = ctx.colors;
+    Widget option(String key, IconData icon, Color col, String title, String sub) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: OrgActionCard(icon: icon, color: col, title: title, subtitle: sub, onTap: () => Navigator.pop(ctx, key)),
         );
-      }));
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SheetHeader(t('يوجد تعارض في هذا الموعد', 'This time clashes')),
+        for (final x in conflicts)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: c.danger.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: c.danger.withValues(alpha: 0.3)),
+            ),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(x['elsewhere'] == true ? Icons.link_rounded : Icons.warning_amber_rounded, color: c.danger, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(t('${x['text_ar'] ?? x['type']}', '${x['text_en'] ?? x['type']}'), style: orgText(ctx, w: FontWeight.w800)),
+                  if ((x['courses'] as List? ?? const []).isNotEmpty)
+                    Text((x['courses'] as List).join(' · '), style: orgText(ctx, size: 12, color: c.textMedium)),
+                ]),
+              ),
+            ]),
+          ),
+        if (elsewhere)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(t('بعض التعارضات في جداول أخرى مفعّلة ولا يمكن حذفها من هنا.', 'Some clashes are in other active timetables and can\'t be removed from here.'),
+                style: orgText(ctx, size: 12, color: c.textMedium)),
+          ),
+        Text(t('كيف نحافظ على استقرار الجدول؟', 'How should the timetable stay stable?'), style: orgText(ctx, w: FontWeight.w800)),
+        const SizedBox(height: 8),
+        if (canReplace && removable)
+          option('shift', Icons.low_priority_rounded, c.success, t('تغيير بسيط (مقترح)', 'Small change (recommended)'),
+              t('ننقل الحصص المتعارضة فقط لأقرب وقت فارغ — باقي الجدول كما هو', 'Only the clashing sessions move to the nearest free time — the rest stays')),
+        if (canRebuild)
+          option('regenerate', Icons.auto_awesome_rounded, c.primary, t('إعادة التوليد بدون أي تعارض', 'Regenerate with no conflicts'),
+              t('نثبّت هذه الحصة ونعيد ترتيب كل الحصص غير المثبّتة', 'This session is locked; every unlocked session is rearranged')),
+        if (canReplace && removable)
+          option('replace', Icons.swap_horiz_rounded, c.warning, t('استبدال', 'Replace'),
+              t('نحذف الحصص المتعارضة ونضيف هذه', 'The clashing sessions are removed and this one is added')),
+        // only a hard UNAVAILABILITY can be overridden (by someone with approval rights) — never a double booking
+        if (canOverride && conflicts.every((x) => const {'teacher_unavailable', 'staff_unavailable'}.contains(x['type'])))
+          option('override', Icons.verified_user_rounded, c.purple, t('استثناء معتمد', 'Approved override'),
+              t('تسمح بعدم الإتاحة مع سبب مكتوب، وتبقى ظاهرة كتنبيه', 'Allows the unavailability with a written reason; it stays visible as a warning')),
+        option('force', Icons.lock_clock_rounded, c.danger, t('إضافتها مع التعارض', 'Add it with the clash'),
+            t('تُحفظ في المسودة وتبقى ظاهرة — والنشر يُرفض حتى يُحل التعارض', 'Saved in the draft and flagged — publishing is refused until it is solved')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('إلغاء', 'Cancel'))),
+      ]),
+    );
+  });
 }
 
-/// Days × periods grid. Empty selection = "available at any time".
-Future<void> _availabilitySheet(BuildContext context, OrgScheduleProvider p, String type, int id, String title) async {
+Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, String type, int id, String title) async {
   if (p.periods.isEmpty) {
     toast(t('أضف الفترات أولاً', 'Add periods first'), error: true);
     return;
@@ -372,7 +399,7 @@ Future<void> _availabilitySheet(BuildContext context, OrgScheduleProvider p, Str
               ]),
             ),
             const SizedBox(height: 8),
-            Row(children: [
+            Wrap(children: [
               TextButton(onPressed: () => set(sel.clear), child: Text(t('متاح دائماً', 'Always available'))),
               TextButton(onPressed: () => set(() {
                     for (final d in days) {
@@ -402,16 +429,63 @@ Future<void> _availabilitySheet(BuildContext context, OrgScheduleProvider p, Str
 class _TimetablesTab extends StatelessWidget {
   const _TimetablesTab();
 
+  Future<void> _wizard(BuildContext context, OrgScheduleProvider p, {int? id}) async {
+    final saved = await TimetableWizard.open(context, p, scheduleId: id);
+    if (saved != null) await p.open(saved);
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<OrgScheduleProvider>();
     final s = context.watch<OrgSession>();
     final c = context.colors;
-    if (p.schedule != null) return const _Studio();
+    if (p.schedule != null) return _Studio(onSetup: (id) => _wizard(context, p, id: id));
+    final intro = [
+      AppHero(
+        icon: Icons.calendar_month_rounded,
+        title: t('الجداول الدراسية', 'Timetables'),
+        subtitle: t('أربع خطوات: ١) الإعداد — الفترات والأماكن والمدرسون · ٢) التوليد التلقائي · ٣) المراجعة والإصلاح · ٤) النشر والمشاركة. افتح أي جدول لترى خطوته التالية.',
+            'Four steps: 1) Set up — periods, rooms and teachers · 2) Generate automatically · 3) Review & fix · 4) Publish & share. Open any timetable to see its next step.'),
+        stats: [
+          AppHeroStat(icon: Icons.table_chart_rounded, value: '${p.schedules.length}', label: t('جداول', 'timetables')),
+          AppHeroStat(icon: Icons.verified_rounded, value: '${p.schedules.where((x) => x['status'] == 'active').length}', label: t('منشور', 'published')),
+          AppHeroStat(icon: Icons.schedule_rounded, value: '${p.periods.length}', label: t('فترات', 'periods')),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (p.periods.isEmpty || p.rooms.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: AppBanner(
+            icon: Icons.flag_rounded,
+            color: c.warning,
+            text: p.periods.isEmpty
+                ? t('ابدأ من تبويب "الفترات والأماكن": أضف فترات اليوم الدراسي.', 'Start in "Periods & rooms": add the periods of the day.')
+                : t('أضف القاعات والمعامل من تبويب "الفترات والأماكن".', 'Add your rooms and labs in "Periods & rooms".'),
+            action: TextButton(onPressed: () => DefaultTabController.maybeOf(context)?.animateTo(2), child: Text(t('اذهب', 'Go'))),
+          ),
+        ),
+      AppActionCard(
+        icon: Icons.assignment_rounded,
+        color: c.purple,
+        title: t('جداول الامتحانات (منتصف الفصل والنهائية)', 'Exam timetables (midterm & final)'),
+        subtitle: t('فترة مقترحة من تواريخ الفصل، بلا امتحانين لنفس الطلاب في وقت واحد، مع الأماكن والمراقبين.',
+            'A window suggested from the term dates, no two exams at once for the same students, with rooms and invigilators.'),
+        onTap: () => openExamTimetables(context, p,
+            canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve'), canExport: s.can('schedule', 'export')),
+      ),
+      const SizedBox(height: 12),
+    ];
     return Stack(children: [
       p.schedules.isEmpty
-          ? EmptyState(t('لم تنشئ أي جدول بعد', 'No timetable yet'), icon: Icons.calendar_month_rounded)
+          ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 90), children: [
+              ...intro,
+              OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم تنشئ أي جدول بعد', 'No timetable yet'),
+                  message: t('أنشئ جدولاً جديداً وسيرشدك المعالج خطوة بخطوة.', 'Create a timetable and the wizard guides you step by step.'),
+                  actionLabel: s.can('schedule', 'insert') ? t('جدول جديد', 'New timetable') : null, onAction: () => _wizard(context, p)),
+            ])
           : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 90), children: [
+              ...intro,
               for (final x in p.schedules)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
@@ -424,11 +498,17 @@ class _TimetablesTab extends StatelessWidget {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('${x['name']}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                          Text('${x['term_label'] ?? ''} · ${x['slots'] ?? 0} ${t('حصة', 'slots')}', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                          Text([
+                            if ('${x['term_label'] ?? ''}'.isNotEmpty) '${x['term_label']}',
+                            '${x['slots'] ?? 0} ${t('حصة', 'slots')}',
+                            if (asMap(x['result'])['status'] != null) resultStatusLabels()['${asMap(x['result'])['status']}'] ?? '',
+                          ].join(' · '), style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
                         ]),
                       ),
                       StatusChip({'active': t('منشور', 'Published'), 'draft': t('مسودة', 'Draft'), 'archived': t('مؤرشف', 'Archived')}['${x['status']}'] ?? '${x['status']}',
                           x['status'] == 'active' ? c.success : x['status'] == 'draft' ? c.warning : c.textLight),
+                      if (s.can('schedule', 'update') && x['status'] != 'active')
+                        IconButton(tooltip: t('الإعداد خطوة بخطوة', 'Step-by-step setup'), icon: const Icon(Icons.tune_rounded), onPressed: () => _wizard(context, p, id: asInt(x['id']))),
                       if (s.can('schedule', 'delete') && x['status'] != 'active')
                         IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
                           if (await confirm(context, message: t('حذف الجدول؟', 'Delete this timetable?'), danger: true)) p.deleteSchedule(asInt(x['id']));
@@ -444,12 +524,7 @@ class _TimetablesTab extends StatelessWidget {
           child: FloatingActionButton.extended(
             heroTag: 'org_add_schedule',
             backgroundColor: c.primary,
-            onPressed: () async {
-              final name = await askText(context, title: t('اسم الجدول (مثال: الفصل الأول 2026)', 'Timetable name (e.g. Fall 2026)'));
-              if (name == null || name.trim().isEmpty) return;
-              final r = await p.createSchedule(name.trim(), null);
-              if (r != null) await p.open(asInt(r['id']));
-            },
+            onPressed: () => _wizard(context, p),
             icon: const Icon(Icons.add_rounded, color: Colors.white),
             label: Text(t('جدول جديد', 'New timetable'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
           ),
@@ -459,14 +534,50 @@ class _TimetablesTab extends StatelessWidget {
 }
 
 class _Studio extends StatefulWidget {
-  const _Studio();
+  const _Studio({required this.onSetup});
+  final void Function(int id) onSetup;
 
   @override
   State<_Studio> createState() => _StudioState();
 }
 
 class _StudioState extends State<_Studio> {
-  bool _busy = false;
+  int? _followed;
+  TimetableStage? _stage; // the step whose tools are shown (null = the step the timetable is on)
+
+  Future<void> _publish(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> result, int errors, Map<int, String> courseNames) async {
+    if (errors > 0) {
+      toast(t('عالج التعارضات الإلزامية قبل النشر', 'Fix the hard clashes before publishing'), error: true);
+      return _issuesSheet(context, p, courseNames);
+    }
+    final st = '${result['status'] ?? ''}';
+    if ((st == 'partial' || st == 'infeasible') &&
+        !await confirm(context, message: t('النتيجة: ${resultStatusLabels()[st]}. النشر رغم الحصص غير المجدولة؟', 'Result: ${resultStatusLabels()[st]}. Publish with sessions still unplaced?'))) {
+      return;
+    }
+    final res = await p.publish();
+    if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
+  }
+
+  void _export(BuildContext context, OrgScheduleProvider p) => showTimetableExport(context,
+      slots: p.slots,
+      names: timetableNamesOf(p),
+      periods: p.periods,
+      title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
+      sourceLabel: t('الجدول الحالي · الإصدار ${p.schedule?['version'] ?? 0}', 'Live timetable · version ${p.schedule?['version'] ?? 0}'),
+      days: ScheduleDraft.fromJson(p.schedule ?? const {}).days);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final p = context.read<OrgScheduleProvider>();
+    final id = p.schedule?['id'];
+    if (id != null && id != _followed) {
+      _followed = asInt(id);
+      // a generation started earlier (or by someone else) is picked up again
+      WidgetsBinding.instance.addPostFrameCallback((_) => p.resumeRunIfAny());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -479,14 +590,40 @@ class _StudioState extends State<_Studio> {
     final labels = dayLabels();
     final errors = p.conflicts.where((x) => x['severity'] == 'error').length;
     final warns = p.conflicts.length - errors;
+    final run = p.genRun;
+    final running = runIsOpen(run);
+    final result = asMap(sch['result']);
+    final editable = !active && !running && s.can('schedule', 'update');
 
-    final courseNames = {
-      for (final l in p.loads) asInt(l['course_id']): t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}', '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}'),
-    };
+    final courseNames = {for (final l in p.loads) asInt(l['course_id']): courseName(l)};
     final people = {for (final m in p.staff) asInt((m['user'] as Map)['id']): '${(m['user'] as Map)['name']}'};
     final rooms = {for (final r in p.rooms) asInt(r['id']): '${r['name']}'};
 
-    bool hasConflict(String day, int period) => p.conflicts.any((x) => x['day'] == day && (x['period_id'] == period || x['period_id'] == null));
+    final scoped = {for (final x in (sch['course_ids'] as List?) ?? const []) asInt(x)};
+    final noTeacher = p.loads.where((l) => (scoped.isEmpty || scoped.contains(asInt(l['course_id']))) && l['teacher_id'] == null).length;
+    final stats = asMap(result['stats']);
+    final unplaced = stats['sessions_required'] == null ? 0 : (asInt(stats['sessions_required']) - asInt(stats['sessions_placed'])).clamp(0, 1 << 30);
+    final journey = TimetableJourney.of(periods: p.periods.length, rooms: p.rooms.length, noTeacher: noTeacher, slots: p.slots.length,
+        result: result, hard: errors, active: active, running: running);
+    final stage = _stage ?? journey.current;
+    final nextText = nextStepText(journey.next, unplaced: unplaced, hard: errors, broken: asMapList(result['broken']).length, noTeacher: noTeacher);
+    final canEdit = s.can('schedule', 'update') && !active;
+    final VoidCallback? nextAction = switch (journey.next) {
+      NextAction.addPeriods => s.can('schedule', 'insert') ? () => showPeriodForm(context, p, null) : null,
+      NextAction.addRooms => s.can('schedule', 'insert') ? () => showRoomForm(context, p, null) : null,
+      NextAction.assignTeachers => () => DefaultTabController.maybeOf(context)?.animateTo(1),
+      NextAction.generate => canEdit ? () => _generateSheet(context, p) : null,
+      NextAction.completeCoverage => canEdit ? () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve')) : null,
+      NextAction.fixClashes => () => _issuesSheet(context, p, courseNames),
+      NextAction.compareRules => canEdit ? () => openBreakAlternatives(context, p) : null,
+      NextAction.publish => s.can('schedule', 'approve') ? () => _publish(context, p, result, errors, courseNames) : null,
+      NextAction.share => s.can('schedule', 'export') ? () => _export(context, p) : () => openTimetableCopies(context, p, canEdit: false),
+      NextAction.wait => null,
+    };
+
+    // a clash covers every period it overlaps (period_ids), not only the one it starts in
+    bool hasConflict(String day, int period) => p.conflicts.any((x) =>
+        x['day'] == day && (((x['period_ids'] as List?) ?? const []).map(asInt).contains(period) || x['period_id'] == period || x['period_id'] == null));
 
     return Column(children: [
       Padding(
@@ -494,35 +631,117 @@ class _StudioState extends State<_Studio> {
         child: Row(children: [
           IconButton(onPressed: p.closeSchedule, icon: const Icon(Icons.arrow_back_rounded)),
           Expanded(child: Text('${sch['name']}', style: c.h2.copyWith(fontSize: 16))),
-          StatusChip(active ? t('منشور', 'Published') : t('مسودة', 'Draft'), active ? c.success : c.warning),
+          StatusChip(
+              {'active': t('منشور', 'Published'), 'draft': t('مسودة', 'Draft'), 'archived': t('مؤرشف', 'Archived')}['${sch['status']}'] ?? '${sch['status']}',
+              active ? c.success : c.warning),
         ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
-        child: Wrap(spacing: 8, runSpacing: 6, children: [
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+        child: TimetableStepper(journey: journey, selected: stage, onSelect: (x) => setState(() => _stage = x)),
+      ),
+      // published exam windows of this term pause these weekly sessions on their dates (exam timetable: pause_weekly)
+      if (examPausesOf(sch).isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+          child: examPauseBanner(context, examPausesOf(sch), padding: const EdgeInsets.only(bottom: 4), myExamsAction: false),
+        ),
+      if (s.can('schedule', 'update') || active)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          child: NextStepBanner(
+            title: nextText.$1,
+            body: nextText.$2,
+            action: nextText.$3,
+            tone: journey.tone,
+            onAction: nextAction,
+          ),
+        ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+        child: StudioActionBar(stage: stage, actions: [
+          // 1 · set up
           if (s.can('schedule', 'update') && !active)
-            ActionChip(
-              avatar: _busy ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.auto_awesome_rounded, size: 18, color: c.primary),
-              label: Text(t('توليد تلقائي', 'Auto-generate'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-              onPressed: _busy ? null : () => _generate(context, p),
-            ),
+            StudioAction(TimetableStage.setup, Icons.tune_rounded, t('إعدادات الجدول (الأيام والمقررات)', 'Timetable settings (days & courses)'), () => widget.onSetup(asInt(sch['id']))),
+          StudioAction(TimetableStage.setup, Icons.groups_rounded, t('الطلاب والمجموعات', 'Enrollment & groups'),
+              () => openCoursePlans(context, p, canEdit: s.can('schedule', 'update') && !active), color: c.purple),
+          if (s.can('schedule', 'insert'))
+            StudioAction(TimetableStage.setup, Icons.event_available_rounded, t('فترات خاصة (تعويضية)', 'Special periods (make-up)'),
+                () => _extrasSheet(context, p, courseNames, p.rooms), color: c.accent2),
+          // 2 · generate
+          if (s.can('schedule', 'update') && !active) ...[
+            StudioAction(TimetableStage.generate, Icons.auto_awesome_rounded, running ? t('جارٍ التوليد…', 'Generating…') : t('توليد تلقائي', 'Auto-generate'),
+                running ? null : () => _generateSheet(context, p), busy: running),
+            StudioAction(TimetableStage.generate, Icons.all_inclusive_rounded, t('توليد حتى الاكتمال', 'Generate until complete'),
+                running ? null : () => openCoverageRun(context, p, canApprove: s.can('schedule', 'approve'))),
+            StudioAction(TimetableStage.generate, Icons.alt_route_rounded, t('استكشف بدائل', 'Explore alternatives'), running ? null : () => openScheduleAlternatives(context)),
+            StudioAction(TimetableStage.generate, Icons.balance_rounded, t('أي قاعدة تتنازل عنها؟', 'Which rule should give way?'),
+                running ? null : () => openBreakAlternatives(context, p)),
+          ],
+          // 3 · review & fix
           if (s.can('schedule', 'insert') && !active)
-            ActionChip(avatar: Icon(Icons.add_rounded, size: 18, color: c.primary), label: Text(t('إضافة حصة', 'Add a slot')), onPressed: () => _slotSheet(context, p, null, null, null)),
-          if (s.can('schedule', 'update'))
-            ActionChip(
-              avatar: Icon(active ? Icons.unpublished_rounded : Icons.publish_rounded, size: 18, color: active ? c.warning : c.success),
-              label: Text(active ? t('إيقاف النشر', 'Unpublish') : t('نشر للجميع', 'Publish')),
-              onPressed: () async {
-                if (!active && errors > 0) {
-                  toast(t('عالج التعارضات الحمراء قبل النشر', 'Fix the red conflicts before publishing'), error: true);
-                  return;
-                }
-                await p.setActive(!active);
-              },
-            ),
-          ActionChip(avatar: Icon(Icons.download_rounded, size: 18, color: c.success), label: Text(t('تصدير Excel', 'Export Excel')), onPressed: () => downloadExcel(context, 'export/schedule', {'schedule_id': sch['id']})),
+            StudioAction(TimetableStage.review, Icons.add_rounded, t('إضافة حصة', 'Add a slot'), () => _slotSheet(context, p, null, null, null)),
+          StudioAction(TimetableStage.review, errors > 0 ? Icons.error_rounded : Icons.rule_rounded,
+              t('التعارضات ($errors · $warns)', 'Clashes ($errors · $warns)'), () => _issuesSheet(context, p, courseNames), color: errors > 0 ? c.danger : c.success),
+          StudioAction(TimetableStage.review, Icons.insights_rounded, t('تحسين الجدول', 'Optimize'),
+              () => openScheduleOptimizer(context, p, canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve')),
+              color: errors > 0 ? c.danger : c.success),
+          StudioAction(TimetableStage.review, Icons.history_rounded, t('النسخ السابقة', 'Versions'), () => _revisionsSheet(context, p), color: c.textMedium),
+          // 4 · publish & share
+          if (!active && s.can('schedule', 'approve'))
+            StudioAction(TimetableStage.publish, Icons.publish_rounded, t('نشر للجميع', 'Publish'), running ? null : () => _publish(context, p, result, errors, courseNames), color: c.success),
+          if (active && s.can('schedule', 'update'))
+            StudioAction(TimetableStage.publish, Icons.unpublished_rounded, t('إيقاف النشر', 'Unpublish'), () async {
+              if (await confirm(context, message: t('إيقاف نشر الجدول؟ يعود مسودة ولا يراه الطلاب.', 'Unpublish? It becomes a draft and students stop seeing it.'))) {
+                await p.setActive(false);
+              }
+            }, color: c.warning),
+          if (s.can('schedule', 'export'))
+            StudioAction(TimetableStage.publish, Icons.file_download_rounded, t('تصدير: إكسل · وورد · PDF', 'Export: Excel · Word · PDF'), () => _export(context, p)),
+          StudioAction(TimetableStage.publish, Icons.content_copy_rounded, t('نسخ لكل مدرس ومجموعة', 'Copies for each teacher & group'),
+              () => openTimetableCopies(context, p, canEdit: s.can('schedule', 'update'))),
+          StudioAction(TimetableStage.publish, Icons.download_rounded, t('تصدير Excel (الخادم)', 'Excel export (server)'),
+              () => downloadExcel(context, 'export/schedule', {'schedule_id': sch['id']}), color: c.success),
         ]),
       ),
+      if (run != null && (running || run['schedule_id'] == null || asInt(run['schedule_id']) == asInt(sch['id'])) && (running || run['status'] == 'failed'))
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: GenerationRunCard(run: run, onCancel: running ? () => p.cancelGeneration() : null),
+        ),
+      if (!running && result.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+          child: RowCard(
+            accent: switch ('${result['status']}') { 'feasible' => c.success, 'feasible_relaxed' => c.primary, 'partial' => c.warning, _ => c.danger },
+            onTap: () => showAdminSheet<void>(
+                context,
+                (ctx) => SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        SheetHeader(t('نتيجة آخر توليد', 'Last generation result')),
+                        ScheduleResultView(result: result, courseNames: courseNames, people: people),
+                      ]),
+                    )),
+            child: Row(children: [
+              const Icon(Icons.fact_check_rounded),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                    '${resultStatusLabels()['${result['status']}'] ?? result['status']} · '
+                    '${t('${asMap(result['stats'])['sessions_placed'] ?? '?'} من ${asMap(result['stats'])['sessions_required'] ?? '?'} حصة', '${asMap(result['stats'])['sessions_placed'] ?? '?'} of ${asMap(result['stats'])['sessions_required'] ?? '?'} sessions')}',
+                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+              ),
+              if (result['status'] != 'feasible' && sch['status'] != 'active' && s.can('schedule', 'update'))
+                IconButton(
+                  tooltip: t('استكشف بدائل', 'Explore alternatives'),
+                  icon: Icon(Icons.alt_route_rounded, color: c.primary),
+                  onPressed: () => openScheduleAlternatives(context),
+                ),
+              const Icon(Icons.chevron_right_rounded),
+            ]),
+          ),
+        ),
       if (errors + warns > 0 || p.warnings.isNotEmpty)
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -532,14 +751,25 @@ class _StudioState extends State<_Studio> {
             child: Row(children: [
               Icon(errors > 0 ? Icons.error_rounded : Icons.warning_amber_rounded, color: errors > 0 ? c.danger : c.warning),
               const SizedBox(width: 10),
-              Expanded(child: Text(t('$errors تعارض · $warns تنبيه · ${p.warnings.length} لم يُجدول', '$errors conflicts · $warns warnings · ${p.warnings.length} not placed'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
+              Expanded(child: Text(t('$errors تعارض إلزامي · $warns تنبيه · ${p.warnings.length} لم يُجدول', '$errors hard clashes · $warns warnings · ${p.warnings.length} not placed'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
               const Icon(Icons.chevron_right_rounded),
             ]),
           ),
         ),
+      if (editable && p.slots.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 2),
+          child: Row(children: [
+            Icon(Icons.open_with_rounded, size: 14, color: c.textLight),
+            const SizedBox(width: 6),
+            Expanded(
+                child: Text(t('اسحب أي حصة إلى خانة أخرى لنقلها (ضغطة مطوّلة على الهاتف)', 'Drag a session to another cell to move it (long-press on phones)'),
+                    style: orgText(context, size: 11.5, color: c.textLight))),
+          ]),
+        ),
       Expanded(
         child: p.periods.isEmpty
-            ? EmptyState(t('أضف الفترات أولاً', 'Add periods first'))
+            ? OrgEmpty(icon: Icons.inbox_rounded, title: t('أضف الفترات أولاً', 'Add periods first'))
             : SingleChildScrollView(
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -558,17 +788,20 @@ class _StudioState extends State<_Studio> {
                             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                             child: Column(children: [
                               Text('${per['label']}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 12, color: c.textDark)),
-                              Text('${per['start_time']}', style: TextStyle(fontSize: 10.5, color: c.textLight)),
+                              Text(clockOf(per['start_time']), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10.5, color: c.textLight)),
                             ]),
                           ),
                           for (final d in days.take(6))
                             _Cell(
+                              day: d,
+                              periodId: asInt(per['id']),
                               slots: [for (final x in p.slots) if (x['day'] == d && x['period_id'] == per['id']) x],
                               conflict: hasConflict(d, asInt(per['id'])),
                               courseNames: courseNames,
                               rooms: rooms,
                               people: people,
-                              onTap: active || !s.can('schedule', 'update') ? null : (slot) => _slotSheet(context, p, slot, d, asInt(per['id'])),
+                              onTap: editable ? (slot) => _slotSheet(context, p, slot, d, asInt(per['id'])) : null,
+                              onDrop: editable ? (slot) => _moveSlot(context, p, slot, d, asInt(per['id'])) : null,
                             ),
                         ]),
                     ],
@@ -579,41 +812,196 @@ class _StudioState extends State<_Studio> {
     ]);
   }
 
-  Future<void> _generate(BuildContext context, OrgScheduleProvider p) async {
-    setState(() => _busy = true);
-    final ok = await p.generate();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (ok) {
-      toast(p.warnings.isEmpty ? t('تم توليد الجدول بدون تعارضات', 'Timetable generated with no conflicts') : t('تم التوليد — بعض الحصص لم تُجدول', 'Generated — some sessions could not be placed'));
-    }
+  Future<void> _generateSheet(BuildContext context, OrgScheduleProvider p) async {
+    final settings = Map<String, dynamic>.from(asMap(p.schedule?['settings']));
+    bool keep = true, senior = settings['prefer_senior_preferences'] == true, busy = false;
+    final limit = TextEditingController(text: '${settings['time_limit_s'] ?? 8}');
+    final attempts = TextEditingController(text: '${settings['attempts'] ?? 8}');
+    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          final c = ctx.colors;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SheetHeader(t('توليد الجدول', 'Generate the timetable')),
+              Text(t('يعمل التوليد على الخادم. إن فشل أو أُلغي يبقى الجدول كما هو، والجدول المنشور لا يُعاد توليده.',
+                  'Generation runs on the server. If it fails or is cancelled the timetable stays as it is; a published timetable is never regenerated.'),
+                  style: orgText(ctx, size: 12, color: c.textMedium)),
+              OrgSwitchRow(title: t('الإبقاء على الحصص المثبّتة', 'Keep locked sessions'), value: keep, onChanged: (v) => set(() => keep = v)),
+              OrgSwitchRow(
+                  title: t('تقديم تفضيلات الأقدم خبرة', 'Favor more experienced staff\'s preferences'),
+                  subtitle: t('من سنوات الخبرة المسجّلة فقط — التفضيلات المرنة فقط', 'Recorded experience only — soft preferences only'),
+                  value: senior,
+                  onChanged: (v) => set(() => senior = v)),
+              Row(children: [
+                Expanded(child: Field(controller: limit, label: t('مدة البحث (ث)', 'Time limit (s)'), keyboard: TextInputType.number, ltr: true)),
+                const SizedBox(width: 8),
+                Expanded(child: Field(controller: attempts, label: t('المحاولات', 'Attempts'), keyboard: TextInputType.number, ltr: true)),
+              ]),
+              PrimaryButton(
+                isLoading: busy,
+                label: t('ابدأ التوليد', 'Start generating'),
+                icon: Icons.auto_awesome_rounded,
+                iconBefore: true,
+                onPressed: () async {
+                  set(() => busy = true);
+                  final r = await p.startGeneration(
+                      keepLocked: keep,
+                      settings: {
+                        'prefer_senior_preferences': senior,
+                        'time_limit_s': int.tryParse(limit.text.trim()) ?? 8,
+                        'attempts': (int.tryParse(attempts.text.trim()) ?? 8).clamp(1, 50),
+                      });
+                  if (!ctx.mounted) return;
+                  set(() => busy = false);
+                  if (r.ok || r.code == 'generation_running') {
+                    Navigator.pop(ctx);
+                    if (!r.ok) toast(orgErrorText(r.error!));
+                  } else {
+                    toast(orgErrorText(r.error!), error: true);
+                  }
+                },
+              ),
+            ]),
+          );
+        }));
   }
 }
 
+Future<void> _revisionsSheet(BuildContext context, OrgScheduleProvider p) async {
+  final items = await p.revisions();
+  if (!context.mounted) return;
+  final draft = p.schedule?['status'] != 'active';
+  await showAdminSheet<void>(context, (ctx) {
+    final c = ctx.colors;
+    final src = {'generate': t('توليد', 'Generated'), 'restore': t('استعادة', 'Restored'), 'publish': t('نشر', 'Published'), 'manual': t('حفظ يدوي', 'Saved by hand')};
+    return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+      SheetHeader(t('نسخ الجدول', 'Timetable versions')),
+      if (draft && context.read<OrgSession>().can('schedule', 'update'))
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: TextButton.icon(
+            icon: const Icon(Icons.save_rounded),
+            label: Text(t('حفظ الوضع الحالي كنسخة', 'Save the current state as a version')),
+            onPressed: () async {
+              final r = await p.saveSnapshot(null);
+              if (r.ok) {
+                toast(t('حُفظت النسخة', 'Version saved'));
+                if (ctx.mounted) Navigator.pop(ctx);
+              } else {
+                toast(r.endpointMissing ? t('حفظ النسخ يدوياً يحتاج تحديثاً في الخادم.', 'Saving versions by hand needs a server update.') : orgErrorText(r.error!), error: true);
+              }
+            },
+          ),
+        ),
+      if (items.isEmpty) Padding(padding: const EdgeInsets.all(16), child: Text(t('لا نسخ محفوظة بعد', 'No saved versions yet'), style: orgText(ctx, color: c.textMedium))),
+      for (final r in items)
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: CircleAvatar(child: Text('${r['number']}')),
+          title: Text('${src['${r['source']}'] ?? r['source']} · ${t('${r['slots']} حصة', '${r['slots']} slots')}', style: orgText(ctx, w: FontWeight.w700)),
+          subtitle: Text([if (r['label'] != null) '${r['label']}', stampOf(r['created_at']), if (r['result_status'] != null) resultStatusLabels()['${r['result_status']}'] ?? ''].join(' · '),
+              style: orgText(ctx, size: 12, color: c.textMedium)),
+          trailing: draft
+              ? TextButton(
+                  onPressed: () async {
+                    if (!await confirm(ctx, message: t('استعادة هذه النسخة؟ تحل محل الحصص الحالية للمسودة.', 'Restore this version? It replaces the draft\'s current slots.'))) return;
+                    if (await p.restoreRevision(asInt(r['id'])) && ctx.mounted) Navigator.pop(ctx);
+                  },
+                  child: Text(t('استعادة', 'Restore')),
+                )
+              : null,
+        ),
+      if (!draft) Text(t('الاستعادة متاحة للمسودات فقط.', 'Restoring is for drafts only.'), style: orgText(ctx, size: 12, color: c.textLight)),
+    ]);
+  });
+}
+
+/// The server refused to publish: these hard clashes must be fixed first.
+Future<void> showPublishConflicts(BuildContext context, List<Map<String, dynamic>> conflicts, Map<int, String> courseNames) => showAdminSheet<void>(
+    context,
+    (ctx) => SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SheetHeader(t('لم يُنشر الجدول', 'Not published')),
+            Text(t('رفض الخادم النشر لوجود تعارضات إلزامية. عالجها ثم أعد المحاولة.', 'The server refused to publish because of hard clashes. Fix them and try again.'),
+                style: orgText(ctx, color: ctx.colors.textMedium)),
+            ConflictList(conflicts: conflicts, courseNames: courseNames),
+          ]),
+        ));
+
 class _Cell extends StatelessWidget {
-  const _Cell({required this.slots, required this.conflict, required this.courseNames, required this.rooms, required this.people, this.onTap});
+  const _Cell(
+      {required this.day, required this.periodId, required this.slots, required this.conflict, required this.courseNames, required this.rooms, required this.people, this.onTap, this.onDrop});
+  final String day;
+  final int periodId;
   final List<Map<String, dynamic>> slots;
   final bool conflict;
   final Map<int, String> courseNames, people, rooms;
   final void Function(Map<String, dynamic>? slot)? onTap;
+  /// a session from another cell was dropped here
+  final void Function(Map<String, dynamic> slot)? onDrop;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return GestureDetector(
-      onTap: onTap == null ? null : () => onTap!(null),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 64),
-        margin: const EdgeInsets.all(3),
-        padding: const EdgeInsets.all(5),
-        decoration: BoxDecoration(
-          color: slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.primary.withValues(alpha: 0.10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.primary.withValues(alpha: 0.35)), width: conflict ? 1.8 : 1),
+    // a mouse drags straight away; on touch a plain drag would fight the grid's scrolling, so it needs a long press
+    final platform = Theme.of(context).platform;
+    final mouse = kIsWeb || platform == TargetPlatform.windows || platform == TargetPlatform.macOS || platform == TargetPlatform.linux;
+    return DragTarget<Map<String, dynamic>>(
+      onWillAcceptWithDetails: (d) => onDrop != null && (d.data['day'] != day || asInt(d.data['period_id']) != periodId),
+      onAcceptWithDetails: (d) => onDrop!(d.data),
+      builder: (context, hovering, _) => GestureDetector(
+        onTap: onTap == null ? null : () => onTap!(null),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          margin: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            color: hovering.isNotEmpty
+                ? c.primary.withValues(alpha: 0.22)
+                : (slots.isEmpty ? c.inputBg.withValues(alpha: 0.6) : c.primary.withValues(alpha: 0.10)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: hovering.isNotEmpty ? c.primary : (conflict ? c.danger : (slots.isEmpty ? Colors.transparent : c.primary.withValues(alpha: 0.35))),
+                width: conflict || hovering.isNotEmpty ? 1.8 : 1),
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (final x in slots)
+              if (onDrop == null)
+                _item(context, x)
+              else if (mouse)
+                Draggable<Map<String, dynamic>>(data: x, feedback: _feedback(context, x), childWhenDragging: Opacity(opacity: 0.35, child: _item(context, x)), child: _item(context, x))
+              else
+                LongPressDraggable<Map<String, dynamic>>(
+                    data: x, feedback: _feedback(context, x), childWhenDragging: Opacity(opacity: 0.35, child: _item(context, x)), child: _item(context, x)),
+          ]),
         ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          for (final x in slots)
-            GestureDetector(
+      ),
+    );
+  }
+
+  /// what follows the finger / pointer while dragging
+  Widget _feedback(BuildContext context, Map<String, dynamic> x) {
+    final c = context.colors;
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 144,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: c.primary.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [BoxShadow(color: c.primary.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
+        ),
+        child: Text(courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
+            maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: Colors.white)),
+      ),
+    );
+  }
+
+  Widget _item(BuildContext context, Map<String, dynamic> x) {
+    final c = context.colors;
+    return GestureDetector(
               onTap: onTap == null ? null : () => onTap!(x),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 4),
@@ -621,46 +1009,40 @@ class _Cell extends StatelessWidget {
                   Row(children: [
                     if (x['locked'] == true) Icon(Icons.push_pin_rounded, size: 11, color: c.primary),
                     Expanded(child: Text(courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: c.textDark))),
+                    if (x['kind'] == 'lab')
+                      Container(
+                        margin: const EdgeInsetsDirectional.only(start: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(6)),
+                        child: Text(t('سكشن', 'Lab'), style: TextStyle(fontFamily: 'tajawal', fontSize: 9.5, fontWeight: FontWeight.w800, color: c.purple)),
+                      ),
+                    if (x['group_no'] != null)   // only once the server splits courses into groups
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 4),
+                        child: Text('${t('م', 'G')}${x['group_no']}', style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: c.textMedium)),
+                      ),
                   ]),
                   Text('${people[asInt(x['teacher_id'])] ?? ''}${x['room_id'] == null ? '' : ' · ${rooms[asInt(x['room_id'])] ?? ''}'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: c.textMedium)),
                 ]),
               ),
-            ),
-        ]),
-      ),
-    );
+            );
   }
 }
 
-String _issueText(Map<String, dynamic> x) => {
-      'teacher_double_booked': t('مدرس لديه حصتان في نفس الوقت', 'Teacher double-booked'),
-      'assistant_double_booked': t('معيد لديه حصتان في نفس الوقت', 'Assistant double-booked'),
-      'admin_assistant_double_booked': t('مساعد إداري لديه حصتان في نفس الوقت', 'Admin assistant double-booked'),
-      'room_double_booked': t('قاعة محجوزة مرتين', 'Room double-booked'),
-      'students_clash': t('كورسان بنفس الطلاب في نفس الوقت', 'Two courses share students at the same time'),
-      'teacher_unavailable': t('المدرس غير متاح في هذا الوقت', 'Teacher unavailable'),
-      'staff_unavailable': t('أحد الهيئة المعاونة غير متاح', 'Staff member unavailable'),
-      'students_unavailable': t('الطلاب غير متاحين في هذا الوقت', 'Students unavailable'),
-      'room_too_small': t('القاعة أصغر من عدد الطلاب', 'Room too small'),
-      'teacher_overloaded': t('حمل المدرس اليومي أكبر من الحد', 'Teacher daily load too high'),
-      'no_teacher': t('الكورس بلا مدرس', 'Course has no teacher'),
-      'no_slot': t('لا يوجد موعد مناسب', 'No suitable slot'),
-      'no_assistant_slot': t('لم يتوفر وقت لمعيد', 'No time found for an assistant'),
-    }['${x['type']}'] ??
-    '${x['type']}';
-
-String _reasonText(String? r) => {
-      'teacher_unavailable': t('المدرس غير متاح', 'teacher unavailable'),
-      'students_unavailable': t('الطلاب غير متاحين', 'students unavailable'),
-      'teacher_busy': t('المدرس مشغول', 'teacher busy'),
-      'students_clash': t('تعارض طلاب مع كورس آخر', 'students clash with another course'),
-      'teacher_day_limit': t('حد الحمل اليومي للمدرس', 'teacher daily limit'),
-      'no_room_fits': t('لا توجد قاعة بسعة/نوع مناسب', 'no room with enough capacity / right type'),
-      'rooms_busy': t('القاعات مشغولة', 'rooms are busy'),
-      'course_already_there': t('الكورس موجود في هذا الوقت', 'course already scheduled then'),
-      'no_free_cell': t('لا توجد خلية فارغة', 'no free cell'),
-    }[r] ??
-    '';
+/// Drag & drop: move a slot to another cell. A hard clash asks before saving it anyway (draft only — publishing still
+/// refuses it); anything else the server refused puts the slot back.
+Future<void> _moveSlot(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> slot, String day, int period) async {
+  final res = await p.moveSlot(slot, day, period);
+  if (res == null) {
+    toast(t('نُقلت الحصة وثُبّتت', 'Session moved and locked'));
+    return;
+  }
+  if (res.isEmpty || res.first['type'] == 'error' || !context.mounted) return;
+  final choice = await showConflictPreview(context, res, canReplace: false, canRebuild: false);
+  if (choice == 'force' && context.mounted) {
+    if (await p.moveSlot(slot, day, period, force: true) == null) toast(t('نُقلت الحصة مع التعارض', 'Moved — the clash is flagged'));
+  }
+}
 
 Future<void> _issuesSheet(BuildContext context, OrgScheduleProvider p, Map<int, String> names) async {
   await showAdminSheet<void>(context, (ctx) {
@@ -671,16 +1053,10 @@ Future<void> _issuesSheet(BuildContext context, OrgScheduleProvider p, Map<int, 
         ListTile(
           dense: true,
           leading: Icon(Icons.info_rounded, color: c.warning),
-          title: Text('${names[asInt(w['course_id'])] ?? '#${w['course_id']}'} — ${_issueText(w)}'),
-          subtitle: _reasonText(w['reason'] as String?).isEmpty ? null : Text(_reasonText(w['reason'] as String?)),
+          title: Text('${names[asInt(w['course_id'])] ?? '#${w['course_id']}'}${w['kind'] == 'lab' ? ' · ${t('سكشن', 'lab')}' : ''} — ${scheduleReasonText('${w['type']}')}'),
+          subtitle: '${w['reason'] ?? ''}'.isEmpty ? null : Text(scheduleReasonText('${w['reason']}')),
         ),
-      for (final x in p.conflicts)
-        ListTile(
-          dense: true,
-          leading: Icon(x['severity'] == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, color: x['severity'] == 'error' ? c.danger : c.warning),
-          title: Text(_issueText(x)),
-          subtitle: Text('${dayLabels()[x['day']] ?? x['day'] ?? ''} · ${((x['course_ids'] as List?) ?? const []).map((i) => names[asInt(i)] ?? '#$i').join(' / ')}'),
-        ),
+      ConflictList(conflicts: p.conflicts, courseNames: names),
     ]);
   });
 }
@@ -705,29 +1081,42 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
     teacher = l['teacher_id'] == null ? null : asInt(l['teacher_id']);
   }
   final labels = dayLabels();
+  final canApprove = context.read<OrgSession>().can('schedule', 'approve');
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
-        DropdownButtonFormField<int?> pick(String label, int? v, List<Map<String, dynamic>> items, ValueChanged<int?> on, {bool allowNone = true}) =>
-            DropdownButtonFormField<int?>(
-              initialValue: v,
-              isExpanded: true,
-              decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [if (allowNone) DropdownMenuItem<int?>(value: null, child: Text('—')), for (final u in items) DropdownMenuItem<int?>(value: asInt(u['id']), child: Text('${u['name']}'))],
+        Widget pick(String label, int? v, List<Map<String, dynamic>> items, ValueChanged<int?> on, {bool allowNone = true}) =>
+            OrgPickField<int>(
+              label: label,
+              value: v,
+              allowNone: allowNone,
+              options: {for (final u in items) asInt(u['id']): '${u['name']}'},
               onChanged: (x) => set(() => on(x)),
             );
-        Future<void> save({bool force = false}) async {
+        Future<void> save({bool force = false, bool replace = false, String? strategy, String? overrideReason}) async {
           set(() => busy = true);
           final body = {'day': day, 'period_id': period, 'room_id': room, 'teacher_id': teacher, 'assistant_id': assistant, 'admin_assistant_id': adm};
           final res = slot == null
-              ? await p.addSlot({...body, 'course_id': course}, force: force)
+              ? await p.addSlot({...body, 'course_id': course}, force: force, replace: replace, strategy: strategy, overrideReason: overrideReason)
               : await p.editSlot(asInt(slot['id']), body, force: force);
           if (!ctx.mounted) return;
           set(() => busy = false);
           if (res == null) {
             Navigator.pop(ctx);
           } else if (res.isNotEmpty && res.first['type'] != 'error') {
-            final go = await confirm(ctx, message: '${res.map(_issueText).toSet().join('\n')}\n\n${t('حفظ رغم التعارض؟', 'Save anyway?')}', danger: true);
-            if (go && ctx.mounted) await save(force: true);
+            final choice = await showConflictPreview(ctx, res,
+                canReplace: slot == null, canRebuild: slot == null, canOverride: slot == null && canApprove);
+            if (!ctx.mounted) return;
+            switch (choice) {
+              case 'replace':
+                await save(replace: true);
+              case 'force':
+                await save(force: true);
+              case 'shift' || 'regenerate':
+                await save(strategy: choice);
+              case 'override':
+                final why = await askText(ctx, title: t('سبب الاستثناء (يظهر في السجل)', 'Reason for the override (kept in the log)'), multiline: true);
+                if (why != null && why.trim().length >= 3 && ctx.mounted) await save(overrideReason: why.trim());
+            }
           }
         }
 
@@ -736,11 +1125,15 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(slot == null ? t('حصة جديدة', 'New slot') : t('تعديل الحصة', 'Edit slot')),
             if (slot == null)
-              DropdownButtonFormField<int>(
-                initialValue: course,
-                isExpanded: true,
-                decoration: InputDecoration(labelText: t('الكورس', 'Course'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-                items: [for (final l in courses) DropdownMenuItem(value: asInt(l['course_id']), child: Text(t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}', '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}')))],
+              OrgPickField<int>(
+                label: t('المقرر', 'Course'),
+                icon: Icons.menu_book_rounded,
+                value: course,
+                options: {
+                  for (final l in courses)
+                    asInt(l['course_id']): t('${(l['course'] as Map)['name_ar'] ?? (l['course'] as Map)['name_en']}',
+                        '${(l['course'] as Map)['name_en'] ?? (l['course'] as Map)['name_ar']}')
+                },
                 onChanged: (v) => set(() {
                   course = v ?? course;
                   final l = courses.firstWhere((x) => asInt(x['course_id']) == course);
@@ -750,10 +1143,11 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
             const SizedBox(height: 12),
             ChoiceRow<String>(options: {for (final d in orgDays.take(6)) d: labels[d]!}, value: day, onChanged: (v) => set(() => day = v)),
             const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              initialValue: period,
-              decoration: InputDecoration(labelText: t('الفترة', 'Period'), border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
-              items: [for (final x in p.periods) DropdownMenuItem(value: asInt(x['id']), child: Text('${x['label']}  (${x['start_time']}–${x['end_time']})'))],
+            OrgPickField<int>(
+              label: t('الفترة', 'Period'),
+              icon: Icons.schedule_rounded,
+              value: period,
+              options: {for (final x in p.periods) asInt(x['id']): '${x['label']}  (${periodRange(asMap(x))})'},
               onChanged: (v) => set(() => period = v ?? period),
             ),
             const SizedBox(height: 12),
@@ -779,6 +1173,130 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
                 label: Text(t('حذف الحصة', 'Delete slot'), style: TextStyle(color: c.danger)),
               ),
             ],
+          ]),
+        );
+      }));
+}
+
+
+/// Special periods: one-off sessions on real dates (make-up / extra lecture or lab). Students + teacher are notified.
+Future<void> _extrasSheet(BuildContext context, OrgScheduleProvider p, Map<int, String> courseNames, List<Map<String, dynamic>> rooms) async {
+  await p.loadExtras();
+  if (!context.mounted) return;
+  await showAdminSheet<void>(context, (ctx) => ChangeNotifierProvider.value(
+        value: p,
+        child: Consumer<OrgScheduleProvider>(builder: (ctx, p, _) {
+          final c = ctx.colors;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SheetHeader(t('الفترات الخاصة', 'Special periods')),
+              Text(t('محاضرة أو سكشن إضافي في تاريخ محدد — يُبلَّغ الطلاب والمدرس فوراً.', 'An extra lecture or section on a specific date — students and the teacher are told right away.'),
+                  style: orgText(ctx, size: 12.5, color: c.textMedium)),
+              const SizedBox(height: 10),
+              for (final e in p.extras)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
+                  child: Row(children: [
+                    IconBadge(e['kind'] == 'lab' ? Icons.science_rounded : Icons.event_available_rounded, e['kind'] == 'lab' ? c.purple : c.primary, size: 40),
+                    const SizedBox(width: 10),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${e['title'] ?? courseNames[asInt(e['course_id'])] ?? ''}', style: orgText(ctx, w: FontWeight.w800)),
+                      Text('${courseNames[asInt(e['course_id'])] ?? ''} · ${calendarDate(e['date'])} · ${AppTime.clockRange('${e['start_time']}', '${e['end_time']}')}',
+                          style: orgText(ctx, size: 12, color: c.textMedium)),
+                    ])),
+                    IconButton(icon: Icon(Icons.event_busy_rounded, color: c.danger), onPressed: () async {
+                      if (await confirm(ctx, message: t('إلغاء هذه الفترة وإبلاغ الطلاب؟', 'Cancel it and tell the students?'), danger: true)) {
+                        await p.deleteExtra(asInt(e['id']));
+                      }
+                    }),
+                  ]),
+                ),
+              const SizedBox(height: 6),
+              PrimaryButton(isLoading: false, label: t('فترة خاصة جديدة', 'New special period'), icon: Icons.add_rounded, iconBefore: true,
+                  onPressed: () => _newExtra(ctx, p, courseNames, rooms)),
+            ]),
+          );
+        }),
+      ));
+}
+
+Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, String> courseNames, List<Map<String, dynamic>> rooms) async {
+  int? course = courseNames.keys.isEmpty ? null : courseNames.keys.first;
+  String kind = 'lecture';
+  DateTime? date;
+  TimeOfDay? from, to;
+  int? room;
+  final title = TextEditingController();
+  List<Map<String, dynamic>> clashes = const [];
+  await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+        final c = ctx.colors;
+        String hm(TimeOfDay x) => '${x.hour.toString().padLeft(2, '0')}:${x.minute.toString().padLeft(2, '0')}';
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SheetHeader(t('فترة خاصة جديدة', 'New special period')),
+            OrgPickField<int>(label: t('المقرر', 'Course'), icon: Icons.menu_book_rounded, value: course, options: courseNames,
+                onChanged: (v) => set(() => course = v)),
+            ChoiceRow<String>(label: t('النوع', 'Type'), options: {'lecture': t('محاضرة', 'Lecture'), 'lab': t('سكشن / معمل', 'Section / lab')},
+                value: kind, onChanged: (v) => set(() => kind = v)),
+            Field(controller: title, label: t('العنوان (مثل: محاضرة تعويضية)', 'Title (e.g. make-up lecture)')),
+            Row(children: [
+              Expanded(child: OutlinedButton.icon(
+                icon: const Icon(Icons.event_rounded),
+                label: Text(date == null ? t('التاريخ', 'Date') : calendarDate(date!.toIso8601String())),
+                onPressed: () async {
+                  final d = await showDatePicker(context: ctx, firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                      lastDate: DateTime(2100), initialDate: date ?? DateTime.now());
+                  if (d != null) set(() => date = d);
+                },
+              )),
+              const SizedBox(width: 6),
+              Expanded(child: OutlinedButton(
+                child: Text(from == null ? t('من', 'From') : AppTime.clock(hm(from!)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                onPressed: () async {
+                  final x = timeOfDayOf(await pickClock(ctx, from == null ? '10:00' : hm(from!)));
+                  if (x != null) set(() => from = x);
+                },
+              )),
+              const SizedBox(width: 6),
+              Expanded(child: OutlinedButton(
+                child: Text(to == null ? t('إلى', 'To') : AppTime.clock(hm(to!)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                onPressed: () async {
+                  final x = timeOfDayOf(await pickClock(ctx, to == null ? '11:30' : hm(to!)));
+                  if (x != null) set(() => to = x);
+                },
+              )),
+            ]),
+            const SizedBox(height: 10),
+            OrgPickField<int>(label: t('المكان (اختياري)', 'Place (optional)'), icon: Icons.meeting_room_rounded, value: room, allowNone: true,
+                options: {for (final r in rooms) asInt(r['id']): '${r['name']}'}, onChanged: (v) => set(() => room = v)),
+            for (final x in clashes)
+              Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: c.danger.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(12)),
+                child: Row(children: [
+                  Icon(Icons.warning_amber_rounded, color: c.danger, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(t('${x['text_ar'] ?? ''}', '${x['text_en'] ?? ''}'), style: orgText(ctx, size: 12.5))),
+                ]),
+              ),
+            const SizedBox(height: 6),
+            PrimaryButton(isLoading: false, label: t('إضافة وإبلاغ الطلاب', 'Add & notify students'), onPressed: () async {
+              if (course == null || date == null || from == null || to == null) {
+                return toast(t('اختر المقرر والتاريخ والوقت', 'Choose the course, date and time'), error: true);
+              }
+              final r = await p.addExtra({'course_id': course, 'kind': kind, 'date': date!.toIso8601String().substring(0, 10),
+                'start_time': hm(from!), 'end_time': hm(to!), 'room_id': room, if (title.text.trim().isNotEmpty) 'title': title.text.trim()});
+              if (r == null) {
+                if (ctx.mounted) Navigator.pop(ctx);
+              } else {
+                set(() => clashes = r.where((x) => x['type'] != 'error').toList());
+              }
+            }),
           ]),
         );
       }));

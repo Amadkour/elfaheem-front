@@ -55,6 +55,14 @@ abstract class PaymentFlowProvider extends BaseProvider {
   /// Back to the method picker (retry / cancelled checkout).
   void backToMethod() => setStep(EnrollStep.method);
 
+  /// Coded server refusals of the checkout call (e.g. roadmap_prerequisites) — a flow overrides this to keep the
+  /// details, and [handledCheckoutError] to show them itself instead of the generic failure page.
+  @protected
+  void onCheckoutError(ApiException e) {}
+
+  @protected
+  bool get handledCheckoutError => false;
+
   // ── Config ────────────────────────────────────────────────────────────────
 
   /// Pass [courseId] so the server applies that course's own gateway and allowed methods
@@ -79,9 +87,15 @@ abstract class PaymentFlowProvider extends BaseProvider {
     makeLoading();
     safeNotify();
     try {
-      final session = asJsonMap(await run(
-            () async => body == null ? api.post(path) : api.post(path, body: body),
-      ));
+      final session = asJsonMap(await run(() async {
+        try {
+          return body == null ? await api.post(path) : await api.post(path, body: body);
+        } on ApiException catch (e) {
+          onCheckoutError(e);
+          rethrow;
+        }
+      }));
+      if (session == null && handledCheckoutError) return;
 
       if (session == null) {
         setStep(EnrollStep.failed, reason: 'payment_session_create_failed'.tr);

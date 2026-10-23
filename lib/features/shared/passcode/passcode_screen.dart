@@ -74,6 +74,7 @@ class PasscodeSheet extends StatefulWidget {
     IconData icon = Icons.lock_outline_rounded,
   }) async {
     final ok = await showModalBottomSheet<bool>(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

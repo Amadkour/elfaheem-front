@@ -11,6 +11,7 @@ import '../../../../shared/session/material/session_material_widget.dart';
 import '../../../models.dart';
 import '../course_detail_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 
 class SessionsTab extends StatelessWidget {
   const SessionsTab({
@@ -61,6 +62,10 @@ class SessionsTab extends StatelessWidget {
         child: Center(child: AppLoadingIndicator()),
       );
     }
+    final hasSections = presented.any((s) => s.track == 'section');
+    final shown = !hasSections || provider.trackFilter == 'all'
+        ? presented
+        : presented.where((s) => s.track == provider.trackFilter).toList();
     if (presented.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(48),
@@ -103,13 +108,23 @@ class SessionsTab extends StatelessWidget {
                 isFull: true,
               )),
         ),
+        if (hasSections)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            child: SessionTrackTabs(
+              value: provider.trackFilter,
+              lectures: presented.where((s) => s.track != 'section').length,
+              sections: presented.where((s) => s.track == 'section').length,
+              onChanged: provider.setTrackFilter,
+            ),
+          ),
         ListView.builder(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
-          itemCount: presented.length,
+          itemCount: shown.length,
           itemBuilder: (_, i) {
-            final session = presented[i];
+            final session = shown[i];
             final gate = provider.examGates[session.id];
             return Padding(
               padding: const EdgeInsets.only(bottom: 10),
@@ -211,7 +226,7 @@ class _SessionExamBannerState extends State<_SessionExamBanner> {
       icon = Icons.event_busy_rounded;
       status = 'session_exam_closed'.tr;
     } else if (exam.attempted) {
-      color = Colors.orange;
+      color = context.colors.warning;
       icon = Icons.refresh_rounded;
       status = 'session_exam_failed_retry'.tr;
     } else {

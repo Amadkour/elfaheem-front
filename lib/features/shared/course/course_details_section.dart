@@ -7,8 +7,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_screen.dart';
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../teacher/courses/component/certificate_manager_sheet.dart';
 import '../../teacher/home/teacher_models.dart';
 class _AddButton extends StatelessWidget {
@@ -348,16 +348,16 @@ class _ScheduleRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF4DA6FF).withValues(alpha: 0.10),
+            color: context.colors.primaryLight.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             schedule.dayLabel,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF4DA6FF),
+              color: context.colors.primaryLight,
             ),
           ),
         ),

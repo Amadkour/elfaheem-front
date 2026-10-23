@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../config/app_config.dart';
+import '../../../design/app_switch.dart';
 
 
 class CoursePrivacyCard extends StatefulWidget {
@@ -92,7 +93,8 @@ class _CoursePrivacyCardState extends State<CoursePrivacyCard> {
                   ),
                 ]),
               ),
-              Switch(value: priv, onChanged: widget.onChanged),
+              const SizedBox(width: 8),
+              AppSwitch(value: priv, onChanged: widget.onChanged, semanticLabel: 'cas_private_course'.tr),
             ]),
             if (priv) ...[
               const SizedBox(height: 12),

@@ -16,6 +16,8 @@ import '../../utils/widget/paged_progress.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'admin_table_export.dart' show AppExportPill, exportPagedList;
+import '../../design/app_table_export.dart' show AppTableExport;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paged list (same pagination progress as the user lists)
@@ -30,6 +32,7 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
     this.emptyText,
     this.countIcon,
     this.showCountFrom = 20,
+    this.export,
   }) : assert(
   itemBuilder != null || indexedBuilder != null,
   'give itemBuilder or indexedBuilder',
@@ -49,6 +52,9 @@ class PagedList<P extends AdminPagedProvider> extends StatefulWidget {
 
   /// The progress card appears once the total is bigger than this (one page).
   final int showCountFrom;
+
+  /// Builds the export table from EVERY row (all pages are fetched first) — shows an Excel · Word · PDF pill.
+  final AppTableExport Function(List<Map<String, dynamic>> rows)? export;
 
   @override
   State<PagedList<P>> createState() => _PagedListState<P>();
@@ -139,6 +145,11 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
     return Column(
       children: [
         if (widget.header != null) widget.header!,
+        if (widget.export != null && p.rows.isNotEmpty)
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 2, 14, 8),
+            child: Align(alignment: AlignmentDirectional.centerEnd, child: AppExportPill(onTap: () => exportPagedList(context, p, widget.export!))),
+          ),
         // pinned "Showing 20 of 134" progress
         if (p.rows.isNotEmpty && p.total > widget.showCountFrom)
           PagedCountCard(

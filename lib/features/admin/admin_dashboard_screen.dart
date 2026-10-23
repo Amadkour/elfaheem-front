@@ -38,6 +38,7 @@ import 'package:flutter_education_app/utils/widget/refresh_button.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
@@ -513,15 +514,12 @@ class _MorePageState extends State<_MorePage> {
                         iconBg: c.darkIconBg,
                         iconColor: c.textDark,
                         label: 'dark_mode'.tr,
-                        trailing: Switch.adaptive(
+                        trailing: AppSwitch(
                           value: p.darkMode,
                           onChanged: (b) async {
                             await p.changeMode(b);
                           },
-                          activeThumbColor: c.primary,
-                          thumbColor: const WidgetStatePropertyAll(
-                            Colors.white,
-                          ),
+                          semanticLabel: 'dark_mode'.tr,
                         ),
                       ),
                     ],

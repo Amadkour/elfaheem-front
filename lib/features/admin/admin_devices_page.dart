@@ -217,7 +217,7 @@ class _PremiumCounter extends StatelessWidget {
           color: colors.cardBg,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: enabled ? colors.primary.withValues(alpha: 0.20) : Colors.grey.withValues(alpha: 0.15),
+            color: enabled ? colors.primary.withValues(alpha: 0.20) : context.colors.textLight.withValues(alpha: 0.15),
           ),
           boxShadow: colors.cardShadow,
         ),
@@ -303,7 +303,7 @@ class _CounterButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.colors;
     return Material(
-      color: enabled ? colors.primary.withValues(alpha: 0.10) : Colors.grey.withValues(alpha: 0.08),
+      color: enabled ? colors.primary.withValues(alpha: 0.10) : context.colors.textLight.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: enabled ? onTap : null,
@@ -313,7 +313,7 @@ class _CounterButton extends StatelessWidget {
           height: 40,
           child: Icon(
             icon,
-            color: enabled ? colors.primary : Colors.grey,
+            color: enabled ? colors.primary : context.colors.textLight,
             size: 21,
           ),
         ),

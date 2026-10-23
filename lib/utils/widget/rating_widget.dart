@@ -8,6 +8,7 @@ import '../../core/api_client.dart'; // adjust import path as needed
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../features/shared/guest/guest_state.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -282,13 +283,7 @@ class _RatingWidgetState extends State<RatingWidget>
     } catch (e) {
       if(mounted) setState(() => _submitting = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: context.colors.danger,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        showAppNotice(e.toString(), error: true);
       }
     }
   }

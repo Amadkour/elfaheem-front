@@ -2,8 +2,8 @@
 library;
 
 import 'package:flutter_education_app/config/app_config.dart';
-import '../../../utils/helpers.dart';
-import '../../../utils/widget/rating_widget.dart';
+import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/utils/widget/rating_widget.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/category/model.dart';
 import '../teacher/home/teacher_models.dart';
@@ -89,6 +89,7 @@ class SessionModel {
       totalMaterial,
       completeMaterial;
   final String name, type;
+  final String track; // lecture · section
   final String? description, recordingStatus;
   final DateTime? scheduledAt;
   final DateTime createdAt;
@@ -99,6 +100,7 @@ class SessionModel {
   final RatingSummary? rateSummary;
 
   SessionModel({
+    this.track = 'lecture',
     required this.id,
     required this.courseId,
     required this.name,
@@ -139,6 +141,7 @@ class SessionModel {
     name: j['name'] as String? ?? '',
     description: j['description'] as String? ?? '',
     type: j['type'] as String? ?? 'pre-recorded',
+    track: j['track'] as String? ?? 'lecture',
     durationMinutes: j['duration_minutes'] as int? ?? 0,
     order: j['order'] as int? ?? 0,
     isLiveActive: j['is_live_active'] as bool? ?? false,
@@ -161,6 +164,7 @@ class SessionModel {
 
   TeacherSessionItem get toTeacher => TeacherSessionItem(
     id: id,
+    track: track,
     courseId: courseId,
     name: name,
     rateSummary: rateSummary,
@@ -176,6 +180,7 @@ class SessionModel {
   );
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
+    track: track,
     id: id,
     courseId: courseId,
     name: name,
@@ -206,6 +211,7 @@ class TeacherSessionItem {
       completeMaterial;
   final String name;
   final String? description, type, roomUrl, recordingUrl, recordingStatus;
+  final String track; // lecture · section
   final bool isLiveActive;
   final DateTime? scheduledAt;
   final DateTime createdAt;
@@ -214,6 +220,7 @@ class TeacherSessionItem {
 
   const TeacherSessionItem({
     required this.id,
+    this.track = 'lecture',
     required this.courseId,
     required this.name,
     required this.durationMinutes,
@@ -254,6 +261,7 @@ class TeacherSessionItem {
       name: j['name'] as String? ?? '',
       description: j['description'] as String?,
       type: j['type'] as String?,
+      track: j['track'] as String? ?? 'lecture',
       scheduledAt: j['scheduled_at'] != null
           ? (j['scheduled_at'] as String).toLocalSaTime
           : null,
@@ -291,6 +299,7 @@ class TeacherSessionItem {
     int? totalMaterial,
     int? completeMaterial,
   }) => TeacherSessionItem(
+      track: track,
     id: id,
     courseId: courseId,
     name: name ?? this.name,

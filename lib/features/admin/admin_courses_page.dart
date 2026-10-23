@@ -5,6 +5,7 @@ library;
 import 'dart:math' show Random;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminCoursesExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 
@@ -160,6 +162,7 @@ class _CoursesView extends StatelessWidget {
           ),
         ),
         body: PagedList<AdminCoursesProvider>(
+          export: adminCoursesExport,
           header: header,
           emptyText: 'admin_no_courses_found'.tr,
           itemBuilder: (ctx, row) => _CourseTile(AdminCourse(row)),
@@ -551,14 +554,11 @@ class _CourseDetailState extends State<_CourseDetail> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_private_course'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 14),
-                      ),
+                    AppSwitchTile(
+                      dense: true,
+                      title: 'admin_private_course'.tr,
                       value: raw['is_private'] == true,
-                      activeTrackColor: c.primary,
+                      activeColor: c.primary,
                       onChanged: (v) async {
                         if (await p.update(co.id, {'is_private': v})) await _load();
                       },
@@ -578,18 +578,12 @@ class _CourseDetailState extends State<_CourseDetail> {
                       ),
                       const SizedBox(height: 8),
                     ],
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_allow_resubscribe'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 14),
-                      ),
-                      subtitle: Text(
-                        'admin_allow_resubscribe_hint'.tr,
-                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5),
-                      ),
+                    AppSwitchTile(
+                      dense: true,
+                      title: 'admin_allow_resubscribe'.tr,
+                      subtitle: 'admin_allow_resubscribe_hint'.tr,
                       value: raw['allow_resubscribe'] != false,
-                      activeTrackColor: c.primary,
+                      activeColor: c.primary,
                       onChanged: (v) async {
                         if (await p.update(co.id, {'allow_resubscribe': v})) await _load();
                       },
@@ -612,17 +606,11 @@ class _CourseDetailState extends State<_CourseDetail> {
                       value: provider,
                       onChanged: (v) => setState(() => provider = v),
                     ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        'admin_restrict_payment_methods'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 14,
-                        ),
-                      ),
+                    AppSwitchTile(
+                      dense: true,
+                      title: 'admin_restrict_payment_methods'.tr,
                       value: restrictMethods,
-                      activeTrackColor: c.primary,
+                      activeColor: c.primary,
                       onChanged: (v) => setState(() => restrictMethods = v),
                     ),
                     if (restrictMethods)
@@ -1152,14 +1140,10 @@ class _CourseFormState extends State<_CourseForm> {
                       value: categoryId,
                       onChanged: (v) => setState(() => categoryId = v),
                     ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'admin_private_course'.tr,
-                      style: const TextStyle(fontFamily: 'tajawal'),
-                    ),
+                  AppSwitchTile(
+                    title: 'admin_private_course'.tr,
                     value: isPrivate,
-                    activeTrackColor: c.primary,
+                    activeColor: c.primary,
                     onChanged: (v) => setState(() => isPrivate = v),
                   ),
                   if (isPrivate)
@@ -1174,29 +1158,17 @@ class _CourseFormState extends State<_CourseForm> {
                             : 'admin_code_6_digits'.tr;
                       },
                     ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'admin_allow_resubscribe'.tr,
-                      style: const TextStyle(fontFamily: 'tajawal'),
-                    ),
-                    subtitle: Text(
-                      'admin_allow_resubscribe_hint'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'tajawal', fontSize: 11.5),
-                    ),
+                  AppSwitchTile(
+                    title: 'admin_allow_resubscribe'.tr,
+                    subtitle: 'admin_allow_resubscribe_hint'.tr,
                     value: allowResub,
-                    activeTrackColor: c.primary,
+                    activeColor: c.primary,
                     onChanged: (v) => setState(() => allowResub = v),
                   ),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      'published'.tr,
-                      style: const TextStyle(fontFamily: 'tajawal'),
-                    ),
+                  AppSwitchTile(
+                    title: 'published'.tr,
                     value: published,
-                    activeTrackColor: c.primary,
+                    activeColor: c.primary,
                     onChanged: (v) => setState(() => published = v),
                   ),
                   const SizedBox(height: 8),

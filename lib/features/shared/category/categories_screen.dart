@@ -866,11 +866,11 @@ class _ShimmerCircle extends StatelessWidget {
             height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.shade300,
+              color: context.colors.divider,
             ),
           ),
           const SizedBox(height: 8),
-          Container(width: size * 0.6, height: 8, color: Colors.grey.shade300),
+          Container(width: size * 0.6, height: 8, color: context.colors.divider),
         ],
       ),
     );
@@ -890,11 +890,11 @@ class _ShimmerRow extends StatelessWidget {
             height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.grey.shade300,
+              color: context.colors.divider,
             ),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Container(height: 12, color: Colors.grey.shade300)),
+          Expanded(child: Container(height: 12, color: context.colors.divider)),
         ],
       ),
     );
@@ -909,7 +909,7 @@ class _ShimmerCard extends StatelessWidget {
     return _ShimmerBase(
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade300,
+          color: context.colors.divider,
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),
       ),

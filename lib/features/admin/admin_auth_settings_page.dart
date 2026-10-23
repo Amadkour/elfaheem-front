@@ -3,6 +3,7 @@
 // Open it from the admin services (Support & security):
 //   Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminAuthSettingsPage()));
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -15,6 +16,7 @@ import 'package:provider/provider.dart';
 import '../auth/verify_way.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class AdminAuthSettingsPage extends StatefulWidget {
   const AdminAuthSettingsPage({super.key});
@@ -144,15 +146,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
   }
 
   // ── pieces ───────────────────────────────────────────────────────────────
-  Widget _switch(bool value, ValueChanged<bool> onChanged) {
-    final c = context.colors;
-    return Switch.adaptive(
-      value: value,
-      onChanged: onChanged,
-      activeThumbColor: c.primary,
-      thumbColor: const WidgetStatePropertyAll(Colors.white),
-    );
-  }
+  Widget _switch(bool value, ValueChanged<bool> onChanged) => AppSwitch(value: value, onChanged: onChanged);
 
   Widget _wayTile(VerifyWay w) {
     final on = _ways.contains(w.name);
@@ -262,7 +256,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
           ? null
           : PremiumSaveBar(label: 'save'.tr, loading: _saving, onPressed: _save),
       child: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: AppLoadingIndicator(size: 56))
           : Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(

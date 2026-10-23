@@ -27,6 +27,7 @@ import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
 import 'course_student_provider.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -309,7 +310,7 @@ class _FloatingStatsCard extends StatelessWidget {
               icon: Icons.people_alt_rounded,
               label: 'stat_total'.tr,
               value: '${p.totalCount}',
-              color: const Color(0xFF5B8FFF),
+              color: context.colors.primaryLight,
             ),
           ),
           Container(width: 1, height: 34, color: context.colors.divider),
@@ -877,20 +878,12 @@ class _CertificatePickerSheet extends StatelessWidget {
 Future<CourseCertificate?> _pickCertificate(
     BuildContext context, List<CourseCertificate> certs) async {
   if (certs.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('no_certificate_for_course'.tr,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white)),
-        backgroundColor: context.colors.danger,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    showAppNotice('no_certificate_for_course'.tr, error: true);
     return null;
   }
   if (certs.length == 1) return certs.first;
   return showModalBottomSheet<CourseCertificate>(
+      useSafeArea: true,
     context: context,
     backgroundColor: Colors.transparent,
     builder: (_) => _CertificatePickerSheet(certificates: certs),
@@ -898,18 +891,7 @@ Future<CourseCertificate?> _pickCertificate(
 }
 
 void _showResultSnack(BuildContext context, bool success, String okMessage) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(
-        success ? okMessage : 'certificate_send_failed'.tr,
-        style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-      ),
-      backgroundColor: success ? context.colors.success : context.colors.danger,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-    ),
-  );
+  showAppNotice(success ? okMessage : 'certificate_send_failed'.tr, error: true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

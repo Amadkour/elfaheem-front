@@ -66,6 +66,9 @@ class StorageService {
 
   String? get loadLanguage => _prefs.getString('lang');
 
+  /// A boolean remembered by another part of the app (read synchronously at start-up, e.g. routing).
+  bool? getFlag(String key) => _prefs.getBool(key);
+
   Future<void> saveLanguage(String lang) => _prefs.setString('lang', lang);
 
   /// Call after login or OTP verification to persist the user object.

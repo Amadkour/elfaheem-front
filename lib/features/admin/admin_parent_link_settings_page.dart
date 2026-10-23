@@ -22,6 +22,8 @@ import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart';
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class AdminParentLinkSettingsPage extends StatelessWidget {
   const AdminParentLinkSettingsPage({super.key});
@@ -169,7 +171,7 @@ class _FormState extends State<_Form> {
               TextField(controller: en, textDirection: TextDirection.ltr, decoration: InputDecoration(labelText: 'pl_label_en'.tr)),
               if (!isDoc) ...[
                 const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
+                AppDropdown<String>(
                   initialValue: type,
                   decoration: InputDecoration(labelText: 'pl_type'.tr),
                   items: [for (final t in ['text', 'number', 'phone', 'date', 'select']) DropdownMenuItem(value: t, child: Text('pl_type_$t'.tr))],
@@ -178,9 +180,9 @@ class _FormState extends State<_Form> {
                 if (type == 'select')
                   TextField(controller: opts, decoration: InputDecoration(labelText: 'pl_options'.tr, helperText: 'a, b, c')),
               ],
-              SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text('pl_required'.tr),
+              AppSwitchTile(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  title: 'pl_required'.tr,
                   value: required,
                   onChanged: (v) => setD(() => required = v)),
             ]),
@@ -282,7 +284,7 @@ class _FormState extends State<_Form> {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'pl_settings_title'.tr),
       child: !_ready
-          ? (p.hasError ? PlError(p.errorMessage ?? '', onRetry: _load) : const Center(child: CircularProgressIndicator()))
+          ? (p.hasError ? PlError(p.errorMessage ?? '', onRetry: _load) : const Center(child: AppLoadingIndicator(size: 56)))
           : ListView(padding: const EdgeInsets.all(16), children: [
               PremiumHero(
                 icon: Icons.family_restroom_rounded,
@@ -334,7 +336,7 @@ class _FormState extends State<_Form> {
                 _tf(_url, 'pl_api_url'.tr, ltr: true, helper: 'pl_api_url_hint'.tr),
                 Row(children: [
                   Expanded(
-                    child: DropdownButtonFormField<String>(
+                    child: AppDropdown<String>(
                       initialValue: _method,
                       decoration: InputDecoration(labelText: 'pl_method'.tr, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
                       items: const [DropdownMenuItem(value: 'POST', child: Text('POST')), DropdownMenuItem(value: 'GET', child: Text('GET'))],
@@ -343,7 +345,7 @@ class _FormState extends State<_Form> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: DropdownButtonFormField<String>(
+                    child: AppDropdown<String>(
                       initialValue: _auth,
                       decoration: InputDecoration(labelText: 'pl_auth'.tr, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))),
                       items: [for (final a in ['none', 'bearer', 'header']) DropdownMenuItem(value: a, child: Text('pl_auth_$a'.tr))],

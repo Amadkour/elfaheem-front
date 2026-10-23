@@ -110,6 +110,13 @@ class CourseDetailProvider extends BaseProvider {
 
   List<SessionModel> sessions = [];
 
+  /// all · lecture · section (sections are taught by the assistant)
+  String trackFilter = 'all';
+  void setTrackFilter(String v) {
+    trackFilter = v;
+    notifyListeners();
+  }
+
   // ── Pagination ────────────────────────────────────────────────────────────
   int _sessionsSkip = 0;
   bool _hasMoreSessions = true;

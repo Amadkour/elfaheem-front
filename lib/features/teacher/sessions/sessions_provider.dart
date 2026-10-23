@@ -20,8 +20,8 @@ import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
-import '../../../../core/api_client.dart';
-import '../../../../core/base_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/base_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/session/material/session_material_model.dart';
 import '../../shared/upload/upload_queue_manager.dart';
@@ -88,6 +88,17 @@ class TeacherCourseScreenProvider extends BaseProvider {
   List<TeacherSessionItem> _sessions = [];
 
   List<TeacherSessionItem> get sessions => List.unmodifiable(_sessions);
+
+  /// all · lecture · section
+  String trackFilter = 'all';
+  void setTrackFilter(String v) {
+    trackFilter = v;
+    notifyListeners();
+  }
+
+  List<TeacherSessionItem> get visibleSessions =>
+      trackFilter == 'all' ? sessions : sessions.where((s) => s.track == trackFilter).toList();
+  bool get hasSections => _sessions.any((s) => s.track == 'section');
 
   int get sessionCount => _sessions.length;
 
@@ -192,6 +203,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     String? scheduledAt,
     int durationMinutes = 60,
     int order = 0,
+    String track = 'lecture',
   }) async {
     _submitLoading = true;
     notifyListeners();
@@ -206,6 +218,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'scheduled_at': ?scheduledAt,
       'duration_minutes': durationMinutes,
       'order': order,
+      'track': track,
       },
       ),
       makLoading: false,
@@ -242,6 +255,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         String? scheduledAt,
         int? durationMinutes,
         int? order,
+        String? track,
       }) async {
     _submitLoading = true;
     notifyListeners();
@@ -255,6 +269,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'scheduled_at': ?scheduledAt,
       'duration_minutes': ?durationMinutes,
       'order': ?order,
+      'track': ?track,
       },
       ),
       makLoading: false,

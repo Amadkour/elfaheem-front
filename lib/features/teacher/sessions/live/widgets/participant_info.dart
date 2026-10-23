@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'live_palette.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 enum ParticipantTrackType {
   kUserMedia,
@@ -27,8 +29,8 @@ class ParticipantTrack {
 }
 
 // ── Design tokens (live room palette) ────────────────────────────────────────
-const _cyan    = Color(0xFF00D4FF);
-const _rose    = Color(0xFFFF4F72);
+final _cyan    = LivePalette.accent;
+final _rose    = LivePalette.danger;
 const _textMid = Color(0xB3FFFFFF);
 const _glass   = Color(0x33000000);
 
@@ -106,7 +108,7 @@ class ParticipantInfoWidget extends StatelessWidget {
                 ConnectionQuality.excellent: const Color(0xFF34C270),
                 ConnectionQuality.good: const Color(0xFFFF9500),
                 ConnectionQuality.poor: _rose,
-              }[connectionQuality] ?? Colors.red,
+              }[connectionQuality] ?? context.colors.danger,
             ),
           ],
           const SizedBox(width: 4),

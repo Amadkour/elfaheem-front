@@ -7,6 +7,7 @@ import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';
+import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
 // full-width bottom sheet — covers desktop web and tablets in landscape.
@@ -49,6 +50,7 @@ Future<void> showSessionFormSheet(
     );
   } else {
     await showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -81,6 +83,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   final _durCtrl = TextEditingController(text: '60');
   final _orderCtrl = TextEditingController(text: '0');
   String _type = 'pre-recorded';
+  String _track = 'lecture';   // lecture (teacher) · section (assistant)
   DateTime? _scheduled;
 
   String? _nameError;
@@ -96,6 +99,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _nameCtrl.text = s.name;
       _descCtrl.text = s.description ?? '';
       _type = s.type ?? 'pre-recorded';
+      _track = s.track;
       _scheduled = s.scheduledAt;
     }
   }
@@ -183,6 +187,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         scheduledAt: _scheduled?.toUtc().toIso8601String(),
         durationMinutes: int.tryParse(_durCtrl.text),
         order: int.tryParse(_orderCtrl.text),
+        track: _track,
       );
       ok = r != null;
     } else {
@@ -195,6 +200,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         scheduledAt: _scheduled?.toUtc().toIso8601String(),
         durationMinutes: int.tryParse(_durCtrl.text) ?? 60,
         order: int.tryParse(_orderCtrl.text) ?? 0,
+        track: _track,
       );
       ok = r != null;
     }
@@ -288,6 +294,12 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                         label: 'session_description_label'.tr,
                         icon: Icons.notes_rounded,
                         maxLines: 2,
+                      ),
+                      const SizedBox(height: 14),
+                      SessionTrackTabs(
+                        value: _track,
+                        showAll: false,
+                        onChanged: (v) => setState(() => _track = v),
                       ),
                       const SizedBox(height: 14),
                       _TypeSelector(

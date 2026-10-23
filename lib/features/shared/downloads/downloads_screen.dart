@@ -17,6 +17,7 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import '../../../core/offline/offline_strings.dart';
 import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -181,7 +182,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             child: _tab == 1
                 ? const OfflineAttendanceTab()
                 : _loading
-            ? const Center(child: CircularProgressIndicator())
+            ? const Center(child: AppLoadingIndicator(size: 56))
             : RefreshIndicator(
                 onRefresh: _load,
                 child: ListView(

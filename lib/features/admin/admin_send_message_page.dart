@@ -13,6 +13,8 @@ import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import '../../utils/widget/primary_button.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class AdminSendMessagePage extends StatefulWidget {
   const AdminSendMessagePage({super.key});
@@ -161,7 +163,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
 
   void _snack(String m) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+    showAppNotice(m);
   }
 
   @override
@@ -274,7 +276,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
           ),
           if (_display == 'dialog_action') ...[
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            AppDropdown<String>(
               key: ValueKey('module_$_toTeachers'),
               initialValue: _module,
               decoration: InputDecoration(

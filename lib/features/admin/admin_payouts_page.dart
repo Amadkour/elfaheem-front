@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'package:provider/provider.dart';
 
+import '../../design/app_switch.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
@@ -22,6 +23,7 @@ import '../../utils/widget/primary_button.dart';
 import '../teacher/profile/payout/teacher_payouts_screen.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminWithdrawalsExport;
 import 'admin_models.dart';
 import 'receipt_viewer.dart';
 import 'admin_providers.dart';
@@ -79,6 +81,7 @@ class _RequestsView extends StatelessWidget {
     final p = context.watch<AdminPayoutRequestsProvider>();
 
     return PagedList<AdminPayoutRequestsProvider>(
+      export: adminWithdrawalsExport,
       countIcon: Icons.account_balance_wallet_rounded,
       emptyText: 'admin_no_requests'.tr,
       header: Column(
@@ -875,12 +878,9 @@ class _TeacherTile extends StatelessWidget {
                         value: enabled,
                         onChanged: (v) => setS(() => enabled = v),
                       ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          'admin_custom_methods_for_this_teacher'.tr,
-                          style: const TextStyle(fontFamily: 'tajawal'),
-                        ),
+                      AppSwitchTile(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        title: 'admin_custom_methods_for_this_teacher'.tr,
                         value: restrict,
                         onChanged: (v) => setS(() => restrict = v),
                       ),
@@ -1003,51 +1003,21 @@ class _SettingsViewState extends State<_SettingsView> {
           ),
           child: Column(
             children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_allow_all_teachers_to_withdraw'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  p.all
-                      ? 'admin_every_teacher_can_add_an_account_and'.tr
-                      : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_allow_all_teachers_to_withdraw'.tr,
+                subtitle: p.all
+                    ? 'admin_every_teacher_can_add_an_account_and'.tr
+                    : 'admin_off_only_teachers_you_allow_one_by_one'.tr,
                 value: p.all,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: (v) => p.save({'payouts_enabled_for_all': v}),
               ),
               const Divider(),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'admin_automatic_transfer_moyasar_paymob'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontWeight: FontWeight.w800,
-                    color: c.textDark,
-                  ),
-                ),
-                subtitle: Text(
-                  'admin_on_approval_the_money_is_sent'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 12,
-                    color: c.textLight,
-                  ),
-                ),
+              AppSwitchTile(
+                title: 'admin_automatic_transfer_moyasar_paymob'.tr,
+                subtitle: 'admin_on_approval_the_money_is_sent'.tr,
                 value: p.auto,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: (v) => p.save({'payout_auto_enabled': v}),
               ),
             ],

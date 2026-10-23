@@ -47,6 +47,7 @@ class CheckInOutcome {
     this.viaRelay = false,
     this.needsSettings = false,
     this.detail,
+    this.fix = const [],
   });
   final OutcomeKind kind;
   final String? messageKey; // translation key (already specific)
@@ -54,6 +55,10 @@ class CheckInOutcome {
   final bool viaRelay;
   final bool needsSettings; // permanently denied permission -> offer "open settings"
   final String? detail; // technical trace for field tests (shown small under the message)
+
+  /// Radios that are OFF and must be switched on (the sheet shows one "Turn on …" button per item and
+  /// retries by itself when the student comes back from the settings).
+  final List<RadioKind> fix;
 }
 
 class StudentCheckInProvider extends ChangeNotifier {
@@ -94,10 +99,43 @@ class StudentCheckInProvider extends ChangeNotifier {
   /// GPS / Wi-Fi / Bluetooth state, prepared automatically when the sheet opens.
   RadioStatus radios = RadioStatus.unknown;
 
-  /// Re-reads the radios (no prompts) — called when the app returns from system settings.
+  /// What THIS check-in needs switched on (drives the chips: red only when really needed).
+  Set<RadioKind> requiredRadios = const {};
+
+  String _lastCode = '';
+
+  /// Re-reads the radios (no prompts) — called when the app returns from system settings. When the last
+  /// attempt stopped only because something was switched off and it is on now, it continues by itself.
   Future<void> refreshRadios() async {
     radios = await AttendanceRadios.read(radios.permissions);
     _emit();
+    final o = outcome;
+    if (o != null && o.fix.isNotEmpty && !busy &&
+        o.fix.every((k) => radios.of(k) != false)) {
+      await submit(_lastCode);
+    }
+  }
+
+  Future<void> _computeRequired(OpenWindow? w) async {
+    requiredRadios = await AttendanceRadios.requiredRadios(
+      online: online,
+      needsGps: w?.needsGps ?? false,
+      needsWifi: w?.needsWifi ?? false,
+      witnesses: (w?.needsWitnesses ?? false) ? w!.requiredWitnesses : 0,
+    );
+    _emit();
+  }
+
+  /// Stops BEFORE a long wait when something needed is off, and says exactly what to switch on.
+  Future<bool> _preflight(OpenWindow? w, Stage at) async {
+    await _computeRequired(w);
+    final off = await AttendanceRadios.missing(requiredRadios);
+    if (off.isEmpty) return true;
+    radios = await AttendanceRadios.read(radios.permissions);
+    _stage(at, StageState.failed);
+    _finish(CheckInOutcome(OutcomeKind.failed,
+        messageKey: off.length > 1 ? 'att_err_radios_off' : 'att_err_${off.first.name}_off', fix: off));
+    return false;
   }
 
   /// False when the teacher identifies students by classmates only (no code to type).
@@ -201,7 +239,7 @@ class StudentCheckInProvider extends ChangeNotifier {
     witnessesNeeded = (w?.needsWitnesses ?? false) ? w!.requiredWitnesses : 0;
     needsCode = w?.needsCode ?? true;
     needsLocation = w?.needsLocation ?? false;
-    _emit();
+    await _computeRequired(w);
   }
 
   Future<void> _flushPending() async {
@@ -219,6 +257,7 @@ class StudentCheckInProvider extends ChangeNotifier {
   Future<void> submit(String rawCode) async {
     if (busy) return;
     final code = rawCode.trim();
+    _lastCode = code;
     reset();
     // An empty code is allowed: sessions identified by classmates only need none. Whether it is
     // required is checked once the window (and its method) is known.
@@ -286,7 +325,18 @@ class StudentCheckInProvider extends ChangeNotifier {
       return;
     }
     if (!window.needsCode) code = '';
+    if (!await _preflight(window, Stage.permissions)) return;
     final evidence = await _location.collect(window);
+    if (window.needsLocation && evidence == null) {
+      // Do not send something the server will reject anyway: tell the student what to do.
+      final pr = _location.lastProblem;
+      _stage(Stage.permissions, StageState.failed);
+      _finish(CheckInOutcome(OutcomeKind.failed,
+          messageKey: locationProblemKey(pr),
+          needsSettings: pr == LocationProblem.deniedForever,
+          fix: pr == LocationProblem.serviceOff ? const [RadioKind.gps] : const []));
+      return;
+    }
 
     // Classmate signals (only when the teacher asked for them).
     List<Map<String, dynamic>> witnesses = const [];
@@ -325,6 +375,8 @@ class StudentCheckInProvider extends ChangeNotifier {
       return;
     }
     if (!await _permissions()) return;
+    // Bluetooth off used to be noticed only after a full scan timed out — check it first.
+    if (!await _preflight(await _cachedWindow(), Stage.relay)) return;
 
     PendingAttendance? pending;
     final tried = <String>{};

@@ -29,8 +29,10 @@ import 'admin_common.dart';
 import 'admin_content_page.dart';
 import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
+import 'admin_platform_settings_page.dart';
 import 'admin_finance_page.dart';
 import 'admin_flags_settings_page.dart';
+import 'admin_organizations_page.dart';
 import 'admin_parent_link_settings_page.dart';
 import 'admin_parent_requests_page.dart';
 import 'admin_payment_page.dart';
@@ -46,6 +48,8 @@ import 'admin_versions_page.dart';
 import 'admin_view_as_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -124,6 +128,34 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
+        AdminService(
+          labelKey: 'svc_datacenter',
+          descKey: 'svc_datacenter_d',
+          icon: Icons.insights_rounded,
+          colors: AdminPalette.indigo,
+          onTap: () => push(const DataCenterPage()),
+        ),
+        AdminService(
+          labelKey: 'svc_requirements',
+          descKey: 'svc_requirements_d',
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.green,
+          onTap: () => push(const AdminRequirementsPage()),
+        ),
+        AdminService(
+          labelKey: 'svc_ads',
+          descKey: 'svc_ads_d',
+          icon: Icons.campaign_rounded,
+          colors: AdminPalette.orange,
+          onTap: () => push(const AdminAdsPage()),
+        ),
+        AdminService(
+          labelKey: 'svc_organizations',
+          descKey: 'svc_organizations_d',
+          icon: Icons.account_balance_rounded,
+          colors: AdminPalette.teal,
+          onTap: () => push(const AdminOrganizationsPage()),
+        ),
         AdminService(
           labelKey: 'send_message',
           descKey: 'svc_send_message_d',
@@ -301,6 +333,13 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.palette_rounded,
           colors: AdminPalette.violet,
           onTap: () => push(const AdminThemePage()),
+        ),
+        AdminService(
+          labelKey: 'svc_platform_settings',
+          descKey: 'svc_platform_settings_d',
+          icon: Icons.settings_suggest_rounded,
+          colors: AdminPalette.indigo,
+          onTap: () => push(const AdminPlatformSettingsPage()),
         ),
         AdminService(
           labelKey: 'features',

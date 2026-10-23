@@ -5,7 +5,6 @@ import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:provider/provider.dart';
-import '../../org/org_member_pages.dart' show OrgHomeEntry;
 import '../../../config/app_config.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../../config/theme/theme_config_provider.dart';
@@ -24,6 +23,12 @@ import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
 import 'component/top_bar.dart';
 import '../../teacher/schedules/schedules_provider.dart';
+import 'package:flutter_education_app/features/org/home_org_mix.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show AppModeSwitcher, OrgMemberHome;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -218,7 +223,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
                     : ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 900),
-                  child: CustomScrollView(
+                  child: ListenableBuilder(
+                    listenable: Listenable.merge([homeTabs, AppModeController.instance]),
+                    builder: (context, _) => CustomScrollView(
                     physics: const BouncingScrollPhysics(),
                     slivers: [
                       // ── Top bar ──────────────────────────────────────────
@@ -246,6 +253,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      // ── My courses | My organization (members only) ──
+                      // ── Individual | Organization mode (members only, org switch on) ──
+                      const SliverToBoxAdapter(child: AppModeSwitcher()),
+                      if (AppModeController.instance.isOrg)
+                        const SliverToBoxAdapter(child: OrgMemberHome())
+                      else ...[
                       // ── Upcoming session banner ──────────────────────────
                       const SliverToBoxAdapter(
                         child: ParentComponent(
@@ -260,12 +273,19 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
 
+                      // ── Featured (ads) — after personal content, never above the greeting ──
+                      const SliverToBoxAdapter(child: HomeAdsSlider()),
+                      // ── Inbox: forms / requests / news / offers in one prioritized place ──
+                      if (!GuestState.active)
+                        const SliverToBoxAdapter(
+                          child: ParentComponent(key: ValueKey('student_home.inbox'), child: InboxPreviewCard()),
+                        ),
                       // ── Organizations (join a university / faculty) ──────
                       if (!GuestState.active)
                         const SliverToBoxAdapter(
                           child: ParentComponent(
                             key: ValueKey('student_home.org'),
-                            child: OrgHomeEntry(),
+                            child: HomeOrgMix(),
                           ),
                         ),
 
@@ -416,7 +436,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SliverToBoxAdapter(
                         child: SizedBox(height: 40),
                       ),
+                      ],
                     ],
+                  ),
                   ),
                 ),
               ),

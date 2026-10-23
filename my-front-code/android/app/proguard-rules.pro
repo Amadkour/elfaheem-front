@@ -1,4 +1,0 @@
--dontwarn org.jni_zero.**
--keep class org.jni_zero.** { *; }
--keep class org.webrtc.** { *; }
--keep class io.livekit.** { *; }

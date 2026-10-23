@@ -13,6 +13,7 @@ import '../teacher/data_lab/data_lab_models.dart' show DlProfile;
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
+import '../shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 
 class ParentChildrenPage extends StatefulWidget {
   const ParentChildrenPage({super.key, required this.onOpenLinkTab});
@@ -71,6 +72,8 @@ class _ParentChildrenPageState extends State<ParentChildrenPage> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: [
+          // requests · announcements · offers for the parent, in the same inbox pattern as every role
+          const InboxPreviewCard(padding: EdgeInsets.only(bottom: 14)),
           for (final ch in p.children)
             Padding(
               padding: const EdgeInsets.only(bottom: 14),

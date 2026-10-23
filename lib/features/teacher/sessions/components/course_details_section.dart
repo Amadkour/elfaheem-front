@@ -114,7 +114,7 @@ class CourseDetailsSection extends StatelessWidget {
           );},
           icon: Icons.calendar_month_rounded,
           title: 'weekly_schedule'.tr,
-          color: const Color(0xFF4DA6FF),
+          color: context.colors.primaryLight,
           children: course.schedules.isEmpty
               ? <Widget>[
                   _AddButton(
@@ -405,16 +405,16 @@ class _ScheduleRow extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF4DA6FF).withValues(alpha: 0.10),
+            color: context.colors.primaryLight.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             schedule.dayLabel,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF4DA6FF),
+              color: context.colors.primaryLight,
             ),
           ),
         ),

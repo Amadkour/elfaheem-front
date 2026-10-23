@@ -11,6 +11,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../models.dart';
 import 'attendance_provider.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class StudentAttendanceWidget extends StatelessWidget {
   final SessionModel session;
@@ -111,16 +112,9 @@ class StudentAttendanceWidget extends StatelessWidget {
       ok = await p.checkIn(session.id);
     }
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              ok
+      showAppNotice(ok
                   ? (p.isCheckedIn ? 'att_checked_out_msg'.tr : 'att_checked_in_msg'.tr)
-                  : 'att_error'.tr,
-              style: TextStyle(fontFamily: 'bahji', color: Colors.white)),
-          backgroundColor: ok ? context.colors.success : context.colors.danger,
-          behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))));
+                  : 'att_error'.tr, error: true);
     }
   }
 

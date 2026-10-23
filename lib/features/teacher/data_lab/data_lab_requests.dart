@@ -13,10 +13,12 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show toast, confirm, showAdminSheet, SheetHeader;
 
+import '../../../design/app_switch.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -209,7 +211,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
               ),
               DlSectionTitle('dl_req_list'.tr),
               if (_loading)
-                const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator()))
+                const Padding(padding: EdgeInsets.all(20), child: const Center(child: AppLoadingIndicator(size: 56)))
               else if (_forms.isEmpty)
                 Padding(padding: const EdgeInsets.all(10), child: Text('dl_req_none'.tr, style: dlText(12.5, c: c.textMedium)))
               else
@@ -405,7 +407,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
           else
             Tooltip(
               message: q.isActive ? _tr('dl_q_switch_off', 'Switch this question off') : _tr('dl_q_switch_on', 'Ask it again'),
-              child: Switch.adaptive(value: q.isActive, activeTrackColor: c.success, onChanged: (v) => _toggle(f, q, v)),
+              child: AppSwitch(value: q.isActive, activeColor: c.success, onChanged: (v) => _toggle(f, q, v)),
             ),
         ]),
       ),

@@ -16,6 +16,7 @@ import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
 import 'parent_link_providers.dart';
 import 'parent_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class ParentLinkPage extends StatefulWidget {
   const ParentLinkPage({super.key});
@@ -125,7 +126,7 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
       case 'select':
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: DropdownButtonFormField<String>(
+          child: AppDropdown<String>(
             key: ValueKey('sel-$key-$_modeSeen-${_selects[key]}'),
             initialValue: _selects[key],
             decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),

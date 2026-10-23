@@ -33,6 +33,7 @@ class ExamPasscodeSheet extends StatefulWidget {
     StudentExamProvider? provider,
   }) {
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,

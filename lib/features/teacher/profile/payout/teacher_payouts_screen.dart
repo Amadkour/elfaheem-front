@@ -9,9 +9,11 @@ import 'package:flutter_education_app/features/admin/admin_models.dart';
 import 'package:flutter_education_app/features/admin/receipt_viewer.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../design/app_switch.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/primary_button.dart';
 import 'teacher_payout_provider.dart';
+import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class TeacherPayoutsScreen extends StatelessWidget {
   const TeacherPayoutsScreen({super.key});
@@ -61,7 +63,7 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (!p.loaded) {
-      body = const Center(child: CircularProgressIndicator());
+      body = const Center(child: AppLoadingIndicator(size: 56));
     } else if (p.error != null && p.summary.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else {
@@ -799,12 +801,9 @@ Future<void> _accountSheet(
                       ),
                       ...fields(),
                       if (existing == null)
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            'admin_make_default'.tr,
-                            style: const TextStyle(fontFamily: 'tajawal'),
-                          ),
+                        AppSwitchTile(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          title: 'admin_make_default'.tr,
                           value: makeDefault,
                           onChanged: (v) => setS(() => makeDefault = v),
                         ),

@@ -314,21 +314,21 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           SessionActionBtn(
             icon: Icons.how_to_reg_rounded,
             label: 'attendance'.tr,
-            color: const Color(0xFF4DA6FF),
+            color: context.colors.primary,
             onTap: _openAttendance,
             outlined: true,
           ),
           SessionActionBtn(
             icon: Icons.quiz_rounded,
             label: 'exams'.tr,
-            color: const Color(0xFFFF9F43),
+            color: context.colors.warning,
             onTap: _openExams,
             outlined: true,
           ),
           SessionActionBtn(
             icon: Icons.add_task_rounded,
             label: 'new_exam'.tr,
-            color: const Color(0xFF7C4DFF),
+            color: context.colors.purple,
             onTap: _openAddExam,
             outlined: true,
           ),
@@ -386,23 +386,23 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     final examGate = _examGate(prov);
     final hasExam = examGate != null && !examGate.isEmpty;
 
+    final c = context.colors;
+    final isSection = _session.track == 'section';
+    final accent = isLiveNow ? c.danger : (isSection ? c.purple : c.primary);
     final card = Container(
       key: ValueKey("session_reorder_list:${widget.dragIndex}"),
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(context.colors.radiusMedium),
-        boxShadow: context.colors.cardShadow,
-        border: Border(
-          right: BorderSide(
-            color: isLiveNow
-                ? context.colors.danger.withValues(alpha: 0.8)
-                : context.colors.primary.withValues(alpha: 0.8),
-            width: 4,
-          ),
-        ),
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(c.radiusLarge),
+        boxShadow: c.cardShadow,
+        border: Border.all(color: isLiveNow ? c.danger.withValues(alpha: 0.45) : c.divider.withValues(alpha: 0.7)),
       ),
-      child: Column(
+      clipBehavior: Clip.antiAlias,
+      child: Stack(children: [
+        // accent strip on the reading-start edge (red while live · purple for sections)
+        PositionedDirectional(start: 0, top: 0, bottom: 0, child: Container(width: 4, color: accent)),
+        Column(
         children: [
           // ── Main card body ───────────────────────────────────────────────
           Padding(
@@ -416,31 +416,28 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   child: Row(
                     children: [
                       Container(
-                        margin: EdgeInsets.all(4),
-                        padding: EdgeInsets.fromLTRB(10, 10, 10, 5),
-                        alignment: Alignment.bottomCenter,
+                        width: 42,
+                        height: 42,
+                        margin: const EdgeInsetsDirectional.only(end: 10),
+                        alignment: Alignment.center,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            begin: Alignment.bottomLeft,
-                            end: Alignment.topRight,
-                            colors: darkRoadmapGradientColors(context),
+                            begin: AlignmentDirectional.topStart,
+                            end: AlignmentDirectional.bottomEnd,
+                            colors: [accent, Color.lerp(accent, Colors.black, 0.25)!],
                           ),
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.circular(13),
+                          boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 4))],
                         ),
                         child: Text(
-                          (widget.sessionNumber < 10 ? '0' : '') +
-                              widget.sessionNumber.toString(),
-                          textAlign: TextAlign.center,
-
-                          style: context.colors.h4.copyWith(
-                            color: Colors.white,
-                          ),
+                          (widget.sessionNumber < 10 ? '0' : '') + widget.sessionNumber.toString(),
+                          style: c.h4.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
                         ),
                       ),
                       Flexible(
                         child: Text(
                           _session.name,
-                          style: context.colors.h3,
+                          style: c.h3.copyWith(fontWeight: FontWeight.w800),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -484,10 +481,24 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   ),
                 ],
 
-                // Type pill + duration
+                // Type pill + duration (+ section badge)
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     SessionTypePill(isLive: isLiveNow),
+                    if (isSection) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: c.purple.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.science_rounded, size: 12, color: c.purple),
+                          const SizedBox(width: 4),
+                          Text(AppConfig.lang == 'ar' ? 'سكشن' : 'Section',
+                              style: c.caption.copyWith(color: c.purple, fontWeight: FontWeight.w800, fontSize: 11)),
+                        ]),
+                      ),
+                    ],
                     const SizedBox(width: 8),
                     Icon(
                       Icons.access_time_rounded,
@@ -528,20 +539,16 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                       rateSummary: _session.rateSummary,
                     ),
                     if (widget.isTeacher)
-                      Row(
-                        children: [
-                          _iconAction(
-                            icon: CupertinoIcons.settings_solid,
-                            color: context.colors.textMedium,
-                            tooltip: 'edit_session'.tr,
-                            onTap: _showEditSessionDialog,
-                          ),
-                          _iconAction(
-                            icon: Icons.delete,
-                            color: context.colors.danger,
-                            tooltip: 'delete_session'.tr,
-                            onTap: _showDeleteSessionDialog,
-                          ),
+                      PopupMenuButton<String>(
+                        tooltip: 'edit_session'.tr,
+                        icon: Icon(Icons.more_horiz_rounded, color: c.textMedium),
+                        onSelected: (v) => v == 'edit' ? _showEditSessionDialog() : _showDeleteSessionDialog(),
+                        itemBuilder: (_) => [
+                          PopupMenuItem(value: 'edit', child: Row(children: [
+                            Icon(Icons.tune_rounded, size: 18, color: c.textMedium), const SizedBox(width: 10), Text('edit_session'.tr)])),
+                          PopupMenuItem(value: 'delete', child: Row(children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: c.danger), const SizedBox(width: 10),
+                            Text('delete_session'.tr, style: TextStyle(color: c.danger))])),
                         ],
                       ),
                   ],
@@ -580,6 +587,7 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
           ),
         ],
       ),
+      ]),
     );
 
     if (!_isLocked) return card;
@@ -614,21 +622,6 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
     );
   }
 
-  Widget _iconAction({
-    required IconData icon,
-    required Color color,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) => Tooltip(
-    message: tooltip,
-    child: GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Icon(icon, size: 28, color: color),
-      ),
-    ),
-  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

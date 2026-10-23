@@ -131,7 +131,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                 Row(children: [
                   HeroStat(
                     icon: Icons.timer_outlined,
-                    color: const Color(0xFF80D8FF),
+                    color: context.colors.primaryLight,
                     value: _fmt('exam_n_minutes', {'n': exam.duration ?? 0}),
                     label: 'exam_exam_duration'.tr,
                   ),

@@ -393,7 +393,7 @@ class IconTextField extends StatelessWidget {
             hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: Colors.grey,
+              color: context.colors.textLight,
             ),
             filled: true,
             fillColor: context.colors.inputBg,
@@ -494,7 +494,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             hintStyle: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 14,
-              color: Colors.grey,
+              color: context.colors.textLight,
             ),
             filled: true,
             fillColor: context.colors.inputBg,

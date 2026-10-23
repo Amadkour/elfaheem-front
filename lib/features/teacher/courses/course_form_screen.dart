@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
+import '../../../design/app_switch.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_menue.dart';
 import '../../../utils/widget/text_field.dart';
@@ -27,6 +28,9 @@ import 'component/next_courses_field.dart';
 import 'course_form_provider.dart';
 import 'course_reel_field.dart';
 import 'course_privacy_card.dart';
+import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -428,6 +432,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
       ...formProvider.pendingSchedules.map((s) => s.day),
     };
     await showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -441,18 +446,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   }
 
   void _showSnack(String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          msg,
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-        ),
-        backgroundColor: color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    showAppNotice(msg);
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -642,10 +636,10 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               const SizedBox(height: 6),
                               Text(
                                 'price_plans_hint'.tr,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontFamily: 'tajawal',
                                   fontSize: 11.5,
-                                  color: Colors.grey,
+                                  color: context.colors.textLight,
                                 ),
                               ),
                               const SizedBox(height: 14),
@@ -943,20 +937,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               // course already exists.
                               ParentComponent(
                                 featureKey: 'course_form.certificate_template',
-                                child: _isEdit
-                                    ? _EditCertificateTemplateCard(course: widget.course!)
-                                    : _CertificateTemplateCard(
-                                  titleController: _certTitleCtrl,
-                                  previewBytes: _certTemplateBytes,
-                                  onPick: (file, bytes) => setState(() {
-                                    _certTemplateFile = file;
-                                    _certTemplateBytes = bytes;
-                                  }),
-                                  onRemove: () => setState(() {
-                                    _certTemplateFile = null;
-                                    _certTemplateBytes = null;
-                                  }),
-                                ),
+                                child: const _CertificateDesignsLink(),
                               ),
                               const SizedBox(height: 12),
                               SectionCard(
@@ -1069,12 +1050,12 @@ class _HeroHeader extends StatelessWidget {
             child: Container(
               height: unit * 2,
               width: double.infinity,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Color(0xFF1A3C6E),
-                    Color(0xFF0D6EFD),
-                    Color(0xFF4F9FFF),
+                    context.colors.primaryDark,
+                    context.colors.primary,
+                    context.colors.primaryLight,
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -1280,14 +1261,15 @@ class _CertificateTemplateCard extends StatelessWidget {
     required this.onRemove,
   });
 
-  Future<void> _pick() async {
+  Future<void> _pick(BuildContext context) async {
     final file = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       imageQuality: 90,
     );
-    if (file == null) return;
-    final bytes = await file.readAsBytes();
-    onPick(file, bytes);
+    if (file == null || !context.mounted) return;
+    final img = await cropImageWithName(context, await file.readAsBytes(), file.name, shape: CropShape.wide);
+    if (img == null) return;
+    onPick(XFile.fromData(img.bytes, name: img.name, mimeType: img.name.endsWith('.png') ? 'image/png' : file.mimeType), img.bytes);
   }
 
   @override
@@ -1314,7 +1296,7 @@ class _CertificateTemplateCard extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         GestureDetector(
-          onTap: _pick,
+          onTap: () => _pick(context),
           child: AspectRatio(
             aspectRatio: 1.6,
             child: Container(
@@ -1426,9 +1408,11 @@ class _EditCertificateTemplateCardState
       source: ImageSource.gallery,
       imageQuality: 90,
     );
-    if (file == null) return;
+    if (file == null || !mounted) return;
 
-    final bytes = await file.readAsBytes();
+    final img = await cropImageWithName(context, await file.readAsBytes(), file.name);
+    if (img == null) return;
+    final bytes = img.bytes;
     setState(() {
       _pickedBytes = bytes;
       _uploading = true;
@@ -1455,20 +1439,7 @@ class _EditCertificateTemplateCardState
     });
 
     if (url == null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'certificate_template_upload_failed'.tr,
-            style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-          ),
-          backgroundColor: context.colors.danger,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        ),
-      );
+      showAppNotice('certificate_template_upload_failed'.tr, error: true);
     }
   }
 
@@ -1891,12 +1862,12 @@ class _StickyFooter extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: canSave
                         ? context.colors.primary.withValues(alpha: 0.08)
-                        : const Color(0xFFF0F1F4),
+                        : context.colors.inputBg,
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: canSave
                           ? context.colors.primary.withValues(alpha: 0.35)
-                          : const Color(0xFFCDD5E0),
+                          : context.colors.divider,
                     ),
                   ),
                   child: Center(
@@ -1928,8 +1899,8 @@ class _StickyFooter extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: canSave
                       ? context.colors.primaryGradient
-                      : const LinearGradient(
-                    colors: [Color(0xFFCDD5E0), Color(0xFFCDD5E0)],
+                      : LinearGradient(
+                    colors: [context.colors.divider, context.colors.divider],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: canSave ? context.colors.primaryShadow : null,
@@ -2037,9 +2008,9 @@ class _StatusCard extends StatelessWidget {
             if (isLoading)
               AppLoadingIndicator()
             else
-              Switch(
+              AppSwitch(
                 value: isPublished,
-                activeThumbColor: context.colors.primary,
+                semanticLabel: 'status_published'.tr,
                 onChanged: (_) => onToggle(),
               ),
           ],
@@ -2343,4 +2314,47 @@ class _TimeField extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// Certificates are designed once (Profile → My certificate designs) and assigned to all or some courses —
+/// no per-course template inputs here any more.
+class _CertificateDesignsLink extends StatelessWidget {
+  const _CertificateDesignsLink();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: c.cardBg,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CertificateDesignsScreen())),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: c.divider),
+            gradient: LinearGradient(colors: [c.accent2.withValues(alpha: 0.12), c.cardBg]),
+          ),
+          child: Row(children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(color: c.accent2.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
+              child: Icon(Icons.workspace_premium_rounded, color: c.accent2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('cert_designs_link_title'.tr, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                Text('cert_designs_link_sub'.tr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+              ]),
+            ),
+            Icon(Icons.chevron_right_rounded, color: c.textLight),
+          ]),
+        ),
+      ),
+    );
+  }
 }

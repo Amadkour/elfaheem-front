@@ -248,7 +248,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
           ),
         ),
         SizedBox(
-          height: 74,
+          height: 86,   // was 74: chips overflowed by 1px with web font metrics
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,

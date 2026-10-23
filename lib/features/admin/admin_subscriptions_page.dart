@@ -9,6 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
+import '../../design/app_switch.dart';
 import '../../utils/widget/app_bar.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/primary_button.dart';
@@ -17,6 +18,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_list.dart';
+import 'admin_table_export.dart' show adminSubscriptionsExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 
@@ -51,18 +53,13 @@ class _View extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(children: [
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text('admin_subscription_required'.tr,
-                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                subtitle: Text(
-                  p.required
-                      ? 'admin_students_without_an_active'.tr
-                      : 'admin_default_the_app_is_free_for_every'.tr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
-                ),
+              AppSwitchTile(
+                title: 'admin_subscription_required'.tr,
+                subtitle: p.required
+                    ? 'admin_students_without_an_active'.tr
+                    : 'admin_default_the_app_is_free_for_every'.tr,
                 value: p.required,
-                activeTrackColor: c.primary,
+                activeColor: c.primary,
                 onChanged: !p.settingsLoaded
                     ? null
                     : (v) async {
@@ -109,6 +106,7 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'subscriptions'.tr),
       child: PagedList<AdminSubscriptionsProvider>(
+        export: adminSubscriptionsExport,
         header: header,
         countIcon: Icons.card_membership_rounded,
         emptyText: 'admin_no_subscription_requests'.tr,
@@ -172,10 +170,11 @@ class _PlanRow extends StatelessWidget {
         style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        Switch(
+        AppSwitch(
           value: plan.isActive,
-          activeTrackColor: c.primary,
+          activeColor: c.primary,
           onChanged: (v) => p.savePlan(plan.code, {'is_active': v}),
+          semanticLabel: plan.name,
         ),
         IconButton(icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
       ]),

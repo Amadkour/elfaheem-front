@@ -29,22 +29,63 @@ class AppConfig {
     // "teacher_home_add_course"
   ];
 
+  /// Super-admin master switch for the whole Organizations feature set (point 7). When false the app behaves as
+  /// a pure individual-courses app: no org dashboards, no mode switcher, no "create / join organization" flows.
+  /// Set from the theme / platform-settings response (ThemeConfigProvider); true until the server says otherwise.
+  static bool orgsEnabled = true;
+
+  /// Notifies when [orgsEnabled] flips (the org gate screen and home tabs listen to it).
+  static final ValueNotifier<bool> orgsEnabledNotifier = ValueNotifier<bool>(true);
+
+  /// Feature keys of every organization ENTRY POINT. While organizations are switched off they are merged into
+  /// the effective disable list, so each entry point disappears through the normal kill-switch mechanism.
+  static const List<String> orgEntryKeys = [
+    'register.organization', // "register an institution" on the login screen
+    'student_home.org', // join / my organizations card on the student home
+    'teacher_home_org', // same on the teacher home
+    'home.org_tab', // "My organization" tab on the home screens (HomeTabsBar)
+  ];
+
+  /// Platform layer of the kill-switch (theme response / push refresh) and the open organization's layer
+  /// (GET /org/orgs/{id}/context). The effective [disableList] = platform ∪ organization ∪ org entry points (when
+  /// organizations are off). Super-admin OFF always wins: an organization can only ADD keys.
+  static List<String> platformDisableList = [];
+  static List<String> orgDisableList = [];
+
   /// Bumped every time the disable list really changes. BasePage listens to it.
   static final ValueNotifier<int> disableListVersion = ValueNotifier<int>(0);
 
-  /// Single entry point for replacing the list (push refresh, theme fetch…).
-  /// Rebuilds every BasePage only if the content actually changed.
-  /// Returns true if it changed.
-  static bool setDisableList(Iterable<String> items) {
-    final next = items.toList();
+  /// Single entry point for replacing the list (push refresh, theme fetch…). [items] is the PLATFORM list;
+  /// pass [org] to also replace the open organization's list (an empty list clears it).
+  /// Rebuilds every BasePage only if the effective content actually changed. Returns true if it changed.
+  static bool setDisableList(Iterable<String> items, {Iterable<String>? org}) {
+    platformDisableList = items.toList();
+    if (org != null) orgDisableList = org.toList();
+    final next = <String>{
+      ...platformDisableList,
+      ...orgDisableList,
+      if (!orgsEnabled) ...orgEntryKeys,
+    }.toList();
     debugPrint('[AppConfig] setDisableList old=$disableList new=$next');
-    if (disableList.length == next.length &&
-        disableList.toSet().containsAll(next)) {
+    if (disableList.length == next.length && disableList.toSet().containsAll(next)) {
       return false;
     }
     disableList = next;
     disableListVersion.value++;
     _rebuildWholeApp();
+    return true;
+  }
+
+  /// Replaces only the open organization's layer (null / empty = no organization open).
+  static bool setOrgDisableList(Iterable<String>? org) =>
+      setDisableList(platformDisableList, org: org ?? const <String>[]);
+
+  /// Super-admin master switch. Re-applies the disable list (entry points) and rebuilds when it really flips.
+  static bool setOrgsEnabled(bool enabled) {
+    if (orgsEnabled == enabled) return false;
+    orgsEnabled = enabled;
+    orgsEnabledNotifier.value = enabled;
+    if (!setDisableList(platformDisableList)) _rebuildWholeApp();
     return true;
   }
 

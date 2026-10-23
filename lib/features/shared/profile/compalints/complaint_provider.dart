@@ -444,6 +444,9 @@ class ComplaintProvider extends BaseProvider {
     required ComplaintPriority priority,
     String? courseId,
     String? suggestedSolution, // ← NEW  optional param
+    String? targetType,          // general · course · teacher · student · staff · department
+    int? targetId,
+    String? targetLabel,
   }) async {
     isSending = true;
     notifyListeners();
@@ -466,6 +469,9 @@ class ComplaintProvider extends BaseProvider {
     'category': category.toJson(),
     'priority': priority.toJson(),
     'course_id': ?(courseId == null ? null : int.tryParse(courseId)),
+    'target_type': ?targetType,
+    'target_id': ?targetId,
+    'target_label': ?targetLabel,
     if (attachmentUrls.isNotEmpty) 'attachment_urls': attachmentUrls,
     if (trimmedSuggestion != null && trimmedSuggestion.isNotEmpty)
     'suggested_solution': trimmedSuggestion, // ← NEW

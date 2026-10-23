@@ -14,6 +14,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -22,6 +23,9 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'certificate_manager_provider.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
+import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
@@ -31,6 +35,7 @@ Future<void> showCertificateManagerSheet(
       required int certificateId,
       required String certificateTitle,
       String? templateUrl,
+      int? orgId, // set when the course belongs to an organization (designs of the org are offered)
     }) {
   final isWide = MediaQuery.of(context).size.width > 760;
 
@@ -46,6 +51,7 @@ Future<void> showCertificateManagerSheet(
         certificateId: certificateId,
         certificateTitle: certificateTitle,
         initialTemplateUrl: templateUrl,
+        orgId: orgId,
         isWide: isWide,
       ),
     ),
@@ -57,6 +63,7 @@ class _CertificateManagerBody extends StatefulWidget {
   final int certificateId;
   final String certificateTitle;
   final String? initialTemplateUrl;
+  final int? orgId;
   final bool isWide;
 
   const _CertificateManagerBody({
@@ -65,6 +72,7 @@ class _CertificateManagerBody extends StatefulWidget {
     required this.certificateTitle,
     required this.initialTemplateUrl,
     required this.isWide,
+    this.orgId,
   });
 
   @override
@@ -78,6 +86,7 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
   @override
   void initState() {
     super.initState();
+    _loadDesign();
     _templateUrl = widget.initialTemplateUrl;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CertificateManagerProvider>().load(widget.courseId, widget.certificateId);
@@ -108,22 +117,42 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
     });
   }
 
+  /// Opens the certificate designer for this certificate (new design wizard if none is attached yet).
+  Future<void> _openDesigner() async {
+    await openCertificateDesigner(context, certificateId: widget.certificateId, orgId: widget.orgId);
+    await _loadDesign();   // show the design that is now attached
+  }
+
+  /// The design attached to this certificate (null = the default / uploaded template is used).
+  Map<String, dynamic>? _design;
+
+  Future<void> _loadDesign() async {
+    try {
+      final r = await ApiClient().get('/api/v1/certificates/${widget.certificateId}/design');
+      if (mounted) setState(() => _design = r is Map ? Map<String, dynamic>.from(r) : null);
+    } catch (_) {}
+  }
+
+  Future<void> _removeDesign() async {
+    try {
+      await ApiClient().put('/api/v1/certificates/${widget.certificateId}/design', body: {'design_id': null});
+      if (mounted) setState(() => _design = null);
+    } catch (_) {}
+  }
+
+  /// Pick one of the saved designs (own / organization) for this certificate.
+  Future<void> _openDesignLibrary() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => CertificateDesignsScreen(orgId: widget.orgId, certificateId: widget.certificateId),
+    ));
+    await _loadDesign();
+  }
+
   Future<void> _issueAll() async {
     final provider = context.read<CertificateManagerProvider>();
     final count = await provider.issueAll(widget.certificateId);
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '${'certificates_sent_count'.tr} $count',
-          style: const TextStyle(fontFamily: 'bahji', color: Colors.white),
-        ),
-        backgroundColor: context.colors.success,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      ),
-    );
+    showAppNotice('${'certificates_sent_count'.tr} $count');
   }
 
   @override
@@ -137,6 +166,10 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
       onPickTemplate: _pickTemplate,
       onRemoveTemplate: _removeTemplate,
       onIssueAll: _issueAll,
+      onOpenDesigner: _openDesigner,
+      onOpenDesignLibrary: _openDesignLibrary,
+      designName: _design?['name'] as String?,
+      onRemoveDesign: _design == null ? null : _removeDesign,
     );
 
     if (widget.isWide) {
@@ -190,6 +223,10 @@ class _Content extends StatelessWidget {
   final VoidCallback onPickTemplate;
   final VoidCallback onRemoveTemplate;
   final VoidCallback onIssueAll;
+  final VoidCallback onOpenDesigner;
+  final String? designName;            // design in use (null → default template)
+  final VoidCallback? onRemoveDesign;
+  final VoidCallback onOpenDesignLibrary;
 
   const _Content({
     required this.certificateId,
@@ -200,6 +237,10 @@ class _Content extends StatelessWidget {
     required this.onPickTemplate,
     required this.onRemoveTemplate,
     required this.onIssueAll,
+    required this.onOpenDesigner,
+    this.designName,
+    this.onRemoveDesign,
+    required this.onOpenDesignLibrary,
   });
 
   @override
@@ -213,6 +254,10 @@ class _Content extends StatelessWidget {
           onPick: onPickTemplate,
           onRemove: onRemoveTemplate,
           onIssueAll: onIssueAll,
+          onOpenDesigner: onOpenDesigner,
+          designName: designName,
+          onRemoveDesign: onRemoveDesign,
+          onOpenDesignLibrary: onOpenDesignLibrary,
         ));
     final studentsPane = ParentComponent(
       featureKey: 'certificates.students',
@@ -312,6 +357,10 @@ class _TemplatePane extends StatelessWidget {
   final VoidCallback onPick;
   final VoidCallback onRemove;
   final VoidCallback onIssueAll;
+  final VoidCallback onOpenDesigner;
+  final String? designName;            // design in use (null → default template)
+  final VoidCallback? onRemoveDesign;
+  final VoidCallback onOpenDesignLibrary;
 
   const _TemplatePane({
     required this.certificateTitle,
@@ -320,6 +369,10 @@ class _TemplatePane extends StatelessWidget {
     required this.onPick,
     required this.onRemove,
     required this.onIssueAll,
+    required this.onOpenDesigner,
+    this.designName,
+    this.onRemoveDesign,
+    required this.onOpenDesignLibrary,
   });
 
   @override
@@ -413,6 +466,51 @@ class _TemplatePane extends StatelessWidget {
                 ),
               ],
             ],
+          ),
+          const SizedBox(height: 10),
+          // Certificate designer: draft from the app theme + logo + signature, or your own template;
+          // move / add / delete fields, fonts, sizes, colours, portrait or landscape.
+          // Which design do students receive? Always visible — and changeable.
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 8),
+            decoration: BoxDecoration(
+              color: (designName == null ? context.colors.textLight : context.colors.success).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: designName == null ? context.colors.divider : context.colors.success.withValues(alpha: 0.35)),
+            ),
+            child: Row(children: [
+              Icon(designName == null ? Icons.description_outlined : Icons.verified_rounded,
+                  size: 18, color: designName == null ? context.colors.textMedium : context.colors.success),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  designName == null ? 'cert_default_template'.tr : '${'cert_current_design'.tr}: $designName',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w700, color: context.colors.textDark),
+                ),
+              ),
+              if (onRemoveDesign != null)
+                TextButton(
+                  onPressed: onRemoveDesign,
+                  child: Text('cert_remove_design'.tr,
+                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.danger)),
+                ),
+            ]),
+          ),
+          ElevatedButton.icon(
+            onPressed: onOpenDesigner,
+            icon: const Icon(Icons.design_services_rounded, size: 16),
+            label: Text((designName == null ? 'cert_design_certificate_btn' : 'cert_edit_design_btn').tr,
+                style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
+          ),
+          TextButton.icon(
+            onPressed: onOpenDesignLibrary,
+            icon: const Icon(Icons.collections_bookmark_outlined, size: 16),
+            label: Text('cert_choose_saved_design_btn'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
           ),
           const SizedBox(height: 18),
           Divider(color: Colors.black.withValues(alpha: 0.06)),

@@ -14,6 +14,8 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
+import '../../design/app_switch.dart';
+
 /// Gradient pairs (light → base) for the feature icons / hero banners.
 ///
 /// They are NOT fixed colours: every role is read from YOUR theme
@@ -517,12 +519,8 @@ class PremiumSwitchRow extends StatelessWidget {
               ],
             ),
           ),
-          Switch.adaptive(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: c.primary,
-            thumbColor: const WidgetStatePropertyAll(Colors.white),
-          ),
+          const SizedBox(width: 10),
+          AppSwitch(value: value, onChanged: onChanged, semanticLabel: title),
         ],
       ),
     );

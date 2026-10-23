@@ -31,7 +31,7 @@ class CourseStatsRow extends StatelessWidget {
         icon: Icons.people_alt_rounded,
         label: 'student'.tr,
         value: '${course.studentsCount}',
-        color: const Color(0xFF4DA6FF),
+        color: context.colors.primaryLight,
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -163,7 +163,7 @@ class _StatChip extends StatelessWidget {
             fontSize: 10,
             decoration:
             item.onTap == null ? null : TextDecoration.underline,
-            decorationColor: Colors.blueAccent,
+            decorationColor: context.colors.primary,
             decorationThickness: 2,
             color: context.colors.textMedium,
           ),

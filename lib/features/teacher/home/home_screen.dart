@@ -6,7 +6,6 @@ import 'package:flutter_education_app/features/teacher/home/queue_work_items.dar
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
-import '../../org/org_member_pages.dart' show OrgHomeEntry;
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/top_route_observer.dart';
@@ -22,6 +21,12 @@ import '../courses/component/teacher_stats.dart';
 import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
+import 'package:flutter_education_app/features/org/home_org_mix.dart';
+import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
+import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show AppModeSwitcher, OrgMemberHome;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -66,7 +71,9 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
         child: RefreshIndicator(
           color: context.colors.primary,
           onRefresh: () => context.read<TeacherHomeProvider>().init(),
-          child: CustomScrollView(
+          child: ListenableBuilder(
+            listenable: Listenable.merge([homeTabs, AppModeController.instance]),
+            builder: (context, _) => CustomScrollView(
             physics: const BouncingScrollPhysics(
               parent: AlwaysScrollableScrollPhysics(),
             ),
@@ -82,7 +89,12 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                   child: ParentComponent(featureKey: 'teacher_home_topbar', child: _WebTopBar()),
                 ),
 
-              // ── Stats ────────────────────────────────────────────
+              // ── My courses | My organization (members only) ──
+              // ── Individual | Organization mode (members only, org switch on) ──
+              const SliverToBoxAdapter(child: AppModeSwitcher(padding: EdgeInsets.fromLTRB(20, 0, 20, 16))),
+              if (AppModeController.instance.isOrg)
+                const SliverToBoxAdapter(child: OrgMemberHome())
+              else
               SliverToBoxAdapter(
                 child: ColoredBox(
                   color: context.colors.background,
@@ -99,6 +111,10 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                       ),
                       const SizedBox(height: 20),
 
+                      // ── Ads (platform / allowed teachers) ────────────────
+                      const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+                      // ── Inbox: forms / requests / approvals / news / offers in one prioritized place ──
+                      const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
                       // ── Add course button ────────────────────────────────
                       ParentComponent(
                         child: ContentBox(
@@ -115,7 +131,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                         child: ContentBox(
                           key: ValueKey('teacher_home_org'),
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: const OrgHomeEntry(),
+                          child: const HomeOrgMix(),
                         ),
                       ),
                       SizedBox(height: 24),
@@ -204,6 +220,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen>
                 ),
               ),
             ],
+          ),
           ),
         ),
       ),

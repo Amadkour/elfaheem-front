@@ -251,7 +251,7 @@ class _TeacherSessionsView extends StatelessWidget {
                             expanded: expanded,
                             icon: CupertinoIcons.list_bullet_below_rectangle,
                             title: 'course_details'.tr,
-                            color: const Color(0xFF4DA6FF),
+                            color: context.colors.primaryLight,
                             course: course,
                             children: [
                               // ── Rating ──────────────────────────────

@@ -131,8 +131,8 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
             _isDeadline
                 ? tx('exam_frozen_deadline_msg')
                 : tx('exam_frozen_attempts_msg', {'count': e.submissionCount}),
-            style: const TextStyle(
-                fontFamily: 'bahji', fontSize: 14, color: Colors.grey),
+            style: TextStyle(
+                fontFamily: 'bahji', fontSize: 14, color: context.colors.textLight),
             textAlign: TextAlign.center,
           ),
 
@@ -147,7 +147,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                 value:
                 '${e.endDate!.day}/${e.endDate!.month}/${e.endDate!.year}  '
                     '${e.endDate!.hour.toString().padLeft(2, '0')}:${e.endDate!.minute.toString().padLeft(2, '0')}',
-                color: Colors.redAccent,
+                color: context.colors.danger,
               ),
             ]),
 
@@ -158,7 +158,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                 icon: Icons.repeat_rounded,
                 label: tx('exam_used_attempts'),
                 value: '${e.submissionCount} / ${e.maxSubmissions}',
-                color: Colors.purple,
+                color: context.colors.purple,
               ),
             ]),
 
@@ -178,7 +178,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                     icon: Icons.timer_outlined,
                     label: tx('exam_exam_duration'),
                     value: tx('exam_n_minutes', {'n': e.duration}),
-                    color: Colors.teal,
+                    color: context.colors.success,
                   ),
                 if (e.questionCount > 0)
                   _InfoRow(
@@ -192,7 +192,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                     icon: Icons.star_outline_rounded,
                     label: tx('exam_passing_score'),
                     value: '${e.passingScore!.toInt()}%',
-                    color: Colors.amber.shade700,
+                    color: context.colors.warning,
                   ),
               ])),
 
@@ -251,10 +251,10 @@ class _ScoreSummaryCard extends StatelessWidget {
       ),
       child: Column(children: [
         Text(tx('exam_last_result'),
-            style: const TextStyle(
+            style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 13,
-                color: Colors.grey)),
+                color: context.colors.textLight)),
         const SizedBox(height: 12),
         // Mini ring
         Stack(alignment: Alignment.center, children: [
@@ -264,7 +264,7 @@ class _ScoreSummaryCard extends StatelessWidget {
             child: CircularProgressIndicator(
               value: pct / 100,
               strokeWidth: 9,
-              backgroundColor: Colors.grey.shade100,
+              backgroundColor: context.colors.inputBg,
               color: accent,
             ),
           ),
@@ -288,8 +288,8 @@ class _ScoreSummaryCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             tx('exam_marks_of_total', {'obtained': exam.marksObtained!.toStringAsFixed(1), 'total': exam.totalMarks!.toStringAsFixed(0)}),
-            style: const TextStyle(
-                fontFamily: 'bahji', fontSize: 13, color: Colors.grey),
+            style: TextStyle(
+                fontFamily: 'bahji', fontSize: 13, color: context.colors.textLight),
           ),
         ],
       ]),
@@ -343,8 +343,8 @@ class _InfoRow extends StatelessWidget {
     Icon(icon, size: 16, color: color),
     const SizedBox(width: 8),
     Text(label,
-        style: const TextStyle(
-            fontFamily: 'bahji', fontSize: 13, color: Colors.grey)),
+        style: TextStyle(
+            fontFamily: 'bahji', fontSize: 13, color: context.colors.textLight)),
     const Spacer(),
     Text(value,
         style: TextStyle(

@@ -10,6 +10,7 @@ import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/view_as_state.dart';
+import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
 
@@ -333,6 +334,14 @@ class MyAuthProvider extends BaseProvider {
     'developer' => '/admin_dashboard',
     'teacher' => '/teacher_dashboard',
     'parent' => '/parent_dashboard',
+    // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
+    'org-admin' => '/org_dashboard',
+    // … unless the member dashboard already knows this staff member manages nothing (e.g. an assistant only)
+    // (on a cold start the overview is not loaded yet → the answer cached by the last run)
+    'org-staff' => AppModeController.orgStaffHome(
+        loaded: AppModeController.instance.loaded,
+        managesNothing: AppModeController.instance.managesNothing,
+        cached: currentUser == null ? null : _storage.getFlag(AppModeController.managesNothingKey(currentUser!.id))),
     _ => '/dashboard',
   };
 
@@ -865,6 +874,7 @@ class MyAuthProvider extends BaseProvider {
 
   Future<void> logout() async {
     ViewAsState.instance.stop(); // never carry view-as into the next session
+    AppModeController.instance.reset(); // Organization/Individual mode belongs to the user who chose it
     // Unregister the push token BEFORE the tokens are wiped — afterwards the DELETE had no auth header,
     // failed with 401, and this device kept receiving the previous user's pushes.
     try {

@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import 'parent_widgets.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 // ── colours by meaning ────────────────────────────────────────────────────────
 Color plTierColor(BuildContext context, String tier) {
@@ -64,7 +65,7 @@ class PlScoreRing extends StatelessWidget {
           Column(mainAxisSize: MainAxisSize.min, children: [
             Text('${value.round()}',
                 style: TextStyle(fontSize: size * 0.30, fontWeight: FontWeight.w900, color: light ? Colors.white : color)),
-            Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? Colors.white70 : Colors.grey)),
+            Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? Colors.white70 : context.colors.textLight)),
           ]),
         ]),
       );
@@ -246,7 +247,7 @@ class PlBarRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(children: [
-        Icon(icon, size: 18, color: highlight ? col : Colors.grey),
+        Icon(icon, size: 18, color: highlight ? col : context.colors.textLight),
         const SizedBox(width: 8),
         SizedBox(width: 78, child: Text(label, style: TextStyle(fontSize: 12.5, fontWeight: highlight ? FontWeight.w800 : FontWeight.w500))),
         Expanded(
