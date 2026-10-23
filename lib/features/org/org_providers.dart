@@ -415,16 +415,27 @@ class OrgScheduleProvider extends AdminBase {
       () => api.post('$base/schedules/${schedule!['id']}/revisions', body: {'label': (label ?? '').trim().isEmpty ? null : label!.trim()}),
       quiet: true);
 
+  /// Staff the timetable places in their unavailable time who have not agreed yet (409 staff_consent_pending):
+  /// {pending: [uid], declined: [uid], agreed: [uid]} — publishing again with [force] needs a reason.
+  Map<String, dynamic>? consentWait;
+
   /// Publishing: null when published; the server's hard conflicts when it refused (409 schedule_conflict).
-  Future<List<Map<String, dynamic>>?> publish() async {
+  Future<List<Map<String, dynamic>>?> publish({bool force = false, String? reason}) async {
     final id = schedule!['id'];
-    final r = await orgCall(() => api.post('$base/schedules/$id/activate'), ok: t('تم نشر الجدول للجميع', 'Timetable published'), quiet: true);
+    consentWait = null;
+    final r = await orgCall(
+        () => api.post('$base/schedules/$id/activate', queryParams: force ? {'force_consent': 'true', 'reason': reason ?? ''} : null),
+        ok: t('تم نشر الجدول للجميع', 'Timetable published'), quiet: true);
     if (r.ok) {
       _apply({...r.map, 'items': slots});
       await loadSetup();
       return null;
     }
     if (r.code == 'schedule_conflict') return asMapList(r.detail['conflicts']);
+    if (r.code == 'staff_consent_pending') {
+      consentWait = r.detail;
+      return const [];
+    }
     toast(orgErrorText(r.error!), error: true);
     return const [];
   }

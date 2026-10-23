@@ -1,6 +1,6 @@
 // Registrar: the cart (co-requisites travel together), load after the cart, and the record view's layout.
 import 'package:flutter_education_app/features/org/org_registrar.dart';
-import 'package:flutter_education_app/features/org/org_registrar_member.dart' show RecordView;
+import 'package:flutter_education_app/features/org/org_registrar_member.dart' show RecordView, weekByDay;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';
@@ -23,6 +23,14 @@ void main() {
     expect(RegCart.missingCoreqs(course, {1, 2}, {6}), [5]);
     cart.remove(1);
     expect(cart.credits, 4);
+  });
+
+  test('week grouped by day in week order, sorted by time', () {
+    final w = weekByDay([
+      {'day': 'monday', 'start': '10:00'}, {'day': 'saturday', 'start': '12:00'}, {'day': 'monday', 'start': '08:00'},
+    ]);
+    expect(w.map((e) => e.$1).toList(), ['saturday', 'monday']);
+    expect(w[1].$2.map((e) => e['start']).toList(), ['08:00', '10:00']);
   });
 
   test('load after the cart', () {

@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppField, AppPrimaryButton, AppSectionTitle, showAppSheet;
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -555,7 +556,7 @@ class _StudioState extends State<_Studio> {
         !await confirm(context, message: t('النتيجة: ${resultStatusLabels()[st]}. النشر رغم الحصص غير المجدولة؟', 'Result: ${resultStatusLabels()[st]}. Publish with sessions still unplaced?'))) {
       return;
     }
-    final res = await p.publish();
+    final res = await publishWithConsent(context, p);
     if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
   }
 
@@ -1300,4 +1301,37 @@ Future<void> _newExtra(BuildContext context, OrgScheduleProvider p, Map<int, Str
           ]),
         );
       }));
+}
+
+
+/// Publish; when staff placed in their unavailable time have not agreed yet, say who and offer an audited
+/// "publish anyway" with a reason. Same result as [OrgScheduleProvider.publish].
+Future<List<Map<String, dynamic>>?> publishWithConsent(BuildContext context, OrgScheduleProvider p) async {
+  final res = await p.publish();
+  final wait = p.consentWait;
+  if (wait == null || !context.mounted) return res;
+  final names = {for (final m in p.staff) asInt(m['user_id'] ?? asMap(m['user'])['id']): '${asMap(m['user'])['name'] ?? ''}'};
+  String list(String k) => [for (final u in (wait[k] as List? ?? const [])) names[asInt(u)] ?? '#$u'].join('، ');
+  final reason = TextEditingController();
+  final go = await showAppSheet<bool>(context, (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppSectionTitle(t('بانتظار موافقة أعضاء', 'Waiting for staff consent'),
+              subtitle: t('الجدول يضعهم في أوقات قالوا إنهم غير متاحين فيها — أُرسل لهم طلب موافقة',
+                  'The timetable puts them in times they marked unavailable — they were asked to agree')),
+          if ((wait['pending'] as List? ?? const []).isNotEmpty)
+            AppBanner(icon: Icons.hourglass_top_rounded, text: '${t('لم يردوا', 'No answer yet')}: ${list('pending')}'),
+          if ((wait['declined'] as List? ?? const []).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            AppBanner(icon: Icons.block_rounded, color: context.colors.danger, text: '${t('اعتذروا', 'Declined')}: ${list('declined')}'),
+          ],
+          const SizedBox(height: 12),
+          AppField(controller: reason, label: t('سبب النشر دون موافقتهم (يُسجَّل)', 'Reason to publish without it (audited)'), maxLines: 2),
+          const SizedBox(height: 12),
+          AppPrimaryButton(label: t('النشر على أي حال', 'Publish anyway'), icon: Icons.publish_rounded,
+              onPressed: () => Navigator.pop(ctx, reason.text.trim().isNotEmpty)),
+        ]),
+      ));
+  if (go != true) return const [];
+  return p.publish(force: true, reason: reason.text.trim());
 }

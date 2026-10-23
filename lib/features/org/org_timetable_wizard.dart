@@ -26,7 +26,7 @@ import 'org_common.dart' show dayLabels;
 import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_schedule_alternatives.dart' show openScheduleAlternatives;
 import 'org_providers.dart';
-import 'org_schedule_pages.dart' show showAvailabilitySheet, showPeriodForm, showPublishConflicts;
+import 'org_schedule_pages.dart' show showAvailabilitySheet, showPeriodForm, showPublishConflicts, publishWithConsent;
 import 'org_schedule_planning.dart' show applyStudentCount, coursePlanApi, termCourseIds;
 import 'org_timetable_parts.dart';
 import 'org_ui.dart';
@@ -944,7 +944,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                   ? null
                   : () async {
                       setState(() => _busy = true);
-                      final res = await p.publish();
+                      final res = await publishWithConsent(context, p);
                       if (!mounted) return;
                       setState(() => _busy = false);
                       if (res == null) {

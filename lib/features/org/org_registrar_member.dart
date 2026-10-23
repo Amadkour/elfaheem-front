@@ -836,3 +836,363 @@ Widget staffGradesScreen(int orgId, int termId, int courseId) {
     },
   );
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Advisors · staff consent
+// ═════════════════════════════════════════════════════════════════════════════
+
+Future<void> openAdvising(BuildContext context, int orgId) =>
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgAdvisingScreen(orgId: orgId)));
+
+Future<void> openConsents(BuildContext context, int orgId) =>
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgConsentsScreen(orgId: orgId)));
+
+class OrgAdvisingScreen extends StatefulWidget {
+  const OrgAdvisingScreen({super.key, required this.orgId});
+  final int orgId;
+
+  @override
+  State<OrgAdvisingScreen> createState() => _OrgAdvisingScreenState();
+}
+
+class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
+  Map<String, dynamic>? _data;
+  bool _failed = false;
+
+  String get _b => '${_pub(widget.orgId)}/advising';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final r = await orgCall(() => OrgApi.i.api.get(_b), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      if (r.ok) _data = r.map;
+      _failed = !r.ok;
+    });
+  }
+
+  Future<void> _decide(Map<String, dynamic> d, String verdict) async {
+    final r = await orgCall(() => OrgApi.i.api.post('$_b/decisions/${d['id']}/$verdict', body: {}), ok: t('تم', 'Done'));
+    if (r.ok) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final students = asMapList(_data?['students']);
+    final cases = asMapList(_data?['cases']);
+    final names = {for (final s in students) asInt(s['student_id']): '${asMap(s['student'])['name'] ?? ''}'};
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1000,
+      appBar: ScreenAppBar(title: t('الإرشاد الأكاديمي', 'Academic advising')),
+      child: AppAsync(
+        loading: _data == null && !_failed,
+        failed: _failed,
+        onRetry: _load,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+            AppSectionTitle(t('حالات تحتاج رأيك', 'Cases for you'), subtitle: '${cases.length}'),
+            if (cases.isEmpty) AppEmpty(icon: Icons.task_alt_rounded, title: t('لا توجد حالات', 'No cases')),
+            for (final d in cases)
+              AppCard(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text(decisionKindText('${d['kind']}'), style: appText(12, c: c.textMedium)),
+                  const SizedBox(height: 4),
+                  Text([for (final u in (asMap(d['affected'])['students'] as List? ?? const [])) names[asInt(u)] ?? '#$u'].join('، '),
+                      style: appText(15, w: FontWeight.w700)),
+                  if ('${d['description'] ?? ''}'.isNotEmpty) Text('${d['description']}', style: appText(13, c: c.textMedium)),
+                  Wrap(spacing: 6, runSpacing: 6, children: [
+                    for (final b in (asMap(d['affected'])['blocks'] as List? ?? const [])) AppBadgePill(registrarCodeText('$b'), color: c.warning),
+                  ]),
+                  const SizedBox(height: 8),
+                  AppBanner(icon: Icons.recommend_rounded, text: '${t('التوصية', 'Recommended')}: ${decisionActionText(asMap(d['recommendation']))}'),
+                  const SizedBox(height: 8),
+                  Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                    AppPill(icon: Icons.check_rounded, label: t('قبول التوصية', 'Accept'), color: c.success, onTap: () => _decide(d, 'accept')),
+                    AppPill(icon: Icons.close_rounded, label: t('رفض', 'Reject'), color: c.danger, onTap: () => _decide(d, 'reject')),
+                  ]),
+                ]),
+              ),
+            AppSectionTitle(t('طلابي', 'My advisees'), subtitle: '${students.length}'),
+            for (final s in students)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: AppActionCard(
+                  icon: Icons.person_rounded,
+                  color: s['standing'] == 'probation' ? c.danger : c.primary,
+                  title: '${asMap(s['student'])['name'] ?? '#${s['student_id']}'}',
+                  subtitle: '${t('المعدل', 'CGPA')} ${gpaText(s['cgpa'])} · ${asDouble(s['earned']).toStringAsFixed(0)} ${t('ساعة', 'credits')}'
+                      '${s['standing'] == null ? '' : ' · ${standingText('${s['standing']}')}'}',
+                  onTap: () => Navigator.of(context)
+                      .push(MaterialPageRoute(builder: (_) => _AdviseeRecord(orgId: widget.orgId, uid: asInt(s['student_id'])))),
+                ),
+              ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdviseeRecord extends StatefulWidget {
+  const _AdviseeRecord({required this.orgId, required this.uid});
+  final int orgId, uid;
+
+  @override
+  State<_AdviseeRecord> createState() => _AdviseeRecordState();
+}
+
+class _AdviseeRecordState extends State<_AdviseeRecord> {
+  Map<String, dynamic>? _data;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final r = await orgCall(() => OrgApi.i.api.get('${_pub(widget.orgId)}/advising/students/${widget.uid}/record'), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      if (r.ok) _data = r.map;
+      _failed = !r.ok;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => BasePage(
+        useWebCard: true,
+        maxWith: 1000,
+        appBar: ScreenAppBar(title: t('السجل الأكاديمي', 'Academic record')),
+        child: AppAsync(
+            loading: _data == null && !_failed,
+            failed: _failed,
+            onRetry: _load,
+            child: _data == null ? const SizedBox() : RecordView(data: _data!)),
+      );
+}
+
+class OrgConsentsScreen extends StatefulWidget {
+  const OrgConsentsScreen({super.key, required this.orgId});
+  final int orgId;
+
+  @override
+  State<OrgConsentsScreen> createState() => _OrgConsentsScreenState();
+}
+
+class _OrgConsentsScreenState extends State<OrgConsentsScreen> {
+  Map<String, dynamic>? _data;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final r = await orgCall(() => OrgApi.i.api.get('${_pub(widget.orgId)}/consents'), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      if (r.ok) _data = r.map;
+      _failed = !r.ok;
+    });
+  }
+
+  Future<void> _answer(Map<String, dynamic> d, bool agree) async {
+    final r = await orgCall(() => OrgApi.i.api.post('${_pub(widget.orgId)}/consents/${d['id']}/${agree ? 'agree' : 'decline'}', body: {}),
+        ok: agree ? t('شكراً لموافقتك', 'Thanks for agreeing') : t('تم إبلاغ مكتب الجداول', 'The timetable office was told'));
+    if (r.ok) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final periods = asMap(_data?['periods']);
+    final items = asMapList(_data?['items']);
+    String cell(Map<String, dynamic> x) {
+      final p = asMap(periods['${x['period_id']}']);
+      final time = p.isEmpty ? '' : ' ${AppTime.clock('${p['start']}')}–${AppTime.clock('${p['end']}')}';
+      return '${dayText('${x['day']}')}$time';
+    }
+
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1000,
+      appBar: ScreenAppBar(title: t('طلبات الموافقة على الجدول', 'Timetable consent requests')),
+      child: AppAsync(
+        loading: _data == null && !_failed,
+        failed: _failed,
+        onRetry: _load,
+        child: items.isEmpty
+            ? AppEmpty(icon: Icons.event_available_rounded, title: t('لا توجد طلبات', 'No requests'))
+            : ListView(padding: const EdgeInsets.symmetric(vertical: 12), children: [
+                for (final d in items)
+                  AppCard(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      Text('${d['title']}', style: appText(14, w: FontWeight.w700)),
+                      const SizedBox(height: 6),
+                      Text([for (final x in asMapList(asMap(asMap(d['recommendation'])['params'])['cells'])) cell(x)].join(' · '),
+                          style: appText(13, c: c.textMedium)),
+                      const SizedBox(height: 8),
+                      if (d['status'] == 'open')
+                        Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
+                          AppPill(icon: Icons.check_rounded, label: t('أوافق', 'I agree'), color: c.success, onTap: () => _answer(d, true)),
+                          AppPill(icon: Icons.close_rounded, label: t('أعتذر', 'I decline'), color: c.danger, onTap: () => _answer(d, false)),
+                        ])
+                      else
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: AppBadgePill(d['status'] == 'accepted' ? t('وافقت', 'Agreed') : t('اعتذرت', 'Declined'),
+                              color: d['status'] == 'accepted' ? c.success : c.danger),
+                        ),
+                    ]),
+                  ),
+              ]),
+      ),
+    );
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  My week (registered sections)
+// ═════════════════════════════════════════════════════════════════════════════
+
+Future<void> openMyWeek(BuildContext context, int orgId) =>
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMyWeekScreen(orgId: orgId)));
+
+const weekOrder = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+/// Meetings grouped by weekday in week order, each day sorted by start ("HH:MM"). Pure — unit tested.
+List<(String, List<Map<String, dynamic>>)> weekByDay(List<Map<String, dynamic>> items) {
+  final by = <String, List<Map<String, dynamic>>>{};
+  for (final x in items) {
+    by.putIfAbsent('${x['day']}', () => []).add(x);
+  }
+  return [
+    for (final d in weekOrder)
+      if (by[d] != null) (d, by[d]!..sort((a, b) => '${a['start']}'.compareTo('${b['start']}'))),
+  ];
+}
+
+class OrgMyWeekScreen extends StatefulWidget {
+  const OrgMyWeekScreen({super.key, required this.orgId});
+  final int orgId;
+
+  @override
+  State<OrgMyWeekScreen> createState() => _OrgMyWeekScreenState();
+}
+
+class _OrgMyWeekScreenState extends State<OrgMyWeekScreen> {
+  List<Map<String, dynamic>>? _terms;
+  int? _termId;
+  Map<String, dynamic>? _data;
+  bool _failed = false;
+
+  String get _b => _pub(widget.orgId);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTerms();
+  }
+
+  Future<void> _loadTerms() async {
+    final r = await orgCall(() => OrgApi.i.api.get('$_b/terms'), quiet: true);
+    if (!mounted) return;
+    final items = asMapList(r.map['items']);
+    setState(() {
+      _terms = items;
+      _failed = !r.ok;
+      _termId = items.isEmpty ? null : asInt(items.first['id']);
+    });
+    if (_termId != null) _load();
+  }
+
+  Future<void> _load() async {
+    final r = await orgCall(() => OrgApi.i.api.get('$_b/terms/$_termId/my-timetable'), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      if (r.ok) _data = r.map;
+      _failed = !r.ok && _data == null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final days = weekByDay(asMapList(_data?['items']));
+    return BasePage(
+      useWebCard: true,
+      maxWith: 1000,
+      appBar: ScreenAppBar(title: t('جدولي الأسبوعي', 'My week')),
+      child: AppAsync(
+        loading: _terms == null || (_termId != null && _data == null && !_failed),
+        failed: _failed,
+        onRetry: _loadTerms,
+        child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+          if ((_terms ?? const []).length > 1)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(children: [
+                for (final x in _terms!)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: AppChoiceChip(label: termTitle(x), selected: asInt(x['id']) == _termId, onTap: () {
+                      setState(() {
+                        _termId = asInt(x['id']);
+                        _data = null;
+                      });
+                      _load();
+                    }),
+                  ),
+              ]),
+            ),
+          if (days.isEmpty)
+            AppEmpty(icon: Icons.calendar_view_week_rounded, title: t('لا توجد محاضرات مسجلة', 'No registered classes'),
+                message: t('سجّل مقرراتك أولاً', 'Register your courses first')),
+          for (final (day, list) in days) ...[
+            AppSectionTitle(dayText(day)),
+            for (final x in list)
+              AppCard(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(children: [
+                  SizedBox(
+                    width: 72,
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(AppTime.clock('${x['start']}'), style: appText(13, w: FontWeight.w700)),
+                      Text(AppTime.clock('${x['end']}'), style: appText(12, c: c.textLight)),
+                    ]),
+                  ),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(_courseTitle(asMap(x['course'])), style: appText(14, w: FontWeight.w700), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text([
+                        sectionLabel(x),
+                        if (x['room'] != null) '${x['room']}',
+                        if (x['teacher'] != null) '${x['teacher']}',
+                      ].join(' · '), style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(x['kind'] == 'lab' ? Icons.science_rounded : Icons.co_present_rounded, color: c.primary, size: 20),
+                ]),
+              ),
+          ],
+        ]),
+      ),
+    );
+  }
+}

@@ -374,7 +374,17 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
             ]),
           ),
           AppSectionTitle(t('الشعب', 'Sections'), subtitle: t('تُنشأ من الجدول الدراسي المعتمد للفصل', "Built from the term's active timetable"),
-              trailing: AppPill(icon: Icons.sync_rounded, label: t('مزامنة', 'Sync'), onTap: _sync)),
+              trailing: Wrap(spacing: 8, children: [
+                AppPill(icon: Icons.sync_rounded, label: t('مزامنة', 'Sync'), onTap: _sync),
+                AppPill(icon: Icons.groups_rounded, label: t('تسجيل الدفعات', 'Enrol cohorts'), onTap: () async {
+                  final r = await orgCall(() => session.api.post('$reg/terms/$_termId/cohort-enrol', body: {}));
+                  if (r.ok) {
+                    toast(t('سُجِّل ${r.map['registered']} · متخلف ${r.map['carry']} · تعارض ${r.map['conflicts']}',
+                        'Registered ${r.map['registered']} · carry-over ${r.map['carry']} · conflicts ${r.map['conflicts']}'));
+                    _loadTerm();
+                  }
+                }),
+              ])),
           if ((_sections ?? const []).isEmpty)
             AppEmpty(icon: Icons.view_week_rounded, title: t('لا توجد شعب بعد', 'No sections yet'),
                 message: t('اعتمد جدول الفصل ثم اضغط مزامنة', "Publish the term's timetable, then press Sync")),
@@ -627,15 +637,44 @@ class _ProgramsTabState extends State<_ProgramsTab> with _Loads {
   Future<void> _open(Map<String, dynamic> p) async {
     final full = await getMap('$reg/programs/${p['id']}');
     final courses = await getMap('$reg/courses');
+    final levels = await getMap('${session.base}/academic/levels');
+    final terms = await getMap('${session.base}/academic/terms');
     if (!mounted || full == null) return;
-    final saved = await showAppSheet<bool>(context, (_) => _ProgramSheet(program: full, courses: asMapList(courses?['items']), reg: reg));
+    final saved = await showAppSheet<bool>(context, (_) => _ProgramSheet(
+        program: full, courses: asMapList(courses?['items']), reg: reg,
+        levels: [for (final l in asMapList(levels?['levels'])) '${l['key']}'], terms: asMapList(terms?['items'])));
     if (saved == true) reload();
+  }
+
+  Future<void> _allocate() async {
+    final plan = await orgCall(() => session.api.post('$reg/allocation', body: {'apply': false}));
+    if (!plan.ok || !mounted) return;
+    final n = asMapList(plan.map['plan']).length;
+    final ties = asMapList(plan.map['ties']).length;
+    if (n == 0) {
+      toast(t('لا توجد طلبات معلقة يمكن قبولها', 'No pending requests can be admitted'));
+      return;
+    }
+    final msg = t('سيُقبل $n طالب حسب المعدل ثم الساعات ثم وقت الطلب، ضمن السعة.${ties > 0 ? ' $ties حالة تساوٍ ستُعرض كقرار.' : ''}',
+        '$n student(s) will be admitted by GPA, then hours, then request time, within capacity.${ties > 0 ? ' $ties tie(s) become decisions.' : ''}');
+    if (!await appConfirm(context, message: msg)) return;
+    await orgCall(() => session.api.post('$reg/allocation', body: {'apply': true}), ok: t('تم التوزيع', 'Allocated'));
   }
 
   @override
   Widget build(BuildContext context) => frame((m) {
         final items = asMapList(m['items']);
         return ListView(padding: const EdgeInsets.only(bottom: 24), children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Wrap(spacing: 8, runSpacing: 8, children: [
+              AppPill(icon: Icons.leaderboard_rounded, label: t('توزيع الطلبات بالجدارة', 'Allocate requests by merit'), onTap: _allocate),
+              AppPill(icon: Icons.support_rounded, label: t('توزيع المرشدين تلقائياً', 'Assign advisors automatically'), onTap: () async {
+                final r = await orgCall(() => session.api.post('$reg/advisors/auto', body: {}));
+                if (r.ok) toast(t('أُسند مرشد لـ ${r.map['assigned']} طالب', 'Advisor assigned to ${r.map['assigned']} student(s)'));
+              }),
+            ]),
+          ),
           if (items.isEmpty)
             AppEmpty(icon: Icons.account_tree_rounded, title: t('لا توجد أقسام علمية', 'No academic departments'),
                 message: t('أضفها من الهيكل الأكاديمي', 'Add them in the academic structure')),
@@ -654,10 +693,12 @@ class _ProgramsTabState extends State<_ProgramsTab> with _Loads {
 }
 
 class _ProgramSheet extends StatefulWidget {
-  const _ProgramSheet({required this.program, required this.courses, required this.reg});
+  const _ProgramSheet({required this.program, required this.courses, required this.reg, this.levels = const [], this.terms = const []});
   final Map<String, dynamic> program;
   final List<Map<String, dynamic>> courses;
   final String reg;
+  final List<String> levels;
+  final List<Map<String, dynamic>> terms;
 
   @override
   State<_ProgramSheet> createState() => _ProgramSheetState();
@@ -668,6 +709,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
   late final _total = TextEditingController(text: widget.program['total_credits'] == null ? '' : asDouble(widget.program['total_credits']).toStringAsFixed(0));
   late final _gpa = TextEditingController(text: widget.program['min_cgpa'] == null ? '' : '${widget.program['min_cgpa']}');
   late final _entry = TextEditingController(text: '${widget.program['entry_level'] ?? ''}');
+  late final _carry = TextEditingController(text: widget.program['max_carry'] == null ? '' : '${widget.program['max_carry']}');
   late final List<Map<String, dynamic>> _groups = [for (final g in asMapList(widget.program['requirement_groups'])) Map<String, dynamic>.from(g)];
   late final Map<int, Map<String, dynamic>> _cur = {
     for (final c in asMapList(widget.program['curriculum'])) asInt(c['course_id']): Map<String, dynamic>.from(c),
@@ -681,17 +723,45 @@ class _ProgramSheetState extends State<_ProgramSheet> {
           'total_credits': double.tryParse(_total.text.trim()),
           'min_cgpa': double.tryParse(_gpa.text.trim()),
           'entry_level': _entry.text.trim().isEmpty ? null : _entry.text.trim(),
+          if (_system == 'traditional') 'max_carry': int.tryParse(_carry.text.trim()),
           'requirement_groups': [
             for (final g in _groups) {'key': g['key'], 'label_ar': g['label_ar'], 'label_en': g['label_en'], 'min_credits': asDouble(g['min_credits'])},
           ],
           'curriculum': [
             for (final e in _cur.entries)
-              {'course_id': e.key, 'kind': e.value['required'] == false ? 'elective' : 'required', 'group_key': e.value['group_key'], 'level_key': e.value['level_key']},
+              {'course_id': e.key, 'kind': e.value['required'] == false ? 'elective' : 'required', 'group_key': e.value['group_key'],
+                'level_key': e.value['level_key'], 'term_kind': e.value['term_kind']},
           ],
         }), ok: t('حُفظ', 'Saved'));
     if (!mounted) return;
     setState(() => _busy = false);
     if (r.ok) Navigator.pop(context, true);
+  }
+
+  OrgSession get _s => context.read<OrgSession>();
+
+  Future<void> _promote() async {
+    final base = '${widget.reg}/programs/${widget.program['id']}/promote';
+    final r = await orgCall(() => _s.api.post(base, body: {'dry_run': true}));
+    if (!r.ok || !mounted) return;
+    final m = r.map;
+    int n(String k) => (m[k] as List? ?? const []).length;
+    final msg = t('ينتقل ${n('promoted')} · ينتقل بمواد متخلفة ${n('carry')} · يعيد السنة ${n('repeat')} · ينتظر نتائج ${n('waiting')} · خريجون ${n('graduate')}',
+        'Promoted ${n('promoted')} · with carry-over ${n('carry')} · repeat ${n('repeat')} · waiting for grades ${n('waiting')} · graduating ${n('graduate')}');
+    if (!await appConfirm(context, message: msg, confirmLabel: t('تنفيذ الترحيل', 'Promote'))) return;
+    await orgCall(() => _s.api.post(base, body: {'dry_run': false}), ok: t('تم الترحيل', 'Promoted'));
+  }
+
+  Future<void> _makeup() async {
+    if (widget.terms.isEmpty) return;
+    final term = await showAppSheet<int>(context, (ctx) => ListView(shrinkWrap: true, padding: const EdgeInsets.all(16), children: [
+          AppSectionTitle(t('فصل الدور الثاني', 'Make-up term')),
+          for (final x in widget.terms)
+            ListTile(title: Text(termTitle(x)), onTap: () => Navigator.pop(ctx, asInt(x['id']))),
+        ]));
+    if (term == null) return;
+    final r = await orgCall(() => _s.api.post('${widget.reg}/programs/${widget.program['id']}/makeup', body: {'term_id': term}));
+    if (r.ok) toast(t('سُجِّل ${r.map['registered']} مقرر للدور الثاني', '${r.map['registered']} course registration(s) for the make-up round'));
   }
 
   Future<void> _addGroup() async {
@@ -741,6 +811,16 @@ class _ProgramSheetState extends State<_ProgramSheet> {
             child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning,
                 text: t('في النظام التقليدي يكون التسجيل تلقائياً حسب الفرقة، ولا يسجل الطالب بنفسه.', 'In the traditional system registration is automatic by year; students do not self-register.')),
           ),
+        if (_system == 'traditional') ...[
+          const SizedBox(height: 10),
+          AppField(controller: _carry, label: t('أقصى عدد مقررات متخلفة مع النقل (فارغ = اللائحة)', 'Max carry-over courses to still be promoted (empty = rules)'),
+              keyboard: TextInputType.number, ltr: true),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            AppPill(icon: Icons.trending_up_rounded, label: t('ترحيل الطلاب للفرقة التالية', 'Promote students'), onTap: _promote),
+            AppPill(icon: Icons.replay_rounded, label: t('الدور الثاني', 'Make-up round'), onTap: _makeup),
+          ]),
+        ],
         const SizedBox(height: 10),
         Row(children: [
           Expanded(child: AppField(controller: _total, label: t('ساعات التخرج', 'Graduation credits'), keyboard: TextInputType.number, ltr: true, onChanged: (_) => setState(() {}))),
@@ -786,8 +866,30 @@ class _ProgramSheetState extends State<_ProgramSheet> {
                       onChanged: (v) => setState(() => _cur[asInt(course['id'])]!['required'] = v ?? true),
                     ),
                   ),
+                  if (widget.levels.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppDropdown<String?>(
+                        value: widget.levels.contains(_cur[asInt(course['id'])]!['level_key']) ? '${_cur[asInt(course['id'])]!['level_key']}' : null,
+                        hint: Text(_system == 'traditional' ? t('الفرقة', 'Year') : t('المستوى', 'Level')),
+                        items: [for (final k in widget.levels) DropdownMenuItem<String?>(value: k, child: Text(k))],
+                        onChanged: (v) => setState(() => _cur[asInt(course['id'])]!['level_key'] = v),
+                      ),
+                    ),
+                  ],
+                  if (_system == 'traditional') ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: AppDropdown<String?>(
+                        value: _cur[asInt(course['id'])]!['term_kind'] as String?,
+                        hint: Text(t('الفصل', 'Term')),
+                        items: [for (final k in const ['term1', 'term2', 'summer']) DropdownMenuItem<String?>(value: k, child: Text(termKindText(k)))],
+                        onChanged: (v) => setState(() => _cur[asInt(course['id'])]!['term_kind'] = v),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
-                  if (keys.isNotEmpty)
+                  if (keys.isNotEmpty && _system != 'traditional')
                     Expanded(
                       child: AppDropdown<String>(
                         value: keys.contains(_cur[asInt(course['id'])]!['group_key']) ? '${_cur[asInt(course['id'])]!['group_key']}' : keys.first,
@@ -925,6 +1027,45 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
     if (mounted) setState(() {});
   }
 
+  Future<void> _editGrade(int? i) async {
+    final scale = asMapList(_rules?['grade_scale']);
+    final g = i == null ? <String, dynamic>{} : scale[i];
+    final letter = TextEditingController(text: '${g['letter'] ?? ''}');
+    final min = TextEditingController(text: '${g['min'] ?? ''}');
+    final pts = TextEditingController(text: '${g['points'] ?? ''}');
+    var pass = i != null && '${_rules?['pass_letter']}' == '${g['letter']}';
+    final res = await showAppSheet<String>(context, (ctx) => StatefulBuilder(builder: (ctx, set) => Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            AppSectionTitle(t('تقدير', 'Letter grade')),
+            AppField(controller: letter, label: t('الحرف', 'Letter'), ltr: true),
+            const SizedBox(height: 8),
+            AppField(controller: min, label: t('من نسبة %', 'From percent'), keyboard: TextInputType.number, ltr: true),
+            const SizedBox(height: 8),
+            AppField(controller: pts, label: t('النقاط', 'Points'), keyboard: const TextInputType.numberWithOptions(decimal: true), ltr: true),
+            AppSwitchTile(title: t('أدنى تقدير للنجاح', 'Lowest passing letter'), value: pass, onChanged: (v) => set(() => pass = v)),
+            const SizedBox(height: 12),
+            AppPrimaryButton(label: t('تم', 'Done'), onPressed: () => Navigator.pop(ctx, 'save')),
+            if (i != null)
+              TextButton(onPressed: () => Navigator.pop(ctx, 'delete'), child: Text(t('حذف', 'Delete'), style: TextStyle(color: context.colors.danger))),
+          ]),
+        )));
+    if (res == null) return;
+    setState(() {
+      final list = [for (final x in scale) Map<String, dynamic>.from(x)];
+      if (res == 'delete') {
+        list.removeAt(i!);
+      } else {
+        final row = {'letter': letter.text.trim(), 'min': double.tryParse(min.text.trim()) ?? 0, 'points': double.tryParse(pts.text.trim()) ?? 0};
+        if (row['letter'] == '') return;
+        i == null ? list.add(row) : list[i] = row;
+        if (pass) _rules!['pass_letter'] = row['letter'];
+      }
+      list.sort((a, b) => asDouble(b['min']).compareTo(asDouble(a['min'])));
+      _rules!['grade_scale'] = list;
+    });
+  }
+
   static Map<String, dynamic> jsonCopy(Map<String, dynamic> m) =>
       {for (final e in m.entries) e.key: e.value is Map ? jsonCopy(asMap(e.value)) : e.value is List ? List.of(e.value as List) : e.value};
 
@@ -966,10 +1107,27 @@ class _RulesTabState extends State<_RulesTab> with _Loads {
       return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), children: [
         if (m['inherited_from'] != null)
           AppBanner(icon: Icons.account_tree_rounded, text: t('اللائحة موروثة من المؤسسة الأم — الحفظ هنا ينشئ لائحة خاصة', 'Inherited from the parent organization — saving here creates this organization\'s own rules')),
-        AppSectionTitle(t('سلم التقديرات', 'Grade scale')),
+        AppSectionTitle(t('سلم التقديرات', 'Grade scale'),
+            subtitle: t('من الأعلى للأدنى، وآخر تقدير يبدأ من 0', 'Highest first; the last letter starts at 0'),
+            trailing: AppPill(icon: Icons.add_rounded, label: t('تقدير', 'Letter'), onTap: () => _editGrade(null))),
         AppCard(
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            for (final g in asMapList(r['grade_scale'])) AppBadgePill('${g['letter']} ≥ ${g['min']}% = ${g['points']}', color: c.primary),
+          child: Column(children: [
+            for (var i = 0; i < asMapList(r['grade_scale']).length; i++)
+              InkWell(
+                onTap: () => _editGrade(i),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(children: [
+                    SizedBox(width: 48, child: Text('${asMapList(r['grade_scale'])[i]['letter']}', style: appText(14, w: FontWeight.w700))),
+                    Expanded(child: Text('≥ ${asMapList(r['grade_scale'])[i]['min']}%', style: appText(13))),
+                    Text('${asMapList(r['grade_scale'])[i]['points']}', style: appText(13, w: FontWeight.w700, c: c.primary)),
+                    if ('${r['pass_letter']}' == '${asMapList(r['grade_scale'])[i]['letter']}') ...[
+                      const SizedBox(width: 8),
+                      AppBadgePill(t('أدنى نجاح', 'Lowest pass'), color: c.success),
+                    ],
+                  ]),
+                ),
+              ),
           ]),
         ),
         AppSectionTitle(t('الأرقام', 'Numbers')),

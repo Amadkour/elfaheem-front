@@ -141,6 +141,9 @@ String registrarCodeText(String code) => switch (code) {
       'decision_cannot_apply' => t('تعذّر تنفيذ القرار', 'The decision cannot be applied'),
       'no_exception_needed' => t('يمكنك التسجيل مباشرة', 'You can register directly'),
       'exception_not_possible' => t('لا يمكن طلب استثناء لهذا السبب', 'No exception is possible for this reason'),
+      'bad_registrar_rules' => t('قيمة غير صحيحة في اللائحة (راجع سلم التقديرات والحدود)', 'Invalid rule value (check the grade scale and limits)'),
+      'staff_consent_pending' => t('بانتظار موافقة أعضاء هيئة التدريس', 'Waiting for staff consent'),
+      'not_advisor' => t('لست المرشد الأكاديمي لهذا الطالب', "You are not this student's advisor"),
       'not_instructor' => t('لست مدرس هذا المقرر', 'You do not teach this course'),
       'students_only' => t('التسجيل للطلاب فقط', 'Registration is for students'),
       _ => code,
@@ -171,6 +174,10 @@ String decisionKindText(String? k) => switch (k) {
       'graduation_candidates' => t('مرشحون للتخرج', 'Graduation candidates'),
       'calendar_generated' => t('تقويم مولّد تلقائياً', 'Generated calendar'),
       'grades_submitted' => t('درجات بانتظار الاعتماد', 'Grades awaiting approval'),
+      'staff_consent' => t('موافقة عضو على الجدول', 'Staff consent'),
+      'staff_overload' => t('عبء تدريسي زائد', 'Teaching overload'),
+      'allocation_tie' => t('تساوٍ عند حد القبول', 'Tie at the admission cut-off'),
+      'allocation_done' => t('توزيع الأقسام بالجدارة', 'Departments allocated by merit'),
       _ => k ?? '',
     };
 
@@ -186,6 +193,7 @@ String decisionActionText(Map<String, dynamic>? a) => switch (a?['action']) {
       'capacity' => t('تغيير سعة الشعبة', 'Change the section capacity'),
       'waive_denial' => t('إلغاء الحرمان', 'Waive the denial'),
       'graduate' => t('اعتماد التخرج', 'Approve graduation'),
+      'program_seat' => t('مقعد إضافي وقبولهم', 'Add seats and admit them'),
       'keep' => t('الإبقاء كما هو', 'Keep as it is'),
       'none' || null => t('لا إجراء', 'No action'),
       _ => '${a?['action']}',
@@ -196,6 +204,12 @@ const _days = {
   'tuesday': ('الثلاثاء', 'Tue'), 'wednesday': ('الأربعاء', 'Wed'), 'thursday': ('الخميس', 'Thu'),
   'friday': ('الجمعة', 'Fri'),
 };
+
+/// Weekday key ("sunday") → short localized name.
+String dayText(String day) {
+  final d = _days[day];
+  return d == null ? day : t(d.$1, d.$2);
+}
 
 /// One meeting {day, start, end} (minutes after midnight) → "Sun 08:00–09:30".
 String meetingText(Map<String, dynamic> m) {
