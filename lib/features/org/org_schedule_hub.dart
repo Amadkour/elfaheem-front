@@ -244,7 +244,8 @@ class NextStepBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: text),
           const SizedBox(width: 12),
-          button,
+          // AppPrimaryButton fills its width: an unbounded Row slot would throw
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 260), child: button),
         ]);
       }),
     );

@@ -25,9 +25,10 @@ Widget layoutHost(Widget child, {double scale = 1.3, bool scaffold = true}) {
   );
 }
 
-/// Pumps [build] at every size × language and expects no exception. [settle] pumps a few frames (no
-/// pumpAndSettle: skeleton shimmers repeat forever).
-Future<void> expectNoLayoutErrors(WidgetTester tester, Widget Function() build, {bool scaffold = true, int frames = 3}) async {
+/// Pumps [build] at every size × language and expects no exception. A few frames are pumped (no pumpAndSettle:
+/// skeleton shimmers repeat forever). [act] runs after the first frames (e.g. tap a button that opens a sheet).
+Future<void> expectNoLayoutErrors(WidgetTester tester, Widget Function() build,
+    {bool scaffold = true, int frames = 3, Future<void> Function(WidgetTester tester)? act}) async {
   final prevLang = AppConfig.lang;
   addTearDown(() {
     AppConfig.lang = prevLang;
@@ -43,6 +44,12 @@ Future<void> expectNoLayoutErrors(WidgetTester tester, Widget Function() build, 
       await tester.pumpWidget(layoutHost(build(), scaffold: scaffold));
       for (var i = 0; i < frames; i++) {
         await tester.pump(const Duration(milliseconds: 100));
+      }
+      if (act != null) {
+        await act(tester);
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
       }
       final e = tester.takeException();
       expect(e, isNull, reason: 'layout error at ${size.width.toInt()}x${size.height.toInt()} / $lang: $e');

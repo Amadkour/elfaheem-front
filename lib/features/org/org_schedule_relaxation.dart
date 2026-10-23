@@ -423,7 +423,8 @@ class TimetablePreview extends StatelessWidget {
     final days = ScheduleDraft.fromJson(p.schedule ?? const {}).days;
     final g = TimetableGrid.build(slots, p.periods, days: days);
     final labels = dayLabelsPlain();
-    const dayW = 92.0, colW = 132.0, rowH = 78.0;
+    const dayW = 92.0, colW = 132.0;
+    final rowH = MediaQuery.textScalerOf(context).scale(78).clamp(78.0, 124.0); // grows with the text scale
     return SingleChildScrollView(
       padding: const EdgeInsets.all(12),
       child: SingleChildScrollView(
@@ -444,7 +445,7 @@ class TimetablePreview extends StatelessWidget {
           ]),
           for (final d in g.days)
             Row(children: [
-              SizedBox(width: dayW, height: rowH, child: Center(child: Text(labels[d] ?? d, style: orgText(context, w: FontWeight.w800)))),
+              SizedBox(width: dayW, height: rowH, child: Center(child: Text(labels[d] ?? d, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, w: FontWeight.w800)))),
               for (final e in g.rows[d]!)
                 Container(
                   width: colW * e.span + 4 * (e.span - 1), // spans the 2+2 px gaps between the merged columns
@@ -460,8 +461,8 @@ class TimetablePreview extends StatelessWidget {
                   ),
                   child: e.isEmpty
                       ? const SizedBox.shrink()
-                      // fixed-height cell: one line per session when several share it, and clipped under a large text scale
-                      : Column(clipBehavior: Clip.hardEdge, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      // fixed-height cell: one line per session when several share it; a non-scrolling scroll view clips what's left
+                      : SingleChildScrollView(physics: const NeverScrollableScrollPhysics(), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           for (final s in e.sessions.take(2))
                             Text(
                                 '${names.course(s['course_id'])}${s['kind'] == 'lab' ? ' · ${t('عملي', 'Lab')}' : ''}${s['room_id'] == null ? '' : ' · ${names.room(s['room_id'])}'}',
@@ -469,7 +470,7 @@ class TimetablePreview extends StatelessWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: orgText(context, size: 11, w: FontWeight.w700)),
                           if (e.sessions.length > 2) Text('+${e.sessions.length - 2}', style: orgText(context, size: 11, color: c.textMedium)),
-                        ]),
+                        ])),
                 ),
             ]),
         ]),

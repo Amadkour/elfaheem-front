@@ -469,6 +469,8 @@ Future<int?> showExamSettingsSheet(BuildContext context, OrgScheduleProvider p, 
                         'sittings': sittings,
                         'cohort_source': cohorts ? 'timetables' : 'enrollments',
                         'max_per_day': maxPerDay,
+                        // the PUT replaces every field: keep the course list this form doesn't edit
+                        if (existing != null) 'course_ids': existing['course_ids'],
                         if (existing != null) 'expected_version': existing['version'],
                       };
                       try {

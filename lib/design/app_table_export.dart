@@ -175,7 +175,7 @@ class _ExportSheetState extends State<_ExportSheet> {
     // Short space (a phone in landscape, the keyboard open on the column search, a large text size): the whole sheet
     // scrolls instead of the fixed parts overflowing around the column list.
     return LayoutBuilder(builder: (context, box) {
-      final compact = box.maxHeight < 560;
+      final compact = box.maxHeight < MediaQuery.textScalerOf(context).scale(560); // more room needed under a large text size
       final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       admin.SheetHeader(tx('tx_export', 'Export', 'تصدير')),
       Padding(
@@ -233,11 +233,16 @@ class _ExportSheetState extends State<_ExportSheet> {
                 child: Text('$_selectedCount / $total', style: dl.dlText(11.5, w: FontWeight.w800, c: c.primary)),
               ),
             ),
-            const Spacer(),
-            if (_selectable > 0) ...[
-              _MiniButton(label: tx('tx_select_all', 'All', 'الكل'), onTap: busy ? null : () => _all(true)),
-              _MiniButton(label: tx('tx_select_none', 'None', 'لا شيء'), onTap: busy ? null : () => _all(false)),
-            ],
+            const SizedBox(width: 8),
+            // wraps under a large text size / on a narrow phone instead of overflowing
+            Expanded(
+              child: _selectable > 0
+                  ? Wrap(alignment: WrapAlignment.end, children: [
+                      _MiniButton(label: tx('tx_select_all', 'All', 'الكل'), onTap: busy ? null : () => _all(true)),
+                      _MiniButton(label: tx('tx_select_none', 'None', 'لا شيء'), onTap: busy ? null : () => _all(false)),
+                    ])
+                  : const SizedBox.shrink(),
+            ),
           ]),
         ),
         if (total > 8)

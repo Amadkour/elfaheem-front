@@ -382,7 +382,7 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
 
   Future<void> _decide(Map<String, dynamic> p, bool approve) async {
     final note = TextEditingController();
-    final ok = await showAppSheet<bool>(context, (ctx) => Padding(
+    final ok = await showAppSheet<bool>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSheetHeader(approve ? t('اعتماد الدفعة', 'Approve payment') : t('رفض الإيصال', 'Reject receipt')),

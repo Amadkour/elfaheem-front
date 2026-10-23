@@ -34,7 +34,6 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart' show WideShell, RailShell, MobileShell;
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart' show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
@@ -189,7 +188,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
     context.watch<LangProvider>();
     final session = context.watch<OrgSession>();
     if (!session.loaded) {
-      return const BasePage(child: Center(child: AppLoadingIndicator()));
+      return const BasePage(child: AppListSkeleton(items: 5));
     }
     if (session.loaded && session.items.isEmpty) {
       final auth = context.read<MyAuthProvider>();
@@ -203,7 +202,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
             if (mounted) Navigator.of(context).pushReplacementNamed('/org_member');
           });
         }
-        return const BasePage(child: Center(child: AppLoadingIndicator()));
+        return const BasePage(child: AppListSkeleton(items: 5));
       }
       return BasePage(child: _FirstOrganization());
     }
@@ -345,7 +344,7 @@ class _SectionHubState extends State<_SectionHub> {
     if (widget.subs.length == 1) return widget.subs.first.$4;
     return Column(children: [
       SizedBox(
-        height: 56,
+        height: 16 + MediaQuery.textScalerOf(context).scale(40), // the chips grow with the text size
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),

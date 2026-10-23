@@ -42,7 +42,12 @@ class OrgPlatformContext {
     } catch (e) {
       // older server / no access: keep the platform defaults — never block opening the organization
       debugPrint('[OrgPlatformContext] $orgId: $e');
-      if (seq == _seq) _openId = null;
+      if (seq == _seq) {
+        // don't leave the PREVIOUS organization's timezone / feature offs applied to this one
+        _openId = null;
+        AppTime.configureOrg(null, null);
+        AppConfig.setOrgDisableList(null);
+      }
     }
   }
 

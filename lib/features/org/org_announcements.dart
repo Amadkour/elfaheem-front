@@ -1803,7 +1803,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
   }
 
   Future<void> _export() async {
-    final fmt = await showAppSheet<String>(context, (ctx) => Padding(
+    final fmt = await showAppSheet<String>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             AppSheetHeader(t('تصدير «${annPeopleLists(widget.hasForm)[_list]}»', 'Export “${annPeopleLists(widget.hasForm)[_list]}”')),
@@ -1846,7 +1846,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
             : null,
       ),
       SizedBox(
-        height: 42,
+        height: MediaQuery.textScalerOf(context).scale(42), // the chips grow with the text size
         child: ListView(scrollDirection: Axis.horizontal, children: [
           for (final e in lists.entries)
             Padding(
@@ -1961,7 +1961,7 @@ class _PersonRow extends StatelessWidget {
                   Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(icon, size: 13, color: col),
                     const SizedBox(width: 3),
-                    Text(text, style: orgText(context, size: 11, color: c.textMedium)),
+                    Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11, color: c.textMedium))),
                   ]),
               ]),
             ],

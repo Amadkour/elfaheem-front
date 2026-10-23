@@ -398,7 +398,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
               ]),
             ),
             const SizedBox(height: 8),
-            Row(children: [
+            Wrap(children: [
               TextButton(onPressed: () => set(sel.clear), child: Text(t('متاح دائماً', 'Always available'))),
               TextButton(onPressed: () => set(() {
                     for (final d in days) {

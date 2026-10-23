@@ -334,7 +334,7 @@ class DlTag extends StatelessWidget {
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
       if (icon != null) ...[Icon(icon, size: 11, color: color), const SizedBox(width: 3)],
-      Text(label, style: dlText(10.5, w: FontWeight.w700, c: color)),
+      Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, w: FontWeight.w700, c: color))),
     ]),
   );
 }
@@ -391,7 +391,7 @@ class DlPrimaryButton extends StatelessWidget {
             ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
-          Text(label, style: dlText(14.5, w: FontWeight.w800, c: Colors.white)),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: Colors.white))),
         ]),
       ),
     );
