@@ -34,6 +34,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
   bool _savingRegion = false, _featuresMissing = false;
   final Set<String> _busyKeys = {};
   String _q = '';
+  String? _error; // the region could not be loaded (not a missing route)
 
   String get _base => context.read<OrgSession>().base;
 
@@ -48,6 +49,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
     final fr = await orgCall(() => ApiClient().get('$_base/features'), quiet: true);
     if (!mounted) return;
     setState(() {
+      _error = !rr.ok && !rr.endpointMissing ? orgErrorText(rr.error!) : null;
       _region = rr.ok ? rr.map : {};
       _zone = _region?['timezone'] as String?;
       _fmt = _region?['time_format'] as String?;
@@ -98,6 +100,16 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    if (_error != null) {
+      return AppEmpty(
+          icon: Icons.cloud_off_rounded,
+          title: _error!,
+          actionLabel: t('إعادة المحاولة', 'Try again'),
+          onAction: () {
+            setState(() => _region = _features = _error = null);
+            _load();
+          });
+    }
     if (_region == null || _features == null) return const AppListSkeleton(items: 5);
     final eff = asMap(_region!['effective']);
     final plat = asMap(_region!['platform']);

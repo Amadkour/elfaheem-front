@@ -89,7 +89,9 @@ Future<void> _openManaged(BuildContext context, int orgId, String title, Widget 
   s.select(orgId);
   await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title), child: page)));
-  AppModeController.instance.refresh();
+  AppModeController.instance
+    ..applyOrgContext() // the management pages applied OrgSession's organization — back to the member's one
+    ..refresh();
 }
 
 /// Opens the full management dashboard on [orgId].
@@ -99,7 +101,9 @@ Future<void> openOrgManagement(BuildContext context, int orgId) async {
   if (!context.mounted) return;
   s.select(orgId);
   await Navigator.of(context).pushNamed('/org_dashboard');
-  AppModeController.instance.refresh();
+  AppModeController.instance
+    ..applyOrgContext() // the management pages applied OrgSession's organization — back to the member's one
+    ..refresh();
 }
 
 /// From an inbox "approval" item to the page that decides it. Department-scoped people land in their department.

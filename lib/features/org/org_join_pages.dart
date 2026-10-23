@@ -25,6 +25,7 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
+import 'org_access_joining.dart' show OrgAccessJoiningPage;
 import 'org_dynamic_form.dart';
 import 'org_providers.dart';
 import 'org_services_pages.dart' show fieldTypes, fieldIcons;
@@ -761,56 +762,13 @@ class _RequestsTab extends StatelessWidget {
   }
 }
 
-/// Every pending request I may decide, across all units of the organization.
-class OrgJoinInboxPage extends StatefulWidget {
+/// The organization's joining inbox: people asking to join the organization AND its departments (select many →
+/// accept / reject), plus — for org admins — join codes and "how people join" (org_access_joining.dart).
+class OrgJoinInboxPage extends StatelessWidget {
   const OrgJoinInboxPage({super.key});
 
   @override
-  State<OrgJoinInboxPage> createState() => _OrgJoinInboxPageState();
-}
-
-class _OrgJoinInboxPageState extends State<OrgJoinInboxPage> {
-  List<Map<String, dynamic>>? _rows;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
-  }
-
-  Future<void> _load() async {
-    final s = context.read<OrgSession>();
-    final r = await orgCall(() => s.api.get('${s.base}/join-requests/inbox'));
-    if (!mounted) return;
-    setState(() {
-      _rows = r.ok ? asMapList(r.map['items']) : _rows;
-      _failed = !r.ok && _rows == null;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = _rows;
-    return OrgAsync(
-      loading: rows == null && !_failed,
-      failed: _failed,
-      onRetry: _load,
-      child: rows == null
-          ? const SizedBox.shrink()
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: rows.isEmpty
-                  ? ListView(children: [
-                      OrgEmpty(icon: Icons.inbox_rounded, title: t('لا طلبات تنتظر قرارك', 'No requests waiting for you'),
-                          message: t('تظهر هنا طلبات الانضمام للإدارات والأقسام التي أنت معتمد لها.', 'Join requests for the units you approve appear here.')),
-                    ])
-                  : ListView(padding: const EdgeInsets.only(top: 8, bottom: 40), children: [
-                      for (final r in rows) JoinRequestCard(row: r, showUnit: true, onChanged: _load),
-                    ]),
-            ),
-    );
-  }
+  Widget build(BuildContext context) => const OrgAccessJoiningPage();
 }
 
 class JoinRequestCard extends StatelessWidget {

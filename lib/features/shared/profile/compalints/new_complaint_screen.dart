@@ -29,7 +29,6 @@ import 'complaint_model.dart';
 import 'complaint_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});

@@ -164,7 +164,7 @@ class _OrgAvailabilityRequestsPageState extends State<OrgAvailabilityRequestsPag
                         PopupMenuButton<String>(onSelected: (v) async {
                           if (v == 'edit') await _edit(it);
                           if (v == 'close') { await OrgApi.i.put('$_base/${it['id']}', {...it, 'status': 'closed'}, t('أُغلق', 'Closed')); _load(); }
-                          if (v == 'delete' && await confirm(context, message: t('حذف الطلب؟', 'Delete?'), danger: true)) { await OrgApi.i.del('$_base/${it['id']}'); _load(); }
+                          if (v == 'delete' && context.mounted && await confirm(context, message: t('حذف الطلب؟', 'Delete?'), danger: true)) { await OrgApi.i.del('$_base/${it['id']}'); _load(); }
                         }, itemBuilder: (_) => [
                           PopupMenuItem(value: 'edit', child: Text(t('تعديل', 'Edit'))),
                           if (it['status'] == 'open') PopupMenuItem(value: 'close', child: Text(t('إغلاق', 'Close'))),

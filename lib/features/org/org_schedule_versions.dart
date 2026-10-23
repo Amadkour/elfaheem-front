@@ -6,12 +6,9 @@
 //   rankVersions          feasible first, then the least relaxation of the most protected tier, then stability
 //   memberTimetable       one teacher's / assistant's / group's / room's sessions only
 //   TimetableCopy         a stored revision used as a copy; outdated once the live timetable differs from it
-//   timetableCsv          export (UTF-8 with BOM so Excel shows Arabic)
 //
 // Nothing here talks to the server or guesses: a figure the server did not send stays null and is shown as "—".
 library;
-
-import 'dart:convert';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
@@ -395,13 +392,6 @@ class TimetableCopy {
 //  Export
 // ═════════════════════════════════════════════════════════════════════════════
 
-String _csvCell(Object? v) {
-  final s = '${v ?? ''}';
-  // a leading = + - @ would run as a formula in a spreadsheet
-  final safe = s.isNotEmpty && '=+-@'.contains(s[0]) ? "'$s" : s;
-  return safe.contains(RegExp('[",\n\r]')) ? '"${safe.replaceAll('"', '""')}"' : safe;
-}
-
 /// Names the export needs. Missing names fall back to "#id".
 class TimetableNames {
   const TimetableNames({this.courses = const {}, this.people = const {}, this.rooms = const {}, this.periods = const {}});
@@ -411,35 +401,6 @@ class TimetableNames {
   String course(Object? id) => id == null ? '' : courses[asInt(id)] ?? '#$id';
   String person(Object? id) => id == null ? '' : people[asInt(id)] ?? '#$id';
   String room(Object? id) => id == null ? '' : rooms[asInt(id)] ?? '#$id';
-}
-
-/// One CSV row per session. [header] lines (source version, copy, member …) are written first as `# …` comments.
-List<int> timetableCsv(List<Map<String, dynamic>> slots, TimetableNames n, {List<String> header = const [], Map<String, String> Function(Map<String, dynamic>)? extra}) {
-  final days = dayLabelsPlain();
-  final cols = [t('اليوم', 'Day'), t('الفترة', 'Period'), t('من', 'From'), t('إلى', 'To'), t('المقرر', 'Course'), t('النوع', 'Kind'), t('المجموعة', 'Group'), t('المكان', 'Room'), t('المدرس', 'Teacher'), t('المعيد', 'Assistant')];
-  final firstExtra = slots.isEmpty || extra == null ? const <String, String>{} : extra(slots.first);
-  final b = StringBuffer('﻿');
-  for (final h in header) {
-    b.writeln(_csvCell('# $h'));
-  }
-  b.writeln([...cols, ...firstExtra.keys].map(_csvCell).join(','));
-  for (final s in slots) {
-    final p = n.periods[asInt(s['period_id'])] ?? const {};
-    b.writeln([
-      days[s['day']] ?? s['day'],
-      p['label'] ?? '#${s['period_id']}',
-      clockOf(p['start_time']),
-      clockOf(p['end_time']),
-      n.course(s['course_id']),
-      s['kind'] == 'lab' ? t('عملي', 'Lab') : t('محاضرة', 'Lecture'),
-      s['group_no'] ?? 1,
-      n.room(s['room_id']),
-      n.person(s['teacher_id']),
-      n.person(s['assistant_id'] ?? s['admin_assistant_id']),
-      ...?extra?.call(s).values,
-    ].map(_csvCell).join(','));
-  }
-  return utf8.encode(b.toString());
 }
 
 /// Day names without depending on a widget tree (same labels as dayLabels()).

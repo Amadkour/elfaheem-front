@@ -31,6 +31,7 @@ import 'org_providers.dart' show orgDays;
 import 'org_schedule_versions.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_table_export.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model (pure)
@@ -1048,3 +1049,61 @@ class _ExportSheetState extends State<_ExportSheet> {
     ]);
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Exam timetables (midterm / final) — Excel · Word · PDF through the app's table exporter
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// [by]: 'date' (the whole timetable, a block per day) · 'invigilator' · 'room' (a block per person / room, each exam
+/// repeated under every one it involves). Times are the organization's wall clock, shown through AppTime.
+AppTableExport examTableExport({
+  required String title,
+  required List<Map<String, dynamic>> exams,
+  required TimetableNames names,
+  String by = 'date',
+  List<String> meta = const [],
+}) {
+  final rows = <Map<String, Object?>>[];
+  final sorted = [...exams]..sort((a, b) => '${a['date']} ${a['start_time']}'.compareTo('${b['date']} ${b['start_time']}'));
+  for (final x in sorted) {
+    final base = <String, Object?>{
+      'date': calendarDate(x['date']),
+      'from': clockOf(x['start_time']),
+      'to': clockOf(x['end_time']),
+      'course': names.course(x['course_id']),
+      'students': asInt(x['students']),
+      'rooms': [for (final r in (x['room_ids'] as List? ?? const [])) names.room(r)].join('، '),
+      'invigilators': [for (final u in (x['invigilator_ids'] as List? ?? const [])) names.person(u)].join('، '),
+    };
+    final keys = switch (by) {
+      'invigilator' => [for (final u in (x['invigilator_ids'] as List? ?? const [])) names.person(u)],
+      'room' => [for (final r in (x['room_ids'] as List? ?? const [])) names.room(r)],
+      _ => ['${base['date']}'],
+    };
+    for (final k in keys.isEmpty ? ['—'] : keys) {
+      rows.add({...base, 'group': k});
+    }
+  }
+  return AppTableExport(
+    id: 'org.exams.$by',
+    title: title,
+    meta: meta,
+    groupBy: 'group',
+    columns: [
+      AppExportColumn('group', switch (by) { 'invigilator' => t('المراقب', 'Invigilator'), 'room' => t('المكان', 'Room'), _ => t('اليوم', 'Day') }),
+      AppExportColumn('date', t('التاريخ', 'Date'), align: AppColAlign.center, width: 16),
+      AppExportColumn('from', t('من', 'From'), align: AppColAlign.center, width: 11),
+      AppExportColumn('to', t('إلى', 'To'), align: AppColAlign.center, width: 11),
+      AppExportColumn('course', t('المقرر', 'Course'), locked: true, total: AppTotal.count),
+      AppExportColumn('students', t('الطلاب', 'Students'), type: AppColType.integer, total: AppTotal.sum, width: 10),
+      AppExportColumn('rooms', t('الأماكن', 'Rooms')),
+      AppExportColumn('invigilators', t('المراقبون', 'Invigilators')),
+    ],
+    totalLabel: t('عدد الامتحانات', 'Exams'),
+    rows: rows,
+  );
+}
+
+Future<bool> showExamExport(BuildContext context,
+        {required String title, required List<Map<String, dynamic>> exams, required TimetableNames names, String by = 'date', List<String> meta = const []}) =>
+    showAppExportSheet(context, examTableExport(title: title, exams: exams, names: names, by: by, meta: meta));

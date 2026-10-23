@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppTime;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -208,7 +209,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (_loading && _mixData == null) {
-      return const Padding(padding: EdgeInsets.all(48), child: Center(child: CircularProgressIndicator()));
+      return const SizedBox(height: 300, child: AppListSkeleton(items: 3));
     }
     final org = _org;
     if (org.isEmpty) return const SizedBox.shrink();
@@ -311,8 +312,8 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
                         if ('${n['body'] ?? ''}'.isNotEmpty)
                           Text('${n['body']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, color: c.textMedium)),
                         const SizedBox(height: 4),
-                        Text('${asMap(n['department'])['name_ar'] ?? asMap(n['department'])['name_en'] ?? ''}${n['department'] == null ? '' : ' · '}${relTime(n['publish_at'])}',
-                            style: orgText(context, size: 11.5, color: c.textLight)),
+                        Text('${n['department'] == null ? '' : '${orgNameOf(asMap(n['department']))} · '}${relTime(n['publish_at'])}',
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textLight)),
                       ])),
                     ]),
                   ),
@@ -343,8 +344,10 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
                             child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                               DeptLogo(d: d, size: 40),
                               const SizedBox(height: 8),
-                              Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'), maxLines: 2, textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, w: FontWeight.w800)),
+                              Flexible(
+                                child: Text(t('${d['name_ar'] ?? d['name_en']}', '${d['name_en'] ?? d['name_ar']}'), maxLines: 2, textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis, style: orgText(context, size: 12.5, w: FontWeight.w800)),
+                              ),
                             ]),
                           ),
                         ),
@@ -408,8 +411,8 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(color: tone.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: Column(children: [
-            Text('${x['start_time'] ?? ''}', style: orgText(context, size: 13, w: FontWeight.w800, color: tone)),
-            Text('${x['end_time'] ?? ''}', style: orgText(context, size: 11, color: c.textMedium)),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(AppTime.clock(x['start_time']?.toString()), maxLines: 1, style: orgText(context, size: 13, w: FontWeight.w800, color: tone))),
+            FittedBox(fit: BoxFit.scaleDown, child: Text(AppTime.clock(x['end_time']?.toString()), maxLines: 1, style: orgText(context, size: 11, color: c.textMedium))),
           ]),
         ),
         const SizedBox(width: 12),

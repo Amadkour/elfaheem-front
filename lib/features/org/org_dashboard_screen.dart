@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBanner, AppCard, AppHeroStat, AppListSkeleton, AppPill, AppSectionTitle, AppSwitch, AppTime, appText, AppChoiceChip;
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -95,6 +96,7 @@ class _OrgTabs extends ChangeNotifier {
 class _OrgDash extends ChangeNotifier {
   Map<String, dynamic>? data;
   bool failed = false;
+  String? error;
   String? _key;
 
   Map<String, dynamic> attention(String key) =>
@@ -117,9 +119,11 @@ class _OrgDash extends ChangeNotifier {
       if (want != _key) return;               // the organization changed meanwhile
       data = r is Map ? Map<String, dynamic>.from(r) : null;
       failed = data == null;
-    } catch (_) {
+      error = null;
+    } catch (e) {
       if (want != _key) return;
       failed = data == null;
+      error = ApiException.from(e).message;
     }
     notifyListeners();
   }
@@ -135,6 +139,7 @@ class OrgDashboardScreen extends StatefulWidget {
 class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   final _tabs = _OrgTabs();
   final _dash = _OrgDash();
+  bool _movedToMember = false;
 
   @override
   void initState() {
@@ -187,6 +192,19 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
       return const BasePage(child: Center(child: AppLoadingIndicator()));
     }
     if (session.loaded && session.items.isEmpty) {
+      final auth = context.read<MyAuthProvider>();
+      if (auth.currentUser?.role == 'org-staff') {
+        // staff who manage nothing belong on the member dashboard (cold start before the overview was cached).
+        // One-way: '/org_member' never sends back here, so there is no redirect loop.
+        if (!_movedToMember) {
+          _movedToMember = true;
+          AppModeController.rememberManagesNothing(auth.currentUser?.id, true);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) Navigator.of(context).pushReplacementNamed('/org_member');
+          });
+        }
+        return const BasePage(child: Center(child: AppLoadingIndicator()));
+      }
       return BasePage(child: _FirstOrganization());
     }
     if (session.currentId != null && !session.approved) {
@@ -417,7 +435,7 @@ class _OrgHomePage extends StatelessWidget {
         if (dash.failed && d == null) {
           return ListView(children: [
             hero,
-            SizedBox(height: 260, child: ErrorRetry(message: t('تعذّر تحميل لوحة المؤسسة', 'Could not load the dashboard'), onRetry: refresh)),
+            Padding(padding: const EdgeInsets.symmetric(vertical: 24), child: ErrorRetry(message: dash.error ?? t('تعذّر تحميل لوحة المؤسسة', 'Could not load the dashboard'), onRetry: refresh)),
           ]);
         }
         if (d == null) {
@@ -1184,7 +1202,7 @@ Future<void> showJoinCode(BuildContext context) async {
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         final code = '${s.current?['join_code'] ?? '—'}';
-        return Padding(
+        return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('كود الانضمام', 'Join code')),

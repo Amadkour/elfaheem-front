@@ -123,32 +123,11 @@ class _HomeOrgMixState extends State<HomeOrgMix> {
   Widget build(BuildContext context) {
     final m = _mix;
     final weight = asInt(m?['org_weight']);
-    final reqAll = asMapList(m?['required']).where((x) => x['kind'] != 'availability').toList();
-    if (m == null || weight <= 10) {
-      // not in any organization: platform requirements still need the person
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        if (reqAll.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: OrgActionCard(icon: Icons.notification_important_rounded, color: context.colors.warning, badge: reqAll.length,
-                title: t('مطلوب منك', 'Needs your action'), subtitle: '${reqAll.first['title']}', onTap: () => _showRequired(reqAll)),
-          ),
-        const OrgHomeEntry(),
-      ]);
-    }
-    final c = context.colors;
-    final req = asMapList(m['required']);
-    // the organization itself now lives in its own home tab — here only what needs the person
-    if (req.isEmpty) return const SizedBox.shrink();
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (req.isNotEmpty)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: OrgActionCard(icon: Icons.notification_important_rounded, color: c.warning, badge: req.length,
-              title: t('مطلوب منك', 'Needs your action'), subtitle: '${req.first['title']}', onTap: () => _showRequired(req)),
-        ),
-
-    ]);
+    // "Needs your action" lives in ONE place: the unified inbox card (InboxPreviewCard) above this block.
+    // Here only the "join your university" entry for people outside any organization; the organization itself
+    // lives in its own home tab.
+    if (m == null || weight <= 10) return const OrgHomeEntry();
+    return const SizedBox.shrink();
   }
 }
 

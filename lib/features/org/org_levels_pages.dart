@@ -173,7 +173,7 @@ class _RuleSheetState extends State<_RuleSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(20, 4, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+      padding: const EdgeInsets.fromLTRB(20, 4, 20, 20), // the sheet already lifts above the keyboard
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         AppSheetHeader(widget.rule == null ? t('شرط جديد', 'New rule') : t('تعديل الشرط', 'Edit rule')),
         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -675,7 +675,7 @@ class _LevelEditorState extends State<_LevelEditor> {
       AppSheetHeader(widget.index >= widget.all.length ? t('مستوى جديد', 'New level') : t('تعديل ${d.label}', 'Edit ${d.label}')),
       Flexible(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), // the sheet already lifts above the keyboard
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _section(context, Icons.badge_rounded, t('الاسم', 'Name'), [
               Field(controller: _ar, label: t('الاسم بالعربية (مثلاً: الفرقة الأولى)', 'Arabic name (e.g. الفرقة الأولى)')),
@@ -908,7 +908,7 @@ class _MyLevelCardState extends State<MyLevelCard> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '${h['via'] == 'auto' ? t('انتقال تلقائي', 'Moved up automatically') : t('نقل من المؤسسة', 'Moved by your organization')} → ${_lname(levels.firstWhere((l) => l['key'] == h['to'], orElse: () => {'key': h['to']}))} · ${shortDate('${h['at']}')}',
+                  '${h['via'] == 'auto' ? t('انتقال تلقائي', 'Moved up automatically') : t('نقل من المؤسسة', 'Moved by your organization')} → ${_lname(levels.firstWhere((l) => l['key'] == h['to'], orElse: () => {'key': h['to']}))} · ${orgParseUtc(h['at']) == null ? '—' : AppTime.date(orgParseUtc(h['at'])!)}',
                   style: orgText(context, size: 12, color: c.textMedium),
                 ),
               ),

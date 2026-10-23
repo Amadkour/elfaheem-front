@@ -218,3 +218,35 @@ Only needed for e-mailing or attaching files from the server (e.g. on distribute
   (the app assumes yes, by priority).
 - Whether a joint rebalance of many timetables fits the existing `time_limit_s` (S:594); a larger default for
   rebalance runs may be needed.
+
+## G7 — Generation loop: one mode through every step (done)
+
+The coverage loop sends `settings.relaxation_mode = all_but_double_booking` for its run only. Before this, the next
+steps fell back to `soft_only` and un-placed what the loop had placed by breaking rules, so "complete" needed extra
+rounds: the regeneration started by an accepted suggestion (`settings: None`), the suggestion trials that measure it,
+`strategy: regenerate` slot additions and `POST /schedules/rebalance` without `settings`. All of them now inherit the
+mode from `result.relaxation_mode` (`schedule_jobs.inherited_settings`), the app also sends it with rebalance, and the
+suggestion engine treats a rule broken on purpose (`result.broken`) as a warning instead of an introduced hard
+conflict (`schedule_suggestions.broken_on_purpose`). A restore never writes run-only keys (`relaxation_mode`,
+`break_only`) into the timetable's settings. Courses whose staff is missing / not eligible are never offered time,
+room or rule-breaking options in the app — only "assign staff".
+
+## G8 — Break alternatives (done)
+
+`POST …/generate {trial: true, break_alternatives: true}`: the break-mode run gives the candidate rules (`broken`);
+one more run per rule with `settings.break_only = [rule]`; versions placing the most sessions are ranked by
+`solver.break_alternative_key` = (unplaced, broken rules per tier — most protected tier first, by
+`relaxation_priority` —, sessions affected, people affected, rules, soft cost) and at most 3 are stored as
+`alternative` revisions (`summary.break_alternative`). The combined run is kept only when no single rule reaches its
+coverage. Tests: `tests/org_v2/solver_alternatives_unit.py`, `e2e_loop_exams.py`; app: `org_schedule_relaxation.dart`.
+
+## G9 — Exam timetables (done)
+
+`OrgExamSchedule` / `OrgExamSlot`, `services/organization/schedule_exams.py`, routes `…/exam-schedules*`.
+Assumptions: one exam per course (every lecture group together); students = the course's lecture groups (course
+plans / enrolments); clashes = shared enrolments (+ optionally "each weekly timetable of the term is one cohort");
+invigilators = the course's teacher and assistants first, then other teaching staff of the timetable loads by fewest
+duties; weekly unavailability applies to exams by weekday and clock overlap with the periods; offices are never exam
+rooms; several rooms are combined when no single room seats everyone (one invigilator each). Window: midterm ≈ term
+days / 14 (5–10) centred on the midpoint, final ≈ term days / 8 (5–14) ending on the last day; editable inside the
+term. Not done: per-student personal exam view, exam-day suspension of the weekly timetable.

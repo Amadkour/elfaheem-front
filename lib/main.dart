@@ -841,7 +841,12 @@ abstract final class _SplashArt {
 
   static ui.Image? image;
 
+  /// Reduced motion from the platform: the hand-off overlay sits ABOVE MaterialApp, where there is no MediaQuery.
+  static bool get reduceMotion =>
+      WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+
   static Future<void> preload() async {
+    if (image != null) return; // retry after a fatal start: keep the decoded art (no second, leaked copy)
     try {
       final views = WidgetsBinding.instance.platformDispatcher.views;
       final dpr = views.isEmpty ? 3.0 : views.first.devicePixelRatio;
@@ -862,6 +867,14 @@ abstract final class _SplashArt {
       return RawImage(image: img, width: s.width, height: s.height, fit: BoxFit.fill, filterQuality: FilterQuality.medium);
     }
     return Image.asset(asset, width: s.width, height: s.height, fit: BoxFit.fill, gaplessPlayback: true);
+  }
+
+  /// Frees the decoded artwork once the hand-off finished (nothing paints it any more; a later splash —
+  /// e.g. a theme reload — falls back to Image.asset).
+  static void release() {
+    final img = image;
+    image = null;
+    img?.dispose();
   }
 }
 
@@ -931,7 +944,7 @@ class _SplashBodyState extends State<_SplashBody> with SingleTickerProviderState
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.maybeOf(context);
-    final reduce = mq?.disableAnimations ?? false;
+    final reduce = mq?.disableAnimations ?? _SplashArt.reduceMotion;
     final dark = (mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark;
     final bg = dark ? _emerald : _cream;
     final accent = dark ? _cream : _emerald;
@@ -1103,12 +1116,15 @@ class _SplashHandOffState extends State<_SplashHandOff> with SingleTickerProvide
     // Let the app paint its first frame underneath, then dissolve the splash.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? false) {
+      if (MediaQuery.maybeOf(context)?.disableAnimations ?? _SplashArt.reduceMotion) {
         _out.duration = const Duration(milliseconds: 220);
       }
       _out.forward().whenComplete(() {
         _done = true;
         if (mounted) setState(() {});
+        // after the frame that removed the overlay, nothing references the decoded artwork any more
+        WidgetsBinding.instance.addPostFrameCallback((_) => _SplashArt.release());
+        WidgetsBinding.instance.scheduleFrame();
       });
     });
   }

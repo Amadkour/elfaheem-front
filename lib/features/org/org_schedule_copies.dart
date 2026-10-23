@@ -5,14 +5,11 @@
 // at, so a copy is "outdated" as soon as the live timetable has a newer version. Member copies (a teacher's, an
 // assistant's, a student group's, a room's) are the copy's own sessions filtered by that member — they are always
 // consistent with the copy they come from and carry its number and version.
-// Export: the live timetable as the server's Excel (GET /orgs/{id}/export/schedule); a copy or a member copy as CSV.
+// Export: the live timetable as the server's Excel (GET /orgs/{id}/export/schedule); a copy or a member copy through the table export sheet.
 // Members themselves see their own sessions of PUBLISHED timetables (GET /org/public/schedule/me); sending a copy of
 // another version to them needs the server (docs/backend/scheduling-spec.md G5).
 library;
 
-import 'dart:typed_data';
-
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -43,15 +40,6 @@ String memberLabel(TimetableMember m, TimetableNames n) => switch (m.kind) {
       'room' => n.room(m.id),
       _ => '${n.course(m.id)} · ${m.sessionKind == 'lab' ? t('سكشن', 'Lab') : t('محاضرة', 'Lecture')} G${m.groupNo ?? 1}',
     };
-
-Future<void> saveTimetableCsv(String name, List<int> bytes) async {
-  try {
-    await FileSaver.instance.saveFile(name: name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_'), bytes: Uint8List.fromList(bytes), fileExtension: 'csv', mimeType: MimeType.csv);
-    toast(t('حُفظ الملف', 'File saved'));
-  } catch (e) {
-    toast(t('تعذر حفظ الملف', 'Could not save the file'), error: true);
-  }
-}
 
 Future<void> openTimetableCopies(BuildContext context, OrgScheduleProvider p, {required bool canEdit}) => Navigator.of(context).push(MaterialPageRoute(
     builder: (_) => BasePage(

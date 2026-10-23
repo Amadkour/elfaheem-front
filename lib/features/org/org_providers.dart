@@ -665,8 +665,19 @@ class OrgMembershipProvider extends AdminBase {
   /// → 'active' | 'pending' | null (failed; the reason was toasted)
   Future<String?> join({int? orgId, String? code}) async {
     try {
-      final r = await api.post('$orgBase/public/join', body: {if (orgId != null) 'org_id': orgId, if (code != null) 'code': code});
+      // a code goes through the one-box endpoint: organization codes (role / department defaults), the legacy
+      // organization code and department codes all work there
+      final r = code != null
+          ? await api.post('$orgBase/public/join/code', body: {'code': code})
+          : await api.post('$orgBase/public/join', body: {'org_id': ?orgId});
       await loadMine();
+      if (r is Map && r['kind'] == 'unit') {
+        if (r['needs_form'] == true) {
+          toast(t('هذا كود قسم له نموذج — افتحه من صفحة المؤسسة ← الأقسام', 'This department code has a form — open it from the organization page → Departments'));
+          return null;
+        }
+        return r['joined'] == true ? 'active' : 'pending';
+      }
       return r is Map ? r['status']?.toString() : null;
     } on ApiException catch (e) {
       // membership_ended: only this organization's membership is over — the account keeps working

@@ -14,7 +14,6 @@ import 'package:flutter_education_app/features/student/models.dart' show CourseM
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -24,6 +23,7 @@ import 'org_member_space.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
+import 'org_access_joining.dart' show openOrgJoin;
 import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -112,7 +112,7 @@ class _MembershipView extends StatelessWidget {
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'org_join',
         backgroundColor: c.primary,
-        onPressed: () => _joinSheet(context, p),
+        onPressed: () => openOrgJoin(context, onDone: p.loadMine),   // org_access_joining.dart: code · browse · my requests
         icon: const Icon(Icons.add_business_rounded, color: Colors.white),
         label: Text(t('انضمام لمؤسسة', 'Join an organization'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
       ),
@@ -189,65 +189,6 @@ class _OrgCard extends StatelessWidget {
       ]),
     );
   }
-}
-
-Future<void> _joinSheet(BuildContext context, OrgMembershipProvider p) async {
-  final code = TextEditingController();
-  bool busy = false;
-  p.search('');
-  await showAdminSheet<void>(context, (ctx) => ChangeNotifierProvider<OrgMembershipProvider>.value(
-        value: p,
-        child: StatefulBuilder(builder: (ctx, set) {
-          final c = ctx.colors;
-          final pp = ctx.watch<OrgMembershipProvider>();
-          Future<void> doJoin({int? id, String? code}) async {
-            set(() => busy = true);
-            final r = await pp.join(orgId: id, code: code);
-            if (!ctx.mounted) return;
-            set(() => busy = false);
-            if (r == 'active' || r == 'pending') {
-              Navigator.pop(ctx);
-              toast(r == 'active' ? t('أهلاً بك في المؤسسة 🎓', 'Welcome aboard 🎓') : t('أُرسل طلبك وبانتظار الموافقة', 'Request sent — waiting for approval'));
-            }
-          }
-
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SheetHeader(t('انضمام لمؤسسة', 'Join an organization')),
-              Text(t('لديك كود من مؤسستك؟', 'Have a code from your institution?'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
-              const SizedBox(height: 6),
-              Row(children: [
-                Expanded(child: TextField(controller: code, textCapitalization: TextCapitalization.characters, textDirection: TextDirection.ltr, decoration: InputDecoration(hintText: 'ABCD2345', border: OutlineInputBorder(borderRadius: BorderRadius.circular(14))))),
-                const SizedBox(width: 8),
-                SizedBox(width: 110, child: PrimaryButton(isLoading: busy, label: t('انضمام', 'Join'), onPressed: () => code.text.trim().isEmpty ? null : doJoin(code: code.text.trim()))),
-              ]),
-              const SizedBox(height: 14),
-              SearchBox(hint: t('ابحث عن جامعة أو كلية', 'Search a university or faculty'), onChanged: pp.search),
-              const SizedBox(height: 8),
-              Flexible(
-                child: pp.results.isEmpty
-                    ? Padding(padding: const EdgeInsets.all(20), child: Center(child: Text(t('لا نتائج', 'No results'))))
-                    : ListView(shrinkWrap: true, children: [
-                        for (final o in pp.results)
-                          ListTile(
-                            leading: IconBadge(orgTypeIcons[o['type']] ?? Icons.domain_rounded, orgColor(ctx, o), size: 40),
-                            title: Text(OrgSession.nameOf(o), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-                            subtitle: Text('${orgTypeLabels()[o['type']] ?? ''} · ${joinModeLabels()[o['join_mode']] ?? ''}'),
-                            trailing: o['my_status'] == 'active'
-                                ? Icon(Icons.check_circle_rounded, color: c.success)
-                                : o['my_status'] == 'pending'
-                                    ? StatusChip(t('قيد المراجعة', 'Pending'), c.warning)
-                                    : o['join_mode'] == 'code'
-                                        ? StatusChip(t('بكود', 'Code'), c.textMedium)
-                                        : TextButton(onPressed: busy ? null : () => doJoin(id: asInt(o['id'])), child: Text(o['join_mode'] == 'open' ? t('انضم', 'Join') : t('طلب انضمام', 'Request'))),
-                          ),
-                      ]),
-              ),
-            ]),
-          );
-        }),
-      ));
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

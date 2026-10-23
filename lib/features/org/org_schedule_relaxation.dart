@@ -434,6 +434,7 @@ class TimetablePreview extends StatelessWidget {
             for (final per in g.periods)
               Container(
                 width: colW,
+                margin: const EdgeInsets.symmetric(horizontal: 2),
                 padding: const EdgeInsets.all(6),
                 child: Column(children: [
                   Text('${per['label'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, w: FontWeight.w800)),
@@ -446,7 +447,7 @@ class TimetablePreview extends StatelessWidget {
               SizedBox(width: dayW, height: rowH, child: Center(child: Text(labels[d] ?? d, style: orgText(context, w: FontWeight.w800)))),
               for (final e in g.rows[d]!)
                 Container(
-                  width: colW * e.span,
+                  width: colW * e.span + 4 * (e.span - 1), // spans the 2+2 px gaps between the merged columns
                   height: rowH,
                   margin: const EdgeInsets.all(2),
                   padding: const EdgeInsets.all(6),
@@ -459,11 +460,12 @@ class TimetablePreview extends StatelessWidget {
                   ),
                   child: e.isEmpty
                       ? const SizedBox.shrink()
-                      : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      // fixed-height cell: one line per session when several share it, and clipped under a large text scale
+                      : Column(clipBehavior: Clip.hardEdge, crossAxisAlignment: CrossAxisAlignment.start, children: [
                           for (final s in e.sessions.take(2))
                             Text(
                                 '${names.course(s['course_id'])}${s['kind'] == 'lab' ? ' · ${t('عملي', 'Lab')}' : ''}${s['room_id'] == null ? '' : ' · ${names.room(s['room_id'])}'}',
-                                maxLines: 2,
+                                maxLines: e.sessions.length > 1 ? 1 : 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: orgText(context, size: 11, w: FontWeight.w700)),
                           if (e.sessions.length > 2) Text('+${e.sessions.length - 2}', style: orgText(context, size: 11, color: c.textMedium)),

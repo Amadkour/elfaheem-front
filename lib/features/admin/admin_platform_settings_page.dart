@@ -358,6 +358,7 @@ class AdminOrgFeePaymentsPage extends StatefulWidget {
 class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
   String _status = 'review';
   List<Map<String, dynamic>>? _items;
+  String? _error;
 
   @override
   void initState() {
@@ -366,11 +367,17 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
   }
 
   Future<void> _load() async {
-    setState(() => _items = null);
+    setState(() {
+      _items = null;
+      _error = null;
+    });
     final r = await orgCall(() => ApiClient().get('$_path/org-fee/payments',
-        queryParams: {if (_status.isNotEmpty) 'status': _status, 'size': 100}));
+        queryParams: {if (_status.isNotEmpty) 'status': _status, 'size': 100}), quiet: true);
     if (!mounted) return;
-    setState(() => _items = r.ok ? asMapList(r.map['items']) : const []);
+    setState(() {
+      _items = r.ok ? asMapList(r.map['items']) : const [];
+      _error = r.ok ? null : orgErrorText(r.error!);
+    });
   }
 
   Future<void> _decide(Map<String, dynamic> p, bool approve) async {
@@ -409,9 +416,11 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
       maxWith: 900,
       appBar: ScreenAppBar(title: t('إيصالات رسوم المؤسسات', 'Organization fee receipts')),
       child: Column(children: [
-        SizedBox(
-          height: 56,
-          child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.fromLTRB(16, 10, 16, 6), children: [
+        // no fixed height: the chips grow with the text size
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+          child: Row(children: [
             for (final f in filters.entries)
               Padding(
                 padding: const EdgeInsetsDirectional.only(end: 8),
@@ -425,7 +434,9 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
         Expanded(
           child: _items == null
               ? const AppListSkeleton()
-              : _items!.isEmpty
+              : _error != null
+                  ? AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Try again'), onAction: _load)
+                  : _items!.isEmpty
                   ? AppEmpty(icon: Icons.inbox_rounded, title: t('لا شيء هنا', 'Nothing here'))
                   : RefreshIndicator(
                       onRefresh: _load,
@@ -459,7 +470,7 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
                                 if (p['email'] != null) Text('${p['email']}', style: appText(12, c: c.textMedium)),
                                 if (p['transfer_reference'] != null) Text('#${p['transfer_reference']}', style: appText(12, c: c.textMedium)),
                                 if (p['created_at'] != null)
-                                  Text(AppTime.dateTime(DateTime.parse('${p['created_at']}Z'.replaceAll('ZZ', 'Z'))), style: appText(12, c: c.textLight)),
+                                  Text(AppTime.dateTime(orgParseUtc(p['created_at'])!), style: appText(12, c: c.textLight)),
                                 if (p['org_id'] != null) Text(t('استُخدمت لطلب #${p['org_id']}', 'Used by request #${p['org_id']}'), style: appText(12, c: c.textLight)),
                               ]),
                               if (p['proof_image_url'] != null) ...[

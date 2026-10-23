@@ -27,6 +27,7 @@ import 'org_academic_pages.dart' show MyAcademicPathPage;
 import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
+import 'org_platform_context.dart';
 
 const _pub = '$orgBase/public';
 
@@ -40,7 +41,9 @@ class OrgMemberSpace extends StatelessWidget {
     final c = context.colors;
     final col = orgColor(context, org);
     final id = asInt(org['id']);
-    return DefaultTabController(
+    return _OrgContextScope(
+      orgId: id,
+      child: DefaultTabController(
       length: 7,
       initialIndex: initialTab.clamp(0, 6),
       child: BasePage(
@@ -88,8 +91,40 @@ class OrgMemberSpace extends StatelessWidget {
           ),
         ]),
       ),
+      ),
     );
   }
+}
+
+/// While the space is open its organization's timezone / 12h-24h and feature offs apply; leaving it restores
+/// whatever organization (or the platform defaults) was applied before.
+class _OrgContextScope extends StatefulWidget {
+  const _OrgContextScope({required this.orgId, required this.child});
+  final int orgId;
+  final Widget child;
+
+  @override
+  State<_OrgContextScope> createState() => _OrgContextScopeState();
+}
+
+class _OrgContextScopeState extends State<_OrgContextScope> {
+  int? _prev;
+
+  @override
+  void initState() {
+    super.initState();
+    _prev = OrgPlatformContext.openId;
+    if (widget.orgId > 0) OrgPlatformContext.open(widget.orgId);
+  }
+
+  @override
+  void dispose() {
+    if (widget.orgId > 0 && _prev != widget.orgId) OrgPlatformContext.open(_prev);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Small loader used by every tab (GET → list).

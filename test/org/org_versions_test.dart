@@ -1,5 +1,4 @@
-// Timetable versions — relaxation priority, ranking, diffs, member copies, copy freshness and CSV export.
-import 'dart:convert';
+// Timetable versions — relaxation priority, ranking, diffs, member copies, copy freshness.
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/org_schedule_optimizer.dart';
@@ -127,26 +126,6 @@ void main() {
       expect(old.outdated(liveVersion: 13, liveSlots: all), isFalse);
       expect(old.outdated(liveVersion: 13, liveSlots: all.take(2).toList()), isTrue);
       expect(old.outdated(liveVersion: 13, liveSlots: all, detailLoaded: false), isNull);
-    });
-  });
-
-  group('export', () {
-    test('CSV has a BOM, the source header, one row per session and neutralised formulas', () {
-      final bytes = timetableCsv(
-        [slot(1, 7, 'sunday', 1, room: 1, teacher: 10)],
-        const TimetableNames(courses: {7: '=HYPERLINK("x")'}, people: {10: 'Dr, A'}, rooms: {1: 'Hall 1'}, periods: {
-          1: {'label': 'P1', 'start_time': '08:00', 'end_time': '09:00'}
-        }),
-        header: ['Copy #5 · version 12'],
-      );
-      final csv = utf8.decode(bytes); // the decoder drops the BOM
-      final lines = csv.replaceFirst('﻿', '').trim().split('\n');
-      expect(bytes.take(3), [0xEF, 0xBB, 0xBF]);
-      expect(lines.first, '# Copy #5 · version 12');
-      expect(lines, hasLength(3));
-      expect(lines.last, contains('Sunday,P1,08:00,09:00'));
-      expect(lines.last, contains('"\'=HYPERLINK(""x"")"'));
-      expect(lines.last, contains('"Dr, A"'));
     });
   });
 

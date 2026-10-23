@@ -172,7 +172,11 @@ class _ExportSheetState extends State<_ExportSheet> {
       AppExportFormat.pdf => tx('tx_export_as_pdf', 'Export to PDF', 'تصدير إلى PDF'),
     };
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+    // Short space (a phone in landscape, the keyboard open on the column search, a large text size): the whole sheet
+    // scrolls instead of the fixed parts overflowing around the column list.
+    return LayoutBuilder(builder: (context, box) {
+      final compact = box.maxHeight < 560;
+      final body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
       admin.SheetHeader(tx('tx_export', 'Export', 'تصدير')),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -258,7 +262,7 @@ class _ExportSheetState extends State<_ExportSheet> {
               ),
             ),
           ),
-        Flexible(child: _columnList(context)),
+        if (compact) _columnList(context) else Flexible(child: _columnList(context)),
       ],
       const SizedBox(height: 12),
       Padding(
@@ -287,6 +291,8 @@ class _ExportSheetState extends State<_ExportSheet> {
         child: dl.DlPrimaryButton(label: label, icon: _formatIcon(choice.format), busy: busy, onPressed: canExport ? _run : null),
       ),
     ]);
+      return compact ? SingleChildScrollView(child: body) : body;
+    });
   }
 
   Widget _label(BuildContext context, String text) => Padding(

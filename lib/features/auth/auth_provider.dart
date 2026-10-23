@@ -337,7 +337,11 @@ class MyAuthProvider extends BaseProvider {
     // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
     'org-admin' => '/org_dashboard',
     // … unless the member dashboard already knows this staff member manages nothing (e.g. an assistant only)
-    'org-staff' => AppModeController.instance.managesNothing ? '/org_member' : '/org_dashboard',
+    // (on a cold start the overview is not loaded yet → the answer cached by the last run)
+    'org-staff' => AppModeController.orgStaffHome(
+        loaded: AppModeController.instance.loaded,
+        managesNothing: AppModeController.instance.managesNothing,
+        cached: currentUser == null ? null : _storage.getFlag(AppModeController.managesNothingKey(currentUser!.id))),
     _ => '/dashboard',
   };
 

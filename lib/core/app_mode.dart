@@ -21,6 +21,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
+import '../features/org/org_platform_context.dart';
 import 'api_client.dart';
 
 enum AppMode { individual, organization }
@@ -81,6 +82,23 @@ class AppModeController extends ChangeNotifier {
   /// Loaded, and no organization gives this person any management right (routing of org-staff → '/org_member').
   bool get managesNothing => loaded && entries.isNotEmpty && entries.every((e) => e['manage'] == null);
 
+  /// Storage key of the last [managesNothing] answer (read synchronously by the cold-start routing).
+  static String managesNothingKey(int userId) => 'org_manages_nothing.$userId';
+
+  /// Remembers the answer for the next cold start (the overview is not loaded yet when the first route is picked).
+  static Future<void> rememberManagesNothing(int? userId, bool value) async {
+    if (userId == null) return;
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setBool(managesNothingKey(userId), value);
+    } catch (_) {}
+  }
+
+  /// Home route of an org-staff login: the live overview when loaded, else the answer cached by the last run.
+  /// Unknown → the management dashboard, which itself moves to '/org_member' once it knows nothing is managed.
+  static String orgStaffHome({required bool loaded, required bool managesNothing, bool? cached}) =>
+      (loaded ? managesNothing : cached == true) ? '/org_member' : '/org_dashboard';
+
   /// What waits in one organization (to do + approvals).
   static int pendingOf(Map<String, dynamic> entry) =>
       (_id(_map(entry['todo'])['total']) ?? 0) + (_id(_map(entry['approvals'])['total']) ?? 0);
@@ -126,6 +144,7 @@ class AppModeController extends ChangeNotifier {
           // first launch on this device → the smart default from the server
           _mode = _overview['suggested_mode'] == 'organization' ? AppMode.organization : AppMode.individual;
         }
+        rememberManagesNothing(_userId, entries.isNotEmpty && entries.every((e) => e['manage'] == null));
       }
     } catch (_) {
       // offline / old server (404) / paywall: keep the last answer; with nothing loaded the switch stays hidden
@@ -157,6 +176,36 @@ class AppModeController extends ChangeNotifier {
 
   /// Logout.
   Future<void> reset() => bindUser(null);
+
+  // ── organization context (timezone / 12h-24h + org feature offs) ─────────
+
+  /// Applies an organization's context (null = back to the platform defaults). Replaceable in tests.
+  @visibleForTesting
+  static void Function(int? orgId) applyContext = (id) => id == null ? OrgPlatformContext.close() : OrgPlatformContext.open(id);
+
+  int? _appliedOrg;
+
+  /// Every state change re-checks which organization is open: entering / switching applies its context,
+  /// leaving Organization mode clears it. Only transitions act, so the management dashboard (OrgSession) is not
+  /// overridden by unrelated refreshes.
+  @override
+  void notifyListeners() {
+    final want = isOrg ? currentOrgId : null;
+    if (want != _appliedOrg) {
+      final had = _appliedOrg;
+      _appliedOrg = want;
+      if (want != null || had != null) applyContext(want);
+    }
+    super.notifyListeners();
+  }
+
+  /// Re-applies the organization shown in Organization mode (after a page opened another organization's context,
+  /// e.g. returning from the management dashboard).
+  void applyOrgContext() {
+    final want = isOrg ? currentOrgId : null;
+    _appliedOrg = want;
+    if (want != null) applyContext(want);
+  }
 
   // ── helpers ───────────────────────────────────────────────────────────────
 

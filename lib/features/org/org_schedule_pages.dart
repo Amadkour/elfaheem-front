@@ -29,6 +29,8 @@ import 'org_timetable_parts.dart';
 import 'org_timetable_wizard.dart';
 import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
+import 'org_schedule_exams.dart' show openExamTimetables;
+import 'package:flutter_education_app/design/app_kit.dart' show AppHero, AppHeroStat, AppBanner, AppActionCard;
 import 'org_schedule_relaxation.dart' show openBreakAlternatives;
 import 'org_schedule_versions.dart' show calendarDate, clockOf, periodRange, stampOf;
 import 'package:flutter_education_app/core/app_time.dart';
@@ -68,7 +70,11 @@ class _ScheduleView extends StatelessWidget {
             labelColor: Colors.white,
             unselectedLabelColor: c.textMedium,
             labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13),
-            tabs: [Tab(text: t('الجداول', 'Timetables'), height: 40), Tab(text: t('التخطيط', 'Planning'), height: 40), Tab(text: t('الإعداد', 'Setup'), height: 40)],
+            tabs: [
+              Tab(text: t('الجداول', 'Timetables'), height: 40),
+              Tab(text: t('المقررات والهيئة', 'Courses & staff'), height: 40),
+              Tab(text: t('الفترات والأماكن', 'Periods & rooms'), height: 40),
+            ],
           ),
         ),
         const Expanded(child: TabBarView(children: [_TimetablesTab(), _PlanningTab(), _SetupTab()])),
@@ -206,7 +212,7 @@ class _PlanningTab extends StatelessWidget {
       if (p.periods.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: RowCard(accent: c.warning, child: Text(t('أضف الفترات أولاً من تبويب "الإعداد" ليظهر التخطيط كاملاً.', 'Add periods in the "Setup" tab first.'))),
+          child: RowCard(accent: c.warning, child: Text(t('أضف الفترات أولاً من تبويب "الفترات والأماكن" ليظهر التخطيط كاملاً.', 'Add periods in the "Periods & rooms" tab first.'))),
         ),
       Section(
         title: t('متطلبات المقررات', 'Course requirements'),
@@ -433,11 +439,52 @@ class _TimetablesTab extends StatelessWidget {
     final s = context.watch<OrgSession>();
     final c = context.colors;
     if (p.schedule != null) return _Studio(onSetup: (id) => _wizard(context, p, id: id));
+    final intro = [
+      AppHero(
+        icon: Icons.calendar_month_rounded,
+        title: t('الجداول الدراسية', 'Timetables'),
+        subtitle: t('أربع خطوات: ١) الإعداد — الفترات والأماكن والمدرسون · ٢) التوليد التلقائي · ٣) المراجعة والإصلاح · ٤) النشر والمشاركة. افتح أي جدول لترى خطوته التالية.',
+            'Four steps: 1) Set up — periods, rooms and teachers · 2) Generate automatically · 3) Review & fix · 4) Publish & share. Open any timetable to see its next step.'),
+        stats: [
+          AppHeroStat(icon: Icons.table_chart_rounded, value: '${p.schedules.length}', label: t('جداول', 'timetables')),
+          AppHeroStat(icon: Icons.verified_rounded, value: '${p.schedules.where((x) => x['status'] == 'active').length}', label: t('منشور', 'published')),
+          AppHeroStat(icon: Icons.schedule_rounded, value: '${p.periods.length}', label: t('فترات', 'periods')),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (p.periods.isEmpty || p.rooms.isEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: AppBanner(
+            icon: Icons.flag_rounded,
+            color: c.warning,
+            text: p.periods.isEmpty
+                ? t('ابدأ من تبويب "الفترات والأماكن": أضف فترات اليوم الدراسي.', 'Start in "Periods & rooms": add the periods of the day.')
+                : t('أضف القاعات والمعامل من تبويب "الفترات والأماكن".', 'Add your rooms and labs in "Periods & rooms".'),
+            action: TextButton(onPressed: () => DefaultTabController.maybeOf(context)?.animateTo(2), child: Text(t('اذهب', 'Go'))),
+          ),
+        ),
+      AppActionCard(
+        icon: Icons.assignment_rounded,
+        color: c.purple,
+        title: t('جداول الامتحانات (منتصف الفصل والنهائية)', 'Exam timetables (midterm & final)'),
+        subtitle: t('فترة مقترحة من تواريخ الفصل، بلا امتحانين لنفس الطلاب في وقت واحد، مع الأماكن والمراقبين.',
+            'A window suggested from the term dates, no two exams at once for the same students, with rooms and invigilators.'),
+        onTap: () => openExamTimetables(context, p,
+            canEdit: s.can('schedule', 'update'), canApprove: s.can('schedule', 'approve'), canExport: s.can('schedule', 'export')),
+      ),
+      const SizedBox(height: 12),
+    ];
     return Stack(children: [
       p.schedules.isEmpty
-          ? OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم تنشئ أي جدول بعد', 'No timetable yet'),
-              actionLabel: s.can('schedule', 'insert') ? t('جدول جديد', 'New timetable') : null, onAction: () => _wizard(context, p))
+          ? ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 90), children: [
+              ...intro,
+              OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم تنشئ أي جدول بعد', 'No timetable yet'),
+                  message: t('أنشئ جدولاً جديداً وسيرشدك المعالج خطوة بخطوة.', 'Create a timetable and the wizard guides you step by step.'),
+                  actionLabel: s.can('schedule', 'insert') ? t('جدول جديد', 'New timetable') : null, onAction: () => _wizard(context, p)),
+            ])
           : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 90), children: [
+              ...intro,
               for (final x in p.schedules)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
