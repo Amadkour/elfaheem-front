@@ -8,7 +8,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|-------|--------|---------------|
 | 1 | Setup, audit, baseline, branches | **done 2026-10-24** | `docs/AUDIT.md` exists, baseline recorded |
 | 2 | Core refactor: modular monolith, RLS, RBAC, audit log | **done 2026-10-24** (app part: auth storage / refresh contract; backend `docs/PROGRESS.md` has the server side and the review round) | cross-tenant leak tests + permission tests pass |
-| 3 | Organizations, switcher, membership, sharing, Verification API | not started | |
+| 3 | Organizations, switcher, membership, sharing, Verification API | **in progress — code complete, review pending** (2026-10-24) | switcher + sharing tests pass, analyzer 0/0 |
 | 4 | Application pipeline under load | not started | load test: no oversold seats, no duplicates |
 | 5 | Exam Engine service | not started | |
 | 6 | Grading engine + OCR + benchmark + review UI | not started | section-13 numbers reported |
@@ -54,6 +54,22 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|---|
 | `flutter analyze` | 0 errors, 0 warnings, 292 info |
 | `flutter test test/org/ test/export/ test/ui/` | 321 pass |
+
+## Phase 3 — app side (2026-10-24, commit `e881531`)
+
+### Done
+- **Switcher** (`lib/design/context_switcher.dart`): shown for everyone while organizations are on (the kill-switch still hides it); the sheet lists live organizations, organizations under review (not enterable) and "Join another organization" → `openOrgJoin`. Test `test/org/org_context_switcher_test.dart`.
+- **Sharing with other organizations** (`lib/features/org/org_sharing.dart`, `org_sharing_pages.dart`, workspace area `sharing`): Offers (create / edit / revoke a share, invite code shown once with copy, grants and use log), Requests (approve / reject with a reason), Partners (redeem a code, what we hold, discover and request), Verify (paste identifiers or upload a CSV / TXT / XLSX, yes / no + year), API keys (admins). Pure logic + layout tests in `test/org/org_sharing_test.dart`.
+- **Super admin**: `sharing_enabled` on the platform settings page; per-organization switch on the organization review page.
+- **Error codes**: `lib/core/api_error_text.dart` gives bilingual texts for `too_many_attempts` (+ retry), `otp_*`, `refresh_*`, `self_action`, `escalation`; `BaseProvider` uses it; the OTP screen shows the server's reason; `org_v3` knows every sharing code.
+- **Analyzer**: the 64 pre-existing warnings are gone (unused code, dead branches; one real fix: a session duration fallback that never ran). Phase 2's "0 warnings" line was wrong; the gate is real now.
+
+### Checks at the end of the phase (so far)
+| Check | Result |
+|---|---|
+| `flutter analyze` | 0 errors, 0 warnings |
+| `flutter test test/org/ test/export/ test/ui/` | 330 pass |
+| Review round | pending (reviewers rate-limited; see backend `docs/PROGRESS.md`) |
 
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
