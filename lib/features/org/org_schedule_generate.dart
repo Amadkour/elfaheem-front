@@ -28,6 +28,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show RowCard;
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
+import 'org_schedule_insights.dart';
 import 'org_schedule_optimizer.dart';
 import 'org_timetable_parts.dart' show ConflictList, courseName;
 import 'org_ui.dart';
@@ -252,6 +253,9 @@ String unplacedReasonText(String r) => switch (r) {
       'travel_gap' => t('لا وقت كافٍ للانتقال بين المباني', 'Not enough travel time between buildings'),
       'course_already_there' => t('لا أوقات كافية لعدد الحصص', 'Not enough distinct times for the number of sessions'),
       'no_consecutive_periods' => t('الحصة تحتاج فترات متتالية أكثر مما في اليوم', 'Needs more consecutive periods than a day has'),
+      'teacher_week_limit' => t('تجاوز الحد الأسبوعي للمدرس', 'Over the teacher\'s weekly cap'),
+      'room_unavailable' => t('القاعات المناسبة غير متاحة في الأوقات الممكنة', 'The fitting rooms are unavailable at the possible times'),
+      'time_limit' => t('كانت هناك أوقات حرة لكن انتهى وقت الحل', 'Free times existed but the solver ran out of time'),
       'removed_by_hand' => t('حُذفت يدوياً', 'Removed by hand'),
       'proposal_rejected' => t('رُفض اقتراح كسر القاعدة', 'The rule-break proposal was rejected'),
       'no_teacher' => t('لا يوجد مدرس معيّن للمقرر', 'No teacher is assigned to the course'),
@@ -267,6 +271,8 @@ String unplacedFixText(String r) => switch (r) {
       'teacher_unavailable' => t('اطلب إتاحة أوسع أو اجعل "إتاحة المدرس" مرنة', 'Ask for more availability, or make instructor availability flexible'),
       'students_clash' || 'students_busy_elsewhere' || 'students_unavailable' => t('أضف يوماً أو فترة أو قسّم المجموعة', 'Add a day or period, or split the group'),
       'course_already_there' || 'no_consecutive_periods' || 'travel_gap' => t('أضف فترات أو أيام دراسة', 'Add periods or study days'),
+      'time_limit' => t('ولّد مرة أخرى أو ارفع المهلة', 'Generate again, or raise the time limit'),
+      'teacher_week_limit' => t('ارفع الحد الأسبوعي أو عيّن عضواً آخر', 'Raise the weekly cap, or assign another member'),
       'proposal_rejected' || 'removed_by_hand' => t('ضعها يدوياً في خانة فارغة أو أعد التوليد', 'Place it by hand in a free cell, or generate again'),
       _ when staffingReasons.contains(r) => t('عيّن مدرساً / معيداً مؤهلاً من "المقررات والهيئة"', 'Assign an eligible teacher / TA in "Courses & staff"'),
       _ => t('أضف أوقاتاً أو قاعات', 'Add times or rooms'),
@@ -277,7 +283,11 @@ String brokenRuleText(String rule) => switch (rule) {
       'teacher_day_limit' => t('يتجاوز الحد اليومي للمدرس', 'Over the teacher\'s daily limit'),
       'room_kind' => t('في قاعة من نوع آخر (أكبر)', 'In another (larger) kind of hall'),
       'room_unavailable' => t('في وقت غير متاح للقاعة', 'At a time the room is unavailable'),
+      'room_capabilities' => t('في قاعة تفتقد تجهيزاً مطلوباً', 'In a room missing a required capability'),
+      'room_capacity' => t('في قاعة أصغر قليلاً من المجموعة', 'In a room slightly smaller than the group'),
       'students_unavailable' => t('في وقت غير متاح للطلاب', 'At a time the students are unavailable'),
+      'students_clash' => t('يتعارض مع حصة أخرى لنفس الطلاب', 'Clashes with another session of the same students'),
+      'students_busy_elsewhere' => t('الطلاب مشغولون في جدول آخر', 'The students are busy in another timetable'),
       _ => rule,
     };
 
@@ -404,12 +414,25 @@ class ConflictsPanel extends StatelessWidget {
                   : t('${d.hard} إلزامي · ${d.soft} تنبيه', '${d.hard} hard · ${d.soft} warning(s)'),
               style: orgText(context, size: 12.5, w: FontWeight.w800, color: col)),
           for (final (type, n) in d.top) Text('$n × ${conflictTypeText(type)}', style: orgText(context, size: 12, color: c.textMedium)),
+          if (_independentOf(context) case final ind? when ind.containsKey('hard'))
+            Text(
+              asInt(ind['hard']) == 0 ? t('تحقق مستقل ✓', 'Independently verified ✓') : t('التحقق المستقل: ${asInt(ind['hard'])} خرق', 'Independent check: ${asInt(ind['hard'])} violation(s)'),
+              style: orgText(context, size: 12, w: FontWeight.w700, color: asInt(ind['hard']) == 0 ? c.success : c.danger),
+            ),
           if (onTap != null && done != null && done.required > 0 && !done.isComplete)
             Text(t('إجراءات سريعة', 'Quick actions'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
           if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
         ]),
       ),
     );
+  }
+
+  Map<String, dynamic>? _independentOf(BuildContext context) {
+    try {
+      return Provider.of<OrgScheduleProvider>(context).independent;
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 
   /// The studio's timetable, when this panel sits under it (null elsewhere, e.g. in a layout test).
@@ -513,6 +536,7 @@ class QuickActionsPanel extends StatefulWidget {
 class _QuickActionsPanelState extends State<QuickActionsPanel> {
   List<ScheduleSuggestion>? advice;
   QuickActionsReport? quick;
+  PreflightReport? preflight; // GET …/preflight (null: not loaded / old server)
   bool quickLoading = false, quickMissing = false, applying = false;
   final busy = <String>{};
   String? _seen; // the timetable version + hard-clash count the panel was computed for
@@ -531,6 +555,15 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     final done = TimetableCompletion.of(asMap(widget.p.schedule?['result']), widget.p.conflicts);
     if (done.unplaced > 0) _loadAdvice();
     if (widget.canEdit && done.problems > 0) _loadQuick();
+    if (!done.isComplete) _loadPreflight();
+  }
+
+  Future<void> _loadPreflight() async {
+    final p = widget.p;
+    final id = p.schedule?['id'];
+    if (id == null) return;
+    final r = await orgCall(() => p.api.get('${p.base}/schedules/$id/preflight'), quiet: true);
+    if (mounted && r.ok) setState(() => preflight = PreflightReport.of(r.map));
   }
 
   Future<void> _loadQuick() async {
@@ -579,8 +612,11 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
 
   String _name(Map<String, dynamic> x) {
     final g = x['group_no'] == null ? '' : ' · ${t('مجموعة', 'group')} ${x['group_no']}';
-    return '${widget.names[asInt(x['course_id'])] ?? '#${x['course_id']}'}${x['kind'] == 'lab' ? ' · ${t('عملي', 'lab')}' : ''}$g';
+    final kind = switch ('${x['kind'] ?? 'lecture'}') { 'lab' => ' · ${t('عملي', 'lab')}', 'tutorial' || 'section' => ' · ${t('سكشن', 'section')}', _ => '' };
+    return '${widget.names[asInt(x['course_id'])] ?? '#${x['course_id']}'}$kind$g';
   }
+
+  Map<int, String> get _people => {for (final m in widget.p.staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']}'};
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(listenable: widget.p, builder: (context, _) => _body(context));
@@ -608,6 +644,27 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
       _completionCard(context, done, o),
       if (applying) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
+      if (preflight != null && !preflight!.clean && !done.isComplete)
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: DataHealthCard(
+            report: preflight!,
+            courseNames: widget.names,
+            people: _people,
+            rooms: {for (final r in p.rooms) asInt(r['id']): '${r['name']}'},
+          ),
+        ),
+      if (p.slots.isNotEmpty && (done.isComplete || done.unplaced == 0))
+        Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: QualityCard(
+            report: QualityReport.of(p.slots, p.periods, days: ScheduleDraft.fromJson(p.schedule ?? const {}).days, rooms: p.rooms),
+            people: _people,
+            relaxed: asMapList(result['relaxed']).length,
+            broken: o.proposals.length,
+            solver: result['solver'] == null ? null : asMap(result['solver']),
+          ),
+        ),
       if (widget.canEdit && done.problems > 0) ...[
         _title(context, t('حلول سريعة — قاعدة واحدة في كل مرة', 'Quick fixes — one rule at a time')),
         if (quickLoading)
@@ -747,7 +804,29 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('${_name(u)} · ${t('${asInt(u['missing'], 1)} حصة', '${asInt(u['missing'], 1)} session(s)')}', style: orgText(context, w: FontWeight.w700)),
           Text(unplacedReasonText(reason), style: orgText(context, size: 12, color: c.textMedium)),
+          if ((u['core'] as List?)?.isNotEmpty == true)
+            Text(coreText([for (final r in u['core'] as List) '$r']), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textMedium)),
           Text(unplacedFixText(reason), style: orgText(context, size: 12, color: c.textLight)),
+          if (asMapList(u['explain']).isNotEmpty)
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(t('لماذا كل وقت مرفوض؟', 'Why is each time blocked?'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
+                children: [
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: ExplainRows(
+                      rows: asMapList(u['explain']),
+                      courseNames: widget.names,
+                      periodLabel: (pid) => '${widget.p.periods.where((x) => asInt(x['id']) == pid).map((x) => x['label']).firstOrNull ?? 'P$pid'}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (fixers.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),

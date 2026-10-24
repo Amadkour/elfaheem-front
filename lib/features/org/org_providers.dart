@@ -571,11 +571,15 @@ class OrgScheduleProvider extends AdminBase {
     return r != null;
   }
 
+  /// GET …/validate `independent`: {hard, by_code, findings} from the clean-room validator (empty on old servers).
+  Map<String, dynamic> independent = const {};
+
   Future<void> validate() async {
     final id = schedule?['id'];
     if (id == null) return;
     final r = await run(() => api.get('$base/schedules/$id/validate'), makLoading: false);
     conflicts = r is Map ? asMapList(r['conflicts']) : [];
+    independent = r is Map ? asMap(r['independent']) : const {};
     notifyListeners();
   }
 

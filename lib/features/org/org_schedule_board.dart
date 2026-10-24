@@ -15,6 +15,7 @@ import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_grid.dart' show sessionKindColor, sessionKindIcon, sessionKindLabel;
+import 'org_schedule_insights.dart' show WhyHere, WhyHereSection;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -247,11 +248,30 @@ class _SessionDialogState extends State<_SessionDialog> {
   Map<String, dynamic>? group; // the registrar group of this session (students, enrolled, capacity)
   bool loading = true;
   String? note;
+  WhyHere? why; // GET …/slots/{id}/why (null until loaded; whyMissing on an old server)
+  bool whyLoading = true, whyMissing = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadWhy();
+  }
+
+  Future<void> _loadWhy() async {
+    final p = widget.p;
+    final sid = p.schedule?['id'], id = widget.slot['id'];
+    if (sid == null || id == null) {
+      if (mounted) setState(() => whyLoading = false);
+      return;
+    }
+    final r = await orgCall(() => p.api.get('${p.base}/schedules/$sid/slots/$id/why'), quiet: true);
+    if (!mounted) return;
+    setState(() {
+      whyLoading = false;
+      whyMissing = !r.ok;
+      why = r.ok ? WhyHere.of(r.map) : null;
+    });
   }
 
   Future<void> _load() async {
@@ -466,6 +486,30 @@ class _SessionDialogState extends State<_SessionDialog> {
                         ),
                     ],
                     const SizedBox(height: 6),
+                    // why here: what the engine saw for this session (every other session fixed)
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: EdgeInsets.zero,
+                        initiallyExpanded: true,
+                        leading: Icon(Icons.psychology_alt_rounded, color: c.textMedium),
+                        title: Text(t('لماذا هنا؟', 'Why here?'), style: orgText(context, w: FontWeight.w800)),
+                        children: [
+                          if (whyLoading) const LinearProgressIndicator(),
+                          if (!whyLoading && whyMissing)
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(t('التفسير يحتاج تحديث الخادم.', 'Explanations need a server update.'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                            ),
+                          if (why != null)
+                            WhyHereSection(
+                              why: why!,
+                              periodLabel: (pid) => '${p.periods.where((x) => asInt(x['id']) == pid).map((x) => x['label']).firstOrNull ?? 'P$pid'}',
+                            ),
+                        ],
+                      ),
+                    ),
                     Theme(
                       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
                       child: ExpansionTile(

@@ -774,6 +774,33 @@ class _StudioState extends State<_Studio> {
   String? _studentName;
   int _view = 0; // 0 grid · 1 the courses that enter the timetable
 
+  // drag & drop preview: the cell under the pointer asks the server (dry run) whether the move is valid
+  String? _previewKey;
+  bool? _previewOk;
+  String? _previewText;
+
+  Future<void> _hover(OrgScheduleProvider p, Map<String, dynamic>? slot, String day, int period) async {
+    if (slot == null) {
+      if (_previewKey != null) setState(() => _previewKey = null);
+      return;
+    }
+    final key = '${slot['id']}|$day|$period';
+    if (key == _previewKey) return;
+    setState(() {
+      _previewKey = key;
+      _previewOk = null;
+      _previewText = null;
+    });
+    final r = await p.previewSlot({'day': day, 'period_id': period}, slotId: asInt(slot['id']));
+    if (!mounted || _previewKey != key) return;
+    final conflicts = asMapList(r?['conflicts']);
+    final hard = conflicts.where((x) => x['severity'] == 'error').toList();
+    setState(() {
+      _previewOk = r == null ? null : (r['valid'] == true || hard.isEmpty);
+      _previewText = hard.isEmpty ? (conflicts.isEmpty ? null : conflictLine(conflicts.first)) : conflictLine(hard.first);
+    });
+  }
+
   /// Student filter: search the organization's students, then their group in every course of the term.
   Future<void> _pickStudent(BuildContext context, OrgScheduleProvider p) async {
     final term = p.schedule?['term_id'];
@@ -832,6 +859,8 @@ class _StudioState extends State<_Studio> {
     title: '${p.schedule?['name'] ?? t('الجدول', 'Timetable')}',
     sourceLabel: t('الجدول الحالي · الإصدار ${p.schedule?['version'] ?? 0}', 'Live timetable · version ${p.schedule?['version'] ?? 0}'),
     days: ScheduleDraft.fromJson(p.schedule ?? const {}).days,
+    from: ScheduleDraft.fromJson(p.schedule ?? const {}).start,
+    to: ScheduleDraft.fromJson(p.schedule ?? const {}).end,
   );
 
   @override
@@ -1120,6 +1149,9 @@ class _StudioState extends State<_Studio> {
                           onOpen: (slot) =>
                               showSessionDetails(context, p, slot, courseNames: courseNames, people: people, onEdit: editable ? () => _slotSheet(context, p, slot, d, asInt(per['id'])) : null),
                           onDrop: editable ? (slot) => _moveSlot(context, p, slot, d, asInt(per['id'])) : null,
+                          onHover: editable ? (slot) => _hover(p, slot, d, asInt(per['id'])) : null,
+                          preview: _previewKey != null && _previewKey!.endsWith('|$d|${per['id']}') ? _previewOk : null,
+                          previewText: _previewKey != null && _previewKey!.endsWith('|$d|${per['id']}') ? _previewText : null,
                         ),
                       ),
                     );
@@ -1260,11 +1292,21 @@ class _Cell extends StatelessWidget {
     this.onTap,
     this.onDrop,
     this.onOpen,
+    this.onHover,
+    this.preview,
+    this.previewText,
   });
   final String day;
   final int periodId;
   final List<Map<String, dynamic>> slots;
   final bool conflict;
+
+  /// a dragged session entered (slot) / left (null) this cell — the studio runs a dry-run check
+  final void Function(Map<String, dynamic>? slot)? onHover;
+
+  /// the dry-run verdict for the session hovering here: true = green, false = red (+ [previewText]), null = unknown
+  final bool? preview;
+  final String? previewText;
 
   /// slot id → 'error' | 'warning': the sessions a conflict names (conflictSlots)
   final Map<int, String> marks;
@@ -1283,9 +1325,19 @@ class _Cell extends StatelessWidget {
     // a mouse drags straight away; on touch a plain drag would fight the grid's scrolling, so it needs a long press
     final platform = Theme.of(context).platform;
     final mouse = kIsWeb || platform == TargetPlatform.windows || platform == TargetPlatform.macOS || platform == TargetPlatform.linux;
+    // while a session hovers here the target is green (valid), red (a hard rule, with its reason) or neutral (checking)
+    final hoverCol = preview == true ? c.success : (preview == false ? c.danger : c.primary);
     return DragTarget<Map<String, dynamic>>(
-      onWillAcceptWithDetails: (d) => onDrop != null && (d.data['day'] != day || asInt(d.data['period_id']) != periodId),
-      onAcceptWithDetails: (d) => onDrop!(d.data),
+      onWillAcceptWithDetails: (d) {
+        final ok = onDrop != null && (d.data['day'] != day || asInt(d.data['period_id']) != periodId);
+        if (ok) onHover?.call(d.data);
+        return ok;
+      },
+      onLeave: (_) => onHover?.call(null),
+      onAcceptWithDetails: (d) {
+        onHover?.call(null);
+        onDrop!(d.data);
+      },
       builder: (context, hovering, _) => GestureDetector(
         onTap: onTap == null ? null : () => onTap!(null),
         child: Container(
@@ -1293,15 +1345,20 @@ class _Cell extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: hovering.isNotEmpty
-                ? c.primary.withValues(alpha: 0.16)
+                ? hoverCol.withValues(alpha: 0.16)
                 : conflict
                 ? c.danger.withValues(alpha: 0.06)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: hovering.isNotEmpty ? c.primary : (conflict ? c.danger.withValues(alpha: 0.7) : Colors.transparent), width: conflict || hovering.isNotEmpty ? 1.5 : 1),
+            border: Border.all(color: hovering.isNotEmpty ? hoverCol : (conflict ? c.danger.withValues(alpha: 0.7) : Colors.transparent), width: conflict || hovering.isNotEmpty ? 1.5 : 1),
           ),
           // the row height comes from the fullest cell of the row; a larger text scale scrolls inside the cell
-          child: slots.isEmpty
+          child: hovering.isNotEmpty && preview == false && previewText != null
+              ? Center(
+                  child: Text(previewText!, maxLines: 3, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                      style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, fontWeight: FontWeight.w800, color: c.danger)),
+                )
+              : slots.isEmpty
               ? (onTap == null || hovering.isNotEmpty ? const SizedBox.expand() : Center(child: Icon(Icons.add_rounded, size: 18, color: c.textLight.withValues(alpha: 0.45))))
               : SingleChildScrollView(
                   child: Column(
