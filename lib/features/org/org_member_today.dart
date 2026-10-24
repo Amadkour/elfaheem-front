@@ -1,7 +1,9 @@
 // lib/features/org/org_member_today.dart — "Today" for an organization member (home in Organization mode).
 //
 //   GET /api/v1/org/public/schedule/me?org_id=   published timetables of the member: weekly `items`
-//   ({day, start_time, end_time, course, title, room, teacher, kind}), dated `extras` and `exam_pauses`.
+//   ({slot_id, day, start_time, end_time, course, title, room, teacher, kind, can_switch}), dated `extras`,
+//   `exam_pauses` and `changes` (one-date changes: substitute · online / offline · cancelled, org_member_changes).
+//   A session's own teacher / assistant taps it to hold today's occurrence online (students are told and answer).
 //
 // A published exam window with pause_weekly suspends the term's weekly classes: the weekly sessions of a timetable
 // whose exam pause covers today are left out (examPauseOn), extras dated today still count.
@@ -15,7 +17,10 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
-import '../admin/admin_common.dart' show asMapList;
+import 'package:url_launcher/url_launcher.dart';
+
+import '../admin/admin_common.dart' show asInt, asMapList;
+import 'org_member_changes.dart';
 import 'org_member_pages.dart' show OrgTimetableScreen;
 import 'org_my_exams.dart' show appToday, examPauseBanner, examPauseOn, examPausesOf;
 import 'org_providers.dart' show orgBase;
@@ -53,6 +58,26 @@ class OrgTodayAgenda extends StatefulWidget {
 class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
   List<Map<String, dynamic>> _timetables = const [];
   bool _loading = true;
+  int? _busy; // the change with a request in flight
+
+  Future<void> _respond(OccurrenceChange x, String decision) async {
+    setState(() => _busy = x.id);
+    if (await respondToChange(x.id, decision)) await _load();
+    if (mounted) setState(() => _busy = null);
+  }
+
+  Future<void> _undo(OccurrenceChange x) async {
+    setState(() => _busy = x.id);
+    if (await undoChange(widget.orgId, x.id)) await _load();
+    if (mounted) setState(() => _busy = null);
+  }
+
+  /// The session's staff: hold today's occurrence online (asks the link) or take it back in person.
+  Future<void> _switch(Map<String, dynamic> x, OccurrenceChange? change, DateTime today) async {
+    final online = await askSessionMode(context, title: '${x['course'] ?? ''}', date: today, onlineNow: change?.online == true);
+    if (online == null || !mounted) return;
+    if (await switchSessionMode(context, orgId: widget.orgId, slotId: asInt(x['slot_id']), date: today, online: online)) await _load();
+  }
 
   @override
   void initState() {
@@ -75,6 +100,8 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
     final c = context.colors;
     final today = appToday();
     final rows = orgTodaySessions(_timetables, today);
+    final changesToday = orgChangesOn(_timetables, today);
+    final upcoming = orgUpcomingChanges(_timetables).take(3).toList();
     final now = homeNow();
     final nowMin = now.hour * 60 + now.minute;
     final pauses = {for (final s in _timetables) for (final p in examPausesOf(s)) '${p['exam_schedule_id']}': p}.values.toList();
@@ -84,6 +111,17 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
           count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsets.fromLTRB(16, 0, 8, 10)),
       if (pauses.isNotEmpty)
         Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: examPauseBanner(context, pauses, padding: EdgeInsets.zero)),
+      for (final x in upcoming)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: OccurrenceCard(
+            change: x,
+            busy: _busy == x.id,
+            onRespond: x.canRespond ? (d) => _respond(x, d) : null,
+            onUndo: x.canEdit ? () => _undo(x) : null,
+            onOpenLink: x.onlineUrl == null ? null : () => launchUrl(Uri.parse(x.onlineUrl!), mode: LaunchMode.externalApplication),
+          ),
+        ),
       HomeAgenda(
         loading: _loading,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -107,9 +145,9 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
                 if (x['room'] != null) '${x['room']}',
                 if (x['teacher'] != null) '${x['teacher']}',
               ].join(' · '),
-              tag: x['_extra'] == true ? 'home_extra_session'.tr : (x['kind'] == 'lab' ? 'home_lab'.tr : null),
-              tone: x['kind'] == 'lab' ? c.purple : null,
-              onTap: openWeek,
+              tag: changesToday[asInt(x['slot_id'])]?.label ?? (x['_extra'] == true ? 'home_extra_session'.tr : (x['kind'] == 'lab' ? 'home_lab'.tr : null)),
+              tone: changesToday[asInt(x['slot_id'])] != null ? c.primary : (x['kind'] == 'lab' ? c.purple : null),
+              onTap: x['can_switch'] == true && x['_extra'] != true ? () => _switch(x, changesToday[asInt(x['slot_id'])], today) : openWeek,
             ),
         ],
       ),

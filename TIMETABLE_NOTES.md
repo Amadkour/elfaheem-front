@@ -18,6 +18,26 @@ why-here, drop preview, iCal). All backend solver suites, the timetable e2e scri
 7. ✅ UI: `org_schedule_insights.dart` (DataHealthCard, QualityCard, ExplainRows, WhyHereSection), drop preview in
    `org_schedule_pages.dart`, iCal in `org_schedule_ical.dart` + export sheet, independent verdict in ConflictsPanel.
 8. ✅ Benchmark `tests/org_v2/bench_realistic.py` (40 courses · 180 sessions · 25 rooms · 30 doctors · 40 TAs · 58 cohorts).
+8b. ✅ Pre-flight recommendations are quick actions: each finding has a stable `key` + optional `action`
+   (`split_groups`, `raise_week_cap`); `POST {S}/preflight/accept|dismiss`; the DataHealthCard shows Accept / Reject
+   (Restore for rejected ones). Manual-only fixes show "Fix by hand" + Reject. Test: `e2e_preflight_actions.py`.
+8c. ✅ Every issue lists its ways out, RANKED (`actions[]`: #1 recommended, score, why, automatic or by hand): the
+   pre-flight findings (`schedule_preflight.py`, with the teaching roster + eligibility + inactive rooms for
+   reassign / assign / activate recommendations) and every validator conflict (`schedule_remedies.py`:
+   GET …/remedies — move to the nearest free time, change room, give it to a free colleague, fix the group, unpin,
+   re-solve, override, …; nothing is ever left without a manual way). UI: `RankedActions` in the DataHealthCard
+   (+ "Accept every recommended fix" = POST …/preflight/accept-all) and `RemediesPanel` in the Quick Actions sheet.
+   Tests: `section_count_unit.py` (52), `e2e_preflight_actions.py` (46), `e2e_remedies_reassign.py` (68),
+   `test/org/org_reassign_test.dart`, `test/ui/reassign_layout_test.dart`.
+8d. ✅ Changing the teacher / assistant of a session asks the scope (whole course · this weekly session · one date),
+   rebuilds what the change breaks (`schedule_reassign.py`: the clashing unpinned sessions are re-solved with
+   `schedule_quick.solve_part(patch=…)`) and shows BEFORE / AFTER ranked (hard → unplaced → warnings → soft → moved,
+   score 0..100) with the moved sessions; apply writes both as revisions. Pin / unpin lives in the slot sheet.
+8e. ✅ One-date changes (`schedule_occurrences.py`, table `org_schedule_occurrences`): a substitute (scope "once"),
+   or the session's own teacher / assistant switching a date online (with the link) or back in person from the
+   member "Today" / "My timetable" screens; students are notified and accept / reject (`org_member_changes.dart`).
+   `/public/schedule/me` (`changes`) and `/me/calendar` apply them, so daily and hourly views follow the published
+   timetable.
 9. ⏳ Enhancements §10 not built here: what-if sandbox, lock date / notifications, student swap requests
    (registrar already has waitlists and clash-checked registration), exam engine reuse (exams have their own
    solver, `schedule_exams.py`).

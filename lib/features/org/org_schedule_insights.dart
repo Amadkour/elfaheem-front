@@ -1,6 +1,7 @@
 // lib/features/org/org_schedule_insights.dart — what the CP-SAT engine explains, before and after a generation.
 //
 //   PreflightReport / PreflightFinding   pure: GET …/preflight — impossible inputs in plain words with their fix
+//   ActionOption / RankedActions         one ranked way out of a finding or a conflict (shared with org_schedule_remedies)
 //   DataHealthCard                       the data-health panel (blockers · warnings · demand vs supply · engine)
 //   ruleShort / coreText                 pure: a rule name → a few words; "blocked by A + B" for unscheduled[].core
 //   ExplainRows                          the per-option reasons of an unplaced session (unscheduled[].explain)
@@ -24,39 +25,117 @@ import 'org_ui.dart';
 //  Pre-flight (data health)
 // ═════════════════════════════════════════════════════════════════════════════
 
+/// One way to solve a finding or a conflict, as the server ranks it (`actions[]` of GET …/preflight and
+/// GET …/remedies): [auto] ones are applied with one click, the others say what to do by hand.
+class ActionOption {
+  const ActionOption({required this.id, required this.kind, required this.rank, required this.score, required this.auto, required this.textAr, required this.textEn, this.whyAr = '', this.whyEn = '', this.params = const {}});
+  final String id, kind, textAr, textEn, whyAr, whyEn;
+  final int rank, score;
+  final bool auto;
+
+  /// the parameters the server needs back (slot_id, day, group_size, …)
+  final Map<String, dynamic> params;
+
+  String get text => t(textAr, textEn);
+  String get why => t(whyAr, whyEn);
+
+  /// what POST …/remedies/apply takes
+  Map<String, dynamic> toJson() => {'id': id, 'kind': kind, ...params};
+
+  factory ActionOption.of(Map<String, dynamic> m) => ActionOption(
+        id: '${m['id'] ?? m['kind'] ?? ''}',
+        kind: '${m['kind'] ?? ''}',
+        rank: asInt(m['rank'], 1),
+        score: asInt(m['score']),
+        auto: m['auto'] == true,
+        textAr: '${m['text_ar'] ?? m['text_en'] ?? m['kind'] ?? ''}',
+        textEn: '${m['text_en'] ?? m['text_ar'] ?? m['kind'] ?? ''}',
+        whyAr: '${m['why_ar'] ?? m['why_en'] ?? ''}',
+        whyEn: '${m['why_en'] ?? m['why_ar'] ?? ''}',
+        params: {for (final e in m.entries) if (!const {'id', 'kind', 'rank', 'score', 'auto', 'text_ar', 'text_en', 'why_ar', 'why_en'}.contains(e.key)) e.key: e.value},
+      );
+
+  static List<ActionOption> listOf(dynamic v) => [for (final x in asMapList(v)) ActionOption.of(x)]..sort((a, b) => a.rank.compareTo(b.rank));
+}
+
 class PreflightFinding {
-  const PreflightFinding({required this.code, required this.severity, required this.textAr, required this.textEn, required this.fixAr, required this.fixEn, this.courseId, this.userId, this.roomId, this.detail = const {}});
+  const PreflightFinding({required this.code, required this.severity, required this.textAr, required this.textEn, required this.fixAr, required this.fixEn, this.courseId, this.userId, this.roomId, this.detail = const {}, this.key = '', this.action = const {}, this.actions = const [], this.dismissed = false});
   final String code, severity, textAr, textEn, fixAr, fixEn;
   final int? courseId, userId, roomId;
   final Map<String, dynamic> detail;
 
+  /// stable id of the recommendation (code + what it names): what accept / dismiss send back
+  final String key;
+
+  /// the best automatic fix (older servers: the only one) — `split_groups` {session_kind, group_size, groups} ·
+  /// `raise_week_cap` {max_week} · …
+  final Map<String, dynamic> action;
+
+  /// every way out, best first (rank 1 = recommended); empty on an older server
+  final List<ActionOption> actions;
+
+  /// rejected by the admin (kept in the report, not counted)
+  final bool dismissed;
+
   bool get blocker => severity == 'blocker';
+  bool get automatic => actions.isNotEmpty ? actions.any((a) => a.auto) : action.isNotEmpty;
+  ActionOption? get best => actions.where((a) => a.auto).firstOrNull;
   String get text => t(textAr, textEn);
   String get fix => t(fixAr, fixEn);
 
-  factory PreflightFinding.of(Map<String, dynamic> m) => PreflightFinding(
-        code: '${m['code']}',
-        severity: '${m['severity'] ?? 'warning'}',
-        textAr: '${m['text_ar'] ?? m['text_en'] ?? m['code']}',
-        textEn: '${m['text_en'] ?? m['text_ar'] ?? m['code']}',
-        fixAr: '${m['fix_ar'] ?? m['fix_en'] ?? ''}',
-        fixEn: '${m['fix_en'] ?? m['fix_ar'] ?? ''}',
-        courseId: m['course_id'] == null ? null : asInt(m['course_id']),
-        userId: m['user_id'] == null ? null : asInt(m['user_id']),
-        roomId: m['room_id'] == null ? null : asInt(m['room_id']),
-        detail: asMap(m['detail']),
-      );
+  /// What "Accept" will do, in words (empty when the fix is manual).
+  String get actionText => (best?.text ?? '').isNotEmpty ? best!.text : _legacyActionText;
+
+  String get _legacyActionText => switch ('${action['kind']}') {
+        'split_groups' => t(
+            'تقسيم ${_kindAr('${action['session_kind']}')} المقرر إلى ${asInt(action['groups'])} مجموعات بحد ${asInt(action['group_size'])} طالباً في خطة المقرر',
+            'Split the course ${_kindEn('${action['session_kind']}')} into ${asInt(action['groups'])} groups of at most ${asInt(action['group_size'])} in the course plan'),
+        'raise_week_cap' => t('رفع الحد الأسبوعي للعضو إلى ${asInt(action['max_week'])} فترة', "Raise the member's weekly cap to ${asInt(action['max_week'])} periods"),
+        _ => '',
+      };
+
+  static String _kindAr(String k) => switch (k) { 'lab' => 'معمل', 'tutorial' => 'سكشن', _ => 'محاضرة' };
+  static String _kindEn(String k) => switch (k) { 'lab' => 'lab', 'tutorial' => 'tutorial', _ => 'lecture' };
+
+  factory PreflightFinding.of(Map<String, dynamic> m) {
+    final actions = ActionOption.listOf(m['actions']);
+    final legacy = asMap(m['action']);
+    return PreflightFinding(
+      code: '${m['code']}',
+      severity: '${m['severity'] ?? 'warning'}',
+      textAr: '${m['text_ar'] ?? m['text_en'] ?? m['code']}',
+      textEn: '${m['text_en'] ?? m['text_ar'] ?? m['code']}',
+      fixAr: '${m['fix_ar'] ?? m['fix_en'] ?? ''}',
+      fixEn: '${m['fix_en'] ?? m['fix_ar'] ?? ''}',
+      courseId: m['course_id'] == null ? null : asInt(m['course_id']),
+      userId: m['user_id'] == null ? null : asInt(m['user_id']),
+      roomId: m['room_id'] == null ? null : asInt(m['room_id']),
+      detail: asMap(m['detail']),
+      key: '${m['key'] ?? ''}',
+      action: legacy,
+      // an older server sends `action` only: show it as the one automatic option
+      actions: actions.isNotEmpty || legacy.isEmpty
+          ? actions
+          : [ActionOption(id: '${legacy['kind']}', kind: '${legacy['kind']}', rank: 1, score: 80, auto: true, textAr: '', textEn: '', params: {for (final e in legacy.entries) if (e.key != 'kind') e.key: e.value})],
+      dismissed: m['dismissed'] == true,
+    );
+  }
 }
 
 class PreflightReport {
   const PreflightReport({required this.findings, required this.summary, this.engine});
-  final List<PreflightFinding> findings; // blockers first
+  final List<PreflightFinding> findings; // blockers first; dismissed ones included (see [visible] / [hidden])
   final Map<String, dynamic> summary; // sessions · periods_needed · cells · rooms · room_cells · utilization_pct · teachers · sessions_by_kind · cohorts
   final String? engine;
 
-  int get blockers => findings.where((f) => f.blocker).length;
-  int get warnings => findings.length - blockers;
-  bool get clean => findings.isEmpty;
+  /// the recommendations still standing / the ones the admin rejected
+  List<PreflightFinding> get visible => [for (final f in findings) if (!f.dismissed) f];
+  List<PreflightFinding> get hidden => [for (final f in findings) if (f.dismissed) f];
+
+  int get blockers => visible.where((f) => f.blocker).length;
+  int get automatic => visible.where((f) => f.automatic).length;
+  int get warnings => visible.length - blockers;
+  bool get clean => visible.isEmpty;
   int get sessions => asInt(summary['sessions']);
   int get utilizationPct => asInt(summary['utilization_pct']);
 
@@ -75,14 +154,24 @@ String engineLabel(String? engine) => switch (engine) {
       _ => '',
     };
 
-/// The data-health panel shown before (and next to) a generation. [names] resolve ids in the fix lines.
+/// The data-health panel shown before (and next to) a generation. [names] resolve ids in the fix lines. Every
+/// recommendation is a quick action: Accept (the server applies the fix, only when [PreflightFinding.automatic]) or
+/// Reject (hidden, with Restore). [busy] holds the keys with a request in flight.
 class DataHealthCard extends StatelessWidget {
-  const DataHealthCard({super.key, required this.report, this.courseNames = const {}, this.people = const {}, this.rooms = const {}, this.onFix});
+  const DataHealthCard({super.key, required this.report, this.courseNames = const {}, this.people = const {}, this.rooms = const {}, this.onFix, this.onAccept, this.onAcceptAll, this.onReject, this.onRestore, this.busy = const {}});
   final PreflightReport report;
   final Map<int, String> courseNames, people, rooms;
 
   /// tapped a finding (open the course / member / room it names)
   final void Function(PreflightFinding f)? onFix;
+
+  /// Accept one of the finding's ranked ways out (an automatic one); null = read-only
+  final void Function(PreflightFinding f, ActionOption a)? onAccept;
+
+  /// Accept the best automatic fix of every standing blocker in one go (POST …/preflight/accept-all)
+  final VoidCallback? onAcceptAll;
+  final void Function(PreflightFinding f)? onReject, onRestore;
+  final Set<String> busy;
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +211,17 @@ class DataHealthCard extends StatelessWidget {
           if (asInt(s['cohorts']) > 0) _chip(context, Icons.groups_rounded, t('${asInt(s['cohorts'])} مجموعة طلاب', '${asInt(s['cohorts'])} student cohorts'), wrapWidth(context)),
           if (engineLabel(r.engine).isNotEmpty) _chip(context, Icons.memory_rounded, engineLabel(r.engine), wrapWidth(context)),
         ]),
-        for (final f in r.findings.take(12))
+        if (onAcceptAll != null && r.visible.where((f) => f.blocker && f.automatic).length >= 2)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: FilledButton.tonalIcon(
+              onPressed: busy.contains('*') ? null : onAcceptAll,
+              icon: busy.contains('*') ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium)) : const Icon(Icons.done_all_rounded, size: 16),
+              label: Text(t('قبول كل التوصيات المقترحة (${r.visible.where((f) => f.blocker && f.automatic).length})', 'Accept every recommended fix (${r.visible.where((f) => f.blocker && f.automatic).length})')),
+              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+            ),
+          ),
+        for (final f in r.visible.take(12))
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: InkWell(
@@ -135,13 +234,84 @@ class DataHealthCard extends StatelessWidget {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(f.text, style: orgText(context, size: 12.5, w: FontWeight.w700)),
                     if (who(f).isNotEmpty) Text(who(f), style: orgText(context, size: 11.5, color: c.textMedium)),
-                    if (f.fix.isNotEmpty) Text('${t('الحل', 'Fix')}: ${f.fix}', style: orgText(context, size: 12, color: c.textMedium)),
+                    if (f.fix.isNotEmpty && f.actions.isEmpty) Text('${t('الحل', 'Fix')}: ${f.fix}', style: orgText(context, size: 12, color: c.textMedium)),
+                    if (f.actions.isNotEmpty)
+                      RankedActions(
+                        actions: f.actions,
+                        onAccept: onAccept == null ? null : (a) => onAccept!(f, a),
+                        busy: busy.contains(f.key),
+                        trailing: onReject == null ? null : _rejectButton(context, f),
+                      )
+                    else if (onAccept != null || onReject != null)
+                      _actions(context, f),
                   ]),
                 ),
               ]),
             ),
           ),
-        if (r.findings.length > 12) Padding(padding: const EdgeInsets.only(top: 6), child: Text(t('+${r.findings.length - 12} أخرى', '+${r.findings.length - 12} more'), style: orgText(context, size: 12, color: c.textLight))),
+        if (r.visible.length > 12) Padding(padding: const EdgeInsets.only(top: 6), child: Text(t('+${r.visible.length - 12} أخرى', '+${r.visible.length - 12} more'), style: orgText(context, size: 12, color: c.textLight))),
+        if (r.hidden.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Text(t('${r.hidden.length} توصية مرفوضة', '${r.hidden.length} rejected recommendation(s)'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.textLight)),
+          ),
+          for (final f in r.hidden.take(6))
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Expanded(child: Text(f.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textLight))),
+                if (onRestore != null)
+                  TextButton(
+                    onPressed: busy.contains(f.key) ? null : () => onRestore!(f),
+                    style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                    child: Text(t('استعادة', 'Restore')),
+                  ),
+              ]),
+            ),
+        ],
+      ]),
+    );
+  }
+
+  Widget _rejectButton(BuildContext context, PreflightFinding f) => OutlinedButton.icon(
+        onPressed: busy.contains(f.key) ? null : () => onReject!(f),
+        icon: const Icon(Icons.close_rounded, size: 16),
+        label: Text(t('رفض', 'Reject')),
+        style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12), foregroundColor: context.colors.textMedium),
+      );
+
+  /// Accept · Reject under a recommendation of an OLDER server (one `action`, no ranked list). A manual-only fix
+  /// gets a small "by hand" label instead of Accept.
+  Widget _actions(BuildContext context, PreflightFinding f) {
+    final c = context.colors;
+    final wait = busy.contains(f.key);
+    final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        if (f.automatic && onAccept != null)
+          Tooltip(
+            message: f.actionText,
+            child: FilledButton.tonalIcon(
+              onPressed: wait ? null : () => onAccept!(f, f.best ?? f.actions.first),
+              icon: wait ? spinner : const Icon(Icons.check_rounded, size: 16),
+              label: Text(t('قبول', 'Accept')),
+              style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12)),
+            ),
+          )
+        else if (!f.automatic)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
+            child: Text(t('يُنفَّذ يدوياً', 'Fix by hand'), style: orgText(context, size: 11.5, color: c.textMedium)),
+          ),
+        if (onReject != null)
+          OutlinedButton.icon(
+            onPressed: wait ? null : () => onReject!(f),
+            icon: wait && !(f.automatic && onAccept != null) ? spinner : const Icon(Icons.close_rounded, size: 16),
+            label: Text(t('رفض', 'Reject')),
+            style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12), foregroundColor: c.textMedium),
+          ),
       ]),
     );
   }
@@ -159,6 +329,108 @@ class DataHealthCard extends StatelessWidget {
           Flexible(child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: orgText(context, size: 11.5, color: c.textMedium))),
         ]),
       ),
+    );
+  }
+}
+
+/// The ranked ways out of one finding / conflict: rank badge · score · text · why · Accept (automatic) or a
+/// "by hand" label. Shows the first [visibleCount], the rest behind "show all". [trailing] (e.g. Reject) sits on the
+/// last row. Used by [DataHealthCard] and the remedies panel.
+class RankedActions extends StatefulWidget {
+  const RankedActions({super.key, required this.actions, this.onAccept, this.busy = false, this.trailing, this.visibleCount = 3});
+  final List<ActionOption> actions;
+  final void Function(ActionOption a)? onAccept;
+  final bool busy;
+  final Widget? trailing;
+  final int visibleCount;
+
+  @override
+  State<RankedActions> createState() => _RankedActionsState();
+}
+
+class _RankedActionsState extends State<RankedActions> {
+  bool all = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final shown = all ? widget.actions : widget.actions.take(widget.visibleCount).toList();
+    final hidden = widget.actions.length - shown.length;
+    final spinner = SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: c.textMedium));
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final a in shown)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              decoration: BoxDecoration(
+                color: (a.rank == 1 && a.auto ? c.success : c.textLight).withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: (a.rank == 1 && a.auto ? c.success : c.divider).withValues(alpha: a.rank == 1 && a.auto ? 0.5 : 1)),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _rankBadge(context, a),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(a.text, style: orgText(context, size: 12.5, w: FontWeight.w700)),
+                      if (a.why.isNotEmpty) Text(a.why, style: orgText(context, size: 11.5, color: c.textMedium)),
+                    ]),
+                  ),
+                ]),
+                const SizedBox(height: 4),
+                Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                  _scoreChip(context, a),
+                  if (a.auto && widget.onAccept != null)
+                    FilledButton.tonalIcon(
+                      onPressed: widget.busy ? null : () => widget.onAccept!(a),
+                      icon: widget.busy ? spinner : const Icon(Icons.check_rounded, size: 16),
+                      label: Text(a.rank == 1 ? t('قبول (مقترح)', 'Accept (recommended)') : t('قبول', 'Accept')),
+                      style: FilledButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 12)),
+                    )
+                  else if (!a.auto)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(8)),
+                      child: Text(t('يُنفَّذ يدوياً', 'By hand'), style: orgText(context, size: 11.5, color: c.textMedium)),
+                    ),
+                  if (identical(a, shown.last) && widget.trailing != null) widget.trailing!,
+                ]),
+              ]),
+            ),
+          ),
+        if (hidden > 0 || all && widget.actions.length > widget.visibleCount)
+          TextButton(
+            onPressed: () => setState(() => all = !all),
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: Text(all ? t('أقل', 'Fewer') : t('+$hidden حلول أخرى', '+$hidden more ways')),
+          ),
+      ]),
+    );
+  }
+
+  Widget _rankBadge(BuildContext context, ActionOption a) {
+    final c = context.colors;
+    final top = a.rank == 1 && a.auto;
+    return Container(
+      width: 26,
+      height: 26,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(color: top ? c.success : c.inputBg, shape: BoxShape.circle),
+      child: Text('#${a.rank}', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? Colors.white : c.textMedium)),
+    );
+  }
+
+  Widget _scoreChip(BuildContext context, ActionOption a) {
+    final c = context.colors;
+    final col = a.score >= 70 ? c.success : (a.score >= 40 ? c.warning : c.textLight);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+      child: Text(t('الترجيح ${a.score}٪', 'Fit ${a.score}%'), style: orgText(context, size: 11, w: FontWeight.w700, color: col)),
     );
   }
 }

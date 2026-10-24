@@ -30,7 +30,8 @@ import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_insights.dart';
 import 'org_schedule_optimizer.dart';
-import 'org_timetable_parts.dart' show ConflictList, courseName;
+import 'org_schedule_remedies.dart';
+import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -537,8 +538,11 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   List<ScheduleSuggestion>? advice;
   QuickActionsReport? quick;
   PreflightReport? preflight; // GET …/preflight (null: not loaded / old server)
-  bool quickLoading = false, quickMissing = false, applying = false;
+  RemedyReport? remedies; // GET …/remedies: every conflict with ranked ways out (null: not loaded / old server)
+  bool quickLoading = false, quickMissing = false, applying = false, remediesMissing = false;
   final busy = <String>{};
+  final pfBusy = <String>{}; // pre-flight recommendation keys with a request in flight ('*' = accept-all)
+  final rmBusy = <String>{}; // conflict keys with a remedy being applied
   String? _seen; // the timetable version + hard-clash count the panel was computed for
 
   String get _key => '${widget.p.schedule?['version']}|${widget.p.conflicts.where((x) => x['severity'] == 'error').length}|${runIsOpen(widget.p.genRun)}';
@@ -556,6 +560,45 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     if (done.unplaced > 0) _loadAdvice();
     if (widget.canEdit && done.problems > 0) _loadQuick();
     if (!done.isComplete) _loadPreflight();
+    if (widget.p.conflicts.isNotEmpty) _loadRemedies();
+  }
+
+  Future<void> _loadRemedies() async {
+    final r = await fetchRemedies(widget.p);
+    if (!mounted) return;
+    setState(() {
+      remedies = r.report;
+      remediesMissing = r.missing;
+    });
+  }
+
+  /// One ranked way out of a conflict: a slot move / room change / group fix goes through the slot PUT (a remaining
+  /// clash asks to force it), `resolve` re-solves the clashing part, the data fixes are the pre-flight ones.
+  Future<void> _applyRemedy(RemedyItem item, ActionOption a) async {
+    final ok = await confirm(context, message: '${a.text}\n${a.why}', confirmLabel: t('تطبيق', 'Apply'));
+    if (!ok || !mounted) return;
+    String? reason;
+    if (a.kind == 'override') {
+      reason = await askText(context, title: t('سبب التجاوز (يظهر في السجل)', 'Reason for the override (kept in the log)'), multiline: true);
+      if (reason == null || reason.trim().length < 3 || !mounted) return;
+    }
+    setState(() => rmBusy.add(item.key));
+    var r = await applyRemedy(widget.p, a, overrideReason: reason?.trim());
+    if (mounted && r.code == 'schedule_conflict') {
+      final force = await confirm(context,
+          message: t('ما زال هناك تعارض إلزامي بعد هذا التغيير. الحفظ رغم ذلك؟', 'A hard conflict remains after this change. Save anyway?'), danger: true);
+      if (force && mounted) r = await applyRemedy(widget.p, a, force: true, overrideReason: reason?.trim());
+    }
+    if (!mounted) return;
+    setState(() => rmBusy.remove(item.key));
+    if (!r.ok) {
+      if (r.code != 'schedule_conflict') toast(orgErrorText(r.error!), error: true);
+      if (r.code == 'action_not_found' || r.code == 'stale_version') _loadRemedies();
+      return;
+    }
+    final applied = asMap(r.map['applied']);
+    toast(applied['regenerate'] == true ? t('طُبّق الحل — أعد التوليد لاستخدامه', 'Applied — regenerate to use it') : t('طُبّق الحل', 'Applied'));
+    _loadRemedies();
   }
 
   Future<void> _loadPreflight() async {
@@ -564,6 +607,62 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     if (id == null) return;
     final r = await orgCall(() => p.api.get('${p.base}/schedules/$id/preflight'), quiet: true);
     if (mounted && r.ok) setState(() => preflight = PreflightReport.of(r.map));
+  }
+
+  /// A recommendation as a quick action: Accept applies the server-side fix (course plan groups / weekly cap) and the
+  /// draft must then be regenerated; Reject hides it (Restore undoes). The reply is the fresh report.
+  Future<void> _acceptFinding(PreflightFinding f, ActionOption a) async {
+    final ok = await confirm(context,
+        message: '${a.text.isEmpty ? f.actionText : a.text}${a.why.isEmpty ? '' : '\n${a.why}'}\n${t('يُحفظ التغيير فوراً، ثم أعد التوليد ليُستخدم.', 'The change is saved now; regenerate to use it.')}',
+        confirmLabel: t('قبول', 'Accept'));
+    if (!ok || !mounted) return;
+    await _preflightPost('accept', f, actionId: a.id);
+  }
+
+  /// The best automatic fix of every standing blocker, one after the other (POST …/preflight/accept-all).
+  Future<void> _acceptAllFindings() async {
+    final n = preflight?.visible.where((f) => f.blocker && f.automatic).length ?? 0;
+    final ok = await confirm(context,
+        message: t('تُطبَّق أفضل توصية تلقائية لكل مانع ($n) واحدة تلو الأخرى، ثم أعد التوليد.', 'The best automatic fix of each blocker ($n) is applied one after the other; then regenerate.'),
+        confirmLabel: t('قبول الكل', 'Accept all'));
+    if (!ok || !mounted) return;
+    final p = widget.p;
+    final id = p.schedule?['id'];
+    if (id == null) return;
+    setState(() => pfBusy.add('*'));
+    final r = await orgCall(() => p.api.post('${p.base}/schedules/$id/preflight/accept-all', body: {'only_blockers': true}));
+    if (!mounted) return;
+    setState(() {
+      pfBusy.remove('*');
+      if (r.ok) preflight = PreflightReport.of(r.map);
+    });
+    if (r.ok) {
+      final applied = asMapList(r.map['applied']).length;
+      final skipped = asMapList(r.map['skipped']).length;
+      toast(t('طُبّقت $applied توصية${skipped > 0 ? ' · تعذّر $skipped' : ''} — أعد التوليد', '$applied applied${skipped > 0 ? ' · $skipped skipped' : ''} — regenerate to use them'));
+    }
+  }
+
+  Future<void> _rejectFinding(PreflightFinding f) => _preflightPost('dismiss', f);
+  Future<void> _restoreFinding(PreflightFinding f) => _preflightPost('dismiss', f, undo: true);
+
+  Future<void> _preflightPost(String what, PreflightFinding f, {bool undo = false, String? actionId}) async {
+    final p = widget.p;
+    final id = p.schedule?['id'];
+    if (id == null || f.key.isEmpty) return;
+    setState(() => pfBusy.add(f.key));
+    final r = await orgCall(() => p.api.post('${p.base}/schedules/$id/preflight/$what', body: {'key': f.key, 'undo': undo, 'action_id': ?actionId}));
+    if (!mounted) return;
+    setState(() {
+      pfBusy.remove(f.key);
+      if (r.ok) preflight = PreflightReport.of(r.map);
+    });
+    if (!r.ok) {
+      toast(orgErrorText(r.error!), error: true);
+      if (r.code == 'finding_not_found') _loadPreflight();
+      return;
+    }
+    if (what == 'accept') toast(t('طُبّقت التوصية — أعد التوليد لاستخدامها', 'Applied — regenerate to use it'));
   }
 
   Future<void> _loadQuick() async {
@@ -644,7 +743,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
       _completionCard(context, done, o),
       if (applying) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
-      if (preflight != null && !preflight!.clean && !done.isComplete)
+      if (preflight != null && preflight!.findings.isNotEmpty && !done.isComplete)
         Padding(
           padding: const EdgeInsets.only(top: 10),
           child: DataHealthCard(
@@ -652,6 +751,11 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
             courseNames: widget.names,
             people: _people,
             rooms: {for (final r in p.rooms) asInt(r['id']): '${r['name']}'},
+            onAccept: widget.canEdit ? _acceptFinding : null,
+            onAcceptAll: widget.canEdit ? _acceptAllFindings : null,
+            onReject: widget.canEdit ? _rejectFinding : null,
+            onRestore: widget.canEdit ? _restoreFinding : null,
+            busy: pfBusy,
           ),
         ),
       if (p.slots.isNotEmpty && (done.isComplete || done.unplaced == 0))
@@ -705,7 +809,19 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
             tilePadding: EdgeInsets.zero,
             initiallyExpanded: done.hard > 0,
             title: Text(t('التعارضات (${p.conflicts.length})', 'Conflicts (${p.conflicts.length})'), style: orgText(context, w: FontWeight.w800)),
-            children: [ConflictList(conflicts: p.conflicts, courseNames: widget.names)],
+            subtitle: Text(
+                remedies == null && !remediesMissing
+                    ? t('جارٍ حساب الحلول…', 'Working out the fixes…')
+                    : t('لكل تعارض حلول مرتّبة — الأفضل أولاً', 'Every conflict has ranked ways out — best first'),
+                style: orgText(context, size: 12, color: c.textMedium)),
+            children: [
+              if (remedies != null)
+                RemediesPanel(report: remedies!, courseNames: widget.names, onAccept: widget.canEdit ? _applyRemedy : null, busy: rmBusy)
+              else if (remediesMissing)
+                RemediesPanel(report: RemedyReport(items: [for (final x in p.conflicts) RemedyItem(key: '${x['type']}', conflict: x, actions: const [])]), courseNames: widget.names)
+              else
+                const SizedBox(height: 2 * 82.0, child: AppListSkeleton(items: 2, withAvatar: false, padding: EdgeInsets.zero)),
+            ],
           ),
         ),
     ]);

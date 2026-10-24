@@ -43,6 +43,45 @@ void main() {
     test('an empty report is clean', () {
       expect(PreflightReport.of(const {}).clean, isTrue);
     });
+
+    test('recommendations as quick actions: key, action text, dismissed ones hidden and not counted', () {
+      final r = PreflightReport.of({
+        'findings': [
+          {'code': 'no_room_large_enough', 'severity': 'blocker', 'text_en': 'Course 10 lab needs 700', 'text_ar': 'يحتاج 700', 'fix_en': 'Split', 'fix_ar': 'قسّم', 'course_id': 10, 'kind': 'lab',
+           'key': 'no_room_large_enough:10:lab:::', 'action': {'kind': 'split_groups', 'session_kind': 'lab', 'group_size': 40, 'groups': 18}},
+          {'code': 'teacher_overcommitted', 'severity': 'blocker', 'text_en': 'Member 7 over', 'text_ar': 'زيادة', 'fix_en': 'Move', 'fix_ar': 'وزّع', 'user_id': 7,
+           'key': 'teacher_overcommitted:::7::', 'action': {'kind': 'raise_week_cap', 'max_week': 12}},
+          {'code': 'course_without_teacher', 'severity': 'blocker', 'text_en': 'No teacher', 'text_ar': 'بلا مدرس', 'fix_en': 'Assign', 'fix_ar': 'عيّن', 'course_id': 11,
+           'key': 'course_without_teacher:11:lecture:::', 'dismissed': true},
+        ],
+        'summary': const {},
+      });
+      expect(r.visible.length, 2);
+      expect(r.hidden.single.key, 'course_without_teacher:11:lecture:::');
+      expect((r.blockers, r.warnings, r.clean), (2, 0, false));
+      final split = r.visible.first;
+      expect(split.automatic, isTrue);
+      expect(split.actionText, 'Split the course lab into 18 groups of at most 40 in the course plan');
+      expect(r.visible[1].actionText, "Raise the member's weekly cap to 12 periods");
+      expect(r.hidden.single.automatic, isFalse);
+      expect(r.hidden.single.actionText, '');
+      expect(r.automatic, 2);
+      // a newer server lists every way out, ranked: the text of the best automatic one is what Accept shows
+      final ranked = PreflightFinding.of({
+        'code': 'no_room_large_enough', 'severity': 'blocker', 'text_en': 'x', 'fix_en': 'f', 'key': 'k',
+        'action': {'kind': 'split_groups', 'session_kind': 'lab', 'group_size': 40, 'groups': 18},
+        'actions': [
+          {'id': 'split_groups', 'kind': 'split_groups', 'rank': 1, 'score': 60, 'auto': true, 'text_en': 'Split the course lab into 18 groups of at most 40 (course plan)', 'text_ar': 'تقسيم'},
+          {'id': 'add_room', 'kind': 'add_room', 'rank': 2, 'score': 45, 'auto': false, 'text_en': 'Add a room for 700 students', 'text_ar': 'أضف قاعة'},
+        ],
+      });
+      expect(ranked.actionText, 'Split the course lab into 18 groups of at most 40 (course plan)');
+      expect(ranked.actions.map((a) => a.rank), [1, 2]);
+      expect(ranked.best!.id, 'split_groups');
+      AppConfig.lang = 'ar';
+      expect(split.actionText, contains('معمل'));
+      expect(split.actionText, contains('18'));
+    });
   });
 
   group('explanations', () {

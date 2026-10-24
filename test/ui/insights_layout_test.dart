@@ -13,9 +13,20 @@ void main() {
   testWidgets('DataHealthCard with blockers and warnings', (tester) async {
     final report = PreflightReport.of({
       'findings': [
-        {'code': 'no_room_large_enough', 'severity': 'blocker', 'text_en': 'Course needs a room for 700 students; the largest suitable room seats 250', 'text_ar': 'المقرر يحتاج قاعة لـ 700 طالباً وأكبر قاعة مناسبة تتسع لـ 250', 'fix_en': 'Split it into 3 groups of at most 250 (course plan) or add a room for 700', 'fix_ar': 'قسّم الحصة إلى 3 مجموعات', 'course_id': 1},
-        {'code': 'teacher_overcommitted', 'severity': 'blocker', 'text_en': 'Member 7 is assigned 30 sessions but has only 20 periods', 'text_ar': 'العضو مكلّف بـ 30 حصة', 'fix_en': 'Move at least 10 periods to another member', 'fix_ar': 'وزّع 10 فترات', 'user_id': 7},
+        {'code': 'no_room_large_enough', 'severity': 'blocker', 'text_en': 'Course needs a room for 700 students; the largest suitable room seats 250', 'text_ar': 'المقرر يحتاج قاعة لـ 700 طالباً وأكبر قاعة مناسبة تتسع لـ 250', 'fix_en': 'Split it into 3 groups of at most 250 (course plan) or add a room for 700', 'fix_ar': 'قسّم الحصة إلى 3 مجموعات', 'course_id': 1, 'key': 'no_room_large_enough:1:lecture:::', 'action': {'kind': 'split_groups', 'session_kind': 'lecture', 'group_size': 250, 'groups': 3},
+         'actions': [
+           {'id': 'split_groups', 'kind': 'split_groups', 'rank': 1, 'score': 84, 'auto': true, 'text_en': 'Split the course lecture into 3 groups of at most 250 (course plan)', 'text_ar': 'تقسيم محاضرة المقرر إلى 3 مجموعات بحد 250 طالباً (خطة المقرر)', 'why_en': 'every group fits the largest suitable room; 3 sessions instead of one', 'why_ar': 'كل مجموعة تدخل أكبر قاعة مناسبة'},
+           {'id': 'allow_overflow', 'kind': 'allow_overflow', 'rank': 2, 'score': 55, 'auto': true, 'text_en': 'Allow rooms to be over capacity by up to 15%', 'text_ar': 'السماح بتجاوز سعة القاعة حتى 15٪', 'why_en': 'only 30 students over capacity', 'why_ar': '30 طالباً فقط فوق السعة', 'pct': 15},
+           {'id': 'activate_room:9', 'kind': 'activate_room', 'rank': 3, 'score': 50, 'auto': true, 'text_en': 'Activate room Big Hall (900 seats)', 'text_ar': 'تفعيل القاعة الكبرى', 'why_en': 'an inactive room that seats the group', 'why_ar': 'قاعة موقوفة', 'room_id': 9},
+           {'id': 'add_room', 'kind': 'add_room', 'rank': 4, 'score': 45, 'auto': false, 'text_en': 'Add a room for 700 students', 'text_ar': 'أضف قاعة تتسع لـ 700 طالباً', 'why_en': 'the manual fix', 'why_ar': 'الحل اليدوي'},
+         ]},
+        {'code': 'teacher_overcommitted', 'severity': 'blocker', 'text_en': 'Member 7 is assigned 30 sessions but has only 20 periods', 'text_ar': 'العضو مكلّف بـ 30 حصة', 'fix_en': 'Move at least 10 periods to another member', 'fix_ar': 'وزّع 10 فترات', 'user_id': 7, 'key': 'teacher_overcommitted:::7::', 'action': {'kind': 'raise_week_cap', 'max_week': 30},
+         'actions': [
+           {'id': 'raise_week_cap', 'kind': 'raise_week_cap', 'rank': 1, 'score': 74, 'auto': true, 'text_en': "Raise the member's weekly cap to 30 periods", 'text_ar': 'رفع الحد الأسبوعي للعضو إلى 30 فترة', 'why_en': 'their 32 free periods suffice; only the cap blocks', 'why_ar': 'فتراته المتاحة تكفي', 'max_week': 30},
+           {'id': 'widen_availability', 'kind': 'widen_availability', 'rank': 2, 'score': 40, 'auto': false, 'text_en': "Widen the member's availability: at least 10 more periods are needed", 'text_ar': 'وسّع إتاحة العضو', 'why_en': 'needs their consent', 'why_ar': 'يتطلب موافقته'},
+         ]},
         {'code': 'room_without_capacity', 'severity': 'warning', 'text_en': 'Room has no capacity', 'text_ar': 'قاعة بلا سعة', 'fix_en': 'Set the capacity', 'fix_ar': 'حدّد السعة', 'room_id': 3},
+        {'code': 'course_without_teacher', 'severity': 'blocker', 'text_en': 'Course 9 lecture has no instructor and this text goes on for a while', 'text_ar': 'محاضرة المقرر بلا مدرّس', 'fix_en': 'Assign', 'fix_ar': 'عيّن', 'course_id': 9, 'key': 'course_without_teacher:9:lecture:::', 'dismissed': true},
       ],
       'summary': {'sessions': 180, 'cells': 20, 'rooms': 25, 'utilization_pct': 36, 'cohorts': 58},
       'engine': 'cpsat',
@@ -23,7 +34,17 @@ void main() {
     await expectNoLayoutErrors(
       tester,
       () => SingleChildScrollView(
-        child: DataHealthCard(report: report, courseNames: const {1: 'Introduction to Very Long Course Names in Engineering'}, people: const {7: 'Dr. Somebody With A Long Name'}, rooms: const {3: 'Hall 3'}),
+        child: DataHealthCard(
+          report: report,
+          courseNames: const {1: 'Introduction to Very Long Course Names in Engineering'},
+          people: const {7: 'Dr. Somebody With A Long Name'},
+          rooms: const {3: 'Hall 3'},
+          onAccept: (_, _) {},
+          onAcceptAll: () {},
+          onReject: (_) {},
+          onRestore: (_) {},
+          busy: const {'teacher_overcommitted:::7::', '*'},
+        ),
       ),
     );
   });

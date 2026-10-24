@@ -587,6 +587,22 @@ class OrgScheduleProvider extends AdminBase {
   Future<List<Map<String, dynamic>>?> editSlot(int slotId, Map<String, dynamic> patch, {bool force = false}) =>
       _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$slotId', body: {...patch, if (force) 'force': true}));
 
+  /// Pin / unpin a session (a pinned one is never moved by the generator). True when saved.
+  Future<bool> setLocked(int slotId, bool locked) async => await editSlot(slotId, {'locked': locked}) == null;
+
+  /// Change who teaches a session with a scope (course · weekly · once). [dryRun] returns the before / after plan
+  /// (ReassignPlan) and writes nothing; otherwise the timetable is reloaded when the server applied it.
+  Future<OrgCall> reassignSlot(int slotId, Map<String, dynamic> body, {bool dryRun = false}) async {
+    final id = schedule?['id'];
+    if (id == null) return const OrgCall(null);
+    final r = await orgCall(
+        () => api.post('$base/schedules/$id/slots/$slotId/reassign',
+            body: {...body, if (!dryRun) 'expected_version': ?schedule?['version']}, queryParams: {if (dryRun) 'dry_run': true}),
+        quiet: true);
+    if (!dryRun && (r.ok || r.code == 'stale_version')) await open(asInt(id));
+    return r;
+  }
+
   /// Drag & drop: the slot shows in its new cell at once and goes back if the server refuses. Sends the version the
   /// user is looking at, so a timetable someone else just changed answers stale_version instead of being overwritten.
   Future<List<Map<String, dynamic>>?> moveSlot(Map<String, dynamic> slot, String day, int periodId, {bool force = false}) async {

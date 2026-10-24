@@ -32,6 +32,7 @@ import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
 import 'org_schedule_generate.dart';
 import 'org_schedule_grid.dart';
+import 'org_schedule_reassign.dart';
 import 'org_schedule_groups.dart' show openStudentGroups;
 import 'org_schedule_exams.dart' show openExamTimetables;
 import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
@@ -1556,11 +1557,80 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
             recheck();
           },
         );
+        // the staff fields of an existing session: a scoped change with a before / after comparison (reassign)
+        final staffBefore = {'teacher_id': slot?['teacher_id'] == null ? null : asInt(slot!['teacher_id']), 'assistant_id': slot?['assistant_id'] == null ? null : asInt(slot!['assistant_id'])};
+        Map<String, int?> staffChanged() => {
+              if (slot != null && teacher != staffBefore['teacher_id']) 'teacher_id': teacher,
+              if (slot != null && assistant != staffBefore['assistant_id']) 'assistant_id': assistant,
+            };
+        Future<bool> reassign(String field, int? uid) async {
+          final who = uid == null ? t('بلا أحد', 'nobody') : (p.staffOf(field == 'teacher_id' ? 'teacher' : 'teacher_assistant').where((u) => asInt(u['id']) == uid).firstOrNull?['name']?.toString() ?? '#$uid');
+          final scope = await askReassignScope(ctx, who: who, fieldLabel: field == 'teacher_id' ? t('المدرس', 'the teacher') : t('المعيد', 'the assistant'));
+          if (scope == null || !ctx.mounted) return false;
+          DateTime? date;
+          if (scope == 'once') {
+            date = await pickSlotDate(ctx, day);
+            if (date == null || !ctx.mounted) return false;
+          }
+          final body = {'field': field, 'user_id': uid, 'scope': scope, if (date != null) 'date': isoDate(date)};
+          final dry = await p.reassignSlot(asInt(slot!['id']), body, dryRun: true);
+          if (!ctx.mounted) return false;
+          if (!dry.ok) {
+            toast(orgErrorText(dry.error!), error: true);
+            return false;
+          }
+          final plan = ReassignPlan.of(dry.map);
+          final people = {for (final u in [...p.staffOf('teacher'), ...p.staffOf('teacher_assistant')]) asInt(u['id']): '${u['name']}'};
+          final go = await showReassignCompare(ctx, plan,
+              names: {for (final l in p.loads) asInt(l['course_id']): t('${asMap(l['course'])['name_ar'] ?? asMap(l['course'])['name_en']}', '${asMap(l['course'])['name_en'] ?? asMap(l['course'])['name_ar']}')},
+              people: people,
+              periods: {for (final x in p.periods) asInt(x['id']): '${x['label']}'},
+              rooms: {for (final r in p.rooms) asInt(r['id']): '${r['name']}'});
+          if (go != true || !ctx.mounted) return false;
+          final r = await p.reassignSlot(asInt(slot['id']), {...body, if (!plan.afterWins) 'force': true});
+          if (!ctx.mounted) return false;
+          if (!r.ok) {
+            toast(orgErrorText(r.error!), error: true);
+            return false;
+          }
+          toast(scope == 'once' ? t('حُفظ التغيير لهذا التاريخ وأُبلغ المعنيون', 'Saved for that date — everyone concerned was told') : t('طُبّقت النسخة بعد التغيير (يمكن استرجاع ما قبلها من النسخ)', 'The after version was applied (the before one is kept in versions)'));
+          return true;
+        }
         Future<void> save({bool force = false, bool replace = false, String? strategy, String? overrideReason}) async {
           set(() => busy = true);
           final body = {...form()}
             ..remove('course_id')
             ..remove('kind');
+          final staff = staffChanged();
+          if (staff.isNotEmpty) {
+            for (final k in staff.keys) {
+              body.remove(k);
+            }
+            final same = body.entries.every((e) => (slot![e.key] == null ? null : '${slot[e.key]}') == (e.value == null ? null : '${e.value}'));
+            if (!same) {
+              final r0 = await p.editSlot(asInt(slot!['id']), body, force: force);
+              if (!ctx.mounted) return;
+              if (r0 != null) {
+                set(() => busy = false);
+                if (r0.isNotEmpty && r0.first['type'] != 'error') {
+                  final choice = await showConflictPreview(ctx, r0, canReplace: false, canRebuild: false, canOverride: false);
+                  if (choice == 'force' && ctx.mounted) await save(force: true);
+                }
+                return;
+              }
+            }
+            var done = true;
+            for (final e in staff.entries) {
+              if (!await reassign(e.key, e.value)) {
+                done = false;
+                break;
+              }
+              if (!ctx.mounted) return;
+            }
+            set(() => busy = false);
+            if (done && ctx.mounted) Navigator.pop(ctx);
+            return;
+          }
           final res = slot == null
               ? await p.addSlot({...body, 'course_id': course, 'kind': kind}, force: force, replace: replace, strategy: strategy, overrideReason: overrideReason)
               : await p.editSlot(asInt(slot['id']), body, force: force);
@@ -1683,7 +1753,30 @@ Future<void> _slotSheet(BuildContext context, OrgScheduleProvider p, Map<String,
               const SizedBox(height: 12),
               PrimaryButton(isLoading: busy, label: t('حفظ', 'Save'), onPressed: () => save()),
               if (slot != null) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
+                Text(
+                  t('تغيير المدرس أو المعيد يسألك عن النطاق (كل المقرر · هذه الحصة أسبوعياً · تاريخ واحد) ويعرض الجدول قبل وبعد.',
+                      'Changing the teacher or assistant asks for the scope (whole course · this weekly session · one date) and shows the timetable before and after.'),
+                  style: orgText(ctx, size: 11.5, color: c.textLight),
+                ),
+                const SizedBox(height: 4),
+                TextButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () async {
+                          final pinned = slot['locked'] == true;
+                          set(() => busy = true);
+                          final ok = await p.setLocked(asInt(slot['id']), !pinned);
+                          if (!ctx.mounted) return;
+                          set(() => busy = false);
+                          if (ok) {
+                            toast(pinned ? t('أُلغي التثبيت — قد يحرّكها التوليد', 'Unpinned — the generator may move it') : t('ثُبّتت الحصة — لن يحرّكها التوليد', 'Pinned — the generator never moves it'));
+                            Navigator.pop(ctx);
+                          }
+                        },
+                  icon: Icon(slot['locked'] == true ? Icons.push_pin_outlined : Icons.push_pin_rounded, color: c.primary),
+                  label: Text(slot['locked'] == true ? t('إلغاء تثبيت الحصة', 'Unpin the session') : t('تثبيت الحصة', 'Pin the session'), style: TextStyle(color: c.primary)),
+                ),
                 TextButton.icon(
                   onPressed: () async {
                     if (await confirm(ctx, message: t('حذف هذه الحصة؟', 'Delete this slot?'), danger: true)) {

@@ -20,7 +20,10 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'org_member_changes.dart';
 import 'org_member_space.dart';
+import 'org_schedule_reassign.dart' show pickSlotDate;
 import 'org_my_exams.dart' show examPauseBanner, examPausesOf, openMyExams;
 import 'org_providers.dart';
 import 'org_ui.dart';
@@ -355,7 +358,7 @@ class _TimetableView extends StatelessWidget {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
-          children: [for (final tt in p.timetables) ..._timetable(context, tt)],
+          children: [for (final tt in p.timetables) ..._timetable(context, tt, reload)],
         ),
       );
     }
@@ -372,11 +375,21 @@ class _TimetableView extends StatelessWidget {
     );
   }
 
-  List<Widget> _timetable(BuildContext context, Map<String, dynamic> tt) {
+  List<Widget> _timetable(BuildContext context, Map<String, dynamic> tt, Future<void> Function() reload) {
     final c = context.colors;
     final labels = dayLabels();
     final sched = asMap(tt['schedule']);
     final extras = asMapList(tt['extras']);
+    final changes = [for (final x in asMapList(tt['changes'])) OccurrenceChange.of(x)];
+    final orgId = asInt(sched['org_id']);
+    // the session's own staff: pick a date of that weekday, then hold it online / back in person
+    Future<void> switchDate(Map<String, dynamic> x) async {
+      final date = await pickSlotDate(context, '${x['day']}');
+      if (date == null || !context.mounted) return;
+      final online = await askSessionMode(context, title: '${x['course'] ?? ''}', date: date);
+      if (online == null || !context.mounted) return;
+      if (await switchSessionMode(context, orgId: orgId, slotId: asInt(x['slot_id']), date: date, online: online)) await reload();
+    }
     final days = memberTimetableDays(tt);
     Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 6),
@@ -399,6 +412,16 @@ class _TimetableView extends StatelessWidget {
             accent: c.warning,
           ),
       ],
+      if (changes.isNotEmpty) ...[
+        heading(t('تغييرات قادمة (أسبوعان)', 'Upcoming changes (2 weeks)')),
+        for (final x in changes)
+          OccurrenceCard(
+            change: x,
+            onRespond: x.canRespond ? (d) async { if (await respondToChange(x.id, d)) await reload(); } : null,
+            onUndo: x.canEdit ? () async { if (await undoChange(orgId, x.id)) await reload(); } : null,
+            onOpenLink: x.onlineUrl == null ? null : () => launchUrl(Uri.parse(x.onlineUrl!), mode: LaunchMode.externalApplication),
+          ),
+      ],
       if (days.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -416,8 +439,10 @@ class _TimetableView extends StatelessWidget {
               if (_isLab(x)) t('عملي', 'Lab'),
               if (x['room'] != null) '${x['room']}',
               if (x['teacher'] != null) '${x['teacher']}',
+              if (x['can_switch'] == true) t('اضغط لعقدها أونلاين في تاريخ', 'Tap to hold it online on a date'),
             ].join(' · '),
             accent: _isLab(x) ? c.success : c.primary,
+            onTap: x['can_switch'] == true ? () => switchDate(x) : null,
           ),
       ],
       const SizedBox(height: 16),
@@ -426,9 +451,10 @@ class _TimetableView extends StatelessWidget {
 }
 
 class _SlotRow extends StatelessWidget {
-  const _SlotRow({required this.top, required this.bottom, required this.title, required this.subtitle, required this.accent});
+  const _SlotRow({required this.top, required this.bottom, required this.title, required this.subtitle, required this.accent, this.onTap});
   final String top, bottom, title, subtitle;
   final Color accent;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -437,6 +463,7 @@ class _SlotRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: RowCard(
         accent: accent,
+        onTap: onTap,
         child: Row(children: [
           Container(
             width: 76,
