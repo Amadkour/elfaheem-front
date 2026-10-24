@@ -71,6 +71,20 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | `flutter test test/org/ test/export/ test/ui/` | 330 pass |
 | Review round | pending (reviewers rate-limited; see backend `docs/PROGRESS.md`) |
 
+## Phase 4 — app side (2026-10-24, commits `b63ba5e`, `c1a5e16`)
+
+### Done
+- **Queue-first registration** in the member cart (`org_registrar_member.dart`, helpers in `org_registrar.dart`): submit with a client idempotency key (`newIdempotencyKey`), 202 → a waiting sheet that shows the position in line (`regQueueText`, `queue_depth`) and polls when the server says (`poll_after_ms` via `regPollAfterMs`, 1–10 s, for up to 75 s, then points to "My requests"); the result lines come from `regResultLines` for both the queued and the synchronous reply. An older server without the route (`endpointMissing`) gets the synchronous `register` call.
+- **Graceful degradation, truthfully**: a 503 (admission control), 429 (throttle) or a dropped socket arrives BEFORE anything is stored, so the app retries the same key 3× (1 / 2 / 4 s, `regQueueBusy`) and, if it still fails, says that nothing was submitted — never "your request is kept", which the first version said and the load test proved wrong (backend `docs/DECISIONS.md` D-015 / D-016, `tests/load/README.md`).
+- Tests: `test/org/org_registrar_test.dart` (queue helpers, poll interval clamp, busy detection).
+
+### Checks at the end of the phase
+| Check | Result |
+|---|---|
+| `flutter analyze` | 0 errors, 0 warnings |
+| `flutter test test/org/ test/export/ test/ui/` | 331 pass |
+| Review round | pending (with Phase 3; see backend `docs/PROGRESS.md`) |
+
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
 
