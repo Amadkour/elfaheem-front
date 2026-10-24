@@ -69,7 +69,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|---|
 | `flutter analyze` | 0 errors, 0 warnings |
 | `flutter test test/org/ test/export/ test/ui/` | 330 pass |
-| Review round | pending (reviewers rate-limited; see backend `docs/PROGRESS.md`) |
+| Review round | done with Phase 4 (backend `docs/PROGRESS.md` → Review rounds · Phases 3 + 4) |
 
 ## Phase 4 — app side (2026-10-24, commits `b63ba5e`, `c1a5e16`)
 
@@ -83,10 +83,13 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|---|
 | `flutter analyze` | 0 errors, 0 warnings |
 | `flutter test test/org/ test/export/ test/ui/` | 331 pass |
-| Review round | pending (with Phase 3; see backend `docs/PROGRESS.md`) |
+| Review round | done with Phase 3 (backend `docs/PROGRESS.md` → Review rounds · Phases 3 + 4; app fixes in commit b6e874b) |
 
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
+
+### Phases 3 + 4 (2026-10-24)
+App findings from the architecture review (all fixed, commit b6e874b): share dates were parsed as local time and sent as the first second of the chosen day (now `orgParseUtc` / `orgUtc`, expiry = end of the chosen day, `shareExpiryInstant`); swiping the queue sheet away popped the registrar page (the pop now happens only while the sheet is open); a 500 or a dropped socket after the submit retries was reported as "nothing was registered" although the server stores the request before dispatching it (now "could not confirm — check My requests", `regSubmitCertainlyRejected`); the verify dropdown asserted when the chosen grant disappeared; per-sheet text controllers were never disposed; the sharing tab controller ignored a changed admin flag; `methods` compared by join order (`setEquals`). New server codes have texts (`root_only`, `grant_revoked`, `too_many_keys`, `bad_resource_type`, `code_generation_failed`, `pending_limit`, `idempotency_mismatch`, `gone`, `internal`); `pending_limit` is not treated as "busy". The queue and result sheets are public plain-value widgets under the layout harness. Security review: no app findings.
 
 ### Phase 2 (2026-10-24)
 The three fresh-context reviews ran on the backend diff (which includes the auth contract the app consumes); findings and fixes are in the backend `docs/PROGRESS.md` (round 1) and `docs/DECISIONS.md` D-012. App-relevant outcome: the `/refresh` reply within ~10 s of a lost reply is a fresh pair, not `refresh_reuse`; new codes to localise are listed above.
