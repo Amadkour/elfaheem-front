@@ -306,5 +306,16 @@ List<String> regResultLines(Map<String, dynamic> result, String Function(int id)
   return lines;
 }
 
+/// Was a submit turned away before anything was stored (admission control 503, throttle 429, a dying server, or
+/// no answer at all — a dropped socket, status 0)? The client may retry with the SAME idempotency key; nothing is
+/// registered until a 202 / 200 comes back, and a key that did get through returns the same request.
+bool regQueueBusy(String? code, int statusCode) => code == 'too_many_attempts' || statusCode == 429 || statusCode >= 500 || statusCode <= 0;
+
+/// How long to wait before the next status poll: what the server says (`poll_after_ms`), kept between 1 and 10 s.
+int regPollAfterMs(Object? v) {
+  final n = asInt(v);
+  return n <= 0 ? 1500 : n.clamp(1000, 10000);
+}
+
 /// A client-side idempotency key: one per submit attempt, reused by that attempt's retries.
 String newIdempotencyKey() => '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 30).toRadixString(36)}';

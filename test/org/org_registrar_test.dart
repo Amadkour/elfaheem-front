@@ -54,6 +54,15 @@ void main() {
     expect(single, ['C9: ${regStatusText('waitlisted')}']);
     expect(regResultLines({}, name), isEmpty);
     expect(newIdempotencyKey(), isNot(newIdempotencyKey()));
+    expect(regPollAfterMs(null), 1500);
+    expect(regQueueBusy(null, 503), isTrue);
+    expect(regQueueBusy('too_many_attempts', 429), isTrue);
+    expect(regQueueBusy('window_closed', 409), isFalse);
+    expect(regQueueBusy(null, 0), isTrue);
+    expect(regPollAfterMs(0), 1500);
+    expect(regPollAfterMs(2500), 2500);
+    expect(regPollAfterMs(200), 1000);
+    expect(regPollAfterMs(60000), 10000);
   });
 
   test('block texts carry the numbers', () {

@@ -120,17 +120,22 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
     setState(() => _busy = true);
     final key = newIdempotencyKey();
     final body = {'items': _cart.toJson(), 'idempotency_key': key};
-    final q = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register-requests', body: body), quiet: true);
+    var q = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register-requests', body: body), quiet: true);
     if (!mounted) return;
     if (!q.ok && q.endpointMissing) {
       await _submitSync();
       return;
     }
+    // turned away before anything was stored (503 admission control, 429 throttle): the same key again, 1 / 2 / 4 s later
+    for (var attempt = 0; attempt < 3 && mounted && !q.ok && regQueueBusy(q.code, q.error?.statusCode ?? 0); attempt++) {
+      await Future<void>.delayed(Duration(seconds: 1 << attempt));
+      q = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register-requests', body: body), quiet: true);
+    }
+    if (!mounted) return;
     if (!q.ok) {
       setState(() => _busy = false);
-      final c = q.code;
-      final msg = c == 'too_many_attempts' || (q.error?.statusCode ?? 0) >= 500
-          ? t('الصف مزدحم الآن — طلبك محفوظ، حاول بعد قليل أو راجع «طلباتي».', 'The queue is busy — your request is kept; try again shortly or check "My requests".')
+      final msg = regQueueBusy(q.code, q.error?.statusCode ?? 0)
+          ? t('الصف مزدحم الآن ولم يُرسل طلبك — لم يُسجَّل شيء، حاول مرة أخرى بعد قليل.', 'The queue is busy and your request was not submitted — nothing was registered; try again in a moment.')
           : orgErrorText(q.error!);
       await showAppSheet(context, (_) => _ResultSheet(ok: false, lines: [msg]));
       return;
@@ -141,8 +146,9 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
       // wait for the worker, telling the student where they stand
       final progress = ValueNotifier<Map<String, dynamic>>(req);
       final sheet = showAppSheet<void>(context, (_) => _QueueSheet(progress: progress));
-      for (var i = 0; i < 40 && mounted && !regRequestDone('${req['status']}'); i++) {
-        await Future<void>.delayed(const Duration(milliseconds: 1500));
+      final until = DateTime.now().add(const Duration(seconds: 75));
+      while (mounted && !regRequestDone('${req['status']}') && DateTime.now().isBefore(until)) {
+        await Future<void>.delayed(Duration(milliseconds: regPollAfterMs(req['poll_after_ms'])));
         final s = await orgCall(() => OrgApi.i.api.get('$_b/register-requests/$tid'), quiet: true);
         if (!mounted) return;
         if (s.ok) {
