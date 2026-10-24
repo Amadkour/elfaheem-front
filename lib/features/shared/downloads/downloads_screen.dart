@@ -64,21 +64,30 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
+  SessionMaterialModel _asMaterial(OfflineItem it) => SessionMaterialModel(
+        id: it.materialId,
+        sessionId: it.sessionId,
+        name: it.title,
+        description: it.description,
+        type: SessionMaterialType.video,
+        order: 0,
+        createdAt: it.createdAt,
+        completed: false,
+      );
+
   void _open(OfflineItem it) {
     HapticFeedback.selectionClick();
-    final m = SessionMaterialModel(
-      id: it.materialId,
-      sessionId: it.sessionId,
-      name: it.title,
-      description: it.description,
-      type: SessionMaterialType.video,
-      order: 0,
-      createdAt: it.createdAt,
-      completed: false,
-    );
     // VideoPlayerScreen sees the local copy and plays it without any API call.
+    // The other downloads of the same session are the lecture list / "up next".
+    final same = _items.where((o) => o.sessionId == it.sessionId).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => VideoPlayerScreen(material: m)),
+      MaterialPageRoute<void>(
+        builder: (_) => VideoPlayerScreen(
+          material: _asMaterial(it),
+          playlist: same.map(_asMaterial).toList(),
+        ),
+      ),
     );
   }
 

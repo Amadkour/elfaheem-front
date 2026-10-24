@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/session/material/session_material_model.dart';
+import 'package:flutter_education_app/features/shared/session/video/video_player_screen.dart';
 import 'package:flutter_education_app/features/shared/session/video/vod_player_parts.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -18,6 +20,7 @@ SessionMaterialModel _m(int id, {SessionMaterialType type = SessionMaterialType.
     );
 
 void main() {
+  _screenTests();
   final list = [_m(1), _m(2, type: SessionMaterialType.pdf), _m(3), _m(4)];
 
   test('playlist keeps playable lectures and finds the next one', () {
@@ -86,5 +89,23 @@ void main() {
       ),
       act: (t) => t.tap(find.text('open')),
     );
+  });
+}
+
+// The whole screen can't play in a test (no platform player), but its skeleton and error states must still lay out.
+void _screenTests() {
+  testWidgets('VideoPlayerScreen error state never overflows', (tester) async {
+    // The Android PiP plugin polls with a timer that outlives the widget in tests; iOS has no PiP branch.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      await expectNoLayoutErrors(
+        tester,
+        () => VideoPlayerScreen(material: _m(5, name: 'محاضرة بدون رابط فيديو — حالة الخطأ وإعادة المحاولة')),
+        scaffold: false,
+        frames: 8,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 }

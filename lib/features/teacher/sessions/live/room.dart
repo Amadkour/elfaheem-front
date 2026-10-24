@@ -18,6 +18,7 @@ import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'widgets/controls.dart';
+import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
 import 'widgets/live_reactions.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
@@ -224,6 +225,10 @@ class RoomPage extends StatefulWidget {
   // session list); falls back to a generic label if omitted.
   final String? sessionName;
 
+  /// False when the session creator switched recording off for this session:
+  /// the teacher's device never records and no recording UI is shown.
+  final bool recordingEnabled;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -237,6 +242,7 @@ class RoomPage extends StatefulWidget {
         this.enableAudio = true,
         this.enableVideo = true,
         this.sessionName,
+        this.recordingEnabled = true,
       });
 
   @override
@@ -428,6 +434,67 @@ class _RoomPageState extends State<RoomPage>
 
   String get _sessionElapsedLabel => _formatElapsed(_sessionElapsedSeconds);
 
+  // Controls bar: auto-hides on phones after 4 s without interaction, a tap on the video brings it back;
+  // keyboard shortcuts (M / V / S / R / E) drive ControlsWidget through this key.
+  final _controlsKey = GlobalKey<ControlsWidgetState>();
+  final _shortcutsFocus = FocusNode(debugLabel: 'live_room_shortcuts');
+  bool _controlsVisible = true;
+  Timer? _controlsHideTimer;
+  static const _controlsHideAfter = Duration(seconds: 4);
+
+  bool get _controlsAutoHide =>
+      mounted && MediaQuery.sizeOf(context).width < kLiveControlsMobileBreakpoint && !_reactions.pickerOpen;
+
+  void _pokeControls() {
+    _controlsHideTimer?.cancel();
+    if (!_controlsVisible) setState(() => _controlsVisible = true);
+    if (!_controlsAutoHide) return;
+    _controlsHideTimer = Timer(_controlsHideAfter, () {
+      if (mounted && _controlsAutoHide && _controlsVisible) setState(() => _controlsVisible = false);
+    });
+  }
+
+  void _toggleControlsVisibility() {
+    if (_controlsVisible && _controlsAutoHide) {
+      _controlsHideTimer?.cancel();
+      setState(() => _controlsVisible = false);
+    } else {
+      _pokeControls();
+    }
+  }
+
+  KeyEventResult _onRoomKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+    if (HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed ||
+        HardwareKeyboard.instance.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
+    // Typing in a text field (chat, quiz …) must never trigger a shortcut.
+    final focused = FocusManager.instance.primaryFocus?.context;
+    if (focused != null && focused.findAncestorStateOfType<EditableTextState>() != null) {
+      return KeyEventResult.ignored;
+    }
+    final controls = _controlsKey.currentState;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.keyM) {
+      controls?.toggleMic();
+    } else if (k == LogicalKeyboardKey.keyV) {
+      controls?.toggleCamera();
+    } else if (k == LogicalKeyboardKey.keyS) {
+      if (!widget.isTeacher) return KeyEventResult.ignored;
+      controls?.toggleShare();
+    } else if (k == LogicalKeyboardKey.keyR) {
+      _reactions.togglePicker();
+    } else if (k == LogicalKeyboardKey.keyE || k == LogicalKeyboardKey.end) {
+      controls?.requestEnd();
+    } else {
+      return KeyEventResult.ignored;
+    }
+    _pokeControls();
+    return KeyEventResult.handled;
+  }
+
   // Participant panel
   bool _showParticipants = false;
   List<EnrolledStudent> _enrolledStudents = [];
@@ -539,6 +606,7 @@ class _RoomPageState extends State<RoomPage>
       curve: const Interval(0.15, 1.0, curve: Curves.easeOutCubic),
     );
     _entryAnim.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pokeControls());
 
     _panelAnim = AnimationController(
       vsync: this,
@@ -585,6 +653,7 @@ class _RoomPageState extends State<RoomPage>
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
       if (widget.isTeacher &&
+          widget.recordingEnabled &&
           widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
@@ -681,6 +750,8 @@ class _RoomPageState extends State<RoomPage>
     _entryAnim.dispose();
     _panelAnim.dispose();
     _quizAnim.dispose();
+    _controlsHideTimer?.cancel();
+    _shortcutsFocus.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
     _recClockTimer?.cancel();
@@ -1092,7 +1163,7 @@ class _RoomPageState extends State<RoomPage>
       // already running (no race with LiveKit track setup).
       log("----------------------111");
       _startSessionClock(); // everyone — total session time, not gated on isTeacher
-      if (widget.isTeacher) await _startRecorderOnce();
+      if (widget.isTeacher && widget.recordingEnabled) await _startRecorderOnce();
     })
     ..on<RoomDisconnectedEvent>((event) async {
       log('Room disconnected: reason => ${event.reason}');
@@ -1552,7 +1623,11 @@ class _RoomPageState extends State<RoomPage>
         // recording indicator, thumbnail strip, PiP, the main video/
         // waiting card, AND the controls bar — instead of just the video
         // stage. See _captureAndSendLiveScreen.
-        body: RepaintBoundary(
+        body: Focus(
+          focusNode: _shortcutsFocus,
+          autofocus: true,
+          onKeyEvent: _onRoomKey,
+          child: RepaintBoundary(
           key: _liveScreenCaptureKey,
           child: Stack(
             fit: StackFit.expand,
@@ -1577,11 +1652,15 @@ class _RoomPageState extends State<RoomPage>
                           builder: (ctx, constraints) => Stack(
                             fit: StackFit.expand,
                             children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.all(
-                                  Radius.circular(20),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _toggleControlsVisibility,
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.all(
+                                    Radius.circular(20),
+                                  ),
+                                  child: _buildMainVideo(),
                                 ),
-                                child: _buildMainVideo(),
                               ),
 
                               // Thumbnail strip
@@ -1651,14 +1730,21 @@ class _RoomPageState extends State<RoomPage>
                         ),
                       ),
 
-                      // Controls bar
+                      // Controls bar (collapses on phones after 4 s idle; tap the video to bring it back)
                       if(widget.room.localParticipant!=null)
                         SlideTransition(
                           position: Tween<Offset>(
                             begin: const Offset(0, 1),
                             end: Offset.zero,
                           ).animate(_entrySlide),
-                          child: _buildControlsBar(),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.topCenter,
+                            child: _controlsVisible
+                                ? _buildControlsBar()
+                                : const SizedBox(width: double.infinity, height: 0),
+                          ),
                         ),
                     ],
                   ),
@@ -1737,6 +1823,7 @@ class _RoomPageState extends State<RoomPage>
                 ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -2285,28 +2372,15 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Controls bar ──────────────────────────────────────────────────────────
   Widget _buildControlsBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-      decoration: BoxDecoration(
-        color: _surfaceHi.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _glassBdr, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-          BoxShadow(color: _cyan.withValues(alpha: 0.05), blurRadius: 20),
-        ],
-      ),
-      child:
-      ListenableBuilder(
+    // The bar paints its own glass shell (mobile pill / wide grouped bar) — see LiveControlBar.
+    return ListenableBuilder(
         listenable: _reactions,
         builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
+        key: _controlsKey,
+        recordingEnabled: widget.recordingEnabled,
+        onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
         isTeacher: widget.isTeacher,
@@ -2330,7 +2404,6 @@ class _RoomPageState extends State<RoomPage>
         recorderState: widget.isTeacher ? _recorder?.state : null,
         onToggleReactions: _reactions.togglePicker,
         reactionsOpen: _reactions.pickerOpen,
-      ),
       ),
     );
   }

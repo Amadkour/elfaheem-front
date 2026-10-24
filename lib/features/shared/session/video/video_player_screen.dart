@@ -16,6 +16,8 @@ import 'package:video_player/video_player.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:screen_brightness/screen_brightness.dart';
+import 'package:volume_controller/volume_controller.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../core/offline/offline_strings.dart';
@@ -251,7 +253,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _hasCaptions = false;
   bool _captionsOn = false;
   double _volume = 1.0;
-  double _dim = 0; // darkening overlay, 0 = full brightness
+  double _dim = 0; // darkening overlay (web/desktop), 0 = full brightness
+  double _brightness = 1; // real screen brightness (phones)
   ({bool brightness, double value})? _hud;
   Timer? _hudTimer;
   final FocusNode _focus = FocusNode(debugLabel: 'vod-player');
@@ -284,6 +287,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _initOrientationAndPip();
     _startPlayback();
     _saveTimer = Timer.periodic(const Duration(seconds: 5), (_) => _persistPos());
+    _readSystemLevels();
 
     if (widget.startFullScreen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _enterFullScreen());
@@ -423,6 +427,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _resumeChipTimer?.cancel();
     _hudTimer?.cancel();
     _focus.dispose();
+    if (_touchDevice) ScreenBrightness.instance.resetApplicationScreenBrightness().catchError((Object _) {});
     _hideTimer?.cancel();
     _flashTimer?.cancel();
     _lockHintTimer?.cancel();
@@ -506,7 +511,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
       if (at > Duration.zero) await next.seekTo(at);
       await next.setPlaybackSpeed(_speed);
-      await next.setVolume(_volume);
+      if (!_touchDevice) await next.setVolume(_volume);
       _attachCaptions(next);
       next.addListener(_onVcUpdate);
 
@@ -613,11 +618,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   void _attachCaptions(VideoPlayerController vc) {
     final url = _mat.captionsUrl;
-    _hasCaptions = url != null;
-    if (url == null) return;
-    unawaited(vc.setClosedCaptionFile(_fetchCaptions(url)).catchError((Object _) {
+    _hasCaptions = url != null || _isOffline;
+    if (!_hasCaptions) return;
+    final file = _isOffline ? _localCaptions() : _fetchCaptions(url!);
+    unawaited(vc.setClosedCaptionFile(file).catchError((Object _) {
       if (mounted) setState(() => _hasCaptions = _captionsOn = false);
     }));
+  }
+
+  /// Captions saved with the offline copy; throws when there are none so the CC button disappears.
+  Future<ClosedCaptionFile> _localCaptions() async {
+    final text = await OfflineVideoService.instance.localCaptions(_mat.sessionId, _mat.id);
+    if (text == null) throw StateError('no offline captions');
+    return WebVTTCaptionFile(text);
   }
 
   Future<ClosedCaptionFile> _fetchCaptions(String url) async {
@@ -696,12 +709,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   void _setVolume(double v) {
     _volume = v.clamp(0.0, 1.0);
-    _vc?.setVolume(_volume);
+    if (_touchDevice) {
+      // Phones: the real media volume (the player itself stays at 1.0).
+      VolumeController.instance.setVolume(_volume).catchError((Object _) {});
+    } else {
+      _vc?.setVolume(_volume);
+    }
+  }
+
+  /// Phones: swipes change the real screen brightness; elsewhere the video is dimmed instead.
+  void _setBrightness(double b) {
+    if (_touchDevice) {
+      _brightness = b.clamp(0.0, 1.0);
+      ScreenBrightness.instance.setApplicationScreenBrightness(_brightness).catchError((Object _) {});
+    } else {
+      _dim = ((1 - b) * _maxDim).clamp(0.0, _maxDim);
+    }
+  }
+
+  double get _brightnessLevel => _touchDevice ? _brightness : 1 - _dim / _maxDim;
+
+  Future<void> _readSystemLevels() async {
+    if (!_touchDevice) return;
+    try {
+      VolumeController.instance.showSystemUI = false;
+      _volume = (await VolumeController.instance.getVolume()).clamp(0.0, 1.0);
+    } catch (_) {}
+    try {
+      _brightness = (await ScreenBrightness.instance.application).clamp(0.0, 1.0);
+    } catch (_) {}
   }
 
   void _flashHud(bool brightness, {bool hold = false}) {
     _hudTimer?.cancel();
-    setState(() => _hud = (brightness: brightness, value: brightness ? 1 - _dim / _maxDim : _volume));
+    setState(() => _hud = (brightness: brightness, value: brightness ? _brightnessLevel : _volume));
     if (!hold) {
       _hudTimer = Timer(const Duration(milliseconds: 900), () {
         if (mounted) setState(() => _hud = null);
@@ -712,7 +753,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void _onLevelDrag(DragUpdateDetails d, {required bool brightness}) {
     final step = -(d.primaryDelta ?? 0) / (MediaQuery.sizeOf(context).height * 0.7);
     if (brightness) {
-      _dim = (_dim - step * _maxDim).clamp(0.0, _maxDim);
+      _setBrightness(_brightnessLevel + step);
     } else {
       _setVolume(_volume + step);
     }
@@ -1158,6 +1199,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         materialId: mid,
         title: _mat.name,
         description: _mat.description,
+        captionsUrl: _mat.captionsUrl,
         variant: _activeVariant,
       );
       if (!mounted) return;

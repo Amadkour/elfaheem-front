@@ -270,6 +270,8 @@ class SessionMaterialModel {
     String? urlLow,
     String? urlMedium,
     String? urlHigh,
+    String? captionsUrl,
+    bool clearCaptions = false,
   }) {
     return SessionMaterialModel(
       id: id, sessionId: sessionId,
@@ -291,7 +293,7 @@ class SessionMaterialModel {
       audioMediumUrl: audioMediumUrl, audioMediumKey: audioMediumKey,
       audioMediumSize: audioMediumSize,
       requiresPlay: requiresPlay,
-      captionsUrl: captionsUrl,
+      captionsUrl: clearCaptions ? null : (captionsUrl ?? this.captionsUrl),
     );
   }
 

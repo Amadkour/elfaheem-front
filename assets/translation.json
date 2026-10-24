@@ -15660,5 +15660,89 @@
   "lr_close": {
     "en": "Close",
     "ar": "إغلاق"
+  },
+  "lr_go_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "lr_devices": {
+    "en": "Devices",
+    "ar": "الأجهزة"
+  },
+  "lr_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "lr_joining": {
+    "en": "Joining…",
+    "ar": "جارٍ الانضمام…"
+  },
+  "lr_may_be_recorded": {
+    "en": "This session may be recorded",
+    "ar": "قد يتم تسجيل هذه الحصة"
+  },
+  "lr_no_mic_found": {
+    "en": "No microphone found",
+    "ar": "لم يتم العثور على ميكروفون"
+  },
+  "lr_no_camera_found": {
+    "en": "No camera found",
+    "ar": "لم يتم العثور على كاميرا"
+  },
+  "lr_no_devices_msg": {
+    "en": "No camera or microphone was found. Connect a device and try again.",
+    "ar": "لم يتم العثور على كاميرا أو ميكروفون. وصّل جهازًا ثم أعد المحاولة."
+  },
+  "lr_permission_denied_msg": {
+    "en": "Camera and microphone access was denied. Allow it in your device settings and try again.",
+    "ar": "تم رفض الوصول إلى الكاميرا والميكروفون. اسمح بذلك من إعدادات الجهاز ثم أعد المحاولة."
+  },
+  "lr_more_controls": {
+    "en": "More controls",
+    "ar": "المزيد من عناصر التحكم"
+  },
+  "lr_rec": {
+    "en": "REC",
+    "ar": "تسجيل"
+  },
+  "lr_rec_paused_chip": {
+    "en": "PAUSED",
+    "ar": "متوقف"
+  },
+  "record_session_title": {
+    "en": "Record this session",
+    "ar": "تسجيل هذه الجلسة"
+  },
+  "record_session_subtitle": {
+    "en": "Off: no recording is made for students to watch later.",
+    "ar": "عند الإيقاف لا يُحفظ تسجيل ليشاهده الطلاب لاحقًا."
+  },
+  "captions_title": {
+    "en": "Captions",
+    "ar": "الترجمة النصية"
+  },
+  "captions_attached": {
+    "en": "This video has a captions file (.vtt).",
+    "ar": "لهذا الفيديو ملف ترجمة نصية (.vtt)."
+  },
+  "upload_captions": {
+    "en": "Upload captions (.vtt)",
+    "ar": "رفع ترجمة (.vtt)"
+  },
+  "remove_captions": {
+    "en": "Remove captions",
+    "ar": "إزالة الترجمة"
+  },
+  "captions_uploaded": {
+    "en": "Captions uploaded",
+    "ar": "تم رفع الترجمة"
+  },
+  "captions_removed": {
+    "en": "Captions removed",
+    "ar": "تمت إزالة الترجمة"
+  },
+  "captions_pick_vtt": {
+    "en": "Choose a WebVTT (.vtt) file",
+    "ar": "اختر ملف ترجمة بصيغة WebVTT (.vtt)"
   }
 }

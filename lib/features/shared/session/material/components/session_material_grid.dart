@@ -5,6 +5,9 @@
 // teacher edit / delete dialogs.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -439,6 +442,19 @@ class SessionMaterialGrid extends StatelessWidget {
                                 ),
                               ),
                             if (!isRecording) ...[
+                              if (m.type == SessionMaterialType.video ||
+                                  m.type == SessionMaterialType.recorded)
+                                _iconBtn(
+                                  icon: m.captionsUrl == null
+                                      ? Icons.closed_caption_off_outlined
+                                      : Icons.closed_caption_rounded,
+                                  color: m.captionsUrl == null
+                                      ? context.colors.textMedium
+                                      : context.colors.primary,
+                                  onTap: () => m.captionsUrl == null
+                                      ? _pickAndUploadCaptions(context, m)
+                                      : _showCaptionsDialog(context, m),
+                                ),
                               _iconBtn(
                                 icon: CupertinoIcons.settings_solid,
                                 color: context.colors.textMedium,
@@ -656,6 +672,86 @@ class SessionMaterialGrid extends StatelessWidget {
         },
         confirmLabel: 'save'.tr,
         confirmColor: context.colors.primary,
+      ),
+    );
+  }
+
+  // ── Captions (.vtt) ───────────────────────────────────────────────────────
+
+  /// Pick a WebVTT file and attach it to a video / recording material.
+  Future<void> _pickAndUploadCaptions(
+      BuildContext context, SessionMaterialModel m) async {
+    final prov = context.read<TeacherCourseScreenProvider>();
+    final f = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['vtt'],
+    );
+    if (f == null) return;
+    if (!f.name.toLowerCase().endsWith('.vtt')) {
+      Helpers.showMessage('captions_pick_vtt'.tr, isError: true);
+      return;
+    }
+    Uint8List? bytes;
+    if (kIsWeb) {
+      try {
+        bytes = await f.readAsBytes();
+      } catch (_) {
+        bytes = null;
+      }
+      if (bytes == null) {
+        Helpers.showMessage('file_load_failed'.tr, isError: true);
+        return;
+      }
+    }
+    final ok = await prov.uploadCaptions(
+      session.id,
+      m.id,
+      fileName: f.name,
+      filePath: kIsWeb ? null : f.path,
+      fileBytes: bytes,
+    );
+    Helpers.showMessage(
+      ok ? 'captions_uploaded'.tr : (prov.errorMessage ?? 'generic_error'.tr),
+      isError: !ok,
+    );
+  }
+
+  /// Captions already attached: replace them or remove them.
+  void _showCaptionsDialog(BuildContext context, SessionMaterialModel m) {
+    showDialog(
+      context: context,
+      builder: (_) => RtlDialog(
+        title: 'captions_title'.tr,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('captions_attached'.tr, style: context.colors.body),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _pickAndUploadCaptions(context, m);
+              },
+              icon: const Icon(Icons.upload_file_rounded, size: 18),
+              label: Text('upload_captions'.tr),
+            ),
+          ],
+        ),
+        onCancel: () => Navigator.pop(context),
+        onConfirm: () async {
+          Navigator.pop(context);
+          final prov = context.read<TeacherCourseScreenProvider>();
+          final ok = await prov.removeCaptions(session.id, m.id);
+          Helpers.showMessage(
+            ok
+                ? 'captions_removed'.tr
+                : (prov.errorMessage ?? 'generic_error'.tr),
+            isError: !ok,
+          );
+        },
+        confirmLabel: 'remove_captions'.tr,
+        confirmColor: context.colors.danger,
       ),
     );
   }

@@ -99,8 +99,12 @@ class SessionModel {
   final int progress;
   final RatingSummary? rateSummary;
 
+  /// Live sessions: the teacher's per-session recording switch (`record_enabled`).
+  final bool recordEnabled;
+
   SessionModel({
     this.track = 'lecture',
+    this.recordEnabled = true,
     required this.id,
     required this.courseId,
     required this.name,
@@ -145,6 +149,7 @@ class SessionModel {
     durationMinutes: j['duration_minutes'] as int? ?? 0,
     order: j['order'] as int? ?? 0,
     isLiveActive: j['is_live_active'] as bool? ?? false,
+    recordEnabled: j['record_enabled'] as bool? ?? true,
     rateSummary: j.containsKey('rate') && j['rate'] != null
         ? RatingSummary.fromJson(j['rate'] as Map<String, dynamic>)
         : null,
@@ -165,6 +170,7 @@ class SessionModel {
   TeacherSessionItem get toTeacher => TeacherSessionItem(
     id: id,
     track: track,
+    recordEnabled: recordEnabled,
     courseId: courseId,
     name: name,
     rateSummary: rateSummary,
@@ -181,6 +187,7 @@ class SessionModel {
 
   SessionModel copyWith({bool? isCompleted, String? type}) => SessionModel(
     track: track,
+    recordEnabled: recordEnabled,
     id: id,
     courseId: courseId,
     name: name,
@@ -218,9 +225,13 @@ class TeacherSessionItem {
   final int progress;
   final RatingSummary? rateSummary;
 
+  /// Live sessions: record this session? (`record_enabled`, default on).
+  final bool recordEnabled;
+
   const TeacherSessionItem({
     required this.id,
     this.track = 'lecture',
+    this.recordEnabled = true,
     required this.courseId,
     required this.name,
     required this.durationMinutes,
@@ -271,6 +282,7 @@ class TeacherSessionItem {
       durationMinutes: j['duration_minutes'] as int? ?? 0,
       order: j['order'] as int? ?? 0,
       isLiveActive: j['is_live_active'] as bool? ?? false,
+      recordEnabled: j['record_enabled'] as bool? ?? true,
       roomUrl: j['room_url'] as String?,
       recordingUrl: j['recording_url'] as String?,
       recordingStatus: j['recording_status'] as String?,
@@ -298,8 +310,10 @@ class TeacherSessionItem {
     String? recordingStatus,
     int? totalMaterial,
     int? completeMaterial,
+    bool? recordEnabled,
   }) => TeacherSessionItem(
       track: track,
+    recordEnabled: recordEnabled ?? this.recordEnabled,
     id: id,
     courseId: courseId,
     name: name ?? this.name,

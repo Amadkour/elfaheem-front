@@ -494,7 +494,7 @@ class _SessionCard extends StatelessWidget {
               else if (s.materials.isEmpty)
                 Text(t('لا مواد في هذه الجلسة بعد', 'No material in this session yet'), style: appText(13, c: c.textLight))
               else
-                for (final m in s.materials) _MaterialTile(material: m, profile: p),
+                for (final m in s.materials) _MaterialTile(material: m, siblings: s.materials, profile: p),
               if (canAttend && !p.closed) ...[
                 const SizedBox(height: 8),
                 Align(
@@ -517,8 +517,9 @@ class _SessionCard extends StatelessWidget {
 }
 
 class _MaterialTile extends StatelessWidget {
-  const _MaterialTile({required this.material, required this.profile});
+  const _MaterialTile({required this.material, required this.siblings, required this.profile});
   final Map<String, dynamic> material;
+  final List<Map<String, dynamic>> siblings;
   final CourseProfile profile;
 
   IconData get _icon => switch ('${material['type']}') {
@@ -532,7 +533,14 @@ class _MaterialTile extends StatelessWidget {
   Future<void> _open(BuildContext context) async {
     final m = SessionMaterialModel.fromJson(material);
     if (m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded) {
-      await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => VideoPlayerScreen(material: m)));
+      final list = <SessionMaterialModel>[];
+      for (final raw in siblings) {
+        try {
+          list.add(SessionMaterialModel.fromJson(raw));
+        } catch (_) {}
+      }
+      await Navigator.of(context)
+          .push(MaterialPageRoute<void>(builder: (_) => VideoPlayerScreen(material: m, playlist: list)));
       return;
     }
     final url = (material['url'] ?? '').toString();

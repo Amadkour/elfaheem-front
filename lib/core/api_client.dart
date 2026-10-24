@@ -1476,6 +1476,7 @@ class ApiClient {
     'pptx' =>
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     'txt' => 'text/plain',
+    'vtt' => 'text/vtt',
     'mp4' => 'video/mp4',
     'm4a' => 'audio/mp4',
     'webm' => 'video/webm',
