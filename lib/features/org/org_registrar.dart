@@ -108,6 +108,10 @@ String registrarCodeText(String code) => switch (code) {
       'auto_registration' => t('التسجيل في برنامجك تلقائي حسب الفرقة', 'Registration in your program is automatic by year'),
       'course_not_configured' => t('لم تُحدَّد الساعات المعتمدة للمقرر بعد', "The course's credit hours are not set yet"),
       'window_closed' => t('فترة التسجيل مغلقة', 'The registration window is closed'),
+      'pending_limit' => t('لديك طلبات قيد الانتظار بالفعل — انتظر نتيجتها أولاً', 'You already have requests waiting — wait for their result first'),
+      'idempotency_mismatch' => t('أُعيد استخدام مفتاح الطلب لطلب مختلف — أعد المحاولة', 'The request key was reused for a different request — try again'),
+      'gone' => t('لم يعد المقرر أو الفصل موجوداً', 'The course or term no longer exists'),
+      'internal' => t('تعذر إتمام الطلب — تواصل مع شؤون الطلاب', 'The request could not be completed — contact the registrar'),
       'not_offered_this_term' => t('لا يُطرح في هذا الفصل', 'Not offered this term'),
       'other_program' => t('تابع لقسم علمي آخر', 'Belongs to another department'),
       'already_registered' => t('مسجّل بالفعل', 'Already registered'),
@@ -309,7 +313,13 @@ List<String> regResultLines(Map<String, dynamic> result, String Function(int id)
 /// Was a submit turned away before anything was stored (admission control 503, throttle 429, a dying server, or
 /// no answer at all — a dropped socket, status 0)? The client may retry with the SAME idempotency key; nothing is
 /// registered until a 202 / 200 comes back, and a key that did get through returns the same request.
-bool regQueueBusy(String? code, int statusCode) => code == 'too_many_attempts' || statusCode == 429 || statusCode >= 500 || statusCode <= 0;
+bool regQueueBusy(String? code, int statusCode) =>
+    code != 'pending_limit' && code != 'idempotency_mismatch' && (code == 'too_many_attempts' || statusCode == 429 || statusCode >= 500 || statusCode <= 0);
+
+/// After the retries: was the request CERTAINLY not stored (429 throttle, 503 admission control) — or do we simply
+/// not know (another 5xx, no answer)? The server stores the request before it dispatches it, so a 500 or a dropped
+/// socket may hide a stored request: say "could not confirm" and point to My requests, never "nothing was registered".
+bool regSubmitCertainlyRejected(String? code, int statusCode) => statusCode == 429 || statusCode == 503 || code == 'too_many_attempts';
 
 /// How long to wait before the next status poll: what the server says (`poll_after_ms`), kept between 1 and 10 s.
 int regPollAfterMs(Object? v) {

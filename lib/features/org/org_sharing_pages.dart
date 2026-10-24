@@ -44,7 +44,7 @@ class ShareCard extends StatelessWidget {
     final type = '${share['resource_type'] ?? ''}';
     final grants = asInt(share['grants']);
     final pending = asInt(share['pending']);
-    final expires = share['expires_at'] == null ? null : DateTime.tryParse('${share['expires_at']}');
+    final expires = orgParseUtc(share['expires_at']);
     final tone = state == 'active' ? c.success : (state == 'not_yet_valid' ? c.warning : c.textLight);
     return AppCard(
       onTap: onTap,
@@ -333,7 +333,8 @@ class OrgSharingPage extends StatefulWidget {
 }
 
 class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProviderStateMixin {
-  late final TabController _tabs;
+  late TabController _tabs;
+  int get _tabCount => _s.isOrgAdmin ? 5 : 4;
   Map<String, dynamic>? _overview;
   List<Map<String, dynamic>>? _requests, _incoming, _discover, _keys;
   bool _missing = false;
@@ -348,8 +349,18 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: _s.isOrgAdmin ? 5 : 4, vsync: this);
+    _tabs = TabController(length: _tabCount, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadAll());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_tabs.length != _tabCount) {              // the admin flag changed after a permission refresh: keep TabBar and TabBarView in step
+      final i = _tabs.index.clamp(0, _tabCount - 1);
+      _tabs.dispose();
+      _tabs = TabController(length: _tabCount, vsync: this, initialIndex: i);
+    }
   }
 
   @override
@@ -523,6 +534,9 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
             ]),
           );
         }));
+    title.dispose();
+    desc.dispose();
+    max.dispose();
   }
 
   void _showCode(BuildContext context, String code) {
@@ -622,7 +636,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
               u['kind'] == 'content' ? Icons.visibility_rounded : Icons.fact_check_rounded,
               '${u['kind'] == 'content' ? t('قراءة', 'Read') : t('تحقق', 'Verify')} · ${t('المؤسسة', 'org')} #${u['grantee_org_id']}'
               '${asInt(u['count']) > 1 ? ' · ${u['count']} ${t('معرّف', 'ids')}' : ''}'
-              '${u['created_at'] != null ? ' · ${AppTime.dateTime(DateTime.parse('${u['created_at']}').toUtc())}' : ''}',
+              '${u['created_at'] != null ? ' · ${AppTime.dateTime(orgParseUtc(u['created_at'])!.toUtc())}' : ''}',
             ),
         ]),
       );
@@ -674,8 +688,9 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
           ],
         ),
       );
-      if (ok != true) return;
       note = ctl.text.trim();
+      ctl.dispose();
+      if (ok != true) return;
       if (note.isEmpty) {
         appToast(t('اكتب سبب الرفض', 'Write the reason'), error: true);
         return;
@@ -828,7 +843,8 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
       if (grads.isNotEmpty) ...[
         AppDropdown<int>(
           key: const ValueKey('verify.share'),
-          value: _verifyShare ?? asInt(grads.first['share_id']),
+          // the chosen grant may have been revoked since: a value outside the items would assert
+          value: grads.any((g) => asInt(g['share_id']) == _verifyShare) ? _verifyShare : asInt(grads.first['share_id']),
           items: [for (final g in grads) DropdownMenuItem(value: asInt(g['share_id']), child: Text(orgNameOfBrief(asMap(asMap(g['share'])['grantor'])), overflow: TextOverflow.ellipsis))],
           onChanged: (v) => setState(() => _verifyShare = v),
         ),
@@ -926,7 +942,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${k['name']}', style: orgText(context, size: 14.5, w: FontWeight.w800, color: c.textDark)),
-                  Text('nbk_${k['prefix']}_…${k['last_used_at'] != null ? ' · ${t('آخر استخدام', 'last used')} ${AppTime.dateTime(DateTime.parse('${k['last_used_at']}').toUtc())}' : ''}',
+                  Text('nbk_${k['prefix']}_…${k['last_used_at'] != null ? ' · ${t('آخر استخدام', 'last used')} ${AppTime.dateTime(orgParseUtc(k['last_used_at'])!.toUtc())}' : ''}',
                       style: orgText(context, size: 12, color: c.textMedium), textDirection: TextDirection.ltr),
                 ]),
               ),
@@ -961,8 +977,10 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
         ],
       ),
     );
+    final name = ctl.text.trim();
+    ctl.dispose();
     if (ok != true) return;
-    final r = await orgCall(() => ApiClient().post('$_base/api-keys', body: {'name': ctl.text.trim().isEmpty ? 'API key' : ctl.text.trim()}));
+    final r = await orgCall(() => ApiClient().post('$_base/api-keys', body: {'name': name.isEmpty ? 'API key' : name}));
     if (!r.ok || !mounted) return;
     _showCode(context, '${r.map['key']}');
     _loadKeys();

@@ -5,7 +5,10 @@
 // identifier parser for the verification box and the result summary. Screens are in org_sharing_pages.dart.
 library;
 
+import 'package:flutter/foundation.dart' show setEquals;
+
 import '../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import 'org_v3.dart' show orgParseUtc, orgUtc;
 
 const List<String> shareMethods = ['invite', 'auto', 'request', 'public'];
 const List<String> shareResourceTypes = ['department', 'program', 'course', 'graduates'];
@@ -136,8 +139,8 @@ class ShareDraft {
         if (description.trim().isNotEmpty) 'description': description.trim(),
         'methods': shareMethods.where(methods.contains).toList(),
         'scope': isGraduates ? {'year': year} : <String, dynamic>{},
-        'starts_at': startsAt?.toUtc().toIso8601String(),
-        'expires_at': expiresAt?.toUtc().toIso8601String(),
+        'starts_at': orgUtc(startsAt),
+        'expires_at': orgUtc(shareExpiryInstant(expiresAt)),
         'max_grantees': maxGrantees,
       };
 
@@ -147,21 +150,26 @@ class ShareDraft {
     final out = <String, dynamic>{};
     if (title.trim() != o.title.trim()) out['title'] = title.trim();
     if (description.trim() != o.description.trim()) out['description'] = description.trim();
-    if (methods.join(',') != o.methods.join(',') || methods.length != o.methods.length) {
+    if (!setEquals(methods, o.methods)) {
       out['methods'] = shareMethods.where(methods.contains).toList();
     }
     if (isGraduates && year != o.year) out['scope'] = {'year': year};
-    if (startsAt != o.startsAt) out['starts_at'] = startsAt?.toUtc().toIso8601String();
-    if (expiresAt != o.expiresAt) out['expires_at'] = expiresAt?.toUtc().toIso8601String();
+    if (startsAt != o.startsAt) out['starts_at'] = orgUtc(startsAt);
+    if (shareExpiryInstant(expiresAt) != shareExpiryInstant(o.expiresAt)) out['expires_at'] = orgUtc(shareExpiryInstant(expiresAt));
     if (maxGrantees != o.maxGrantees) out['max_grantees'] = maxGrantees;
     return out;
   }
 
-  static DateTime? _date(Object? v) {
-    if (v == null) return null;
-    final d = DateTime.tryParse('$v');
-    return d?.toLocal();
-  }
+  /// The server stores naive UTC: read it as such (a plain parse would take it for local time and shift every date).
+  static DateTime? _date(Object? v) => orgParseUtc(v);
+}
+
+/// A share picked to end on a DAY ends at the end of that local day, not at its first second (which the server
+/// would read as "already expired" for most of the day). A value that already carries a time of day is kept.
+DateTime? shareExpiryInstant(DateTime? d) {
+  if (d == null) return null;
+  if (d.hour == 0 && d.minute == 0 && d.second == 0) return DateTime(d.year, d.month, d.day, 23, 59, 59);
+  return d;
 }
 
 /// One identifier per line (or comma / semicolon separated) → verification queries. An `@` makes an e-mail, a

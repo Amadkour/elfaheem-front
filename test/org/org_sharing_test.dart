@@ -49,6 +49,17 @@ final verifyResult = <String, dynamic>{
 void main() {
   setUp(() => AppConfig.lang = 'ar');
 
+  test('share dates: naive UTC from the server, end of the chosen day for expiry', () {
+    final d = ShareDraft.fromShare({'resource_type': 'department', 'methods': ['invite'], 'scope': {}, 'expires_at': '2026-11-01T21:59:59'});
+    expect(d.expiresAt!.toUtc(), DateTime.utc(2026, 11, 1, 21, 59, 59));
+    expect(shareExpiryInstant(DateTime(2026, 11, 1)), DateTime(2026, 11, 1, 23, 59, 59));
+    expect(shareExpiryInstant(DateTime(2026, 11, 1, 10, 30)), DateTime(2026, 11, 1, 10, 30));
+    expect(shareExpiryInstant(null), isNull);
+    final a = ShareDraft()..methods.addAll(['invite', 'request']);
+    final b = ShareDraft()..methods.addAll(['request', 'invite']);
+    expect(a.patch(b.toBody()..['resource_type'] = 'department'), isNot(contains('methods')));
+  });
+
   test('share draft: body, validation, patch of changed fields only', () {
     final d = ShareDraft(resourceType: 'department', resourceId: 3, methods: {'invite', 'request'}, title: ' Desk ');
     expect(d.validate(), isNull);

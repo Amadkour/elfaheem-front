@@ -134,10 +134,18 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
     if (!mounted) return;
     if (!q.ok) {
       setState(() => _busy = false);
-      final msg = regQueueBusy(q.code, q.error?.statusCode ?? 0)
-          ? t('الصف مزدحم الآن ولم يُرسل طلبك — لم يُسجَّل شيء، حاول مرة أخرى بعد قليل.', 'The queue is busy and your request was not submitted — nothing was registered; try again in a moment.')
-          : orgErrorText(q.error!);
-      await showAppSheet(context, (_) => _ResultSheet(ok: false, lines: [msg]));
+      final status = q.error?.statusCode ?? 0;
+      final String msg;
+      if (!regQueueBusy(q.code, status)) {
+        msg = orgErrorText(q.error!);
+      } else if (regSubmitCertainlyRejected(q.code, status)) {
+        msg = t('الصف مزدحم الآن ولم يُرسل طلبك — لم يُسجَّل شيء، حاول مرة أخرى بعد قليل.', 'The queue is busy and your request was not submitted — nothing was registered; try again in a moment.');
+      } else {
+        // a 500 or a dropped socket can hide a request the server did store: never claim it was not
+        msg = t('تعذر تأكيد الطلب — راجع «طلباتي» قبل إعادة المحاولة.', 'Could not confirm the request — check "My requests" before trying again.');
+        _load();
+      }
+      await showAppSheet(context, (_) => RegResultSheet(ok: false, lines: [msg]));
       return;
     }
     var req = q.map;
@@ -145,7 +153,8 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
     if (!regRequestDone('${req['status']}')) {
       // wait for the worker, telling the student where they stand
       final progress = ValueNotifier<Map<String, dynamic>>(req);
-      final sheet = showAppSheet<void>(context, (_) => _QueueSheet(progress: progress));
+      var sheetOpen = true;                        // the student may swipe the sheet away: then nothing must be popped
+      final sheet = showAppSheet<void>(context, (_) => RegQueueSheet(progress: progress)).whenComplete(() => sheetOpen = false);
       final until = DateTime.now().add(const Duration(seconds: 75));
       while (mounted && !regRequestDone('${req['status']}') && DateTime.now().isBefore(until)) {
         await Future<void>.delayed(Duration(milliseconds: regPollAfterMs(req['poll_after_ms'])));
@@ -156,8 +165,9 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
           progress.value = req;
         }
       }
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      if (mounted && sheetOpen) Navigator.of(context, rootNavigator: true).pop();
       await sheet;
+      progress.dispose();
     }
     if (!mounted) return;
     setState(() => _busy = false);
@@ -170,7 +180,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
       lines.add(done ? regStatusText('registered') : (registrarCodeText('${req['error_code'] ?? ''}')));
     }
     if (done) _cart.clear();
-    await showAppSheet(context, (_) => _ResultSheet(ok: done && (result['ok'] ?? true) == true, lines: lines));
+    await showAppSheet(context, (_) => RegResultSheet(ok: done && (result['ok'] ?? true) == true, lines: lines));
     _load();
   }
 
@@ -181,7 +191,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
     final lines = regResultLines(asMap(r.ok ? r.map : r.detail), _name);
     if (r.ok) _cart.clear();
     if (lines.isEmpty && !r.ok) lines.add(orgErrorText(r.error!));
-    await showAppSheet(context, (_) => _ResultSheet(ok: r.ok && r.map['ok'] == true, lines: lines));
+    await showAppSheet(context, (_) => RegResultSheet(ok: r.ok && r.map['ok'] == true, lines: lines));
     _load();
   }
 
@@ -480,9 +490,10 @@ class _OfferingCard extends StatelessWidget {
   }
 }
 
-/// While a queued registration waits for the worker: position in line, then "registering you now".
-class _QueueSheet extends StatelessWidget {
-  const _QueueSheet({required this.progress});
+/// While a queued registration waits for the worker: position in line, then "registering you now". Public (plain
+/// values) so the layout harness can pump it.
+class RegQueueSheet extends StatelessWidget {
+  const RegQueueSheet({required this.progress});
   final ValueNotifier<Map<String, dynamic>> progress;
 
   @override
@@ -508,8 +519,8 @@ class _QueueSheet extends StatelessWidget {
 }
 
 
-class _ResultSheet extends StatelessWidget {
-  const _ResultSheet({required this.ok, required this.lines});
+class RegResultSheet extends StatelessWidget {
+  const RegResultSheet({required this.ok, required this.lines});
   final bool ok;
   final List<String> lines;
 

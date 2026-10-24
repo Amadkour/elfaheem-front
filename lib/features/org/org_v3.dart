@@ -116,6 +116,11 @@ Map<String, String> _codeTexts() => {
       'inherited_role': t('هذا الدور معرّف في المؤسسة الأم — عدّله من هناك', 'This role is defined by the parent organization — edit it there'),
       // sharing with other organizations (org_sharing_pages.dart)
       'sharing_disabled': t('مشاركة البيانات بين المؤسسات متوقفة', 'Cross-organization sharing is switched off'),
+      'root_only': t('تُدار الشراكات ومفاتيح API من حساب المؤسسة الرئيسية', 'Partnerships and API keys are managed from the main organization account'),
+      'grant_revoked': t('أنهت المؤسسة المانحة هذا الوصول — اطلب الوصول من جديد لتقرر هي', 'The sharing organization ended this access — request it again so they can decide'),
+      'too_many_keys': t('بلغت الحد الأقصى للمفاتيح النشطة — ألغِ مفتاحاً أولاً', 'Maximum number of active keys reached — revoke one first'),
+      'bad_resource_type': t('نوع العنصر غير معروف', 'Unknown resource type'),
+      'code_generation_failed': t('تعذر توليد كود — حاول مرة أخرى', 'Could not generate a code — try again'),
       'share_not_found': t('المشاركة غير موجودة أو غير نشطة', 'This share does not exist or is not active'),
       'share_public': t('هذه المشاركة عامة — لا تحتاج طلباً', 'This share is public — no request needed'),
       'invite_only': t('هذه المشاركة بكود دعوة فقط', 'This share is invite-only'),
