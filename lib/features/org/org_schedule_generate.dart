@@ -7,8 +7,12 @@
 //
 //   GenerationRule / generationRules   pure: the rule set shown before generating (settings.rules)
 //   GenerationOutcome                  pure: placed / unplaced / proposals, from schedule.result
-//   LiveRun                            pure: the live counters of a running generation (run.summary)
+//   LiveRun / LiveStep                 pure: the live counters AND the step log of a running generation (run.summary:
+//                                      steps[] — data loaded · attempt n strict / bending flexible rules · saving —
+//                                      stage, started_at, elapsed_s, budget_s); patienceText for a slow step
 //   createTimetable                    the one action (no questions, background, Draft)   GenerationLivePanel while it runs
+//   GenerationLivePanel / GenerationVeil   the premium "a new version is being made" state: what is happening now, each
+//                                      step with its time, the elapsed clock, the attempt's own budget bar, hints
 //   showRulesSheet                     Locked / Flexible per rule, in break order; last resorts are suggestions only
 //   ConflictDigest / ConflictsPanel    the small live conflicts panel (counts + top types)
 //   showGenerationResult               result: unplaced with reason + fix, proposals, advice, conflicts (read-only)
@@ -141,10 +145,32 @@ class GenerationOutcome {
 }
 
 class LiveRun {
-  const LiveRun({required this.round, required this.roundsMax, required this.unplaced, required this.top, this.placed, this.required});
+  const LiveRun({
+    required this.round,
+    required this.roundsMax,
+    required this.unplaced,
+    required this.top,
+    this.placed,
+    this.required,
+    this.steps = const [],
+    this.stage,
+    this.startedAt,
+    this.elapsedS = 0,
+    this.budgetS,
+  });
   final int round, roundsMax, unplaced;
   final int? placed, required; // the best result so far (it only ever improves)
   final List<(String, int)> top;
+  final List<LiveStep> steps; // the step log, oldest first; the last undone one is what happens now
+  final String? stage; // prepare · round · round_end · save · finish
+  final DateTime? startedAt;
+  final int elapsedS; // seconds since the run started, as the server last wrote it
+  final int? budgetS; // the whole run's time budget
+
+  /// The step in progress (none when the server only sent counters, or everything is done).
+  LiveStep? get current => steps.cast<LiveStep?>().lastWhere((x) => x!.done == false, orElse: () => null);
+  List<LiveStep> get done => steps.where((x) => x.done).toList();
+  bool get hasBest => placed != null && required != null;
 
   static LiveRun? of(Map<String, dynamic>? run) {
     final s = asMap(run?['summary']);
@@ -156,8 +182,69 @@ class LiveRun {
       placed: s['placed'] == null ? null : asInt(s['placed']),
       required: s['required'] == null ? null : asInt(s['required']),
       top: [for (final x in asMapList(s['top'])) ('${x['reason']}', asInt(x['n']))],
+      steps: [for (final x in asMapList(s['steps'])) LiveStep.of(x)],
+      stage: s['stage']?.toString(),
+      startedAt: DateTime.tryParse('${s['started_at'] ?? ''}'),
+      elapsedS: asInt(s['elapsed_s']),
+      budgetS: s['budget_s'] == null ? null : asInt(s['budget_s']),
     );
   }
+}
+
+/// One message of the generation's step log (run.summary.steps[]).
+class LiveStep {
+  const LiveStep({required this.id, required this.kind, required this.textAr, required this.textEn, required this.done, this.round, this.ms, this.at, this.limitS, this.relax, this.improved});
+  final int id;
+  final String kind, textAr, textEn;
+  final bool done;
+  final int? round, ms; // ms: how long the step took, once done
+  final DateTime? at; // when it started (server time)
+  final double? limitS; // an attempt's own time budget
+  final bool? relax, improved;
+
+  String get text => t(textAr, textEn);
+  bool get isAttempt => kind == 'round';
+
+  static LiveStep of(Map<String, dynamic> m) => LiveStep(
+        id: asInt(m['id']),
+        kind: '${m['kind'] ?? ''}',
+        textAr: '${m['text_ar'] ?? m['text_en'] ?? ''}',
+        textEn: '${m['text_en'] ?? m['text_ar'] ?? ''}',
+        done: m['done'] == true,
+        round: m['round'] == null ? null : asInt(m['round']),
+        ms: m['ms'] == null ? null : asInt(m['ms']),
+        at: DateTime.tryParse('${m['at'] ?? ''}'),
+        limitS: m['limit_s'] == null ? null : double.tryParse('${m['limit_s']}'),
+        relax: m['relax'] is bool ? m['relax'] as bool : null,
+        improved: m['improved'] is bool ? m['improved'] as bool : null,
+      );
+}
+
+/// What to tell someone who has been watching one step for [inStep]: nothing at first, then why it takes time, then
+/// that the server itself will stop the attempt. Keeps the creator patient without pretending to know the end.
+String? patienceText(Duration inStep, {bool relax = false}) {
+  final s = inStep.inSeconds;
+  if (s < 8) return null;
+  if (s < 20) {
+    return t('ما زال العمل جارياً — كل محاولة قد تستخدم وقتها كاملاً للوصول إلى أفضل توزيع.',
+        'Still working — each attempt may use its whole time budget to find the best placement.');
+  }
+  if (s < 45) {
+    return relax
+        ? t('هذه المحاولة تجرّب تجاوز القواعد المرنة وحدها، تركيبة بعد أخرى. أفضل نتيجة حتى الآن محفوظة.',
+            'This attempt bends only the Flexible rules, one combination after another. The best result so far is kept.')
+        : t('هذه المحاولة تستغرق أطول: حصص وقواعد وقاعات كثيرة تُجمَع معاً. أفضل نتيجة حتى الآن محفوظة.',
+            'This attempt is taking longer: many sessions, rules and rooms are being combined. The best result so far is kept.');
+  }
+  return t('اقتربت المحاولة من حدّها الزمني؛ سيوقفها الخادم وينتقل إلى التالية أو يحفظ أفضل نتيجة.',
+      'The attempt is near its time limit; the server stops it by itself and moves on or saves the best result.');
+}
+
+/// 0:42 · 1:05 — a clock for the elapsed time.
+String liveClock(Duration d) {
+  final s = d.inSeconds.clamp(0, 359999);
+  final m = s ~/ 60;
+  return m >= 60 ? '${m ~/ 60}:${(m % 60).toString().padLeft(2, '0')}:${(s % 60).toString().padLeft(2, '0')}' : '$m:${(s % 60).toString().padLeft(2, '0')}';
 }
 
 /// How complete a timetable really is. [isComplete] only when every session is placed, nothing hard clashes and no
@@ -447,48 +534,244 @@ class ConflictsPanel extends StatelessWidget {
   }
 }
 
-/// While the run is open: round, unresolved sessions and the top reasons (polled by the provider).
-class GenerationLivePanel extends StatelessWidget {
-  const GenerationLivePanel({super.key, required this.run, this.onCancel});
+/// The headline of a running generation: the best result so far, else the attempt, else what happens now.
+String liveHeadline(Map<String, dynamic> run, LiveRun? live) {
+  if (run['status'] == 'failed') return t('فشل التوليد — لم يتغير شيء', 'Generation failed — nothing changed');
+  if (run['status'] == 'queued') return t('في الانتظار — سيبدأ التوليد خلال لحظات', 'Queued — generation starts in a moment');
+  if (live == null) return t('جارٍ التوليد…', 'Generating…');
+  if (live.hasBest) {
+    return t('أفضل نتيجة حتى الآن: ${live.placed} من ${live.required} حصة · محاولة ${live.round} من ${live.roundsMax} كحد أقصى',
+        'Best so far: ${live.placed} of ${live.required} sessions · attempt ${live.round} of at most ${live.roundsMax}');
+  }
+  if (live.round > 0) {
+    return t('محاولة ${live.round} من ${live.roundsMax} كحد أقصى · ${live.unplaced} حصة بلا موعد',
+        'Attempt ${live.round} of at most ${live.roundsMax} · ${live.unplaced} session(s) unplaced');
+  }
+  return live.current?.text ?? t('جارٍ التوليد…', 'Generating…');
+}
+
+/// While the run is open: what is happening now, every step with its time, the elapsed clock, the attempt's own budget
+/// bar, the best result so far and the top reasons (polled by the provider). The clock ticks locally between polls, so a
+/// slow attempt still looks alive — and a hint says why it takes time.
+class GenerationLivePanel extends StatefulWidget {
+  const GenerationLivePanel({super.key, required this.run, this.onCancel, this.compact = false});
   final Map<String, dynamic> run;
   final VoidCallback? onCancel;
+  /// Only the headline, the clock and the current step (the veil over the grid).
+  final bool compact;
+
+  @override
+  State<GenerationLivePanel> createState() => _GenerationLivePanelState();
+}
+
+class _GenerationLivePanelState extends State<GenerationLivePanel> with SingleTickerProviderStateMixin {
+  late final AnimationController _spin = AnimationController(vsync: this, duration: const Duration(seconds: 2));
+  DateTime _received = DateTime.now(); // when this run map arrived — the clock runs from here between polls
+  bool _all = false;
+
+  bool get _open => runIsOpen(widget.run);
+
+  @override
+  void initState() {
+    super.initState();
+    if (_open) _spin.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant GenerationLivePanel old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.run, widget.run)) _received = DateTime.now();
+    if (_open && !_spin.isAnimating) _spin.repeat();
+    if (!_open && _spin.isAnimating) _spin.stop();
+  }
+
+  @override
+  void dispose() {
+    _spin.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final run = widget.run;
     final live = LiveRun.of(run);
     final failed = run['status'] == 'failed';
-    return RowCard(
-      accent: failed ? c.danger : c.primary,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Icon(failed ? Icons.error_rounded : Icons.autorenew_rounded, color: failed ? c.danger : c.primary),
+    final open = _open;
+    final accent = failed ? c.danger : c.primary;
+    final progress = run['progress'] == null ? null : asInt(run['progress']).clamp(0, 100) / 100;
+    final steps = live?.steps ?? const <LiveStep>[];
+    final current = live?.current;
+    final shown = _all || steps.length <= 4 ? steps : steps.sublist(steps.length - 4);
+
+    Widget clockRow() => AnimatedBuilder(
+          animation: _spin,
+          builder: (_, _) {
+            final since = DateTime.now().difference(_received);
+            final elapsed = Duration(seconds: (live?.elapsedS ?? 0)) + (open ? since : Duration.zero);
+            // how long the current step has run = the whole elapsed time minus the step's offset from the run start
+            final offset = current?.at != null && live?.startedAt != null ? current!.at!.difference(live!.startedAt!) : null;
+            final inStep = offset == null ? since : (elapsed - offset).isNegative ? Duration.zero : elapsed - offset;
+            final limit = current?.limitS;
+            final budget = live?.budgetS;
+            final hint = open && current != null ? patienceText(inStep, relax: current.relax == true) : null;
+            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: 10, runSpacing: 2, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text(
+                  budget != null
+                      ? t('المدة ${liveClock(elapsed)} من ${liveClock(Duration(seconds: budget))} كحد أقصى', 'Elapsed ${liveClock(elapsed)} of up to ${liveClock(Duration(seconds: budget))}')
+                      : t('المدة ${liveClock(elapsed)}', 'Elapsed ${liveClock(elapsed)}'),
+                  style: orgText(context, size: 12, color: c.textMedium),
+                ),
+                if (current != null && open)
+                  Text(
+                    limit != null
+                        ? t('هذه الخطوة: ${liveClock(inStep)} من ${liveClock(Duration(seconds: limit.round()))}', 'This step: ${liveClock(inStep)} of ${liveClock(Duration(seconds: limit.round()))}')
+                        : t('هذه الخطوة: ${liveClock(inStep)}', 'This step: ${liveClock(inStep)}'),
+                    style: orgText(context, size: 12, color: c.textMedium),
+                  ),
+              ]),
+              if (current != null && open && limit != null && limit > 0) ...[
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (inStep.inMilliseconds / (limit * 1000)).clamp(0.0, 1.0),
+                    minHeight: 3,
+                    color: c.purple,
+                    backgroundColor: c.purple.withValues(alpha: 0.15),
+                  ),
+                ),
+              ],
+              if (hint != null && !widget.compact)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(10)),
+                    child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Icon(Icons.hourglass_top_rounded, size: 16, color: c.primary),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(hint, style: orgText(context, size: 12, color: c.textMedium))),
+                    ]),
+                  ),
+                ),
+            ]);
+          },
+        );
+
+    Widget stepRow(LiveStep s) {
+      final now = s.done == false;
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: now
+                ? (open ? const Padding(padding: EdgeInsets.all(2), child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.remove_rounded, size: 16, color: c.textLight))
+                : Icon(s.improved == false ? Icons.trending_flat_rounded : Icons.check_circle_rounded, size: 17, color: s.improved == false ? c.textLight : c.success),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-                failed
-                    ? t('فشل التوليد — لم يتغير شيء', 'Generation failed — nothing changed')
-                    : live == null
-                        ? t('جارٍ التوليد…', 'Generating…')
-                        : live.placed != null && live.required != null
-                            ? t('أفضل نتيجة حتى الآن: ${live.placed} من ${live.required} حصة · محاولة ${live.round} من ${live.roundsMax} كحد أقصى',
-                                'Best so far: ${live.placed} of ${live.required} sessions · attempt ${live.round} of at most ${live.roundsMax}')
-                            : t('محاولة ${live.round} من ${live.roundsMax} كحد أقصى · ${live.unplaced} حصة بلا موعد', 'Attempt ${live.round} of at most ${live.roundsMax} · ${live.unplaced} session(s) unplaced'),
-                style: orgText(context, w: FontWeight.w800)),
+              s.ms != null && s.ms! >= 1000 ? '${s.text} · ${liveClock(Duration(milliseconds: s.ms!))}' : s.text,
+              style: orgText(context, size: 12.5, w: now ? FontWeight.w700 : FontWeight.w400, color: now ? c.textDark : c.textMedium),
+            ),
           ),
-          if (onCancel != null) TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
         ]),
-        if (failed && '${run['error'] ?? ''}'.isNotEmpty) Text('${run['error']}', style: orgText(context, size: 12, color: c.textMedium)),
-        if (!failed) ...[
+      );
+    }
+
+    final header = Row(children: [
+      failed
+          ? Icon(Icons.error_rounded, color: accent)
+          : RotationTransition(turns: _spin, child: Icon(Icons.autorenew_rounded, color: accent)),
+      const SizedBox(width: 8),
+      Expanded(child: Text(liveHeadline(run, live), style: orgText(context, w: FontWeight.w800))),
+      if (widget.onCancel != null) TextButton(onPressed: widget.onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
+    ]);
+
+    final body = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      header,
+      if (failed && '${run['error'] ?? ''}'.isNotEmpty) Text('${run['error']}', style: orgText(context, size: 12, color: c.textMedium)),
+      if (!failed) ...[
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(5),
+          child: LinearProgressIndicator(value: progress, minHeight: 6, color: accent, backgroundColor: accent.withValues(alpha: 0.12)),
+        ),
+        const SizedBox(height: 6),
+        clockRow(),
+      ],
+      if (widget.compact && current != null) stepRow(current),
+      if (!widget.compact) ...[
+        if (steps.isNotEmpty) ...[
           const SizedBox(height: 6),
-          LinearProgressIndicator(value: run['progress'] == null ? null : asInt(run['progress']).clamp(0, 100) / 100),
+          Text(t('ما الذي يحدث الآن', 'What is happening'), style: orgText(context, size: 12, w: FontWeight.w800, color: c.textMedium)),
+          if (steps.length > 4)
+            InkWell(
+              onTap: () => setState(() => _all = !_all),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text(_all ? t('أظهر الأخيرة فقط', 'Show the last few') : t('أظهر كل الخطوات (${steps.length})', 'Show every step (${steps.length})'),
+                    style: orgText(context, size: 11.5, color: c.primary)),
+              ),
+            ),
+          for (final s in shown) stepRow(s),
         ],
         for (final (reason, n) in live?.top ?? const <(String, int)>[])
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text('• $n × ${unplacedReasonText(reason)}', style: orgText(context, size: 12, color: c.textMedium)),
           ),
-      ]),
+      ],
+    ]);
+
+    if (widget.compact) {
+      return Container(
+        constraints: const BoxConstraints(maxWidth: 440),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.35)),
+          boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 8))],
+        ),
+        child: body,
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(colors: [accent.withValues(alpha: 0.10), c.purple.withValues(alpha: 0.06)]),
+        border: Border.all(color: accent.withValues(alpha: 0.25)),
+      ),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: body,
+    );
+  }
+}
+
+/// Over the grid while a new version is being generated: the old version stays visible but dimmed and untouchable, and
+/// the compact live panel sits in the middle, so it is clear what is being worked on right now.
+class GenerationVeil extends StatelessWidget {
+  const GenerationVeil({super.key, required this.run, this.onCancel});
+  final Map<String, dynamic> run;
+  final VoidCallback? onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Positioned.fill(
+      child: AbsorbPointer(
+        child: Container(
+          color: c.surface.withValues(alpha: 0.72),
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(16),
+          child: SingleChildScrollView(child: GenerationLivePanel(run: run, onCancel: onCancel, compact: true)),
+        ),
+      ),
     );
   }
 }

@@ -96,6 +96,53 @@ void main() {
       expect([o.missing, o.pending.length, o.stopped], [2, 1, 'no_progress']);
     });
 
+    test('the step log: what happens now, done steps with their time, the headline, the patience hints', () {
+      final l = LiveRun.of({'status': 'running', 'summary': {
+        'live': true, 'round': 1, 'rounds_max': 6, 'unplaced': 2, 'placed': 18, 'required': 20, 'top': [],
+        'stage': 'round', 'started_at': '2026-10-24T10:00:00', 'elapsed_s': 31, 'budget_s': 90,
+        'steps': [
+          {'id': 1, 'kind': 'prepare', 'text_ar': 'تم تحميل البيانات', 'text_en': 'Data loaded: 12 teaching load(s) · 4 room(s) · 6 period(s) × 5 day(s)', 'at': '2026-10-24T10:00:00', 'done': true, 'ms': 420},
+          {'id': 2, 'kind': 'round', 'round': 1, 'relax': false, 'limit_s': 8.0, 'text_ar': 'المحاولة 1 من 6', 'text_en': 'Attempt 1 of 6: solving with every rule enforced (strict) (up to 8 s)', 'at': '2026-10-24T10:00:01', 'done': true, 'ms': 8010},
+          {'id': 3, 'kind': 'round_end', 'round': 1, 'improved': true, 'text_ar': 'المحاولة 1: تحسّن', 'text_en': 'Attempt 1: better — 18 of 20 sessions, 2 left', 'at': '2026-10-24T10:00:09', 'done': true, 'ms': 0},
+          {'id': 4, 'kind': 'round', 'round': 2, 'relax': true, 'limit_s': 8.0, 'text_ar': 'المحاولة 2 من 6: البحث عن جدول مع السماح بتجاوز القواعد المرنة فقط (حتى 8 ث) · أفضل نتيجة حتى الآن 18 من 20', 'text_en': 'Attempt 2 of 6: solving bending only the rules marked Flexible (up to 8 s) · best so far 18 of 20', 'at': '2026-10-24T10:00:09', 'done': false, 'ms': null},
+        ],
+      }})!;
+      expect([l.stage, l.elapsedS, l.budgetS, l.steps.length, l.done.length], ['round', 31, 90, 4, 3]);
+      expect(l.startedAt, DateTime(2026, 10, 24, 10));
+      final cur = l.current!;
+      expect([cur.kind, cur.round, cur.relax, cur.limitS, cur.done, cur.ms], ['round', 2, true, 8.0, false, null]);
+      expect(cur.at, DateTime(2026, 10, 24, 10, 0, 9));
+      expect(cur.text, startsWith('Attempt 2 of 6: solving bending only'));
+      expect(cur.isAttempt, isTrue);
+      expect(l.done[1].ms, 8010);
+      expect(l.done[2].improved, isTrue);
+      expect(liveHeadline({'status': 'running'}, l), 'Best so far: 18 of 20 sessions · attempt 1 of at most 6');
+      // before the first attempt ends: the headline is the current step, not "attempt 0"
+      final early = LiveRun.of({'summary': {'live': true, 'round': 0, 'unplaced': 0, 'stage': 'prepare', 'steps': [
+        {'id': 1, 'kind': 'prepare', 'text_ar': 'جارٍ تحميل…', 'text_en': 'Loading courses, rooms, periods and preferences…', 'done': false},
+      ]}})!;
+      expect(early.hasBest, isFalse);
+      expect(liveHeadline({'status': 'running'}, early), 'Loading courses, rooms, periods and preferences…');
+      expect(liveHeadline({'status': 'queued'}, null), 'Queued — generation starts in a moment');
+      expect(liveHeadline({'status': 'running'}, null), 'Generating…');
+      expect(liveHeadline({'status': 'failed'}, null), 'Generation failed — nothing changed');
+      // an older server: counters only, no steps
+      final old = LiveRun.of({'summary': {'live': true, 'round': 2, 'rounds_max': 6, 'unplaced': 3}})!;
+      expect([old.steps, old.current, old.stage], [isEmpty, isNull, isNull]);
+      expect(liveHeadline({'status': 'running'}, old), 'Attempt 2 of at most 6 · 3 session(s) unplaced');
+      // patience: silent at first, then why it takes time, then that the server stops it by itself
+      expect(patienceText(const Duration(seconds: 5)), isNull);
+      expect(patienceText(const Duration(seconds: 10)), startsWith('Still working'));
+      expect(patienceText(const Duration(seconds: 30)), startsWith('This attempt is taking longer'));
+      expect(patienceText(const Duration(seconds: 30), relax: true), startsWith('This attempt bends only the Flexible rules'));
+      expect(patienceText(const Duration(seconds: 60)), startsWith('The attempt is near its time limit'));
+      expect([liveClock(const Duration(seconds: 42)), liveClock(const Duration(seconds: 65)), liveClock(const Duration(seconds: 3725))], ['0:42', '1:05', '1:02:05']);
+      AppConfig.lang = 'ar';
+      expect(cur.text, startsWith('المحاولة 2 من 6'));
+      expect(patienceText(const Duration(seconds: 10)), startsWith('ما زال العمل جارياً'));
+      AppConfig.lang = 'en';
+    });
+
     test('live counters only from a live summary; every reason has a cause and a fix', () {
       expect(LiveRun.of({'summary': {'status': 'feasible'}}), isNull);
       final l = LiveRun.of({'summary': {'live': true, 'round': 2, 'unplaced': 4, 'top': [{'reason': 'rooms_busy', 'n': 3}]}})!;

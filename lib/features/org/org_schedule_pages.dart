@@ -1108,7 +1108,7 @@ class _StudioState extends State<_Studio> {
         Expanded(
           child: LayoutBuilder(
             builder: (context, box) {
-              final Widget main = _view == 1
+              Widget main = _view == 1
                   ? TimetableCoursesView(p: p, canEdit: canEdit)
                   : p.periods.isEmpty
                   ? OrgEmpty(icon: Icons.inbox_rounded, title: t('أضف الفترات أولاً', 'Add periods first'))
@@ -1156,6 +1156,10 @@ class _StudioState extends State<_Studio> {
                         ),
                       ),
                     );
+              // a new version is being generated: the current one stays visible, dimmed, with the live step in the middle
+              if (running && run != null && _view == 0 && p.slots.isNotEmpty) {
+                main = Stack(children: [main, GenerationVeil(run: run, onCancel: () => p.cancelGeneration())]);
+              }
               final panel = widget.sidePanel;
               if (panel == null) return main;
               // wide: the Quick Actions panel stays beside the grid · narrow: one button opens it as a sheet

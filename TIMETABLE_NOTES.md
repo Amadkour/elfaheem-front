@@ -72,3 +72,13 @@ why-here, drop preview, iCal). All backend solver suites, the timetable e2e scri
 - `why_here` explains one session against the current timetable; a global unsat core (CP-SAT assumptions) is not
   exposed — `core` is the minimal hitting set per session, which is what admins asked for.
 - Parallel mode is not reproducible across runs when the soft pass hits the time limit.
+
+8f. Patience while generating: the run's `summary.steps` (schedule_jobs.Steps — data loaded · attempt n strict /
+   bending the flexible rules, with its time budget · attempt result · saving) is shown by `GenerationLivePanel`
+   (org_schedule_generate.dart): headline = best so far / current step, the whole-run clock ticking locally between
+   polls (`elapsed_s` + time since the poll), the current attempt's own budget bar, done steps with their duration,
+   a hint after 8 / 20 / 45 s in one step (`patienceText`), queued state. `GenerationVeil` dims the board and shows the
+   compact panel in the middle while a new version is being generated. Tests: org_schedule_flow_test (LiveRun /
+   LiveStep / liveHeadline / patienceText / liveClock), org_widgets_test, new_screens_layout_test;
+   backend e2e_timetable_v3 asserts the step log of a background run.
+
