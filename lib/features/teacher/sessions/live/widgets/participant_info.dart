@@ -38,7 +38,6 @@ class ParticipantTrack {
 // ── Design tokens (live room palette) ────────────────────────────────────────
 final _cyan    = LivePalette.accent;
 final _rose    = LivePalette.danger;
-const _textMid = Color(0xB3FFFFFF);
 const _glass   = Color(0x33000000);
 
 class ParticipantInfoWidget extends StatelessWidget {

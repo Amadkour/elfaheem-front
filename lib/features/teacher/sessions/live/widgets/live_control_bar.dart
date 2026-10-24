@@ -45,6 +45,7 @@ class LiveControlAction {
     this.shortcut,
     this.menu,
     this.menuTitle,
+    this.badge = 0,
   });
 
   final IconData icon;
@@ -64,8 +65,36 @@ class LiveControlAction {
   /// Device picker: a chevron on wide screens, a section in the "More" sheet on mobile.
   final List<LiveDeviceOption>? menu;
   final String? menuTitle;
+  /// Count shown as a small bubble on the button's corner (unread chat, raised hands); 0 hides it.
+  final int badge;
 
   bool get enabled => onTap != null || (menu != null && menu!.isNotEmpty);
+}
+
+/// The count bubble on a button's corner.
+class _CountBadge extends StatelessWidget {
+  const _CountBadge(this.count);
+  final int count;
+  @override
+  Widget build(BuildContext context) {
+    final c = LivePalette.danger;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 18),
+      height: 18,
+      padding: const EdgeInsets.symmetric(horizontal: 5),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: LivePalette.surfaceHi, width: 1.5),
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        maxLines: 1,
+        style: const TextStyle(fontFamily: 'tajawal', fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: Colors.white),
+      ),
+    );
+  }
 }
 
 /// Small recording state shown inside the bar.
@@ -277,18 +306,21 @@ class _MobileButton extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: tap,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: look.fill,
-              border: Border.all(color: look.border, width: danger ? 0 : 1),
-              boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 16)],
+          Stack(clipBehavior: Clip.none, children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: look.fill,
+                border: Border.all(color: look.border, width: danger ? 0 : 1),
+                boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 16)],
+              ),
+              child: a.loading ? _spinner(look.fg, size * 0.4) : Icon(a.icon, color: look.fg, size: size * 0.46),
             ),
-            child: a.loading ? _spinner(look.fg, size * 0.4) : Icon(a.icon, color: look.fg, size: size * 0.46),
-          ),
+            if (a.badge > 0) Positioned(top: -4, right: -6, child: _CountBadge(a.badge)),
+          ]),
           const SizedBox(height: 5),
           Text(
             a.label,
@@ -395,21 +427,24 @@ class _WideButtonState extends State<_WideButton> {
             child: GestureDetector(
               key: a.key,
               onTap: tap,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 160),
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: _hover && tap != null ? hoverFill : look.fill,
-                  borderRadius: BorderRadius.horizontal(
-                    left: const Radius.circular(14),
-                    right: Radius.circular(hasMenu ? 4 : 14),
+              child: Stack(clipBehavior: Clip.none, children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _hover && tap != null ? hoverFill : look.fill,
+                    borderRadius: BorderRadius.horizontal(
+                      left: const Radius.circular(14),
+                      right: Radius.circular(hasMenu ? 4 : 14),
+                    ),
+                    border: Border.all(color: look.border),
+                    boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 14)],
                   ),
-                  border: Border.all(color: look.border),
-                  boxShadow: look.glow.a == 0 ? const [] : [BoxShadow(color: look.glow, blurRadius: 14)],
+                  child: a.loading ? _spinner(look.fg, 18) : Icon(a.icon, color: look.fg, size: 22),
                 ),
-                child: a.loading ? _spinner(look.fg, 18) : Icon(a.icon, color: look.fg, size: 22),
-              ),
+                if (a.badge > 0) Positioned(top: -6, right: -6, child: _CountBadge(a.badge)),
+              ]),
             ),
           ),
         ),
@@ -621,6 +656,10 @@ class _SheetRow extends StatelessWidget {
                           fontWeight: a.active ? FontWeight.w800 : FontWeight.w600,
                           color: c.textDark)),
                 ),
+                if (a.badge > 0) ...[
+                  const SizedBox(width: 8),
+                  _CountBadge(a.badge),
+                ],
                 if (a.shortcut != null && !dense) ...[
                   const SizedBox(width: 8),
                   Container(

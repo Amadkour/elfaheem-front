@@ -4,8 +4,13 @@
 // joins the LiveKit room by typing a name — no account, no token.
 //
 //   Teacher (auth):   POST/GET/DELETE /api/v1/live-sessions/{id}/guest-link       → GuestLinkApi
+//                     GET /api/v1/live-sessions/{id}/guest-link/joins?limit=100  → GuestLinkApi.joins
 //   Public (no auth): GET  /api/v1/public/live/{token}                           → GuestLiveApi.info
-//                     POST /api/v1/public/live/{token}/join {name}               → GuestLiveApi.join
+//                     POST /api/v1/public/live/{token}/join {name, pin?}         → GuestLiveApi.join
+//
+// A link may carry a PIN (4–8 digits: `pin` / `clear_pin` on POST, `has_pin` back; `requires_pin` on the public
+// GET; a wrong one answers 403 `guest_pin_invalid`). The public routes are rate limited per IP: 429
+// `too_many_requests` → the page waits a minute before letting the visitor try again.
 //
 // Public calls are sent with `auth: false`, so ApiClient neither attaches a token nor redirects to the login
 // screen on a 401. Server codes (ApiException.code) are turned into bilingual text by [guestLiveErrorText].
@@ -27,6 +32,7 @@ class GuestLink {
     required this.maxGuests,
     required this.guestsJoined,
     this.createdAt,
+    this.hasPin = false,
   });
 
   final String url;
@@ -36,6 +42,9 @@ class GuestLink {
   final int guestsJoined;
   final DateTime? createdAt;
 
+  /// Visitors must type a PIN (the PIN itself is never sent back).
+  final bool hasPin;
+
   factory GuestLink.fromJson(Map<String, dynamic> j) => GuestLink(
         url: (j['url'] ?? '').toString(),
         token: (j['token'] ?? '').toString(),
@@ -43,8 +52,50 @@ class GuestLink {
         maxGuests: (j['max_guests'] as num?)?.toInt(),
         guestsJoined: (j['guests_joined'] as num?)?.toInt() ?? 0,
         createdAt: DateTime.tryParse(j['created_at']?.toString() ?? ''),
+        hasPin: j['has_pin'] == true,
       );
 }
+
+/// One visitor who joined through the link (GET …/guest-link/joins).
+class GuestJoinRecord {
+  const GuestJoinRecord({required this.identity, required this.name, this.joinedAt, this.ipMasked});
+
+  final String identity;
+  final String name;
+  final DateTime? joinedAt;
+
+  /// e.g. `41.33.xx.xx` — the server never sends the full address.
+  final String? ipMasked;
+
+  factory GuestJoinRecord.fromJson(Map<String, dynamic> j) {
+    final ip = (j['ip_masked'] ?? '').toString().trim();
+    return GuestJoinRecord(
+      identity: (j['identity'] ?? '').toString(),
+      name: (j['name'] ?? '').toString(),
+      joinedAt: DateTime.tryParse(j['joined_at']?.toString() ?? ''),
+      ipMasked: ip.isEmpty ? null : ip,
+    );
+  }
+}
+
+/// `{items, total}` of GET …/guest-link/joins.
+class GuestJoinsPage {
+  const GuestJoinsPage({required this.items, required this.total});
+
+  final List<GuestJoinRecord> items;
+  final int total;
+
+  factory GuestJoinsPage.fromJson(Map<String, dynamic> j) {
+    final items = (j['items'] as List? ?? const [])
+        .whereType<Map>()
+        .map((e) => GuestJoinRecord.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return GuestJoinsPage(items: items, total: (j['total'] as num?)?.toInt() ?? items.length);
+  }
+}
+
+/// `true` for a well-formed PIN: 4–8 digits.
+bool guestPinValid(String pin) => RegExp(r'^\d{4,8}$').hasMatch(pin.trim());
 
 /// What a visitor sees before joining (GET /public/live/{token}).
 class GuestLiveInfo {
@@ -58,6 +109,7 @@ class GuestLiveInfo {
     required this.recordingEnabled,
     required this.guestsJoined,
     required this.maxGuests,
+    this.requiresPin = false,
   });
 
   final int sessionId;
@@ -70,6 +122,9 @@ class GuestLiveInfo {
   final int guestsJoined;
   final int? maxGuests;
 
+  /// The visitor must type the link's PIN to join.
+  final bool requiresPin;
+
   factory GuestLiveInfo.fromJson(Map<String, dynamic> j) => GuestLiveInfo(
         sessionId: (j['session_id'] as num?)?.toInt() ?? 0,
         sessionName: (j['session_name'] ?? '').toString(),
@@ -80,6 +135,7 @@ class GuestLiveInfo {
         recordingEnabled: j['recording_enabled'] == true,
         guestsJoined: (j['guests_joined'] as num?)?.toInt() ?? 0,
         maxGuests: (j['max_guests'] as num?)?.toInt(),
+        requiresPin: j['requires_pin'] == true,
       );
 }
 
@@ -133,21 +189,32 @@ class GuestLinkApi {
   }
 
   /// Creates the link, changes its options (`rotate: false` keeps the URL) or mints a new URL (`rotate: true`).
+  /// [pin] sets a new PIN (4–8 digits), null keeps the current one; [clearPin] removes it.
   static Future<GuestLink> save(
     int sessionId, {
     required bool canPublish,
     required int? maxGuests,
     bool rotate = false,
+    String? pin,
+    bool clearPin = false,
   }) async {
     final r = await ApiClient().post(_path(sessionId), body: {
       'can_publish': canPublish,
       'max_guests': maxGuests,
       'rotate': rotate,
+      'pin': clearPin ? null : pin,
+      'clear_pin': clearPin,
     });
     return GuestLink.fromJson(Map<String, dynamic>.from(r as Map));
   }
 
   static Future<void> revoke(int sessionId) => ApiClient().delete(_path(sessionId));
+
+  /// Who joined through the link (newest first), [limit] rows at most.
+  static Future<GuestJoinsPage> joins(int sessionId, {int limit = 100}) async {
+    final r = await ApiClient().get('${_path(sessionId)}/joins', queryParams: {'limit': limit});
+    return GuestJoinsPage.fromJson(Map<String, dynamic>.from(r as Map));
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,8 +229,12 @@ class GuestLiveApi {
     return GuestLiveInfo.fromJson(Map<String, dynamic>.from(r as Map));
   }
 
-  static Future<GuestJoin> join(String token, String name) async {
-    final r = await ApiClient().post('/api/v1/public/live/$token/join', body: {'name': name}, auth: false);
+  static Future<GuestJoin> join(String token, String name, {String? pin}) async {
+    final r = await ApiClient().post(
+      '/api/v1/public/live/$token/join',
+      body: {'name': name, if (pin != null && pin.isNotEmpty) 'pin': pin},
+      auth: false,
+    );
     return GuestJoin.fromJson(Map<String, dynamic>.from(r as Map));
   }
 }
@@ -188,9 +259,29 @@ String guestLiveErrorText(Object e) {
       return 'guest_live_err_limit'.tr;
     case 'guests_disabled':
       return 'guest_live_err_disabled'.tr;
+    case 'guest_pin_invalid':
+      return 'guest_live_err_pin'.tr;
+    case 'guest_pin_required':
+      return 'guest_live_pin_required'.tr;
+    case 'guest_pin_format':
+      return 'guest_link_pin_invalid'.tr;
+    case 'too_many_requests':
+      return 'guest_live_err_rate_limited'.tr;
+    case 'guest_blocked':
+      return 'guest_live_err_blocked'.tr;
   }
+  if (ex.statusCode == 429) return 'guest_live_err_rate_limited'.tr;
   return ex.message;
 }
+
+/// 429 / `too_many_requests`: the visitor has to wait a minute before trying again.
+bool guestLiveErrorIsRateLimit(Object e) {
+  final ex = ApiException.from(e);
+  return ex.code == 'too_many_requests' || ex.statusCode == 429;
+}
+
+/// 403 `guest_pin_invalid`: the PIN field shows its error and shakes.
+bool guestLiveErrorIsPin(Object e) => ApiException.from(e).code == 'guest_pin_invalid';
 
 /// True when the error means the link itself is dead: polling it again is pointless.
 bool guestLiveErrorIsFinal(Object e) {
@@ -214,11 +305,22 @@ String? guestLiveTokenFromRoute(String? routeName) {
   return null;
 }
 
-/// The route to start on when the browser URL points at a guest link — path form `/live/x` (the hash
-/// strategy would otherwise start on `/`) or hash form `/#/live/x` — else null.
+/// The guest route a browser URL points at — path form `/live/x` or the legacy hash form `/#/live/x` — else null.
 String? guestLiveRouteFromUri(Uri base) {
   final fromPath = guestLiveTokenFromRoute(base.path);
   final fromHash = guestLiveTokenFromRoute(base.fragment);
   final token = fromPath ?? fromHash;
   return token == null ? null : '/live/$token';
+}
+
+/// The web app uses the path URL strategy, so `/live/x`, `/c/12?ref=5` and `/dashboard` are real paths that
+/// Flutter itself hands over as the first route. Links from before the switch — `/#/live/x`, `/#/dashboard` —
+/// carry the route in the hash instead: this returns that route (path + its own query) when the fragment holds
+/// one, else null. main.dart starts on it and rewrites the browser URL to the clean path.
+String? legacyHashRoute(Uri base) {
+  final frag = base.fragment;
+  if (frag.length < 2 || !frag.startsWith('/')) return null;
+  final uri = Uri.tryParse(frag);
+  if (uri == null || uri.path.isEmpty || uri.path == '/') return null;
+  return uri.hasQuery ? '${uri.path}?${uri.query}' : uri.path;
 }

@@ -52,6 +52,19 @@ class ControlsWidget extends StatefulWidget {
   /// Leave, reactions and the speaker / audio-output choice.
   final bool canPublish;
 
+  // Hand raise: students / guests get a toggle (null hides it); the teacher gets a
+  // count chip that opens the queue (onOpenHands, null hides it).
+  final VoidCallback? onToggleHand;
+  final bool handUp;
+  final VoidCallback? onOpenHands;
+  final int handsCount;
+  final bool handsOpen;
+
+  // In-room chat (everyone): opens the panel; [chatUnread] is the badge.
+  final VoidCallback? onOpenChat;
+  final int chatUnread;
+  final bool chatOpen;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -68,6 +81,14 @@ class ControlsWidget extends StatefulWidget {
         this.recordingEnabled = true,
         this.onInteraction,
         this.canPublish = true,
+        this.onToggleHand,
+        this.handUp = false,
+        this.onOpenHands,
+        this.handsCount = 0,
+        this.handsOpen = false,
+        this.onOpenChat,
+        this.chatUnread = 0,
+        this.chatOpen = false,
       });
 
   @override
@@ -84,7 +105,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
   List<MediaDevice>? _videoInputs;
 
   StreamSubscription? _subscription;
-  bool _speakerphoneOn  = Hardware.instance.speakerOn ?? false;
+  bool _speakerphoneOn  = AudioManager.instance.isSpeakerOutputPreferred;
   bool _screenShareBusy = false;
   bool _recActionBusy   = false;   // true while pause/resume is in flight
 
@@ -126,7 +147,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
   void _setSpeakerphoneOn() {
     _speakerphoneOn = !_speakerphoneOn;
-    unawaited(widget.room.setSpeakerOn(_speakerphoneOn, forceSpeakerOutput: false));
+    // Same call Room.setSpeakerOn(on, forceSpeakerOutput: false) forwarded to before it was deprecated.
+    unawaited(AudioManager.instance.setSpeakerOutputPreferred(_speakerphoneOn));
     setState(() {});
   }
 
@@ -321,6 +343,12 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
   void requestEnd() => _onTapDisconnect();
 
+  /// H: raise / lower my hand (students, guests) or open the queue (teacher).
+  void toggleHand() => (widget.onToggleHand ?? widget.onOpenHands)?.call();
+
+  /// C: open the chat.
+  void openChat() => widget.onOpenChat?.call();
+
   // ─────────────────────────────────────────────────────────────────────────
   // Build — the actions are described here, laid out by LiveControlBar
   // ─────────────────────────────────────────────────────────────────────────
@@ -416,6 +444,45 @@ class ControlsWidgetState extends State<ControlsWidget> {
           )
         : null;
 
+    // ── Hand raise (students / guests) · hands queue (teacher) ──────────────
+    final hand = widget.onToggleHand != null
+        ? LiveControlAction(
+            key: const ValueKey('live_room.hand'),
+            icon: widget.handUp ? Icons.back_hand_rounded : Icons.back_hand_outlined,
+            label: widget.handUp ? 'lr_lower_hand'.tr : 'lr_raise_hand'.tr,
+            active: widget.handUp,
+            color: widget.handUp ? LivePalette.warning : null,
+            shortcut: 'H',
+            onTap: widget.onToggleHand,
+          )
+        : null;
+
+    final hands = widget.onOpenHands != null
+        ? LiveControlAction(
+            key: const ValueKey('live_room.hands'),
+            icon: widget.handsCount > 0 ? Icons.back_hand_rounded : Icons.back_hand_outlined,
+            label: 'lr_hands'.tr,
+            active: widget.handsOpen || widget.handsCount > 0,
+            color: LivePalette.warning,
+            badge: widget.handsCount,
+            shortcut: 'H',
+            onTap: widget.onOpenHands,
+          )
+        : null;
+
+    // ── Chat (everyone) ─────────────────────────────────────────────────────
+    final chat = widget.onOpenChat != null
+        ? LiveControlAction(
+            key: const ValueKey('live_room.chat'),
+            icon: widget.chatOpen ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
+            label: 'lr_chat'.tr,
+            active: widget.chatOpen,
+            badge: widget.chatUnread,
+            shortcut: 'C',
+            onTap: widget.onOpenChat,
+          )
+        : null;
+
     final end = LiveControlAction(
       key: const ValueKey('live_room.end'),
       icon: Icons.call_end_rounded,
@@ -436,11 +503,11 @@ class ControlsWidgetState extends State<ControlsWidget> {
     if (!widget.canPublish) {
       // Listen-only: no mic / camera / share / recording — just Leave, reactions and audio output.
       return LiveControlBar(
-        primary: [?react, ?speaker, ?output],
+        primary: [?react, ?hand, ?chat, ?speaker, ?output],
         secondary: const [],
         groups: [
           [?speaker, ?output],
-          [?react],
+          [?react, ?hand, ?chat],
         ],
         end: end,
         rec: LiveRecBadge.none,
@@ -449,12 +516,13 @@ class ControlsWidgetState extends State<ControlsWidget> {
     }
 
     return LiveControlBar(
-      primary: [mic, cam, ?share, ?react],
+      // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
+      primary: [mic, cam, ?share, ?react, ?hand, ?hands, ?chat],
       secondary: [?flip, ?speaker, ?output, ?record],
       groups: [
         [mic, cam, ?flip, ?speaker, ?output],
         [?share, ?record],
-        [?react],
+        [?react, ?hand, ?hands, ?chat],
       ],
       end: end,
       rec: rec,

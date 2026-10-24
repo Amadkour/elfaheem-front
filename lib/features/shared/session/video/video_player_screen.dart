@@ -617,6 +617,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ── Captions (WebVTT) ─────────────────────────────────────────────────────
 
   void _attachCaptions(VideoPlayerController vc) {
+    // Only a real file counts: `captions_status == 'ready'` without a `captions_url` is still "no captions".
     final url = _mat.captionsUrl;
     _hasCaptions = url != null || _isOffline;
     if (!_hasCaptions) return;

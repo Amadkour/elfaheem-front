@@ -49,7 +49,11 @@ class PreJoinLayout extends StatelessWidget {
     this.subtitle,
     this.isGuest = false,
     this.canPublish = true,
+    this.micLevel,
   });
+
+  /// Live microphone level 0–1 (web only); null hides the meter under the mic pill.
+  final double? micLevel;
 
   /// Session name (or the generic "Live session").
   final String title;
@@ -191,16 +195,23 @@ class PreJoinLayout extends StatelessWidget {
       ],
       if (canPublish) ...[
       const SizedBox(height: 14),
-      Row(children: [
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Expanded(
-          child: _TogglePill(
-            key: const ValueKey('prejoin.mic.toggle'),
-            on: micOn,
-            onIcon: Icons.mic_rounded,
-            offIcon: Icons.mic_off_rounded,
-            label: 'lr_microphone'.tr,
-            onTap: onToggleMic,
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+            _TogglePill(
+              key: const ValueKey('prejoin.mic.toggle'),
+              on: micOn,
+              onIcon: Icons.mic_rounded,
+              offIcon: Icons.mic_off_rounded,
+              label: 'lr_microphone'.tr,
+              onTap: onToggleMic,
+            ),
+            if (micLevel != null && micOn)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+                child: PreJoinMicMeter(level: micLevel!),
+              ),
+          ]),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -511,6 +522,47 @@ class _Chip extends StatelessWidget {
           ),
         ]),
       );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Thin 8-segment microphone level meter (under the mic pill)
+// ─────────────────────────────────────────────────────────────────────────────
+class PreJoinMicMeter extends StatelessWidget {
+  const PreJoinMicMeter({super.key, required this.level, this.segments = 8});
+
+  /// 0–1.
+  final double level;
+  final int segments;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lit = (level.clamp(0.0, 1.0) * segments).round();
+    return Semantics(
+      key: const ValueKey('prejoin.mic.meter'),
+      label: 'lr_mic_level'.tr,
+      value: '${(level.clamp(0.0, 1.0) * 100).round()}%',
+      child: SizedBox(
+        height: 6,
+        child: Row(children: [
+          for (var i = 0; i < segments; i++) ...[
+            if (i > 0) const SizedBox(width: 3),
+            Expanded(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 90),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: i < lit
+                      ? (i >= segments - 2 ? c.danger : (i >= segments - 4 ? c.warning : c.success))
+                      : c.divider,
+                ),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

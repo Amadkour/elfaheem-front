@@ -158,6 +158,10 @@ class SessionMaterialModel {
   /// WebVTT captions, when the server has them (`captions_url`).
   final String? captionsUrl;
 
+  /// Automatic captions job (`captions_status`): `queued` | `processing` | `ready` | `failed` | null.
+  /// `ready` without a [captionsUrl] still means "no captions" to the player.
+  final String? captionsStatus;
+
   const SessionMaterialModel({
     required this.id,
     required this.sessionId,
@@ -190,7 +194,14 @@ class SessionMaterialModel {
     this.audioMediumSize,
     this.requiresPlay = false,
     this.captionsUrl,
+    this.captionsStatus,
   });
+
+  /// The automatic-captions job is still running.
+  bool get captionsPending => captionsStatus == 'queued' || captionsStatus == 'processing';
+
+  /// The last automatic-captions job failed (and no file was uploaded since).
+  bool get captionsFailed => captionsStatus == 'failed' && captionsUrl == null;
 
   /// Copy of this material with the URLs returned by the /play endpoint.
   SessionMaterialModel withPlayData(Map<String, dynamic> j) {
@@ -218,6 +229,7 @@ class SessionMaterialModel {
       audioMediumSize: audioMediumSize,
       requiresPlay: false,
       captionsUrl: u('captions_url') ?? captionsUrl,
+      captionsStatus: _nonEmpty(j['captions_status']) ?? captionsStatus,
     );
   }
 
@@ -258,6 +270,7 @@ class SessionMaterialModel {
       audioMediumSize: json['audio_medium_size']  as int?,
       requiresPlay:    json['requires_play'] as bool? ?? false,
       captionsUrl:     _nonEmpty(json['captions_url']),
+      captionsStatus:  _nonEmpty(json['captions_status']),
     );
   }
 
@@ -271,6 +284,7 @@ class SessionMaterialModel {
     String? urlMedium,
     String? urlHigh,
     String? captionsUrl,
+    String? captionsStatus,
     bool clearCaptions = false,
   }) {
     return SessionMaterialModel(
@@ -294,6 +308,8 @@ class SessionMaterialModel {
       audioMediumSize: audioMediumSize,
       requiresPlay: requiresPlay,
       captionsUrl: clearCaptions ? null : (captionsUrl ?? this.captionsUrl),
+      // A new file makes the job's status moot; removing the captions clears it too.
+      captionsStatus: clearCaptions ? null : (captionsUrl != null ? 'ready' : (captionsStatus ?? this.captionsStatus)),
     );
   }
 

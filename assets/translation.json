@@ -15900,5 +15900,233 @@
   "guest_live_err_disabled": {
     "en": "Guests are not allowed in this session.",
     "ar": "الضيوف غير مسموح بهم في هذه الجلسة."
+  },
+  "lr_raise_hand": {
+    "en": "Raise hand",
+    "ar": "رفع اليد"
+  },
+  "lr_lower_hand": {
+    "en": "Lower hand",
+    "ar": "إنزال اليد"
+  },
+  "lr_hand_raised": {
+    "en": "Hand raised",
+    "ar": "يد مرفوعة"
+  },
+  "lr_hands": {
+    "en": "Hands",
+    "ar": "الأيدي"
+  },
+  "lr_raised_hands_n": {
+    "en": "Raised hands ({n})",
+    "ar": "الأيدي المرفوعة ({n})"
+  },
+  "lr_no_hands": {
+    "en": "No raised hands right now.",
+    "ar": "لا توجد أيدٍ مرفوعة الآن."
+  },
+  "lr_just_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "lr_allow_speak": {
+    "en": "Allow to speak",
+    "ar": "السماح بالتحدث"
+  },
+  "lr_block_speak": {
+    "en": "Block speaking",
+    "ar": "منع التحدث"
+  },
+  "lr_speak_allowed": {
+    "en": "The guest may speak now.",
+    "ar": "يمكن للضيف التحدث الآن."
+  },
+  "lr_speak_blocked": {
+    "en": "The guest can no longer speak.",
+    "ar": "لم يعد بإمكان الضيف التحدث."
+  },
+  "lr_mute_guest": {
+    "en": "Mute",
+    "ar": "كتم الصوت"
+  },
+  "lr_guest_muted": {
+    "en": "Guest muted.",
+    "ar": "تم كتم صوت الضيف."
+  },
+  "lr_remove_guest": {
+    "en": "Remove from session",
+    "ar": "إزالة من الجلسة"
+  },
+  "lr_remove_guest_confirm": {
+    "en": "Remove {name} from the session? They can rejoin only with a valid guest link.",
+    "ar": "إزالة {name} من الجلسة؟ لن يتمكن من العودة إلا برابط ضيف صالح."
+  },
+  "lr_guest_removed": {
+    "en": "Guest removed.",
+    "ar": "تمت إزالة الضيف."
+  },
+  "lr_mute_all_guests": {
+    "en": "Mute all guests",
+    "ar": "كتم كل الضيوف"
+  },
+  "lr_guests_muted_n": {
+    "en": "{n} guest(s) muted.",
+    "ar": "تم كتم {n} من الضيوف."
+  },
+  "lr_guest_not_found": {
+    "en": "This guest is no longer in the session.",
+    "ar": "هذا الضيف لم يعد في الجلسة."
+  },
+  "lr_live_not_started": {
+    "en": "The session has not started yet.",
+    "ar": "لم تبدأ الجلسة بعد."
+  },
+  "lr_chat": {
+    "en": "Chat",
+    "ar": "الدردشة"
+  },
+  "lr_clear_chat": {
+    "en": "Clear chat",
+    "ar": "مسح الدردشة"
+  },
+  "lr_chat_empty": {
+    "en": "No messages yet. Say hello!",
+    "ar": "لا توجد رسائل بعد. ابدأ بالتحية!"
+  },
+  "lr_chat_hint": {
+    "en": "Type a message…",
+    "ar": "اكتب رسالة…"
+  },
+  "lr_chat_slow_down": {
+    "en": "Too fast — wait a moment before sending again.",
+    "ar": "أسرع من اللازم — انتظر لحظة قبل الإرسال مرة أخرى."
+  },
+  "lr_send": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "lr_mic_level": {
+    "en": "Microphone level",
+    "ar": "مستوى الميكروفون"
+  },
+  "guest_live_err_pin": {
+    "en": "Wrong PIN. Check it with the host and try again.",
+    "ar": "رمز PIN غير صحيح. تأكد منه مع المحاضر وحاول مرة أخرى."
+  },
+  "guest_live_pin_required": {
+    "en": "This link needs a PIN.",
+    "ar": "هذا الرابط يحتاج إلى رمز PIN."
+  },
+  "guest_live_err_rate_limited": {
+    "en": "Too many attempts. Please try again in a minute.",
+    "ar": "محاولات كثيرة. يرجى المحاولة مرة أخرى بعد دقيقة."
+  },
+  "guest_live_rate_limited_in": {
+    "en": "Too many attempts. You can try again in {s} s.",
+    "ar": "محاولات كثيرة. يمكنك المحاولة مرة أخرى بعد {s} ث."
+  },
+  "guest_live_wait_s": {
+    "en": "Try again in {s} s",
+    "ar": "حاول مرة أخرى بعد {s} ث"
+  },
+  "guest_live_pin": {
+    "en": "PIN",
+    "ar": "رمز PIN"
+  },
+  "guest_live_pin_hint": {
+    "en": "4–8 digits from the host",
+    "ar": "4–8 أرقام من المحاضر"
+  },
+  "guest_live_pin_protected": {
+    "en": "Protected with a PIN",
+    "ar": "محمي برمز PIN"
+  },
+  "guest_live_consent": {
+    "en": "I understand this session may be recorded",
+    "ar": "أفهم أن هذه الجلسة قد يتم تسجيلها"
+  },
+  "guest_live_consent_required": {
+    "en": "Please confirm that you understand the session may be recorded.",
+    "ar": "يرجى تأكيد أنك تفهم أن الجلسة قد يتم تسجيلها."
+  },
+  "guest_link_pin": {
+    "en": "PIN (optional)",
+    "ar": "رمز PIN (اختياري)"
+  },
+  "guest_link_pin_change": {
+    "en": "New PIN (leave empty to keep the current one)",
+    "ar": "رمز PIN جديد (اتركه فارغًا للإبقاء على الحالي)"
+  },
+  "guest_link_pin_hint": {
+    "en": "4–8 digits",
+    "ar": "4–8 أرقام"
+  },
+  "guest_link_pin_sub": {
+    "en": "Guests must type this PIN before joining.",
+    "ar": "يجب على الضيوف إدخال هذا الرمز قبل الانضمام."
+  },
+  "guest_link_pin_invalid": {
+    "en": "The PIN must be 4 to 8 digits.",
+    "ar": "يجب أن يتكون رمز PIN من 4 إلى 8 أرقام."
+  },
+  "guest_link_pin_set": {
+    "en": "PIN required",
+    "ar": "يتطلب رمز PIN"
+  },
+  "guest_link_pin_remove": {
+    "en": "Remove PIN",
+    "ar": "إزالة رمز PIN"
+  },
+  "guest_link_pin_remove_confirm": {
+    "en": "Remove the PIN? Anyone with the link will be able to join without it.",
+    "ar": "إزالة رمز PIN؟ سيتمكن أي شخص لديه الرابط من الانضمام بدونه."
+  },
+  "guest_link_pin_removed": {
+    "en": "PIN removed",
+    "ar": "تمت إزالة رمز PIN"
+  },
+  "guest_link_joins": {
+    "en": "Guests joined",
+    "ar": "الضيوف المنضمون"
+  },
+  "guest_link_joins_empty": {
+    "en": "No guest has joined through this link yet.",
+    "ar": "لم ينضم أي ضيف عبر هذا الرابط بعد."
+  },
+  "captions_generate": {
+    "en": "Generate automatically",
+    "ar": "إنشاء تلقائي"
+  },
+  "captions_auto_unavailable": {
+    "en": "Automatic captions are not available on this server.",
+    "ar": "الترجمة التلقائية غير متاحة على هذا الخادم."
+  },
+  "captions_auto_queued": {
+    "en": "Captions are being generated. This can take a few minutes.",
+    "ar": "يجري إنشاء الترجمة. قد يستغرق ذلك بضع دقائق."
+  },
+  "captions_status_queued": {
+    "en": "Captions queued",
+    "ar": "الترجمة في قائمة الانتظار"
+  },
+  "captions_status_processing": {
+    "en": "Generating captions…",
+    "ar": "جارٍ إنشاء الترجمة…"
+  },
+  "captions_status_failed": {
+    "en": "Automatic captions failed. Try again or upload a .vtt file.",
+    "ar": "فشل إنشاء الترجمة التلقائية. حاول مرة أخرى أو ارفع ملف ‎.vtt."
+  },
+  "captions_retry": {
+    "en": "Try again",
+    "ar": "حاول مرة أخرى"
+  },
+  "captions_none": {
+    "en": "No captions yet. Upload a WebVTT (.vtt) file or let the server generate them.",
+    "ar": "لا توجد ترجمة بعد. ارفع ملف WebVTT ‏(.vtt) أو دع الخادم ينشئها."
+  },
+  "guest_live_err_blocked": {
+    "en": "You were removed from this session by the teacher.",
+    "ar": "تمت إزالتك من هذه الجلسة بواسطة المعلّم."
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'widgets/live_palette.dart';
@@ -15,6 +16,8 @@ import '../../../../core/api_client.dart';
 import '../sessions_provider.dart';
 import 'local_debug_save.dart';
 import 'prejoin_layout.dart';
+import 'prejoin_mic_meter_stub.dart'
+    if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
 import 'room.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
@@ -117,6 +120,26 @@ class _PreJoinPageState extends State<PreJoinPage> {
   LocalVideoTrack? _videoTrack;
   Map<String, dynamic>? _selectedVideoDevice;
   Map<String, dynamic>? _selectedAudioDevice;
+
+  /// Web only: live 0–1 microphone level of [_audioTrack] (null → no meter drawn).
+  double? _micLevel;
+  StreamSubscription<double>? _micLevelSub;
+
+  void _watchMicLevel() {
+    unawaited(_micLevelSub?.cancel());
+    _micLevelSub = null;
+    final track = _audioTrack;
+    if (!kIsWeb || track == null) {
+      if (_micLevel != null && mounted) setState(() => _micLevel = null);
+      return;
+    }
+    _micLevelSub = mic_meter.micLevelStream(track.mediaStream).listen((v) {
+      if (!mounted || !_enableAudio) return;
+      // Quantised to the meter's 8 segments: no rebuild while the level stays in the same segment.
+      final q = (v * 8).round() / 8;
+      if (q != _micLevel) setState(() => _micLevel = q);
+    }, onError: (_) {});
+  }
 
   static const _bestResolution = VideoParametersPresets.h1080_169;
 
@@ -245,6 +268,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
     if (!_enableAudio) {
       await _audioTrack?.stop();
       _audioTrack = null;
+      _watchMicLevel();
     } else {
       if (_selectedAudioDevice == null && _audioOptions.isNotEmpty) {
         _selectedAudioDevice = _audioOptions.first;
@@ -290,6 +314,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         _issue = PreJoinIssue.permissionDenied;
       }
     }
+    _watchMicLevel();
   }
 
   Future<void> _changeLocalVideoTrack() async {
@@ -319,6 +344,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
   @override
   void dispose() {
     unawaited(_subscription?.cancel());
+    unawaited(_micLevelSub?.cancel());
     if (!_joined) {
       // Left without joining (system back, swipe): release the camera and mic.
       unawaited(_audioTrack?.stop());
@@ -511,6 +537,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
             : null,
         micOn: _enableAudio,
         camOn: _enableVideo,
+        micLevel: _enableAudio && _audioTrack != null ? _micLevel : null,
         onToggleMic: _audioInputs.isEmpty && !_enableAudio ? null : _toggleAudio,
         onToggleCam: _videoInputs.isEmpty && !_enableVideo ? null : _toggleCamera,
         mics: _asDevices(_audioInputs, 'lr_microphone'.tr),

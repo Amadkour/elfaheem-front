@@ -1,12 +1,13 @@
 // lib/features/teacher/sessions/components/guest_link_sheet.dart
 //
 // "Guest link" for a live session (teacher side). One public link per session: anyone who has it joins the
-// room by typing a name, with or without mic & camera, up to an optional cap.
+// room by typing a name (and the link's PIN, when one is set), with or without mic & camera, up to an optional cap.
 //
 //   showGuestLinkSheet(context, sessionId: …)   → the sheet (loads GET …/guest-link; create / copy / share / QR /
-//                                                  settings / new link / revoke — see GuestLinkApi)
+//                                                  settings (mode, cap, PIN) / new link / revoke / guests joined —
+//                                                  see GuestLinkApi)
 //   GuestLinkBody                                → the pure layout (plain values + callbacks) so it can be tested
-//                                                  with expectNoLayoutErrors in both states (test/ui/guest_live_layout_test.dart)
+//                                                  with expectNoLayoutErrors in every state (test/ui/guest_live_layout_test.dart)
 //
 // Wrap the entry action in ParentComponent(featureKey: 'live.guest_link') so the super admin can switch it off.
 import 'dart:async';
@@ -50,8 +51,16 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
   // Draft options (create form, and the settings panel of an existing link).
   bool _canPublish = false;
   final _maxCtrl = TextEditingController();
+  final _pinCtrl = TextEditingController();
   bool _editing = false;
   bool _showQr = false;
+
+  // "Guests joined" list.
+  bool _joinsOpen = false;
+  bool _joinsLoading = false;
+  String? _joinsError;
+  List<GuestJoinRecord> _joins = const [];
+  int _joinsTotal = 0;
 
   @override
   void initState() {
@@ -62,12 +71,14 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
   @override
   void dispose() {
     _maxCtrl.dispose();
+    _pinCtrl.dispose();
     super.dispose();
   }
 
   void _syncDraft(GuestLink? l) {
     _canPublish = l?.canPublish ?? false;
     _maxCtrl.text = l?.maxGuests?.toString() ?? '';
+    _pinCtrl.clear(); // the PIN is never sent back: an empty draft means "keep it"
   }
 
   Future<void> _load() async {
@@ -92,18 +103,34 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
     return (v == null || v <= 0) ? null : v;
   }
 
-  Future<void> _save({required bool rotate}) async {
+  Future<void> _save({required bool rotate, bool clearPin = false}) async {
     if (_busy) return;
+    final pin = _pinCtrl.text.trim();
+    if (!clearPin && pin.isNotEmpty && !guestPinValid(pin)) {
+      appToast('guest_link_pin_invalid'.tr, error: true);
+      return;
+    }
     setState(() => _busy = true);
     try {
-      final l = await GuestLinkApi.save(widget.sessionId, canPublish: _canPublish, maxGuests: _draftMax, rotate: rotate);
+      final l = await GuestLinkApi.save(
+        widget.sessionId,
+        canPublish: _canPublish,
+        maxGuests: _draftMax,
+        rotate: rotate,
+        pin: pin.isEmpty ? null : pin,
+        clearPin: clearPin,
+      );
       if (!mounted) return;
       _syncDraft(l);
       setState(() {
         _link = l;
         _editing = false;
       });
-      appToast(rotate ? 'guest_link_rotated'.tr : 'guest_link_saved'.tr);
+      appToast(clearPin
+          ? 'guest_link_pin_removed'.tr
+          : rotate
+              ? 'guest_link_rotated'.tr
+              : 'guest_link_saved'.tr);
     } catch (e) {
       appToast(guestLiveErrorText(e), error: true);
     } finally {
@@ -114,6 +141,13 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
   Future<void> _rotate() async {
     if (!await appConfirm(context, message: 'guest_link_rotate_confirm'.tr, confirmLabel: 'guest_link_new'.tr)) return;
     await _save(rotate: true);
+  }
+
+  Future<void> _removePin() async {
+    if (!await appConfirm(context, message: 'guest_link_pin_remove_confirm'.tr, confirmLabel: 'guest_link_pin_remove'.tr)) {
+      return;
+    }
+    await _save(rotate: false, clearPin: true);
   }
 
   Future<void> _revoke() async {
@@ -130,6 +164,9 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
         _link = null;
         _editing = false;
         _showQr = false;
+        _joinsOpen = false;
+        _joins = const [];
+        _joinsTotal = 0;
       });
       appToast('guest_link_revoked'.tr);
     } catch (e) {
@@ -157,6 +194,32 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
     }
   }
 
+  // ── Guests joined ─────────────────────────────────────────────────────────
+  void _toggleJoins() {
+    setState(() => _joinsOpen = !_joinsOpen);
+    if (_joinsOpen && _joins.isEmpty && !_joinsLoading) unawaited(_loadJoins());
+  }
+
+  Future<void> _loadJoins() async {
+    if (_joinsLoading) return;
+    setState(() {
+      _joinsLoading = true;
+      _joinsError = null;
+    });
+    try {
+      final page = await GuestLinkApi.joins(widget.sessionId);
+      if (!mounted) return;
+      setState(() {
+        _joins = page.items;
+        _joinsTotal = page.total;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _joinsError = guestLiveErrorText(e));
+    } finally {
+      if (mounted) setState(() => _joinsLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => GuestLinkBody(
         loading: _loading,
@@ -165,8 +228,14 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
         link: _link,
         canPublish: _canPublish,
         maxGuestsController: _maxCtrl,
+        pinController: _pinCtrl,
         editing: _editing,
         showQr: _showQr,
+        joinsOpen: _joinsOpen,
+        joinsLoading: _joinsLoading,
+        joinsError: _joinsError,
+        joins: _joins,
+        joinsTotal: _joinsTotal,
         onRetry: _load,
         onCanPublishChanged: (v) => setState(() => _canPublish = v),
         onCreate: () => _save(rotate: false),
@@ -178,8 +247,11 @@ class _GuestLinkSheetState extends State<GuestLinkSheet> {
           if (!_editing) _syncDraft(_link); // cancelled: drop the draft
         }),
         onSaveSettings: () => _save(rotate: false),
+        onRemovePin: _removePin,
         onRotate: _rotate,
         onRevoke: _revoke,
+        onToggleJoins: _toggleJoins,
+        onRefreshJoins: _loadJoins,
       );
 }
 
@@ -196,6 +268,7 @@ class GuestLinkBody extends StatelessWidget {
     required this.link,
     required this.canPublish,
     required this.maxGuestsController,
+    required this.pinController,
     required this.editing,
     required this.showQr,
     required this.onRetry,
@@ -206,8 +279,16 @@ class GuestLinkBody extends StatelessWidget {
     required this.onToggleQr,
     required this.onToggleSettings,
     required this.onSaveSettings,
+    required this.onRemovePin,
     required this.onRotate,
     required this.onRevoke,
+    required this.onToggleJoins,
+    required this.onRefreshJoins,
+    this.joinsOpen = false,
+    this.joinsLoading = false,
+    this.joinsError,
+    this.joins = const [],
+    this.joinsTotal = 0,
   });
 
   final bool loading;
@@ -221,9 +302,19 @@ class GuestLinkBody extends StatelessWidget {
   final bool canPublish;
   final TextEditingController maxGuestsController;
 
+  /// New PIN draft; empty keeps the current PIN (if any).
+  final TextEditingController pinController;
+
   /// Settings panel open under an existing link.
   final bool editing;
   final bool showQr;
+
+  /// "Guests joined" section.
+  final bool joinsOpen;
+  final bool joinsLoading;
+  final String? joinsError;
+  final List<GuestJoinRecord> joins;
+  final int joinsTotal;
 
   final VoidCallback onRetry;
   final ValueChanged<bool> onCanPublishChanged;
@@ -233,8 +324,11 @@ class GuestLinkBody extends StatelessWidget {
   final VoidCallback onToggleQr;
   final VoidCallback onToggleSettings;
   final VoidCallback onSaveSettings;
+  final VoidCallback onRemovePin;
   final VoidCallback onRotate;
   final VoidCallback onRevoke;
+  final VoidCallback onToggleJoins;
+  final VoidCallback onRefreshJoins;
 
   @override
   Widget build(BuildContext context) {
@@ -274,24 +368,57 @@ class GuestLinkBody extends StatelessWidget {
   }
 
   // ── Options (shared by the create form and the settings panel) ───────────
-  Widget _options(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSwitchTile(
-          key: const ValueKey('guest_link.can_publish'),
-          title: 'guest_link_can_publish'.tr,
-          subtitle: 'guest_link_can_publish_sub'.tr,
-          icon: Icons.mic_rounded,
-          value: canPublish,
-          onChanged: busy ? null : onCanPublishChanged,
-        ),
-        const SizedBox(height: 6),
-        AppField(
-          controller: maxGuestsController,
-          label: 'guest_link_max'.tr,
-          hint: 'guest_link_max_hint'.tr,
-          keyboard: TextInputType.number,
-          ltr: true,
-        ),
-      ]);
+  Widget _options(BuildContext context, {bool hasPin = false}) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSwitchTile(
+        key: const ValueKey('guest_link.can_publish'),
+        title: 'guest_link_can_publish'.tr,
+        subtitle: 'guest_link_can_publish_sub'.tr,
+        icon: Icons.mic_rounded,
+        value: canPublish,
+        onChanged: busy ? null : onCanPublishChanged,
+      ),
+      const SizedBox(height: 6),
+      AppField(
+        controller: maxGuestsController,
+        label: 'guest_link_max'.tr,
+        hint: 'guest_link_max_hint'.tr,
+        keyboard: TextInputType.number,
+        ltr: true,
+      ),
+      AppField(
+        key: const ValueKey('guest_link.pin'),
+        controller: pinController,
+        label: hasPin ? 'guest_link_pin_change'.tr : 'guest_link_pin'.tr,
+        hint: 'guest_link_pin_hint'.tr,
+        keyboard: TextInputType.number,
+        ltr: true,
+        onChanged: (v) => _digitsOnly(pinController, v, max: 8),
+      ),
+      if (hasPin)
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AppPill(
+            key: const ValueKey('guest_link.pin_remove'),
+            icon: Icons.lock_open_rounded,
+            label: 'guest_link_pin_remove'.tr,
+            onTap: busy ? null : onRemovePin,
+            color: c.warning,
+          ),
+        )
+      else
+        Text('guest_link_pin_sub'.tr, style: appText(11.5, c: c.textLight, h: 1.4)),
+    ]);
+  }
+
+  /// Keeps a controller to digits only, [max] long (AppField has no input formatters).
+  static void _digitsOnly(TextEditingController ctrl, String v, {required int max}) {
+    var d = v.replaceAll(RegExp(r'[^0-9]'), '');
+    if (d.length > max) d = d.substring(0, max);
+    if (d == v) return;
+    ctrl.value = TextEditingValue(text: d, selection: TextSelection.collapsed(offset: d.length));
+  }
 
   // ── No link yet ───────────────────────────────────────────────────────────
   Widget _createForm(BuildContext context) => Column(
@@ -299,7 +426,7 @@ class GuestLinkBody extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _options(context),
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
           AppPrimaryButton(
             label: 'guest_link_create'.tr,
             icon: Icons.add_link_rounded,
@@ -322,18 +449,32 @@ class GuestLinkBody extends StatelessWidget {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: c.divider),
         ),
-        child: Row(children: [
-          Icon(Icons.link_rounded, size: 18, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: SelectableText(
-              l.url,
-              key: const ValueKey('guest_link.url'),
-              textDirection: TextDirection.ltr,
-              maxLines: 3,
-              style: appText(12.5, c: c.textDark, w: FontWeight.w600),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(children: [
+            Icon(Icons.link_rounded, size: 18, color: c.primary),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SelectableText(
+                l.url,
+                key: const ValueKey('guest_link.url'),
+                textDirection: TextDirection.ltr,
+                maxLines: 3,
+                style: appText(12.5, c: c.textDark, w: FontWeight.w600),
+              ),
             ),
-          ),
+          ]),
+          if (l.hasPin) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: AppBadgePill(
+                'guest_link_pin_set'.tr,
+                key: const ValueKey('guest_link.pin_chip'),
+                icon: Icons.lock_rounded,
+                color: c.warning,
+              ),
+            ),
+          ],
         ]),
       ),
       const SizedBox(height: 12),
@@ -377,6 +518,13 @@ class GuestLinkBody extends StatelessWidget {
           onTap: busy ? null : onToggleSettings,
           color: editing ? c.primary : null,
         ),
+        AppPill(
+          key: const ValueKey('guest_link.joins'),
+          icon: Icons.groups_rounded,
+          label: 'guest_link_joins'.tr,
+          onTap: busy ? null : onToggleJoins,
+          color: joinsOpen ? c.primary : null,
+        ),
         AppPill(key: const ValueKey('guest_link.rotate'), icon: Icons.autorenew_rounded, label: 'guest_link_new'.tr, onTap: busy ? null : onRotate, color: c.warning),
         AppPill(key: const ValueKey('guest_link.revoke'), icon: Icons.link_off_rounded, label: 'guest_link_revoke'.tr, onTap: busy ? null : onRevoke, color: c.danger),
       ]),
@@ -400,12 +548,105 @@ class GuestLinkBody extends StatelessWidget {
           child: Column(key: const ValueKey('guest_link.settings_panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AppSectionTitle('settings'.tr),
             const SizedBox(height: 6),
-            _options(context),
-            const SizedBox(height: 4),
+            _options(context, hasPin: l.hasPin),
+            const SizedBox(height: 8),
             AppPrimaryButton(label: 'save'.tr, icon: Icons.check_rounded, busy: busy, onPressed: onSaveSettings),
           ]),
         ),
       ],
+
+      if (joinsOpen) ...[
+        const SizedBox(height: 16),
+        _JoinsPanel(
+          loading: joinsLoading,
+          error: joinsError,
+          items: joins,
+          total: joinsTotal,
+          onRefresh: onRefreshJoins,
+        ),
+      ],
     ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Guests joined
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _JoinsPanel extends StatelessWidget {
+  const _JoinsPanel({required this.loading, required this.error, required this.items, required this.total, required this.onRefresh});
+
+  final bool loading;
+  final String? error;
+  final List<GuestJoinRecord> items;
+  final int total;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final title = total > items.length ? '${'guest_link_joins'.tr} ($total)' : '${'guest_link_joins'.tr} (${items.length})';
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(key: const ValueKey('guest_link.joins_panel'), crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Expanded(child: AppSectionTitle(title)),
+          IconButton(
+            key: const ValueKey('guest_link.joins_refresh'),
+            tooltip: 'refresh'.tr,
+            onPressed: loading ? null : onRefresh,
+            icon: loading
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : Icon(Icons.refresh_rounded, color: c.primary),
+          ),
+        ]),
+        if (loading && items.isEmpty)
+          const SizedBox(height: 160, child: AppListSkeleton(items: 3, withAvatar: true, padding: EdgeInsets.zero))
+        else if (error != null)
+          AppBanner(icon: Icons.wifi_off_rounded, text: error!, color: c.danger)
+        else if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text('guest_link_joins_empty'.tr, textAlign: TextAlign.center, style: appText(12.5, c: c.textLight)),
+          )
+        else
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: c.divider),
+            _JoinRow(items[i]),
+          ],
+      ]),
+    );
+  }
+}
+
+class _JoinRow extends StatelessWidget {
+  const _JoinRow(this.r);
+
+  final GuestJoinRecord r;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final name = r.name.trim().isEmpty ? 'guest_live_title'.tr : r.name.trim();
+    final when = r.joinedAt == null ? '' : AppTime.dateTime(r.joinedAt!);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AppAvatar(name: name, size: 34),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            const SizedBox(height: 2),
+            Wrap(spacing: 10, runSpacing: 2, children: [
+              if (when.isNotEmpty)
+                Text(when, style: appText(11.5, c: c.textMedium)),
+              if (r.ipMasked != null)
+                Text(r.ipMasked!, textDirection: TextDirection.ltr, style: appText(11.5, c: c.textLight)),
+            ]),
+          ]),
+        ),
+      ]),
+    );
   }
 }

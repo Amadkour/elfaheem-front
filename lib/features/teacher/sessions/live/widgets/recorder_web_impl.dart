@@ -40,8 +40,15 @@ external bool get _compositorUploadsDone;
 @JS('MediaRecorder.isTypeSupported')
 external bool _isTypeSupported(String mimeType);
 
-extension _MediaDevicesExt on web.MediaDevices {
-  external JSPromise<web.MediaStream> getDisplayMedia();
+/// A Dart value seen as a JS value for `isA<T>()` checks; null when it is not a JS object at all
+/// (a plain Dart wrapper, for instance), so the check simply fails instead of throwing.
+JSAny? _asJs(Object? v) {
+  if (v == null) return null;
+  try {
+    return v as JSAny;
+  } catch (_) {
+    return null;
+  }
 }
 
 // ── Typed compositor wrappers ─────────────────────────────────────────────────
@@ -100,11 +107,6 @@ void _compositorStop() {
 // to whatever it currently hand-draws for the no-content placeholder.
 void _compositorSetPlaceholderImage(String pngBase64) {
   _dispatch('setPlaceholderImage', pngBase64.toJS);
-}
-
-bool _compositorIsActive() {
-  final r = _dispatch('isActive');
-  return r?.dartify() == true;
 }
 
 // ── Public helpers ────────────────────────────────────────────────────────────
@@ -227,15 +229,15 @@ web.MediaStream? streamFromLivekitTrack(Object? lkStream) {
     // Most direct case: already a native web.MediaStream (e.g. if a
     // future flutter_webrtc version exposes it as such, or if called with
     // one directly rather than flutter_webrtc's own wrapper type).
-    if (lkStream is web.MediaStream) return lkStream;
+    if (_asJs(lkStream).isA<web.MediaStream>()) return lkStream as web.MediaStream;
     // Mainstream flutter_webrtc web plugin's MediaStream wraps the real
     // js MediaStream and exposes it via a `jsStream` getter — accessed
     // dynamically here since this file doesn't import the flutter_webrtc
     // package (keeping the web/native split clean), so the static type
     // isn't available to reference directly.
     final dynamic maybeWrapped = lkStream;
-    final jsStream = maybeWrapped.jsStream;
-    if (jsStream is web.MediaStream) return jsStream;
+    final Object? jsStream = maybeWrapped.jsStream;
+    if (_asJs(jsStream).isA<web.MediaStream>()) return jsStream as web.MediaStream;
     _log('streamFromLivekitTrack: .jsStream was not a web.MediaStream '
         '(got ${jsStream.runtimeType}) — see this function\'s doc comment');
   } catch (e) {
@@ -258,13 +260,13 @@ web.MediaStream? streamFromLivekitTrack(Object? lkStream) {
 web.MediaStream? nativeAudioStreamFromTrack(Object? lkTrack) {
   if (lkTrack == null) return null;
   try {
-    if (lkTrack is web.MediaStreamTrack) {
-      return web.MediaStream([lkTrack].toJS);
+    if (_asJs(lkTrack).isA<web.MediaStreamTrack>()) {
+      return web.MediaStream([lkTrack as web.MediaStreamTrack].toJS);
     }
     final dynamic maybeWrapped = lkTrack;
-    final jsTrack = maybeWrapped.jsTrack;
-    if (jsTrack is web.MediaStreamTrack) {
-      return web.MediaStream([jsTrack].toJS);
+    final Object? jsTrack = maybeWrapped.jsTrack;
+    if (_asJs(jsTrack).isA<web.MediaStreamTrack>()) {
+      return web.MediaStream([jsTrack as web.MediaStreamTrack].toJS);
     }
     _log('nativeAudioStreamFromTrack: .jsTrack was not a '
         'web.MediaStreamTrack (got ${jsTrack.runtimeType}) — see this '
@@ -327,9 +329,9 @@ class WebRecorder {
 
     final s = _pendingStream;
     _pendingStream = null;
-    if (s is web.MediaStream) {
+    if (_asJs(s).isA<web.MediaStream>()) {
       _log('adding initial camera/mic stream to compositor');
-      try { _compositorAddStream(s, 'camera'); }
+      try { _compositorAddStream(s as web.MediaStream, 'camera'); }
       catch (e) { _log('addStream(camera) error: $e'); }
     } else {
       _log('no initial media stream — compositor in screen-only mode (OK)');

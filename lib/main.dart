@@ -16,7 +16,7 @@ import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/url_strategy_stub.dart';
+import 'package:flutter_education_app/utils/widget/url_strategy.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
@@ -42,7 +42,7 @@ import 'features/shared/attendance/attendance_offline_sync.dart';
 import 'features/shared/attendance/attendance_push.dart';
 import 'features/shared/attendance/attendance_store.dart';
 import 'features/shared/attendance/attendance_teacher_banner.dart';
-import 'features/shared/guest/guest_live_api.dart' show guestLiveRouteFromUri, guestLiveTokenFromRoute;
+import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
 import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/notification/admin_message_dialogs.dart';
@@ -68,12 +68,25 @@ import 'firebase_options.dart';
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Web: the route an old hash link (`/#/live/x`, `/#/dashboard`) pointed at, read once at start-up. With the
+/// path URL strategy a plain path is the platform's default route by itself; this covers the links that are
+/// still out there (shared guest links, bookmarks). Null on mobile and for clean URLs.
+String? _legacyHashRoute;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
 // ─────────────────────────────────────────────────────────────────────────────
 
 Future<void> main() async {
   configureUrlStrategy(); // web: usePathUrlStrategy(), mobile: no-op
+  if (kIsWeb) {
+    // Old `/#/route` links: keep them working and show the clean path in the address bar (no reload).
+    final base = Uri.base;
+    _legacyHashRoute = legacyHashRoute(base);
+    if (_legacyHashRoute != null) {
+      replaceBrowserUrl(base.removeFragment().resolve(_legacyHashRoute!.substring(1)).toString());
+    }
+  }
 
   if (kIsWeb) {
     WidgetsFlutterBinding.ensureInitialized();
@@ -436,10 +449,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     }
     // Student + offline start-up: Dashboard (on its LAST tab) first, Downloads on top of it.
     final bool offlineStudentStart = offlineStart && auth.isStudent;
-    // Web uses the hash URL strategy (configureUrlStrategy is the no-op stub): `/#/live/x` already arrives as
-    // the platform's default route, but a plain `/live/x` path starts on `/` — so read Uri.base ourselves.
-    final String? guestLiveRoute = kIsWeb ? guestLiveRouteFromUri(Uri.base) : null;
-    final String initialRoute = guestLiveRoute ??
+    // Web uses the PATH url strategy: `/live/x`, `/c/12?ref=5`, `/dashboard` arrive as the platform's default
+    // route, which WidgetsApp prefers over `initialRoute` whenever it is not `/`. Only the old hash links
+    // (`/#/live/x`) need help: their route was read from the fragment in main() and the URL already cleaned.
+    final String initialRoute = _legacyHashRoute ??
         (!auth.isAuthenticated
         ? '/login'
         : (offlineStudentStart

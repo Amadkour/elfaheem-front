@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:async';
+import 'dart:developer' show log;
 import 'no_video.dart';
 import 'participant_info.dart';
 import 'participant_stats.dart';
@@ -96,7 +97,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
     _listener = widget.participant.createListener();
     _listener?.on<TranscriptionEvent>((e) {
       for (var seg in e.segments) {
-        print('Transcription: ${seg.text} ${seg.isFinal}');
+        log('Transcription: ${seg.text} ${seg.isFinal}');
       }
     });
 
