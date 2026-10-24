@@ -396,7 +396,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       _shakeController.forward(from: 0);
       _clearBoxes();
       _focusNodes[0].requestFocus();
-      _snack('invalid_otp'.tr, error: true);
+      final why = _auth.errorMessage;
+      _snack(why == null || why.isEmpty ? 'invalid_otp'.tr : why, error: true);
     }
   }
 
@@ -420,6 +421,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       _snack('otp_resent'.tr);
     } else {
       setState(() => _cooldown[w] = 0);
+      final why = _auth.errorMessage;
+      if (why != null && why.isNotEmpty) _snack(why, error: true);
     }
   }
 
@@ -919,61 +922,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
                   ),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmButton() {
-    final c = context.colors;
-    final enabled = _isOtpComplete && !_isLoading;
-    final radius = BorderRadius.circular(c.radiusMedium);
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
-      opacity: enabled || _isLoading ? 1 : 0.55,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: c.primaryGradient,
-          borderRadius: radius,
-          boxShadow: enabled ? c.primaryShadow : const [],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: radius,
-            onTap: enabled ? _onConfirm : null,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 17),
-              child: Center(
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: AppLoadingIndicator(),
-                      )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.verified_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'confirm'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

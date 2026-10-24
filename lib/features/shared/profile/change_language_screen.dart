@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../config/app_config.dart' show LangProvider, pageDirection, Trans, AppConfig;
+import '../../../config/app_config.dart' show LangProvider, Trans, AppConfig;
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';

@@ -576,8 +576,6 @@ class _EncryptionInterceptor extends Interceptor {
     // A bare Dio instance, deliberately NOT the pinned/encrypted one above —
     // the handshake bootstraps the very session this interceptor is part of,
     // so it can't depend on itself. TLS + AppConfig.baseUrl still apply.
-    // ignore: avoid_print
-    ////print('[ENC] client_public=${_hex(clientPublic.bytes)}');
 
     final res = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
       '/api/v1/security/handshake',
@@ -585,8 +583,6 @@ class _EncryptionInterceptor extends Interceptor {
     );
     final serverPublicBytes = base64Decode(res.data['server_public_key'] as String);
     final sessionId = res.data['session_id'] as String;
-    // ignore: avoid_print
-    ////print('[ENC] session_id=$sessionId server_public=${_hex(serverPublicBytes)}');
 
     final serverPublic = SimplePublicKey(serverPublicBytes, type: KeyPairType.x25519);
     final shared = await algo.sharedSecretKey(
@@ -594,25 +590,17 @@ class _EncryptionInterceptor extends Interceptor {
       remotePublicKey: serverPublic,
     );
     final sharedBytes = await shared.extractBytes();
-    // ignore: avoid_print
-    //print('[ENC] session_id=$sessionId shared_secret=${_hex(sharedBytes)}');
     final derived = await _kdfAlgo.deriveKey(
       secretKey: SecretKey(sharedBytes),
       nonce: _hkdfSalt,   // HKDF salt — must match server's explicit _HKDF_SALT
       info: _hkdfInfo,
     );
-    final derivedBytes = await derived.extractBytes();
-    // ignore: avoid_print
-    //print('[ENC] session_id=$sessionId derived_key=${_hex(derivedBytes)}');
 
     final session = _EncSession(sessionId, derived);
     _session = session;
     return session;
   }
 
-  // REMOVE before shipping — debug only.
-  static String _hex(List<int> bytes) =>
-      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   Future<void> _tryDecrypt(Response? response) async {
     if (response == null) return;
     // Body may be a Map (normal), a JSON String (some web paths) or null

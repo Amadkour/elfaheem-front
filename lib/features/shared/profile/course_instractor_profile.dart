@@ -947,7 +947,6 @@ class _DocumentsSection extends StatelessWidget {
   );
 
   Widget _featureContent(BuildContext context) {
-    final c = context.colors;
     final provider = context.watch<TeacherDocumentProvider>();
     final docs = provider.publicDocs;
 
@@ -1093,7 +1092,7 @@ class _DocumentCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: _PdfChip(
                 fileName: doc.fileName ?? 'document.pdf',
-                fileUrl: doc.fileUrl ?? '',
+                fileUrl: doc.fileUrl,
               ),
             ),
         ],
@@ -1366,116 +1365,6 @@ class _LoadingSkeletonState extends State<_LoadingSkeleton>
           ),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONTACT CARD  (kept, still commented-out in layouts — unchanged from original)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ContactCard extends StatelessWidget {
-  final TeacherProfileData teacher;
-
-  const _ContactCard({required this.teacher});
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'instructor.contact',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brMedium,
-        boxShadow: c.cardShadow,
-        border: Border.all(color: c.divider.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        children: [
-          _ContactRow(
-            icon: Icons.email_outlined,
-            label: 'email_label'.tr,
-            value: teacher.gmail,
-            color: AppTheme.primary,
-          ),
-          if (teacher.phone != null) ...[
-            Divider(height: 1, color: c.divider),
-            _ContactRow(
-              icon: Icons.phone_outlined,
-              label: 'phone_label'.tr,
-              value: teacher.phone!,
-              color: const Color(0xFF22C55E),
-            ),
-          ],
-          if (teacher.country != null) ...[
-            Divider(height: 1, color: c.divider),
-            _ContactRow(
-              icon: Icons.location_on_outlined,
-              label: 'country'.tr,
-              value: teacher.country!,
-              color: const Color(0xFFFF6B35),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ContactRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ContactRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 15),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: c.caption.copyWith(fontSize: 10, letterSpacing: 0.5),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: c.body.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

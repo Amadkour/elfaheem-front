@@ -205,15 +205,14 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
     if (kIsWeb && !(w?.allowWeb ?? false)) return const SizedBox.shrink();
     // Shown ONLY while an attendance is open for this course.
     if (!_checked || w == null || w.isOver) return const SizedBox.shrink();
-    const open = true;
     final c = context.colors;
 
     return ValueListenableBuilder<bool>(
       valueListenable: AppConnectivity.instance.online,
       builder: (_, online, _) => _PremiumSurface(
-        live: open,
-        from: open ? c.success : c.primary,
-        to: open ? c.success.withValues(alpha: 0.78) : c.primary.withValues(alpha: 0.72),
+        live: true,
+        from: c.success,
+        to: c.success.withValues(alpha: 0.78),
         onTap: () async {
           await showStudentCheckInSheet(context, courseId: widget.courseId, title: widget.title);
           if (mounted) _refresh();
@@ -232,7 +231,7 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
               Text(
                 !online
                     ? attT('att_btn_checkin_offline')
-                    : (open ? attT('att_btn_checkin_now') : attT('att_btn_checkin')),
+                    : attT('att_btn_checkin_now'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -240,20 +239,19 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
               ),
               if (_checked)
                 Text(
-                  open ? attT('att_entry_open') : attT('att_entry_closed'),
+                  attT('att_entry_open'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85)),
                 ),
             ]),
           ),
-          if (open)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
-              child: Text(attT('att_btn_live'),
-                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6)),
-            ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
+            child: Text(attT('att_btn_live'),
+                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6)),
+          ),
           const SizedBox(width: 6),
           const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
         ]),

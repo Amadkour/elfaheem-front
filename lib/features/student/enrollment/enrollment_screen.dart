@@ -11,7 +11,6 @@ import 'package:flutter_education_app/features/student/enrollment/saved_cards/sa
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
-import '../../../config/theme/app_theme.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -21,9 +20,6 @@ import 'enrollment_models.dart';
 import 'enrollment_provider.dart';
 import 'enrollment_widgets.dart';
 
-const _kMadaColor = Color(0xFF0D47A1);
-const _kVisaColor = Color(0xFF1A237E);
-const _kMcColor = Color(0xFFB71C1C);
 const _kNewCardColor = Color(0xFF0F4C81);
 
 class EnrollmentScreen extends StatelessWidget {

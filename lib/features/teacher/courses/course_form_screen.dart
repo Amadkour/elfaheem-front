@@ -98,7 +98,6 @@ class _CourseFormInnerState extends State<_CourseFormInner>
   // Optional certificate template — create mode only. A title with no file
   // is ignored (see CourseFormProvider.submitCreate).
   XFile? _certTemplateFile;
-  Uint8List? _certTemplateBytes;
   late final TextEditingController _certTitleCtrl;
 
   late final AnimationController _fadeCtrl;
@@ -1242,124 +1241,6 @@ class _FormCard extends StatelessWidget {
       ],
     ),
   );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Optional certificate template — course-creation flow only
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _CertificateTemplateCard extends StatelessWidget {
-  final TextEditingController titleController;
-  final Uint8List? previewBytes;
-  final void Function(XFile file, Uint8List bytes) onPick;
-  final VoidCallback onRemove;
-
-  const _CertificateTemplateCard({
-    required this.titleController,
-    required this.previewBytes,
-    required this.onPick,
-    required this.onRemove,
-  });
-
-  Future<void> _pick(BuildContext context) async {
-    final file = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
-    );
-    if (file == null || !context.mounted) return;
-    final img = await cropImageWithName(context, await file.readAsBytes(), file.name, shape: CropShape.wide);
-    if (img == null) return;
-    onPick(XFile.fromData(img.bytes, name: img.name, mimeType: img.name.endsWith('.png') ? 'image/png' : file.mimeType), img.bytes);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _FormCard(
-      icon: Icons.workspace_premium_rounded,
-      title: 'certificate_template_card_title'.tr,
-      children: [
-        Text(
-          'certificate_template_card_hint'.tr,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            fontSize: 12,
-            color: context.colors.textMedium,
-          ),
-        ),
-        const SizedBox(height: 14),
-        _LabeledField(
-          label: 'certificate_title_label'.tr,
-          child: MyTextField(
-            controller: titleController,
-            label: 'certificate_title_label'.tr,
-          ),
-        ),
-        const SizedBox(height: 14),
-        GestureDetector(
-          onTap: () => _pick(context),
-          child: AspectRatio(
-            aspectRatio: 1.6,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.colors.divider, width: 1.2),
-                color: context.colors.background,
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: previewBytes != null
-                  ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.memory(previewBytes!, fit: BoxFit.cover),
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: GestureDetector(
-                      onTap: onRemove,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.close_rounded,
-                          size: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              )
-                  : Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_photo_alternate_rounded,
-                      size: 28,
-                      color: context.colors.textLight,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'upload_template_btn'.tr,
-                      style: TextStyle(
-                        fontFamily: 'tajawal',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: context.colors.textMedium,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

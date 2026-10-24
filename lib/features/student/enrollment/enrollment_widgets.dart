@@ -65,7 +65,6 @@ class EnrollConfirmBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return PrimaryButton(label: label, onPressed: onTap, isLoading: loading);
   }
 }

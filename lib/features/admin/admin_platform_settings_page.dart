@@ -40,6 +40,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 
   // draft
   bool _orgs = true;
+  bool _sharing = true;            // cross-organization data sharing (brief §4)
   final _amount = TextEditingController();
   String _currency = 'EGP';
   Set<String> _methods = {};
@@ -77,6 +78,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
       _s = s;
       _error = null;
       _orgs = s['orgs_enabled'] != false;
+      _sharing = s['sharing_enabled'] != false;
       final a = (fee['amount'] as num?) ?? 0;
       _amount.text = a == 0 ? '' : (a == a.roundToDouble() ? '${a.toInt()}' : a.toStringAsFixed(2));
       _currency = '${fee['currency'] ?? 'EGP'}';
@@ -90,6 +92,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 
   Map<String, dynamic> get _body => {
         'orgs_enabled': _orgs,
+        'sharing_enabled': _sharing,
         'org_creation_fee': {'amount': _amountValue, 'currency': _currency, 'methods': _methods.toList()},
         'timezone': _zone,
         'time_format': _fmt,
@@ -99,7 +102,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
     final s = _s;
     if (s == null) return false;
     final fee = asMap(s['org_creation_fee']);
-    return _orgs != (s['orgs_enabled'] != false) ||
+    return _orgs != (s['orgs_enabled'] != false) || _sharing != (s['sharing_enabled'] != false) ||
         _amountValue != ((fee['amount'] as num?) ?? 0).toDouble() ||
         _currency != fee['currency'] ||
         _methods.length != (fee['methods'] as List? ?? const []).length ||
@@ -187,6 +190,17 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                 value: _orgs,
                 onChanged: _canEdit ? (v) => setState(() => _orgs = v) : null,
               ),
+              if (_orgs)
+                AppSwitchTile(
+                  key: const ValueKey('platform.sharing'),
+                  icon: Icons.handshake_rounded,
+                  title: t('مشاركة البيانات بين المؤسسات', 'Data sharing between organizations'),
+                  subtitle: _sharing
+                      ? t('يقرر مدير كل مؤسسة ما يشاركه؛ يمكن إيقافها لمؤسسة بعينها من صفحة المؤسسة.', 'Each organization admin decides what to share; it can be switched off per organization from its page.')
+                      : t('لا تُشارك أي بيانات بين المؤسسات ولا يعمل التحقق من الخريجين.', 'Nothing is shared between organizations and graduate verification is off.'),
+                  value: _sharing,
+                  onChanged: _canEdit ? (v) => setState(() => _sharing = v) : null,
+                ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 220),
                 child: !_orgs

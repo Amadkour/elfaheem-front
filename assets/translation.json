@@ -16128,5 +16128,29 @@
   "guest_live_err_blocked": {
     "en": "You were removed from this session by the teacher.",
     "ar": "تمت إزالتك من هذه الجلسة بواسطة المعلّم."
+  },
+  "ctx_join_new": {
+    "en": "Join another organization",
+    "ar": "الانضمام إلى مؤسسة أخرى"
+  },
+  "ctx_join_new_hint": {
+    "en": "Search, enter a code or scan a QR",
+    "ar": "ابحث أو أدخل رمزاً أو امسح رمز QR"
+  },
+  "ctx_no_orgs": {
+    "en": "You are not a member of any organization yet.",
+    "ar": "لست عضواً في أي مؤسسة بعد."
+  },
+  "ctx_org_pending": {
+    "en": "Under review",
+    "ar": "قيد المراجعة"
+  },
+  "ctx_org_suspended": {
+    "en": "Suspended",
+    "ar": "موقوفة"
+  },
+  "ctx_org_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوضة"
   }
 }

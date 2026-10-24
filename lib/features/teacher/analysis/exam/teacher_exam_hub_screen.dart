@@ -2814,21 +2814,6 @@ class _ErrorView extends StatelessWidget {
   );
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) => ExamChip(icon, label, color);
-}
-
 class _ModernActionBtn extends StatelessWidget {
   final String title;
   final IconData icon;

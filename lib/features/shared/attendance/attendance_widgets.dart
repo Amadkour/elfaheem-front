@@ -172,18 +172,17 @@ class _PremiumHeader extends StatelessWidget {
 
 /// Soft rounded group used to organise the settings / status blocks.
 class _Card extends StatelessWidget {
-  const _Card({required this.child, this.color});
+  const _Card({required this.child});
   final Widget child;
-  final Color? color;
   @override
   Widget build(BuildContext context) => Container(
         width: double.infinity,
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: (color ?? context.colors.primary).withValues(alpha: 0.06),
+          color: context.colors.primary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: (color ?? context.colors.primary).withValues(alpha: 0.12)),
+          border: Border.all(color: context.colors.primary.withValues(alpha: 0.12)),
         ),
         child: child,
       );
