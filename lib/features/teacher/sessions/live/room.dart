@@ -229,6 +229,14 @@ class RoomPage extends StatefulWidget {
   /// the teacher's device never records and no recording UI is shown.
   final bool recordingEnabled;
 
+  /// A visitor from a public guest link: no account and no token, so every
+  /// authenticated call (leave / attendance, participants, quizzes…) is skipped —
+  /// a 401 would otherwise send the guest to the login screen.
+  final bool isGuest;
+
+  /// False → listen-only: no microphone / camera controls at all.
+  final bool canPublish;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -243,6 +251,8 @@ class RoomPage extends StatefulWidget {
         this.enableVideo = true,
         this.sessionName,
         this.recordingEnabled = true,
+        this.isGuest = false,
+        this.canPublish = true,
       });
 
   @override
@@ -634,8 +644,9 @@ class _RoomPageState extends State<RoomPage>
       unawaited(Hardware.instance.setSpeakerphoneOn(true));
     }
 
-    _fetchEnrolledStudents();
-    if (!widget.isTeacher) _startQuizPolling();
+    // Guests have no token: the roster and the quiz feed need an account.
+    if (!widget.isGuest) _fetchEnrolledStudents();
+    if (!widget.isTeacher && !widget.isGuest) _startQuizPolling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ── Step 1: request runtime permissions ───────────────────────────────
@@ -648,7 +659,8 @@ class _RoomPageState extends State<RoomPage>
 
       // ── Step 2: enable HD audio ────────────────────────────────────────────
       final local = widget.room.localParticipant;
-      if (local != null) await _enableHdAudio(local);
+      // Listen-only guests never publish: skipping this keeps their mic off (the server token would refuse anyway).
+      if (local != null && widget.canPublish) await _enableHdAudio(local);
 
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
@@ -737,8 +749,9 @@ class _RoomPageState extends State<RoomPage>
     _reactions.dispose();
     WakelockPlus.disable().catchError((_) {});
     _netBanner?.close();
-    if (!widget.isTeacher) {
+    if (!widget.isTeacher && !widget.isGuest) {
       // Check-out time: without this every student's attendance showed "stayed 0 min" (check-out = join time).
+      // (A guest has no attendance record and no token: nothing to send.)
       widget.apiClient
           .post('/api/v1/live-sessions/${widget.sessionId}/leave')
           .then((_) {}, onError: (_) {});
@@ -909,7 +922,7 @@ class _RoomPageState extends State<RoomPage>
   // Enrolled students
   // ─────────────────────────────────────────────────────────────────────────
   Future<void> _fetchEnrolledStudents() async {
-    if (_loadingStudents) return;
+    if (_loadingStudents || widget.isGuest) return;
     if (mounted) setState(() => _loadingStudents = true);
     try {
       final resp = await widget.apiClient.get(
@@ -2384,6 +2397,7 @@ class _RoomPageState extends State<RoomPage>
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
         isTeacher: widget.isTeacher,
+        canPublish: widget.canPublish,
         onToggleScreenShare: toggleScreenShare,
         // ── NEW: pause / resume ──────────────────────────────────
         // Null when the action is not available (wrong state, or
@@ -2413,6 +2427,9 @@ class _RoomPageState extends State<RoomPage>
     final liveIdentities = widget.room.remoteParticipants.values
         .map((p) => p.identity)
         .toSet();
+    final guests = widget.room.remoteParticipants.values
+        .where((p) => isGuestIdentity(p.identity))
+        .toList();
 
     return Positioned.fill(
       child: GestureDetector(
@@ -2544,6 +2561,20 @@ class _RoomPageState extends State<RoomPage>
                     ],
                   ),
                 ),
+
+                // Guests (public link): not enrolled, known only from the room itself.
+                if (guests.isNotEmpty)
+                  for (final g in guests)
+                    _ParticipantRow(
+                      name: g.name.isNotEmpty ? g.name : g.identity.substring(6),
+                      isOnline: true,
+                      isTeacher: false,
+                      isGuest: true,
+                      isAttended: false,
+                      micOn: g.isMicrophoneEnabled(),
+                      camOn: g.isCameraEnabled(),
+                      joinDate: g.joinedAt,
+                    ),
 
                 // Student list
                 Expanded(
@@ -3103,11 +3134,15 @@ class _ParticipantRow extends StatelessWidget {
     required this.camOn,
     this.joinDate,
     this.leaveDate,
+    this.isGuest = false,
   });
 
   final String name;
   final bool isOnline;
   final bool isTeacher;
+
+  /// Joined through a public guest link (no enrolment, no attendance).
+  final bool isGuest;
   final bool isAttended;
   final bool micOn;
   final bool camOn;
@@ -3205,7 +3240,13 @@ class _ParticipantRow extends StatelessWidget {
                   children: [
                     if (isTeacher)
                       _MiniTag(label: 'teacher'.tr, color: _cyan)
-                    else ...[
+                    else if (isGuest) ...[
+                      _MiniTag(label: 'lr_guest'.tr, color: LivePalette.warning),
+                      if (isOnline) ...[
+                        const SizedBox(width: 4),
+                        _MiniTag(label: 'lr_online'.tr, color: _emerald),
+                      ],
+                    ] else ...[
                       _MiniTag(
                         label: isAttended ? 'lr_attended'.tr : 'lr_absent'.tr,
                         color: isAttended ? _emerald : _rose,

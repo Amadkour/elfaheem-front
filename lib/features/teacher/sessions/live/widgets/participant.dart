@@ -160,9 +160,15 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
             children: [
               ...extraWidgets(isScreenShare),
               ParticipantInfoWidget(
-                title: widget.participant.name.isNotEmpty
-                    ? '${widget.participant.name} (${widget.participant.identity})'
-                    : widget.participant.identity,
+                // A guest's identity is an opaque `guest:<random>`: show only the name they typed.
+                title: isGuestIdentity(widget.participant.identity)
+                    ? (widget.participant.name.isNotEmpty
+                        ? widget.participant.name
+                        : 'lr_guest'.tr)
+                    : widget.participant.name.isNotEmpty
+                        ? '${widget.participant.name} (${widget.participant.identity})'
+                        : widget.participant.identity,
+                isGuest: isGuestIdentity(widget.participant.identity),
                 audioAvailable: audioPublication?.muted == false &&
                     audioPublication?.subscribed == true,
                 connectionQuality: widget.participant.connectionQuality,

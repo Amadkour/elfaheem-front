@@ -80,6 +80,10 @@
                     android:host="nextbrain.site"
                     android:pathPrefix="/c/"
                     android:scheme="https" />
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/live/"
+                    android:scheme="https" />
             </intent-filter>
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"

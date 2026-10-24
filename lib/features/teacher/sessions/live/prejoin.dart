@@ -40,7 +40,17 @@ class JoinArgs {
     this.sessionName,
     // ── NEW: ApiClient passed through so RoomPage can upload chunks ──────────
     required this.apiClient,
+    this.guest = false,
+    this.canPublish = true,
   });
+
+  /// True for a visitor who came through a public guest link: no account, no token.
+  /// The room then skips every authenticated call (attendance, quizzes, participants…).
+  final bool guest;
+
+  /// False → the participant may only watch and listen: the pre-join screen creates no
+  /// microphone / camera tracks and the room shows only Leave, reactions and audio output.
+  final bool canPublish;
 
   late final int? sessionId;
   final int courseId;
@@ -110,9 +120,17 @@ class _PreJoinPageState extends State<PreJoinPage> {
 
   static const _bestResolution = VideoParametersPresets.h1080_169;
 
+  bool get _canPublish => widget.args.canPublish;
+
   @override
   void initState() {
     super.initState();
+    if (!_canPublish) {
+      // Listen-only guest: no tracks are ever created, no permission prompt.
+      _enableAudio = false;
+      _enableVideo = false;
+      return;
+    }
     unawaited(_initDevices());
     if (lkPlatformIs(PlatformType.android)) unawaited(_checkPermissions());
   }
@@ -327,7 +345,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         maxFramerate: 30,
       );
       late int localSessionId;
-      if (args.sessionId==null){
+      if (args.sessionId==null && !args.guest){
         final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
         if(r ==null){
           Helpers.showMessage('failed to create session'.tr, isError: true);
@@ -408,6 +426,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
             enableAudio: _enableAudio,
             enableVideo: _enableVideo,
             recordingEnabled: data.recordingEnabled,
+            sessionName: args.sessionName,
+            isGuest: args.guest,
+            canPublish: args.canPublish,
           ),
         ),
       );
@@ -477,6 +498,8 @@ class _PreJoinPageState extends State<PreJoinPage> {
         title: title.isNotEmpty ? title : 'lr_live_session'.tr,
         subtitle: 'lr_ready_to_join'.tr,
         isTeacher: args.isTeacher,
+        isGuest: args.guest,
+        canPublish: args.canPublish,
         userName: args.userName,
         preview: _videoTrack != null && _enableVideo
             ? VideoTrackRenderer(

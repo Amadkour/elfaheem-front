@@ -42,6 +42,8 @@ import 'features/shared/attendance/attendance_offline_sync.dart';
 import 'features/shared/attendance/attendance_push.dart';
 import 'features/shared/attendance/attendance_store.dart';
 import 'features/shared/attendance/attendance_teacher_banner.dart';
+import 'features/shared/guest/guest_live_api.dart' show guestLiveRouteFromUri, guestLiveTokenFromRoute;
+import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
@@ -434,11 +436,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     }
     // Student + offline start-up: Dashboard (on its LAST tab) first, Downloads on top of it.
     final bool offlineStudentStart = offlineStart && auth.isStudent;
-    final String initialRoute = !auth.isAuthenticated
+    // Web uses the hash URL strategy (configureUrlStrategy is the no-op stub): `/#/live/x` already arrives as
+    // the platform's default route, but a plain `/live/x` path starts on `/` — so read Uri.base ourselves.
+    final String? guestLiveRoute = kIsWeb ? guestLiveRouteFromUri(Uri.base) : null;
+    final String initialRoute = guestLiveRoute ??
+        (!auth.isAuthenticated
         ? '/login'
         : (offlineStudentStart
         ? '/dashboard'
-        : (offlineStart ? '/downloads' : auth.homeRoute));
+        : (offlineStart ? '/downloads' : auth.homeRoute)));
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     // ONE app name everywhere: the name the super admin set on the dashboard ("About us" → AppIdentity,
@@ -531,6 +537,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
+    // /live/<token> — a live session's public guest link (web deep link, app link, QR). No account needed:
+    // it resolves before login and in guest mode, on purpose outside _Guard.
+    final guestToken = guestLiveTokenFromRoute(settings.name);
+    if (guestToken != null) {
+      return _fade(GuestLivePage(token: guestToken), settings);
+    }
     final link = DeepLinkService.parse(settings.name); // /c/12?ref=5
     if (link != null) {
       if (!context.read<MyAuthProvider>().isAuthenticated) {

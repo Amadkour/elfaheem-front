@@ -45,6 +45,7 @@ import 'package:flutter_education_app/features/teacher/sessions/model/live_respo
 import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
+import '../sessions/components/guest_link_sheet.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
@@ -638,10 +639,18 @@ class _InlineStartButton extends StatelessWidget {
     );
   }
 
+  /// Long-press → the session's public guest link (the tile is too small for a second button).
+  void _openGuestLink(BuildContext context) {
+    final id = session.sessionId;
+    if (id == null || AppConfig.disableList.contains(kGuestLinkFeatureKey)) return;
+    showGuestLinkSheet(context, sessionId: id, sessionName: session.courseName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => _handleTap(context),
+      onLongPress: () => _openGuestLink(context),
       child: Container(
         decoration: BoxDecoration(gradient: _gradient),
         child: Column(

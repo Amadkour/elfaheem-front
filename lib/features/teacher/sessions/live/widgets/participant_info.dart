@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'live_palette.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 enum ParticipantTrackType {
@@ -19,6 +20,12 @@ extension ParticipantTrackTypeExt on ParticipantTrackType {
     ParticipantTrackType.kScreenShare: TrackSource.screenShareAudio,
   }[this]!;
 }
+
+/// LiveKit identities of visitors who joined through a public guest link
+/// (the server mints them as `guest:<random>`).
+const String kGuestIdentityPrefix = 'guest:';
+
+bool isGuestIdentity(String identity) => identity.startsWith(kGuestIdentityPrefix);
 
 class ParticipantTrack {
   ParticipantTrack(
@@ -41,12 +48,16 @@ class ParticipantInfoWidget extends StatelessWidget {
   final bool isScreenShare;
   final bool enabledE2EE;
 
+  /// Visitor from a public guest link: a small "guest" tag follows the name.
+  final bool isGuest;
+
   const ParticipantInfoWidget({
     this.title,
     this.audioAvailable = true,
     this.connectionQuality = ConnectionQuality.unknown,
     this.isScreenShare = false,
     this.enabledE2EE = false,
+    this.isGuest = false,
     super.key,
   });
 
@@ -88,6 +99,26 @@ class ParticipantInfoWidget extends StatelessWidget {
               ),
             ),
           ),
+        if (isGuest) ...[
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+            decoration: BoxDecoration(
+              color: LivePalette.warning.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: LivePalette.warning.withValues(alpha: 0.4)),
+            ),
+            child: Text(
+              'lr_guest'.tr,
+              style: TextStyle(
+                color: LivePalette.warning,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'tajawal',
+              ),
+            ),
+          ),
+        ],
         const Spacer(),
         // Status icons row
         Row(mainAxisSize: MainAxisSize.min, children: [

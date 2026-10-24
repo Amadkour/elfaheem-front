@@ -172,7 +172,8 @@ class DlActionPill extends StatelessWidget {
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Icon(icon, size: 18, color: col),
               const SizedBox(width: 7),
-              Text(label, style: dlText(12.5, w: FontWeight.w800, c: col)),
+              // Flexible: a long label (or a big text scale on a phone) ellipsizes instead of overflowing.
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12.5, w: FontWeight.w800, c: col))),
             ]),
           ),
         ),

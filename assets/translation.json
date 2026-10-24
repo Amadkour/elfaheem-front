@@ -15744,5 +15744,161 @@
   "captions_pick_vtt": {
     "en": "Choose a WebVTT (.vtt) file",
     "ar": "اختر ملف ترجمة بصيغة WebVTT (.vtt)"
+  },
+  "lr_guest": {
+    "en": "Guest",
+    "ar": "ضيف"
+  },
+  "lr_listen_only_msg": {
+    "en": "You join as a listener: no microphone or camera in this session.",
+    "ar": "ستنضم كمستمع فقط: لا ميكروفون ولا كاميرا في هذه الجلسة."
+  },
+  "guest_link_title": {
+    "en": "Guest link",
+    "ar": "رابط الضيوف"
+  },
+  "guest_link_intro": {
+    "en": "Anyone with this link can join the live session by typing a name — no account needed. You can limit the number of guests and choose whether they may speak.",
+    "ar": "أي شخص لديه هذا الرابط يمكنه الانضمام للبث بكتابة اسمه فقط دون حساب. يمكنك تحديد عدد الضيوف واختيار ما إذا كان يمكنهم التحدث."
+  },
+  "guest_link_can_publish": {
+    "en": "Guests can use mic & camera",
+    "ar": "يمكن للضيوف استخدام الميكروفون والكاميرا"
+  },
+  "guest_link_can_publish_sub": {
+    "en": "Off: guests only watch and listen (and react).",
+    "ar": "عند الإيقاف: يشاهد الضيوف ويستمعون فقط (مع التفاعلات)."
+  },
+  "guest_link_max": {
+    "en": "Maximum guests (optional)",
+    "ar": "الحد الأقصى للضيوف (اختياري)"
+  },
+  "guest_link_max_hint": {
+    "en": "Leave empty for no limit",
+    "ar": "اتركه فارغًا بدون حد"
+  },
+  "guest_link_create": {
+    "en": "Create link",
+    "ar": "إنشاء الرابط"
+  },
+  "guest_link_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "guest_link_copied": {
+    "en": "Link copied",
+    "ar": "تم نسخ الرابط"
+  },
+  "guest_link_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "guest_link_qr": {
+    "en": "QR code",
+    "ar": "رمز QR"
+  },
+  "guest_link_new": {
+    "en": "New link",
+    "ar": "رابط جديد"
+  },
+  "guest_link_revoke": {
+    "en": "Revoke",
+    "ar": "إلغاء الرابط"
+  },
+  "guest_link_rotate_confirm": {
+    "en": "Create a new link? The current link stops working immediately and guests who have it cannot join with it.",
+    "ar": "إنشاء رابط جديد؟ سيتوقف الرابط الحالي فورًا ولن يتمكن من لديه الرابط القديم من الانضمام."
+  },
+  "guest_link_revoke_confirm": {
+    "en": "Revoke the guest link? Nobody can join with it any more.",
+    "ar": "إلغاء رابط الضيوف؟ لن يتمكن أحد من الانضمام به بعد الآن."
+  },
+  "guest_link_rotated": {
+    "en": "New link created",
+    "ar": "تم إنشاء رابط جديد"
+  },
+  "guest_link_saved": {
+    "en": "Guest link saved",
+    "ar": "تم حفظ رابط الضيوف"
+  },
+  "guest_link_revoked": {
+    "en": "Guest link revoked",
+    "ar": "تم إلغاء رابط الضيوف"
+  },
+  "guest_link_joined": {
+    "en": "Guests joined",
+    "ar": "الضيوف المنضمون"
+  },
+  "guest_link_created": {
+    "en": "Created",
+    "ar": "أُنشئ"
+  },
+  "guest_link_mode_publish": {
+    "en": "Mic & camera allowed",
+    "ar": "الميكروفون والكاميرا مسموحان"
+  },
+  "guest_link_mode_listen": {
+    "en": "Listen only",
+    "ar": "استماع فقط"
+  },
+  "guest_live_title": {
+    "en": "Join as a guest",
+    "ar": "الانضمام كضيف"
+  },
+  "guest_live_subtitle": {
+    "en": "You were invited to a live session. Type your name and join.",
+    "ar": "تمت دعوتك إلى بث مباشر. اكتب اسمك وانضم."
+  },
+  "guest_live_badge_live": {
+    "en": "LIVE",
+    "ar": "مباشر الآن"
+  },
+  "guest_live_badge_waiting": {
+    "en": "Not started yet",
+    "ar": "لم يبدأ بعد"
+  },
+  "guest_live_waiting_msg": {
+    "en": "The session has not started yet. This page checks again every few seconds and the Join button turns on by itself.",
+    "ar": "لم يبدأ البث بعد. تتحقق هذه الصفحة تلقائيًا كل بضع ثوانٍ وسيُفعَّل زر الانضمام من تلقاء نفسه."
+  },
+  "guest_live_name": {
+    "en": "Your name",
+    "ar": "اسمك"
+  },
+  "guest_live_name_hint": {
+    "en": "Shown to the teacher and the other participants",
+    "ar": "يظهر للمعلم وبقية المشاركين"
+  },
+  "guest_live_name_required": {
+    "en": "Please type your name first",
+    "ar": "من فضلك اكتب اسمك أولًا"
+  },
+  "guest_live_join_when_live": {
+    "en": "Waiting for the session to start…",
+    "ar": "في انتظار بدء البث…"
+  },
+  "guest_live_err_invalid": {
+    "en": "This link is not valid any more.",
+    "ar": "هذا الرابط لم يعد صالحًا."
+  },
+  "guest_live_err_missing": {
+    "en": "This session has no guest link yet.",
+    "ar": "لا يوجد رابط ضيوف لهذه الجلسة بعد."
+  },
+  "guest_live_err_not_started": {
+    "en": "The session has not started yet.",
+    "ar": "لم يبدأ البث بعد."
+  },
+  "guest_live_err_ended": {
+    "en": "The session has ended.",
+    "ar": "انتهى البث."
+  },
+  "guest_live_err_limit": {
+    "en": "The session is full: the guest limit has been reached.",
+    "ar": "الجلسة ممتلئة: تم الوصول إلى الحد الأقصى للضيوف."
+  },
+  "guest_live_err_disabled": {
+    "en": "Guests are not allowed in this session.",
+    "ar": "الضيوف غير مسموح بهم في هذه الجلسة."
   }
 }

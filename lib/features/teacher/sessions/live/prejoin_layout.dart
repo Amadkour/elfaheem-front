@@ -47,12 +47,20 @@ class PreJoinLayout extends StatelessWidget {
     this.issue,
     this.onRetry,
     this.subtitle,
+    this.isGuest = false,
+    this.canPublish = true,
   });
 
   /// Session name (or the generic "Live session").
   final String title;
   final String? subtitle;
   final bool isTeacher;
+
+  /// A visitor from a public guest link (shown as "guest" instead of student).
+  final bool isGuest;
+
+  /// False → listen-only: no mic/cam pills and no device pickers (no tracks are created).
+  final bool canPublish;
   final String userName;
 
   /// The live (already mirrored) self-view, or null while the camera is off / starting.
@@ -173,6 +181,15 @@ class PreJoinLayout extends StatelessWidget {
         hasCamera: cams.isNotEmpty,
         userName: userName,
       ),
+      if (!canPublish) ...[
+        const SizedBox(height: 14),
+        AppBanner(
+          key: const ValueKey('prejoin.listen_only'),
+          icon: Icons.hearing_rounded,
+          text: 'lr_listen_only_msg'.tr,
+        ),
+      ],
+      if (canPublish) ...[
       const SizedBox(height: 14),
       Row(children: [
         Expanded(
@@ -197,6 +214,7 @@ class PreJoinLayout extends StatelessWidget {
           ),
         ),
       ]),
+      ],
     ]);
   }
 
@@ -204,6 +222,8 @@ class PreJoinLayout extends StatelessWidget {
   Widget _panel(BuildContext context) {
     final c = context.colors;
     final roleColor = isTeacher ? c.primary : c.accent;
+    final roleLabel = isGuest ? 'lr_guest'.tr : (isTeacher ? 'teacher' : 'student').tr;
+    final roleIcon = isGuest ? Icons.person_outline_rounded : (isTeacher ? Icons.school_rounded : Icons.person_rounded);
     return AppCard(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -219,14 +239,15 @@ class PreJoinLayout extends StatelessWidget {
               Align(
                 alignment: AlignmentDirectional.centerStart,
                 child: AppBadgePill(
-                  (isTeacher ? 'teacher' : 'student').tr,
+                  roleLabel,
                   color: roleColor,
-                  icon: isTeacher ? Icons.school_rounded : Icons.person_rounded,
+                  icon: roleIcon,
                 ),
               ),
             ]),
           ),
         ]),
+        if (canPublish) ...[
         const SizedBox(height: 14),
         Divider(height: 1, color: c.divider),
         const SizedBox(height: 14),
@@ -260,6 +281,7 @@ class PreJoinLayout extends StatelessWidget {
             prefixIcon: const Icon(Icons.videocam_outlined),
           ),
         ),
+        ],
 
         if (issue != null) ...[
           const SizedBox(height: 14),

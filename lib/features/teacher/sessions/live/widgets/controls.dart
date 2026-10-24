@@ -48,6 +48,10 @@ class ControlsWidget extends StatefulWidget {
   /// Any pointer-down inside the bar (room.dart restarts its auto-hide timer).
   final VoidCallback? onInteraction;
 
+  /// False → listen-only (guest link without mic & camera): the bar shows only
+  /// Leave, reactions and the speaker / audio-output choice.
+  final bool canPublish;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -63,6 +67,7 @@ class ControlsWidget extends StatefulWidget {
         this.reactionsOpen = false,
         this.recordingEnabled = true,
         this.onInteraction,
+        this.canPublish = true,
       });
 
   @override
@@ -296,6 +301,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
   // ── Public toggles (keyboard shortcuts in room.dart call these) ──────────
   void toggleMic() {
+    if (!widget.canPublish) return;
     if (participant.isMicrophoneEnabled()) {
       _disableAudio();
     } else {
@@ -304,12 +310,12 @@ class ControlsWidgetState extends State<ControlsWidget> {
   }
 
   void toggleCamera() {
-    if (!_hasAnyCamera) return;
+    if (!widget.canPublish || !_hasAnyCamera) return;
     _toggleCameraOnOff();
   }
 
   void toggleShare() {
-    if (!widget.isTeacher) return;
+    if (!widget.isTeacher || !widget.canPublish) return;
     _onScreenShareToggle();
   }
 
@@ -426,6 +432,21 @@ class ControlsWidgetState extends State<ControlsWidget> {
             : recState == RecState.paused
                 ? LiveRecBadge.paused
                 : LiveRecBadge.none;
+
+    if (!widget.canPublish) {
+      // Listen-only: no mic / camera / share / recording — just Leave, reactions and audio output.
+      return LiveControlBar(
+        primary: [?react, ?speaker, ?output],
+        secondary: const [],
+        groups: [
+          [?speaker, ?output],
+          [?react],
+        ],
+        end: end,
+        rec: LiveRecBadge.none,
+        onInteraction: widget.onInteraction,
+      );
+    }
 
     return LiveControlBar(
       primary: [mic, cam, ?share, ?react],
