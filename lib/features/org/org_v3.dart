@@ -116,7 +116,7 @@ Map<String, String> _codeTexts() => {
       'inherited_role': t('هذا الدور معرّف في المؤسسة الأم — عدّله من هناك', 'This role is defined by the parent organization — edit it there'),
       // sharing with other organizations (org_sharing_pages.dart)
       'sharing_disabled': t('مشاركة البيانات بين المؤسسات متوقفة', 'Cross-organization sharing is switched off'),
-      'root_only': t('تُدار الشراكات ومفاتيح API من حساب المؤسسة الرئيسية', 'Partnerships and API keys are managed from the main organization account'),
+      'sharing_root_only': t('تُدار الشراكات ومفاتيح API من حساب المؤسسة الرئيسية', 'Partnerships and API keys are managed from the main organization account'),
       'grant_revoked': t('أنهت المؤسسة المانحة هذا الوصول — اطلب الوصول من جديد لتقرر هي', 'The sharing organization ended this access — request it again so they can decide'),
       'too_many_keys': t('بلغت الحد الأقصى للمفاتيح النشطة — ألغِ مفتاحاً أولاً', 'Maximum number of active keys reached — revoke one first'),
       'bad_resource_type': t('نوع العنصر غير معروف', 'Unknown resource type'),
