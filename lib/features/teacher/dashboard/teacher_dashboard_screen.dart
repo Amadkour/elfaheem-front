@@ -12,7 +12,6 @@ import 'package:flutter_education_app/features/teacher/profile/switch_device_req
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../utils/widget/app_loading_indicator.dart';
 import '../analysis/analytics_hub_screen.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
@@ -213,17 +212,15 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
       useWebCard: true,
 
       child: SafeArea(
-        child: _prov.isLoading
-            ? Center(
-          child: AppLoadingIndicator(),
-        )
-            : ScheduleTabBody(
+        // the body owns loading (skeleton) / error (retry) / empty — a refresh keeps the data on screen
+        child: ScheduleTabBody(
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,
           title: "time-table".tr,
           emptyMessage: 'no-time-table'.tr,
           getLastFetched: () => _prov.lastFetched,
+          getMeetings: () => _prov.meetings,
         ),
       ),
     );

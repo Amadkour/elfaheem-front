@@ -6,6 +6,8 @@
 //                              elsewhere) → one tap opens the picker. Inside an organization a second, explicit
 //                              "Personal" button leaves it in one tap.
 //   showContextSwitcherSheet   Personal + every live organization, the current one checked; one tap switches.
+//   ContextExitButton          the "back to Personal" app-bar action of every organization / department page.
+//   leaveToPersonal            what both do: Individual mode + org context cleared + every org page closed.
 //
 // State lives in AppModeController (remembered per user, smart default, deep links); entering / leaving an
 // organization applies / clears its context (timezone, 12h/24h, feature offs) there — nothing is duplicated here.
@@ -39,6 +41,36 @@ int pendingElsewhere(AppModeController ctl) {
     if (asInt(asMap(e['organization'])['id']) != ctl.currentOrgId) n += AppModeController.pendingOf(e);
   }
   return n;
+}
+
+/// Leaves any organization / department screen for the personal space in one tap: Individual mode (remembered per
+/// user), the organization's context (timezone, feature offs) cleared and every org page above the root closed.
+/// Org admins / staff, whose root screen IS an org page, land on the personal dashboard instead — before, "Personal"
+/// only flipped the mode while the org pages stayed on screen, so there was no way out.
+Future<void> leaveToPersonal(BuildContext context) async {
+  final nav = Navigator.of(context, rootNavigator: true);
+  final ctl = AppModeController.instance;
+  await ctl.setMode(AppMode.individual);
+  ctl.applyOrgContext();
+  String? root;
+  nav.popUntil((r) {
+    if (r.isFirst) root = r.settings.name;
+    return r.isFirst;
+  });
+  if (AppModeController.isOrgRoute(root)) nav.pushNamedAndRemoveUntil(AppModeController.personalRoute, (_) => false);
+}
+
+/// App-bar action of organization / department pages: always visible, one tap back to the personal space.
+class ContextExitButton extends StatelessWidget {
+  const ContextExitButton({super.key});
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+        key: const ValueKey('ctx.leave'),
+        tooltip: 'ctx_exit'.tr,
+        onPressed: () => leaveToPersonal(context),
+        icon: Icon(Icons.logout_rounded, color: context.colors.primary, textDirection: TextDirection.ltr),
+      );
 }
 
 class ContextSwitcher extends StatefulWidget {
@@ -156,7 +188,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                     child: InkWell(
                       key: const ValueKey('ctx.exit'),
                       customBorder: const StadiumBorder(),
-                      onTap: () => ctl.setMode(AppMode.individual),
+                      onTap: () => leaveToPersonal(context),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         child: Row(
@@ -210,7 +242,7 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
                 trailing: check(!ctl.isOrg),
                 onTap: () {
                   Navigator.pop(ctx);
-                  ctl.setMode(AppMode.individual);
+                  leaveToPersonal(context);
                 },
               ),
             ),

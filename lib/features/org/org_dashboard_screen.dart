@@ -23,6 +23,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton, leaveToPersonal;
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBanner, AppCard, AppHeroStat, AppListSkeleton, AppPill, AppSectionTitle, AppSwitch, AppTime, appText, AppChoiceChip;
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -340,7 +341,7 @@ class _OrgTab extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       maxWith: 1200,
-      appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false),
+      appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false, actions: const [ContextExitButton()]),
       child: s.currentId == null
           ? OrgEmpty(icon: Icons.domain_rounded, title: t('اختر مؤسسة', 'Choose an organization'))
           : ValueListenableBuilder<int>(
@@ -589,6 +590,9 @@ class _OrgHero extends StatelessWidget {
         }),
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [
+          // the way back to the personal space is always one visible tap (Item 6)
+          glassButton(Icons.logout_rounded, 'ctx_personal'.tr, () => leaveToPersonal(context)),
+          glassButton(Icons.event_rounded, t('التقويم', 'Calendar'), () => Navigator.of(context).pushNamed('/calendar', arguments: {'org_id': s.currentId})),
           if (s.items.length > 1 || s.canCreateRoot)
             glassButton(Icons.swap_horiz_rounded, t('تبديل المؤسسة', 'Switch'), () => showOrgSwitcher(context)),
           if (s.isOrgAdmin) glassButton(Icons.vpn_key_rounded, t('كود الانضمام', 'Join code'), () => showJoinCode(context)),

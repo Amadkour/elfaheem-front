@@ -258,15 +258,17 @@ class ScheduleSession {
   });
 
   factory ScheduleSession.fromJson(Map<String, dynamic> j) {
-    final day = j['day'] as String;
+    // tolerant: a course with only an Arabic name (course_name null) must not break the whole schedule
+    final day = '${j['day'] ?? ''}';
+    int id(dynamic v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
     return ScheduleSession(
-      scheduleId: j['schedule_id'] as int,
-      courseId: j['course_id'] as int,
-      courseName: j['course_name'] as String,
-      day: j['day'] as String,
-      dayLabelStr: j['day_label'] as String? ?? j['day'] as String,
-      startTime: j['start_time'] as String,
-      endTime: j['end_time'] as String,
+      scheduleId: id(j['schedule_id']),
+      courseId: id(j['course_id']),
+      courseName: '${j['course_name'] ?? ''}',
+      day: day,
+      dayLabelStr: j['day_label'] as String? ?? day,
+      startTime: '${j['start_time'] ?? '00:00'}',
+      endTime: '${j['end_time'] ?? '00:00'}',
       isToday: j['is_today'] as bool? ?? false,
       isOngoing: j['is_ongoing'] as bool? ?? false,
       minutesUntilStart: j['minutes_until_start'] as int?,

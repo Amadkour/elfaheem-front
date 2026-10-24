@@ -631,8 +631,33 @@ class _WideTopBar extends StatelessWidget {
           const Spacer(),
           if (onRefresh != null) RefreshButton(onTap: onRefresh!),
           SizedBox(width: 5),
+          if (!GuestState.active) const CalendarIcon(),
           NotificationIcon(unreadCount: unread),
         ],
+      ),
+    );
+  }
+}
+
+/// Opens the personal overall calendar ('/calendar' with no org/dept = every source the user belongs to).
+class CalendarIcon extends StatelessWidget {
+  const CalendarIcon({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'my_calendar'.tr,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pushNamed('/calendar'),
+        child: Container(
+          padding: EdgeInsets.all(7),
+          margin: EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: context.colors.accent2,
+          ),
+          child: Icon(Icons.event_rounded, color: Colors.white, size: 20),
+        ),
       ),
     );
   }

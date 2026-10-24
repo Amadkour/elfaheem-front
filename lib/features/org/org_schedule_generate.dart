@@ -12,19 +12,24 @@
 //   showRulesSheet                     Locked / Flexible per rule, in break order; last resorts are suggestions only
 //   ConflictDigest / ConflictsPanel    the small live conflicts panel (counts + top types)
 //   showGenerationResult               result: unplaced with reason + fix, proposals, advice, conflicts (read-only)
+//   TimetableCompletion                pure: % complete — never "complete" while anything is unplaced, clashing or pending
+//   QuickActionsReport / QuickAction   pure: GET …/quick-actions — one Locked rule relaxed each, dry-run impact
+//   showGenerationResult also IS the Quick Actions panel: completion, problems per course, one-rule fixes (apply
+//   re-solves only the affected part, POST …/quick-actions/apply), proposals, last-resort advice (suggestions only)
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:provider/provider.dart';
 
-import '../../design/app_kit.dart' show AppDropdown;
+import '../../design/app_kit.dart' show AppDropdown, AppListSkeleton;
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show RowCard;
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_optimizer.dart';
-import 'org_timetable_parts.dart' show ConflictList;
+import 'org_timetable_parts.dart' show ConflictList, courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -134,8 +139,9 @@ class GenerationOutcome {
 }
 
 class LiveRun {
-  const LiveRun({required this.round, required this.roundsMax, required this.unplaced, required this.top});
+  const LiveRun({required this.round, required this.roundsMax, required this.unplaced, required this.top, this.placed, this.required});
   final int round, roundsMax, unplaced;
+  final int? placed, required; // the best result so far (it only ever improves)
   final List<(String, int)> top;
 
   static LiveRun? of(Map<String, dynamic>? run) {
@@ -145,9 +151,90 @@ class LiveRun {
       round: asInt(s['round']),
       roundsMax: asInt(s['rounds_max'], 6),
       unplaced: asInt(s['unplaced']),
+      placed: s['placed'] == null ? null : asInt(s['placed']),
+      required: s['required'] == null ? null : asInt(s['required']),
       top: [for (final x in asMapList(s['top'])) ('${x['reason']}', asInt(x['n']))],
     );
   }
+}
+
+/// How complete a timetable really is. [isComplete] only when every session is placed, nothing hard clashes and no
+/// proposal waits; until then [pct] stays below 100 so a half-valid timetable never reads as done.
+class TimetableCompletion {
+  const TimetableCompletion({required this.required, required this.placed, this.hard = 0, this.pending = 0});
+  final int required, placed, hard, pending;
+
+  int get unplaced => (required - placed).clamp(0, required);
+  int get problems => unplaced + hard;
+  bool get isComplete => required > 0 && unplaced == 0 && hard == 0 && pending == 0;
+  int get pct {
+    if (required == 0) return 0;
+    final p = (100 * placed) ~/ required;
+    return isComplete ? 100 : p.clamp(0, 99);
+  }
+
+  /// [result] = schedule.result, [conflicts] = GET …/validate.
+  factory TimetableCompletion.of(Map<String, dynamic> result, List<Map<String, dynamic>> conflicts) {
+    final o = GenerationOutcome.of(result);
+    return TimetableCompletion(
+      required: o.required ?? 0,
+      placed: o.placed ?? 0,
+      hard: conflicts.where((x) => x['severity'] == 'error').length,
+      pending: o.pending.length,
+    );
+  }
+}
+
+/// One quick action: relax [rule] alone (null = re-solve the affected part as is). [before] / [after] = unplaced
+/// sessions + hard conflicts.
+class QuickAction {
+  const QuickAction({this.rule, required this.before, required this.after, this.fixes = const [], this.breaks = 0});
+  final String? rule;
+  final int before, after, breaks;
+  final List<({int courseId, String kind, int? group, int n})> fixes;
+
+  int get deltaPct => before == 0 ? 0 : ((100 * (after - before)) / before).round();
+  bool fixesLoad(int courseId, String kind, int? group) => fixes.any((f) => f.courseId == courseId && f.kind == kind && f.group == group);
+
+  factory QuickAction.of(Map<String, dynamic> m) => QuickAction(
+        rule: m['rule'] as String?,
+        before: asInt(m['before']),
+        after: asInt(m['after']),
+        breaks: asInt(m['breaks']),
+        fixes: [
+          for (final f in asMapList(m['fixes']))
+            (courseId: asInt(f['course_id']), kind: '${f['kind'] ?? 'lecture'}', group: f['group_no'] == null ? null : asInt(f['group_no']), n: asInt(f['n'], 1))
+        ],
+      );
+}
+
+class QuickActionsReport {
+  const QuickActionsReport({required this.before, required this.actions, this.candidates = const []});
+  final int before;
+  final List<QuickAction> actions; // best first
+  final List<String> candidates; // the Locked rules that were tried
+
+  factory QuickActionsReport.of(Map<String, dynamic> m) => QuickActionsReport(
+        before: asInt(m['before']),
+        actions: [for (final a in asMapList(m['actions'])) if (a['rule'] == null || _relaxable.contains(a['rule'])) QuickAction.of(a)],
+        candidates: [for (final r in (m['candidates'] as List?) ?? const []) '$r'],
+      );
+}
+
+/// Only switchable rules are ever offered — a hard rule coming from the server is dropped, never shown as an action.
+final _relaxable = {for (final r in generationRules) if (r.unlockable) r.key};
+
+/// "Problems 12 → 7 (−42%)"
+String impactText(int before, int after) {
+  final d = before == 0 ? 0 : ((100 * (after - before)) / before).round();
+  final sign = d <= 0 ? '−' : '+';
+  return t('المشكلات من $before إلى $after ($sign${d.abs()}٪)', 'Problems $before → $after ($sign${d.abs()}%)');
+}
+
+String quickRuleText(String? rule) {
+  if (rule == null) return t('أعد حل الحصص المتأثرة فقط', 'Re-solve only the affected sessions');
+  final r = generationRules.where((x) => x.key == rule).firstOrNull;
+  return r == null ? rule : t('خفّف: ${r.ar}', 'Relax: ${r.en}');
 }
 
 /// Loads never scheduled until their staff is fixed.
@@ -298,7 +385,8 @@ class ConflictsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final d = ConflictDigest.of(conflicts);
-    final col = d.hard > 0 ? c.danger : (d.soft > 0 ? c.warning : c.success);
+    final done = _completionOf(context);
+    final col = d.hard > 0 ? c.danger : (d.soft > 0 || (done != null && done.required > 0 && !done.isComplete) ? c.warning : c.success);
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: onTap,
@@ -307,16 +395,31 @@ class ConflictsPanel extends StatelessWidget {
         decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(14), border: Border.all(color: col.withValues(alpha: 0.3))),
         child: Wrap(spacing: 10, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
           Icon(d.hard > 0 ? Icons.error_rounded : (d.soft > 0 ? Icons.warning_amber_rounded : Icons.verified_rounded), size: 18, color: col),
+          if (done != null && done.required > 0)
+            Text(done.isComplete ? t('الجدول مكتمل', 'Timetable complete') : t('مكتمل ${done.pct}٪', '${done.pct}% complete'),
+                style: orgText(context, size: 12.5, w: FontWeight.w800, color: col)),
           Text(
               d.total == 0
                   ? t('لا تعارضات', 'No conflicts')
                   : t('${d.hard} إلزامي · ${d.soft} تنبيه', '${d.hard} hard · ${d.soft} warning(s)'),
               style: orgText(context, size: 12.5, w: FontWeight.w800, color: col)),
           for (final (type, n) in d.top) Text('$n × ${conflictTypeText(type)}', style: orgText(context, size: 12, color: c.textMedium)),
+          if (onTap != null && done != null && done.required > 0 && !done.isComplete)
+            Text(t('إجراءات سريعة', 'Quick actions'), style: orgText(context, size: 12.5, w: FontWeight.w800, color: c.primary)),
           if (onTap != null) Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
         ]),
       ),
     );
+  }
+
+  /// The studio's timetable, when this panel sits under it (null elsewhere, e.g. in a layout test).
+  TimetableCompletion? _completionOf(BuildContext context) {
+    try {
+      final p = Provider.of<OrgScheduleProvider>(context);
+      return TimetableCompletion.of(asMap(p.schedule?['result']), conflicts);
+    } on ProviderNotFoundException {
+      return null;
+    }
   }
 }
 
@@ -343,7 +446,10 @@ class GenerationLivePanel extends StatelessWidget {
                     ? t('فشل التوليد — لم يتغير شيء', 'Generation failed — nothing changed')
                     : live == null
                         ? t('جارٍ التوليد…', 'Generating…')
-                        : t('الجولة ${live.round} من ${live.roundsMax} · ${live.unplaced} حصة بلا موعد', 'Round ${live.round} of ${live.roundsMax} · ${live.unplaced} session(s) unplaced'),
+                        : live.placed != null && live.required != null
+                            ? t('أفضل نتيجة حتى الآن: ${live.placed} من ${live.required} حصة · محاولة ${live.round} من ${live.roundsMax} كحد أقصى',
+                                'Best so far: ${live.placed} of ${live.required} sessions · attempt ${live.round} of at most ${live.roundsMax}')
+                            : t('محاولة ${live.round} من ${live.roundsMax} كحد أقصى · ${live.unplaced} حصة بلا موعد', 'Attempt ${live.round} of at most ${live.roundsMax} · ${live.unplaced} session(s) unplaced'),
                 style: orgText(context, w: FontWeight.w800)),
           ),
           if (onCancel != null) TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: TextStyle(color: c.danger))),
@@ -363,28 +469,79 @@ class GenerationLivePanel extends StatelessWidget {
   }
 }
 
-/// The result of the last generation: what is unplaced and why, the proposals, last-resort advice, conflicts.
+/// The Quick Actions panel (and result of the last generation): completion, problems per course with their reason and
+/// the one-rule fixes that solve them (impact shown before applying), proposals, last-resort advice, conflicts.
 Future<void> showGenerationResult(BuildContext context, OrgScheduleProvider p, Map<int, String> courseNames, {required bool canEdit}) =>
-    showAdminSheet<void>(context, (ctx) => _ResultSheet(p: p, names: courseNames, canEdit: canEdit));
+    showAdminSheet<void>(context, (ctx) => QuickActionsPanel(p: p, names: courseNames, canEdit: canEdit));
 
-class _ResultSheet extends StatefulWidget {
-  const _ResultSheet({required this.p, required this.names, required this.canEdit});
+/// GET …/quick-actions (dry run). Null + [missing] when the server has no such route yet.
+Future<({QuickActionsReport? report, bool missing})> fetchQuickActions(OrgScheduleProvider p) async {
+  final r = await orgCall(() => p.api.get('${p.base}/schedules/${p.schedule!['id']}/quick-actions'), quiet: true);
+  return (report: r.ok ? QuickActionsReport.of(r.map) : null, missing: r.endpointMissing);
+}
+
+/// POST …/quick-actions/apply — relaxes [rule] alone (stored Flexible) and re-solves only the affected sessions.
+Future<OrgCall> applyQuickAction(OrgScheduleProvider p, String? rule) async {
+  final id = asInt(p.schedule!['id']);
+  final r = await orgCall(
+      () => p.api.post('${p.base}/schedules/$id/quick-actions/apply', body: {'rule': rule, 'expected_version': ?p.schedule!['version']}),
+      ok: t('طُبّق الإجراء — الجدول ما زال مسودة', 'Applied — the timetable is still a draft'));
+  if (r.ok || r.code == 'stale_version') await p.open(id);
+  return r;
+}
+
+/// The studio's side panel (wide) / sheet (narrow): [studioQuickActions] in org_schedule_pages.dart.
+Widget quickActionsSide(BuildContext context, OrgScheduleProvider p) {
+  final s = context.read<OrgSession>();
+  return QuickActionsPanel(
+    p: p,
+    names: {for (final l in p.loads) asInt(l['course_id']): courseName(l)},
+    canEdit: s.can('schedule', 'update') && p.schedule?['status'] != 'active',
+  );
+}
+
+class QuickActionsPanel extends StatefulWidget {
+  const QuickActionsPanel({super.key, required this.p, required this.names, required this.canEdit});
   final OrgScheduleProvider p;
   final Map<int, String> names;
   final bool canEdit;
 
   @override
-  State<_ResultSheet> createState() => _ResultSheetState();
+  State<QuickActionsPanel> createState() => _QuickActionsPanelState();
 }
 
-class _ResultSheetState extends State<_ResultSheet> {
+class _QuickActionsPanelState extends State<QuickActionsPanel> {
   List<ScheduleSuggestion>? advice;
+  QuickActionsReport? quick;
+  bool quickLoading = false, quickMissing = false, applying = false;
   final busy = <String>{};
+  String? _seen; // the timetable version + hard-clash count the panel was computed for
+
+  String get _key => '${widget.p.schedule?['version']}|${widget.p.conflicts.where((x) => x['severity'] == 'error').length}|${runIsOpen(widget.p.genRun)}';
 
   @override
   void initState() {
     super.initState();
-    if (GenerationOutcome.of(asMap(widget.p.schedule?['result'])).missing > 0) _loadAdvice();
+    _refresh();
+  }
+
+  void _refresh() {
+    _seen = _key;
+    if (runIsOpen(widget.p.genRun)) return; // a generation is writing the timetable: nothing to act on yet
+    final done = TimetableCompletion.of(asMap(widget.p.schedule?['result']), widget.p.conflicts);
+    if (done.unplaced > 0) _loadAdvice();
+    if (widget.canEdit && done.problems > 0) _loadQuick();
+  }
+
+  Future<void> _loadQuick() async {
+    setState(() => quickLoading = true);
+    final r = await fetchQuickActions(widget.p);
+    if (!mounted) return;
+    setState(() {
+      quick = r.report;
+      quickMissing = r.missing;
+      quickLoading = false;
+    });
   }
 
   Future<void> _loadAdvice() async {
@@ -395,6 +552,23 @@ class _ResultSheetState extends State<_ResultSheet> {
     } catch (_) {
       if (mounted) setState(() => advice = const []);
     }
+  }
+
+  Future<void> _apply(QuickAction a) async {
+    final ok = await confirm(context,
+        message: '${quickRuleText(a.rule)}\n${impactText(a.before, a.after)}'
+            '${a.breaks > 0 ? '\n${t('${a.breaks} اقتراح كسر قاعدة ستراجعه', '${a.breaks} rule-break proposal(s) to review')}' : ''}\n'
+            '${t('تُعاد جدولة الحصص المتأثرة فقط، ويبقى الجدول مسودة.', 'Only the affected sessions are re-solved; the timetable stays a draft.')}',
+        confirmLabel: t('تطبيق', 'Apply'));
+    if (!ok || !mounted) return;
+    setState(() => applying = true);
+    final r = await applyQuickAction(widget.p, a.rule);
+    if (!mounted) return;
+    setState(() {
+      applying = false;
+      quick = null;
+    });
+    if (r.ok || r.code == 'stale_version') _refresh();
   }
 
   Future<void> _decide(String block, bool accept) async {
@@ -414,27 +588,42 @@ class _ResultSheetState extends State<_ResultSheet> {
   Widget _body(BuildContext context) {
     final c = context.colors;
     final p = widget.p;
-    final o = GenerationOutcome.of(asMap(p.schedule?['result']));
+    if (_key != _seen && !quickLoading && !applying) {
+      _seen = _key;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => quick = null);
+        _refresh();
+      });
+    }
+    final result = asMap(p.schedule?['result']);
+    final o = GenerationOutcome.of(result);
+    final done = TimetableCompletion.of(result, p.conflicts);
     final blocks = <String, Map<String, dynamic>>{};
     for (final x in o.proposals) {
       blocks.putIfAbsent('${x['block_id']}', () => x);
     }
+    final actions = quick?.actions ?? const <QuickAction>[];
     return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
-      SheetHeader(t('نتيجة التوليد', 'Generation result')),
-      Text(t('وُضعت ${o.placed ?? '?'} من ${o.required ?? '?'} حصة', 'Placed ${o.placed ?? '?'} of ${o.required ?? '?'} sessions'),
-          style: orgText(context, size: 15, w: FontWeight.w800, color: o.missing == 0 ? c.success : c.warning)),
-      if (o.stopped == 'no_progress')
-        Text(t('توقف التوليد لأن المحاولات لم تعد تحسّن النتيجة.', 'Stopped: further rounds made no progress.'), style: orgText(context, size: 12, color: c.textMedium)),
+      SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
+      _completionCard(context, done, o),
+      if (applying) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
+      if (widget.canEdit && done.problems > 0) ...[
+        _title(context, t('حلول سريعة — قاعدة واحدة في كل مرة', 'Quick fixes — one rule at a time')),
+        if (quickLoading)
+          const SizedBox(height: 2 * 82.0, child: AppListSkeleton(items: 2, withAvatar: false, padding: EdgeInsets.zero))
+        else if (quickMissing)
+          _note(context, Icons.cloud_off_rounded, t('الإجراءات السريعة تحتاج تحديث الخادم.', 'Quick actions need a server update.'))
+        else if (quick != null && actions.isEmpty)
+          _note(context, Icons.info_outline_rounded,
+              t('لا يحل تخفيف قاعدة واحدة أي مشكلة. جرّب الاقتراحات أدناه أو عدّل يدوياً.', 'No single rule relaxation helps. Try the suggestions below, or edit by hand.'))
+        else
+          for (final a in actions) _actionCard(context, a),
+        _lockedNote(context),
+      ],
       if (o.unplaced.isNotEmpty) ...[
-        _title(context, t('حصص بلا موعد', 'Unplaced sessions')),
-        for (final u in o.unplaced)
-          ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.event_busy_rounded, color: c.warning),
-            title: Text('${_name(u)} · ${asInt(u['missing'], 1)}× — ${unplacedReasonText('${u['reason'] ?? u['type']}')}'),
-            subtitle: Text(unplacedFixText('${u['reason'] ?? u['type']}')),
-          ),
+        _title(context, t('مقررات بها مشكلات', 'Courses with problems')),
+        for (final u in o.unplaced) _problem(context, u, actions),
       ],
       if (blocks.isNotEmpty) ...[
         _title(context, t('قواعد مرنة كُسرت (اقتراحات)', 'Flexible rules broken (proposals)')),
@@ -442,25 +631,170 @@ class _ResultSheetState extends State<_ResultSheet> {
           _proposal(context, e.key, [for (final x in o.proposals) if ('${x['block_id']}' == e.key) x]),
       ],
       if (advice != null && advice!.isNotEmpty) ...[
-        _title(context, t('اقتراحات لإكمال الجدول (لا تُطبّق تلقائياً)', 'Ways to complete it (never applied automatically)')),
+        _title(context, t('الملاذ الأخير — اقتراحات فقط، لا تُطبّق تلقائياً', 'Last resorts — suggestions only, never applied automatically')),
         for (final s in advice!.take(6))
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            leading: Icon(suggestionTypeIcon(s.type), color: c.primary),
+            leading: Icon(suggestionTypeIcon(s.type), color: c.warning),
             title: Text(s.title.isEmpty ? suggestionTypeLabel(s.type) : s.title),
             subtitle: s.reason.isEmpty ? null : Text(s.reason),
           ),
       ],
-      if (p.conflicts.isNotEmpty) ...[
-        _title(context, t('التعارضات', 'Conflicts')),
-        ConflictList(conflicts: p.conflicts, courseNames: widget.names),
-      ],
+      if (p.conflicts.isNotEmpty)
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            initiallyExpanded: done.hard > 0,
+            title: Text(t('التعارضات (${p.conflicts.length})', 'Conflicts (${p.conflicts.length})'), style: orgText(context, w: FontWeight.w800)),
+            children: [ConflictList(conflicts: p.conflicts, courseNames: widget.names)],
+          ),
+        ),
     ]);
   }
 
+  Widget _completionCard(BuildContext context, TimetableCompletion d, GenerationOutcome o) {
+    final c = context.colors;
+    final col = d.isComplete ? c.success : (d.hard > 0 ? c.danger : c.warning);
+    final parts = [
+      t('وُضعت ${d.placed} من ${d.required} حصة', '${d.placed} of ${d.required} sessions placed'),
+      if (d.hard > 0) t('${d.hard} تعارض إلزامي', '${d.hard} hard conflict(s)'),
+      if (d.pending > 0) t('${d.pending} اقتراح بانتظار قرارك', '${d.pending} proposal(s) pending'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: col.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16), border: Border.all(color: col.withValues(alpha: 0.3))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(d.isComplete ? Icons.verified_rounded : Icons.pending_actions_rounded, color: col),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+                d.isComplete ? t('الجدول مكتمل وبلا تعارضات', 'Timetable complete, no conflicts') : t('الجدول مكتمل بنسبة ${d.pct}٪', 'Timetable is ${d.pct}% complete'),
+                style: orgText(context, size: 15, w: FontWeight.w800, color: col)),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(value: d.pct / 100, minHeight: 7, color: col, backgroundColor: col.withValues(alpha: 0.15)),
+        ),
+        const SizedBox(height: 8),
+        Text(parts.join(' · '), style: orgText(context, size: 12.5, color: c.textMedium)),
+        if (o.stopped == 'no_progress' || o.stopped == 'time_limit')
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(t('انتهى التوليد بأفضل نتيجة ممكنة بالقواعد الحالية.', 'Generation finished with the best result the current rules allow.'),
+                style: orgText(context, size: 12, color: c.textMedium)),
+          ),
+      ]),
+    );
+  }
+
+  Widget _actionCard(BuildContext context, QuickAction a) {
+    final c = context.colors;
+    final names = {for (final f in a.fixes) _name({'course_id': f.courseId, 'kind': f.kind, 'group_no': f.group})}.toList();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: RowCard(
+        accent: c.primary,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(a.rule == null ? Icons.refresh_rounded : Icons.lock_open_rounded, size: 20, color: c.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(quickRuleText(a.rule), style: orgText(context, w: FontWeight.w700))),
+          ]),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 4, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(color: c.success.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+              child: Text(impactText(a.before, a.after), style: orgText(context, size: 12, w: FontWeight.w800, color: c.success)),
+            ),
+            if (a.breaks > 0) Text(t('${a.breaks} اقتراح للمراجعة', '${a.breaks} proposal(s) to review'), style: orgText(context, size: 12, color: c.warning)),
+          ]),
+          if (names.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${t('يحل', 'Fixes')}: ${names.take(4).join('، ')}${names.length > 4 ? ' +${names.length - 4}' : ''}',
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: orgText(context, size: 12, color: c.textMedium)),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: applying ? null : () => _apply(a),
+              icon: const Icon(Icons.bolt_rounded, size: 18),
+              label: Text(t('تطبيق', 'Apply')),
+            ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _problem(BuildContext context, Map<String, dynamic> u, List<QuickAction> actions) {
+    final c = context.colors;
+    final reason = '${u['reason'] ?? u['type']}';
+    final fixers = [
+      for (final a in actions)
+        if (a.fixesLoad(asInt(u['course_id']), '${u['kind'] ?? 'lecture'}', u['group_no'] == null ? null : asInt(u['group_no']))) a
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RowCard(
+        accent: c.warning,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('${_name(u)} · ${t('${asInt(u['missing'], 1)} حصة', '${asInt(u['missing'], 1)} session(s)')}', style: orgText(context, w: FontWeight.w700)),
+          Text(unplacedReasonText(reason), style: orgText(context, size: 12, color: c.textMedium)),
+          Text(unplacedFixText(reason), style: orgText(context, size: 12, color: c.textLight)),
+          if (fixers.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Wrap(spacing: 6, runSpacing: 6, children: [
+                for (final a in fixers.take(3))
+                  ActionChip(
+                    avatar: Icon(Icons.bolt_rounded, size: 16, color: c.primary),
+                    label: Text('${quickRuleText(a.rule)} · ${a.deltaPct}%', overflow: TextOverflow.ellipsis),
+                    onPressed: applying ? null : () => _apply(a),
+                  ),
+              ]),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _lockedNote(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.lock_rounded, size: 16, color: c.textLight),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+              '${t('لا تُخفَّف أبداً', 'Never relaxed')}: ${[for (final r in generationRules) if (r.fixed) t(r.ar, r.en)].join(' · ')}',
+              style: orgText(context, size: 11.5, color: c.textLight)),
+        ),
+      ]),
+    );
+  }
+
+  Widget _note(BuildContext context, IconData icon, String text) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        Icon(icon, size: 18, color: c.textMedium),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: orgText(context, size: 12.5, color: c.textMedium))),
+      ]),
+    );
+  }
+
   Widget _title(BuildContext context, String s) =>
-      Padding(padding: const EdgeInsets.only(top: 14, bottom: 4), child: Text(s, style: orgText(context, w: FontWeight.w800)));
+      Padding(padding: const EdgeInsets.only(top: 14, bottom: 6), child: Text(s, style: orgText(context, w: FontWeight.w800)));
 
   Widget _proposal(BuildContext context, String block, List<Map<String, dynamic>> items) {
     final c = context.colors;

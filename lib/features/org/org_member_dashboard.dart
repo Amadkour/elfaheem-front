@@ -39,6 +39,7 @@ import 'org_member_space.dart' show OrgMemberSpace;
 import 'org_people_page.dart' show OrgPeoplePage;
 import 'org_providers.dart' show OrgSession;
 import 'org_schedule_pages.dart' show OrgSchedulePage;
+import 'org_reports/report_page.dart' show OrgReceivedReportsPage;
 import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
@@ -91,7 +92,7 @@ Future<void> _openManaged(BuildContext context, int orgId, String title, Widget 
   }
   s.select(orgId);
   await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title), child: page)));
+      builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]), child: page)));
   AppModeController.instance
     ..applyOrgContext() // the management pages applied OrgSession's organization — back to the member's one
     ..refresh();
@@ -228,6 +229,9 @@ class _OrgBody extends StatelessWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)))),
         AppPill(icon: Icons.calendar_month_rounded, label: t('جدولي', 'My timetable'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen()))),
+        AppPill(icon: Icons.event_rounded, label: t('التقويم', 'Calendar'), onTap: () => Navigator.of(context).pushNamed('/calendar')),
+        AppPill(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
         AppPill(icon: Icons.event_note_rounded, label: t('امتحاناتي', 'My exams'), onTap: () => openMyExams(context, orgId: orgId)),
         AppPill(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => _space(context, org, 2)),
         AppPill(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => _space(context, org, 3)),
@@ -488,10 +492,11 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
       appBar: ScreenAppBar(
         title: t('مساحتي في المؤسسة', 'My organization'),
         actions: [
-          // org staff have no personal space here: the switcher offers their organizations only
+          // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
           ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 190),
-              child: const Center(child: ContextSwitcher(allowPersonal: false, compact: true))),
+              child: const Center(child: ContextSwitcher(compact: true))),
+          const ContextExitButton(),
           const SizedBox(width: 4),
           if (AppConfig.orgsEnabled)
             IconButton(

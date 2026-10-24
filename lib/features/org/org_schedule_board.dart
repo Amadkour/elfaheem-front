@@ -14,6 +14,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppHScroll, AppT
 import '../admin/admin_common.dart';
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
+import 'org_schedule_grid.dart' show sessionKindColor, sessionKindIcon, sessionKindLabel;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -31,16 +32,21 @@ class TimetableBoard extends StatefulWidget {
     required this.cell,
     this.cellWidth = 150,
     this.firstWidth = 82,
+    this.today,
   });
 
   final List<String> days;
   final List<Map<String, dynamic>> periods;
   final String Function(String day) dayLabel;
   final Widget Function(Map<String, dynamic> period) periodLabel;
+
   /// period id → the most sessions in one of its cells (row height)
   final int Function(int periodId) rowSessions;
   final Widget Function(String day, Map<String, dynamic> period, double height) cell;
   final double cellWidth, firstWidth;
+
+  /// the day key to accent in the header (today), if it is shown
+  final String? today;
 
   @override
   State<TimetableBoard> createState() => _TimetableBoardState();
@@ -54,11 +60,11 @@ class _TimetableBoardState extends State<TimetableBoard> {
   void initState() {
     super.initState();
     void link(ScrollController from, ScrollController to) => from.addListener(() {
-          if (_syncing || !to.hasClients || !from.hasClients) return;
-          _syncing = true;
-          to.jumpTo(from.offset.clamp(to.position.minScrollExtent, to.position.maxScrollExtent));
-          _syncing = false;
-        });
+      if (_syncing || !to.hasClients || !from.hasClients) return;
+      _syncing = true;
+      to.jumpTo(from.offset.clamp(to.position.minScrollExtent, to.position.maxScrollExtent));
+      _syncing = false;
+    });
     link(_head, _body);
     link(_body, _head);
   }
@@ -75,61 +81,114 @@ class _TimetableBoardState extends State<TimetableBoard> {
     final c = context.colors;
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final width = widget.cellWidth * widget.days.length;
-    final header = Row(children: [
-      for (final d in widget.days)
-        SizedBox(
-          width: widget.cellWidth,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            child: Text(widget.dayLabel(d), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-          ),
-        ),
-    ]);
-    final heights = {for (final p in widget.periods) asInt(p['id']): boardRowHeight(widget.rowSessions(asInt(p['id'])), scale)};
-    return Column(children: [
-      // sticky day header (stays while the periods scroll) — its bar scrolls the grid sideways
-      Container(
-        color: c.cardBg,
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: widget.firstWidth),
-          Expanded(child: AppHScroll(controller: _head, padding: const EdgeInsets.only(bottom: 12), child: SizedBox(width: width, child: header))),
-        ]),
-      ),
-      Expanded(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 40),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // sticky period column (stays while the days scroll)
-            SizedBox(
-              width: widget.firstWidth,
-              child: Column(children: [
-                for (final p in widget.periods) SizedBox(height: heights[asInt(p['id'])], child: Center(child: widget.periodLabel(p))),
-              ]),
-            ),
-            Expanded(
-              child: AppHScroll(
-                controller: _body,
-                thumbVisibility: false,
-                padding: EdgeInsets.zero,
-                child: SizedBox(
-                  width: width,
-                  child: Column(children: [
-                    for (final p in widget.periods)
-                      SizedBox(
-                        height: heights[asInt(p['id'])],
-                        child: Row(children: [
-                          for (final d in widget.days) SizedBox(width: widget.cellWidth, child: widget.cell(d, p, heights[asInt(p['id'])]!)),
-                        ]),
-                      ),
-                  ]),
+    final line = BorderSide(color: c.divider.withValues(alpha: 0.7));
+    final header = Row(
+      children: [
+        for (final d in widget.days)
+          SizedBox(
+            width: widget.cellWidth,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+                decoration: d == widget.today ? BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)) : null,
+                child: Text(
+                  widget.dayLabel(d),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13, color: d == widget.today ? c.primary : c.textDark),
                 ),
               ),
             ),
-          ]),
+          ),
+      ],
+    );
+    final heights = {for (final p in widget.periods) asInt(p['id']): boardRowHeight(widget.rowSessions(asInt(p['id'])), scale)};
+    return Column(
+      children: [
+        // sticky day header (stays while the periods scroll) — its bar scrolls the grid sideways
+        Container(
+          decoration: BoxDecoration(
+            color: c.cardBg,
+            border: Border(bottom: line),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: widget.firstWidth,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Icon(Icons.schedule_rounded, size: 18, color: c.textLight),
+                ),
+              ),
+              Expanded(
+                child: AppHScroll(
+                  controller: _head,
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(width: width, child: header),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    ]);
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 40),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // sticky period column (stays while the days scroll)
+                Container(
+                  width: widget.firstWidth,
+                  decoration: BoxDecoration(
+                    color: c.cardBg,
+                    border: BorderDirectional(end: line),
+                  ),
+                  child: Column(
+                    children: [
+                      for (final p in widget.periods)
+                        Container(
+                          height: heights[asInt(p['id'])],
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(border: Border(bottom: line)),
+                          child: Center(child: widget.periodLabel(p)),
+                        ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: AppHScroll(
+                    controller: _body,
+                    thumbVisibility: false,
+                    padding: EdgeInsets.zero,
+                    child: SizedBox(
+                      width: width,
+                      child: Column(
+                        children: [
+                          for (final (i, p) in widget.periods.indexed)
+                            Container(
+                              height: heights[asInt(p['id'])],
+                              decoration: BoxDecoration(
+                                color: i.isOdd ? c.inputBg.withValues(alpha: 0.35) : null,
+                                border: Border(bottom: line),
+                              ),
+                              child: Row(
+                                children: [for (final d in widget.days) SizedBox(width: widget.cellWidth, child: widget.cell(d, p, heights[asInt(p['id'])]!))],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -141,22 +200,36 @@ class _TimetableBoardState extends State<TimetableBoard> {
 List<Map<String, dynamic>> blockPeriods(Map<String, dynamic> slot, List<Map<String, dynamic>> slots, List<Map<String, dynamic>> periods) {
   final same = slot['block_id'] == null
       ? [slot]
-      : [for (final x in slots) if (x['block_id'] == slot['block_id'] && x['day'] == slot['day'] && asInt(x['course_id']) == asInt(slot['course_id'])) x];
+      : [
+          for (final x in slots)
+            if (x['block_id'] == slot['block_id'] && x['day'] == slot['day'] && asInt(x['course_id']) == asInt(slot['course_id'])) x,
+        ];
   final ids = {for (final x in same) asInt(x['period_id'])};
-  return [for (final p in periods) if (ids.contains(asInt(p['id']))) p]..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
+  return [
+    for (final p in periods)
+      if (ids.contains(asInt(p['id']))) p,
+  ]..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
 }
 
 /// Weekly sessions (blocks) and periods of one course / kind / group.
 (int, int) groupWeekly(Map<String, dynamic> slot, List<Map<String, dynamic>> slots) {
-  bool mine(Map<String, dynamic> x) =>
-      asInt(x['course_id']) == asInt(slot['course_id']) && (x['kind'] ?? 'lecture') == (slot['kind'] ?? 'lecture') && x['group_no'] == slot['group_no'];
+  bool mine(Map<String, dynamic> x) => asInt(x['course_id']) == asInt(slot['course_id']) && (x['kind'] ?? 'lecture') == (slot['kind'] ?? 'lecture') && x['group_no'] == slot['group_no'];
   final own = slots.where(mine).toList();
   return ({for (final x in own) '${x['day']}|${x['block_id'] ?? x['id']}'}.length, own.length);
 }
 
-Future<void> showSessionDetails(BuildContext context, OrgScheduleProvider p, Map<String, dynamic> slot,
-    {required Map<int, String> courseNames, required Map<int, String> people, VoidCallback? onEdit}) {
-  return showDialog<void>(context: context, builder: (ctx) => _SessionDialog(p: p, slot: slot, courseNames: courseNames, people: people, onEdit: onEdit));
+Future<void> showSessionDetails(
+  BuildContext context,
+  OrgScheduleProvider p,
+  Map<String, dynamic> slot, {
+  required Map<int, String> courseNames,
+  required Map<int, String> people,
+  VoidCallback? onEdit,
+}) {
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => _SessionDialog(p: p, slot: slot, courseNames: courseNames, people: people, onEdit: onEdit),
+  );
 }
 
 class _SessionDialog extends StatefulWidget {
@@ -198,11 +271,12 @@ class _SessionDialogState extends State<_SessionDialog> {
     final no = asInt(widget.slot['group_no'], 1);
     setState(() {
       loading = false;
-      group = [for (final g in asMapList(r.map['groups'])) if ((g['kind'] ?? 'lecture') == kind && asInt(g['group_no'], 1) == no) g].firstOrNull;
+      group = [
+        for (final g in asMapList(r.map['groups']))
+          if ((g['kind'] ?? 'lecture') == kind && asInt(g['group_no'], 1) == no) g,
+      ].firstOrNull;
       if (group == null) {
-        note = r.ok
-            ? t('لا مجموعة مسجلة بعد — تُنشأ المجموعات عند نشر الجدول.', 'No registered group yet — groups are created when the timetable is published.')
-            : orgErrorText(r.error!);
+        note = r.ok ? t('لا مجموعة مسجلة بعد — تُنشأ المجموعات عند نشر الجدول.', 'No registered group yet — groups are created when the timetable is published.') : orgErrorText(r.error!);
       }
     });
   }
@@ -212,7 +286,6 @@ class _SessionDialogState extends State<_SessionDialog> {
     final c = context.colors;
     final p = widget.p;
     final s = widget.slot;
-    final lab = s['kind'] == 'lab';
     final room = p.rooms.firstWhere((r) => asInt(r['id']) == asInt(s['room_id']), orElse: () => const {});
     final pers = blockPeriods(s, p.slots, p.periods);
     final time = pers.isEmpty ? '—' : AppTime.clockRange('${pers.first['start_time']}', '${pers.last['end_time']}');
@@ -223,65 +296,240 @@ class _SessionDialogState extends State<_SessionDialog> {
     final over = enrolled != null && cap != null && enrolled > cap;
     String? person(Object? id) => id == null ? null : (widget.people[asInt(id)] ?? '#$id');
 
-    Widget line(IconData icon, String label, String value, {Color? color}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 18, color: color ?? c.textMedium),
-            const SizedBox(width: 8),
-            SizedBox(width: 96, child: Text(label, style: orgText(context, size: 12.5, color: c.textMedium))),
-            Expanded(child: Text(value, style: orgText(context, size: 13, w: FontWeight.w700, color: color))),
-          ]),
-        );
+    final col = sessionKindColor(c, s['kind']);
+    final id = asInt(s['id']);
+    final mine = [
+      for (final x in p.conflicts)
+        if (((x['slot_ids'] as List?) ?? const []).map(asInt).contains(id)) x,
+    ]..sort((a, b) => (a['severity'] == 'error' ? 0 : 1).compareTo(b['severity'] == 'error' ? 0 : 1));
+
+    // one fact: small label over its value, two per row when there is room
+    Widget fact(IconData icon, String label, String value, {Color? color}) => Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: c.inputBg.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: color ?? c.textMedium),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: orgText(context, size: 11.5, color: c.textMedium),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: orgText(context, size: 13, w: FontWeight.w700, color: color),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    Widget pill(String text, Color color, {IconData? icon}) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[Icon(icon, size: 13, color: color), const SizedBox(width: 4)],
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: orgText(context, size: 11.5, w: FontWeight.w800, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final facts = [
+      fact(Icons.schedule_rounded, t('الموعد', 'When'), '${dayLabelOf(s['day'])} · $time'),
+      fact(Icons.meeting_room_rounded, t('القاعة', 'Room'), room.isEmpty ? '—' : '${room['name']}${cap == null ? '' : ' · ${t('سعة', 'cap.')} $cap'}'),
+      fact(Icons.person_rounded, t('المدرس', 'Instructor'), person(s['teacher_id']) ?? '—'),
+      if (s['assistant_id'] != null) fact(Icons.person_outline_rounded, t('المعيد', 'TA'), person(s['assistant_id'])!),
+      fact(
+        Icons.event_seat_rounded,
+        t('السعة / المسجلون', 'Capacity / enrolled'),
+        '${cap ?? '—'} / ${enrolled ?? '—'}${over ? '  ${t('(أكبر من السعة)', '(over capacity)')}' : ''}',
+        color: over ? c.danger : null,
+      ),
+      fact(Icons.insights_rounded, t('أسبوعياً', 'Weekly'), t('$sessions حصة · $periods فترة', '$sessions session(s) · $periods period(s)')),
+    ];
 
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      clipBehavior: Clip.antiAlias,
+      backgroundColor: c.cardBg,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(18),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(widget.courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}', style: orgText(context, size: 17, w: FontWeight.w800)),
-            const SizedBox(height: 8),
-            line(lab ? Icons.science_rounded : Icons.menu_book_rounded, t('النوع', 'Type'), lab ? t('عملي (سكشن)', 'Practical (lab)') : t('نظري (محاضرة)', 'Theory (lecture)')),
-            line(Icons.groups_2_rounded, t('المجموعة', 'Group'), s['group_no'] == null ? t('مجموعة واحدة', 'Single group') : '${s['group_no']}'),
-            line(Icons.person_rounded, t('المدرس', 'Instructor'), person(s['teacher_id']) ?? '—'),
-            if (s['assistant_id'] != null) line(Icons.person_outline_rounded, t('المعيد', 'TA'), person(s['assistant_id'])!),
-            line(Icons.meeting_room_rounded, t('القاعة', 'Room'), room.isEmpty ? '—' : '${room['name']}${cap == null ? '' : ' · ${t('سعة', 'capacity')} $cap'}'),
-            line(Icons.schedule_rounded, t('الموعد', 'Time'), '${dayLabelOf(s['day'])} · $time'),
-            line(Icons.event_seat_rounded, t('السعة / المسجلون', 'Capacity / enrolled'),
-                '${cap ?? '—'} / ${enrolled ?? '—'}${over ? '  ${t('(أكبر من السعة)', '(over capacity)')}' : ''}', color: over ? c.danger : null),
-            line(Icons.insights_rounded, t('أسبوعياً', 'Weekly'),
-                t('$sessions حصة · $periods فترة لهذه المجموعة', '$sessions session(s) · $periods period(s) for this group')),
-            if (s['locked'] == true) line(Icons.push_pin_rounded, t('مثبتة', 'Pinned'), t('لا يحركها التوليد', 'Generation keeps it in place')),
-            const Divider(height: 22),
-            Text(t('طلاب المجموعة', 'Students of the group') + (students.isEmpty ? '' : ' (${students.length})'), style: orgText(context, w: FontWeight.w800)),
-            const SizedBox(height: 6),
-            if (loading) const LinearProgressIndicator(),
-            if (!loading && note != null) Text(note!, style: orgText(context, size: 12.5, color: c.textMedium)),
-            if (!loading && group != null && students.isEmpty) Text(t('لا طلاب في هذه المجموعة بعد.', 'No students in this group yet.'), style: orgText(context, size: 12.5, color: c.textMedium)),
-            for (final (i, st) in students.indexed)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(children: [
-                  SizedBox(width: 30, child: Text('${i + 1}.', style: orgText(context, size: 12, color: c.textLight))),
-                  Expanded(child: Text('${asMap(st['student'])['name'] ?? ''}', overflow: TextOverflow.ellipsis, style: orgText(context, size: 13))),
-                  if (st['student_code'] != null) Text('${st['student_code']}', style: orgText(context, size: 12, color: c.textMedium)),
-                ]),
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // header band in the session type's colour
+            Container(
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 16, 8, 14),
+              decoration: BoxDecoration(
+                color: col.withValues(alpha: 0.10),
+                border: BorderDirectional(start: BorderSide(color: col, width: 5)),
               ),
-            const SizedBox(height: 14),
-            Wrap(alignment: WrapAlignment.end, spacing: 8, children: [
-              if (widget.onEdit != null)
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    widget.onEdit!();
-                  },
-                  icon: const Icon(Icons.edit_rounded),
-                  label: Text(t('تعديل', 'Edit')),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: col.withValues(alpha: 0.16), borderRadius: BorderRadius.circular(12)),
+                    child: Icon(sessionKindIcon(s['kind']), color: col, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.courseNames[asInt(s['course_id'])] ?? '#${s['course_id']}', style: orgText(context, size: 17, w: FontWeight.w800)),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            pill(sessionKindLabel(s['kind']), col),
+                            pill(s['group_no'] == null ? t('مجموعة واحدة', 'Single group') : '${t('مجموعة', 'Group')} ${s['group_no']}', c.textMedium),
+                            if (s['locked'] == true) pill(t('مثبتة', 'Pinned'), c.textMedium, icon: Icons.push_pin_rounded),
+                            if (mine.isNotEmpty) pill(t('${mine.length} تعارض', '${mine.length} conflict(s)'), mine.first['severity'] == 'error' ? c.danger : c.warning, icon: Icons.error_rounded),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: t('إغلاق', 'Close'),
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: c.textMedium),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, box) {
+                        final two = box.maxWidth >= 380;
+                        final w = two ? (box.maxWidth - 8) / 2 : box.maxWidth;
+                        return Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [for (final f in facts) SizedBox(width: w, child: f)],
+                        );
+                      },
+                    ),
+                    if (mine.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      for (final x in mine)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: (x['severity'] == 'error' ? c.danger : c.warning).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: (x['severity'] == 'error' ? c.danger : c.warning).withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(x['severity'] == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: 18, color: x['severity'] == 'error' ? c.danger : c.warning),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  x['text_ar'] != null ? t('${x['text_ar']}', '${x['text_en'] ?? x['text_ar']}') : conflictTypeText('${x['type']}'),
+                                  style: orgText(context, size: 12.5, w: FontWeight.w700),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    const SizedBox(height: 6),
+                    Theme(
+                      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                      child: ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: EdgeInsets.zero,
+                        initiallyExpanded: students.isNotEmpty && students.length <= 8,
+                        leading: Icon(Icons.groups_rounded, color: c.textMedium),
+                        title: Text(t('طلاب المجموعة', 'Students of the group') + (students.isEmpty ? '' : ' (${students.length})'), style: orgText(context, w: FontWeight.w800)),
+                        children: [
+                          if (loading) const LinearProgressIndicator(),
+                          if (!loading && note != null)
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(note!, style: orgText(context, size: 12.5, color: c.textMedium)),
+                            ),
+                          if (!loading && group != null && students.isEmpty)
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(t('لا طلاب في هذه المجموعة بعد.', 'No students in this group yet.'), style: orgText(context, size: 12.5, color: c.textMedium)),
+                            ),
+                          for (final (i, st) in students.indexed)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 3),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 30,
+                                    child: Text('${i + 1}.', style: orgText(context, size: 12, color: c.textLight)),
+                                  ),
+                                  Expanded(
+                                    child: Text('${asMap(st['student'])['name'] ?? ''}', overflow: TextOverflow.ellipsis, style: orgText(context, size: 13)),
+                                  ),
+                                  if (st['student_code'] != null) Text('${st['student_code']}', style: orgText(context, size: 12, color: c.textMedium)),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              TextButton(onPressed: () => Navigator.pop(context), child: Text(t('إغلاق', 'Close'))),
-            ]),
-          ]),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(context), child: Text(t('إغلاق', 'Close'))),
+                  if (widget.onEdit != null)
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        widget.onEdit!();
+                      },
+                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      label: Text(t('تعديل الحصة', 'Edit session')),
+                    ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

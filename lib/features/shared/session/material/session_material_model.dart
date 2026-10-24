@@ -155,6 +155,9 @@ class SessionMaterialModel {
   /// POST /sessions/{sessionId}/materials/{id}/play first (counts the view).
   final bool requiresPlay;
 
+  /// WebVTT captions, when the server has them (`captions_url`).
+  final String? captionsUrl;
+
   const SessionMaterialModel({
     required this.id,
     required this.sessionId,
@@ -186,6 +189,7 @@ class SessionMaterialModel {
     this.audioMediumKey,
     this.audioMediumSize,
     this.requiresPlay = false,
+    this.captionsUrl,
   });
 
   /// Copy of this material with the URLs returned by the /play endpoint.
@@ -213,6 +217,7 @@ class SessionMaterialModel {
       audioMediumUrl: u('audio_medium_url'), audioMediumKey: audioMediumKey,
       audioMediumSize: audioMediumSize,
       requiresPlay: false,
+      captionsUrl: u('captions_url') ?? captionsUrl,
     );
   }
 
@@ -252,6 +257,7 @@ class SessionMaterialModel {
       audioMediumKey:  json['audio_medium_key']   as String?,
       audioMediumSize: json['audio_medium_size']  as int?,
       requiresPlay:    json['requires_play'] as bool? ?? false,
+      captionsUrl:     _nonEmpty(json['captions_url']),
     );
   }
 
@@ -285,6 +291,7 @@ class SessionMaterialModel {
       audioMediumUrl: audioMediumUrl, audioMediumKey: audioMediumKey,
       audioMediumSize: audioMediumSize,
       requiresPlay: requiresPlay,
+      captionsUrl: captionsUrl,
     );
   }
 

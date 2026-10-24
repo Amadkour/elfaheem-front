@@ -18,6 +18,7 @@ import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'widgets/controls.dart';
+import 'widgets/live_reactions.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
@@ -250,6 +251,16 @@ class _RoomPageState extends State<RoomPage>
   @override ClientRecorder? get recorder => _recorder;
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
+
+  // Live emoji reactions (everyone): published lossy on topic 'reaction', shown by LiveReactionsOverlay.
+  late final LiveReactionsController _reactions = LiveReactionsController(
+    onSend: (bytes) async => widget.room.localParticipant
+        ?.publishData(bytes, reliable: false, topic: kLiveReactionTopic),
+  );
+  String get _myReactionName {
+    final p = widget.room.localParticipant;
+    return (p?.name.isNotEmpty ?? false) ? p!.name : (p?.identity ?? '');
+  }
 
   // Called by RoomScreenShareMixin when iOS broadcast starts/stops.
   @override
@@ -654,6 +665,7 @@ class _RoomPageState extends State<RoomPage>
   @override
   void dispose() {
     widget.room.removeListener(_onRoomDidUpdate);
+    _reactions.dispose();
     WakelockPlus.disable().catchError((_) {});
     _netBanner?.close();
     if (!widget.isTeacher) {
@@ -1173,6 +1185,12 @@ class _RoomPageState extends State<RoomPage>
       _sortParticipants();
     })
     ..on<DataReceivedEvent>((event) {
+      if (event.topic == kLiveReactionTopic) {
+        final p = event.participant;
+        _reactions.receive(event.data,
+            fallbackName: (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity);
+        return;
+      }
       String decoded = 'Failed to decode';
       try {
         decoded = utf8.decode(event.data);
@@ -1617,6 +1635,12 @@ class _RoomPageState extends State<RoomPage>
                                     color: _showParticipants ? _cyan : null,
                                   ),
                                 ),
+                              ),
+
+                              // Live reactions (bubbles + picker)
+                              LiveReactionsOverlay(
+                                controller: _reactions,
+                                senderName: _myReactionName,
                               ),
 
                               // Quiz overlay
@@ -2278,7 +2302,9 @@ class _RoomPageState extends State<RoomPage>
         ],
       ),
       child:
-      ControlsWidget(
+      ListenableBuilder(
+        listenable: _reactions,
+        builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
         // End session goes through our recorder-aware wrapper
@@ -2302,6 +2328,9 @@ class _RoomPageState extends State<RoomPage>
             ? _resumeRecording
             : null,
         recorderState: widget.isTeacher ? _recorder?.state : null,
+        onToggleReactions: _reactions.togglePicker,
+        reactionsOpen: _reactions.pickerOpen,
+      ),
       ),
     );
   }

@@ -210,6 +210,7 @@ Map<String, String> _codeTexts() => {
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),
       'published': t('تعديل الجدول المنشور يحتاج صلاحية الاعتماد', 'Editing a published timetable needs approval rights'),
       'generation_running': t('يوجد توليد جارٍ لهذا الجدول', 'A generation is already running for this timetable'),
+      'rule_locked': t('هذه قاعدة ثابتة ولا تُخفَّف', 'This is a fixed rule and is never relaxed'),
       'proposals_pending': t('اقبل أو ارفض كل قاعدة مكسورة مقترحة قبل النشر', 'Accept or reject every proposed rule break before publishing'),
       'proposal_not_found': t('الاقتراح لم يعد موجوداً — أعد التحميل', 'The proposal no longer exists — reload'),
       'stale_version': t('عدّل مستخدم آخر هذا الجدول — حمّلنا أحدث نسخة، أعد المحاولة', 'Someone else changed this timetable — the latest version is loaded, try again'),
@@ -360,6 +361,48 @@ String joinMethodHelp(String m) => switch (m) {
       _ => t('لا أحد يستطيع طلب الانضمام الآن.', 'Nobody can ask to join right now.'),
     };
 
+/// The join paths a unit can offer at once (multi-select). `manual` add by staff always works and is not a path.
+Map<String, String> joinPathLabels() => {
+      'auto': t('انضمام تلقائي', 'Automatic join'),
+      'request': t('طلب وموافقة', 'Request + approval'),
+      'code': t('كود / QR / رابط', 'Code / QR / link'),
+      'code_req': t('كود + طلب وموافقة', 'Code + request + approval'),
+    };
+
+String joinPathHelp(String p) => switch (p) {
+      'auto' => joinMethodHelp('auto'),
+      'request' => joinMethodHelp('approval'),
+      'code' => t('ينضم مباشرة من لديه كود صالح (أو امسح رمز QR / افتح الرابط) وتنطبق عليه الشروط.',
+          'People with a valid code (or who scan the QR / open the link) and meet the conditions join directly.'),
+      'code_req' => joinMethodHelp('code_req'),
+      _ => '',
+    };
+
+const _pathOfMethod = {'auto': 'auto', 'approval': 'request', 'code': 'code', 'code_req': 'code_req'};
+
+/// The paths of a policy JSON: `methods` when the server sends it, else derived from the single `method`.
+Set<String> joinPathsOf(Map<String, dynamic> p) {
+  final m = (p['methods'] as List?)?.map((e) => '$e').where(joinPathLabels().containsKey).toSet();
+  if (m != null && m.isNotEmpty) return m;
+  final one = _pathOfMethod['${p['method']}'];
+  return one == null ? <String>{} : {one};
+}
+
+/// The legacy single method that best describes a set of paths (auto > request > code > code_req).
+String primaryJoinMethod(Set<String> paths) {
+  for (final e in const [('auto', 'auto'), ('request', 'approval'), ('code', 'code'), ('code_req', 'code_req')]) {
+    if (paths.contains(e.$1)) return e.$2;
+  }
+  return 'closed';
+}
+
+/// Short member-facing description of every path a unit offers ("Automatic join · Code / QR / link").
+String joinPathsText(Map<String, dynamic> p) {
+  final paths = joinPathsOf(p);
+  if (paths.isEmpty) return joinMethodLabels()['closed']!;
+  return [for (final k in joinPathLabels().keys) if (paths.contains(k)) joinPathLabels()[k]!].join(' · ');
+}
+
 Map<String, String> joinRoleLabels() => {
       'student': t('الطلاب', 'Students'),
       'teacher': t('المدرسون', 'Teachers'),
@@ -474,6 +517,7 @@ String conflictTypeText(String? type) =>
 class JoinPolicyDraft {
   JoinPolicyDraft({
     this.method = 'closed',
+    Set<String>? paths,
     this.approver = 'manager',
     Set<int>? assistantIds,
     Set<String>? roles,
@@ -487,7 +531,16 @@ class JoinPolicyDraft {
         roles = roles ?? <String>{'student'},
         programIds = programIds ?? <int>{},
         levels = levels ?? <String>{},
-        fields = fields ?? <Map<String, dynamic>>[];
+        fields = fields ?? <Map<String, dynamic>>[],
+        paths = paths ?? {if (_pathOfMethod[method] != null) _pathOfMethod[method]!};
+
+  /// The join paths (multi-select). `method` follows them (the strongest path) for older servers.
+  final Set<String> paths;
+
+  void togglePath(String p, bool on) {
+    on ? paths.add(p) : paths.remove(p);
+    method = primaryJoinMethod(paths);
+  }
 
   String method, approver, cohort, unverified;
   final Set<int> assistantIds, programIds;
@@ -498,6 +551,7 @@ class JoinPolicyDraft {
   /// `policy` of GET /join-policy (`{method:"closed", configured:false}` when never configured).
   factory JoinPolicyDraft.fromJson(Map<String, dynamic> p) => JoinPolicyDraft(
         method: '${p['method'] ?? 'closed'}',
+        paths: joinPathsOf(p),
         approver: '${p['approver'] ?? 'manager'}',
         assistantIds: {...((p['assistant_ids'] as List?) ?? const []).map((e) => asInt(e))},
         roles: p['roles'] is List ? {...(p['roles'] as List).map((e) => '$e')} : null,
@@ -510,7 +564,9 @@ class JoinPolicyDraft {
       );
 
   /// `approval` and `code_req` (a valid code AND an approval) both need an approver.
-  bool get needsApprover => method == 'approval' || method == 'code_req';
+  bool get needsApprover => paths.contains('request') || paths.contains('code_req');
+
+  bool get closed => paths.isEmpty;
 
   /// Audience narrowing by cohort / level only makes sense for students.
   bool get targetsStudents => roles.contains('student');
@@ -518,7 +574,8 @@ class JoinPolicyDraft {
   /// The PUT body. The PUT replaces the whole policy, so every field is sent; settings that don't apply to the
   /// chosen method are sent with their neutral defaults instead of stale values.
   Map<String, dynamic> toBody() => {
-        'method': method,
+        'method': primaryJoinMethod(paths),
+        'methods': [for (final k in joinPathLabels().keys) if (paths.contains(k)) k],
         'approver': needsApprover ? approver : 'manager',
         'assistant_ids': needsApprover && approver == 'assistants' ? (assistantIds.toList()..sort()) : <int>[],
         'roles': roles.toList(),
@@ -557,12 +614,17 @@ class JoinPolicyDraft {
 }
 
 /// The code a member must type: when the method is `code` or `code_req` (or the server says one is required).
-bool unitNeedsCode(Map<String, dynamic> policy) =>
-    policy['code_required'] == true || policy['method'] == 'code' || policy['method'] == 'code_req';
+bool unitNeedsCode(Map<String, dynamic> policy) => policy.containsKey('code_required')
+    ? policy['code_required'] == true
+    : policy['method'] == 'code' || policy['method'] == 'code_req';
+
+/// A code field is shown whenever a code path is open, even when another path makes it optional.
+bool unitAcceptsCode(Map<String, dynamic> policy) => unitNeedsCode(policy) || joinPathsOf(policy).any((p) => p.startsWith('code'));
 
 /// `code_req`: the code only submits the request — an approver still decides.
-bool unitNeedsApproval(Map<String, dynamic> policy) =>
-    policy['needs_approval'] == true || policy['method'] == 'approval' || policy['method'] == 'code_req';
+bool unitNeedsApproval(Map<String, dynamic> policy) => policy.containsKey('needs_approval')
+    ? policy['needs_approval'] == true
+    : policy['method'] == 'approval' || policy['method'] == 'code_req';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Schedule draft

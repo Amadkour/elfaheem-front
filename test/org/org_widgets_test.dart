@@ -100,7 +100,7 @@ void main() {
         'progress': 40,
         'summary': {'live': true, 'round': 2, 'rounds_max': 6, 'unplaced': 3, 'top': [{'reason': 'rooms_busy', 'n': 2}]},
       }, onCancel: () {})));
-      expect(find.text('Round 2 of 6 · 3 session(s) unplaced'), findsOneWidget);
+      expect(find.text('Attempt 2 of at most 6 · 3 session(s) unplaced'), findsOneWidget);
       expect(find.textContaining('Every fitting room is taken'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
       await tester.pumpWidget(host(const GenerationLivePanel(run: {'status': 'failed', 'error': 'no_periods'})));

@@ -1,4 +1,16 @@
 {
+  "my_calendar": {
+    "en": "My calendar",
+    "ar": "تقويمي"
+  },
+  "upcoming_meetings": {
+    "en": "Upcoming meetings",
+    "ar": "الاجتماعات القادمة"
+  },
+  "meeting_online": {
+    "en": "Online",
+    "ar": "عن بُعد"
+  },
   "inbox_title": {
     "en": "Inbox",
     "ar": "صندوق الوارد"
@@ -15632,5 +15644,21 @@
   "home_admin_more": {
     "en": "More",
     "ar": "المزيد"
+  },
+  "schedule_load_failed": {
+    "en": "Couldn't load your schedule. Check your connection and try again.",
+    "ar": "تعذّر تحميل جدولك. تحقّق من الاتصال وحاول مرة أخرى."
+  },
+  "lr_react": {
+    "en": "React",
+    "ar": "تفاعل"
+  },
+  "lr_reactions": {
+    "en": "Reactions",
+    "ar": "التفاعلات"
+  },
+  "lr_close": {
+    "en": "Close",
+    "ar": "إغلاق"
   }
 }

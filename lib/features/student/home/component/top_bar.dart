@@ -56,6 +56,7 @@ class TopBar extends StatelessWidget {
           ),
 
           // A guest has no inbox.
+          if (!GuestState.active) const CalendarIcon(),
           if (!GuestState.active) NotificationIcon(unreadCount: unread),
 
         ],

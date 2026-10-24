@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -113,6 +114,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
       useWebCard: true,
       maxWith: 1240,
       appBar: ScreenAppBar(title: name.isEmpty ? t('القسم', 'Department') : name, actions: [
+        const ContextExitButton(), // one tap back to the personal space from inside a department
         if (_state == _Load.ready)
           IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         if (_state == _Load.ready && editable)
@@ -218,6 +220,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     return [
       if (_cap('configure_join'))
         (Icons.how_to_reg_rounded, t('إعداد الانضمام', 'Joining rules'), c.primary, _seeAllRequests),
+      if (_isDept) (Icons.event_rounded, t('التقويم', 'Calendar'), c.primary, () => Navigator.of(context).pushNamed('/calendar', arguments: {'dept_id': id})),
       if (_isDept && _cap('post_announcements') && f.contains('announcements'))
         (Icons.campaign_rounded, t('إعلان جديد', 'Post news'), c.accent, _openHub),
       if (_isDept && _cap('view_forms') && f.contains('forms'))

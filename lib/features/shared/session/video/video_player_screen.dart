@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 import 'package:screen_protector/screen_protector.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:dio/dio.dart' as dio;
 
 import '../../../../config/app_config.dart';
 import '../../../../core/offline/offline_strings.dart';
@@ -28,6 +29,8 @@ if (dart.library.js_interop) 'fullscreen_web.dart' as webfs;
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../../../admin/admin_common.dart' show t;
+import 'vod_player_parts.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -50,9 +53,13 @@ class VideoPlayerScreen extends StatefulWidget {
     required this.material,
     this.autoPlay = true,
     this.startFullScreen = false,
+    this.playlist,
   });
 
   final SessionMaterialModel material;
+
+  /// The materials around [material] (e.g. the session's list): enables the lecture list and "up next".
+  final List<SessionMaterialModel>? playlist;
   final bool autoPlay;
   final bool startFullScreen;
 
@@ -145,6 +152,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ── Active stream ─────────────────────────────────────────────────────────
   late MaterialVariant _activeVariant;
 
+  /// The lecture on screen; changes in place when the student picks another one from the playlist.
+  late SessionMaterialModel _current = widget.material;
+
   // ── Controllers ───────────────────────────────────────────────────────────
   VideoPlayerController? _vc;
   bool _vcReady = false;
@@ -224,12 +234,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   // URLs come from POST .../play when the list endpoint hid them.
   SessionMaterialModel? _resolved;
-  SessionMaterialModel get _mat => _resolved ?? widget.material;
+  SessionMaterialModel get _mat => _resolved ?? _current;
   String? _viewsNote; // e.g. "المشاهدات المتبقية هذا الشهر: 2"
 
   // Watch-progress
   CourseDetailProvider? _progressProvider;
   bool _completionSent = false;
+
+  // Resume, up next, captions, volume / brightness, keyboard
+  bool _resumeChecked = false;
+  Duration? _resumedAt;
+  Timer? _resumeChipTimer;
+  Timer? _saveTimer;
+  Timer? _nextTimer;
+  int? _nextIn;
+  bool _hasCaptions = false;
+  bool _captionsOn = false;
+  double _volume = 1.0;
+  double _dim = 0; // darkening overlay, 0 = full brightness
+  ({bool brightness, double value})? _hud;
+  Timer? _hudTimer;
+  final FocusNode _focus = FocusNode(debugLabel: 'vod-player');
+
+  static const _maxDim = 0.8;
+  bool get _touchDevice =>
+      !kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
+  List<SessionMaterialModel> get _list => vodPlaylist(widget.playlist ?? const []);
+  SessionMaterialModel? get _next => vodNextOf(_list, _current);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Lifecycle
@@ -252,6 +283,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _protectScreen(true);
     _initOrientationAndPip();
     _startPlayback();
+    _saveTimer = Timer.periodic(const Duration(seconds: 5), (_) => _persistPos());
 
     if (widget.startFullScreen) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _enterFullScreen());
@@ -291,10 +323,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Future<void> _startPlayback() async {
     // Downloaded copy? Play it from the encrypted local file. This works
     // offline and does NOT call /play, so no monthly view is consumed.
-    if (!kIsWeb && widget.material.id != 0) {
+    if (!kIsWeb && _current.id != 0) {
       try {
         final local = await OfflineVideoService.instance
-            .localVariant(widget.material.sessionId, widget.material.id);
+            .localVariant(_current.sessionId, _current.id);
         if (!mounted) return;
         if (local != null) {
           setState(() {
@@ -310,13 +342,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       }
     }
 
-    if (widget.material.requiresPlay && widget.material.id != 0) {
+    if (_current.requiresPlay && _current.id != 0) {
       try {
         final r = await ApiClient().post(
-          '/api/v1/sessions/${widget.material.sessionId}/materials/${widget.material.id}/play',
+          '/api/v1/sessions/${_current.sessionId}/materials/${_current.id}/play',
         );
         if (r is! Map<String, dynamic>) throw StateError('bad play response');
-        final resolved = widget.material.withPlayData(r);
+        final resolved = _current.withPlayData(r);
         if (!mounted) return;
         final left = r['views_left'];
         setState(() {
@@ -384,7 +416,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     // NOTE: the old code called _checkWatchThreshold() here. That could notify
     // the provider while the widget tree is being torn down (setState during
     // unmount). The listener already handles completion while playing.
+    _persistPos();
     _initToken++; // cancel any in-flight init
+    _saveTimer?.cancel();
+    _nextTimer?.cancel();
+    _resumeChipTimer?.cancel();
+    _hudTimer?.cancel();
+    _focus.dispose();
     _hideTimer?.cancel();
     _flashTimer?.cancel();
     _lockHintTimer?.cancel();
@@ -452,8 +490,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         return;
       }
 
-      if (seekTo > Duration.zero) await next.seekTo(seekTo);
+      var at = seekTo;
+      if (at == Duration.zero && !_resumeChecked) {
+        _resumeChecked = true;
+        final saved = await VodResume.load(_mat.sessionId, _mat.id);
+        if (token != _initToken || !mounted) {
+          await next.dispose();
+          return;
+        }
+        final r = saved == null ? null : VodResume.pick(saved, next.value.duration);
+        if (r != null) {
+          at = r;
+          _showResumeChip(r);
+        }
+      }
+      if (at > Duration.zero) await next.seekTo(at);
       await next.setPlaybackSpeed(_speed);
+      await next.setVolume(_volume);
+      _attachCaptions(next);
       next.addListener(_onVcUpdate);
 
       final old = _vc;
@@ -526,9 +580,192 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (ended && !_wasEnded) {
       _wasEnded = true;
       _showControls(); // always reveal the replay button at the end
+      _startNextCountdown();
     } else if (!ended) {
+      if (_wasEnded) _stopNextTimer();
       _wasEnded = false;
     }
+  }
+
+  // ── Resume position ───────────────────────────────────────────────────────
+
+  void _persistPos() {
+    final v = _vc?.value;
+    if (v == null || !v.isInitialized) return;
+    unawaited(VodResume.save(_mat.sessionId, _mat.id, v.position, v.duration));
+  }
+
+  void _showResumeChip(Duration at) {
+    _resumeChipTimer?.cancel();
+    setState(() => _resumedAt = at);
+    _resumeChipTimer = Timer(const Duration(seconds: 6), () {
+      if (mounted) setState(() => _resumedAt = null);
+    });
+  }
+
+  void _startOver() {
+    _resumeChipTimer?.cancel();
+    _vc?.seekTo(Duration.zero);
+    setState(() => _resumedAt = null);
+  }
+
+  // ── Captions (WebVTT) ─────────────────────────────────────────────────────
+
+  void _attachCaptions(VideoPlayerController vc) {
+    final url = _mat.captionsUrl;
+    _hasCaptions = url != null;
+    if (url == null) return;
+    unawaited(vc.setClosedCaptionFile(_fetchCaptions(url)).catchError((Object _) {
+      if (mounted) setState(() => _hasCaptions = _captionsOn = false);
+    }));
+  }
+
+  Future<ClosedCaptionFile> _fetchCaptions(String url) async {
+    final headers = kIsWeb ? const <String, String>{} : await DeviceIdService.instance.headers();
+    final r = await dio.Dio().get<String>(url,
+        options: dio.Options(responseType: dio.ResponseType.plain, headers: headers));
+    return WebVTTCaptionFile(r.data ?? '');
+  }
+
+  void _toggleCaptions() {
+    if (!_hasCaptions) return;
+    setState(() => _captionsOn = !_captionsOn);
+  }
+
+  // ── Playlist / up next ────────────────────────────────────────────────────
+
+  void _startNextCountdown() {
+    if (_next == null || _isLocked) return;
+    _nextTimer?.cancel();
+    setState(() => _nextIn = 5);
+    _nextTimer = Timer.periodic(const Duration(seconds: 1), (tm) {
+      if (!mounted) return tm.cancel();
+      final n = (_nextIn ?? 0) - 1;
+      if (n <= 0) {
+        tm.cancel();
+        _playNext();
+      } else {
+        setState(() => _nextIn = n);
+      }
+    });
+  }
+
+  void _stopNextTimer() {
+    _nextTimer?.cancel();
+    if (_nextIn != null && mounted) setState(() => _nextIn = null);
+  }
+
+  void _playNext() {
+    final n = _next;
+    if (n != null) _openLecture(n);
+  }
+
+  /// Switches lecture inside the same screen, so screen protection, wakelock and
+  /// orientation never flip off between two lectures.
+  Future<void> _openLecture(SessionMaterialModel m) async {
+    if (m.id == _current.id && m.sessionId == _current.sessionId) return;
+    _stopNextTimer();
+    _persistPos();
+    await _vc?.pause();
+    if (!mounted) return;
+    _resumeChipTimer?.cancel();
+    setState(() {
+      _current = m;
+      _resolved = null;
+      _viewsNote = null;
+      _completionSent = false;
+      _resumeChecked = false;
+      _resumedAt = null;
+      _isOffline = false;
+      _downloaded = false;
+      _hasCaptions = false;
+      _isLoading = true;
+      _hasError = false;
+      _activeVariant = m.defaultVideoVariant;
+    });
+    await _startPlayback();
+  }
+
+  void _openLectures() {
+    _hideTimer?.cancel();
+    showVodLectureList(context, items: _list, currentId: _current.id, onSelect: _openLecture)
+        .whenComplete(_startHideTimer);
+  }
+
+  // ── Volume / brightness ───────────────────────────────────────────────────
+
+  void _setVolume(double v) {
+    _volume = v.clamp(0.0, 1.0);
+    _vc?.setVolume(_volume);
+  }
+
+  void _flashHud(bool brightness, {bool hold = false}) {
+    _hudTimer?.cancel();
+    setState(() => _hud = (brightness: brightness, value: brightness ? 1 - _dim / _maxDim : _volume));
+    if (!hold) {
+      _hudTimer = Timer(const Duration(milliseconds: 900), () {
+        if (mounted) setState(() => _hud = null);
+      });
+    }
+  }
+
+  void _onLevelDrag(DragUpdateDetails d, {required bool brightness}) {
+    final step = -(d.primaryDelta ?? 0) / (MediaQuery.sizeOf(context).height * 0.7);
+    if (brightness) {
+      _dim = (_dim - step * _maxDim).clamp(0.0, _maxDim);
+    } else {
+      _setVolume(_volume + step);
+    }
+    _flashHud(brightness, hold: true);
+  }
+
+  void _toggleMute() {
+    _setVolume(_volume == 0 ? 1 : 0);
+    _flashHud(false);
+  }
+
+  // ── Keyboard (web / desktop / hardware keyboards) ─────────────────────────
+
+  KeyEventResult _onKey(FocusNode _, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    if (!_vcReady || _vc == null || _isLocked) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    final down = e is KeyDownEvent;
+    const digits = [
+      LogicalKeyboardKey.digit0, LogicalKeyboardKey.digit1, LogicalKeyboardKey.digit2, LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4, LogicalKeyboardKey.digit5, LogicalKeyboardKey.digit6, LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8, LogicalKeyboardKey.digit9,
+    ];
+    if (k == LogicalKeyboardKey.space || k == LogicalKeyboardKey.keyK) {
+      if (down) _togglePlayPause();
+    } else if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.keyJ) {
+      _seekRelative(k == LogicalKeyboardKey.keyJ ? 10 : 5, forward: false);
+    } else if (k == LogicalKeyboardKey.arrowRight || k == LogicalKeyboardKey.keyL) {
+      _seekRelative(k == LogicalKeyboardKey.keyL ? 10 : 5, forward: true);
+    } else if (k == LogicalKeyboardKey.arrowUp || k == LogicalKeyboardKey.arrowDown) {
+      _setVolume(_volume + (k == LogicalKeyboardKey.arrowUp ? 0.1 : -0.1));
+      _flashHud(false);
+    } else if (k == LogicalKeyboardKey.keyM) {
+      if (down) _toggleMute();
+    } else if (k == LogicalKeyboardKey.keyF) {
+      if (down) _toggleFullScreen();
+    } else if (k == LogicalKeyboardKey.escape && _isFullScreen) {
+      if (down) _exitFullScreen();
+    } else if (k == LogicalKeyboardKey.keyC && _hasCaptions) {
+      if (down) _toggleCaptions();
+    } else if (k == LogicalKeyboardKey.keyN && _next != null) {
+      if (down) _playNext();
+    } else if (digits.contains(k)) {
+      _vc!.seekTo(_vc!.value.duration * (digits.indexOf(k) / 10));
+      _showControls();
+    } else if (e.character == '>' || e.character == '<') {
+      final i = (_speedOptions.indexOf(_speed) + (e.character == '>' ? 1 : -1)).clamp(0, _speedOptions.length - 1);
+      _setSpeed(_speedOptions[i]);
+      Helpers.showMessage('${_speedOptions[i]}×');
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
   }
 
   /// Pulse animation only runs while audio is actually playing.
@@ -617,6 +854,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _replay() {
+    _stopNextTimer();
     _vc?.seekTo(Duration.zero);
     _vc?.play();
     _startHideTimer();
@@ -1072,21 +1310,66 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       );
     }
 
-    return Directionality(
+    final mq = MediaQuery.of(context).padding;
+    final bottomInset = _isFullScreen ? 0.0 : mq.bottom;
+    return Focus(
+      focusNode: _focus,
+      autofocus: true,
+      onKeyEvent: _onKey,
+      child: Directionality(
       textDirection: TextDirection.ltr,
       child: Stack(
         fit: StackFit.expand,
         children: [
           _buildBackground(),
+          if (_dim > 0) IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: _dim))),
+          if (_captionsOn)
+            IgnorePointer(
+              child: _withVc((v) => AnimatedPadding(
+                duration: const Duration(milliseconds: 200),
+                padding: EdgeInsets.fromLTRB(16, 0, 16, (_controlsShown ? 104 : 22) + bottomInset),
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Directionality(textDirection: appDir, child: VodCaption(text: v.caption.text)),
+                ),
+              )),
+            ),
           if (_isLocked) _buildLockCatcher() else _buildGestureZones(),
           _buildSeekFlash(),
           _buildBoostPill(),
           _withVc((v) => _buildOverlay(v, appDir)),
+          if (_hud != null)
+            IgnorePointer(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(top: (_isFullScreen ? 0 : mq.top) + 64),
+                  child: VodLevelHud(brightness: _hud!.brightness, value: _hud!.value),
+                ),
+              ),
+            ),
+          if (_resumedAt != null && !_isLocked && !_isLoading)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 104 + bottomInset),
+                child: Directionality(
+                    textDirection: appDir, child: VodResumeChip(at: _resumedAt!, onStartOver: _startOver)),
+              ),
+            ),
           if (_isLocked) _buildLockPill(),
-          if (_isLoading) IgnorePointer(child: _buildLoadingState()),
+          if (_isLoading)
+            _vcReady
+                ? IgnorePointer(child: _buildLoadingState())
+                : Directionality(
+                    textDirection: appDir,
+                    child: VodPlayerSkeleton(
+                        title: _mat.name,
+                        onBack: () => _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context))),
           if (_hasError) _buildErrorState(),
         ],
       ),
+    ),
     );
   }
 
@@ -1138,6 +1421,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               ),
             ),
           ),
+        if (finished && _next != null && !_isLocked)
+          LayoutBuilder(builder: (_, box) {
+            final narrow = box.maxWidth < 500;
+            return Align(
+              alignment: appDir == TextDirection.rtl ? Alignment.bottomLeft : Alignment.bottomRight,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 70, 16, box.maxHeight < 420 ? 64 : 104),
+                child: Directionality(
+                  textDirection: appDir,
+                  child: VodNextUpCard(
+                    next: _next!,
+                    seconds: _nextIn,
+                    maxWidth: narrow ? box.maxWidth - 32 : (box.maxWidth * 0.38).clamp(220.0, 360.0),
+                    onPlay: _playNext,
+                    onCancel: _stopNextTimer,
+                  ),
+                ),
+              ),
+            );
+          }),
         // Thin progress line when controls are hidden
         if (!_controlsShown && !_isLocked)
           Align(
@@ -1267,6 +1570,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         onLongPressStart: forward ? (_) => _startBoost() : null,
         onLongPressEnd: forward ? (_) => _stopBoost() : null,
         onLongPressCancel: forward ? _stopBoost : null,
+        // Mobile: swipe up/down — left half = brightness, right half = volume.
+        onVerticalDragUpdate: _touchDevice ? (d) => _onLevelDrag(d, brightness: !forward) : null,
+        onVerticalDragEnd: _touchDevice ? (_) => _flashHud(!forward) : null,
       ),
     );
     return Row(children: [zone(forward: false), zone(forward: true)]);
@@ -1598,6 +1904,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   const SizedBox(width: 6),
                 ],
 
+                if (_hasCaptions) ...[
+                  _ControlChip(
+                    icon: _captionsOn ? Icons.closed_caption_rounded : Icons.closed_caption_off_rounded,
+                    label: 'CC',
+                    active: _captionsOn,
+                    onTap: _toggleCaptions,
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                if (_list.length > 1) ...[
+                  _ControlChip(
+                    icon: Icons.playlist_play_rounded,
+                    label: t('المحاضرات', 'Lectures'),
+                    active: false,
+                    onTap: _openLectures,
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 _ControlChip(
                   icon: Icons.speed_rounded,
                   label: _speed == 1.0 ? 'normal_speed'.tr : '$_speed×',
@@ -1605,6 +1929,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   onTap: _openSpeedSheet,
                 ),
                 const SizedBox(width: 10),
+                if (!_touchDevice) ...[
+                  Tooltip(
+                    message: t('كتم (M)', 'Mute (M)'),
+                    child: _PressScale(
+                      onTap: _toggleMute,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Icon(_volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                            color: Colors.white, size: 24),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                if (_next != null) ...[
+                  Tooltip(
+                    message: t('التالي (N)', 'Next (N)'),
+                    child: _PressScale(
+                      onTap: _playNext,
+                      child: const Padding(
+                        padding: EdgeInsets.all(2),
+                        child: Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
 
                 // Rotation: auto (sensor, left/right/portrait) vs locked.
                 if (!kIsWeb) ...[

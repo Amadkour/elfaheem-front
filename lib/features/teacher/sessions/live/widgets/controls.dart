@@ -46,6 +46,10 @@ class ControlsWidget extends StatefulWidget {
   // for the combined Pause/Resume button, and to gate the End button.
   final RecState? recorderState;
 
+  // Live reactions: opens / closes the emoji picker (null hides the button).
+  final VoidCallback? onToggleReactions;
+  final bool reactionsOpen;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -57,6 +61,8 @@ class ControlsWidget extends StatefulWidget {
         this.onPauseRecording,
         this.onResumeRecording,
         this.recorderState,
+        this.onToggleReactions,
+        this.reactionsOpen = false,
       });
 
   @override
@@ -387,6 +393,16 @@ class _ControlsWidgetState extends State<ControlsWidget>
         // ── NEW: Pause / Resume recording (teacher only) ──────────────────
         if (widget.isTeacher) _buildRecordingToggleButton(),
 
+        // ── Live reactions (everyone) ─────────────────────────────────────
+        if (widget.onToggleReactions != null)
+          _CtrlButton(
+            key: const ValueKey('live_room.reactions'),
+            icon: Icons.add_reaction_outlined,
+            label: 'lr_react'.tr,
+            color: widget.reactionsOpen ? _cyan : _textLow,
+            onTap: widget.onToggleReactions,
+          ),
+
         // ── End call ──────────────────────────────────────────────────────
         _buildEndButton(),
       ],
@@ -569,7 +585,11 @@ class _ControlsWidgetState extends State<ControlsWidget>
 
   // ── End call button ───────────────────────────────────────────────────────
   Widget _buildEndButton() {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: 'lr_end'.tr,
+      excludeSemantics: true,
+      child: GestureDetector(
       onTapDown:  (_) => _endPressAnim.forward(),
       onTapUp:    (_) { _endPressAnim.reverse(); _onTapDisconnect(); },
       onTapCancel: () => _endPressAnim.reverse(),
@@ -593,6 +613,7 @@ class _ControlsWidgetState extends State<ControlsWidget>
               style: TextStyle(
                   fontSize: 10, color: _rose, fontWeight: FontWeight.w700)),
         ]),
+      ),
       ),
     );
   }
@@ -626,7 +647,14 @@ class _CtrlButton extends StatelessWidget {
     final isDisabled = onTap == null && !loading;
     final effectiveColor = isDisabled ? _textLow : color;
 
-    return GestureDetector(
+    return Tooltip(
+      message: label,
+      child: Semantics(
+      button: true,
+      enabled: onTap != null,
+      label: label,
+      excludeSemantics: true,
+      child: GestureDetector(
       onTap: onTap,
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         AnimatedContainer(
@@ -660,6 +688,8 @@ class _CtrlButton extends StatelessWidget {
                 color: effectiveColor,
                 fontWeight: FontWeight.w600)),
       ]),
+      ),
+      ),
     );
   }
 }
@@ -698,6 +728,7 @@ class _PopupCtrlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isActive = color == _cyan;
     return PopupMenuButton<VoidCallback?>(
+      tooltip: label,
       offset: const Offset(0, -12),
       color: const Color(0xFF1A1E30),
       shape: RoundedRectangleBorder(

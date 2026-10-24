@@ -22,6 +22,7 @@ import '../attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;
 import '../session/material/components/session_material_grid.dart' show MaterialImageViewerDialog;
 import '../session/material/session_material_model.dart';
 import '../session/video/video_player_screen.dart';
+import 'course_profile_announcements.dart' show CpAnnouncementCard;
 import 'course_profile_models.dart';
 import 'course_profile_screen.dart' show cpCall, cpRoleLabel;
 
@@ -50,10 +51,13 @@ Future<void> openCourseStudio(BuildContext context, int courseId) async {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CpOverviewTab extends StatelessWidget {
-  const CpOverviewTab({super.key, required this.profile, required this.onOpenTab, required this.onChanged});
+  const CpOverviewTab({super.key, required this.profile, required this.onOpenTab, required this.onChanged, this.withRail = false});
   final CourseProfile profile;
   final ValueChanged<String> onOpenTab;
   final Future<void> Function() onChanged;
+
+  /// The side rail (wide screens) already shows the next session and the announcements.
+  final bool withRail;
 
   @override
   Widget build(BuildContext context) {
@@ -155,25 +159,9 @@ class CpOverviewTab extends StatelessWidget {
       }
     }
 
-    if (next.isNotEmpty) {
-      children.add(AppCard(
-        child: Row(children: [
-          Icon(next['track'] == 'section' ? Icons.science_rounded : Icons.co_present_rounded, color: c.primary),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(t('الجلسة القادمة', 'Next session'), style: appText(12, c: c.textLight)),
-              Text('${next['name']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: appText(14.5, w: FontWeight.w700, c: c.textDark)),
-            ]),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(_when(orgParseUtcLocal(next['scheduled_at'])), textAlign: TextAlign.end,
-                maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w600, c: c.textMedium)),
-          ),
-        ]),
-      ));
+    if (!withRail) {
+      if (next.isNotEmpty) children.add(_NextSessionCard(next: next));
+      if (p.announcements.isNotEmpty) children.add(_AnnouncementsPreview(profile: p, onOpenTab: onOpenTab));
     }
 
     final term = _map(p.course['term']);
@@ -184,13 +172,130 @@ class CpOverviewTab extends StatelessWidget {
         if (p.instructor != null) AppInfoRow(Icons.person_rounded, '${t('أستاذ المقرر', 'Instructor')}: ${p.instructor!['name']}'),
         if (p.course['credit_hours'] != null) AppInfoRow(Icons.timer_outlined, '${t('الساعات المعتمدة', 'Credit hours')}: ${p.course['credit_hours']}'),
         if (term.isNotEmpty)
-          AppInfoRow(Icons.date_range_rounded,
-              '${t('الفصل', 'Term')}: ${term['year_label'] ?? ''} · ${AppTime.date(DateTime.parse('${term['start_date']}'))} → ${AppTime.date(DateTime.parse('${term['end_date']}'))}'),
+          AppInfoRow(Icons.date_range_rounded, '${t('الفصل', 'Term')}: ${_termRange(term)}'),
         AppInfoRow(Icons.badge_outlined, '${t('دورك', 'Your role')}: ${cpRoleLabel(p.role)}'),
       ]),
     ));
 
     return Column(children: [for (final w in children) Padding(padding: const EdgeInsets.only(bottom: 12), child: w)]);
+  }
+}
+
+String _termRange(Map<String, dynamic> term) {
+  final a = DateTime.tryParse('${term['start_date'] ?? ''}'), b = DateTime.tryParse('${term['end_date'] ?? ''}');
+  return [
+    '${term['year_label'] ?? ''}',
+    if (a != null && b != null) '${AppTime.date(a)} → ${AppTime.date(b)}',
+  ].where((s) => s.trim().isNotEmpty).join(' · ');
+}
+
+class _NextSessionCard extends StatelessWidget {
+  const _NextSessionCard({required this.next});
+  final Map<String, dynamic> next;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final section = next['track'] == 'section';
+    final tone = section ? c.purple : c.primary;
+    return AppCard(
+      child: Row(children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+          child: Icon(section ? Icons.science_rounded : Icons.co_present_rounded, color: tone),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t('الجلسة القادمة', 'Next session'), style: appText(12, c: c.textLight)),
+            Text('${next['name']}', maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: appText(14, w: FontWeight.w700, c: c.textDark)),
+            const SizedBox(height: 2),
+            Text(_when(orgParseUtcLocal(next['scheduled_at'])), maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: appText(12.5, w: FontWeight.w600, c: tone)),
+          ]),
+        ),
+      ]),
+    );
+  }
+}
+
+class _AnnouncementsPreview extends StatelessWidget {
+  const _AnnouncementsPreview({required this.profile, required this.onOpenTab});
+  final CourseProfile profile;
+  final ValueChanged<String> onOpenTab;
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSectionTitle(t('آخر الإعلانات', 'Latest announcements'),
+            trailing: TextButton(onPressed: () => onOpenTab('announcements'), child: Text(t('الكل', 'All')))),
+        const SizedBox(height: 6),
+        for (final a in profile.announcements.take(2))
+          Padding(padding: const EdgeInsets.only(bottom: 8), child: CpAnnouncementCard(item: a, compact: true)),
+      ]);
+}
+
+/// Wide screens: what stays useful whatever tab is open — next session, announcements, the teaching team.
+class CpSideRail extends StatelessWidget {
+  const CpSideRail({super.key, required this.profile, required this.onOpenTab});
+  final CourseProfile profile;
+  final ValueChanged<String> onOpenTab;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile;
+    final c = context.colors;
+    final next = _map(p.analytics['next_session']);
+    final ins = p.instructor;
+    Widget person(String name, dynamic url, String role) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(children: [
+            AppAvatar(name: name, url: url?.toString(), size: 32),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.textDark)),
+                Text(role, style: appText(11.5, c: c.textLight)),
+              ]),
+            ),
+          ]),
+        );
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (next.isNotEmpty) ...[_NextSessionCard(next: next), const SizedBox(height: 14)],
+      if (p.announcements.isNotEmpty) ...[
+        _AnnouncementsPreview(profile: p, onOpenTab: onOpenTab),
+        const SizedBox(height: 8),
+      ] else if (p.caps.announce && !p.readOnly) ...[
+        AppCard(
+          onTap: () => onOpenTab('announcements'),
+          child: Row(children: [
+            Icon(Icons.campaign_rounded, color: c.accent),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(t('انشر إعلاناً لطلابك', 'Post an announcement'),
+                  style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 14),
+      ],
+      if (ins != null || p.assistants.isNotEmpty)
+        AppCard(
+          onTap: p.caps.manageStaff || p.role == 'ta' ? () => onOpenTab('team') : null,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            AppSectionTitle(t('فريق التدريس', 'Teaching team')),
+            const SizedBox(height: 8),
+            if (ins != null) person('${ins['name'] ?? ''}', ins['image_url'], t('أستاذ المقرر', 'Instructor')),
+            for (final a in p.assistants.take(4))
+              person('${_map(a['user'])['name'] ?? ''}', _map(a['user'])['image_url'], t('معيد', 'Assistant')),
+            if (p.assistants.length > 4)
+              Text(t('+${p.assistants.length - 4} آخرين', '+${p.assistants.length - 4} more'),
+                  style: appText(12, c: c.textLight)),
+          ]),
+        ),
+    ]);
   }
 }
 
@@ -916,7 +1021,8 @@ class CpTeamTab extends StatelessWidget {
               ]),
               AppSwitchTile(
                 title: t('تعديل محتوى المحاضرات', 'Edit lecture content'),
-                subtitle: t('رفع وتعديل وترتيب مواد المحاضرات', 'Upload, edit and reorder lecture material'),
+                subtitle: t('رفع وتعديل وترتيب مواد المحاضرات، والإعلان لكل الطلاب',
+                    'Upload, edit and reorder lecture material, and announce to all students'),
                 value: a['lecture_edit'] == true,
                 onChanged: p.caps.manageStaff ? (v) => _grant(a, edit: v) : null,
               ),

@@ -76,7 +76,16 @@ Map<String, dynamic> payload(String role, {bool closed = false, String archiveSt
       'manage_archive': staff,
       'approve_archive': false,
       'live': !closed,
+      'announce': (staff || role == 'ta') && !closed,
     },
+    'announcements': role == 'ta'
+        ? []
+        : [
+            {'id': 1, 'track': 'all', 'title': longAr, 'body': '$longEn $longAr', 'pinned': true,
+              'created_at': iso(DateTime.now()), 'author': {'id': 1, 'name': longAr}, 'can_delete': staff},
+            {'id': 2, 'track': 'section', 'title': longEn, 'body': null, 'pinned': false,
+              'created_at': iso(DateTime.now()), 'author': {'id': 2, 'name': longEn}, 'can_delete': false},
+          ],
     'closed': closed,
     'read_only': closed && role == 'student',
     'grant': role == 'ta' ? {'lecture_edit': false, 'lecture_attendance': true} : null,
@@ -141,11 +150,24 @@ Map<String, dynamic> attendance(bool staff) => {
 void main() {
   test('tabs follow the role', () {
     expect(cpTabs(CourseProfile(payload('instructor'))),
-        ['overview', 'lecture', 'section', 'attendance', 'certificates', 'team', 'archive']);
-    expect(cpTabs(CourseProfile(payload('student'))), ['overview', 'lecture', 'section', 'attendance', 'certificates']);
-    // closed: read-only — no attendance tab, archive tab instead
-    expect(cpTabs(CourseProfile(payload('student', closed: true))), ['overview', 'lecture', 'section', 'certificates', 'archive']);
-    expect(cpTabs(CourseProfile(payload('ta'))), ['overview', 'lecture', 'section', 'attendance', 'team']);
+        ['overview', 'lecture', 'section', 'announcements', 'attendance', 'certificates', 'team', 'archive']);
+    expect(cpTabs(CourseProfile(payload('student'))),
+        ['overview', 'lecture', 'section', 'announcements', 'attendance', 'certificates']);
+    // closed: read-only — no attendance tab, archive tab instead; old announcements stay readable
+    expect(cpTabs(CourseProfile(payload('student', closed: true))),
+        ['overview', 'lecture', 'section', 'announcements', 'certificates', 'archive']);
+    // a TA can always announce (to sections & labs)
+    expect(cpTabs(CourseProfile(payload('ta'))), ['overview', 'lecture', 'section', 'announcements', 'attendance', 'team']);
+  });
+
+  test('status pill', () {
+    expect(cpStatus(CourseProfile(payload('student', closed: true))), 'archived');
+    expect(cpStatus(CourseProfile(payload('student'))), 'live');           // session 1 is live
+    final up = payload('student');
+    (up['tracks'] as Map)['lecture'] = [session(9, 'lecture', days: 3)];
+    (up['tracks'] as Map)['section'] = <Map<String, dynamic>>[];
+    expect(cpStatus(CourseProfile(up)), 'upcoming');
+    expect(cpAudienceLabel('section').$2, 'Sections & labs');
   });
 
   test('continue / stats / attendance helpers', () {
@@ -161,7 +183,7 @@ void main() {
   });
 
   for (final role in ['instructor', 'student', 'ta']) {
-    for (final tab in ['overview', 'lecture', 'section', 'certificates', 'team']) {
+    for (final tab in ['overview', 'lecture', 'section', 'announcements', 'certificates', 'team']) {
       if (role == 'ta' && tab == 'certificates') continue;
       if (role == 'student' && tab == 'team') continue;
       testWidgets('course profile $role / $tab', (tester) async {

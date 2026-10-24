@@ -39,7 +39,7 @@ import '../../teacher/home/home_screen.dart' show teacherSessionUtc;
 import '../../teacher/home/teacher_models.dart' show ScheduleSession;
 import '../../teacher/schedules/schedules_provider.dart';
 import '../courses/list/courses_list_screen.dart';
-import '../dashboard/dashboard_screen.dart' show NotificationIcon, UserChipButton;
+import '../dashboard/dashboard_screen.dart' show CalendarIcon, NotificationIcon, UserChipButton;
 import '../models.dart';
 import 'component/category_row.dart';
 import 'component/home_section_header.dart';
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: HomeHeader(
           name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-          actions: [if (!guest) NotificationIcon(unreadCount: unread)],
+          actions: [if (!guest) const CalendarIcon(), if (!guest) NotificationIcon(unreadCount: unread)],
           contextSwitcher: guest ? null : const ContextSwitcher(),
         ),
       ),

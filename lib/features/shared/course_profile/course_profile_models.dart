@@ -28,6 +28,7 @@ class CpCaps {
   bool get manageArchive => _b('manage_archive');
   bool get approveArchive => _b('approve_archive');
   bool get live => _b('live');
+  bool get announce => _b('announce');
   bool manage(String track) => track == 'lecture' ? manageLecture : manageSection;
   bool get anyManage => manageLecture || manageSection;
 }
@@ -64,6 +65,7 @@ class CourseProfile {
         lectures = _l(_m(raw['tracks'])['lecture']).map(CpSession.new).toList(),
         sections = _l(_m(raw['tracks'])['section']).map(CpSession.new).toList(),
         certificates = _l(raw['certificates']),
+        announcements = _l(raw['announcements']),
         analytics = _m(raw['analytics']),
         archive = raw['archive'] is Map ? _m(raw['archive']) : null,
         archivePolicy = raw['archive_policy'] is Map ? _m(raw['archive_policy']) : null,
@@ -72,7 +74,7 @@ class CourseProfile {
   final String role;
   final CpCaps caps;
   final List<CpSession> lectures, sections;
-  final List<Map<String, dynamic>> certificates;
+  final List<Map<String, dynamic>> certificates, announcements;
   final Map<String, dynamic>? archive, archivePolicy;
 
   int get id => _i(course['id']);
@@ -105,11 +107,28 @@ List<String> cpTabs(CourseProfile p) => [
       'overview',
       'lecture',
       if (p.hasSections) 'section',
+      if (p.caps.announce || p.announcements.isNotEmpty) 'announcements',
       if (p.caps.viewAttendance && !p.readOnly) 'attendance',
       if (p.certificates.isNotEmpty || p.caps.manageCertificates) 'certificates',
       if (p.caps.manageStaff || p.role == 'ta') 'team',
       if (p.caps.manageArchive || p.caps.approveArchive || (p.closed && p.isStudent)) 'archive',
     ];
+
+/// The course's state for the header pill: archived · live · running · upcoming (no session held yet).
+String cpStatus(CourseProfile p) {
+  if (p.closed) return 'archived';
+  final all = [...p.lectures, ...p.sections];
+  if (all.any((s) => s.liveNow)) return 'live';
+  if (all.isNotEmpty && all.every((s) => s.upcoming)) return 'upcoming';
+  return 'running';
+}
+
+/// Announcement audience → (ar, en).
+(String, String) cpAudienceLabel(String track) => switch (track) {
+      'lecture' => ('طلاب المحاضرات', 'Lecture students'),
+      'section' => ('السكاشن والمعامل', 'Sections & labs'),
+      _ => ('كل الطلاب', 'All students'),
+    };
 
 /// Material counters for the hero / overview.
 ({int materials, int videos, int done}) cpMaterialStats(CourseProfile p) {
@@ -178,6 +197,7 @@ class CpAttendance {
       'code_not_enabled' => ('الدخول بالكود غير مفعّل لهذا المقرر', 'Code access is not enabled for this course'),
       'bad_code' => ('الكود غير صحيح', 'Wrong code'),
       'not_member' => ('هذا الأرشيف لأعضاء المؤسسة فقط', 'This archive is for members of the organization'),
+      'ta_section_only' => ('المعيد ينشر لجمهور السكاشن والمعامل فقط', 'Assistants post to sections & labs only'),
       'course_forbidden' => ('ليست لديك صلاحية لهذا الإجراء', 'You do not have permission for this'),
       _ => null,
     };

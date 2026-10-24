@@ -14,13 +14,14 @@ import 'package:flutter_education_app/features/student/models.dart' show CourseM
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_member_space.dart';
-import 'org_my_exams.dart' show examPauseBanner, examPausesOf;
+import 'org_my_exams.dart' show examPauseBanner, examPausesOf, openMyExams;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
@@ -297,64 +298,169 @@ class OrgTimetableScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
         create: (_) => OrgMembershipProvider()..loadTimetable(orgId: orgId),
-        child: const _TimetableView(),
+        child: _TimetableView(orgId: orgId),
       );
 }
 
+/// One timetable's week as (day, sessions sorted by period) — only days that have sessions, in week order.
+List<(String, List<Map<String, dynamic>>)> memberTimetableDays(Map<String, dynamic> tt) {
+  final items = asMapList(tt['items']);
+  return [
+    for (final day in orgDays)
+      if (items.any((x) => x['day'] == day))
+        (day, items.where((x) => x['day'] == day).toList()..sort((a, b) => asInt(a['order']).compareTo(asInt(b['order'])))),
+  ];
+}
+
+bool _isLab(Map<String, dynamic> x) => x['kind'] == 'lab' || x['kind'] == 'section';
+
 class _TimetableView extends StatelessWidget {
-  const _TimetableView();
+  const _TimetableView({this.orgId});
+  final int? orgId;
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<OrgMembershipProvider>();
-    final c = context.colors;
-    final labels = dayLabels();
+    Future<void> reload() => p.loadTimetable(orgId: orgId);
+    final Widget body;
+    if (p.timetables.isEmpty && p.isLoading) {
+      body = const AppListSkeleton(items: 6, withAvatar: false);
+    } else if (p.timetables.isEmpty && p.hasError) {
+      body = Center(
+        child: SingleChildScrollView(
+          child: OrgEmpty(
+            icon: Icons.cloud_off_rounded,
+            title: t('تعذّر تحميل جدولك', "Couldn't load your timetable"),
+            message: p.errorMessage,
+            actionLabel: t('إعادة المحاولة', 'Try again'),
+            onAction: reload,
+          ),
+        ),
+      );
+    } else if (p.timetables.isEmpty) {
+      body = RefreshIndicator(
+        onRefresh: reload,
+        child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
+          const SizedBox(height: 40),
+          OrgEmpty(
+            icon: Icons.calendar_month_rounded,
+            title: t('لم يُنشر جدول بعد', 'No timetable published yet'),
+            message: t('سيظهر جدولك هنا فور نشره من المؤسسة.', 'Your timetable appears here as soon as it is published.'),
+          ),
+        ]),
+      );
+    } else {
+      body = RefreshIndicator(
+        onRefresh: reload,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
+          children: [for (final tt in p.timetables) ..._timetable(context, tt)],
+        ),
+      );
+    }
     return BasePage(
       useWebCard: true,
       maxWith: 800,
-      appBar: ScreenAppBar(title: t('جدولي الدراسي', 'My timetable')),
-      child: p.isLoading && p.timetables.isEmpty
-          ? const Center(child: AppLoadingIndicator(size: 64))
-          : p.timetables.isEmpty
-              ? OrgEmpty(icon: Icons.calendar_month_rounded, title: t('لم يُنشر جدول بعد', 'No timetable published yet'))
-              : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-                  for (final tt in p.timetables) ...[
-                    Text('${(tt['schedule'] as Map)['name']}', style: c.h2),
-                    const SizedBox(height: 8),
-                    examPauseBanner(context, examPausesOf(tt)),
-                    for (final day in orgDays)
-                      if (asMapList(tt['items']).any((x) => x['day'] == day)) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 10, bottom: 6),
-                          child: Text(labels[day]!, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
-                        ),
-                        for (final x in (asMapList(tt['items']).where((x) => x['day'] == day).toList()..sort((a, b) => asInt(a['order']).compareTo(asInt(b['order'])))))
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: RowCard(
-                              child: Row(children: [
-                                Container(
-                                  width: 64,
-                                  padding: const EdgeInsets.symmetric(vertical: 6),
-                                  decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
-                                  child: Column(children: [
-                                    Text('${x['start_time'] ?? ''}', textDirection: TextDirection.ltr, style: TextStyle(fontWeight: FontWeight.w800, color: c.primary, fontSize: 13)),
-                                    Text('${x['end_time'] ?? ''}', textDirection: TextDirection.ltr, style: TextStyle(color: c.textLight, fontSize: 11)),
-                                  ]),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                    Text('${x['course'] ?? ''}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                                    Text([if (x['room'] != null) '${x['room']}', if (x['teacher'] != null) '${x['teacher']}'].join(' · '), style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
-                                  ]),
-                                ),
-                              ]),
-                            ),
-                          ),
-                      ],
-                  ],
-                ]),
+      appBar: ScreenAppBar(title: t('جدولي الدراسي', 'My timetable'), actions: [
+        IconButton(
+            tooltip: t('امتحاناتي', 'My exams'),
+            onPressed: () => openMyExams(context, orgId: orgId),
+            icon: const Icon(Icons.event_note_rounded)),
+      ]),
+      child: body,
+    );
+  }
+
+  List<Widget> _timetable(BuildContext context, Map<String, dynamic> tt) {
+    final c = context.colors;
+    final labels = dayLabels();
+    final sched = asMap(tt['schedule']);
+    final extras = asMapList(tt['extras']);
+    final days = memberTimetableDays(tt);
+    Widget heading(String text) => Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 6),
+          child: Text(text, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
+        );
+    return [
+      Text('${sched['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: c.h2),
+      if ('${sched['term_label'] ?? ''}'.isNotEmpty)
+        Text('${sched['term_label']}', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+      const SizedBox(height: 8),
+      examPauseBanner(context, examPausesOf(tt)),
+      if (extras.isNotEmpty) ...[
+        heading(t('قادم خلال أسبوعين', 'Coming up (next 2 weeks)')),
+        for (final e in extras)
+          _SlotRow(
+            top: '${e['start_time'] ?? ''}',
+            bottom: '${e['date'] ?? ''}',
+            title: '${e['title'] ?? e['course'] ?? ''}',
+            subtitle: [if (e['course'] != null && e['title'] != null) '${e['course']}', if (e['room'] != null) '${e['room']}'].join(' · '),
+            accent: c.warning,
+          ),
+      ],
+      if (days.isEmpty)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Text(t('لا حصص لك في هذا الجدول.', 'You have no sessions in this timetable.'),
+              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+        ),
+      for (final (day, items) in days) ...[
+        heading(labels[day] ?? day),
+        for (final x in items)
+          _SlotRow(
+            top: '${x['start_time'] ?? ''}',
+            bottom: '${x['end_time'] ?? ''}',
+            title: '${x['course'] ?? ''}',
+            subtitle: [
+              if (_isLab(x)) t('عملي', 'Lab'),
+              if (x['room'] != null) '${x['room']}',
+              if (x['teacher'] != null) '${x['teacher']}',
+            ].join(' · '),
+            accent: _isLab(x) ? c.success : c.primary,
+          ),
+      ],
+      const SizedBox(height: 16),
+    ];
+  }
+}
+
+class _SlotRow extends StatelessWidget {
+  const _SlotRow({required this.top, required this.bottom, required this.title, required this.subtitle, required this.accent});
+  final String top, bottom, title, subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RowCard(
+        accent: accent,
+        child: Row(children: [
+          Container(
+            width: 76,
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+            decoration: BoxDecoration(color: accent.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(12)),
+            child: Column(children: [
+              Text(top, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
+                  style: TextStyle(fontWeight: FontWeight.w800, color: accent, fontSize: 13)),
+              Text(bottom, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr,
+                  style: TextStyle(color: c.textLight, fontSize: 11)),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+              if (subtitle.isNotEmpty)
+                Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+            ]),
+          ),
+        ]),
+      ),
     );
   }
 }

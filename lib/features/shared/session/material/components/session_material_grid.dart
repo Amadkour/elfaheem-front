@@ -563,6 +563,7 @@ class SessionMaterialGrid extends StatelessWidget {
             autoPlay: true,
             startFullScreen: false,
             material: m,
+            playlist: materials,
           ),
         ),
       );

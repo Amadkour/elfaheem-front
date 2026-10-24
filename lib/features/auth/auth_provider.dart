@@ -335,15 +335,21 @@ class MyAuthProvider extends BaseProvider {
     'teacher' => '/teacher_dashboard',
     'parent' => '/parent_dashboard',
     // organizations: org admins and their staff (admin assistants, department staff) open the org dashboard
-    'org-admin' => '/org_dashboard',
+    // (both: the personal dashboard instead when they left their organization last time — remembered per user)
+    'org-admin' => AppModeController.orgRoleHome('/org_dashboard', personal: _personalHome),
     // … unless the member dashboard already knows this staff member manages nothing (e.g. an assistant only)
     // (on a cold start the overview is not loaded yet → the answer cached by the last run)
-    'org-staff' => AppModeController.orgStaffHome(
-        loaded: AppModeController.instance.loaded,
-        managesNothing: AppModeController.instance.managesNothing,
-        cached: currentUser == null ? null : _storage.getFlag(AppModeController.managesNothingKey(currentUser!.id))),
+    'org-staff' => AppModeController.orgRoleHome(
+        AppModeController.orgStaffHome(
+            loaded: AppModeController.instance.loaded,
+            managesNothing: AppModeController.instance.managesNothing,
+            cached: currentUser == null ? null : _storage.getFlag(AppModeController.managesNothingKey(currentUser!.id))),
+        personal: _personalHome),
     _ => '/dashboard',
   };
+
+  bool? get _personalHome =>
+      currentUser == null ? null : _storage.getFlag(AppModeController.personalHomeKey(currentUser!.id));
 
   // ── Cold-start restore ────────────────────────────────────────────────────────
 

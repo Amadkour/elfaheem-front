@@ -359,10 +359,20 @@ class OrgScheduleProvider extends AdminBase {
 
   void _follow(int scheduleId, int runId) {
     _poll?.cancel();
+    var misses = 0;
+    final until = DateTime.now().add(const Duration(minutes: 4)); // the server's budget is 90 s; never follow forever
     _poll = Timer.periodic(const Duration(seconds: 2), (tm) async {
       final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
       if (_disposed) return tm.cancel();
-      if (!r.ok) return;           // transient: keep following (the server releases stale runs itself)
+      final lost = !r.ok && (++misses >= 5 || r.endpointMissing || r.error?.statusCode == 404);
+      if (lost || (r.ok && runIsOpen(r.map) && DateTime.now().isAfter(until))) {
+        tm.cancel();
+        genRun = {...?genRun, 'status': 'failed', 'error': t('انقطعت متابعة التوليد — أعد فتح الجدول', 'Lost track of the generation — reopen the timetable')};
+        notifyListeners();
+        return;
+      }
+      if (!r.ok) return;           // transient: keep following a few more times
+      misses = 0;
       genRun = r.map;
       notifyListeners();
       if (!runIsOpen(genRun)) {
@@ -758,8 +768,11 @@ class OrgMembershipProvider extends AdminBase {
   }
 
   Future<void> loadTimetable({int? orgId}) async {
-    final r = await run(() => api.get('$orgBase/public/schedule/me', queryParams: {if (orgId != null) 'org_id': orgId}));
-    timetables = r is Map ? asMapList(r['items']) : [];
+    // hard timeout: the page ends in data, empty or an error with retry — never an endless spinner
+    final r = await run(() => api
+        .get('$orgBase/public/schedule/me', queryParams: {if (orgId != null) 'org_id': orgId})
+        .timeout(const Duration(seconds: 20)));
+    if (!hasError) timetables = r is Map ? asMapList(r['items']) : [];
     notifyListeners();
   }
 }

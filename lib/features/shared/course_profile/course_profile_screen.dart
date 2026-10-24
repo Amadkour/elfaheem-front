@@ -19,8 +19,13 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show t;
+import '../../student/analysis/student_course_analytics_screen.dart';
+import 'course_profile_announcements.dart';
 import 'course_profile_models.dart';
 import 'course_profile_parts.dart';
+
+/// At or above this width the page shows a side rail (next session · announcements · team).
+const double kCpRailBreak = 1000;
 
 /// Opens the course profile.
 Future<void> openCourseProfile(BuildContext context, int courseId) =>
@@ -99,18 +104,46 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: LayoutBuilder(builder: (context, box) {
+                    final wide = box.maxWidth >= kCpRailBreak;
                     final pad = box.maxWidth >= 900 ? 24.0 : 14.0;
-                    return ListView(
-                      padding: EdgeInsets.fromLTRB(pad, 12, pad, 32),
-                      children: [
-                        CpHeader(profile: p),
-                        const SizedBox(height: 12),
-                        ..._banners(context, p),
-                        _TabsBar(tabs: cpTabs(p), value: _tab, profile: p, onChanged: (v) => setState(() => _tab = v)),
-                        const SizedBox(height: 14),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: KeyedSubtree(key: ValueKey(_tab), child: _body(p)),
+                    final tabs = cpTabs(p);
+                    final main = AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      child: KeyedSubtree(key: ValueKey(_tab), child: _body(p, wide)),
+                    );
+                    return CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      slivers: [
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(pad, 12, pad, 0),
+                          sliver: SliverList.list(children: [
+                            CpHeader(profile: p, onOpenAnalytics: p.isStudent ? () => _openAnalytics(p) : null),
+                            const SizedBox(height: 12),
+                            ..._banners(context, p),
+                          ]),
+                        ),
+                        SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _TabsDelegate(
+                            pad: pad,
+                            child: _TabsBar(tabs: tabs, value: _tab, profile: p, onChanged: (v) => setState(() => _tab = v)),
+                          ),
+                        ),
+                        SliverPadding(
+                          padding: EdgeInsets.fromLTRB(pad, 12, pad, 32),
+                          sliver: SliverToBoxAdapter(
+                            child: wide
+                                ? Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                    Expanded(child: main),
+                                    const SizedBox(width: 18),
+                                    SizedBox(
+                                      width: 300,
+                                      child: CpSideRail(profile: p, onOpenTab: (v) => setState(() => _tab = v)),
+                                    ),
+                                  ])
+                                : main,
+                          ),
                         ),
                       ],
                     );
@@ -118,6 +151,9 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                 ),
     );
   }
+
+  void _openAnalytics(CourseProfile p) => Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => StudentCourseAnalyticsScreen(courseId: p.id, courseTitle: p.name(AppConfig.lang == 'ar'))));
 
   List<Widget> _banners(BuildContext context, CourseProfile p) {
     final c = context.colors;
@@ -155,14 +191,15 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     return [for (final w in out) Padding(padding: const EdgeInsets.only(bottom: 10), child: w)];
   }
 
-  Widget _body(CourseProfile p) => switch (_tab) {
+  Widget _body(CourseProfile p, bool wide) => switch (_tab) {
         'lecture' => CpTrackTab(profile: p, track: 'lecture', onChanged: _load),
         'section' => CpTrackTab(profile: p, track: 'section', onChanged: _load),
         'attendance' => CpAttendanceTab(profile: p),
+        'announcements' => CpAnnouncementsTab(profile: p, onChanged: _load, load: widget.initial == null),
         'certificates' => CpCertificatesTab(profile: p, onChanged: _load),
         'team' => CpTeamTab(profile: p, onChanged: _load),
         'archive' => CpArchiveTab(profile: p, onChanged: _load),
-        _ => CpOverviewTab(profile: p, onOpenTab: (v) => setState(() => _tab = v), onChanged: _load),
+        _ => CpOverviewTab(profile: p, onOpenTab: (v) => setState(() => _tab = v), onChanged: _load, withRail: wide),
       };
 }
 
@@ -176,11 +213,18 @@ class _TabsBar extends StatelessWidget {
   (String, IconData) _label(String k) => switch (k) {
         'lecture' => (t('المحاضرات', 'Lectures'), Icons.co_present_rounded),
         'section' => (t('السكاشن والمعامل', 'Sections & labs'), Icons.science_rounded),
+        'announcements' => (t('الإعلانات', 'Announcements'), Icons.campaign_rounded),
         'attendance' => (t('الحضور', 'Attendance'), Icons.how_to_reg_rounded),
         'certificates' => (t('الشهادات', 'Certificates'), Icons.workspace_premium_rounded),
         'team' => (t('فريق التدريس', 'Teaching team'), Icons.groups_rounded),
         'archive' => (t('الأرشيف', 'Archive'), Icons.inventory_2_rounded),
         _ => (t('نظرة عامة', 'Overview'), Icons.dashboard_rounded),
+      };
+
+  int? _count(String k) => switch (k) {
+        'lecture' => profile.lectures.length,
+        'section' => profile.sections.length,
+        _ => null,
       };
 
   @override
@@ -192,7 +236,7 @@ class _TabsBar extends StatelessWidget {
           Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
             child: AppChoiceChip(
-              label: _label(k).$1,
+              label: _count(k) == null ? _label(k).$1 : '${_label(k).$1} · ${_count(k)}',
               icon: _label(k).$2,
               selected: value == k,
               onTap: () => onChanged(k),
@@ -203,54 +247,186 @@ class _TabsBar extends StatelessWidget {
   }
 }
 
-/// The hero: course identity, role and the four numbers that matter to this role.
+/// Keeps the tab bar visible (pinned) while the page scrolls.
+class _TabsDelegate extends SliverPersistentHeaderDelegate {
+  _TabsDelegate({required this.child, required this.pad});
+  final Widget child;
+  final double pad;
+
+  @override
+  double get minExtent => 60;
+  @override
+  double get maxExtent => 60;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final c = context.colors;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: c.background,
+        border: overlapsContent || shrinkOffset > 0 ? Border(bottom: BorderSide(color: c.divider)) : null,
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: pad),
+        child: Align(alignment: AlignmentDirectional.centerStart, child: child),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _TabsDelegate old) => old.child != child || old.pad != pad;
+}
+
+/// The hero: course identity (code · status · term · organization), the instructor, the progress that matters to
+/// this role, and four numbers.
 class CpHeader extends StatelessWidget {
-  const CpHeader({super.key, required this.profile});
+  const CpHeader({super.key, required this.profile, this.onOpenAnalytics});
   final CourseProfile profile;
+  final VoidCallback? onOpenAnalytics;
 
   @override
   Widget build(BuildContext context) {
     final p = profile;
+    final c = context.colors;
     final ar = AppConfig.lang == 'ar';
     final a = p.analytics;
     final org = p.course['org'] is Map ? Map<String, dynamic>.from(p.course['org'] as Map) : null;
     final term = p.course['term'] is Map ? Map<String, dynamic>.from(p.course['term'] as Map) : null;
     final teacher = p.instructor?['name'] ?? (p.course['teacher'] is Map ? (p.course['teacher'] as Map)['name'] : null);
-    final sub = [
-      if (p.course['code'] != null) '${p.course['code']}',
-      if (org != null) '${(ar ? org['name_ar'] : org['name_en']) ?? org['name_ar'] ?? ''}',
-      if (term != null) '${term['year_label'] ?? ''}',
-      if (teacher != null) '$teacher',
-      cpRoleLabel(p.role),
-    ].where((s) => s.trim().isNotEmpty).join(' · ');
+    final orgName = org == null ? '' : '${(ar ? org['name_ar'] : org['name_en']) ?? org['name_ar'] ?? ''}';
+    final where = [orgName, if (term != null) '${term['year_label'] ?? ''}'].where((s) => s.trim().isNotEmpty).join(' · ');
     String pct(dynamic v) => v is num ? '${v.round()}%' : '—';
-    final stats = p.isStudent
-        ? [
-            AppHeroStat(icon: Icons.trending_up_rounded, value: pct(p.progress['overall']), label: t('التقدم', 'Progress')),
-            AppHeroStat(
-                icon: Icons.how_to_reg_rounded,
-                value: (a['expected'] ?? 0) == 0 ? '—' : '${a['attended']}/${a['expected']}',
-                label: t('الحضور', 'Attendance')),
-            AppHeroStat(icon: Icons.co_present_rounded, value: '${a['lectures'] ?? 0}', label: t('محاضرات', 'Lectures')),
-            AppHeroStat(icon: Icons.science_rounded, value: '${a['sections'] ?? 0}', label: t('سكاشن', 'Sections')),
-          ]
-        : p.isStaff
-            ? [
-                AppHeroStat(icon: Icons.people_alt_rounded, value: '${a['students'] ?? 0}', label: t('الطلاب', 'Students')),
-                AppHeroStat(icon: Icons.trending_up_rounded, value: pct(a['avg_progress']), label: t('متوسط التقدم', 'Avg progress')),
-                AppHeroStat(icon: Icons.how_to_reg_rounded, value: pct(a['attendance_rate']), label: t('نسبة الحضور', 'Attendance')),
-                AppHeroStat(
-                    icon: Icons.event_busy_rounded, value: '${a['missed_by_staff'] ?? 0}', label: t('لم تُعقد', 'Not held')),
-              ]
-            : [
-                AppHeroStat(icon: Icons.co_present_rounded, value: '${a['lectures'] ?? 0}', label: t('محاضرات', 'Lectures')),
-                AppHeroStat(icon: Icons.science_rounded, value: '${a['sections'] ?? 0}', label: t('سكاشن', 'Sections')),
-              ];
-    return AppHero(
-      title: p.name(ar),
-      subtitle: sub,
-      icon: p.isOrg ? Icons.account_balance_rounded : Icons.play_lesson_rounded,
-      stats: stats,
+
+    final (statusLabel, statusColor) = switch (cpStatus(p)) {
+      'archived' => (t('مؤرشف', 'Archived'), c.warning),
+      'live' => (t('مباشر الآن', 'Live now'), c.danger),
+      'upcoming' => (t('لم يبدأ بعد', 'Starts soon'), c.accent),
+      _ => (t('جارٍ', 'In progress'), c.success),
+    };
+    final progress = p.isStudent ? p.progress['overall'] : (p.isStaff ? a['avg_progress'] : null);
+
+    final stats = <(IconData, String, String)>[
+      if (p.isStudent) ...[
+        (Icons.how_to_reg_rounded, (a['expected'] ?? 0) == 0 ? '—' : '${a['attended']}/${a['expected']}', t('الحضور', 'Attendance')),
+        (Icons.co_present_rounded, '${a['lectures'] ?? 0}', t('محاضرات', 'Lectures')),
+        (Icons.science_rounded, '${a['sections'] ?? 0}', t('سكاشن', 'Sections')),
+        (Icons.workspace_premium_rounded, '${p.certificates.where((x) => x['issued'] == true).length}', t('شهادات', 'Certificates')),
+      ] else if (p.isStaff) ...[
+        (Icons.people_alt_rounded, '${a['students'] ?? 0}', t('الطلاب', 'Students')),
+        (Icons.how_to_reg_rounded, pct(a['attendance_rate']), t('نسبة الحضور', 'Attendance')),
+        (Icons.warning_amber_rounded, '${a['at_risk'] ?? 0}', t('معرّضون للحرمان', 'At risk')),
+        (Icons.event_busy_rounded, '${a['missed_by_staff'] ?? 0}', t('لم تُعقد', 'Not held')),
+      ] else ...[
+        (Icons.co_present_rounded, '${a['lectures'] ?? 0}', t('محاضرات', 'Lectures')),
+        (Icons.science_rounded, '${a['sections'] ?? 0}', t('سكاشن', 'Sections')),
+      ],
+    ];
+
+    Widget chip(String label, {Color? dot, IconData? icon}) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (dot != null) ...[
+              Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+              const SizedBox(width: 6),
+            ],
+            if (icon != null) ...[Icon(icon, size: 13, color: Colors.white), const SizedBox(width: 5)],
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                  style: appText(11.5, w: FontWeight.w700, c: Colors.white)),
+            ),
+          ]),
+        );
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(c.radiusLarge),
+        gradient: LinearGradient(
+          colors: [c.primary, c.primaryDark],
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+        ),
+        boxShadow: c.primaryShadow,
+      ),
+      child: LayoutBuilder(builder: (context, box) {
+        final roomy = box.maxWidth >= 640;
+        final identity = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            if (p.course['code'] != null) chip('${p.course['code']}', icon: Icons.tag_rounded),
+            chip(statusLabel, dot: statusColor),
+            chip(cpRoleLabel(p.role), icon: Icons.badge_rounded),
+          ]),
+          const SizedBox(height: 10),
+          Text(p.name(ar), maxLines: 3, overflow: TextOverflow.ellipsis,
+              style: appText(roomy ? 23 : 19, w: FontWeight.w800, c: Colors.white, h: 1.3)),
+          if (where.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: Colors.white70)),
+          ],
+          if (teacher != null) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              AppAvatar(name: '$teacher', url: p.instructor?['image_url']?.toString(), size: 28),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text('$teacher', maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: appText(13, w: FontWeight.w700, c: Colors.white)),
+              ),
+            ]),
+          ],
+        ]);
+        final bar = progress is num
+            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(p.isStudent ? t('تقدّمك في المقرر', 'Your progress') : t('متوسط تقدّم الطلاب', 'Average student progress'),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: Colors.white70)),
+                  ),
+                  Text(pct(progress), style: appText(14, w: FontWeight.w800, c: Colors.white)),
+                ]),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: (progress / 100).clamp(0.0, 1.0).toDouble(),
+                    minHeight: 7,
+                    backgroundColor: Colors.white24,
+                    valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  ),
+                ),
+              ])
+            : null;
+        final perRow = roomy ? stats.length : 2;
+        final tileW = ((box.maxWidth - 10 * (perRow - 1)) / perRow).floorToDouble();
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          identity,
+          if (bar != null) ...[const SizedBox(height: 16), bar],
+          if (stats.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Wrap(spacing: 10, runSpacing: 10, children: [
+              for (final s in stats)
+                SizedBox(width: tileW, child: AppHeroStat(icon: s.$1, value: s.$2, label: s.$3)),
+            ]),
+          ],
+          if (onOpenAnalytics != null) ...[
+            const SizedBox(height: 12),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+                onPressed: onOpenAnalytics,
+                icon: const Icon(Icons.insights_rounded, size: 18),
+                label: Text(t('تحليلاتي في المقرر', 'My course analytics')),
+              ),
+            ),
+          ],
+        ]);
+      }),
     );
   }
 }
