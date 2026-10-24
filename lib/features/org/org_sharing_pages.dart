@@ -355,6 +355,8 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   @override
   void dispose() {
     _tabs.dispose();
+    _idsCtl.dispose();
+    _codeCtl.dispose();
     super.dispose();
   }
 
@@ -689,18 +691,20 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     final c = context.colors;
     final inc = _incoming;
     final disc = _discover;
-    final codeCtl = TextEditingController();
     return ListView(padding: const EdgeInsets.all(16), children: [
       if (_canEdit && enabled) ...[
         AppSectionTitle(t('لديك كود دعوة؟', 'Got an invite code?')),
         Row(children: [
-          Expanded(child: AppField(controller: codeCtl, label: t('كود الدعوة', 'Invite code'), ltr: true)),
+          Expanded(child: AppField(controller: _codeCtl, label: t('كود الدعوة', 'Invite code'), ltr: true)),
           const SizedBox(width: 8),
           FilledButton(
             key: const ValueKey('sharing.redeem'),
             onPressed: () async {
-              final r = await orgCall(() => ApiClient().post('$_base/redeem', body: {'code': codeCtl.text.trim()}), ok: t('حصلت مؤسستك على الوصول', 'Your organization now has access'));
-              if (r.ok) _loadAll();
+              final r = await orgCall(() => ApiClient().post('$_base/redeem', body: {'code': _codeCtl.text.trim()}), ok: t('حصلت مؤسستك على الوصول', 'Your organization now has access'));
+              if (r.ok) {
+                _codeCtl.clear();
+                _loadAll();
+              }
             },
             child: Text(t('استخدام', 'Redeem')),
           ),
@@ -805,6 +809,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   int? _verifyShare;
   bool _withYear = false;
   final _idsCtl = TextEditingController();
+  final _codeCtl = TextEditingController();   // Partners tab: survives rebuilds while lists load
   Map<String, dynamic>? _verifyResult;
   Map<String, String> _verifyLabels = const {};
   bool _verifying = false;
