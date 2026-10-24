@@ -14,9 +14,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/token_storage.dart';
 import 'package:flutter_education_app/main.dart';
 import '../features/shared/guest/guest_state.dart';
 import '../features/student/courses/security/device_blocked_dialog.dart';
@@ -351,36 +351,6 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($statusCode, ${type.name}): $message';
-}
-
-// ── Token Storage ─────────────────────────────────────────────────────────────
-
-class TokenStorage {
-  static const _accessKey = 'access_token';
-  static const _refreshKey = 'refresh_token';
-
-  Future<void> save({
-    required String access,
-    required String refresh,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setString(_accessKey, access);
-    await prefs.setString(_refreshKey, refresh);
-  }
-
-  Future<String?> get accessToken async =>
-      (await SharedPreferences.getInstance()).getString(_accessKey);
-
-  Future<String?> get refreshToken async =>
-      (await SharedPreferences.getInstance()).getString(_refreshKey);
-
-  Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.remove(_accessKey);
-    await prefs.remove(_refreshKey);
-  }
 }
 
 // ── Logging interceptor (only attached when AppConfig.showLogs == true) ──────
@@ -1058,9 +1028,11 @@ class ApiClient {
     if (refresh == null) return _RefreshResult.rejected;
 
     try {
+      // Body only (the query parameter leaked into access logs). The reply carries a NEW refresh token;
+      // the old one is dead, and reusing it signs the whole session out (401 refresh_reuse).
       final res = await _dio.post(
         '/api/v1/auth/refresh',
-        queryParameters: {'refresh_token': refresh},
+        data: {'refresh_token': refresh},
         options: Options(extra: {'auth': false, '_retried': true}),
       );
 
@@ -1450,6 +1422,13 @@ class ApiClient {
   Future<void> clearTokens() => _storage.clear();
 
   Future<String?> get accessToken => _storage.accessToken;
+
+  Future<String?> get refreshToken => _storage.refreshToken;
+
+  /// Synchronous session flag (see TokenStorage.hasSession); `primeSession()` loads it at start-up.
+  bool get hasSession => _storage.hasSession;
+
+  Future<void> primeSession() => _storage.prime();
 
   // ── MIME helpers ──────────────────────────────────────────────────────────
 

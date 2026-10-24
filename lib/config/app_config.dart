@@ -1,6 +1,7 @@
 ﻿import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -10,7 +11,7 @@ class AppConfig {
   static const String baseUrl =
       'https://nextbrain.site/api';
   static String lang = 'ar';
-  static bool testMode = true;
+  static bool testMode = !kReleaseMode; // request/response logging and debug helpers: never in release
 
   /// Feature kill-switch list. This default is the OFFLINE FALLBACK only —
   /// ThemeConfigProvider overwrites this with the server-side list (cached

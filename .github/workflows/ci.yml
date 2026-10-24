@@ -1,0 +1,30 @@
+name: app-ci
+
+on:
+  push:
+    branches: [production, main, "feature/**"]
+  pull_request:
+
+concurrency:
+  group: app-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-test:
+    name: analyze · test · web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+      - run: flutter pub get
+      - name: no errors or warnings (info-level lints are tracked, not gated — docs/DECISIONS.md D-002)
+        run: |
+          flutter analyze --no-fatal-infos --fatal-warnings
+      - name: tests (the real suites; test/widget_test.dart is the stock template)
+        run: flutter test test/org/ test/export/ test/ui/
+      - name: web build
+        run: flutter build web --release

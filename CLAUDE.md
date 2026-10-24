@@ -39,7 +39,7 @@ The code is not `dart format`-ed (formatting `lib/features/org` would rewrite ev
 
 **Networking (`lib/core/api_client.dart`)** — `ApiClient` is a singleton (`ApiClient()` returns `ApiClient.instance`) on Dio, with `get/post/put/patch/delete/postForm/postMultipart`. Things it does for every request:
 - Throws only `ApiException` (`message` is safe to show to the user; `code` holds server codes such as `DEVICE_MISMATCH`, `VIEW_LIMIT_REACHED`). In UI: `ApiException.from(e).message`.
-- Retries at the transport level (3 attempts), refreshes tokens, and redirects to login on 401.
+- Refreshes tokens and redirects to login on 401. Tokens live in `lib/core/token_storage.dart` (secure storage on mobile, SharedPreferences on web); `POST /auth/refresh` sends the refresh token in the body and returns a NEW pair, which is stored (rotation: an old token is dead after one use). `StorageService` keeps only the cached user and UI preferences.
 - App-layer envelope encryption (X25519 → HKDF → AES-256-GCM, `{"n","ct"}` bodies) and certificate pinning on mobile (`_pinnedCertSha256`). Server cert rotation requires updating the pin list.
 - Sends device-ID headers (device binding / blocked-device dialog lives in `features/student/courses/security/`).
 - Adds `X-View-As: <id>` while super-admin "view as" mode is active (`utils/widget/view_as_state.dart`).

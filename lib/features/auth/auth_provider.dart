@@ -326,7 +326,8 @@ class MyAuthProvider extends BaseProvider {
 
   bool get isSuper => currentUser?.role == 'super-admin';
 
-  bool get isAuthenticated => _storage.isAuthenticated();
+  /// A cached user AND a stored session: logout, a rejected refresh or a wipe of secure storage all end it.
+  bool get isAuthenticated => _currentUser != null && _api.hasSession;
 
   String get homeRoute => switch (currentUser?.role ?? 'student') {
     'admin' => '/admin_dashboard',
@@ -751,7 +752,7 @@ class MyAuthProvider extends BaseProvider {
     final result = await run(
           () => _api.post(
         '/api/v1/auth/refresh',
-        queryParams: {'refresh_token': refreshToken},
+        body: {'refresh_token': refreshToken},
         auth: false,
       ),
     );
@@ -927,8 +928,7 @@ class MyAuthProvider extends BaseProvider {
     final access = data['access_token'] as String?;
     final refresh = data['refresh_token'] as String?;
     if (access != null && refresh != null) {
-      await _storage.saveTokens(accessToken: access, refreshToken: refresh);
-      await _api.saveTokens(access: access, refresh: refresh);
+      await _api.saveTokens(access: access, refresh: refresh); // secure storage (lib/core/token_storage.dart)
     }
   }
 }
