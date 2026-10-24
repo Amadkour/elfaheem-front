@@ -1,4 +1,5 @@
 // Registrar: the cart (co-requisites travel together), load after the cart, and the record view's layout.
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/org_registrar.dart';
 import 'package:flutter_education_app/features/org/org_registrar_member.dart' show RecordView, weekByDay;
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +38,22 @@ void main() {
     final l = loadAfter(12, 9, {'min': 12, 'max': 18});
     expect((l.load, l.over, l.under), (21.0, true, false));
     expect(loadAfter(3, 3, {'min': 12, 'max': 18}).under, true);
+  });
+
+  test('queue-first helpers: status text, result lines, idempotency keys', () {
+    AppConfig.lang = 'en';
+    expect(regRequestDone('done'), isTrue);
+    expect(regRequestDone('queued'), isFalse);
+    expect(regQueueText('queued', depth: 5), contains('4'));
+    expect(regQueueText('processing'), isNot(''));
+    String name(int id) => 'C$id';
+    final cart = regResultLines({'ok': true, 'results': {'7': {'status': 'registered'}, '8': {'status': 'rejected', 'blocks': [{'code': 'section_full', 'message': 'full'}]}}}, name);
+    expect(cart.length, 2);
+    expect(cart.first, startsWith('C7:'));
+    final single = regResultLines({'status': 'waitlisted', 'registration': {'course_id': 9}}, name);
+    expect(single, ['C9: ${regStatusText('waitlisted')}']);
+    expect(regResultLines({}, name), isEmpty);
+    expect(newIdempotencyKey(), isNot(newIdempotencyKey()));
   });
 
   test('block texts carry the numbers', () {

@@ -10,6 +10,8 @@
 //   decisionKindText / riskText / decisionActionText
 library;
 
+import 'dart:math';
+
 import 'package:flutter_education_app/design/app_kit.dart' show AppTime;
 
 import '../admin/admin_common.dart';
@@ -265,3 +267,44 @@ class RegCart {
 
 /// GPA to two decimals (null → "—").
 String gpaText(dynamic v) => v == null ? '—' : asDouble(v).toStringAsFixed(2);
+
+// ── queue-first registration (server: POST …/register-requests, D-015) ──────────────────────────────────────────
+
+/// Is a queued registration request finished?
+bool regRequestDone(String? status) => status == 'done' || status == 'failed';
+
+/// What the waiting sheet says while the request is in the queue.
+String regQueueText(String? status, {int? depth}) => switch (status) {
+      'queued' => depth != null && depth > 1
+          ? t('طلبك في الصف — أمامك ${depth - 1}', 'In line — ${depth - 1} ahead of you')
+          : t('طلبك في الصف', 'Your request is in line'),
+      'processing' => t('يتم تسجيلك الآن…', 'Registering you now…'),
+      'done' => t('تم', 'Done'),
+      'failed' => t('لم يُقبل الطلب', 'The request was not accepted'),
+      _ => t('جارٍ الإرسال…', 'Sending…'),
+    };
+
+/// One line per course from a finished request (`result` of the status reply or the synchronous reply):
+/// a cart `{results: {courseId: {status, blocks}}}` or a single `{status, registration, blocks}`.
+List<String> regResultLines(Map<String, dynamic> result, String Function(int id) nameOf) {
+  final lines = <String>[];
+  final results = asMap(result['results']);
+  if (results.isNotEmpty) {
+    results.forEach((cid, v) {
+      final m = asMap(v);
+      final st = '${m['status']}';
+      final why = st == 'rejected' ? blockText(asMapList(m['blocks']).firstOrNull ?? const {}, courseName: nameOf) : regStatusText(st);
+      lines.add('${nameOf(asInt(cid))}: $why');
+    });
+    return lines;
+  }
+  final st = '${result['status'] ?? ''}';
+  if (st.isEmpty) return lines;
+  final cid = asInt(asMap(result['registration'])['course_id']);
+  final why = st == 'rejected' ? blockText(asMapList(result['blocks']).firstOrNull ?? const {}, courseName: nameOf) : regStatusText(st);
+  lines.add(cid > 0 ? '${nameOf(cid)}: $why' : why);
+  return lines;
+}
+
+/// A client-side idempotency key: one per submit attempt, reused by that attempt's retries.
+String newIdempotencyKey() => '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 30).toRadixString(36)}';
