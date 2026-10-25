@@ -949,22 +949,27 @@ class ApiClient {
   ///
   /// On Flutter Web application/json triggers a CORS preflight (OPTIONS);
   /// FastAPI's CORSMiddleware is expected to answer it.
+  /// `headers`: extra request headers a feature needs (the Exam Engine's `X-Exam-Session`); auth / device headers
+  /// are still added by the interceptors and win on conflict.
   Options _jsonOpts({
     bool auth = true,
     required String method,
+    Map<String, String>? headers,
   }) =>
       Options(
         method: method,
         contentType: Headers.jsonContentType,
         receiveTimeout: const Duration(seconds: 30),
+        headers: headers,
         extra: {'auth': auth},
       );
 
   /// GET calls: no Content-Type (avoids needless preflight on public GETs).
   /// Authenticated GETs may still preflight because of `Authorization`.
-  Options _getOpts({bool auth = true}) => Options(
+  Options _getOpts({bool auth = true, Map<String, String>? headers}) => Options(
     method: 'GET',
     receiveTimeout: const Duration(seconds: 30),
+    headers: headers,
     extra: {'auth': auth},
   );
 
@@ -1157,13 +1162,14 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.get(
           path,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _getOpts(auth: auth),
+          options: _getOpts(auth: auth, headers: headers),
         ),
       );
 
@@ -1175,6 +1181,7 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.post(
@@ -1182,7 +1189,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'POST'),
+          options: _jsonOpts(auth: auth, method: 'POST', headers: headers),
         ),
       );
 
@@ -1194,6 +1201,7 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.put(
@@ -1201,7 +1209,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'PUT'),
+          options: _jsonOpts(auth: auth, method: 'PUT', headers: headers),
         ),
       );
 
