@@ -31,6 +31,7 @@ String _need(dynamic v) => v is List ? v.join(', ') : '$v';
 /// A row problem as text ("Row 4: …"); row 0 = the whole file.
 String paperProblemText(PaperProblem p) {
   final what = switch (p.code) {
+    'file_not_in_batch' => t('الملف ليس ضمن هذه الدفعة', 'The file is not in this batch'),
     'bad_row' => t('صف غير صالح (رقم الطالب أو السؤال أو الدرجة)', 'Invalid row (student, question or score)'),
     'not_a_student' => t('طالب ليس من طلاب هذا الاختبار: ${p.extra['student_id'] ?? ''}', 'Not a student of this exam: ${p.extra['student_id'] ?? ''}'),
     'question_not_in_paper' => t('السؤال ${p.extra['question_id'] ?? ''} ليس في الورقة', 'Question ${p.extra['question_id'] ?? ''} is not in the paper'),

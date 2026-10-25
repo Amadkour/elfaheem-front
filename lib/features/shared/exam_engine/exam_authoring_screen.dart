@@ -49,7 +49,7 @@ Widget _iconBtn(IconData icon, String tip, VoidCallback? onTap, {Color? color}) 
       icon: Icon(icon, size: 20, color: color),
       tooltip: tip,
       visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),   // the minimum touch target (accessibility)
       padding: EdgeInsets.zero,
     );
 
@@ -793,14 +793,14 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
 }
 
 /// Opens the question editor; pops with the saved question (the server's reply) or null.
-Future<Map<String, dynamic>?> showQuestionEditor(BuildContext context, {QuestionDraft? draft, int? orgId, ExamAuthoringApi? api}) {
+Future<Map<String, dynamic>?> showQuestionEditor(BuildContext context, {QuestionDraft? draft, int? orgId, int? courseId, ExamAuthoringApi? api}) {
   final a = api ?? ExamAuthoringApi();
   return showAppSheet<Map<String, dynamic>>(
     context,
     (ctx) => QuestionEditorForm(
       draft: draft ?? QuestionDraft(),
       onSave: (d) async {
-        final r = d.isNew ? await a.createQuestion(d.toCreate(orgId: orgId)) : await a.updateQuestion(d.id!, d.toUpdate());
+        final r = d.isNew ? await a.createQuestion(d.toCreate(orgId: orgId, courseId: courseId)) : await a.updateQuestion(d.id!, d.toUpdate());
         if (!r.ok) return authoringError(r);
         if (ctx.mounted) Navigator.of(ctx).pop(r.map);
         return null;
@@ -849,8 +849,9 @@ class BankQuestionTile extends StatelessWidget {
 
 /// The bank of a space (an organization, or the personal one) with search and a type filter.
 class QuestionBankBrowser extends StatefulWidget {
-  const QuestionBankBrowser({super.key, required this.orgId, required this.api, this.header = const [], this.trailing, this.onTap, this.refreshTick = 0});
+  const QuestionBankBrowser({super.key, required this.orgId, this.courseId, required this.api, this.header = const [], this.trailing, this.onTap, this.refreshTick = 0});
   final int? orgId;
+  final int? courseId;
   final ExamAuthoringApi api;
   final List<Widget> header;
   final Widget? Function(BankQuestion q)? trailing;
@@ -889,9 +890,12 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
     super.dispose();
   }
 
+  int _gen = 0;
+
   Future<void> _load() async {
-    final r = await widget.api.questions(orgId: widget.orgId, type: _type, q: _search.text);
-    if (!mounted) return;
+    final gen = ++_gen;                                  // a slower, older search never replaces a newer one
+    final r = await widget.api.questions(orgId: widget.orgId, courseId: widget.courseId, type: _type, q: _search.text);
+    if (!mounted || gen != _gen) return;
     setState(() {
       _error = r.ok ? null : authoringError(r);
       _items = r.ok ? [for (final q in asMapList(r.map['items'])) BankQuestion.fromJson(q)] : (_items ?? const []);
@@ -935,8 +939,9 @@ class _QuestionBankBrowserState extends State<QuestionBankBrowser> {
 }
 
 class QuestionBankScreen extends StatefulWidget {
-  const QuestionBankScreen({super.key, this.orgId});
+  const QuestionBankScreen({super.key, this.orgId, this.courseId});
   final int? orgId;
+  final int? courseId;
 
   @override
   State<QuestionBankScreen> createState() => _QuestionBankScreenState();
@@ -947,7 +952,7 @@ class _QuestionBankScreenState extends State<QuestionBankScreen> {
   int _tick = 0;
 
   Future<void> _edit(BankQuestion? q) async {
-    final saved = await showQuestionEditor(context, draft: q == null ? null : QuestionDraft.fromJson(q.raw), orgId: widget.orgId, api: _api);
+    final saved = await showQuestionEditor(context, draft: q == null ? null : QuestionDraft.fromJson(q.raw), orgId: widget.orgId, courseId: widget.courseId, api: _api);
     if (saved != null && mounted) setState(() => _tick++);
   }
 
@@ -967,6 +972,7 @@ class _QuestionBankScreenState extends State<QuestionBankScreen> {
           IconButton(onPressed: () => _edit(null), icon: const Icon(Icons.add_rounded), tooltip: t('سؤال جديد', 'New question')),
         ]),
         child: QuestionBankBrowser(
+          courseId: widget.courseId,
           orgId: widget.orgId,
           api: _api,
           refreshTick: _tick,
@@ -978,8 +984,9 @@ class _QuestionBankScreenState extends State<QuestionBankScreen> {
 
 /// Pick bank questions into a section (or write a new one and place it).
 class QuestionPickerSheet extends StatefulWidget {
-  const QuestionPickerSheet({super.key, required this.orgId, required this.api, required this.placedIds, required this.onPlace, this.sectionTitle = ''});
+  const QuestionPickerSheet({super.key, required this.orgId, this.courseId, required this.api, required this.placedIds, required this.onPlace, this.sectionTitle = ''});
   final int? orgId;
+  final int? courseId;
   final ExamAuthoringApi api;
   final Set<int> placedIds;
   final String sectionTitle;
@@ -1018,7 +1025,7 @@ class _QuestionPickerSheetState extends State<QuestionPickerSheet> {
   }
 
   Future<void> _new() async {
-    final saved = await showQuestionEditor(context, orgId: widget.orgId, api: widget.api);
+    final saved = await showQuestionEditor(context, orgId: widget.orgId, courseId: widget.courseId, api: widget.api);
     if (saved == null || !mounted) return;
     setState(() => _tick++);
     await _place(asInt(saved['id']));
@@ -1028,6 +1035,7 @@ class _QuestionPickerSheetState extends State<QuestionPickerSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return QuestionBankBrowser(
+      courseId: widget.courseId,
       orgId: widget.orgId,
       api: widget.api,
       refreshTick: _tick,
@@ -1520,6 +1528,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
   Future<void> _addQuestions(SectionDraft s) async {
     final v = _view!;
     await showAppSheet<void>(context, (_) => QuestionPickerSheet(
+          courseId: v.exam.courseId,
           orgId: v.exam.orgId,
           api: _api,
           placedIds: v.placedIds,
@@ -1548,7 +1557,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
     final cur = await _api.question(q.questionId);
     if (!mounted) return;
     if (!cur.ok) return appToast(authoringError(cur), error: true);
-    final saved = await showQuestionEditor(context, draft: QuestionDraft.fromJson(cur.map), orgId: v.exam.orgId, api: _api);
+    final saved = await showQuestionEditor(context, draft: QuestionDraft.fromJson(cur.map), orgId: v.exam.orgId, courseId: v.exam.courseId, api: _api);
     if (saved == null || !mounted) return;
     final newVersion = asInt(saved['version']);
     if (!v.exam.isDraft) {

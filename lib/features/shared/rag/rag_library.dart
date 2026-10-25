@@ -202,7 +202,7 @@ class RagOrgSettings {
 
   /// The body of PUT /orgs/{id}/settings. The external flag only makes sense with the LLM generator.
   static Map<String, dynamic> body(String generator, bool allowExternal) =>
-      {'generator': generator, 'allow_external_llm': generator == 'llm' && allowExternal};
+      {'generator': generator, 'allow_external_llm': allowExternal};   // switching to extractive keeps the org admin's choice
 }
 
 class RagUnhelpful {

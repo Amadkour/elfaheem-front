@@ -37,3 +37,27 @@ The brief lists `dart format` in the baseline. CLAUDE.md forbids it because the 
   version); Android release signing comes from `android/key.properties` or CI secrets, and a build without a keystore
   warns that it is debug-signed. R8 minification stays off until live sessions (LiveKit / WebRTC / recording plugins
   use reflection) pass a device test.
+
+## D-005 — Review round for Phase 9 · 2026-10-26 · accepted
+
+Three fresh-context reviewers on `f83fac1` (code / contract with every builder's JSON posted to the real backend — no
+422; security / accessibility; spec tests from the server's validators — 37/37). Fixed:
+- **A course teacher could create an exam but not use the question bank** (the bank routes authorized by organization
+  only): the app sends `course_id` on create and list; the backend authorizes the bank through the course and shows
+  such a teacher only the questions they wrote (back D-026).
+- **Unsent answers outlived the session** on shared devices: logout removes every `exam.pending.*` entry.
+- A restored answer did not reach the open question's text fields (controllers read the answer once): the cards are
+  re-keyed after a restore.
+- Refunds: the idempotency key renews after `refund_failed` / `refund_gateway_failed` and whenever amount / manual /
+  force change; `parseNum` never reads a comma as a decimal point ("1,000" was 1); admins no longer see an
+  organization-fees tab whose data only the Super Admin may read.
+- Downloads: server file names are sanitized (`safeFileName`: separators, control characters, length); CI release
+  builds without a keystore fail instead of shipping debug-signed; 48 dp touch targets in the authoring lists;
+  screen-reader labels on the question grid and citation numbers; out-of-order bank searches ignored; a personal
+  course opened under an organization falls back to the personal space; RAG settings keep the org admin's external-LLM
+  decision when switching to extractive; the exam-risk tile needs `exams.view`; `file_not_in_batch` mapped.
+
+Accepted: `android:usesCleartextTraffic` stays on until the server confirms every media / LiveKit URL is https
+(turning it off blind could break video playback); exports of learning data / ledger CSV / answer sheets are plain
+files on the device (named without personal data); a restore that races a very early edit may prefer the stored
+answer; the "undeclared sensor" hint does not see the platform's default consent text.

@@ -86,7 +86,8 @@ void main() {
       expect((s.generator, s.allowExternal, s.llmAvailable, s.llmExternal), ('llm', true, true, true));
       expect(RagOrgSettings.fromJson({'generator': 'weird'}).generator, 'extractive');
       expect(RagOrgSettings.body('llm', true), {'generator': 'llm', 'allow_external_llm': true});
-      expect(RagOrgSettings.body('extractive', true), {'generator': 'extractive', 'allow_external_llm': false});
+      expect(RagOrgSettings.body('extractive', true), {'generator': 'extractive', 'allow_external_llm': true},
+          reason: 'switching to extractive keeps the org admin’s external-provider decision');
     });
     test('answer feedback parse and share', () {
       final f = RagAnswerFeedback.fromJson({

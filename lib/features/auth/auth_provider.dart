@@ -1,5 +1,6 @@
 library;
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
@@ -888,6 +889,12 @@ class MyAuthProvider extends BaseProvider {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
     await _storage.clearAll(); // wipes tokens + user JSON
+    try {                       // unsent exam answers kept for crash recovery never outlive the session (shared devices)
+      final p = await SharedPreferences.getInstance();
+      for (final k in p.getKeys().where((k) => k.startsWith('exam.pending.')).toList()) {
+        await p.remove(k);
+      }
+    } catch (_) {}
     accountSetup = null;
     _currentUser = null;
     notifyListeners();

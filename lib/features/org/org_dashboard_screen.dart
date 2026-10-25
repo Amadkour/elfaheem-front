@@ -329,7 +329,7 @@ List<_Sub> _serviceSubs(OrgSession s) => [
       if (s.canAny('complaints') || s.canAny('forms'))
         ('datacenter', t('مركز البيانات', 'Data Center'), Icons.insights_rounded, DataCenterPage(orgId: s.currentId, embedded: true)),
       // Phase 8: exam risk dashboard + feedback-store settings (the server re-checks the role)
-      if (s.currentId != null && (s.isOrgAdmin || s.canAny('exams')))
+      if (s.currentId != null && (s.isOrgAdmin || s.can('exams', 'view')))
         ('exam_risk', t('مخاطر الامتحانات', 'Exam risk'), Icons.policy_rounded, OrgExamRiskPage(orgId: s.currentId!)),
       if (s.currentId != null && s.isOrgAdmin)
         ('exam_feedback', t('ملاحظات الامتحانات', 'Exam feedback'), Icons.rate_review_rounded, OrgFeedbackSettingsPage(orgId: s.currentId!)),

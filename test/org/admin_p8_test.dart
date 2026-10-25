@@ -11,8 +11,10 @@ void main() {
   setUp(() => AppConfig.lang = 'en');
 
   group('numbers', () {
-    test('parseNum reads Arabic digits, comma and spaces', () {
-      expect(parseNum('12,5'), 12.5);
+    test('parseNum reads Arabic digits and spaces; a comma only separates thousands', () {
+      expect(parseNum('12,5'), isNull);
+      expect(parseNum('1,000'), 1000);
+      expect(parseNum('1,234.5'), 1234.5);
       expect(parseNum('١٢٫٥'), 12.5);
       expect(parseNum(' 7 '), 7);
       expect(parseNum(''), isNull);
@@ -84,7 +86,9 @@ void main() {
     test('partial amount is checked against what is left', () {
       final d = RefundDraft(amount: '30', remaining: 25, key: 'k');
       expect(d.validate(superAdmin: true), 'amount_exceeds');
-      d.amount = '20,5';
+      d.amount = '20,5';                           // a comma is never a decimal point (review D-004: 1,000 read as 1)
+      expect(d.validate(superAdmin: true), 'bad_amount');
+      d.amount = '20٫5';
       expect(d.validate(superAdmin: true), isNull);
       expect(d.body()['amount'], 20.5);
       d.amount = '0';

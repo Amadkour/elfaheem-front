@@ -59,6 +59,8 @@ android {
             isMinifyEnabled = false
             isShrinkResources = false
             signingConfig = if (releaseStoreFile != null) signingConfigs.getByName("release") else {
+                // in CI a release without a keystore is an error, never a silently debug-signed artifact
+                if (System.getenv("CI") != null) throw GradleException("release build in CI without a keystore (ANDROID_KEYSTORE_PATH)")
                 logger.warn("WARNING: no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH) — release build signed with the DEBUG key, do not publish it")
                 signingConfigs.getByName("debug")
             }

@@ -467,8 +467,10 @@ class QuestionDraft {
     return a;
   }
 
-  Map<String, dynamic> toCreate({int? orgId}) => {
+  /// [courseId]: a course's teacher creates through their course (they may lack the organization's exam rights).
+  Map<String, dynamic> toCreate({int? orgId, int? courseId}) => {
         'org_id': ?orgId,
+        'course_id': ?courseId,
         'type': type,
         'body': body(),
         'answer': answer(),
@@ -1110,9 +1112,10 @@ class ExamAuthoringApi {
   static const base = ExamEngineApi.base;
 
   // question bank
-  Future<EngineResult> questions({int? orgId, String? type, String? tag, String? q, bool includeArchived = false}) =>
+  Future<EngineResult> questions({int? orgId, int? courseId, String? type, String? tag, String? q, bool includeArchived = false}) =>
       engineCall(() => _api.get('$base/questions', queryParams: {
             'org_id': ?orgId,
+            'course_id': ?courseId,
             'type': ?type,
             if (tag != null && tag.isNotEmpty) 'tag': tag,
             if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
@@ -1134,6 +1137,10 @@ class ExamAuthoringApi {
   /// an organization's course answers 409 `course_not_in_org` naming it, then asked again under it).
   Future<ExamScope> resolveScope(int courseId, {int? orgId}) async {
     var r = await exams(orgId: orgId, courseId: courseId);
+    if (!r.ok && r.code == 'course_not_in_org' && r.detail['course_org_id'] == null && orgId != null) {
+      r = await exams(courseId: courseId);                 // a teacher's personal course: the personal space
+      return ExamScope(courseId: courseId, orgId: null, list: r);
+    }
     final named = orgFromScopeError(r);
     if (named != null && named != orgId) {
       r = await exams(orgId: named, courseId: courseId);

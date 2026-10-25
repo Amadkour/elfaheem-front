@@ -37,9 +37,12 @@ double? parseNum(String s) {
   for (final r in x.runes) {
     final ch = String.fromCharCode(r);
     final i = ar.indexOf(ch);
-    b.write(i >= 0 ? '$i' : (ch == '٫' || ch == ',' || ch == '،' ? '.' : ch));
+    b.write(i >= 0 ? '$i' : (ch == '٫' ? '.' : ch));
   }
   x = b.toString();
+  // a comma is a thousands separator only ("1,000" = 1000), never a decimal point: refunding 1 instead of 1000 must be impossible
+  if (RegExp(r'^\d{1,3}(,\d{3})+(\.\d+)?$').hasMatch(x)) x = x.replaceAll(',', '');
+  if (x.contains(',') || x.contains('،')) return null;
   return double.tryParse(x);
 }
 
@@ -50,7 +53,16 @@ String numText(num? v) {
 }
 
 /// Saves downloaded bytes (browser download · Downloads · share sheet, whichever the platform offers).
-Future<void> p8SaveBytes(Uint8List bytes, String filename, {String mime = 'application/octet-stream'}) async {
+/// A file name from server data made safe to save: no path separators or control characters, a sane length.
+String safeFileName(String raw, {String fallback = 'download'}) {
+  var s = raw.replaceAll(RegExp(r'[\\/:*?"<>|\x00-\x1F]'), '_').replaceAll(RegExp(r'\.{2,}'), '.').trim();
+  s = s.replaceAll(RegExp(r'^[.\s_]+'), '');
+  if (s.length > 120) s = s.substring(s.length - 120);
+  return s.isEmpty ? fallback : s;
+}
+
+Future<void> p8SaveBytes(Uint8List bytes, String rawName, {String mime = 'application/octet-stream'}) async {
+  final filename = safeFileName(rawName);
   final dot = filename.lastIndexOf('.');
   final name = dot > 0 ? filename.substring(0, dot) : filename;
   final ext = dot > 0 ? filename.substring(dot + 1) : '';
@@ -434,7 +446,7 @@ class _AdminMoneyPageState extends State<AdminMoneyPage> {
         Expanded(
           child: IndexedStack(index: _tab, children: [
             _PolicyTab(superAdmin: sup),
-            _OrgFeesTab(superAdmin: sup),
+            if (sup) _OrgFeesTab(superAdmin: sup) else AppEmpty(icon: Icons.lock_outline_rounded, title: t('رسوم المؤسسات للمشرف العام فقط', 'Organization fees are for the super admin only')),
             const _LedgerTab(),
           ]),
         ),
@@ -854,7 +866,9 @@ class RefundSheet extends StatefulWidget {
 
 class _RefundSheetState extends State<RefundSheet> {
   late final MoneyP8Api _api = widget.api ?? MoneyP8Api();
-  late final RefundDraft _d = RefundDraft(remaining: widget.remaining);
+  late RefundDraft _d = RefundDraft(remaining: widget.remaining);
+  String? _sentSig;                                  // what the current idempotency key was used for
+  bool _renewKey = false;
   final _amount = TextEditingController(), _reason = TextEditingController();
   bool _busy = false;
   String? _err;
@@ -871,6 +885,11 @@ class _RefundSheetState extends State<RefundSheet> {
     _d
       ..amount = _amount.text
       ..reason = _reason.text;
+    final sig = '${_d.amount.trim()}|${_d.manual}|${_d.force}';
+    if (_renewKey || (_sentSig != null && _sentSig != sig)) {   // another refund than the one the key was used for
+      _d = RefundDraft(amount: _d.amount, reason: _d.reason, manual: _d.manual, force: _d.force, remaining: widget.remaining);
+      _renewKey = false;
+    }
     final e = _d.validate(superAdmin: widget.superAdmin);
     if (e != null) {
       setState(() => _err = draftErrorText(e));
@@ -883,8 +902,10 @@ class _RefundSheetState extends State<RefundSheet> {
       _busy = true;
       _err = null;
     });
+    _sentSig = sig;
     final r = await _api.refund(widget.paymentId, _d);
     if (!mounted) return;
+    if (!r.ok && (r.code == 'refund_failed' || r.code == 'refund_gateway_failed')) _renewKey = true;   // a new attempt needs a new key
     setState(() {
       _busy = false;
       if (r.ok) {

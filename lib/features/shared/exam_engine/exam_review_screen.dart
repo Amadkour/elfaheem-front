@@ -456,7 +456,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle(t('الاختبارات الجديدة', 'New-engine exams'),
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-              IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
+              IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
               IconButton(onPressed: () => _edit(), icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
             ])),
         ConstrainedBox(

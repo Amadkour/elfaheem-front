@@ -109,13 +109,14 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
 
   // ── answers that must survive an app kill or a reload (Phase 9) ──
   String get _storeKey => 'exam.pending.$_attemptId';
+  int _restored = 0;                                 // bumps the question cards' keys after a restore
 
   Future<void> _restorePending() async {
     try {
       final p = await SharedPreferences.getInstance();
       final n = _queue.restore(p.getString(_storeKey), _paper);
       if (n > 0 && mounted) {
-        setState(() {});
+        setState(() => _restored++);
         _flush();
       }
     } catch (_) {}                                          // no device storage: the server copy stands
@@ -341,7 +342,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
                     warning: _warning, pendingSaves: _queue.length),
                 Expanded(
                   child: ExamQuestionCard(
-                    key: ValueKey('q.${q.questionId}'),
+                    key: ValueKey('q.${q.questionId}.$_restored'),
                     question: q,
                     section: _paper.sections[q.sectionIndex],
                     enabled: !_locked && !_finished,
@@ -670,11 +671,17 @@ class ExamQuestionGrid extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Wrap(spacing: 8, runSpacing: 8, children: [
         for (var i = 0; i < questionIds.length; i++)
-          InkWell(
+          Semantics(
+            button: true,
+            selected: i == current,
+            label: answered[questionIds[i]] == true ? t('السؤال ${i + 1}، تمت الإجابة', 'Question ${i + 1}, answered')
+                : t('السؤال ${i + 1}، بلا إجابة', 'Question ${i + 1}, not answered'),
+            excludeSemantics: true,
+            child: InkWell(
             onTap: () => onJump(i),
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              width: 44, height: 44, alignment: Alignment.center,
+              width: 48, height: 48, alignment: Alignment.center,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 color: answered[questionIds[i]] == true ? c.primary.withValues(alpha: .15) : c.surface,
@@ -682,7 +689,7 @@ class ExamQuestionGrid extends StatelessWidget {
               ),
               child: Text('${i + 1}', style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
             ),
-          ),
+          )),
       ]),
     );
   }

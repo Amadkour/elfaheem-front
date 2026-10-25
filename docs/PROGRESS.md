@@ -14,7 +14,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | 6 | Grading engine + OCR + benchmark + review UI | **implemented 2026-10-25** (teacher review + scans screens; review round pending) | review flows under the layout harness |
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
-| 9 | Frontend completion, localization, accessibility | **done 2026-10-26** (app D-004, back D-026; review round pending) | engine exam authoring (bank, 10 types, rubric, sections, proctoring, lifecycle), paper flow (sheets, scans, mapping, marks import), admin money / feedback / risk screens, RAG library, answers survive app kill, release signing + obfuscation script, API-path contract test; flutter analyze 0/0, 426 tests |
+| 9 | Frontend completion, localization, accessibility | **done 2026-10-26** (app D-004, back D-026; review round app D-005) | engine exam authoring (bank, 10 types, rubric, sections, proctoring, lifecycle), paper flow (sheets, scans, mapping, marks import), admin money / feedback / risk screens, RAG library, answers survive app kill, release signing + obfuscation script, API-path contract test; flutter analyze 0/0, 426 tests |
 | 10 | Hardening, capacity doc, final docs | not started | |
 
 ## Phase 1 — Setup, audit, baseline
