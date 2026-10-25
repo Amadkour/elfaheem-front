@@ -293,8 +293,9 @@ class ExamReviewApi {
             'accept': accept,
           }));
 
-  Future<EngineResult> bulkApprove(int examId, {double? minConfidence}) =>
-      engineCall(() => _api.post('$base/exams/$examId/review/bulk-approve', body: {'min_confidence': ?minConfidence}));
+  /// `dryRun`: how many proposals in the WHOLE exam the approval would take (the screen shows only a page).
+  Future<EngineResult> bulkApprove(int examId, {double? minConfidence, bool dryRun = false}) =>
+      engineCall(() => _api.post('$base/exams/$examId/review/bulk-approve', body: {'min_confidence': ?minConfidence, 'dry_run': dryRun}));
 
   Future<EngineResult> scans(int examId, {String? status}) =>
       engineCall(() => _api.get('$base/exams/$examId/scans', queryParams: {'status': ?status}));

@@ -262,7 +262,7 @@ class _GradingPolicySheetState extends State<GradingPolicySheet> {
             value: _threshold,
             items: [
               DropdownMenuItem(value: null, child: Text(t('حد القبول الافتراضي (من القياس)', 'Default threshold (from the benchmark)'))),
-              for (final v in const [0.9, 0.95, 0.98]) DropdownMenuItem(value: v, child: Text(t('ثقة ≥ ${(v * 100).round()}%', 'Confidence ≥ ${(v * 100).round()}%'))),
+              for (final v in {0.9, 0.95, 0.98, ?_threshold}) DropdownMenuItem(value: v, child: Text(t('ثقة ≥ ${(v * 100).round()}%', 'Confidence ≥ ${(v * 100).round()}%'))),
             ],
             onChanged: (v) => setState(() => _threshold = v),
           ),
@@ -334,7 +334,9 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
   Future<void> _bulk() async {
     final q = _queue;
     if (q == null) return;
-    final n = q.approvable(q.threshold);
+    final dry = await _api.bulkApprove(widget.examId, minConfidence: q.threshold, dryRun: true);
+    if (!mounted) return;
+    final n = dry.ok ? asInt(dry.map['approvable']) : q.approvable(q.threshold);
     final ok = await appConfirm(context,
         message: t('اعتماد $n اقتراحاً بثقة ${(q.threshold * 100).round()}% أو أكثر؟ يُسجَّل باسمك.',
             'Approve $n proposals with confidence ${(q.threshold * 100).round()}% or more? Recorded under your name.'),
