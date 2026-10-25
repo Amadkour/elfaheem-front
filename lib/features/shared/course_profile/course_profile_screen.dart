@@ -17,6 +17,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+
+import '../rag/rag_chat_screen.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../../student/analysis/student_course_analytics_screen.dart';
@@ -86,6 +89,15 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
       appBar: ScreenAppBar(
         title: p == null ? t('ملف المقرر', 'Course profile') : p.name(ar),
         actions: [
+          ParentComponent(
+            featureKey: 'rag.assistant',
+            child: IconButton(
+              tooltip: t('اسأل مستندات المقرر', 'Ask the course documents'),
+              icon: const Icon(Icons.auto_stories_outlined),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => RagChatScreen(courseId: widget.courseId, title: p == null ? null : p.name(ar)))),
+            ),
+          ),
           IconButton(
             tooltip: t('تحديث', 'Refresh'),
             icon: const Icon(Icons.refresh_rounded),

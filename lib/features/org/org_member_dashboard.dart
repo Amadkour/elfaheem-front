@@ -24,6 +24,8 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t, asInt, asMap, asMapList;
@@ -498,6 +500,14 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
               child: const Center(child: ContextSwitcher(compact: true))),
           const ContextExitButton(),
           const SizedBox(width: 4),
+          if (ctl.currentOrgId != null)
+            ParentComponent(
+              featureKey: 'rag.assistant',
+              child: IconButton(
+                  tooltip: t('مساعد المستندات', 'Documents assistant'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagChatScreen(orgId: ctl.currentOrgId))),
+                  icon: const Icon(Icons.auto_stories_outlined)),
+            ),
           if (AppConfig.orgsEnabled)
             IconButton(
                 tooltip: t('صندوق الوارد', 'Inbox'),
