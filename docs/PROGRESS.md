@@ -8,9 +8,9 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|-------|--------|---------------|
 | 1 | Setup, audit, baseline, branches | **done 2026-10-24** | `docs/AUDIT.md` exists, baseline recorded |
 | 2 | Core refactor: modular monolith, RLS, RBAC, audit log | **done 2026-10-24** (app part: auth storage / refresh contract; backend `docs/PROGRESS.md` has the server side and the review round) | cross-tenant leak tests + permission tests pass |
-| 3 | Organizations, switcher, membership, sharing, Verification API | **in progress — code complete, review pending** (2026-10-24) | switcher + sharing tests pass, analyzer 0/0 |
-| 4 | Application pipeline under load | not started | load test: no oversold seats, no duplicates |
-| 5 | Exam Engine service | not started | |
+| 3 | Organizations, switcher, membership, sharing, Verification API | **done 2026-10-25** (review round with Phase 4; backend `docs/PROGRESS.md`) | switcher + sharing tests pass, analyzer 0/0 |
+| 4 | Application pipeline under load | **done 2026-10-25** (queue-first cart, server-paced polling, honest busy handling) | load test: no oversold seats, no duplicates |
+| 5 | Exam Engine service | **in progress** (backend first; the app's taking flow v2 lands in increment 6, D-018) | |
 | 6 | Grading engine + OCR + benchmark + review UI | not started | section-13 numbers reported |
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
