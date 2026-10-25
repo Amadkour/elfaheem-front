@@ -532,7 +532,6 @@ class ExamNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final last = index >= total - 1;
     return SafeArea(
       top: false,
