@@ -8,10 +8,13 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../admin/admin_common.dart' show asMap;
 
 class EngineResult {
-  EngineResult.ok(this.map) : ok = true, status = 200, code = null, message = '';
-  EngineResult.fail(this.status, this.code, this.message) : ok = false, map = const {};
+  EngineResult.ok(this.map) : ok = true, status = 200, code = null, message = '', detail = const {};
+  EngineResult.fail(this.status, this.code, this.message, [this.detail = const {}]) : ok = false, map = const {};
   final bool ok;
   final Map<String, dynamic> map;
+
+  /// The server's `detail` object on failure (`reason`, `question_id`, `allowed`, `starts_at`, …); empty when ok.
+  final Map<String, dynamic> detail;
   final int status;
   final String? code;
   final String message;
@@ -28,14 +31,15 @@ Future<EngineResult> engineCall(Future<dynamic> Function() fn) async {
     final body = e.body;
     String? code = e.code;
     String msg = e.message;
+    Map<String, dynamic> detail = const {};
     if (body is Map && body['detail'] is Map) {
-      final d = asMap(body['detail']);
-      code = (d['code'] ?? code)?.toString();
-      msg = '${d['message'] ?? msg}';
+      detail = asMap(body['detail']);
+      code = (detail['code'] ?? code)?.toString();
+      msg = '${detail['message'] ?? msg}';
     } else if (body is Map && body['detail'] is String) {
       msg = '${body['detail']}';
     }
-    return EngineResult.fail(e.statusCode, code, msg);
+    return EngineResult.fail(e.statusCode, code, msg, detail);
   } catch (e) {
     return EngineResult.fail(0, null, '$e');
   }

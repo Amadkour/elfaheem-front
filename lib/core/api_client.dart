@@ -360,6 +360,9 @@ class _ApiLogInterceptor extends Interceptor {
   static const _maxBodyChars = 4000;
   static const _sensitiveKeys = {
     'authorization',
+    'x-exam-session',
+    'x-enc-session',
+    'exam_session',
     'password',
     'new_password',
     'old_password',

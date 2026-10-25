@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/engine_exams_section.dart' show EngineExamCard;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_consent_screen.dart' show ConsentBody;
+import 'package:flutter_education_app/features/shared/exam_engine/exam_integrity.dart' show IntegrityDedupe;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_result_screen.dart' show ExamResultBody;
 import 'package:flutter_education_app/features/shared/exam_engine/exam_taking.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_taking_screen.dart'
@@ -76,6 +78,29 @@ void main() {
     expect(q.batch().single['save_seq'], 2);
     q.ack(q.batch(), [1]);
     expect(q.isEmpty, isTrue);
+    q.put(a, encodeSingle('b'));
+    q.put(b, encodeMulti(['a']));
+    q.drop(a.questionId);
+    expect(q.length, 1, reason: 'a permanently refused item is dropped, the other stays');
+    expect(encodeNumeric('  ', unit: 'm/s^2'), isEmpty, reason: 'a blank value is no answer, whatever the unit');
+    expect(encodeNumeric('9.8', unit: 'm/s^2'), {'value': '9.8', 'unit': 'm/s^2'});
+  });
+
+  test('integrity: one tab_switch per visibility + blur burst; events re-queued keep their order', () {
+    final d = IntegrityDedupe();
+    final t0 = DateTime(2026, 1, 1, 12);
+    expect(d.accept('tab_switch', t0), isTrue);
+    expect(d.accept('tab_switch', t0.add(const Duration(milliseconds: 40))), isFalse, reason: 'blur right after hidden is the same switch');
+    expect(d.accept('tab_switch', t0.add(const Duration(seconds: 3))), isTrue);
+    expect(d.accept('copy_paste', t0), isTrue);
+    expect(d.accept('copy_paste', t0), isTrue, reason: 'only tab / full-screen bursts are de-duplicated');
+    final buf = EventBuffer();
+    buf.add('tab_switch');
+    buf.add('other_app');
+    final drained = buf.drain();
+    buf.add('copy_paste');
+    buf.requeue(drained);
+    expect(buf.drain().map((e) => e['kind']).toList(), ['tab_switch', 'other_app', 'copy_paste']);
   });
 
   test('events and actions', () {
@@ -111,5 +136,10 @@ void main() {
         requires: const {'camera': true, 'mic': false, 'screen': false}, capabilities: const ['a', 'b'], accepted: false, busy: false, onAccept: () {}));
     await expectNoLayoutErrors(tester, () => const ExamResultBody(examTitle: 'Midterm', result: {'visible': true, 'state': 'auto_submitted', 'score': 7.5, 'max_score': 10, 'percentage': 75.0, 'passed': true, 'needs_review': true, 'questions': [{'question_id': 1, 'score': 2}, {'question_id': 2, 'score': null}]}));
     await expectNoLayoutErrors(tester, () => const ExamResultBody(examTitle: 'Midterm', result: {'visible': false, 'state': 'submitted', 'needs_review': true}));
+    await expectNoLayoutErrors(tester, () => EngineExamCard(onOpen: () {}, exam: const {
+      'title': 'A very long midterm examination title that wraps on narrow phones for sure', 'duration_minutes': 90, 'attempts_used': 1, 'attempts_allowed': 2,
+      'starts_at': '2026-03-01T09:00:00', 'can_start': true, 'open_attempt_id': null, 'status': 'published',
+      'results': [{'visible': true, 'percentage': 72.5, 'passed': true}],
+    }));
   });
 }

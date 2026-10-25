@@ -10,17 +10,38 @@ import 'exam_integrity_stub.dart' if (dart.library.js_interop) 'exam_integrity_w
 
 typedef IntegrityEvent = void Function(String kind, Map<String, dynamic> meta);
 
+/// One `tab_switch` per real switch: the browser fires `visibilitychange` AND `blur` for a single Alt-Tab, which would
+/// have counted twice against a "max 1" rule. Pure, so it is unit-tested.
+class IntegrityDedupe {
+  IntegrityDedupe({this.window = const Duration(milliseconds: 1500)});
+  final Duration window;
+  final Map<String, DateTime> _last = {};
+  static const deduped = {'tab_switch', 'fullscreen_exit'};
+
+  bool accept(String kind, DateTime at) {
+    if (!deduped.contains(kind)) return true;
+    final prev = _last[kind];
+    _last[kind] = at;
+    return prev == null || at.difference(prev) >= window;
+  }
+}
+
 class ExamIntegrity with WidgetsBindingObserver {
   ExamIntegrity(this.onEvent);
   final IntegrityEvent onEvent;
+  final _dedupe = IntegrityDedupe();
   bool _started = false;
   DateTime? _hiddenAt;
+
+  void _emit(String kind, Map<String, dynamic> meta) {
+    if (_dedupe.accept(kind, DateTime.now())) onEvent(kind, meta);
+  }
 
   void start() {
     if (_started) return;
     _started = true;
     WidgetsBinding.instance.addObserver(this);
-    platform.attach(onEvent);
+    platform.attach(_emit);
   }
 
   void stop() {

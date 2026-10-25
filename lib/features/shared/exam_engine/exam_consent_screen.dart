@@ -124,7 +124,7 @@ class _ExamConsentScreenState extends State<ExamConsentScreen> {
                   version: (consent['version'] as num?)?.toInt() ?? 1,
                   requires: asMap(consent['requires']),
                   capabilities: ExamIntegrity.capabilities(),
-                  accepted: consent['accepted'] != null,
+                  accepted: consent['accepted'] == true,
                   busy: _busy,
                   onAccept: _accept,
                 ),

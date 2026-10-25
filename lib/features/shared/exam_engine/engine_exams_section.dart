@@ -57,10 +57,12 @@ class EngineExamCard extends StatelessWidget {
               if (last != null && last['visible'] == true && last['percentage'] != null)
                 Text('${last['percentage']}%', style: appText(12, w: FontWeight.w700, c: last['passed'] == true ? c.success : c.warning)),
             ]),
+            const SizedBox(height: 6),
+            // the action sits under the texts, not beside them: at 320 px with large text a trailing pill left the
+            // title column 26 px wide (layout harness)
+            Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(action, color: canStart || open ? c.primary : c.textLight)),
           ]),
         ),
-        const SizedBox(width: 8),
-        AppBadgePill(action, color: canStart || open ? c.primary : c.textLight),
       ]),
     );
   }

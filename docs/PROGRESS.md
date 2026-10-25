@@ -10,7 +10,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | 2 | Core refactor: modular monolith, RLS, RBAC, audit log | **done 2026-10-24** (app part: auth storage / refresh contract; backend `docs/PROGRESS.md` has the server side and the review round) | cross-tenant leak tests + permission tests pass |
 | 3 | Organizations, switcher, membership, sharing, Verification API | **done 2026-10-25** (review round with Phase 4; backend `docs/PROGRESS.md`) | switcher + sharing tests pass, analyzer 0/0 |
 | 4 | Application pipeline under load | **done 2026-10-25** (queue-first cart, server-paced polling, honest busy handling) | load test: no oversold seats, no duplicates |
-| 5 | Exam Engine service | **in progress** (taking flow v2 done on the app side; review round pending) | consent · server timer · autosave · integrity events |
+| 5 | Exam Engine service | **done 2026-10-25** (taking flow v2; review round folded in, backend D-019) | consent · server timer · autosave · integrity events |
 | 6 | Grading engine + OCR + benchmark + review UI | not started | section-13 numbers reported |
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
@@ -99,10 +99,13 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 |---|---|
 | `flutter analyze` | 0 errors, 0 warnings |
 | `flutter test test/org/ test/export/ test/ui/` | 338 pass |
-| Review round | pending (with the backend's Phase 5 reviewers) |
+| Review round | done (see Review rounds · Phase 5) |
 
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
+
+### Phase 5 (2026-10-25)
+App findings from the architecture and security reviews (backend D-019), all fixed: a submit right after the 20-minute exam session expired dropped the last autosave batch (a flush that meets `exam_session_invalid` renews the session and resends the SAME batch; submit now waits until the queue is empty and says so when it cannot); the web integrity hooks reported two `tab_switch` for one Alt-Tab (visibility + blur) so the default "max 1" rule fired on the first switch (`IntegrityDedupe`: one per 1.5 s burst, unit-tested); a blank numeric value with a unit chosen was sent as an answer and flagged the whole attempt for review (`encodeNumeric` sends `{}` when blank); failures carry the server's `detail` (`EngineResult.detail`: reason, question_id, …) instead of an empty map; one permanently refused autosave item poisoned the queue (the server now answers `rejected` per item and the app drops items refused for good: `question_not_in_paper`, `bad_answer`, `answer_too_large`, one-way); failed event uploads were dropped (re-queued unless the refusal is permanent); time-up now submits within the server's grace instead of waiting for the sweeper; the consent `accepted` flag is a boolean; the test-mode request logger redacts `X-Exam-Session` / `X-Enc-Session`; `EngineExamCard` joined the layout harness — and overflowed at 320 px with large text (the action pill moved under the texts). New codes have texts (`too_many_requests`, `answer_too_large`, `attempt_rejected`, `teachers_only`, `course_not_in_org`, `section_locked`, …).
 
 ### Phases 3 + 4 (2026-10-24)
 App findings from the architecture review (all fixed, commit b6e874b): share dates were parsed as local time and sent as the first second of the chosen day (now `orgParseUtc` / `orgUtc`, expiry = end of the chosen day, `shareExpiryInstant`); swiping the queue sheet away popped the registrar page (the pop now happens only while the sheet is open); a 500 or a dropped socket after the submit retries was reported as "nothing was registered" although the server stores the request before dispatching it (now "could not confirm — check My requests", `regSubmitCertainlyRejected`); the verify dropdown asserted when the chosen grant disappeared; per-sheet text controllers were never disposed; the sharing tab controller ignored a changed admin flag; `methods` compared by join order (`setEquals`). New server codes have texts (`sharing_root_only`, `grant_revoked`, `too_many_keys`, `bad_resource_type`, `code_generation_failed`, `pending_limit`, `idempotency_mismatch`, `gone`, `internal`); `pending_limit` is not treated as "busy". The queue and result sheets are public plain-value widgets under the layout harness. Security review: no app findings.

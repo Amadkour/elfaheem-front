@@ -123,6 +123,10 @@ class AutosaveQueue {
   bool get isEmpty => _pending.isEmpty;
   int get length => _pending.length;
 
+  /// Forget a pending save the server refused for good (not in the paper, too large, one-way): it must never block
+  /// the rest of the queue. The question keeps the answer on screen; the server keeps what it had.
+  void drop(int questionId) => _pending.remove(questionId);
+
   /// The batch to send; call [ack] with the server's `saved` + `ignored` lists afterwards.
   List<Map<String, dynamic>> batch() => _pending.values.map((e) => Map<String, dynamic>.from(e)).toList();
 
@@ -165,6 +169,12 @@ class EventBuffer {
     _events.clear();
     return out;
   }
+
+  /// Put a drained batch back (the upload failed for a transient reason); bounded so an offline hour cannot grow it forever.
+  void requeue(List<Map<String, dynamic>> events) {
+    _events.insertAll(0, events);
+    if (_events.length > 200) _events.removeRange(0, _events.length - 200);
+  }
 }
 
 /// Bilingual texts for the taking flow's codes.
@@ -185,6 +195,14 @@ String examCodeText(String code) => switch (code) {
       'one_way_section' => t('هذا القسم لا يسمح بالعودة إلى سؤال سابق', 'This section does not allow going back'),
       'attempt_submitted' => t('سُلّمت المحاولة بالفعل', 'Already submitted'),
       'event_not_consented' => t('هذا النوع من المراقبة غير مُفعَّل', 'This kind of monitoring is not enabled'),
+      'too_many_requests' => t('طلبات كثيرة في وقت قصير — سيُعاد الحفظ تلقائياً', 'Too many requests — saving retries automatically'),
+      'answer_too_large' => t('الإجابة أطول من الحد المسموح — اختصرها', 'The answer is longer than allowed — shorten it'),
+      'question_not_in_paper' => t('هذا السؤال ليس في ورقتك', 'This question is not in your paper'),
+      'attempt_rejected' => t('رُفضت المحاولة بسبب سياسة المراقبة — تواصل مع المعلم', 'The attempt was rejected under the proctoring policy — contact your teacher'),
+      'teachers_only' => t('إنشاء الاختبارات الشخصية للمعلمين فقط', 'Personal exams are for teachers only'),
+      'course_not_in_org' => t('هذا المقرر لا يتبع هذه المؤسسة', 'This course does not belong to this organization'),
+      'section_locked' => t('بنية القسم تُعدَّل في المسودة فقط', 'A section\'s structure changes only in a draft'),
+      'text_hash_required' => t('أعد تحميل نص الإقرار', 'Reload the consent text'),
       _ => code,
     };
 
@@ -208,7 +226,9 @@ Map<String, dynamic> encodeTrueFalse(bool v) => {'value': v};
 Map<String, dynamic> encodeBlanks(List<String> blanks) => {'blanks': blanks};
 Map<String, dynamic> encodeMatching(Map<String, String> pairs) => {'pairs': pairs};
 Map<String, dynamic> encodeOrdering(List<String> order) => {'order': order};
-Map<String, dynamic> encodeNumeric(String value, {String? unit}) => {'value': value.trim(), if (unit != null && unit.isNotEmpty) 'unit': unit};
+/// A blank value is NO answer (`{}`), whatever unit is picked: the server scores it 0 instead of flagging a malformed answer.
+Map<String, dynamic> encodeNumeric(String value, {String? unit}) =>
+    value.trim().isEmpty ? {} : {'value': value.trim(), if (unit != null && unit.isNotEmpty) 'unit': unit};
 Map<String, dynamic> encodeText(String text) => {'text': text};
 
 /// For tests: a stable JSON of an answer map.

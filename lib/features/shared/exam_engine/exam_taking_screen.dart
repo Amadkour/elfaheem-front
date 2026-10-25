@@ -9,7 +9,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, t;
+import '../../admin/admin_common.dart' show asInt, asMap, t, asMapList;
 import '../../student/courses/security/device_id_service.dart';
 import 'exam_consent_screen.dart';
 import 'exam_engine_api.dart';
@@ -110,8 +110,9 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
 
   Future<void> _timeUp() async {
     if (_finished) return;
+    await _flush();                                  // the last answers, inside the server's grace
     _finished = true;
-    await _flush();
+    await _api.submit(_attemptId, session: _session, deviceId: widget.deviceId);   // finalise now rather than wait for the sweeper
     final r = await _api.attempt(_attemptId);
     if (!mounted) return;
     appToast(examCodeText('deadline_passed'));
@@ -119,13 +120,24 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
   }
 
   // ── autosave ──
-  Future<void> _flush() async {
+  Future<void> _flush({bool retried = false}) async {
     if (_queue.isEmpty || _finished) return _flushEvents();
     final batch = _queue.batch();
     final r = await _api.save(_attemptId, batch, session: _session, deviceId: widget.deviceId);
     if (!mounted) return;
+    if (!r.ok && r.code == 'exam_session_invalid' && !retried) {
+      // the session expired between two flushes: renew and send the SAME batch again, so a submit that follows
+      // never finalises without it
+      await _renewSession();
+      if (mounted) return _flush(retried: true);
+      return;
+    }
     if (r.ok) {
       _queue.ack(batch, [...(r.map['saved'] as List? ?? const []), ...(r.map['ignored'] as List? ?? const [])]);
+      for (final rej in asMapList(r.map['rejected'])) {
+        _queue.drop(asInt(rej['question_id']));          // refused for good (one-way): the queue moves on
+        if ('${rej['code']}' == 'one_way_section') appToast(examCodeText('one_way_section'), error: true);
+      }
       _clock = ServerClock(remainingSeconds: r.map['remaining_seconds'] == null ? null : asInt(r.map['remaining_seconds']), receivedAt: DateTime.now(),
           deadlineAt: _clock.deadlineAt);
     } else {
@@ -141,6 +153,10 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     if (!mounted) return;
     if (!r.ok) {
       if (r.code == 'exam_session_invalid') await _renewSession();
+      // transient (offline, expired session, throttled): the events wait for the next flush; a refusal the server
+      // will repeat (not consented, unknown kind, too many) is dropped so it cannot block the buffer
+      const permanent = {'event_not_consented', 'bad_event_kind', 'too_many_events', 'event_meta_too_large', 'bad_evidence_key'};
+      if (!permanent.contains(r.code) && r.code != 'attempt_locked' && !(r.code ?? '').startsWith('attempt_')) _events.requeue(events);
       return;
     }
     for (final a in actionsOf(r.map)) {
@@ -164,7 +180,17 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
       case 'deadline_passed':
         await _timeUp();
       case 'attempt_locked':
-        setState(() { _locked = true; _lockReason = '${(r.map['detail'] ?? {})['reason'] ?? ''}'; });
+        setState(() { _locked = true; _lockReason = '${r.detail['reason'] ?? ''}'; });
+      case 'attempt_rejected' || 'attempt_submitted' || 'attempt_auto_submitted' || 'attempt_void':
+        _finished = true;
+        final res = await _api.attempt(_attemptId);
+        if (mounted) _showResult(res.ok ? asMap(res.map['result']) : {'visible': false, 'state': r.code!.substring(8)});
+      case 'question_not_in_paper' || 'bad_answer' || 'answer_too_large':
+        // this item can never be saved: drop it so the rest of the queue flows; the student is told when it is theirs to fix
+        _queue.drop(asInt(r.detail['question_id']));
+        if (r.code == 'answer_too_large') appToast(examCodeText('answer_too_large'), error: true);
+      case 'too_many_requests':
+        return;                                      // the next tick retries
       case 'one_way_section':
         appToast(examCodeText('one_way_section'), error: true);
       case 'device_mismatch':
@@ -205,7 +231,16 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
         confirmLabel: t('تسليم', 'Submit'));
     if (!ok || !mounted) return;
     setState(() => _submitting = true);
-    await _flush();
+    for (var i = 0; i < 3 && !_queue.isEmpty && !_finished; i++) {
+      await _flush();
+    }
+    if (!mounted) return;
+    if (!_queue.isEmpty && !_finished) {
+      // never finalise with answers still unsaved: the student is told and the queue keeps retrying
+      setState(() => _submitting = false);
+      appToast(t('لم تُحفظ كل إجاباتك بعد — تحقق من الاتصال ثم أعد التسليم', 'Not all your answers are saved yet — check the connection and submit again'), error: true);
+      return;
+    }
     final r = await _api.submit(_attemptId, session: _session, deviceId: widget.deviceId);
     if (!mounted) return;
     setState(() => _submitting = false);
