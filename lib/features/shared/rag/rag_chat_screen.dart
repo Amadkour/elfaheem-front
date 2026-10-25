@@ -10,6 +10,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'rag_chat.dart';
+import 'rag_library.dart';
+import 'rag_library_screen.dart';
 
 class RagChatScreen extends StatefulWidget {
   const RagChatScreen({super.key, this.orgId, this.courseId, this.title});
@@ -28,12 +30,14 @@ class _RagChatScreenState extends State<RagChatScreen> {
   final List<RagAnswer> _items = [];
   bool _loading = true;
   bool _sending = false;
+  bool _manager = false; // library managers get the Library action (from the documents list: manager: true)
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _history();
+    _checkManager();
   }
 
   @override
@@ -52,6 +56,13 @@ class _RagChatScreenState extends State<RagChatScreen> {
       if (r.unavailable) _error = t('المساعد غير متاح بعد على هذا الخادم', 'The assistant is not available on this server yet');
     });
     _toEnd();
+  }
+
+  Future<void> _checkManager() async {
+    final r = await RagLibraryApi().list(orgId: widget.orgId, courseId: widget.courseId);
+    if (!mounted || !r.ok) return;
+    final m = RagLibrary.fromJson(r.map).manager;
+    if (m != _manager) setState(() => _manager = m);
   }
 
   void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -102,6 +113,12 @@ class _RagChatScreenState extends State<RagChatScreen> {
       key: const ValueKey('rag.assistant'),
       appBar: ScreenAppBar(title: widget.title ?? t('مساعد المستندات', 'Documents assistant'),
           actions: [
+            if (_manager)
+              IconButton(
+                  tooltip: t('مكتبة المستندات', 'Documents library'),
+                  icon: const Icon(Icons.folder_copy_outlined),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => RagLibraryScreen(orgId: widget.orgId, courseId: widget.courseId)))),
             IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: () {
               setState(() => _error = null);
               _history();

@@ -60,6 +60,7 @@ import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
 import 'org_sections_page.dart';
+import 'org_feedback_risk.dart';
 import 'org_v3.dart' show orgCall, orgParseUtc, orgUtc;
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -327,6 +328,11 @@ List<_Sub> _serviceSubs(OrgSession s) => [
       if (s.canAny('materials')) ('materials', t('المكتبة', 'Library'), Icons.folder_copy_rounded, const OrgMaterialsPage()),
       if (s.canAny('complaints') || s.canAny('forms'))
         ('datacenter', t('مركز البيانات', 'Data Center'), Icons.insights_rounded, DataCenterPage(orgId: s.currentId, embedded: true)),
+      // Phase 8: exam risk dashboard + feedback-store settings (the server re-checks the role)
+      if (s.currentId != null && (s.isOrgAdmin || s.canAny('exams')))
+        ('exam_risk', t('مخاطر الامتحانات', 'Exam risk'), Icons.policy_rounded, OrgExamRiskPage(orgId: s.currentId!)),
+      if (s.currentId != null && s.isOrgAdmin)
+        ('exam_feedback', t('ملاحظات الامتحانات', 'Exam feedback'), Icons.rate_review_rounded, OrgFeedbackSettingsPage(orgId: s.currentId!)),
     ];
 
 /// Page frame + live reload when the organization changes.

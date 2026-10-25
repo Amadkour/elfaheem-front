@@ -27,6 +27,7 @@ import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import '../student/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
+import 'admin_money_p8.dart' show AdminMoneyPage;
 import 'admin_premium_widgets.dart';
 
 class AdminFeeRatesProvider extends BaseProvider {
@@ -152,6 +153,16 @@ class AdminFeeRatesSection extends StatelessWidget {
       const SizedBox(height: 4),
       Text('admin_fee_rates_hint'.tr,
           style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+      const SizedBox(height: 8),
+      // Phase 8: fee policy, per-organization fees, ledger report
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
+          icon: const Icon(Icons.tune_rounded, size: 18),
+          label: Text(_t('سياسة الرسوم والمؤسسات', 'Fee policy & organizations')),
+        ),
+      ),
       const SizedBox(height: 8),
       if (!p.loaded && p.isLoading)
         const Padding(padding: EdgeInsets.all(20), child: Center(child: AppLoadingIndicator()))

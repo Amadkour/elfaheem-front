@@ -325,6 +325,13 @@ class ExamReviewApi {
   Future<EngineResult> importMarks(int examId, String fileName, Uint8List bytes) =>
       engineCall(() => _api.postFiles('$base/exams/$examId/marks/import', files: [(fileName, bytes)], field: 'file'));
 
+  /// CSV / XLSX `student_id, file_name[, question_id]` for the scans of [batchId].
+  Future<EngineResult> scanMapping(int examId, String fileName, Uint8List bytes, {required int batchId}) =>
+      engineCall(() => _api.postFiles('$base/exams/$examId/scans/mapping', files: [(fileName, bytes)], field: 'file', fields: {'batch_id': batchId}));
+
+  /// The exam's attempts (the only list of students a paper exam has; `student_id` is null under anonymous grading).
+  Future<EngineResult> attempts(int examId) => engineCall(() => _api.get('$base/exams/$examId/attempts'));
+
   Future<Uint8List?> sheetsPdf(int examId, {List<int> studentIds = const [], int blank = 0}) async {
     try {
       return await _api.postForBytes('$base/exams/$examId/sheets', body: {'student_ids': studentIds, 'blank': blank});

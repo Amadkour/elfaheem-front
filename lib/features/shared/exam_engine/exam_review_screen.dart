@@ -8,6 +8,8 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
+import 'exam_authoring.dart' show ExamAuthoringApi, examStatusLabel;
+import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
 import 'exam_taking.dart' show examCodeText;
@@ -419,8 +421,10 @@ class EngineReviewSection extends StatefulWidget {
 }
 
 class _EngineReviewSectionState extends State<EngineReviewSection> {
-  final _api = ExamReviewApi();
+  final _api = ExamAuthoringApi();
   List<Map<String, dynamic>> _items = const [];
+  bool _ready = false;
+  int? _orgId;
 
   @override
   void initState() {
@@ -428,33 +432,60 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
     _load();
   }
 
+  // The course's space comes from the server: an organization's course answers 409 course_not_in_org naming it.
   Future<void> _load() async {
-    final r = await _api.manageable(courseId: widget.courseId);
-    if (!mounted || !r.ok) return;
-    setState(() => _items = asMapList(r.map['items']).where((e) => e['status'] != 'draft').toList());
+    final s = await _api.resolveScope(widget.courseId);
+    if (!mounted || !s.list.ok) return;
+    setState(() {
+      _ready = true;
+      _orgId = s.orgId;
+      _items = asMapList(s.list.map['items']);
+    });
   }
+
+  void _open(Widget page) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => page)).then((_) => _load());
+
+  void _edit([int? examId]) => _open(ExamEditorScreen(examId: examId, courseId: widget.courseId, orgId: _orgId));
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty) return const SizedBox.shrink();
+    if (!_ready) return const SizedBox.shrink();
     final c = context.colors;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSectionTitle(t('تصحيح الاختبارات الجديدة', 'Marking — new exams')),
-        for (final e in _items)
-          AppCard(
-            margin: const EdgeInsets.only(bottom: 10),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamReviewScreen(examId: asInt(e['id']), examTitle: '${e['title'] ?? ''}')))
-                .then((_) => _load()),
-            child: Row(children: [
-              Icon(Icons.rate_review_outlined, color: c.primary),
-              const SizedBox(width: 12),
-              Expanded(child: Text('${e['title'] ?? ''}', style: appText(14, w: FontWeight.w700, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis)),
-              const SizedBox(width: 8),
-              AppBadgePill(t('${asInt(asMap(e['attempts'])['total'])} محاولة', '${asInt(asMap(e['attempts'])['total'])} attempts'), color: c.textMedium),
-            ]),
-          ),
+        AppSectionTitle(t('الاختبارات الجديدة', 'New-engine exams'),
+            trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+              IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
+              IconButton(onPressed: () => _edit(), icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
+            ])),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.25),
+          child: ListView(shrinkWrap: true, padding: EdgeInsets.zero, children: [
+            for (final e in _items)
+              AppCard(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                onTap: e['status'] == 'draft'
+                    ? () => _edit(asInt(e['id']))
+                    : () => _open(ExamReviewScreen(examId: asInt(e['id']), examTitle: '${e['title'] ?? ''}')),
+                child: Row(children: [
+                  Icon(e['status'] == 'draft' ? Icons.edit_note_rounded : Icons.rate_review_outlined, color: c.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('${e['title'] ?? ''}', style: appText(14, w: FontWeight.w700, c: c.textDark), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      Text(examStatusLabel('${e['status'] ?? ''}'), style: appText(12, c: c.textMedium)),
+                    ]),
+                  ),
+                  const SizedBox(width: 8),
+                  if (e['status'] != 'draft')
+                    AppBadgePill(t('${asInt(asMap(e['attempts'])['total'])} محاولة', '${asInt(asMap(e['attempts'])['total'])} attempts'), color: c.textMedium),
+                  IconButton(onPressed: () => _edit(asInt(e['id'])), icon: Icon(Icons.edit_outlined, color: c.textMedium), tooltip: t('تعديل', 'Edit')),
+                ]),
+              ),
+          ]),
+        ),
       ]),
     );
   }

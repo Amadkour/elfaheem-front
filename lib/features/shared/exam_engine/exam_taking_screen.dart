@@ -4,10 +4,13 @@
 // The screen talks to the engine through [ExamEngineApi]; the pure pieces live in exam_taking.dart.
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:screen_protector/screen_protector.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t, asMapList;
 import '../../student/courses/security/device_id_service.dart';
@@ -90,6 +93,8 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     })..start();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
     _saver = Timer.periodic(const Duration(seconds: 4), (_) => _flush());
+    _restorePending();
+    _protectScreen(true);
   }
 
   @override
@@ -97,7 +102,49 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     _ticker?.cancel();
     _saver?.cancel();
     _integrity.stop();
+    _protectScreen(false);
+    _persistPending();                                  // finished → the stored copy is removed
     super.dispose();
+  }
+
+  // ── answers that must survive an app kill or a reload (Phase 9) ──
+  String get _storeKey => 'exam.pending.$_attemptId';
+
+  Future<void> _restorePending() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final n = _queue.restore(p.getString(_storeKey), _paper);
+      if (n > 0 && mounted) {
+        setState(() {});
+        _flush();
+      }
+    } catch (_) {}                                          // no device storage: the server copy stands
+  }
+
+  Future<void> _persistPending() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      if (_queue.isEmpty || _finished) {
+        await p.remove(_storeKey);
+      } else {
+        await p.setString(_storeKey, _queue.toJson());
+      }
+    } catch (_) {}
+  }
+
+  /// No screenshots / recording of the paper on phones while the attempt is open (Android FLAG_SECURE, iOS blur).
+  /// The web cannot prevent it — the consent screen says so.
+  Future<void> _protectScreen(bool on) async {
+    if (kIsWeb) return;
+    try {
+      if (on) {
+        await ScreenProtector.preventScreenshotOn();
+        await ScreenProtector.protectDataLeakageWithBlur();
+      } else {
+        await ScreenProtector.preventScreenshotOff();
+        await ScreenProtector.protectDataLeakageWithBlurOff();
+      }
+    } catch (_) {}
   }
 
   // ── timer ──
@@ -138,6 +185,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
         _queue.drop(asInt(rej['question_id']));          // refused for good (one-way): the queue moves on
         if ('${rej['code']}' == 'one_way_section') appToast(examCodeText('one_way_section'), error: true);
       }
+      _persistPending();
       _clock = ServerClock(remainingSeconds: r.map['remaining_seconds'] == null ? null : asInt(r.map['remaining_seconds']), receivedAt: DateTime.now(),
           deadlineAt: _clock.deadlineAt);
     } else {
@@ -210,6 +258,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
   void _answer(PaperQuestion q, Map<String, dynamic> answer) {
     if (_locked || _finished) return;
     setState(() => _queue.put(q, answer));
+    _persistPending();
   }
 
   void _goTo(int i) {
@@ -329,7 +378,13 @@ class ExamTimerChip extends StatelessWidget {
     final c = context.colors;
     if (!timed || remainingSeconds == null) return const SizedBox.shrink();
     final urgent = remainingSeconds! <= 300;
-    return Padding(
+    final mins = (remainingSeconds! / 60).ceil();
+    // screen readers hear the time left once a minute (the label changes per minute), not every second
+    return Semantics(
+      label: t('الوقت المتبقي $mins دقيقة', '$mins minutes left'),
+      liveRegion: urgent,
+      excludeSemantics: true,
+      child: Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -341,7 +396,7 @@ class ExamTimerChip extends StatelessWidget {
           Text(clockText(remainingSeconds!), key: const ValueKey('exam.timer'), style: appText(13.5, w: FontWeight.w800, c: urgent ? c.warning : c.primary)),
         ]),
       ),
-    );
+    ));
   }
 }
 
@@ -366,7 +421,8 @@ class ExamProgressBar extends StatelessWidget {
           Expanded(child: Text(t('سؤال ${index + 1} من $total', 'Question ${index + 1} of $total'), style: appText(13, w: FontWeight.w700, c: c.textDark))),
           Text(t('أُجيب $answered', '$answered answered'), style: appText(12.5, c: c.textMedium)),
           const SizedBox(width: 8),
-          Icon(pendingSaves == 0 ? Icons.cloud_done_rounded : Icons.cloud_upload_rounded, size: 16, color: pendingSaves == 0 ? c.success : c.textLight),
+          Icon(pendingSaves == 0 ? Icons.cloud_done_rounded : Icons.cloud_upload_rounded, size: 16, color: pendingSaves == 0 ? c.success : c.textLight,
+              semanticLabel: pendingSaves == 0 ? t('كل الإجابات محفوظة', 'All answers saved') : t('جارٍ حفظ $pendingSaves إجابة', 'Saving $pendingSaves answers')),
         ]),
       ),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: AppProgressBar(value: total == 0 ? 0 : answered / total)),

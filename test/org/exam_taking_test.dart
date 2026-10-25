@@ -61,6 +61,27 @@ void main() {
     expect(p.canNavigate(q2, e1), isTrue);
   });
 
+  test('autosave queue survives a kill: stored saves restore only when newer than the server copy', () {
+    final before = Paper.fromJson(_paperJson());
+    final q = AutosaveQueue();
+    q.put(before.all[0], encodeSingle('b'));            // seq 1 (server had 0)
+    q.put(before.all[1], encodeMulti(['b']));           // seq 4 (server had 3)
+    final stored = q.toJson();
+    final after = Paper.fromJson(_paperJson());          // the app restarts: the server paper again
+    final r = AutosaveQueue();
+    expect(r.restore(stored, after), 2);
+    expect(after.all[0].answer, encodeSingle('b'));
+    expect(r.batch().map((e) => e['save_seq']).toList(), [1, 4]);
+    final newer = Paper.fromJson({..._paperJson()}..['sections'] = [
+      {..._paperJson()['sections'][0], 'questions': [
+        {..._paperJson()['sections'][0]['questions'][1], 'save_seq': 9},   // the server already has a later save
+      ]},
+    ]);
+    expect(AutosaveQueue().restore(stored, newer), 0, reason: 'an older local copy never overwrites the server');
+    expect(AutosaveQueue().restore('not json', after), 0);
+    expect(AutosaveQueue().restore(null, after), 0);
+  });
+
   test('autosave queue: monotonic save_seq per question, ack removes only the acknowledged sequence', () {
     final p = Paper.fromJson(_paperJson());
     final q = AutosaveQueue();

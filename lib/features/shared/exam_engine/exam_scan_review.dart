@@ -3,14 +3,18 @@
 // QR code could not be read.
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asMapList, t;
+import 'exam_engine_api.dart' show EngineResult;
+import 'exam_paper_flow.dart';
 import 'exam_review.dart';
-import 'exam_taking.dart' show examCodeText;
 
 /// OCR words of one region; low-confidence ones are marked for the teacher (plain values, under the harness).
 class OcrWordsView extends StatelessWidget {
@@ -60,8 +64,11 @@ class ScanImageView extends StatelessWidget {
 }
 
 class ScanPageScreen extends StatefulWidget {
-  const ScanPageScreen({super.key, required this.pageId});
+  const ScanPageScreen({super.key, required this.pageId, this.roster = const []});
   final int pageId;
+
+  /// Students the exam knows (empty: the picker falls back to a typed id).
+  final List<int> roster;
 
   @override
   State<ScanPageScreen> createState() => _ScanPageScreenState();
@@ -73,6 +80,8 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
   Uint8List? _image;
   final Map<int, TextEditingController> _text = {};
   final _student = TextEditingController();
+  final _question = TextEditingController();
+  int? _picked;
   bool _busy = false;
 
   @override
@@ -87,6 +96,7 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
       c.dispose();
     }
     _student.dispose();
+    _question.dispose();
     super.dispose();
   }
 
@@ -111,18 +121,20 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
     final r = await _api.correct(widget.pageId, questionId: questionId, text: _text[questionId]!.text);
     if (!mounted) return;
     setState(() => _busy = false);
-    appToast(r.ok ? t('حُفظ النص وسيُعاد تصحيحه', 'Saved — it will be graded again') : examCodeText(r.code ?? r.message), error: !r.ok);
+    appToast(r.ok ? t('حُفظ النص وسيُعاد تصحيحه', 'Saved — it will be graded again') : paperFailText(r.code, r.message), error: !r.ok);
     if (r.ok) _load();
   }
 
   Future<void> _assign() async {
-    final id = int.tryParse(_student.text.trim());
-    if (id == null) return appToast(t('أدخل رقم الطالب', 'Enter the student id'), error: true);
+    final id = _picked ?? parseStudentIds(_student.text).firstOrNull;
+    if (id == null) return appToast(t('اختر الطالب أو أدخل رقمه', 'Choose a student or enter the id'), error: true);
+    final q = _question.text.trim().isEmpty ? null : int.tryParse(_question.text.trim());
+    if (_question.text.trim().isNotEmpty && q == null) return appToast(t('رقم السؤال غير صالح', 'Invalid question id'), error: true);
     setState(() => _busy = true);
-    final r = await _api.assign(widget.pageId, studentId: id);
+    final r = await _api.assign(widget.pageId, studentId: id, questionId: q);
     if (!mounted) return;
     setState(() => _busy = false);
-    appToast(r.ok ? t('أُسندت الصفحة وستُقرأ', 'Assigned — the page will be read') : examCodeText(r.code ?? r.message), error: !r.ok);
+    appToast(r.ok ? t('أُسندت الصفحة وستُقرأ', 'Assigned — the page will be read') : paperFailText(r.code, r.message), error: !r.ok);
     if (r.ok) _load();
   }
 
@@ -143,7 +155,9 @@ class _ScanPageScreenState extends State<ScanPageScreen> {
         if (p.unmatched) ...[
           AppBanner(icon: Icons.qr_code_2_rounded, text: t('لم يُقرأ رمز الورقة — حدد الطالب', 'The sheet code could not be read — choose the student')),
           const SizedBox(height: 8),
-          AppField(controller: _student, label: t('رقم الطالب', 'Student id'), keyboard: TextInputType.number, ltr: true),
+          StudentPickView(roster: widget.roster, selected: _picked, idController: _student, onSelect: (id) => setState(() => _picked = id)),
+          const SizedBox(height: 8),
+          AppField(controller: _question, label: t('رقم السؤال (اختياري)', 'Question id (optional)'), keyboard: TextInputType.number, ltr: true),
           const SizedBox(height: 8),
           AppPrimaryButton(label: t('إسناد', 'Assign'), onPressed: _busy ? null : _assign, busy: _busy, icon: Icons.person_add_alt_1_rounded),
         ],
@@ -193,11 +207,18 @@ class ExamScansScreen extends StatefulWidget {
 class _ExamScansScreenState extends State<ExamScansScreen> {
   final _api = ExamReviewApi();
   List<ScanPageInfo>? _pages;
+  List<int> _roster = const [];
+  List<int> _batches = const [];
+  String? _busy; // sheets | upload | mapping | marks
+  String? _summary;
+  List<PaperProblem> _problems = const [];
+  int? _lastBatch;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadRoster();
     if (widget.openPageId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _open(widget.openPageId!));
     }
@@ -207,11 +228,99 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
     final r = await _api.scans(widget.examId);
     if (!mounted || !r.ok) return;
     final pages = [for (final p in asMapList(r.map['items'])) ScanPageInfo.fromJson(p)]..sort((a, b) => (b.unmatched ? 1 : 0) - (a.unmatched ? 1 : 0));
-    setState(() => _pages = pages);
+    setState(() {
+      _pages = pages;
+      _batches = batchIdsOf(r.map);
+    });
+  }
+
+  Future<void> _loadRoster() async {
+    final r = await _api.attempts(widget.examId);
+    if (mounted && r.ok) setState(() => _roster = rosterFromAttempts(r.map));
+  }
+
+  void _result(String summary, List<PaperProblem> problems) => setState(() {
+        _summary = summary;
+        _problems = problems;
+      });
+
+  void _fail(EngineResult r) {
+    final problems = parseProblems(r.detail['problems']);
+    final text = paperFailText(r.code, r.message);
+    if (problems.isNotEmpty) {
+      _result(text, problems);
+    } else {
+      setState(() => _summary = null);
+    }
+    appToast(text, error: true);
+  }
+
+  Future<Uint8List?> _readFile(PlatformFile f) async {
+    try {
+      return await f.readAsBytes();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<(String, Uint8List)>> _pick(List<String> ext, {bool many = false}) async {
+    final picked = many
+        ? await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ext)
+        : [if (await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ext) case final f?) f];
+    return [
+      for (final f in picked)
+        if (await _readFile(f) case final b?) (f.name, b)
+    ];
+  }
+
+  Future<void> _upload() async {
+    final files = await _pick(const ['png', 'jpg', 'jpeg', 'webp', 'pdf'], many: true);
+    if (files.isEmpty || !mounted) return;
+    if (files.length > 50) return appToast(paperCodeText('too_many_files'), error: true);
+    setState(() => _busy = 'upload');
+    final r = await _api.uploadScans(widget.examId, files);
+    if (!mounted) return;
+    setState(() => _busy = null);
+    if (!r.ok) return _fail(r);
+    final u = ScanUploadResult.fromJson(r.map);
+    _lastBatch = u.batchId;
+    _result(u.summary, const []);
+    _load();
+  }
+
+  Future<void> _mapping() async {
+    final batch = await showAppSheet<int>(context, (_) => _BatchSheet(batches: _batches, initial: _lastBatch));
+    if (batch == null || !mounted) return;
+    final files = await _pick(const ['csv', 'xlsx']);
+    if (files.isEmpty || !mounted) return;
+    setState(() => _busy = 'mapping');
+    final r = await _api.scanMapping(widget.examId, files.first.$1, files.first.$2, batchId: batch);
+    if (!mounted) return;
+    setState(() => _busy = null);
+    if (!r.ok) return _fail(r);
+    final m = MappingResult.fromJson(r.map);
+    _result(m.summary, m.problems);
+    _load();
+  }
+
+  Future<void> _marks() async {
+    final files = await _pick(const ['csv', 'xlsx']);
+    if (files.isEmpty || !mounted) return;
+    setState(() => _busy = 'marks');
+    final r = await _api.importMarks(widget.examId, files.first.$1, files.first.$2);
+    if (!mounted) return;
+    setState(() => _busy = null);
+    if (!r.ok) return _fail(r);
+    final m = MarksImportResult.fromJson(r.map);
+    _result(m.summary, m.problems);
+  }
+
+  Future<void> _sheets() async {
+    await showAppSheet<void>(context, (_) => _SheetsSheet(examId: widget.examId, roster: _roster, api: _api));
   }
 
   Future<void> _open(int id) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanPageScreen(pageId: id)));
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ScanPageScreen(pageId: id, roster: _roster)));
     if (mounted) _load();
   }
 
@@ -225,6 +334,10 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
       child: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
+          PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),
+          if (_summary != null) ...[const SizedBox(height: 4), PaperResultView(summary: _summary!, problems: _problems), const SizedBox(height: 8)],
+          const SizedBox(height: 8),
+          AppSectionTitle(t('الصفحات الممسوحة', 'Scanned pages')),
           if (pages == null) const AppListSkeleton(items: 4),
           if (pages != null && pages.isEmpty) AppEmpty(icon: Icons.document_scanner_outlined, title: t('لا توجد أوراق ممسوحة بعد', 'No scanned pages yet')),
           for (final p in pages ?? const <ScanPageInfo>[])
@@ -242,5 +355,130 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
         ]),
       ),
     );
+  }
+}
+
+/// Pick the batch a mapping file applies to (a batch id the uploads returned, or typed).
+class _BatchSheet extends StatefulWidget {
+  const _BatchSheet({required this.batches, this.initial});
+  final List<int> batches;
+  final int? initial;
+
+  @override
+  State<_BatchSheet> createState() => _BatchSheetState();
+}
+
+class _BatchSheetState extends State<_BatchSheet> {
+  late final _ctl = TextEditingController(text: '${widget.initial ?? (widget.batches.isEmpty ? '' : widget.batches.first)}');
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppSheetHeader(t('ملف الإسناد', 'Mapping file')),
+      AppBanner(icon: Icons.info_outline_rounded, text: t('الأعمدة: student_id, file_name وسؤال اختياري question_id', 'Columns: student_id, file_name and an optional question_id')),
+      const SizedBox(height: 10),
+      if (widget.batches.isNotEmpty)
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          for (final b in widget.batches.take(12))
+            AppChoiceChip(label: '#$b', selected: _ctl.text.trim() == '$b', onTap: () => setState(() => _ctl.text = '$b')),
+        ]),
+      const SizedBox(height: 10),
+      AppField(controller: _ctl, label: t('رقم الدفعة', 'Batch id'), keyboard: TextInputType.number, ltr: true),
+      const SizedBox(height: 12),
+      AppPrimaryButton(
+        label: t('اختيار الملف', 'Choose the file'),
+        icon: Icons.attach_file_rounded,
+        onPressed: () {
+          final id = int.tryParse(_ctl.text.trim());
+          if (id == null) return appToast(t('أدخل رقم الدفعة', 'Enter the batch id'), error: true);
+          Navigator.pop(context, id);
+        },
+      ),
+    ]);
+  }
+}
+
+/// Answer sheets: roster chips + typed ids + blank count, then save or share the PDF.
+class _SheetsSheet extends StatefulWidget {
+  const _SheetsSheet({required this.examId, required this.roster, required this.api});
+  final int examId;
+  final List<int> roster;
+  final ExamReviewApi api;
+
+  @override
+  State<_SheetsSheet> createState() => _SheetsSheetState();
+}
+
+class _SheetsSheetState extends State<_SheetsSheet> {
+  final _ids = TextEditingController();
+  final _blank = TextEditingController(text: '0');
+  final Set<int> _selected = {};
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _ids.dispose();
+    _blank.dispose();
+    super.dispose();
+  }
+
+  Future<Uint8List?> _make() async {
+    final ids = {..._selected, ...parseStudentIds(_ids.text)}.toList()..sort();
+    final blank = int.tryParse(_blank.text.trim()) ?? 0;
+    if (ids.isEmpty && blank <= 0) {
+      appToast(paperCodeText('students_required'), error: true);
+      return null;
+    }
+    setState(() => _busy = true);
+    final bytes = await widget.api.sheetsPdf(widget.examId, studentIds: ids, blank: blank.clamp(0, 500));
+    if (!mounted) return null;
+    setState(() => _busy = false);
+    if (bytes == null || bytes.isEmpty) {
+      appToast(t('تعذر إنشاء الأوراق — تأكد من الطلاب والعدد', 'Could not create the sheets — check the students and the count'), error: true);
+      return null;
+    }
+    return bytes;
+  }
+
+  String get _name => 'answer-sheets-${widget.examId}';
+
+  Future<void> _download() async {
+    final bytes = await _make();
+    if (bytes == null) return;
+    try {
+      await FileSaver.instance.saveFile(name: _name, bytes: bytes, fileExtension: 'pdf', mimeType: MimeType.pdf);
+      appToast(t('حُفظ الملف', 'File saved'));
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      appToast(t('تعذر حفظ الملف', 'Could not save the file'), error: true);
+    }
+  }
+
+  Future<void> _share() async {
+    final bytes = await _make();
+    if (bytes == null) return;
+    try {
+      await SharePlus.instance.share(ShareParams(files: [XFile.fromData(bytes, mimeType: 'application/pdf', name: '$_name.pdf')], fileNameOverrides: ['$_name.pdf']));
+    } catch (_) {
+      appToast(t('تعذرت المشاركة', 'Could not share'), error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppSheetHeader(t('أوراق الإجابة', 'Answer sheets')),
+      SheetsOptionsView(
+        roster: widget.roster, selected: _selected, idsController: _ids, blankController: _blank, busy: _busy,
+        onToggle: (id) => setState(() => _selected.contains(id) ? _selected.remove(id) : _selected.add(id)),
+        onSubmit: _download, onShare: _share,
+      ),
+    ]);
   }
 }

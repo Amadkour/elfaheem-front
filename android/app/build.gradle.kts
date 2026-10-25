@@ -1,4 +1,15 @@
+import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// Release signing (Phase 9, D-026): android/key.properties (git-ignored) or the environment
+// (ANDROID_KEYSTORE_PATH / _PASSWORD / ANDROID_KEY_ALIAS / ANDROID_KEY_PASSWORD, for CI). Without either, release
+// builds fall back to the debug key and say so — such a build must never be published.
+val keyProps = Properties().apply {
+    val f = rootProject.file("key.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun signingValue(prop: String, env: String): String? = keyProps.getProperty(prop) ?: System.getenv(env)
+val releaseStoreFile = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
 
 plugins {
     // START: FlutterFire Configuration
@@ -30,11 +41,27 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            // R8 stays off: LiveKit / WebRTC / screen-recording plugins use reflection and JNI; turning it on needs a
+            // device test pass of live sessions first (D-026). Dart code IS obfuscated (scripts/build_release.sh).
             isMinifyEnabled = false
             isShrinkResources = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseStoreFile != null) signingConfigs.getByName("release") else {
+                logger.warn("WARNING: no release keystore (android/key.properties or ANDROID_KEYSTORE_PATH) — release build signed with the DEBUG key, do not publish it")
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                     getDefaultProguardFile("proguard-android-optimize.txt"),
                     "proguard-rules.pro"

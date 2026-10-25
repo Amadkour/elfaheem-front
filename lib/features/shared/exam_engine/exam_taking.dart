@@ -138,6 +138,35 @@ class AutosaveQueue {
       if (current != null && done.contains(qid) && current['save_seq'] == item['save_seq']) _pending.remove(qid);
     }
   }
+
+  /// What survives an app kill or a tab reload (Phase 9): the pending saves, written to the device after every change.
+  String toJson() => jsonEncode(_pending.values.toList());
+
+  /// Put back saves that never reached the server. A stored answer wins only when its sequence is newer than what the
+  /// server already has for that question (the paper's `save_seq`); returns how many were restored.
+  int restore(String? json, Paper paper) {
+    if (json == null || json.isEmpty) return 0;
+    final byId = {for (final s in paper.sections) for (final q in s.questions) q.questionId: q};
+    var n = 0;
+    final List<dynamic> items;
+    try {
+      items = jsonDecode(json) as List<dynamic>;
+    } catch (_) {
+      return 0;                                         // a corrupt store is ignored: the server copy stands
+    }
+    for (final raw in items) {
+      final item = asMap(raw);
+      final q = byId[asInt(item['question_id'])];
+      final seq = asInt(item['save_seq']);
+      if (q == null || seq <= q.saveSeq) continue;
+      q.answer = asMap(item['answer']);
+      q.saveSeq = seq;
+      _seq[q.questionId] = seq;
+      _pending[q.questionId] = {'question_id': q.questionId, 'answer': q.answer, 'save_seq': seq};
+      n++;
+    }
+    return n;
+  }
 }
 
 /// What the UI does with the server's `actions` after an events upload.

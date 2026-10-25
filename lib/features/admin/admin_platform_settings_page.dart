@@ -22,6 +22,7 @@ import '../org/org_creation_fee.dart' show money;
 import '../org/org_v3.dart';
 import 'admin_common.dart' show asMap, asMapList, t;
 import 'admin_features_page.dart';
+import 'admin_feedback_settings.dart' show AdminFeedbackSettingsPage;
 import 'admin_platform_widgets.dart';
 
 const _path = '/api/v1/admin/platform-settings';
@@ -301,6 +302,22 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                 title: t('قائمة الميزات', 'Feature list'),
                 subtitle: t('بحث، مجموعات، إضافة وحذف', 'Search, groups, add & remove'),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeaturesPage())),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              PlatformSectionHeader(
+                  icon: Icons.school_rounded,
+                  title: t('بيانات تعلم المصحح الآلي', 'Grader learning data'),
+                  subtitle: t('جمع تصحيحات المعلمين (بأسماء مستعارة) لتحسين التصحيح الآلي — للمشرف العام.',
+                      'Collect teachers’ corrections (pseudonymous) to improve automatic grading — Super Admin.')),
+              AppActionCard(
+                icon: Icons.tune_rounded,
+                title: t('إعدادات وتصدير بيانات التصحيح', 'Feedback store settings & export'),
+                subtitle: t('تفعيل، افتراضي المؤسسات، مدة الاحتفاظ', 'On/off, organizations default, retention'),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeedbackSettingsPage())),
               ),
             ]),
           ),

@@ -1,0 +1,635 @@
+// The documents library manager screen (Phase 7/8): the documents the assistant answers from, with their status,
+// upload (title · scope · optional "replaces"), archive, reindex, download, the organization's answer settings and
+// the unhelpful-answers list. Shown to library managers only (the chat screen offers the entry when the list call
+// answers `manager: true`). [RagDocumentCard], [RagSettingsForm], [RagFeedbackView] and [RagUploadForm] are
+// presentational and tested under the layout harness.
+library;
+
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/context_switcher.dart';
+import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+
+import '../../admin/admin_common.dart' show asMap, shortDateTime, t;
+import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
+import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'rag_library.dart';
+
+Color ragStatusColor(BuildContext context, String s) {
+  final c = context.colors;
+  return switch (s) {
+    'ready' => c.success,
+    'failed' => c.danger,
+    'queued' || 'processing' => c.warning,
+    _ => c.textMedium,
+  };
+}
+
+class RagLibraryScreen extends StatefulWidget {
+  const RagLibraryScreen({super.key, this.orgId, this.courseId, this.title, this.api});
+  final int? orgId;
+  final int? courseId;
+  final String? title;
+  final RagLibraryApi? api;
+
+  @override
+  State<RagLibraryScreen> createState() => _RagLibraryScreenState();
+}
+
+class _RagLibraryScreenState extends State<RagLibraryScreen> {
+  late final RagLibraryApi _api = widget.api ?? RagLibraryApi();
+  RagLibrary? _lib;
+  String _filter = '';
+  bool _loading = true;
+  String? _error;
+  Timer? _poll;
+  final Set<int> _working = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool silent = false}) async {
+    if (!silent) setState(() => _loading = true);
+    final r = await _api.list(orgId: widget.orgId, courseId: widget.courseId, status: _filter == 'archived' ? 'archived' : null);
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      if (r.ok) {
+        _lib = RagLibrary.fromJson(r.map);
+        _error = null;
+      } else if (!silent) {
+        _error = r.unavailable ? t('المكتبة غير متاحة بعد على هذا الخادم', 'The library is not available on this server yet') : ragLibraryCodeText(r.code, r.message);
+      }
+    });
+    _poll?.cancel();
+    if (_lib?.hasBusy == true) _poll = Timer(const Duration(seconds: 5), () => _load(silent: true));
+  }
+
+  Future<void> _run(RagDocument d, Future<EngineResult> Function() call, {String? done}) async {
+    setState(() => _working.add(d.id));
+    final r = await call();
+    if (!mounted) return;
+    setState(() => _working.remove(d.id));
+    if (r.ok) {
+      if (done != null) appToast(done);
+      _load(silent: true);
+    } else {
+      appToast(ragLibraryCodeText(r.code, r.message), error: true);
+    }
+  }
+
+  Future<void> _archive(RagDocument d) async {
+    if (!await appConfirm(context,
+        message: t('أرشفة «${d.displayTitle}»؟ يخرج من فهرس البحث فوراً.', 'Archive "${d.displayTitle}"? It leaves the search index at once.'), danger: true)) {
+      return;
+    }
+    await _run(d, () => _api.archive(d.id), done: t('تمت الأرشفة', 'Archived'));
+  }
+
+  Future<void> _download(RagDocument d) async {
+    setState(() => _working.add(d.id));
+    try {
+      final bytes = await _api.file(d.id);
+      await p8SaveBytes(bytes, d.filename.isEmpty ? 'document-${d.id}' : d.filename);
+    } on ApiException catch (e) {
+      appToast(ragLibraryCodeText(e.code, e.message), error: true);
+    } catch (e) {
+      appToast('$e', error: true);
+    }
+    if (mounted) setState(() => _working.remove(d.id));
+  }
+
+  Future<void> _upload({RagDocument? replaces}) async {
+    final done = await showAppSheet<bool>(
+        context, (_) => RagUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, library: _lib, replaces: replaces));
+    if (done == true) _load(silent: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final lib = _lib;
+    final shown = lib?.filtered(_filter == 'archived' ? '' : _filter) ?? const <RagDocument>[];
+    final counts = lib?.counts() ?? const <String, int>{};
+    return BasePage(
+      key: const ValueKey('rag.library'),
+      useWebCard: true,
+      maxWith: 1000,
+      appBar: ScreenAppBar(title: widget.title ?? t('مكتبة المستندات', 'Documents library'), actions: [
+        if (widget.orgId != null)
+          IconButton(
+              tooltip: t('الإجابات غير المفيدة', 'Unhelpful answers'),
+              icon: const Icon(Icons.thumb_down_alt_outlined),
+              onPressed: () => showAppSheet<void>(context, (_) => RagFeedbackSheet(api: _api, orgId: widget.orgId!))),
+        if (widget.orgId != null)
+          IconButton(
+              tooltip: t('إعدادات الإجابة', 'Answer settings'),
+              icon: const Icon(Icons.tune_rounded),
+              onPressed: () => showAppSheet<void>(context, (_) => RagSettingsSheet(api: _api, orgId: widget.orgId!))),
+        IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: _load),
+        if (widget.orgId != null) const ContextExitButton(),
+      ]),
+      child: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Wrap(spacing: 8, runSpacing: 8, children: [
+              AppChoiceChip(label: '${t('الكل', 'All')} (${lib?.items.length ?? 0})', selected: _filter.isEmpty, onTap: () => setState(() => _filter = '')),
+              for (final s in ['ready', 'processing', 'queued', 'failed'])
+                if ((counts[s] ?? 0) > 0)
+                  AppChoiceChip(label: '${ragStatusText(s)} (${counts[s]})', selected: _filter == s, onTap: () => setState(() => _filter = s)),
+              AppChoiceChip(
+                  label: ragStatusText('archived'),
+                  selected: _filter == 'archived',
+                  onTap: () {
+                    setState(() => _filter = 'archived');
+                    _load();
+                  }),
+            ]),
+          ),
+        ),
+        Expanded(
+          child: _loading
+              ? const AppListSkeleton()
+              : _error != null
+                  ? AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
+                  : shown.isEmpty
+                      ? AppEmpty(icon: Icons.folder_open_rounded, title: t('لا مستندات', 'No documents'), message: t('ارفع لائحة أو دليلاً ليجيب المساعد منه.', 'Upload a regulation or guide for the assistant to answer from.'))
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                          itemCount: shown.length,
+                          separatorBuilder: (_, _) => const SizedBox(height: 10),
+                          itemBuilder: (_, i) {
+                            final d = shown[i];
+                            return RagDocumentCard(
+                              doc: d,
+                              working: _working.contains(d.id),
+                              manager: lib?.manager == true,
+                              onDownload: () => _download(d),
+                              onReindex: d.canReindex ? () => _run(d, () => _api.reindex(d.id), done: t('بدأت إعادة الفهرسة', 'Reindexing started')) : null,
+                              onArchive: d.archived ? null : () => _archive(d),
+                              onNewVersion: d.archived ? null : () => _upload(replaces: d),
+                            );
+                          },
+                        ),
+        ),
+      ]),
+      floatingActionButton: lib?.manager == true
+          ? FloatingActionButton.extended(
+              backgroundColor: c.primary,
+              onPressed: _upload,
+              icon: const Icon(Icons.upload_file_rounded, color: Colors.white),
+              label: Text(t('رفع مستند', 'Upload'), style: const TextStyle(color: Colors.white)))
+          : null,
+    );
+  }
+}
+
+
+/// One document: title, status chip, meta and the manager's actions.
+class RagDocumentCard extends StatelessWidget {
+  const RagDocumentCard(
+      {super.key, required this.doc, this.manager = false, this.working = false, this.onDownload, this.onReindex, this.onArchive, this.onNewVersion});
+  final RagDocument doc;
+  final bool manager, working;
+  final VoidCallback? onDownload, onReindex, onArchive, onNewVersion;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = ragStatusColor(context, doc.status);
+    return AppCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.description_outlined, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(doc.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark))),
+          const SizedBox(width: 8),
+          AppBadgePill(ragStatusText(doc.status), color: col),
+        ]),
+        const SizedBox(height: 8),
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          AppBadgePill(ragScopeText(doc.scope), color: c.textMedium),
+          AppBadgePill('v${doc.version}', color: c.textMedium),
+          if (doc.pages != null) AppBadgePill('${doc.pages} ${t('صفحة', 'pages')}', color: c.textMedium),
+          if (doc.chunks > 0) AppBadgePill('${doc.chunks} ${t('مقطع', 'chunks')}', color: c.textMedium),
+          if (doc.size > 0) AppBadgePill(ragSizeText(doc.size), color: c.textMedium),
+          if (doc.ocrPages > 0) AppBadgePill('OCR ${doc.ocrPages}', color: c.textMedium),
+        ]),
+        if (doc.createdAt != null)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text(shortDateTime(doc.createdAt), style: appText(11.5, c: c.textLight))),
+        if (doc.status == 'failed' && (doc.error ?? '').isNotEmpty)
+          Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: doc.error!)),
+        if (doc.busy) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator(minHeight: 3)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 4, runSpacing: 0, children: [
+          TextButton.icon(onPressed: working ? null : onDownload, icon: const Icon(Icons.download_rounded, size: 18), label: Text(t('تنزيل', 'Download'))),
+          if (manager && onNewVersion != null)
+            TextButton.icon(onPressed: working ? null : onNewVersion, icon: const Icon(Icons.library_add_rounded, size: 18), label: Text(t('نسخة جديدة', 'New version'))),
+          if (manager && onReindex != null)
+            TextButton.icon(onPressed: working ? null : onReindex, icon: const Icon(Icons.refresh_rounded, size: 18), label: Text(t('إعادة فهرسة', 'Reindex'))),
+          if (manager && onArchive != null)
+            TextButton.icon(
+                onPressed: working ? null : onArchive,
+                style: TextButton.styleFrom(foregroundColor: c.danger),
+                icon: const Icon(Icons.archive_outlined, size: 18),
+                label: Text(t('أرشفة', 'Archive'))),
+        ]),
+      ]),
+    );
+  }
+}
+
+// ── upload ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+class RagUploadSheet extends StatefulWidget {
+  const RagUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.library, this.replaces});
+  final RagLibraryApi api;
+  final int? orgId;
+  final int? courseId;
+  final RagLibrary? library;
+  final RagDocument? replaces;
+
+  @override
+  State<RagUploadSheet> createState() => _RagUploadSheetState();
+}
+
+class _RagUploadSheetState extends State<RagUploadSheet> {
+  bool _busy = false;
+  String? _err;
+
+  Future<void> _submit(RagUploadDraft d) async {
+    setState(() {
+      _busy = true;
+      _err = null;
+    });
+    final r = await widget.api.upload(d, orgId: widget.orgId, courseId: widget.courseId);
+    if (!mounted) return;
+    if (r.ok) {
+      appToast(t('رُفع المستند وسيُفهرس قريباً', 'Uploaded — it will be indexed shortly'));
+      Navigator.pop(context, true);
+    } else {
+      setState(() {
+        _busy = false;
+        _err = ragLibraryCodeText(r.code, r.message);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSheetHeader(widget.replaces == null ? t('رفع مستند', 'Upload a document') : t('نسخة جديدة من المستند', 'New version of the document')),
+        RagUploadForm(
+            orgId: widget.orgId, courseId: widget.courseId, library: widget.library, replaces: widget.replaces, busy: _busy, error: _err, onSubmit: _submit),
+      ]),
+    );
+  }
+}
+
+/// Title · scope · (course) · replaces · file. Presentational: [onSubmit] gets a validated draft.
+class RagUploadForm extends StatefulWidget {
+  const RagUploadForm({super.key, required this.onSubmit, this.orgId, this.courseId, this.library, this.replaces, this.busy = false, this.error, this.pickFile});
+  final void Function(RagUploadDraft draft) onSubmit;
+  final int? orgId;
+  final int? courseId;
+  final RagLibrary? library;
+  final RagDocument? replaces;
+  final bool busy;
+  final String? error;
+
+  /// test hook / platform seam: returns (name, bytes) or null
+  final Future<(String, Uint8List)?> Function()? pickFile;
+
+  @override
+  State<RagUploadForm> createState() => _RagUploadFormState();
+}
+
+class _RagUploadFormState extends State<RagUploadForm> {
+  late final RagUploadDraft _d = RagUploadDraft(
+      title: widget.replaces?.title ?? '',
+      scope: widget.replaces?.scope ?? (widget.orgId == null ? 'course' : 'org'),
+      replaces: widget.replaces?.id);
+  late final _title = TextEditingController(text: _d.title);
+  final _course = TextEditingController();
+  String? _err;
+
+  @override
+  void dispose() {
+    _title.dispose();
+    _course.dispose();
+    super.dispose();
+  }
+
+  Future<(String, Uint8List)?> _pick() async {
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: ragUploadExtensions);
+    if (f == null) return null;
+    return (f.name, await f.readAsBytes());
+  }
+
+  Future<void> _choose() async {
+    final got = await (widget.pickFile ?? _pick)();
+    if (got == null || !mounted) return;
+    setState(() {
+      _d.fileName = got.$1;
+      _d.fileBytes = got.$2;
+      if (_title.text.trim().isEmpty) {
+        final dot = got.$1.lastIndexOf('.');
+        _title.text = dot > 0 ? got.$1.substring(0, dot) : got.$1;
+      }
+    });
+  }
+
+  void _submit() {
+    _d
+      ..title = _title.text
+      ..courseId = _course.text;
+    final e = _d.validate(orgId: widget.orgId, fixedCourseId: widget.courseId);
+    setState(() => _err = e == null ? null : _codeText(e));
+    if (e == null) widget.onSubmit(_d);
+  }
+
+  static String _codeText(String e) => switch (e) {
+        'file_required' || 'course_required' => draftErrorText(e),
+        _ => ragLibraryCodeText(e, draftErrorText(e)),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final scopes = widget.orgId == null ? const ['course'] : ragScopes;
+    final replaceable = widget.library?.replaceable(_d.scope, courseId: widget.courseId ?? _d.courseIdValue) ?? const <RagDocument>[];
+    final locked = widget.replaces != null;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppField(controller: _title, label: t('العنوان', 'Title')),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        for (final s in scopes)
+          AppChoiceChip(
+              label: ragScopeText(s),
+              selected: _d.scope == s,
+              onTap: locked ? () {} : () => setState(() {
+                    _d.scope = s;
+                    _d.replaces = null;
+                  })),
+      ]),
+      const SizedBox(height: 12),
+      if (_d.scope == 'course' && widget.courseId == null)
+        AppField(controller: _course, label: t('رقم المقرر', 'Course id'), keyboard: TextInputType.number),
+      if (!locked && replaceable.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AppDropdown<int>(
+            value: _d.replaces ?? 0,
+            decoration: InputDecoration(labelText: t('يستبدل مستنداً (اختياري)', 'Replaces a document (optional)')),
+            items: [
+              DropdownMenuItem(value: 0, child: Text(t('مستند جديد', 'A new document'))),
+              for (final r in replaceable) DropdownMenuItem(value: r.id, child: Text('${r.displayTitle} · v${r.version}', maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+            onChanged: (v) => setState(() => _d.replaces = (v == null || v == 0) ? null : v),
+          ),
+        ),
+      OutlinedButton.icon(
+          onPressed: widget.busy ? null : _choose,
+          icon: const Icon(Icons.attach_file_rounded, size: 18),
+          label: Text(_d.fileName ?? t('اختر ملفاً (PDF, DOCX, TXT, MD, HTML, صور)', 'Pick a file (PDF, DOCX, TXT, MD, HTML, images)'), maxLines: 2, overflow: TextOverflow.ellipsis)),
+      if (_d.fileBytes != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(ragSizeText(_d.fileBytes!.length), style: appText(11.5, c: c.textLight))),
+      if (_err != null || widget.error != null)
+        Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err ?? widget.error!)),
+      const SizedBox(height: 14),
+      AppPrimaryButton(label: t('رفع', 'Upload'), icon: Icons.upload_rounded, busy: widget.busy, onPressed: widget.busy ? null : _submit),
+    ]);
+  }
+}
+
+// ── organization answer settings ──────────────────────────────────────────────────────────────────────────────
+
+class RagSettingsSheet extends StatefulWidget {
+  const RagSettingsSheet({super.key, required this.api, required this.orgId});
+  final RagLibraryApi api;
+  final int orgId;
+
+  @override
+  State<RagSettingsSheet> createState() => _RagSettingsSheetState();
+}
+
+class _RagSettingsSheetState extends State<RagSettingsSheet> {
+  RagOrgSettings? _s;
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final r = await widget.api.settings(widget.orgId);
+    if (!mounted) return;
+    setState(() {
+      _s = r.ok ? RagOrgSettings.fromJson(r.map) : null;
+      _error = r.ok ? null : ragLibraryCodeText(r.code, r.message);
+    });
+  }
+
+  Future<void> _save(String generator, bool external) async {
+    setState(() => _busy = true);
+    final r = await widget.api.saveSettings(widget.orgId, generator, external);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (r.ok) _s = RagOrgSettings.fromJson(r.map);
+    });
+    if (r.ok) {
+      appToast(t('تم الحفظ', 'Saved'));
+    } else {
+      appToast(ragLibraryCodeText(r.code, r.message), error: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      AppSheetHeader(t('إعدادات الإجابة', 'Answer settings')),
+      Flexible(
+        child: _s == null
+            ? Padding(
+                padding: const EdgeInsets.all(20),
+                child: _error == null ? const SizedBox(height: 100, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
+            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: RagSettingsForm(settings: _s!, busy: _busy, onSave: _save)),
+      ),
+    ]);
+  }
+}
+
+class RagSettingsForm extends StatefulWidget {
+  const RagSettingsForm({super.key, required this.settings, required this.onSave, this.busy = false});
+  final RagOrgSettings settings;
+  final bool busy;
+  final void Function(String generator, bool allowExternal) onSave;
+
+  @override
+  State<RagSettingsForm> createState() => _RagSettingsFormState();
+}
+
+class _RagSettingsFormState extends State<RagSettingsForm> {
+  late String _gen = widget.settings.generator;
+  late bool _ext = widget.settings.allowExternal;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.settings;
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (!s.llmAvailable)
+        Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: AppBanner(icon: Icons.info_outline_rounded, text: t('نموذج الصياغة غير مفعّل على الخادم؛ الإجابات مقتطفة من المستندات مباشرة.', 'No language model is set up on the server; answers are extracted straight from the documents.'))),
+      AppDropdown<String>(
+        value: _gen,
+        decoration: InputDecoration(labelText: t('طريقة صياغة الإجابة', 'How answers are written')),
+        items: [
+          DropdownMenuItem(value: 'extractive', child: Text(t('اقتباس مباشر من المستندات', 'Quote the documents directly'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+          if (s.llmAvailable || _gen == 'llm') DropdownMenuItem(value: 'llm', child: Text(t('صياغة بنموذج لغوي', 'Written by a language model'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        ],
+        onChanged: (v) => setState(() => _gen = v ?? 'extractive'),
+      ),
+      const SizedBox(height: 8),
+      if (s.llmAvailable)
+        AppSwitchTile(
+            title: t('السماح بمزوّد خارجي', 'Allow an external provider'),
+            subtitle: s.llmExternal
+                ? t('يُرسل مقتطفات المستندات إلى مزوّد خارج المؤسسة — قرار مدير المؤسسة.', 'Document excerpts are sent to a provider outside the organization — the organization admin\'s decision.')
+                : t('النموذج داخلي؛ لا تغادر المستندات الخادم.', 'The model is internal; documents do not leave the server.'),
+            value: _gen == 'llm' && _ext,
+            onChanged: _gen == 'llm' ? (v) => setState(() => _ext = v) : null),
+      const SizedBox(height: 10),
+      AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: widget.busy, onPressed: widget.busy ? null : () => widget.onSave(_gen, _ext)),
+      const SizedBox(height: 4),
+      Text(t('التغيير يسري على الأسئلة الجديدة فقط.', 'A change applies to new questions only.'), style: appText(11.5, c: c.textLight)),
+    ]);
+  }
+}
+
+// ── unhelpful answers ─────────────────────────────────────────────────────────────────────────────────────────
+
+class RagFeedbackSheet extends StatefulWidget {
+  const RagFeedbackSheet({super.key, required this.api, required this.orgId});
+  final RagLibraryApi api;
+  final int orgId;
+
+  @override
+  State<RagFeedbackSheet> createState() => _RagFeedbackSheetState();
+}
+
+class _RagFeedbackSheetState extends State<RagFeedbackSheet> {
+  RagAnswerFeedback? _f;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.api.answersFeedback(widget.orgId).then((r) {
+      if (!mounted) return;
+      setState(() {
+        _f = r.ok ? RagAnswerFeedback.fromJson(asMap(r.map)) : null;
+        _error = r.ok ? null : ragLibraryCodeText(r.code, r.message);
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(mainAxisSize: MainAxisSize.min, children: [
+      AppSheetHeader(t('الإجابات غير المفيدة', 'Unhelpful answers')),
+      Flexible(
+        child: _f == null
+            ? Padding(
+                padding: const EdgeInsets.all(20),
+                child: _error == null ? const SizedBox(height: 100, child: AppListSkeleton(items: 2)) : AppBanner(icon: Icons.error_outline_rounded, color: context.colors.danger, text: _error!))
+            : SingleChildScrollView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 16), child: RagFeedbackView(feedback: _f!)),
+      ),
+    ]);
+  }
+}
+
+class RagFeedbackView extends StatelessWidget {
+  const RagFeedbackView({super.key, required this.feedback});
+  final RagAnswerFeedback feedback;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final f = feedback;
+    final share = f.helpfulShare;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Wrap(spacing: 10, runSpacing: 10, children: [
+        _Stat(t('أُجيب', 'Answered'), '${f.answered}'),
+        _Stat(t('قُيّم', 'Rated'), '${f.rated}'),
+        _Stat(t('مفيد', 'Helpful'), share == null ? '—' : '${(share * 100).round()}%'),
+        _Stat(t('لم يوجد في المستندات', 'Not found'), '${f.notFound}'),
+      ]),
+      const SizedBox(height: 8),
+      Text(t('الأسئلة التي لم تُفِد (بلا أسماء) — أضف مستنداً أو صحّح الموجود.', 'Questions that did not help (no names) — add a document or fix an existing one.'), style: appText(12, c: c.textMedium)),
+      const SizedBox(height: 8),
+      if (f.unhelpful.isEmpty)
+        AppEmpty(icon: Icons.thumb_up_alt_outlined, title: t('لا إجابات غير مفيدة', 'No unhelpful answers'))
+      else
+        for (final u in f.unhelpful)
+          AppCard(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(12),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(u.question, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
+              if (u.comment.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 4), child: Text('«${u.comment}»', style: appText(12.5, c: c.textMedium))),
+              const SizedBox(height: 6),
+              Wrap(spacing: 6, runSpacing: 6, children: [
+                if (u.found == false) AppBadgePill(t('لم يجد جواباً', 'No answer found'), color: c.warning),
+                for (final s in u.sources) AppBadgePill(s, color: c.textMedium),
+                if (u.at != null) AppBadgePill(shortDateTime(u.at), color: c.textLight),
+              ]),
+            ]),
+          ),
+    ]);
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat(this.label, this.value);
+  final String label, value;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 120, maxWidth: 220),
+      child: AppCard(
+        padding: const EdgeInsets.all(12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(value, style: appText(20, w: FontWeight.w800, c: c.textDark)),
+          Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
+        ]),
+      ),
+    );
+  }
+}
