@@ -10,7 +10,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | 2 | Core refactor: modular monolith, RLS, RBAC, audit log | **done 2026-10-24** (app part: auth storage / refresh contract; backend `docs/PROGRESS.md` has the server side and the review round) | cross-tenant leak tests + permission tests pass |
 | 3 | Organizations, switcher, membership, sharing, Verification API | **done 2026-10-25** (review round with Phase 4; backend `docs/PROGRESS.md`) | switcher + sharing tests pass, analyzer 0/0 |
 | 4 | Application pipeline under load | **done 2026-10-25** (queue-first cart, server-paced polling, honest busy handling) | load test: no oversold seats, no duplicates |
-| 5 | Exam Engine service | **in progress** (backend first; the app's taking flow v2 lands in increment 6, D-018) | |
+| 5 | Exam Engine service | **in progress** (taking flow v2 done on the app side; review round pending) | consent · server timer · autosave · integrity events |
 | 6 | Grading engine + OCR + benchmark + review UI | not started | section-13 numbers reported |
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
@@ -84,6 +84,22 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | `flutter analyze` | 0 errors, 0 warnings |
 | `flutter test test/org/ test/export/ test/ui/` | 331 pass |
 | Review round | done with Phase 3 (backend `docs/PROGRESS.md` → Review rounds · Phases 3 + 4; app fixes in commit b6e874b) |
+
+## Phase 5 — app side (2026-10-25, Exam Engine taking flow v2)
+
+### Done (commit d176b2a)
+- **Exam Engine client** (`lib/features/shared/exam_engine/exam_engine_api.dart`): the student calls of `/api/v1/exam` over the one `ApiClient` (which gained an optional `headers` argument for `X-Exam-Session`); `EngineResult.unavailable` detects an engine that is not deployed or routed yet, so the legacy exam flow stays in charge until then.
+- **Pure logic** (`exam_taking.dart`, unit-tested): the server clock (counts down from the server's `remaining_seconds`, never from the device clock), the paper model with one-way sections, the autosave queue with a monotonic `save_seq` per question (older saves are ignored by the server, retries are safe), the integrity event buffer (urgent kinds flush at once), the policy actions, the bilingual code texts.
+- **Screens**: consent (`ExamConsentScreen`: the versioned text, what it requires, what THIS device can and cannot do, hash-bound acceptance), taking (`ExamTakingScreen`: timer chip, progress and lock banner, one card per question type — single / multi / true-false / blanks / matching / ordering / numeric with units / short answer / essay —, question grid, autosave every 4 s, submit with an unanswered-count confirmation, leaving keeps the attempt), result (`ExamResultBody`: by the results policy, "awaiting review" when so). Integrity signals from what each platform offers (`exam_integrity*.dart`: web — tab / window switch, full-screen exit, copy / paste; mobile — app to background) are reported as events; the consent screen says plainly what cannot be prevented. On-device face / gaze models are Phase 9.
+- **Entry**: `EngineExamsSection` above the legacy course exams (start / resume / passcode / result), hidden when the engine has no exams for the course or is not deployed.
+- Tests: `test/org/exam_taking_test.dart` (clock, paper navigation, autosave queue, events; layout harness over every question type, timer, nav bar, grid, consent and result bodies).
+
+### Checks at the end of the phase
+| Check | Result |
+|---|---|
+| `flutter analyze` | 0 errors, 0 warnings |
+| `flutter test test/org/ test/export/ test/ui/` | 338 pass |
+| Review round | pending (with the backend's Phase 5 reviewers) |
 
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
