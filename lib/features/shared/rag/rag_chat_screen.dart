@@ -86,6 +86,15 @@ class _RagChatScreenState extends State<RagChatScreen> {
     _toEnd();
   }
 
+  Future<void> _rate(RagAnswer a, bool helpful) async {
+    final r = await _api.rate(a.id, helpful: helpful);
+    if (!mounted || !r.ok) return;
+    setState(() {
+      final i = _items.indexWhere((x) => x.id == a.id);
+      if (i >= 0) _items[i] = RagAnswer.fromJson(r.map);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -109,7 +118,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
             if (_loading) const AppListSkeleton(items: 2),
             if (!_loading && _items.isEmpty && _error == null)
               AppEmpty(icon: Icons.question_answer_outlined, title: t('اسأل عن اللوائح أو الشروط أو محتوى المقرر', 'Ask about regulations, terms or course content')),
-            for (final a in _items) RagAnswerCard(answer: a),
+            for (final a in _items) RagAnswerCard(answer: a, onRate: (helpful) => _rate(a, helpful)),
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
           ]),
         ),
@@ -137,8 +146,11 @@ class _RagChatScreenState extends State<RagChatScreen> {
 
 /// A question and its answer: the answer text with its `[n]` markers, then the sources it quotes.
 class RagAnswerCard extends StatelessWidget {
-  const RagAnswerCard({super.key, required this.answer});
+  const RagAnswerCard({super.key, required this.answer, this.onRate});
   final RagAnswer answer;
+
+  /// helpful? (null = no rating offered)
+  final void Function(bool helpful)? onRate;
 
   @override
   Widget build(BuildContext context) {
@@ -187,6 +199,21 @@ class RagAnswerCard extends StatelessWidget {
                         const SizedBox(height: 4),
                         for (final ci in answer.citations) _Source(citation: ci),
                       ],
+                      if (onRate != null)
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Text(t('هل أفادتك الإجابة؟', 'Was this helpful?'), style: theme.bodySmall?.copyWith(color: c.textLight)),
+                            IconButton(
+                                tooltip: t('مفيدة', 'Helpful'), onPressed: () => onRate!(true),
+                                icon: Icon(answer.helpful == true ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined, size: 18,
+                                    color: answer.helpful == true ? c.success : c.textLight)),
+                            IconButton(
+                                tooltip: t('غير مفيدة', 'Not helpful'), onPressed: () => onRate!(false),
+                                icon: Icon(answer.helpful == false ? Icons.thumb_down_alt_rounded : Icons.thumb_down_alt_outlined, size: 18,
+                                    color: answer.helpful == false ? c.danger : c.textLight)),
+                          ]),
+                        ),
                     ]),
         ),
       ]),

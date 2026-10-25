@@ -8,6 +8,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
 import 'exam_review.dart';
+import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
 import 'exam_taking.dart' show examCodeText;
 
@@ -366,6 +367,13 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
       key: const ValueKey('exam.review'),
       appBar: AppBar(title: Text(t('مراجعة التصحيح', 'Review marking')), actions: [
         IconButton(onPressed: _scans, icon: const Icon(Icons.document_scanner_outlined), tooltip: t('الأوراق الممسوحة', 'Scanned pages')),
+        IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAppealsScreen(examId: widget.examId, examTitle: widget.examTitle,
+                pointsOf: {for (final it in _queue?.items ?? const <ReviewItem>[]) it.questionId: it.points}))),
+            icon: const Icon(Icons.gavel_rounded), tooltip: t('التظلمات', 'Appeals')),
+        IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAnalyticsScreen(examId: widget.examId, examTitle: widget.examTitle))),
+            icon: const Icon(Icons.insights_rounded), tooltip: t('التحليلات', 'Analytics')),
         IconButton(onPressed: _policy, icon: const Icon(Icons.tune_rounded), tooltip: t('سياسة التصحيح', 'Grading policy')),
       ]),
       child: RefreshIndicator(

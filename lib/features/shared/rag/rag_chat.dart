@@ -34,7 +34,7 @@ class RagCitation {
 }
 
 class RagAnswer {
-  RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error);
+  RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error, [this.helpful]);
   final int id;
   final String state;
   final String question;
@@ -43,11 +43,14 @@ class RagAnswer {
   final List<RagCitation> citations;
   final String? error;
 
+  /// the asker's rating: true / false, null = not rated
+  final bool? helpful;
+
   bool get done => state == 'done' || state == 'failed';
 
   factory RagAnswer.fromJson(Map<String, dynamic> j) => RagAnswer(asInt(j['id']), '${j['state'] ?? 'queued'}', '${j['question'] ?? ''}',
       j['found'] is bool ? j['found'] as bool : null, '${j['answer'] ?? ''}',
-      asMapList(j['citations']).map(RagCitation.fromJson).toList(), j['error']?.toString());
+      asMapList(j['citations']).map(RagCitation.fromJson).toList(), j['error']?.toString(), j['helpful'] is bool ? j['helpful'] as bool : null);
 
   RagCitation? citation(int n) {
     for (final c in citations) {
@@ -98,6 +101,10 @@ class RagApi {
       engineCall(() => _api.post('$base/ask', body: {'question': question, 'org_id': ?orgId, 'course_id': ?courseId}));
 
   Future<EngineResult> query(int id) => engineCall(() => _api.get('$base/queries/$id'));
+
+  /// The asker's rating of a finished answer (Phase 8).
+  Future<EngineResult> rate(int id, {required bool helpful, String? comment}) =>
+      engineCall(() => _api.post('$base/queries/$id/feedback', body: {'helpful': helpful, 'comment': ?comment}));
 
   Future<EngineResult> history({int? orgId, int? courseId, int limit = 20}) =>
       engineCall(() => _api.get('$base/queries', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, 'limit': limit}));

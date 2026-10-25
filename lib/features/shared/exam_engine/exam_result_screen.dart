@@ -4,13 +4,21 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../admin/admin_common.dart' show asMapList, t;
+import '../../admin/admin_common.dart' show asInt, asMapList, t;
+import 'exam_insights.dart';
+import 'exam_insights_screen.dart' show StudentAppealSheet;
 
 /// Plain-values body for the harness.
 class ExamResultBody extends StatelessWidget {
-  const ExamResultBody({super.key, required this.result, required this.examTitle});
+  const ExamResultBody({super.key, required this.result, required this.examTitle, this.appeals = const {}, this.onAppeal});
   final Map<String, dynamic> result;
   final String examTitle;
+
+  /// question id → the latest appeal on it (Phase 8)
+  final Map<int, Appeal> appeals;
+
+  /// null = appeals not offered (not allowed, not loaded, or the window closed)
+  final void Function(int questionId)? onAppeal;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +71,7 @@ class ExamResultBody extends StatelessWidget {
               padding: EdgeInsets.zero,
               child: ListTile(
                 title: Text(t('سؤال #${q['question_id']}', 'Question #${q['question_id']}'), style: appText(13.5, w: FontWeight.w600)),
+                subtitle: _appealLine(context, asInt(q['question_id']), q['score'] != null),
                 trailing: Text(q['score'] == null ? t('قيد المراجعة', 'review') : '${q['score']}', style: appText(13, w: FontWeight.w700, c: c.primary)),
               ),
             ),
@@ -72,15 +81,74 @@ class ExamResultBody extends StatelessWidget {
   }
 }
 
-class ExamResultScreen extends StatelessWidget {
+extension on ExamResultBody {
+  Widget? _appealLine(BuildContext context, int questionId, bool scored) {
+    final c = context.colors;
+    final a = appeals[questionId];
+    if (a != null) {
+      return Text(a.note == null || a.note!.isEmpty ? t('تظلم: ${appealStateText(a.state)}', 'Appeal: ${appealStateText(a.state)}')
+              : t('تظلم ${appealStateText(a.state)}: ${a.note}', 'Appeal ${appealStateText(a.state)}: ${a.note}'),
+          style: appText(12, c: a.state == 'accepted' ? c.success : c.textMedium), maxLines: 3, overflow: TextOverflow.ellipsis);
+    }
+    if (!scored || onAppeal == null) return null;
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton.icon(onPressed: () => onAppeal!(questionId), icon: const Icon(Icons.flag_outlined, size: 16),
+          label: Text(t('طلب إعادة تصحيح', 'Request a regrade'))),
+    );
+  }
+}
+
+class ExamResultScreen extends StatefulWidget {
   const ExamResultScreen({super.key, required this.result, required this.examTitle});
   final Map<String, dynamic> result;
   final String examTitle;
 
   @override
+  State<ExamResultScreen> createState() => _ExamResultScreenState();
+}
+
+class _ExamResultScreenState extends State<ExamResultScreen> {
+  final _api = ExamInsightsApi();
+  Map<int, Appeal> _appeals = const {};
+  bool _canAppeal = false;
+
+  int get _attemptId => asInt(widget.result['attempt_id']);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (widget.result['visible'] != true || _attemptId == 0) return;
+    final r = await _api.myAppeals(_attemptId);
+    if (!mounted || !r.ok) return;
+    final list = asMapList(r.map['items']).map(Appeal.fromJson).toList();
+    final since = DateTime.tryParse('${r.map['results_visible_since'] ?? ''}');
+    final days = asInt(r.map['days']);
+    setState(() {
+      _appeals = {for (final a in list) if (a.state != 'withdrawn') a.questionId: a};
+      _canAppeal = r.map['enabled'] == true && since != null && DateTime.now().toUtc().isBefore(since.add(Duration(days: days)));
+    });
+  }
+
+  Future<void> _appeal(int questionId) async {
+    final sent = await showAppSheet<bool>(context, (_) => StudentAppealSheet(
+          questionLabel: t('سؤال #$questionId', 'Question #$questionId'),
+          onSubmit: (reason) async {
+            final r = await _api.appeal(_attemptId, questionId, reason);
+            return r.ok ? null : appealCodeText(r.code, r.message);
+          },
+        ));
+    if (sent == true) _load();
+  }
+
+  @override
   Widget build(BuildContext context) => BasePage(
         key: const ValueKey('exam.result'),
         appBar: AppBar(title: Text(t('نتيجة الاختبار', 'Exam result'))),
-        child: ExamResultBody(result: result, examTitle: examTitle),
+        child: ExamResultBody(result: widget.result, examTitle: widget.examTitle, appeals: _appeals, onAppeal: _canAppeal ? _appeal : null),
       );
 }
