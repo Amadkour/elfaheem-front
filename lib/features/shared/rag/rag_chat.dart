@@ -102,12 +102,15 @@ class RagApi {
   Future<EngineResult> history({int? orgId, int? courseId, int limit = 20}) =>
       engineCall(() => _api.get('$base/queries', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, 'limit': limit}));
 
-  /// Polls until the worker answered (or [timeout]); the last state otherwise.
-  Future<EngineResult> waitFor(int id, {Duration every = const Duration(seconds: 1), Duration timeout = const Duration(seconds: 60)}) async {
+  /// Polls until the worker answered (or [timeout]), every second at first and then up to every 5 s; the last state
+  /// otherwise (the screen keeps it as "still working" and asks again on refresh).
+  Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 3)}) async {
     final end = DateTime.now().add(timeout);
+    var every = const Duration(seconds: 1);
     var r = await query(id);
     while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
       await Future<void>.delayed(every);
+      if (every < const Duration(seconds: 5)) every += const Duration(milliseconds: 500);
       r = await query(id);
     }
     return r;

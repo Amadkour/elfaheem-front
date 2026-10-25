@@ -79,6 +79,9 @@ class _RagChatScreenState extends State<RagChatScreen> {
       final i = _items.indexWhere((a) => a.id == pending.id);
       if (done.ok && i >= 0) _items[i] = RagAnswer.fromJson(done.map);
       if (!done.ok) _error = ragCodeText(done.code, done.message);
+      if (done.ok && !RagAnswer.fromJson(done.map).done) {
+        _error = t('ما زال المساعد يعمل على إجابتك — حدّث بعد قليل', 'The assistant is still working on your answer — refresh in a moment');
+      }
     });
     _toEnd();
   }
@@ -89,7 +92,13 @@ class _RagChatScreenState extends State<RagChatScreen> {
     return BasePage(
       key: const ValueKey('rag.assistant'),
       appBar: ScreenAppBar(title: widget.title ?? t('مساعد المستندات', 'Documents assistant'),
-          actions: [if (widget.orgId != null) const ContextExitButton()]),
+          actions: [
+            IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: () {
+              setState(() => _error = null);
+              _history();
+            }),
+            if (widget.orgId != null) const ContextExitButton(),
+          ]),
       child: Column(children: [
         Expanded(
           child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
