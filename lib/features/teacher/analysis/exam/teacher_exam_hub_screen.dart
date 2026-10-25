@@ -14,6 +14,7 @@ import 'teacher_exam_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
 
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
@@ -179,7 +180,13 @@ class _HubViewState extends State<_HubView>
   // Tab 1 — Exams list
   // ══════════════════════════════════════════════════════════════════════════
 
-  Widget _buildExamsTab(TeacherExamProvider prov) {
+  // Exam Engine exams (Phase 6 review) sit above the legacy list; the section hides itself when there are none.
+  Widget _buildExamsTab(TeacherExamProvider prov) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        EngineReviewSection(courseId: prov.courseId),
+        Expanded(child: _legacyExamsTab(prov)),
+      ]);
+
+  Widget _legacyExamsTab(TeacherExamProvider prov) {
     if (prov.loadingExams) {
       return const Center(child: AppLoadingIndicator());
     }

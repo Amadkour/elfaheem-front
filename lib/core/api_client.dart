@@ -562,8 +562,10 @@ class _EncryptionInterceptor extends Interceptor {
   _EncSession? _session;
   Future<_EncSession>? _handshake;
 
+  // `noEnc`: binary downloads (scan images, PDFs) opt out — the server would otherwise wrap the bytes in a JSON
+  // envelope. Auth, TLS and certificate pinning still apply to them.
   bool _skips(RequestOptions o) =>
-      o.path.contains('/security/handshake') || o.data is FormData;
+      o.path.contains('/security/handshake') || o.data is FormData || o.extra['noEnc'] == true;
 
   Future<_EncSession> _ensureSession() {
     final cached = _session;
@@ -1215,6 +1217,43 @@ class ApiClient {
           options: _jsonOpts(auth: auth, method: 'PUT', headers: headers),
         ),
       );
+
+  // ── Binary downloads and multi-file uploads (Exam Engine scans, answer sheets) ──
+
+  /// GET raw bytes (an image, a PDF). Outside the envelope encryption (see `noEnc` in the interceptor).
+  Future<Uint8List> getBytes(String path, {Map<String, dynamic>? queryParams}) async {
+    final res = await _execute(() => _dio.get(path, queryParameters: queryParams,
+        options: Options(method: 'GET', responseType: ResponseType.bytes, extra: {'auth': true, 'noEnc': true})));
+    return _asBytes(res);
+  }
+
+  /// POST a JSON body and receive raw bytes (e.g. a generated PDF). The body is small and not sensitive (ids).
+  Future<Uint8List> postForBytes(String path, {dynamic body}) async {
+    final res = await _execute(() => _dio.post(path, data: body,
+        options: Options(method: 'POST', contentType: Headers.jsonContentType, responseType: ResponseType.bytes,
+            extra: {'auth': true, 'noEnc': true})));
+    return _asBytes(res);
+  }
+
+  /// multipart/form-data POST with several files under one field (`files`), plus plain fields.
+  Future<dynamic> postFiles(String path, {required List<(String, Uint8List)> files, String field = 'files',
+      Map<String, dynamic> fields = const {}}) {
+    final form = FormData();
+    for (final e in fields.entries) {
+      if (e.value != null) form.fields.add(MapEntry(e.key, '${e.value}'));
+    }
+    for (final (name, bytes) in files) {
+      final lower = name.toLowerCase();
+      final mime = lower.endsWith('.pdf') ? 'application/pdf' : lower.endsWith('.png') ? 'image/png'
+          : lower.endsWith('.webp') ? 'image/webp' : lower.endsWith('.csv') ? 'text/csv'
+          : lower.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'image/jpeg';
+      form.files.add(MapEntry(field, MultipartFile.fromBytes(bytes, filename: name, contentType: MediaType.parse(mime))));
+    }
+    return _execute(() => _dio.post(path, data: form, options: _fileOpts()));
+  }
+
+  static Uint8List _asBytes(dynamic res) =>
+      res is Uint8List ? res : (res is List ? Uint8List.fromList(List<int>.from(res)) : Uint8List(0));
 
   // ── DELETE ────────────────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | 3 | Organizations, switcher, membership, sharing, Verification API | **done 2026-10-25** (review round with Phase 4; backend `docs/PROGRESS.md`) | switcher + sharing tests pass, analyzer 0/0 |
 | 4 | Application pipeline under load | **done 2026-10-25** (queue-first cart, server-paced polling, honest busy handling) | load test: no oversold seats, no duplicates |
 | 5 | Exam Engine service | **done 2026-10-25** (taking flow v2; review round folded in, backend D-019) | consent · server timer · autosave · integrity events |
-| 6 | Grading engine + OCR + benchmark + review UI | not started | section-13 numbers reported |
+| 6 | Grading engine + OCR + benchmark + review UI | **implemented 2026-10-25** (teacher review + scans screens; review round pending) | review flows under the layout harness |
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
 | 9 | Frontend completion, localization, accessibility | not started | |
@@ -100,6 +100,13 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | `flutter analyze` | 0 errors, 0 warnings |
 | `flutter test test/org/ test/export/ test/ui/` | 338 pass |
 | Review round | done (see Review rounds · Phase 5) |
+
+## Phase 6 — app side (2026-10-25)
+
+- `lib/features/shared/exam_engine/exam_review.dart`: review models (proposal, criteria with evidence spans, rubric, marks, OCR regions and words), pure helpers (confidence bands, evidence highlight runs, criteria totals, score validation, state / flag / quality texts) and `ExamReviewApi` (grading policy, review queue, mark, bulk approve, scans, image bytes, assign, transcription, upload, marks import, sheets PDF).
+- `exam_review_screen.dart`: `ExamReviewScreen` (lowest confidence first, one-tap accept, criteria editor, bulk approval banner, policy sheet) and `EngineReviewSection` in the teacher exam hub; `exam_scan_review.dart`: the page beside the OCR text with low-confidence words marked, corrected transcription, unmatched assignment.
+- `ApiClient`: `getBytes` / `postForBytes` (outside the envelope encryption, auth and pinning kept) and `postFiles` (several files under one field).
+- Tests: `test/org/exam_review_test.dart` (parsing, approvable count, helpers, layout harness over the card, the editor and the OCR words).
 
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
