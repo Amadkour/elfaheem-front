@@ -1,5 +1,6 @@
 // The documents assistant (Phase 7, D-022): ask the organization's / course's documents, get an answer quoted from
-// them with its sources. `RagAnswerCard` is presentational (tested under the layout harness); the screen owns the
+// them with its sources. `app: true` is the app assistant: the platform's own documents (terms, about, guides) for
+// every user, with no organization or course. `RagAnswerCard` is presentational (tested under the layout harness); the screen owns the
 // API calls and the polling.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -14,9 +15,10 @@ import 'rag_library.dart';
 import 'rag_library_screen.dart';
 
 class RagChatScreen extends StatefulWidget {
-  const RagChatScreen({super.key, this.orgId, this.courseId, this.title});
+  const RagChatScreen({super.key, this.orgId, this.courseId, this.app = false, this.title});
   final int? orgId;
   final int? courseId;
+  final bool app;
   final String? title;
 
   @override
@@ -48,7 +50,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   Future<void> _history() async {
-    final r = await _api.history(orgId: widget.orgId, courseId: widget.courseId);
+    final r = await _api.history(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -60,7 +62,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   Future<void> _checkManager() async {
-    final r = await RagLibraryApi().list(orgId: widget.orgId, courseId: widget.courseId);
+    final r = await RagLibraryApi().list(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted || !r.ok) return;
     final m = RagLibrary.fromJson(r.map).manager;
     if (m != _manager) setState(() => _manager = m);
@@ -74,7 +76,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
     final q = _input.text.trim();
     if (q.isEmpty || _sending) return;
     setState(() { _sending = true; _error = null; });
-    final r = await _api.ask(q, orgId: widget.orgId, courseId: widget.courseId);
+    final r = await _api.ask(q, orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted) return;
     if (!r.ok) {
       setState(() { _sending = false; _error = ragChatResultText(r); });
@@ -112,14 +114,14 @@ class _RagChatScreenState extends State<RagChatScreen> {
     final c = context.colors;
     return BasePage(
       key: const ValueKey('rag.assistant'),
-      appBar: ScreenAppBar(title: widget.title ?? t('مساعد المستندات', 'Documents assistant'),
+      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
           actions: [
             if (_manager)
               IconButton(
                   tooltip: t('مكتبة المستندات', 'Documents library'),
                   icon: const Icon(Icons.folder_copy_outlined),
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => RagLibraryScreen(orgId: widget.orgId, courseId: widget.courseId)))),
+                      builder: (_) => RagLibraryScreen(orgId: widget.orgId, courseId: widget.courseId, app: widget.app)))),
             IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: () {
               setState(() => _error = null);
               _history();
@@ -130,12 +132,19 @@ class _RagChatScreenState extends State<RagChatScreen> {
         Expanded(
           child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
             AppBanner(icon: Icons.menu_book_rounded, color: c.primary,
-                text: t('الإجابات من مستندات مؤسستك ومقرراتك فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
-                    'Answers come only from your organization\'s and courses\' documents, with their sources. If the answer is not there, the assistant says so.')),
+                text: widget.app
+                    ? t('الإجابات من شروط التطبيق وصفحاته وأدلته فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
+                        'Answers come only from the app\'s terms, pages and guides, with their sources. If the answer is not there, the assistant says so.')
+                    : t('الإجابات من مستندات مؤسستك ومقرراتك فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
+                        'Answers come only from your organization\'s and courses\' documents, with their sources. If the answer is not there, the assistant says so.')),
             const SizedBox(height: 10),
             if (_loading) const AppListSkeleton(items: 2),
             if (!_loading && _items.isEmpty && _error == null)
-              AppEmpty(icon: Icons.question_answer_outlined, title: t('اسأل عن اللوائح أو الشروط أو محتوى المقرر', 'Ask about regulations, terms or course content')),
+              AppEmpty(
+                  icon: Icons.question_answer_outlined,
+                  title: widget.app
+                      ? t('اسأل عن التطبيق: الاشتراك، الاسترداد، الأجهزة، الخصوصية…', 'Ask about the app: subscriptions, refunds, devices, privacy…')
+                      : t('اسأل عن اللوائح أو الشروط أو محتوى المقرر', 'Ask about regulations, terms or course content')),
             for (final a in _items) RagAnswerCard(answer: a, onRate: (helpful) => _rate(a, helpful)),
             if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
           ]),

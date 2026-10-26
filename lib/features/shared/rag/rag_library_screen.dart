@@ -18,7 +18,7 @@ import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
-import '../../admin/admin_common.dart' show asMap, shortDateTime, t;
+import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, t;
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
 import 'rag_library.dart';
@@ -34,9 +34,12 @@ Color ragStatusColor(BuildContext context, String s) {
 }
 
 class RagLibraryScreen extends StatefulWidget {
-  const RagLibraryScreen({super.key, this.orgId, this.courseId, this.title, this.api});
+  const RagLibraryScreen({super.key, this.orgId, this.courseId, this.app = false, this.title, this.api});
   final int? orgId;
   final int? courseId;
+
+  /// the app assistant's documents (platform admins)
+  final bool app;
   final String? title;
   final RagLibraryApi? api;
 
@@ -67,7 +70,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
 
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
-    final r = await _api.list(orgId: widget.orgId, courseId: widget.courseId, status: _filter == 'archived' ? 'archived' : null);
+    final r = await _api.list(orgId: widget.orgId, courseId: widget.courseId, status: _filter == 'archived' ? 'archived' : null, app: widget.app);
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -118,8 +121,20 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
 
   Future<void> _upload({RagDocument? replaces}) async {
     final done = await showAppSheet<bool>(
-        context, (_) => RagUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, library: _lib, replaces: replaces));
+        context,
+        (_) => replaces == null
+            ? RagBatchUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, app: widget.app, library: _lib)
+            : RagUploadSheet(api: _api, orgId: widget.orgId, courseId: widget.courseId, library: _lib, replaces: replaces));
     if (done == true) _load(silent: true);
+  }
+
+  Future<void> _syncApp() async {
+    final r = await _api.syncApp();
+    if (!mounted) return;
+    if (!r.ok) return appToast(ragResultText(r), error: true);
+    final o = <String>[for (final k in ['added', 'updated', 'unchanged']) for (var i = 0; i < asInt(r.map[k]); i++) k];
+    appToast(o.isEmpty ? t('لا جديد في صفحات التطبيق', 'Nothing new in the app\'s pages') : ragOutcomeSummary(o));
+    _load(silent: true);
   }
 
   @override
@@ -132,7 +147,9 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       key: const ValueKey('rag.library'),
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: widget.title ?? t('مكتبة المستندات', 'Documents library'), actions: [
+      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مستندات التطبيق', 'App documents') : t('مكتبة المستندات', 'Documents library')), actions: [
+        if (widget.app && lib?.manager == true)
+          IconButton(tooltip: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), icon: const Icon(Icons.sync_rounded), onPressed: _syncApp),
         if (widget.orgId != null)
           IconButton(
               tooltip: t('الإجابات غير المفيدة', 'Unhelpful answers'),
@@ -423,7 +440,7 @@ class _RagUploadFormState extends State<RagUploadForm> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final scopes = widget.orgId == null ? const ['course'] : ragScopes;
+    final scopes = widget.replaces?.scope == 'app' ? const ['app'] : (widget.orgId == null ? const ['course'] : ragScopes);
     final replaceable = widget.library?.replaceable(_d.scope, courseId: widget.courseId ?? _d.courseIdValue) ?? const <RagDocument>[];
     final locked = widget.replaces != null;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -676,6 +693,256 @@ class _Stat extends StatelessWidget {
           Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textLight)),
         ]),
       ),
+    );
+  }
+}
+
+// ── upload several files, with the one question about the documents already there ─────────────────────────────
+
+/// Upload one or several files. When the library already holds documents, ONE question: keep both (the default,
+/// nothing is touched) · merge (same name → new version) · replace (the old ones are archived only after every upload
+/// succeeded, so a failed upload never empties the library). [RagBatchUploadForm] is the presentational part.
+class RagBatchUploadSheet extends StatefulWidget {
+  const RagBatchUploadSheet({super.key, required this.api, this.orgId, this.courseId, this.app = false, this.library, this.pickFiles});
+  final RagLibraryApi api;
+  final int? orgId;
+  final int? courseId;
+  final bool app;
+  final RagLibrary? library;
+
+  /// test hook / platform seam: the picked (name, bytes)
+  final Future<List<(String, Uint8List)>> Function()? pickFiles;
+
+  @override
+  State<RagBatchUploadSheet> createState() => _RagBatchUploadSheetState();
+}
+
+class _RagBatchUploadSheetState extends State<RagBatchUploadSheet> {
+  final List<(String, Uint8List)> _files = [];
+  late String _scope = widget.app ? 'app' : (widget.orgId == null ? 'course' : 'org');
+  RagConflictMode _mode = ragConflictDefault;
+  bool _busy = false;
+  int _done = 0;
+  String? _err;
+
+  List<RagDocument> get _existing => widget.library?.replaceable(_scope, courseId: widget.courseId) ?? const [];
+
+  Future<List<(String, Uint8List)>> _pick() async {
+    final picked = await FilePicker.pickFiles(type: FileType.custom, allowedExtensions: ragUploadExtensions);
+    return [for (final f in picked) (f.name, await f.readAsBytes())];
+  }
+
+  Future<void> _choose() async {
+    final got = await (widget.pickFiles ?? _pick)();
+    if (got.isEmpty || !mounted) return;
+    setState(() {
+      for (final f in got) {
+        if (!_files.any((x) => x.$1 == f.$1)) _files.add(f);
+      }
+      _err = null;
+    });
+  }
+
+  Future<void> _submit() async {
+    if (_files.isEmpty) return setState(() => _err = draftErrorText('file_required'));
+    final plan = RagConflictPlan.of(_existing, [for (final f in _files) f.$1]);
+    final drafts = [
+      for (final f in _files)
+        RagUploadDraft(
+            title: ragTitleOf(f.$1),
+            scope: _scope,
+            fileName: f.$1,
+            fileBytes: f.$2,
+            onConflict: plan.ask ? _mode : null),
+    ];
+    for (final d in drafts) {
+      final e = d.validate(orgId: widget.orgId, fixedCourseId: widget.courseId);
+      if (e != null) return setState(() => _err = '${d.fileName}: ${ragLibraryCodeText(e, draftErrorText(e))}');
+    }
+    setState(() {
+      _busy = true;
+      _done = 0;
+      _err = null;
+    });
+    final outcomes = <String>[];
+    final kept = <int>{};
+    for (final d in drafts) {
+      final r = await widget.api.upload(d, orgId: widget.app ? null : widget.orgId, courseId: widget.courseId);
+      if (!mounted) return;
+      if (!r.ok) {
+        // stop here: nothing old is archived after a failed upload
+        setState(() {
+          _busy = false;
+          _err = '${d.fileName}: ${ragResultText(r)}';
+          _files.removeRange(0, _done);
+        });
+        if (outcomes.isNotEmpty) appToast(ragOutcomeSummary(outcomes));
+        return;
+      }
+      outcomes.add(asStr(r.map['outcome'], 'added'));
+      kept.add(asInt(r.map['id']));
+      setState(() => _done++);
+    }
+    var archived = 0;
+    if (plan.ask && _mode == RagConflictMode.replace) {
+      for (final old in _existing.where((x) => !kept.contains(x.id))) {
+        if ((await widget.api.archive(old.id)).ok) archived++;
+      }
+    }
+    if (!mounted) return;
+    appToast([ragOutcomeSummary(outcomes), if (archived > 0) t('$archived مؤرشف', '$archived archived')].join(' · '));
+    Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scopes = widget.app ? const ['app'] : (widget.orgId == null ? const ['course'] : ragScopes);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSheetHeader(t('رفع مستندات', 'Upload documents')),
+        RagBatchUploadForm(
+          files: [for (final f in _files) (f.$1, f.$2.length)],
+          scopes: scopes,
+          scope: _scope,
+          plan: RagConflictPlan.of(_existing, [for (final f in _files) f.$1]),
+          mode: _mode,
+          busy: _busy,
+          done: _done,
+          error: _err,
+          onPick: _choose,
+          onRemove: (i) => setState(() => _files.removeAt(i)),
+          onScope: (s) => setState(() {
+            _scope = s;
+            _mode = ragConflictDefault;
+          }),
+          onMode: (m) => setState(() => _mode = m),
+          onSubmit: _submit,
+        ),
+      ]),
+    );
+  }
+}
+
+/// Files · scope (organization libraries) · the conflict question when the library has documents · Upload.
+class RagBatchUploadForm extends StatelessWidget {
+  const RagBatchUploadForm({
+    super.key,
+    required this.files,
+    required this.scopes,
+    required this.scope,
+    required this.plan,
+    required this.mode,
+    required this.onPick,
+    required this.onRemove,
+    required this.onScope,
+    required this.onMode,
+    required this.onSubmit,
+    this.busy = false,
+    this.done = 0,
+    this.error,
+  });
+
+  /// (name, size in bytes)
+  final List<(String, int)> files;
+  final List<String> scopes;
+  final String scope;
+  final RagConflictPlan plan;
+  final RagConflictMode mode;
+  final bool busy;
+  final int done;
+  final String? error;
+  final VoidCallback onPick;
+  final ValueChanged<int> onRemove;
+  final ValueChanged<String> onScope;
+  final ValueChanged<RagConflictMode> onMode;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (scopes.length > 1) ...[
+        Text(t('من يرى هذه المستندات؟', 'Who sees these documents?'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final s in scopes) AppChoiceChip(label: ragScopeText(s), selected: scope == s, onTap: busy ? () {} : () => onScope(s)),
+        ]),
+        const SizedBox(height: 12),
+      ],
+      for (var i = 0; i < files.length; i++)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Row(children: [
+            Icon(i < done ? Icons.check_circle_rounded : Icons.insert_drive_file_outlined, size: 20, color: i < done ? c.success : c.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(files[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, c: c.textDark))),
+            const SizedBox(width: 6),
+            Text(ragSizeText(files[i].$2), style: appText(11.5, c: c.textLight)),
+            if (!busy) IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => onRemove(i), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+          ]),
+        ),
+      OutlinedButton.icon(
+          onPressed: busy ? null : onPick,
+          icon: const Icon(Icons.attach_file_rounded, size: 18),
+          label: Text(files.isEmpty ? t('اختر ملفاً أو أكثر', 'Choose one or more files') : t('أضف ملفات', 'Add files'))),
+      Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(t('الأفضل: Word أو PDF نصي — يُقرأ بدقة. الصور والملفات الممسوحة تُقرأ بالتعرف الضوئي وقد تفقد كلمات.',
+            'Best: Word or a text PDF — read exactly. Photos and scans go through OCR and may lose words.'), style: appText(11.5, c: c.textLight)),
+      ),
+      if (files.isNotEmpty && plan.ask) ...[
+        const SizedBox(height: 14),
+        RagConflictQuestion(plan: plan, mode: mode, onMode: busy ? null : onMode),
+      ],
+      if (error != null) Padding(padding: const EdgeInsets.only(top: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!)),
+      const SizedBox(height: 14),
+      AppPrimaryButton(
+          label: busy && files.isNotEmpty ? t('جارٍ الرفع ${done + 1} من ${files.length}', 'Uploading ${done + 1} of ${files.length}') : t('رفع', 'Upload'),
+          icon: Icons.upload_rounded,
+          busy: busy,
+          onPressed: busy || files.isEmpty ? null : onSubmit),
+    ]);
+  }
+}
+
+/// The one question when a library already holds documents (keep both is preselected: nothing is touched).
+class RagConflictQuestion extends StatelessWidget {
+  const RagConflictQuestion({super.key, required this.plan, required this.mode, this.onMode});
+  final RagConflictPlan plan;
+  final RagConflictMode mode;
+  final ValueChanged<RagConflictMode>? onMode;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('توجد ${plan.existing} مستندات هنا مسبقاً. ماذا نفعل بها؟', 'There are already ${plan.existing} documents here. What should we do with them?'),
+            style: appText(13.5, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(height: 6),
+        for (final m in RagConflictMode.values)
+          InkWell(
+            borderRadius: BorderRadius.circular(10),
+            onTap: onMode == null ? null : () => onMode!(m),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(mode == m ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, size: 20,
+                    color: mode == m ? c.primary : c.textLight),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(m == ragConflictDefault ? '${plan.title(m)} ${t('(موصى به)', '(recommended)')}' : plan.title(m),
+                        style: appText(13.5, w: FontWeight.w700, c: m == RagConflictMode.replace ? c.danger : c.textDark)),
+                    Text(plan.detail(m), style: appText(12, c: c.textMedium)),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+      ]),
     );
   }
 }

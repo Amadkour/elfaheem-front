@@ -1,8 +1,10 @@
 // The documents library of the RAG assistant (Phase 7/8): API client, models and the pure rules behind
 // rag_library_screen.dart. /api/v1/rag over the one ApiClient (same [engineCall] envelope as the chat).
 //
-//   POST   /documents (multipart file, title, scope org|staff|course, org_id?, course_id?, replaces?)
-//   GET    /documents?org_id=&course_id=&status=     → {items, manager}
+//   POST   /documents (multipart file, title, scope org|staff|course|app, org_id?, course_id?, replaces?, on_conflict?)
+//                                                    → the document + outcome (added · updated · unchanged)
+//   GET    /documents?org_id=&course_id=&status=&app= → {items, manager}
+//   POST   /app/documents/sync                       platform admins: re-read the app's terms / about pages now
 //   GET    /documents/{id}  ·  /documents/{id}/file  ·  DELETE /documents/{id} (archive)  ·  POST /documents/{id}/reindex
 //   GET|PUT /orgs/{id}/settings                      {generator: extractive|llm, allow_external_llm} (+ llm_available, llm_external)
 //   GET    /orgs/{id}/answers/feedback               {answered, rated, helpful, not_found, unhelpful[]}
@@ -31,6 +33,7 @@ String ragScopeText(String s) => switch (s) {
       'org' => t('كل أعضاء المؤسسة', 'Every member'),
       'staff' => t('الهيئة التعليمية والإدارية فقط', 'Staff only'),
       'course' => t('طلاب المقرر فقط', 'This course only'),
+      'app' => t('كل مستخدمي التطبيق', 'Everyone using the app'),
       _ => s,
     };
 
@@ -68,6 +71,9 @@ String ragLibraryCodeText(String? code, String fallback) => switch (code) {
       'rag_quota_exceeded' => t('امتلأت مكتبة المؤسسة — أرشف مستندات قديمة أو اطلب من إدارة المنصة زيادة الحصة',
           'The library is full — archive old documents or ask the platform to raise the quota'),
       'super_admin_required' => t('حصة المكتبة يحددها مدير المنصة', 'The library quota is set by the platform\'s Super Admin'),
+      'app_context_only' => t('مستندات التطبيق لا تتبع مؤسسة أو مقرراً', 'App documents do not belong to an organization or course'),
+      'bad_conflict_mode' => t('اختر ماذا نفعل بالمستندات الموجودة', 'Choose what to do with the existing documents'),
+      'core_unavailable' => t('تعذر قراءة صفحات التطبيق الآن — حاول بعد قليل', 'Could not read the app\'s pages right now — try again shortly'),
       'orgs_disabled' => t('خدمة المؤسسات غير متاحة حالياً على المنصة', 'Organizations are currently unavailable on this platform'),
       'org_not_approved' => ragOrgStatusText(''),
       'org_inactive' => t('المؤسسة غير مفعّلة حالياً', 'This organization is deactivated'),
@@ -223,9 +229,70 @@ String ragSizeText(int bytes) {
   return '$bytes B';
 }
 
+/// What to do with the documents a library already has when new ones are uploaded (asked once per batch).
+enum RagConflictMode { keep, merge, replace }
+
+/// keep is the default: nothing already there is touched.
+const ragConflictDefault = RagConflictMode.keep;
+
+/// The server's rule for `merge` (library.py `_same_name`): the file name or title without its extension, case,
+/// `_` / `-` and repeated spaces ignored.
+String ragNameKey(String? s) {
+  var x = (s ?? '').trim().toLowerCase();
+  final dot = x.lastIndexOf('.');
+  if (dot > 0) x = x.substring(0, dot);
+  return x.replaceAll(RegExp(r'[_\-]'), ' ').split(RegExp(r'\s+')).where((w) => w.isNotEmpty).join(' ');
+}
+
+/// A document's default title: its file name without the extension.
+String ragTitleOf(String fileName) {
+  final dot = fileName.lastIndexOf('.');
+  return dot > 0 ? fileName.substring(0, dot) : fileName;
+}
+
+/// What each answer would do to a library for the picked files: how many of them update a document of the same name
+/// (merge), how many are new, and how many old documents replace would archive.
+class RagConflictPlan {
+  const RagConflictPlan({required this.existing, required this.matching, required this.fresh});
+  final int existing, matching, fresh;
+
+  /// true when there is something to ask: the library already holds documents.
+  bool get ask => existing > 0;
+
+  static RagConflictPlan of(List<RagDocument> library, List<String> fileNames) {
+    final keys = <String>{for (final d in library) ...[ragNameKey(d.filename), ragNameKey(d.title)]}..remove('');
+    final matching = fileNames.where((f) => keys.contains(ragNameKey(f))).length;
+    return RagConflictPlan(existing: library.length, matching: matching, fresh: fileNames.length - matching);
+  }
+
+  String title(RagConflictMode m) => switch (m) {
+        RagConflictMode.keep => t('أبقِ الاثنين', 'Keep both'),
+        RagConflictMode.merge => t('دمج', 'Merge'),
+        RagConflictMode.replace => t('استبدال القديم', 'Replace the old ones'),
+      };
+
+  String detail(RagConflictMode m) => switch (m) {
+        RagConflictMode.keep => t('تُضاف الملفات الجديدة بجانب القديمة ولا يُحذف شيء', 'The new files are added next to the old ones; nothing is removed'),
+        RagConflictMode.merge => t('يُضاف الجديد ($fresh)، ويُحدَّث ما له نفس الاسم ($matching)، ويبقى الباقي',
+            'Adds the new ($fresh), updates those with the same name ($matching), keeps the rest'),
+        RagConflictMode.replace => t('تُرفع الملفات ثم تُؤرشف المستندات القديمة ($existing)', 'Uploads the files, then archives the old documents ($existing)'),
+      };
+}
+
+/// "2 added · 1 updated · 1 unchanged" from the uploads' `outcome`s.
+String ragOutcomeSummary(List<String> outcomes) {
+  int n(String o) => outcomes.where((x) => x == o).length;
+  return [
+    if (n('added') > 0) t('${n('added')} مضاف', '${n('added')} added'),
+    if (n('updated') > 0) t('${n('updated')} محدَّث', '${n('updated')} updated'),
+    if (n('unchanged') > 0) t('${n('unchanged')} دون تغيير', '${n('unchanged')} unchanged'),
+  ].join(' · ');
+}
+
 class RagUploadDraft {
-  RagUploadDraft({this.title = '', this.scope = 'org', this.courseId = '', this.replaces, this.fileName, this.fileBytes});
+  RagUploadDraft({this.title = '', this.scope = 'org', this.courseId = '', this.replaces, this.fileName, this.fileBytes, this.onConflict});
   String title, scope, courseId;
+  RagConflictMode? onConflict;
   int? replaces;
   String? fileName;
   Uint8List? fileBytes;
@@ -238,7 +305,8 @@ class RagUploadDraft {
     final dot = fileName!.lastIndexOf('.');
     final ext = dot < 0 ? '' : fileName!.substring(dot + 1).toLowerCase();
     if (ext.isNotEmpty && !ragUploadExtensions.contains(ext)) return 'unsupported_type';
-    if (!ragScopes.contains(scope)) return 'bad_scope';
+    if (!ragScopes.contains(scope) && scope != 'app') return 'bad_scope';
+    if (scope == 'app') return null;
     if (scope == 'course') {
       if ((fixedCourseId ?? courseIdValue) == null) return 'course_required';
     } else if (orgId == null) {
@@ -255,9 +323,11 @@ class RagUploadDraft {
   Map<String, dynamic> fields({int? orgId, int? fixedCourseId}) => {
         'title': title.trim(),
         'scope': scope,
-        'org_id': ?orgId,
+        if (scope != 'app') 'org_id': ?orgId,
         if (scope == 'course') 'course_id': fixedCourseId ?? courseIdValue,
         'replaces': ?replaces,
+        // replace = upload like keep; the app archives the old documents once every upload succeeded
+        if (onConflict != null) 'on_conflict': onConflict == RagConflictMode.merge ? 'merge' : 'keep',
       };
 }
 
@@ -315,8 +385,12 @@ class RagLibraryApi {
   final ApiClient _api;
   static const base = RagApi.base;
 
-  Future<EngineResult> list({int? orgId, int? courseId, String? status}) =>
-      engineCall(() => _api.get('$base/documents', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, 'status': ?status}));
+  /// [app]: the app assistant's documents (no organization or course).
+  Future<EngineResult> list({int? orgId, int? courseId, String? status, bool app = false}) => engineCall(() =>
+      _api.get('$base/documents', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, 'status': ?status, if (app) 'app': true}));
+
+  /// Platform admins: re-read the app's terms and about pages now → {added, updated, unchanged, skipped}.
+  Future<EngineResult> syncApp() => engineCall(() => _api.post('$base/app/documents/sync'));
 
   Future<EngineResult> upload(RagUploadDraft d, {int? orgId, int? courseId}) => engineCall(() => _api.postFiles('$base/documents',
       files: [(d.fileName!, d.fileBytes!)], field: 'file', fields: d.fields(orgId: orgId, fixedCourseId: courseId)));
