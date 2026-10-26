@@ -177,3 +177,20 @@ Accepted:
 - Older code noted by R3, unchanged: the envelope handshake and the `encryption_session_expired` retry use bare,
   unpinned Dio instances; the device-blocked dialog fires only on `/auth/login`. Org staff on `/org_member` reach the
   MFA entry from the personal `ProfileScreen`.
+
+## D-010 — Cleartext only to the device itself; the WebRTC fork pinned to a commit · 2026-10-26 · accepted
+
+**Context.** D-005 kept `android:usesCleartextTraffic="true"` and iOS `NSAllowsArbitraryLoads` until production was
+checked: one plain-`http://` media URL would break every image and video in the next release. G4 prepared
+`android/app/src/main/res/xml/network_security_config.xml` but left it unwired. `flutter_webrtc` followed the fork's
+`main`, so every `flutter pub get` could pull a different native build.
+**Checked on production (2026-10-26).** `MINIO_PUBLIC_URL` is `https://nextbrain.site/storage`, `LIVEKIT_PUBLIC_URL`
+is `wss://…` (`LIVEKIT_API_URL` is the Docker-network address, never sent to the app), and a scan of every text column
+in the `public`, `exam` and `rag` schemas found no value starting with `http://` (other than localhost).
+**Decision.** Android uses `network_security_config.xml`: cleartext is refused everywhere except `127.0.0.1` /
+`localhost` (the offline-video loopback server, needed in release) and `10.0.2.2` (the emulator's host alias for the
+local stack). iOS replaces `NSAllowsArbitraryLoads` with `NSAllowsLocalNetworking`. The fork is pinned to
+`163469226e1d261a6461f1b7244c1d0ff0cec770`, the commit every build so far resolved; rebasing it onto upstream (libwebrtc
+M150) stays a separate task with its own device tests.
+**Consequences.** A media or LiveKit URL that is not https / wss fails on the device instead of loading in clear —
+keep `MINIO_PUBLIC_URL` / `LIVEKIT_PUBLIC_URL` https / wss. Updating the fork means changing the `ref:` on purpose.

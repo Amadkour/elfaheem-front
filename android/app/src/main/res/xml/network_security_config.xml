@@ -8,11 +8,9 @@
     player from a loopback HTTP server (http://127.0.0.1:<port>/…), so this exception must stay.
   - 10.0.2.2: the Android emulator's alias for the developer machine (the local stack, API_BASE_URL=http://10.0.2.2:…).
     It is not routable from a real device. (A src/debug overlay could make it debug-only.)
-  NOT WIRED IN YET: AndroidManifest.xml still says android:usesCleartextTraffic="true" (app D-005). Switch only after
-  confirming on the server that MINIO_PUBLIC_URL (and every stored media URL) is https - otherwise every image and
-  video breaks in the next release. Then replace that attribute with
-  android:networkSecurityConfig="@xml/network_security_config" and, in ios/Runner/Info.plist, NSAllowsArbitraryLoads
-  with NSAllowsLocalNetworking.
+  Wired in (app D-010, 2026-10-26) after checking production: MINIO_PUBLIC_URL / LIVEKIT_PUBLIC_URL are https / wss
+  and no stored URL in the database starts with http:// (scan of every text column). iOS: NSAllowsLocalNetworking
+  replaces NSAllowsArbitraryLoads in ios/Runner/Info.plist.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false">

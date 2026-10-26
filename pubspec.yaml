@@ -105,7 +105,8 @@ dependency_overrides:
   flutter_webrtc:
     git:
       url: https://github.com/Amadkour/flutter-webrtc.git
-      ref: main
+      # pinned to the commit the app is built and tested with (was `main`, which moves under every build)
+      ref: 163469226e1d261a6461f1b7244c1d0ff0cec770
   flutter_lints: ^6.0.0
 
   flutter_test:
