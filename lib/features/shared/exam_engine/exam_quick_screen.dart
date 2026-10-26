@@ -13,6 +13,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asInt, t;
 import 'exam_authoring.dart';
 import 'exam_authoring_screen.dart' show ExamEditorScreen, pickEngineDateTime;
+import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
 
@@ -20,11 +21,14 @@ const _numKeyboard = TextInputType.numberWithOptions(decimal: true);
 const paperFileExtensions = ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg'];
 
 /// Opens the quick builder; returns the created exam's id (null when the creator left without creating).
+/// An offline exam with in-app questions goes straight on to its printable paper.
 Future<int?> openQuickExam(BuildContext context, {int? courseId, int? orgId, QuickKind kind = QuickKind.quiz, int? scheduleSlotId, String? title,
-        DateTime? startsAt, DateTime? endsAt}) =>
-    Navigator.of(context).push<int>(MaterialPageRoute(
-        builder: (_) => QuickExamScreen(
-            exam: QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt))));
+    DateTime? startsAt, DateTime? endsAt, String course = ''}) async {
+  final q = QuickExam(kind: kind, courseId: courseId, orgId: orgId, scheduleSlotId: scheduleSlotId, title: title, startsAt: startsAt, endsAt: endsAt);
+  final id = await Navigator.of(context).push<int>(MaterialPageRoute(builder: (_) => QuickExamScreen(exam: q)));
+  if (id != null && q.mode == QuickMode.offline && !q.isFile && context.mounted) await openExamPaper(context, examId: id, course: course);
+  return id;
+}
 
 /// Tapping an exam of a timetable. [exam] is the engine exam already made from this slot, if any.
 /// Returns true when something changed (an exam was created).
@@ -44,11 +48,13 @@ Future<bool> showSlotExamSheet(BuildContext context, {required String courseName
     case 'create':
       final id = await openQuickExam(context,
           courseId: courseId, orgId: orgId, kind: quickKindOf(kind), scheduleSlotId: slotId, title: '${quickKindTitle(quickKindOf(kind))} — $courseName',
-          startsAt: startsAt, endsAt: endsAt);
+          startsAt: startsAt, endsAt: endsAt, course: courseName);
       return id != null;
     case 'results':
       await Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => ExamResultsScreen(examId: asInt(exam!['id']), examTitle: '${exam['title'] ?? ''}', courseId: courseId)));
+    case 'paper':
+      await openExamPaper(context, examId: asInt(exam!['id']), course: courseName);
     case 'edit':
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamEditorScreen(examId: asInt(exam!['id']), courseId: courseId, orgId: orgId)));
     case 'time':
@@ -85,6 +91,8 @@ class SlotExamSheet extends StatelessWidget {
             text: '${e['title'] ?? ''} · ${examStatusLabel('${e['status'] ?? ''}')}'),
         const SizedBox(height: 12),
         AppPrimaryButton(label: t('النتائج والتصحيح', 'Results and marking'), icon: Icons.leaderboard_rounded, onPressed: () => onPick('results')),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(onPressed: () => onPick('paper'), icon: const Icon(Icons.print_rounded, size: 18), label: Text(t('ورقة الامتحان للطباعة', 'Printable exam paper'))),
         const SizedBox(height: 8),
         OutlinedButton.icon(onPressed: () => onPick('edit'), icon: const Icon(Icons.edit_outlined, size: 18), label: Text(t('تعديل الاختبار', 'Edit the exam'))),
       ],

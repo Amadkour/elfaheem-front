@@ -10,6 +10,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import '../../admin/admin_money_p8.dart' show p8SaveBytes;
 import 'exam_authoring.dart';
+import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_review.dart' show ExamReviewApi;
 import 'exam_review_screen.dart' show ExamReviewScreen;
@@ -148,6 +149,8 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
               if (_offline && _names.isNotEmpty) AppPill(icon: Icons.edit_note_rounded, label: t('إدخال الدرجات', 'Enter marks'), onTap: _enterMarks),
               if (canPublishResults) AppPill(icon: Icons.campaign_rounded, label: t('انشر النتائج للطلاب', 'Publish results to students'), onTap: _busy ? null : _publishResults),
               if (paper != null) AppPill(icon: Icons.download_rounded, label: t('ملف الامتحان', 'Exam file'), onTap: () => _downloadPaper(paper)),
+              if (paper == null && v != null && v.questionCount > 0)
+                AppPill(icon: Icons.print_rounded, label: t('ورقة الامتحان للطباعة', 'Printable exam paper'), onTap: () => openExamPaper(context, examId: widget.examId)),
             ]),
             const SizedBox(height: 8),
             if (rows.isEmpty)
