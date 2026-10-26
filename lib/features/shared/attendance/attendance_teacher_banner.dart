@@ -9,7 +9,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'attendance_strings.dart';
 import 'attendance_live_screen.dart';

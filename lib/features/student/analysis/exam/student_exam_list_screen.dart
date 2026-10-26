@@ -46,7 +46,6 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<StudentExamProvider>();
-    final c = context.colors;
 
     final all = prov.myExams;
     final now = DateTime.now();

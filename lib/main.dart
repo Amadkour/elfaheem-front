@@ -135,6 +135,7 @@ Future<void> _bootstrap() async {
 Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
+  await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
 
   await _safe('language', () => readLanguage(), seconds: 8);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());

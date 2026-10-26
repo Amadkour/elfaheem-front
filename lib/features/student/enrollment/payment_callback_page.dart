@@ -54,7 +54,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
   _CbState _cbState = _CbState.failed;
   String _title = '';
   String _message = '';
-  int? _courseId;
 
   late AnimationController _ctrl;
   late Animation<double> _scale;
@@ -116,7 +115,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
 
     final status = params['status'] ?? 'failed';
     final message = params['message'];
-    _courseId = int.tryParse(params['course_id'] ?? '');
 
     switch (status) {
       case 'paid':

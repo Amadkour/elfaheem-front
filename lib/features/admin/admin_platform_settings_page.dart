@@ -22,6 +22,7 @@ import '../org/org_creation_fee.dart' show money;
 import '../org/org_v3.dart';
 import 'admin_common.dart' show asMap, asMapList, t;
 import 'admin_features_page.dart';
+import 'admin_feedback_settings.dart' show AdminFeedbackSettingsPage;
 import 'admin_platform_widgets.dart';
 
 const _path = '/api/v1/admin/platform-settings';
@@ -40,6 +41,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 
   // draft
   bool _orgs = true;
+  bool _sharing = true;            // cross-organization data sharing (brief §4)
   final _amount = TextEditingController();
   String _currency = 'EGP';
   Set<String> _methods = {};
@@ -77,6 +79,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
       _s = s;
       _error = null;
       _orgs = s['orgs_enabled'] != false;
+      _sharing = s['sharing_enabled'] != false;
       final a = (fee['amount'] as num?) ?? 0;
       _amount.text = a == 0 ? '' : (a == a.roundToDouble() ? '${a.toInt()}' : a.toStringAsFixed(2));
       _currency = '${fee['currency'] ?? 'EGP'}';
@@ -90,6 +93,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
 
   Map<String, dynamic> get _body => {
         'orgs_enabled': _orgs,
+        'sharing_enabled': _sharing,
         'org_creation_fee': {'amount': _amountValue, 'currency': _currency, 'methods': _methods.toList()},
         'timezone': _zone,
         'time_format': _fmt,
@@ -99,7 +103,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
     final s = _s;
     if (s == null) return false;
     final fee = asMap(s['org_creation_fee']);
-    return _orgs != (s['orgs_enabled'] != false) ||
+    return _orgs != (s['orgs_enabled'] != false) || _sharing != (s['sharing_enabled'] != false) ||
         _amountValue != ((fee['amount'] as num?) ?? 0).toDouble() ||
         _currency != fee['currency'] ||
         _methods.length != (fee['methods'] as List? ?? const []).length ||
@@ -187,6 +191,17 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                 value: _orgs,
                 onChanged: _canEdit ? (v) => setState(() => _orgs = v) : null,
               ),
+              if (_orgs)
+                AppSwitchTile(
+                  key: const ValueKey('platform.sharing'),
+                  icon: Icons.handshake_rounded,
+                  title: t('مشاركة البيانات بين المؤسسات', 'Data sharing between organizations'),
+                  subtitle: _sharing
+                      ? t('يقرر مدير كل مؤسسة ما يشاركه؛ يمكن إيقافها لمؤسسة بعينها من صفحة المؤسسة.', 'Each organization admin decides what to share; it can be switched off per organization from its page.')
+                      : t('لا تُشارك أي بيانات بين المؤسسات ولا يعمل التحقق من الخريجين.', 'Nothing is shared between organizations and graduate verification is off.'),
+                  value: _sharing,
+                  onChanged: _canEdit ? (v) => setState(() => _sharing = v) : null,
+                ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 220),
                 child: !_orgs
@@ -287,6 +302,22 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
                 title: t('قائمة الميزات', 'Feature list'),
                 subtitle: t('بحث، مجموعات، إضافة وحذف', 'Search, groups, add & remove'),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeaturesPage())),
+              ),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          AppCard(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              PlatformSectionHeader(
+                  icon: Icons.school_rounded,
+                  title: t('بيانات تعلم المصحح الآلي', 'Grader learning data'),
+                  subtitle: t('جمع تصحيحات المعلمين (بأسماء مستعارة) لتحسين التصحيح الآلي — للمشرف العام.',
+                      'Collect teachers’ corrections (pseudonymous) to improve automatic grading — Super Admin.')),
+              AppActionCard(
+                icon: Icons.tune_rounded,
+                title: t('إعدادات وتصدير بيانات التصحيح', 'Feedback store settings & export'),
+                subtitle: t('تفعيل، افتراضي المؤسسات، مدة الاحتفاظ', 'On/off, organizations default, retention'),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeedbackSettingsPage())),
               ),
             ]),
           ),

@@ -10,7 +10,6 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'attendance_models.dart';
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';

@@ -8,7 +8,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';

@@ -203,7 +203,6 @@ class _OrgTermsViewState extends State<OrgTermsView> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final items = _items;
     return OrgAsync(
       loading: items == null && !_failed,

@@ -15,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../admin/admin_common.dart';
 import 'org_providers.dart';
 import 'org_registrar.dart';
+import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
 
 String _pub(int orgId) => '$orgBase/public/$orgId/registrar';
@@ -111,23 +112,86 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
     setState(() {});
   }
 
+  /// Queue-first (D-015): the server stores the request and answers at once; we poll its status. Older servers
+  /// without the queue route get the synchronous call. A retry of the same tap reuses its idempotency key, so a
+  /// flaky network can never register twice.
   Future<void> _submit() async {
     if (_cart.isEmpty) return;
     setState(() => _busy = true);
+    final key = newIdempotencyKey();
+    final body = {'items': _cart.toJson(), 'idempotency_key': key};
+    var q = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register-requests', body: body), quiet: true);
+    if (!mounted) return;
+    if (!q.ok && q.endpointMissing) {
+      await _submitSync();
+      return;
+    }
+    // turned away before anything was stored (503 admission control, 429 throttle): the same key again, 1 / 2 / 4 s later
+    for (var attempt = 0; attempt < 3 && mounted && !q.ok && regQueueBusy(q.code, q.error?.statusCode ?? 0); attempt++) {
+      await Future<void>.delayed(Duration(seconds: 1 << attempt));
+      q = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register-requests', body: body), quiet: true);
+    }
+    if (!mounted) return;
+    if (!q.ok) {
+      setState(() => _busy = false);
+      final status = q.error?.statusCode ?? 0;
+      final String msg;
+      if (!regQueueBusy(q.code, status)) {
+        msg = orgErrorText(q.error!);
+      } else if (regSubmitCertainlyRejected(q.code, status)) {
+        msg = t('الصف مزدحم الآن ولم يُرسل طلبك — لم يُسجَّل شيء، حاول مرة أخرى بعد قليل.', 'The queue is busy and your request was not submitted — nothing was registered; try again in a moment.');
+      } else {
+        // a 500 or a dropped socket can hide a request the server did store: never claim it was not
+        msg = t('تعذر تأكيد الطلب — راجع «طلباتي» قبل إعادة المحاولة.', 'Could not confirm the request — check "My requests" before trying again.');
+        _load();
+      }
+      await showAppSheet(context, (_) => RegResultSheet(ok: false, lines: [msg]));
+      return;
+    }
+    var req = q.map;
+    final tid = '${req['tracking_id']}';
+    if (!regRequestDone('${req['status']}')) {
+      // wait for the worker, telling the student where they stand
+      final progress = ValueNotifier<Map<String, dynamic>>(req);
+      var sheetOpen = true;                        // the student may swipe the sheet away: then nothing must be popped
+      final sheet = showAppSheet<void>(context, (_) => RegQueueSheet(progress: progress)).whenComplete(() => sheetOpen = false);
+      final until = DateTime.now().add(const Duration(seconds: 75));
+      while (mounted && !regRequestDone('${req['status']}') && DateTime.now().isBefore(until)) {
+        await Future<void>.delayed(Duration(milliseconds: regPollAfterMs(req['poll_after_ms'])));
+        final s = await orgCall(() => OrgApi.i.api.get('$_b/register-requests/$tid'), quiet: true);
+        if (!mounted) return;
+        if (s.ok) {
+          req = s.map;
+          progress.value = req;
+        }
+      }
+      if (mounted && sheetOpen) Navigator.of(context, rootNavigator: true).pop();
+      await sheet;
+      progress.dispose();
+    }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    final done = '${req['status']}' == 'done';
+    final result = asMap(req['result']);
+    final lines = regResultLines(result, _name);
+    if (!regRequestDone('${req['status']}')) {
+      lines.add(t('ما زال طلبك في الصف — ستجد النتيجة في «طلباتي».', 'Your request is still in line — the result will show under "My requests".'));
+    } else if (lines.isEmpty) {
+      lines.add(done ? regStatusText('registered') : (registrarCodeText('${req['error_code'] ?? ''}')));
+    }
+    if (done) _cart.clear();
+    await showAppSheet(context, (_) => RegResultSheet(ok: done && (result['ok'] ?? true) == true, lines: lines));
+    _load();
+  }
+
+  Future<void> _submitSync() async {
     final r = await orgCall(() => OrgApi.i.api.post('$_b/terms/$_termId/register', body: {'items': _cart.toJson()}), quiet: true);
     if (!mounted) return;
     setState(() => _busy = false);
-    final results = asMap(r.ok ? r.map['results'] : r.detail['results']);
-    final lines = <String>[];
-    results.forEach((cid, v) {
-      final m = asMap(v);
-      final st = '${m['status']}';
-      final why = st == 'rejected' ? blockText(asMapList(m['blocks']).firstOrNull ?? const {}, courseName: _name) : regStatusText(st);
-      lines.add('${_name(asInt(cid))}: $why');
-    });
+    final lines = regResultLines(asMap(r.ok ? r.map : r.detail), _name);
     if (r.ok) _cart.clear();
     if (lines.isEmpty && !r.ok) lines.add(orgErrorText(r.error!));
-    await showAppSheet(context, (_) => _ResultSheet(ok: r.ok && r.map['ok'] == true, lines: lines));
+    await showAppSheet(context, (_) => RegResultSheet(ok: r.ok && r.map['ok'] == true, lines: lines));
     _load();
   }
 
@@ -426,8 +490,37 @@ class _OfferingCard extends StatelessWidget {
   }
 }
 
-class _ResultSheet extends StatelessWidget {
-  const _ResultSheet({required this.ok, required this.lines});
+/// While a queued registration waits for the worker: position in line, then "registering you now". Public (plain
+/// values) so the layout harness can pump it.
+class RegQueueSheet extends StatelessWidget {
+  const RegQueueSheet({required this.progress});
+  final ValueNotifier<Map<String, dynamic>> progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: ValueListenableBuilder<Map<String, dynamic>>(
+        valueListenable: progress,
+        builder: (_, req, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const SizedBox(height: 4),
+          const Center(child: SizedBox(width: 36, height: 36, child: CircularProgressIndicator(strokeWidth: 3))),
+          const SizedBox(height: 14),
+          Text(regQueueText('${req['status']}', depth: req['queue_depth'] == null ? null : asInt(req['queue_depth'])),
+              key: const ValueKey('reg.queue.text'), textAlign: TextAlign.center, style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark)),
+          const SizedBox(height: 6),
+          Text(t('يمكنك إغلاق التطبيق — النتيجة تُحفظ في «طلباتي».', 'You may close the app — the result is kept under "My requests".'),
+              textAlign: TextAlign.center, style: orgText(context, size: 12.5, color: c.textMedium)),
+        ]),
+      ),
+    );
+  }
+}
+
+
+class RegResultSheet extends StatelessWidget {
+  const RegResultSheet({required this.ok, required this.lines});
   final bool ok;
   final List<String> lines;
 

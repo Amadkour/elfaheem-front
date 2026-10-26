@@ -1,10 +1,9 @@
 /// ─────────────────────────────────────────────────────────────────────────────
 /// storage_service.dart
-/// Persists tokens AND the logged-in user object across app restarts.
+/// Persists the logged-in user object and UI preferences across app restarts.
+/// Tokens are NOT here: they live in lib/core/token_storage.dart (secure storage).
 ///
 /// Keys stored in SharedPreferences:
-///   access_token   – JWT access token
-///   refresh_token  – JWT refresh token
 ///   current_user   – JSON-encoded UserModel (saved after login/verify-otp)
 /// ─────────────────────────────────────────────────────────────────────────────
 library;
@@ -19,8 +18,6 @@ class StorageService {
   final SharedPreferences _prefs;
 
   // ── Keys ──────────────────────────────────────────────────────────────────────
-  static const _accessKey = 'access_token';
-  static const _refreshKey = 'refresh_token';
   static const _userKey = 'current_user'; // JSON-encoded UserModel
 
   // ── Singleton ─────────────────────────────────────────────────────────────────
@@ -30,20 +27,6 @@ class StorageService {
       await SharedPreferences.getInstance(),
     );
     return _instance!;
-  }
-
-  // ── Tokens ────────────────────────────────────────────────────────────────────
-
-  String? get accessToken => _prefs.getString(_accessKey);
-
-  String? get refreshToken => _prefs.getString(_refreshKey);
-
-  Future<void> saveTokens({
-    required String accessToken,
-    required String refreshToken,
-  }) async {
-    await _prefs.setString(_accessKey, accessToken);
-    await _prefs.setString(_refreshKey, refreshToken);
   }
 
   // ── User ──────────────────────────────────────────────────────────────────────
@@ -78,17 +61,8 @@ class StorageService {
   /// Call on logout to remove cached user data.
   Future<void> clearUser() => _prefs.remove(_userKey);
 
-  // ── Auth state ────────────────────────────────────────────────────────────────
-
-  /// Returns true when a valid-looking access token exists.
-  bool isAuthenticated() => (accessToken ?? '').isNotEmpty;
-
   // ── Logout ────────────────────────────────────────────────────────────────────
 
-  /// Clears tokens + user in one call.
-  Future<void> clearAll() async {
-    await _prefs.remove(_accessKey);
-    await _prefs.remove(_refreshKey);
-    await _prefs.remove(_userKey);
-  }
+  /// Clears the cached user (tokens are cleared through ApiClient.clearTokens()).
+  Future<void> clearAll() => _prefs.remove(_userKey);
 }

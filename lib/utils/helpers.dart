@@ -39,9 +39,6 @@ extension SaudiDateTimeString on String {
 
 /// Extension on [DateTime] for Saudi Arabia / Egypt time conversions.
 extension SaudiDateTime on DateTime {
-  static final _astTimeZone =
-      DateTime.now().timeZoneOffset; // unused – kept for docs
-
   /// Convert any [DateTime] (UTC or local) to AST (UTC+3).
   DateTime toAst() {
     final utc = isUtc ? this : toUtc();
