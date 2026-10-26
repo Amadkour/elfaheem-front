@@ -1,8 +1,9 @@
 // The documents library manager screen (Phase 7/8): the documents the assistant answers from, with their status,
 // upload (title · scope · optional "replaces"), archive, reindex, download, the organization's answer settings and
 // the unhelpful-answers list. Shown to library managers only (the chat screen offers the entry when the list call
-// answers `manager: true`). [RagDocumentCard], [RagSettingsForm], [RagFeedbackView] and [RagUploadForm] are
-// presentational and tested under the layout harness.
+// answers `manager: true`). [RagDocumentCard], [RagSettingsForm], [RagFeedbackView], [RagUploadForm] and
+// [RagQuotaBar] (how full the library is, when the server reports it) are presentational and tested under the
+// layout harness.
 library;
 
 import 'dart:async';
@@ -74,7 +75,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
         _lib = RagLibrary.fromJson(r.map);
         _error = null;
       } else if (!silent) {
-        _error = r.unavailable ? t('المكتبة غير متاحة بعد على هذا الخادم', 'The library is not available on this server yet') : ragLibraryCodeText(r.code, r.message);
+        _error = r.unavailable ? t('المكتبة غير متاحة بعد على هذا الخادم', 'The library is not available on this server yet') : ragResultText(r);
       }
     });
     _poll?.cancel();
@@ -90,7 +91,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       if (done != null) appToast(done);
       _load(silent: true);
     } else {
-      appToast(ragLibraryCodeText(r.code, r.message), error: true);
+      appToast(ragResultText(r), error: true);
     }
   }
 
@@ -165,6 +166,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
             ]),
           ),
         ),
+        if (lib?.quota != null) Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 4), child: RagQuotaBar(quota: lib!.quota!)),
         Expanded(
           child: _loading
               ? const AppListSkeleton()
@@ -202,6 +204,50 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
   }
 }
 
+
+/// How full the organization's library is: "12 / 200 documents · 40.0 MB / 500.0 MB", with a bar when limited.
+class RagQuotaBar extends StatelessWidget {
+  const RagQuotaBar({super.key, required this.quota});
+  final RagQuota quota;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final col = quota.full ? c.danger : (quota.nearlyFull ? c.warning : c.primary);
+    final fill = quota.fill;
+    return Semantics(
+      label: '${t('حصة المكتبة', 'Library quota')}: ${quota.docsText}, ${quota.bytesText}',
+      child: ExcludeSemantics(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Row(children: [
+            Icon(Icons.inventory_2_outlined, size: 18, color: col),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Wrap(spacing: 10, runSpacing: 2, children: [
+                Text(quota.docsText, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
+                Text(quota.bytesText, style: appText(12.5, c: c.textMedium)),
+              ]),
+            ),
+          ]),
+          if (fill != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(value: fill, minHeight: 5, color: col, backgroundColor: col.withValues(alpha: 0.15)),
+              ),
+            ),
+          if (quota.full)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(t('المكتبة ممتلئة — أرشف مستندات لتحرير مساحة', 'The library is full — archive documents to make room'),
+                  style: appText(11.5, w: FontWeight.w600, c: c.danger)),
+            ),
+        ]),
+      ),
+    );
+  }
+}
 
 /// One document: title, status chip, meta and the manager's actions.
 class RagDocumentCard extends StatelessWidget {
@@ -289,7 +335,7 @@ class _RagUploadSheetState extends State<RagUploadSheet> {
     } else {
       setState(() {
         _busy = false;
-        _err = ragLibraryCodeText(r.code, r.message);
+        _err = ragResultText(r);
       });
     }
   }
@@ -448,7 +494,7 @@ class _RagSettingsSheetState extends State<RagSettingsSheet> {
     if (!mounted) return;
     setState(() {
       _s = r.ok ? RagOrgSettings.fromJson(r.map) : null;
-      _error = r.ok ? null : ragLibraryCodeText(r.code, r.message);
+      _error = r.ok ? null : ragResultText(r);
     });
   }
 
@@ -463,7 +509,7 @@ class _RagSettingsSheetState extends State<RagSettingsSheet> {
     if (r.ok) {
       appToast(t('تم الحفظ', 'Saved'));
     } else {
-      appToast(ragLibraryCodeText(r.code, r.message), error: true);
+      appToast(ragResultText(r), error: true);
     }
   }
 
@@ -553,7 +599,7 @@ class _RagFeedbackSheetState extends State<RagFeedbackSheet> {
       if (!mounted) return;
       setState(() {
         _f = r.ok ? RagAnswerFeedback.fromJson(asMap(r.map)) : null;
-        _error = r.ok ? null : ragLibraryCodeText(r.code, r.message);
+        _error = r.ok ? null : ragResultText(r);
       });
     });
   }

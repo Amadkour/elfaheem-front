@@ -3,11 +3,12 @@
 // `GET /queries/{id}` until the answer is done.
 //
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
-// [ragCodeText].
+// [ragCodeText], [ragChatResultText], [ragOrgBlocked].
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'rag_library.dart' show ragOrgStatusText;
 
 class RagCitation {
   RagCitation(this.n, this.documentId, this.title, this.section, this.pageFrom, this.pageTo, this.quote);
@@ -89,8 +90,21 @@ String ragCodeText(String? code, String fallback) => switch (code) {
       'not_a_member' => t('لست عضواً في هذه المؤسسة', 'You are not a member of this organization'),
       'not_in_course' => t('لست مسجلاً في هذا المقرر', 'You are not in this course'),
       'authz_unavailable' => t('تعذر التحقق من الصلاحيات — حاول بعد قليل', 'Could not check your access — try again shortly'),
+      // The organization's status (Phase 10, the core's codes): the assistant follows the organization.
+      'orgs_disabled' => t('المساعد غير متاح: خدمة المؤسسات متوقفة حالياً على المنصة',
+          'The assistant is unavailable: organizations are switched off on this platform right now'),
+      'org_not_approved' => ragOrgStatusText(''),
+      'org_inactive' => t('المساعد غير متاح: المؤسسة غير مفعّلة حالياً', 'The assistant is unavailable: this organization is deactivated'),
       _ => fallback,
     };
+
+/// The organization codes that close the assistant (403 orgs_disabled · 423 org_not_approved · 403 org_inactive).
+bool ragOrgBlocked(String? code) => code == 'orgs_disabled' || code == 'org_not_approved' || code == 'org_inactive';
+
+/// The text of a failed chat call: [ragCodeText], plus the organization's `status` a 423 org_not_approved carries
+/// (suspended · pending · rejected).
+String ragChatResultText(EngineResult r) =>
+    r.code == 'org_not_approved' ? ragOrgStatusText(asStr(r.detail['status'])) : ragCodeText(r.code, r.message);
 
 class RagApi {
   RagApi([ApiClient? api]) : _api = api ?? ApiClient();

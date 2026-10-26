@@ -54,6 +54,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
       _loading = false;
       if (r.ok) _items..clear()..addAll(RagApi.items(r).reversed);
       if (r.unavailable) _error = t('المساعد غير متاح بعد على هذا الخادم', 'The assistant is not available on this server yet');
+      if (!r.ok && ragOrgBlocked(r.code)) _error = ragChatResultText(r); // suspended / deactivated / switched off
     });
     _toEnd();
   }
@@ -76,7 +77,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
     final r = await _api.ask(q, orgId: widget.orgId, courseId: widget.courseId);
     if (!mounted) return;
     if (!r.ok) {
-      setState(() { _sending = false; _error = ragCodeText(r.code, r.message); });
+      setState(() { _sending = false; _error = ragChatResultText(r); });
       return;
     }
     _input.clear();
@@ -89,7 +90,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
       _sending = false;
       final i = _items.indexWhere((a) => a.id == pending.id);
       if (done.ok && i >= 0) _items[i] = RagAnswer.fromJson(done.map);
-      if (!done.ok) _error = ragCodeText(done.code, done.message);
+      if (!done.ok) _error = ragChatResultText(done);
       if (done.ok && !RagAnswer.fromJson(done.map).done) {
         _error = t('ما زال المساعد يعمل على إجابتك — حدّث بعد قليل', 'The assistant is still working on your answer — refresh in a moment');
       }

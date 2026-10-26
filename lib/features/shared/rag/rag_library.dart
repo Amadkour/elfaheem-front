@@ -6,13 +6,16 @@
 //   GET    /documents/{id}  ·  /documents/{id}/file  ·  DELETE /documents/{id} (archive)  ·  POST /documents/{id}/reindex
 //   GET|PUT /orgs/{id}/settings                      {generator: extractive|llm, allow_external_llm} (+ llm_available, llm_external)
 //   GET    /orgs/{id}/answers/feedback               {answered, rated, helpful, not_found, unhelpful[]}
+//   GET    /orgs/{id}/quota                          {docs, bytes, max_docs, max_bytes, override} — also `quota` in the
+//                                                    managers' list and in the settings (Phase 10); an upload past it
+//                                                    → 409 rag_quota_exceeded {limit: docs|bytes, quota}
 library;
 
 import 'dart:typed_data';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
-import '../../admin/admin_common.dart' show asBool, asInt, asMapList, asStr, asStrOrNull, t;
+import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, asStrOrNull, t;
 import '../../admin/admin_money_p8.dart' show parseNum;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart' show RagApi, ragCodeText;
@@ -60,8 +63,73 @@ String ragLibraryCodeText(String? code, String fallback) => switch (code) {
       'course_required' => t('حدد المقرر لمستند المقرر', 'A course document needs a course'),
       'course_not_in_org' => t('المقرر ليس من هذه المؤسسة', 'The course is not in this organization'),
       'replaces_mismatch' => t('النسخة الجديدة يجب أن تكون في نفس المكتبة والنطاق', 'A new version must be in the same library and scope'),
+      'rag_quota_exceeded' => t('امتلأت مكتبة المؤسسة — أرشف مستندات قديمة أو اطلب من إدارة المنصة زيادة الحصة',
+          'The library is full — archive old documents or ask the platform to raise the quota'),
+      'super_admin_required' => t('حصة المكتبة يحددها مدير المنصة', 'The library quota is set by the platform\'s Super Admin'),
+      'orgs_disabled' => t('خدمة المؤسسات غير متاحة حالياً على المنصة', 'Organizations are currently unavailable on this platform'),
+      'org_not_approved' => ragOrgStatusText(''),
+      'org_inactive' => t('المؤسسة غير مفعّلة حالياً', 'This organization is deactivated'),
       _ => ragCodeText(code, fallback),
     };
+
+/// 423 org_not_approved carries the organization's `status` (the core's lifecycle: pending · rejected · suspended).
+String ragOrgStatusText(String status) => switch (status) {
+      'suspended' => t('المؤسسة موقوفة مؤقتاً من إدارة المنصة', 'The organization is suspended by the platform'),
+      'pending' => t('المؤسسة قيد المراجعة — تتاح المكتبة بعد اعتمادها', 'The organization is under review — the library opens once it is approved'),
+      'rejected' => t('لم يُعتمد طلب المؤسسة', 'The organization\'s application was not approved'),
+      _ => t('المؤسسة غير مفعّلة حالياً (موقوفة أو قيد المراجعة)', 'The organization is not active right now (suspended or under review)'),
+    };
+
+/// The text of a failed library call, with what the server's details add (the quota's numbers, the org status).
+String ragResultText(EngineResult r) => switch (r.code) {
+      'rag_quota_exceeded' => ragQuotaExceededText(r.detail),
+      'org_not_approved' => ragOrgStatusText(asStr(r.detail['status'])),
+      _ => ragLibraryCodeText(r.code, r.message),
+    };
+
+/// How full an organization's library is (`quota` from the server). A null limit = unlimited.
+class RagQuota {
+  const RagQuota({required this.docs, required this.bytes, this.maxDocs, this.maxBytes});
+  final int docs, bytes;
+  final int? maxDocs, maxBytes;
+
+  /// null when the server sent no quota (an older server, or a reader rather than a manager).
+  static RagQuota? fromJson(Object? j) {
+    if (j is! Map) return null;
+    final m = asMap(j);
+    int? limit(Object? v) => v == null || asInt(v) <= 0 ? null : asInt(v);
+    return RagQuota(docs: asInt(m['docs']), bytes: asInt(m['bytes']), maxDocs: limit(m['max_docs']), maxBytes: limit(m['max_bytes']));
+  }
+
+  bool get limited => maxDocs != null || maxBytes != null;
+
+  /// 0–1 share of the tighter limit; null when unlimited.
+  double? get fill {
+    final parts = [if (maxDocs != null) docs / maxDocs!, if (maxBytes != null) bytes / maxBytes!];
+    if (parts.isEmpty) return null;
+    return parts.reduce((a, b) => a > b ? a : b).clamp(0.0, 1.0);
+  }
+
+  bool get full => (maxDocs != null && docs >= maxDocs!) || (maxBytes != null && bytes >= maxBytes!);
+  bool get nearlyFull => (fill ?? 0) >= 0.9;
+
+  /// "12 / 200 documents" · "12 documents" when unlimited.
+  String get docsText => maxDocs == null ? t('$docs مستند', '$docs documents') : t('$docs / $maxDocs مستند', '$docs / $maxDocs documents');
+
+  /// "1.2 MB / 500.0 MB" · "1.2 MB".
+  String get bytesText => maxBytes == null ? ragSizeText(bytes) : '${ragSizeText(bytes)} / ${ragSizeText(maxBytes!)}';
+}
+
+/// 409 rag_quota_exceeded: which limit, with the usage the server reported.
+String ragQuotaExceededText(Map<String, dynamic> detail) {
+  final q = RagQuota.fromJson(detail['quota']);
+  if (q == null) return ragLibraryCodeText('rag_quota_exceeded', '');
+  return asStr(detail['limit']) == 'bytes'
+      ? t('لا تتسع مساحة المكتبة لهذا الملف (${q.bytesText}) — أرشف مستندات قديمة أو اطلب زيادة الحصة',
+          'This file does not fit in the library\'s storage (${q.bytesText}) — archive old documents or ask for a larger quota')
+      : t('امتلأت المكتبة (${q.docsText}) — أرشف مستندات قديمة أو اطلب زيادة الحصة',
+          'The library is full (${q.docsText}) — archive old documents or ask for a larger quota');
+}
 
 class RagDocument {
   const RagDocument({
@@ -116,11 +184,15 @@ class RagDocument {
 }
 
 class RagLibrary {
-  const RagLibrary(this.items, this.manager);
+  const RagLibrary(this.items, this.manager, [this.quota]);
   final List<RagDocument> items;
   final bool manager;
 
-  factory RagLibrary.fromJson(Map<String, dynamic> j) => RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']));
+  /// Managers only, when the server reports it (Phase 10).
+  final RagQuota? quota;
+
+  factory RagLibrary.fromJson(Map<String, dynamic> j) =>
+      RagLibrary(asMapList(j['items']).map(RagDocument.fromJson).toList(), asBool(j['manager']), RagQuota.fromJson(j['quota']));
 
   /// true while the worker still has something to do — the screen keeps polling.
   bool get hasBusy => items.any((d) => d.busy);

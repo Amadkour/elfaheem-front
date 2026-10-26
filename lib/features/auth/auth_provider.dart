@@ -14,6 +14,8 @@ import '../../utils/widget/view_as_state.dart';
 import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
+import 'mfa.dart';
+import 'teacher_onboarding_token.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -135,6 +137,9 @@ enum GoogleAuthResult {
 
   /// Account exists but a channel (usually the phone) still needs verifying.
   needsVerification,
+
+  /// Google was fine, the account needs its second factor ([MyAuthProvider.mfaStep]: a code, or an enrollment).
+  mfa,
 
   failed,
 }
@@ -305,6 +310,71 @@ class MyAuthProvider extends BaseProvider {
   /// (new password, missing e-mail / phone / name). Read by DataLabGate right after login. null = nothing to do.
   Map<String, dynamic>? accountSetup;
 
+  /// Set by [login] / [googleAuth] when the server asks for the second factor (or for an enrollment) instead of
+  /// handing out tokens. Cleared by every new login and by [logout].
+  MfaLoginStep mfaStep = MfaLoginStep.none;
+
+  /// Text of the last failed [verifyMfa], and how many codes the step still accepts.
+  String? mfaError;
+  int? mfaAttemptsLeft;
+  bool isVerifyingMfa = false;
+
+  /// True when the step token is dead (expired, used, 5 wrong codes): the user must sign in again.
+  bool mfaStepDead = false;
+
+  /// Second login step: an authenticator [code] or a [recoveryCode]. On success the session is saved exactly like
+  /// a normal login. Not wrapped in run(): the error code and the attempts left matter here.
+  Future<bool> verifyMfa({String? code, String? recoveryCode}) async {
+    final token = mfaStep.token;
+    if (mfaStep.kind != MfaStepKind.verify || token == null) return false;
+    isVerifyingMfa = true;
+    mfaError = null;
+    notifyListeners();
+    try {
+      final r = await _api.post('/api/v1/auth/mfa/verify', auth: false, body: {
+        'mfa_token': token,
+        if (code != null && code.trim().isNotEmpty) 'code': normalizeTotp(code),
+        if (recoveryCode != null && recoveryCode.trim().isNotEmpty) 'recovery_code': recoveryCode.trim(),
+      });
+      if (r is! Map || r['access_token'] == null) throw ApiException.from('empty answer');
+      await completeSession(r);
+      mfaStep = MfaLoginStep.none;
+      return true;
+    } catch (e) {
+      final ex = ApiException.from(e);
+      mfaError = mfaCodeText(ex.code, ex.message);
+      mfaAttemptsLeft = attemptsLeftOf(ex);
+      mfaStepDead = mfaStepIsDead(ex.code);
+      return false;
+    } finally {
+      isVerifyingMfa = false;
+      notifyListeners();
+    }
+  }
+
+  /// Saves a login answer (tokens + user) and registers the push token: used by [login], [googleAuth], the second
+  /// step and the MFA confirmation (which rotates the token pair).
+  Future<void> completeSession(Map<dynamic, dynamic> result) async {
+    await _persistTokens(result);
+    TeacherOnboardingToken.readFrom(result);
+    _readAccountSetup(result);
+    final userJson = result['user'];
+    if (userJson is Map) {
+      final m = Map<String, dynamic>.from(userJson);
+      _currentUser = UserModel.fromJson(m);
+      await _storage.saveUser(m);
+    }
+    await NotificationService.instance.registerWithBackend(_api);
+    notifyListeners();
+  }
+
+  void _resetMfa() {
+    mfaStep = MfaLoginStep.none;
+    mfaError = null;
+    mfaAttemptsLeft = null;
+    mfaStepDead = false;
+  }
+
   void _readAccountSetup(Map result) {
     final s = result['account_setup'];
     accountSetup = (s is Map && s['required'] == true) ? Map<String, dynamic>.from(s) : null;
@@ -427,6 +497,7 @@ class MyAuthProvider extends BaseProvider {
     );
 
     if (result != null && result is Map) {
+      TeacherOnboardingToken.readFrom(result); // a teacher who still owes profile / documents
       pendingChannels = _channelsFrom(result['pending_channels'], const []);
       // The verify-otp response does NOT return tokens — the user still
       // needs to log in (or the server returns tokens — adapt if needed).
@@ -523,8 +594,10 @@ class MyAuthProvider extends BaseProvider {
           'specialization_id': selectedSpecialization!['id'],
           if (bio != null && bio.trim().isNotEmpty) 'about': bio.trim(),
         },
+        headers: TeacherOnboardingToken.headers,
       ),
     );
+    TeacherOnboardingToken.readFrom(result); // the documents step uses the renewed token
 
     isLoadingAdditionalRegistration = false;
     notifyListeners();
@@ -613,6 +686,7 @@ class MyAuthProvider extends BaseProvider {
     // unverified login would send a later wrong-password attempt to the OTP screen.
     needsVerification = false;
     pendingRole = null;
+    _resetMfa();
     notifyListeners();
     final previousUser = _currentUser;
     _currentUser = UserModel(
@@ -649,16 +723,19 @@ class MyAuthProvider extends BaseProvider {
         rethrow;
       }
     });
+    // Two-factor accounts: no tokens yet, the login screen opens the code (or enrollment) screen.
+    final step = MfaLoginStep.fromLogin(result);
+    if (step.kind != MfaStepKind.none) {
+      mfaStep = step;
+      mfaAttemptsLeft = step.attemptsLeft;
+      _currentUser = previousUser;
+      isLoadingLogin = false;
+      notifyListeners();
+      return false;
+    }
     if (result != null && result is Map) {
-      // 1. Save tokens
-      await _persistTokens(result);
-      _readAccountSetup(result);
-
-      // 2. Build and cache the user model
-      final userJson = result['user'] as Map<String, dynamic>;
-      _currentUser = UserModel.fromJson(userJson);
-      await _storage.saveUser(userJson); // ← persisted to SharedPreferences
-      await NotificationService.instance.registerWithBackend(_api);
+      // Tokens + cached user (SharedPreferences) + push token
+      await completeSession(result);
       isLoadingLogin = false;
       notifyListeners();
       return true;
@@ -694,6 +771,7 @@ class MyAuthProvider extends BaseProvider {
     isLoadingGoogle = true;
     needsVerification = false;
     pendingRole = null;
+    _resetMfa();
     var roleRequired = false;
     notifyListeners();
 
@@ -728,13 +806,16 @@ class MyAuthProvider extends BaseProvider {
       }
     });
 
+    final step = MfaLoginStep.fromLogin(result);
+    if (step.kind != MfaStepKind.none) {
+      mfaStep = step;
+      mfaAttemptsLeft = step.attemptsLeft;
+      isLoadingGoogle = false;
+      notifyListeners();
+      return GoogleAuthResult.mfa;
+    }
     if (result != null && result is Map) {
-      await _persistTokens(result);
-      _readAccountSetup(result);
-      final userJson = result['user'] as Map<String, dynamic>;
-      _currentUser = UserModel.fromJson(userJson);
-      await _storage.saveUser(userJson);
-      await NotificationService.instance.registerWithBackend(_api);
+      await completeSession(result);
       isLoadingGoogle = false;
       notifyListeners();
       return GoogleAuthResult.success;
@@ -896,6 +977,8 @@ class MyAuthProvider extends BaseProvider {
       }
     } catch (_) {}
     accountSetup = null;
+    _resetMfa();
+    TeacherOnboardingToken.clear();
     _currentUser = null;
     notifyListeners();
   }

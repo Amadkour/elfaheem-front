@@ -8,8 +8,11 @@ import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
+  /// `--dart-define=API_BASE_URL=http://127.0.0.1:8080/api` points a dev build at the local stack
+  /// (back/scripts/dev/setup.*); without it every build, release included, talks to production.
+  static const String _baseUrlOverride = String.fromEnvironment('API_BASE_URL');
   static const String baseUrl =
-      'https://nextbrain.site/api';
+      _baseUrlOverride == '' ? 'https://nextbrain.site/api' : _baseUrlOverride;
   static String lang = 'ar';
   static bool testMode = !kReleaseMode; // request/response logging and debug helpers: never in release
 

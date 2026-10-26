@@ -13,6 +13,8 @@ import 'auth_provider.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
 import 'google_auth_flow.dart';
+import 'mfa.dart';
+import 'mfa_verify_screen.dart';
 import 'register_screen.dart';
 import '../../utils/widget/parent_component.dart';
 import '../org/org_application_screen.dart';
@@ -60,6 +62,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) {
         Navigator.of(context).pushNamed(authProvider.homeRoute);
       }
+    } else if (authProvider.mfaStep.kind != MfaStepKind.none) {
+      // two-step verification: the code (or, when the role requires it, the enrollment) comes first
+      await openMfaStep(Navigator.of(context), authProvider);
     } else if (authProvider.needsVerification) {
       Helpers.showMessage('account_not_verified'.tr, isError: false);
       Navigator.of(context).push(

@@ -232,6 +232,10 @@ String examCodeText(String code) => switch (code) {
       'course_not_in_org' => t('هذا المقرر لا يتبع هذه المؤسسة', 'This course does not belong to this organization'),
       'section_locked' => t('بنية القسم تُعدَّل في المسودة فقط', 'A section\'s structure changes only in a draft'),
       'text_hash_required' => t('أعد تحميل نص الإقرار', 'Reload the consent text'),
+      // the organization's status, as the core answers it (Phase 10)
+      'orgs_disabled' => t('خدمة المؤسسات غير متاحة حالياً على المنصة', 'Organizations are currently unavailable on this platform'),
+      'org_not_approved' => t('المؤسسة غير مفعّلة حالياً (موقوفة أو قيد المراجعة)', 'The organization is not active right now (suspended or under review)'),
+      'org_inactive' => t('المؤسسة غير مفعّلة حالياً', 'This organization is deactivated'),
       _ => code,
     };
 
