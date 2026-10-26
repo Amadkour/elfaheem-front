@@ -56,7 +56,7 @@ import '../sessions/sessions_screen.dart';
 ({DateTime start, DateTime end}) _sessionDateTimes(ScheduleSession session) {
   final parts = session.startTime.split(':');
   final eParts = session.endTime.split(':');
-  final base = session.scheduledDate ?? DateTime.now();
+  final base = session.scheduledDate;
 
   final start = DateTime.utc(
     base.year,
@@ -108,7 +108,6 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
     _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
     _startPolling();
   }
-  Timer? _pollTimer;
 
   void _startPolling() {
     // _pollTimer?.cancel();
@@ -381,7 +380,7 @@ class ScheduleSessionCard extends StatelessWidget {
                                   child: _CourseInfo(
                                     session: session,
                                     accent: accent,
-                                    isOngoing: isOngoing??false,
+                                    isOngoing: isOngoing,
                                   ),
                                 ),
                               ],
@@ -407,7 +406,7 @@ class ScheduleSessionCard extends StatelessWidget {
                     isOngoing: isOngoing,
                     untilStart: untilStart,
                     untilEnd: untilEnd,
-                    totalMinutes: session.durationMinutes ?? -1,
+                    totalMinutes: session.durationMinutes,
                   ),
               ],
             ),

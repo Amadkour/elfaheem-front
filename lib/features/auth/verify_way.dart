@@ -121,11 +121,11 @@ class _Reveal extends StatelessWidget {
 }
 
 class _BrandBadge extends StatelessWidget {
-  const _BrandBadge({required this.way, required this.selected, this.size = 48});
+  const _BrandBadge({required this.way, required this.selected});
 
   final VerifyWay way;
   final bool selected;
-  final double size;
+  final double size = 48;
 
   @override
   Widget build(BuildContext context) {

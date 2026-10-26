@@ -28,7 +28,6 @@ import '../../student/models.dart';
 import 'checkout_pages.dart';
 import 'enrollment_models.dart';
 import 'payment_flow_provider.dart';
-import 'paymob_native_sdk.dart';
 
 export 'payment_flow_provider.dart' show EnrollStep;
 
@@ -587,26 +586,6 @@ class EnrollmentProvider extends PaymentFlowProvider {
     //   case PaymobSdkResult.success || PaymobSdkResult.pending:
     //     await _pollPayment(paymentId);
     // }
-  }
-
-  /// The webhook can land a few seconds after the SDK reports success.
-  Future<void> _pollPayment(int paymentId) async {
-    setStep(EnrollStep.verifying);
-    for (var attempt = 0; attempt < 15 && !isDisposed; attempt++) {
-      await Future.delayed(const Duration(seconds: 4));
-      if (isDisposed) return;
-      final r = asJsonMap(await run(() async => api.get('/api/v1/payments/$paymentId')));
-      final status = (r?['status'] as String?)?.toLowerCase();
-      if (status == 'completed' || status == 'paid') {
-        setStep(EnrollStep.success);
-        return;
-      }
-      if (status == 'failed') {
-        setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
-        return;
-      }
-    }
-    setStep(EnrollStep.pending); // charged but not confirmed yet — never say "failed"
   }
 
   // ── Saved card (Moyasar) ──────────────────────────────────────────────────

@@ -58,11 +58,6 @@ List<SingleChildWidget> appProviders({
   ChangeNotifierProvider<CategoriesProvider>(
     create: (_) => CategoriesProvider(),
   ),
-  // ── Domain providers (all share the ApiClient singleton) ─────────────────
-  ChangeNotifierProvider<TeacherSchedulesProvider>(
-    create: (_) => TeacherSchedulesProvider(),
-  ),
-  // ── Domain providers (all share the ApiClient singleton) ─────────────────
   ChangeNotifierProvider<TeacherSchedulesProvider>(
     create: (_) => TeacherSchedulesProvider(),
   ),
@@ -98,9 +93,6 @@ List<SingleChildWidget> appProviders({
     create: (_) => ProfileProvider(storage: storage, api: api),
   ),
   ChangeNotifierProvider<TeacherHomeProvider>(create: (_) => TeacherHomeProvider()),
-  ChangeNotifierProvider<ProfileProvider>(
-    create: (_) => ProfileProvider(storage: storage, api: api),
-  ),
   ChangeNotifierProvider<CoursesProvider>(create: (_) => CoursesProvider()),
   ChangeNotifierProvider<RewardsProvider>(create: (_) => RewardsProvider()),
   ChangeNotifierProvider<HomeProvider>(create: (_) => HomeProvider()),

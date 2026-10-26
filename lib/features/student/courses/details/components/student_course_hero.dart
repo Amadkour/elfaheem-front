@@ -452,17 +452,13 @@ class _Pill extends StatelessWidget {
   const _Pill({
     required this.text,
     required this.color,
-    this.icon,
-    this.dark = false,
   });
   final String text;
   final Color color;
-  final IconData? icon;
-  final bool dark;
 
   @override
   Widget build(BuildContext context) {
-    final fg = dark ? const Color(0xFF1A1405) : Colors.white;
+    const fg = Colors.white;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -472,10 +468,6 @@ class _Pill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: fg),
-            const SizedBox(width: 4),
-          ],
           Text(
             text,
             style: TextStyle(

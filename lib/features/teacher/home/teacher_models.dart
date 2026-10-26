@@ -187,7 +187,7 @@ class ScheduleSession {
     return int.parse(p[0]) * 60 + int.parse(p[1]);
   }
 
-  int get calcDuration => durationMinutes ?? (endMin - startMin);
+  int get calcDuration => durationMinutes > 0 ? durationMinutes : (endMin - startMin);
 
   double progressFraction(int liveSecondsLeft) {
     final totalSec = calcDuration * 60;

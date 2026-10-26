@@ -205,15 +205,14 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
     if (kIsWeb && !(w?.allowWeb ?? false)) return const SizedBox.shrink();
     // Shown ONLY while an attendance is open for this course.
     if (!_checked || w == null || w.isOver) return const SizedBox.shrink();
-    const open = true;
     final c = context.colors;
 
     return ValueListenableBuilder<bool>(
       valueListenable: AppConnectivity.instance.online,
       builder: (_, online, _) => _PremiumSurface(
-        live: open,
-        from: open ? c.success : c.primary,
-        to: open ? c.success.withValues(alpha: 0.78) : c.primary.withValues(alpha: 0.72),
+        live: true,
+        from: c.success,
+        to: c.success.withValues(alpha: 0.78),
         onTap: () async {
           await showStudentCheckInSheet(context, courseId: widget.courseId, title: widget.title);
           if (mounted) _refresh();
@@ -232,7 +231,7 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
               Text(
                 !online
                     ? attT('att_btn_checkin_offline')
-                    : (open ? attT('att_btn_checkin_now') : attT('att_btn_checkin')),
+                    : attT('att_btn_checkin_now'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -240,20 +239,19 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
               ),
               if (_checked)
                 Text(
-                  open ? attT('att_entry_open') : attT('att_entry_closed'),
+                  attT('att_entry_open'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85)),
                 ),
             ]),
           ),
-          if (open)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
-              child: Text(attT('att_btn_live'),
-                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6)),
-            ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
+            child: Text(attT('att_btn_live'),
+                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6)),
+          ),
           const SizedBox(width: 6),
           const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
         ]),
@@ -267,12 +265,18 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 // ════════════════════════════════════════════════════════════════════════════
 
 /// Teacher course profile: one card. While an attendance is running it shows the live code and
-/// counter and reopens the sheet; otherwise it opens the lesson picker (newest first).
+/// counter and reopens the sheet; otherwise it opens [target] directly (the lesson happening now),
+/// or the lesson picker (newest first) when there is none.
 class TeacherAttendanceCourseEntry extends StatelessWidget {
-  const TeacherAttendanceCourseEntry({super.key, required this.sessions});
+  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target,
+      this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 8)});
 
   /// Course order 1…n (the picker shows them inverted).
   final List<LauncherSession> sessions;
+
+  /// The lesson one tap opens (server-picked: live now / nearest today). Null → the picker.
+  final LauncherSession? target;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -283,7 +287,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
         final t = TeacherAttendanceController.instance;
         final running = t.isOpen;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: padding,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // The web app is waiting for the classroom location from this phone.
             if (t.webLocationRequested && !kIsWeb) ...[
@@ -298,6 +302,8 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
             onTap: () {
               if (running) {
                 openAttendanceLive(context);
+              } else if (target != null) {
+                showTeacherAttendanceSheet(context, target!.id, title: target!.name);
               } else {
                 showSessionPickerSheet(context, sessions);
               }
@@ -313,12 +319,16 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               Expanded(
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(running ? attT('att_t_running') : attT('att_launch_btn'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontFamily: 'tajawal', fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
                   Text(
                     running
                         ? '${attT('att_t_present')}: ${t.code?.presentCount ?? 0}'
-                        : attT('att_t_entry_sub'),
+                        : (target?.name ?? attT('att_t_entry_sub')),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
                   ),
                 ]),

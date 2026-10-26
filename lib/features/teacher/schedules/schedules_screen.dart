@@ -12,7 +12,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
-import '../../admin/admin_common.dart' hide PrimaryButton;
+import '../../admin/admin_common.dart';
 import 'schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';

@@ -1,6 +1,8 @@
 // Registrar: the cart (co-requisites travel together), load after the cart, and the record view's layout.
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/org/org_registrar.dart';
-import 'package:flutter_education_app/features/org/org_registrar_member.dart' show RecordView, weekByDay;
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/org/org_registrar_member.dart' show RecordView, RegQueueSheet, RegResultSheet, weekByDay;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';
@@ -39,6 +41,35 @@ void main() {
     expect(loadAfter(3, 3, {'min': 12, 'max': 18}).under, true);
   });
 
+  test('queue-first helpers: status text, result lines, idempotency keys', () {
+    AppConfig.lang = 'en';
+    expect(regRequestDone('done'), isTrue);
+    expect(regRequestDone('queued'), isFalse);
+    expect(regQueueText('queued', depth: 5), contains('4'));
+    expect(regQueueText('processing'), isNot(''));
+    String name(int id) => 'C$id';
+    final cart = regResultLines({'ok': true, 'results': {'7': {'status': 'registered'}, '8': {'status': 'rejected', 'blocks': [{'code': 'section_full', 'message': 'full'}]}}}, name);
+    expect(cart.length, 2);
+    expect(cart.first, startsWith('C7:'));
+    final single = regResultLines({'status': 'waitlisted', 'registration': {'course_id': 9}}, name);
+    expect(single, ['C9: ${regStatusText('waitlisted')}']);
+    expect(regResultLines({}, name), isEmpty);
+    expect(newIdempotencyKey(), isNot(newIdempotencyKey()));
+    expect(regPollAfterMs(null), 1500);
+    expect(regQueueBusy(null, 503), isTrue);
+    expect(regQueueBusy('too_many_attempts', 429), isTrue);
+    expect(regQueueBusy('window_closed', 409), isFalse);
+    expect(regQueueBusy(null, 0), isTrue);
+    expect(regQueueBusy('pending_limit', 429), isFalse);
+    expect(regSubmitCertainlyRejected(null, 503), isTrue);
+    expect(regSubmitCertainlyRejected(null, 500), isFalse);
+    expect(regSubmitCertainlyRejected(null, 0), isFalse);
+    expect(regPollAfterMs(0), 1500);
+    expect(regPollAfterMs(2500), 2500);
+    expect(regPollAfterMs(200), 1000);
+    expect(regPollAfterMs(60000), 10000);
+  });
+
   test('block texts carry the numbers', () {
     final s = blockText({'code': 'max_load', 'load': 15, 'credits': 6, 'limits': {'max': 18}});
     expect(s.contains('15 + 6 > 18'), true);
@@ -67,5 +98,15 @@ void main() {
       ],
     };
     await expectNoLayoutErrors(tester, () => RecordView(data: data));
+  });
+
+  testWidgets('queue and result sheets never overflow', (tester) async {
+    final progress = ValueNotifier<Map<String, dynamic>>({'status': 'queued', 'queue_depth': 12});
+    await expectNoLayoutErrors(tester, () => RegQueueSheet(progress: progress));
+    await expectNoLayoutErrors(tester, () => RegResultSheet(ok: false, lines: [
+      'Course with a very long name that keeps going and going: rejected — section full',
+      'Another course: waitlisted',
+    ]));
+    progress.dispose();
   });
 }

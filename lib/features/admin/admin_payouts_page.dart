@@ -33,7 +33,6 @@ class AdminPayoutsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return DefaultTabController(
       length: 3,
       child: BasePage(
