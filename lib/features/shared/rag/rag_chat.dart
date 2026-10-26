@@ -111,8 +111,9 @@ class RagApi {
   final ApiClient _api;
   static const base = '/api/v1/rag';
 
-  Future<EngineResult> ask(String question, {int? orgId, int? courseId}) =>
-      engineCall(() => _api.post('$base/ask', body: {'question': question, 'org_id': ?orgId, 'course_id': ?courseId}));
+  /// [app]: the app assistant (the platform's own documents; no organization or course).
+  Future<EngineResult> ask(String question, {int? orgId, int? courseId, bool app = false}) => engineCall(
+      () => _api.post('$base/ask', body: {'question': question, 'org_id': ?orgId, 'course_id': ?courseId, if (app) 'app': true}));
 
   Future<EngineResult> query(int id) => engineCall(() => _api.get('$base/queries/$id'));
 
@@ -120,8 +121,8 @@ class RagApi {
   Future<EngineResult> rate(int id, {required bool helpful, String? comment}) =>
       engineCall(() => _api.post('$base/queries/$id/feedback', body: {'helpful': helpful, 'comment': ?comment}));
 
-  Future<EngineResult> history({int? orgId, int? courseId, int limit = 20}) =>
-      engineCall(() => _api.get('$base/queries', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, 'limit': limit}));
+  Future<EngineResult> history({int? orgId, int? courseId, bool app = false, int limit = 20}) => engineCall(() =>
+      _api.get('$base/queries', queryParams: {'org_id': ?orgId, 'course_id': ?courseId, if (app) 'app': true, 'limit': limit}));
 
   /// Polls until the worker answered (or [timeout]), every second at first and then up to every 5 s; the last state
   /// otherwise (the screen keeps it as "still working" and asks again on refresh).

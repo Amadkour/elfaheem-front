@@ -1383,6 +1383,10 @@
     "en": "Help Center",
     "ar": "مركز المساعدة"
   },
+  "app_assistant": {
+    "en": "Ask about the app",
+    "ar": "اسأل عن التطبيق"
+  },
   "log-out": {
     "en": "Logout",
     "ar": "تسجيل الخروج"

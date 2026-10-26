@@ -1,5 +1,6 @@
-// Quick exam UI (logic in exam_quick.dart): Online or Offline? → questions (multiple choice / essay) or one uploaded
-// file → Publish. Every other setting is a default under "Advanced"; the full editor stays one tap away there.
+// Quick exam UI (logic in exam_quick.dart): Online or Offline? → questions (multiple choice / essay, typed or generated
+// from the course documents — exam_generate_sheet.dart) or one uploaded file → Publish. Every other setting is a
+// default under "Advanced"; the full editor stays one tap away there.
 //
 // Entry points: `openQuickExam` (a course's "new exam", an exam-timetable slot) and `showSlotExamSheet` (tapping an
 // exam in a timetable: create it now / not now, or open the one already made from that slot).
@@ -13,6 +14,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asInt, t;
 import 'exam_authoring.dart';
 import 'exam_authoring_screen.dart' show ExamEditorScreen, pickEngineDateTime;
+import 'exam_generate_sheet.dart' show QuickGenerateCard, openExamGenerator;
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
@@ -197,6 +199,14 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     });
   }
 
+  /// Questions written from the course documents, added to the list as an editable draft.
+  Future<void> _generate() async {
+    final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId);
+    if (got == null || got.isEmpty || !mounted) return;
+    setState(() => q.questions.addAll(got));
+    appToast(t('أُضيف ${got.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.length} questions added — review and edit them before publishing'));
+  }
+
   /// [editor]: save a draft and continue in the full editor (questions may still be missing there).
   Future<void> _save({required bool publish, bool editor = false}) async {
     q.title = _title.text;
@@ -264,6 +274,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                       onPoints: (v) => q.filePoints = v,
                     )
                   else ...[
+                    if (q.courseId != null)
+                      Padding(padding: const EdgeInsets.only(bottom: 10), child: QuickGenerateCard(onTap: _busy ? null : _generate)),
                     for (var i = 0; i < q.questions.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
