@@ -14,6 +14,8 @@ import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
 import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
+import 'exam_quick_screen.dart' show openQuickExam;
+import 'exam_results_screen.dart' show ExamResultsScreen;
 
 String _pts(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(v * 2 == (v * 2).roundToDouble() ? 1 : 2);
 
@@ -452,6 +454,11 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
 
   void _edit([int? examId]) => _open(ExamEditorScreen(examId: examId, courseId: widget.courseId, orgId: _orgId));
 
+  Future<void> _quick() async {
+    await openQuickExam(context, courseId: widget.courseId, orgId: _orgId);
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!_ready) return const SizedBox.shrink();
@@ -462,7 +469,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
         AppSectionTitle(t('الاختبارات الجديدة', 'New-engine exams'),
             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
               IconButton(onPressed: () => _open(QuestionBankScreen(orgId: _orgId, courseId: widget.courseId)), icon: const Icon(Icons.quiz_outlined), tooltip: t('بنك الأسئلة', 'Question bank')),
-              IconButton(onPressed: () => _edit(), icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
+              IconButton(onPressed: _quick, icon: Icon(Icons.add_circle_outline_rounded, color: c.primary), tooltip: t('اختبار جديد', 'New exam')),
             ])),
         ConstrainedBox(
           constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.25),
@@ -473,7 +480,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
                 padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
                 onTap: e['status'] == 'draft'
                     ? () => _edit(asInt(e['id']))
-                    : () => _open(ExamReviewScreen(examId: asInt(e['id']), examTitle: '${e['title'] ?? ''}')),
+                    : () => _open(ExamResultsScreen(examId: asInt(e['id']), examTitle: '${e['title'] ?? ''}', courseId: widget.courseId)),
                 child: Row(children: [
                   Icon(e['status'] == 'draft' ? Icons.edit_note_rounded : Icons.rate_review_outlined, color: c.primary),
                   const SizedBox(width: 12),

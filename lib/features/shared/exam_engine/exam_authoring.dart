@@ -6,6 +6,8 @@
 // services/questions.py (per-type validation), services/grading_objective.py (answer-key shapes), services/exams.py
 // (settings, sections, placements, publish rules) and back/FLUTTER_API_CHANGES.md "phase 5" / "phase 6".
 // Nothing here touches the widget tree; `exam_authoring_screen.dart` drives these pieces.
+import 'dart:typed_data';
+
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
@@ -523,7 +525,9 @@ class QuestionDraft {
           if (!factors.contains(1.0)) out.add('unit_base_required');
         }
       default:
-        if (model.trim().isEmpty && rubric.isEmpty) out.add('model_answer_required');
+        // auto_grade false: the teacher marks it, there is nothing to grade against (services/questions.py)
+        final graded = extraAnswer['auto_grade'] != false && type != 'file_upload';
+        if (graded && model.trim().isEmpty && rubric.isEmpty) out.add('model_answer_required');
         if (rubric.any((c) => c.criterion.trim().isEmpty || !(c.points > 0))) out.add('bad_rubric');
         final ids = rubric.map((c) => c.id).toList();
         if (ids.toSet().length != ids.length) out.add('bad_rubric');
@@ -1184,4 +1188,17 @@ class ExamAuthoringApi {
       engineCall(() => _api.post('$base/exams/$examId/accommodations', body: body));
   Future<EngineResult> revokeAccommodation(int id) => engineCall(() => _api.delete('$base/accommodations/$id'));
   Future<EngineResult> consents({int? orgId}) => engineCall(() => _api.get('$base/consents', queryParams: {'org_id': ?orgId}));
+
+  // the exam as an uploaded file (quick exam, settings.paper_file)
+  Future<EngineResult> uploadPaperFile(int examId, {required String fileName, Uint8List? bytes, String? path}) => engineCall(() => _api.postMultipart(
+      '$base/exams/$examId/paper-file', fields: const {}, fileField: 'file', fileName: fileName, fileBytes: bytes, filePath: path));
+  Future<EngineResult> removePaperFile(int examId) => engineCall(() => _api.delete('$base/exams/$examId/paper-file'));
+  Future<Uint8List> paperFile(int examId) => _api.getBytes('$base/exams/$examId/paper-file');
+
+  // results: every attempt, one attempt's answers, a student's uploaded answer file, the course roster's names
+  Future<EngineResult> attempts(int examId) => engineCall(() => _api.get('$base/exams/$examId/attempts'));
+  Future<EngineResult> attemptReview(int attemptId) => engineCall(() => _api.get('$base/attempts/$attemptId/review'));
+  Future<Uint8List> answerFile(int attemptId, int questionId) => _api.getBytes('$base/attempts/$attemptId/files/$questionId');
+  Future<EngineResult> enterMarks(int examId, List<Map<String, dynamic>> rows) => engineCall(() => _api.post('$base/exams/$examId/marks', body: {'rows': rows}));
+  Future<EngineResult> courseStudents(int courseId) => engineCall(() => _api.get('/api/v1/courses/$courseId/students'));
 }
