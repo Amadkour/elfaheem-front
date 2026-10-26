@@ -85,7 +85,8 @@ class _OrgAcademicPageState extends State<OrgAcademicPage> {
       (t('التخرج والإعدادات', 'Graduation & settings'), Icons.school_rounded,
           _SettingsTab(settings: _settings!, courses: _courses, base: _a, onChanged: _load)),
       (t('مسار الطلاب', 'Students'), Icons.route_rounded, _Students(programs: _programs, base: _a)),
-      (t('طلبات الأرشيف', 'Archive requests'), Icons.inventory_2_rounded, _ArchiveRequests(base: _a)),
+      (t('طلبات الأرشيف', 'Archive requests'), Icons.inventory_2_rounded,
+          _ArchiveRequests(base: _a, orgId: context.read<OrgSession>().currentId)),
     ];
     return DefaultTabController(
       length: tabs.length,
@@ -532,8 +533,9 @@ class _Students extends StatelessWidget {
 }
 
 class _ArchiveRequests extends StatelessWidget {
-  const _ArchiveRequests({required this.base});
+  const _ArchiveRequests({required this.base, this.orgId});
   final String base;
+  final int? orgId;
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +544,9 @@ class _ArchiveRequests extends StatelessWidget {
       child: Builder(builder: (context) {
         final p = context.watch<OrgPaged>();
         final c = context.colors;
-        return PagedList<OrgPaged>(
+        return Column(children: [
+          if (orgId != null) _OrgArchiveOpenSwitch(orgId: orgId!),
+          Expanded(child: PagedList<OrgPaged>(
           emptyText: t('لا طلبات لفتح الأرشيف', 'No archive requests'),
           itemBuilder: (context, row) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -567,8 +571,52 @@ class _ArchiveRequests extends StatelessWidget {
               ]),
             ),
           ),
-        );
+        )),
+        ]);
       }),
+    );
+  }
+}
+
+/// Organization rule for every course archive (was inside each course's profile): open access lets each course's own
+/// mode apply (automatic · request · code); off = every pass needs an admin's approval. Hidden for who can't change it.
+class _OrgArchiveOpenSwitch extends StatefulWidget {
+  const _OrgArchiveOpenSwitch({required this.orgId});
+  final int orgId;
+
+  @override
+  State<_OrgArchiveOpenSwitch> createState() => _OrgArchiveOpenSwitchState();
+}
+
+class _OrgArchiveOpenSwitchState extends State<_OrgArchiveOpenSwitch> {
+  bool? _open;
+  String get _path => '/api/v1/course-profile/orgs/${widget.orgId}/archive-settings';
+
+  @override
+  void initState() {
+    super.initState();
+    ApiClient().get(_path).then((r) {
+      if (mounted && r is Map) setState(() => _open = r['open'] == true);
+    }).catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_open == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      child: RowCard(
+        child: OrgSwitchRow(
+          title: t('وصول مفتوح لأرشيف المقررات', 'Open access to course archives'),
+          subtitle: t('يطبّق كل مقرر طريقته (تلقائي · طلب · كود) — عند الإيقاف يحتاج كل وصول موافقة المسؤول',
+              "Each course's own way applies (automatic · request · code) — when off, every access needs admin approval"),
+          value: _open!,
+          onChanged: (v) async {
+            final r = await orgCall(() => ApiClient().put(_path, body: {'open': v}), ok: t('تم الحفظ', 'Saved'));
+            if (r.ok && mounted) setState(() => _open = v);
+          },
+        ),
+      ),
     );
   }
 }

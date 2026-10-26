@@ -1,6 +1,8 @@
 // lib/features/shared/course_profile/course_profile_parts.dart
 //
 // The tabs of the course profile: overview · lectures · sections/labs · attendance · certificates · team · archive.
+// The overview is per role: staff get one "Open attendance" button and their tools (course_profile_actions.dart),
+// students a review page (check-in when attendance is open · progress · attendance · grade · next session).
 // Material opens with the app's secured player (VideoPlayerScreen calls POST …/play itself); uploads and edits stay in
 // the existing course studio (TeacherSessionsScreen), opened from here.
 library;
@@ -18,13 +20,16 @@ import '../../admin/admin_common.dart' show t;
 import '../../teacher/home/teacher_models.dart' show TeacherCourse;
 import '../../teacher/sessions/sessions_provider.dart' show TeacherCourseScreenProvider;
 import '../../teacher/sessions/sessions_screen.dart' show TeacherSessionsScreen;
+import '../../student/analysis/student_course_analytics_screen.dart';
+import '../attendance/attendance_course_entry.dart' show AttendanceCourseEntry;
 import '../attendance/attendance_widgets.dart' show showTeacherAttendanceSheet;
 import '../session/material/components/session_material_grid.dart' show MaterialImageViewerDialog;
 import '../session/material/session_material_model.dart';
 import '../session/video/video_player_screen.dart';
+import 'course_profile_actions.dart';
 import 'course_profile_announcements.dart' show CpAnnouncementCard;
 import 'course_profile_models.dart';
-import 'course_profile_screen.dart' show cpCall, cpRoleLabel;
+import 'course_profile_screen.dart' show cpCall;
 
 const _base = '/api/v1/course-profile';
 String _pct(dynamic v) => v is num ? '${v.round()}%' : '—';
@@ -69,6 +74,11 @@ class CpOverviewTab extends StatelessWidget {
     final desc = '${(ar ? p.course['description_ar'] : p.course['description_en']) ?? p.course['description_ar'] ?? ''}'.trim();
     final children = <Widget>[];
 
+    if (p.isStudent && !p.closed) {
+      // shown only while the teacher has attendance open (online, or offline through a nearby classmate)
+      children.add(AttendanceCourseEntry(courseId: p.id, title: p.name(ar)));
+    }
+
     if (p.isStudent && p.caps.viewMaterial) {
       final pr = p.progress;
       final cont = cpContinue(p);
@@ -83,7 +93,7 @@ class CpOverviewTab extends StatelessWidget {
             if (pr['lecture'] != null) AppRing(value: _num(pr['lecture']), label: t('المحاضرات', 'Lectures')),
             if (pr['section'] != null) AppRing(value: _num(pr['section']), label: t('السكاشن', 'Sections')),
           ]),
-          if (cont != null) ...[
+          if (cont != null && !p.readOnly) ...[
             const SizedBox(height: 14),
             AppPrimaryButton(
               icon: Icons.play_arrow_rounded,
@@ -91,12 +101,23 @@ class CpOverviewTab extends StatelessWidget {
               onPressed: () => onOpenTab(cont.track),
             ),
           ],
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => StudentCourseAnalyticsScreen(courseId: p.id, courseTitle: p.name(ar)))),
+              icon: const Icon(Icons.insights_rounded, size: 18),
+              label: Text(t('تحليلاتي في المقرر', 'My course analytics')),
+            ),
+          ),
         ]),
       ));
+    }
+    if (p.isStudent) {
       if ((a['expected'] ?? 0) is num && (a['expected'] ?? 0) > 0) {
         final absence = _num(a['absence_pct']) ?? 0;
         children.add(AppCard(
-          onTap: () => onOpenTab('attendance'),
+          onTap: p.readOnly ? null : () => onOpenTab('attendance'),
           child: Row(children: [
             Icon(Icons.how_to_reg_rounded, color: appScoreColor(context, 100 - absence)),
             const SizedBox(width: 10),
@@ -113,9 +134,12 @@ class CpOverviewTab extends StatelessWidget {
           ]),
         ));
       }
+      final g = p.grade;
+      if (g != null) children.add(_GradeCard(grade: g));
     }
 
     if (p.isStaff) {
+      if (!p.readOnly) children.add(CpStaffActions(profile: p, onOpenTab: onOpenTab, onChanged: onChanged));
       children.add(AppGrid(minTile: 150, children: [
         AppStatTile(icon: Icons.people_alt_rounded, label: t('الطلاب', 'Students'), value: a['students'] ?? 0),
         AppStatTile(icon: Icons.trending_up_rounded, label: t('متوسط التقدم', 'Avg progress'), value: _pct(a['avg_progress'])),
@@ -138,28 +162,9 @@ class CpOverviewTab extends StatelessWidget {
             color: c.danger,
             onTap: p.caps.viewAttendance ? () => onOpenTab('attendance') : null),
       ]));
-      if (p.caps.anyManage) {
-        children.add(AppCard(
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            AppPill(
-                icon: Icons.edit_note_rounded,
-                label: t('إدارة المحتوى ورفع المواد', 'Manage content & uploads'),
-                onTap: () async {
-                  await openCourseStudio(context, p.id);
-                  await onChanged();
-                }),
-            if (p.role == 'ta')
-              AppBadgePill(
-                  p.caps.manageLecture
-                      ? t('مسموح لك بتعديل المحاضرات', 'You may edit lectures')
-                      : t('صلاحيتك: السكاشن والمعامل', 'Your part: sections & labs'),
-                  icon: Icons.badge_rounded),
-          ]),
-        ));
-      }
     }
 
-    if (!withRail) {
+    if (!withRail && !p.pastVersion) {
       if (next.isNotEmpty) children.add(_NextSessionCard(next: next));
       if (p.announcements.isNotEmpty) children.add(_AnnouncementsPreview(profile: p, onOpenTab: onOpenTab));
     }
@@ -173,7 +178,6 @@ class CpOverviewTab extends StatelessWidget {
         if (p.course['credit_hours'] != null) AppInfoRow(Icons.timer_outlined, '${t('الساعات المعتمدة', 'Credit hours')}: ${p.course['credit_hours']}'),
         if (term.isNotEmpty)
           AppInfoRow(Icons.date_range_rounded, '${t('الفصل', 'Term')}: ${_termRange(term)}'),
-        AppInfoRow(Icons.badge_outlined, '${t('دورك', 'Your role')}: ${cpRoleLabel(p.role)}'),
       ]),
     ));
 
@@ -181,10 +185,42 @@ class CpOverviewTab extends StatelessWidget {
   }
 }
 
+/// The student's approved grade for this run (registrar).
+class _GradeCard extends StatelessWidget {
+  const _GradeCard({required this.grade});
+  final Map<String, dynamic> grade;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final pct = _num(grade['percent']);
+    final letter = '${grade['letter'] ?? ''}'.trim();
+    return AppCard(
+      child: Row(children: [
+        Container(
+          width: 46,
+          height: 46,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(color: c.accent.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(14)),
+          child: Text(letter.isEmpty ? '—' : letter, style: appText(17, w: FontWeight.w900, c: c.accent)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t('درجتك في المقرر', 'Your grade'), style: appText(12, c: c.textLight)),
+            Text(pct == null ? '—' : _pct(pct), style: appText(16, w: FontWeight.w800, c: c.textDark)),
+          ]),
+        ),
+        if (grade['denied'] == true) AppBadgePill(t('محروم', 'Denied'), color: c.danger),
+      ]),
+    );
+  }
+}
+
 String _termRange(Map<String, dynamic> term) {
   final a = DateTime.tryParse('${term['start_date'] ?? ''}'), b = DateTime.tryParse('${term['end_date'] ?? ''}');
   return [
-    '${term['year_label'] ?? ''}',
+    cpTermLabel(term, AppConfig.lang == 'ar'),
     if (a != null && b != null) '${AppTime.date(a)} → ${AppTime.date(b)}',
   ].where((s) => s.trim().isNotEmpty).join(' · ');
 }
@@ -263,11 +299,11 @@ class CpSideRail extends StatelessWidget {
           ]),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      if (next.isNotEmpty) ...[_NextSessionCard(next: next), const SizedBox(height: 14)],
+      if (next.isNotEmpty && !p.pastVersion) ...[_NextSessionCard(next: next), const SizedBox(height: 14)],
       if (p.announcements.isNotEmpty) ...[
         _AnnouncementsPreview(profile: p, onOpenTab: onOpenTab),
         const SizedBox(height: 8),
-      ] else if (p.caps.announce && !p.readOnly) ...[
+      ] else if (p.caps.announce && !p.readOnly && !p.pastVersion) ...[
         AppCard(
           onTap: () => onOpenTab('announcements'),
           child: Row(children: [
@@ -495,18 +531,22 @@ class _SessionCard extends StatelessWidget {
                 Text(t('لا مواد في هذه الجلسة بعد', 'No material in this session yet'), style: appText(13, c: c.textLight))
               else
                 for (final m in s.materials) _MaterialTile(material: m, siblings: s.materials, profile: p),
-              if (canAttend && !p.closed) ...[
+              if (canAttend && !p.closed && !p.readOnly) ...[
                 const SizedBox(height: 8),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: AppPill(
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  AppPill(
                       icon: Icons.qr_code_2_rounded,
-                      label: t('تسجيل الحضور', 'Take attendance'),
+                      label: t('فتح الحضور', 'Open attendance'),
                       onTap: () async {
                         await showTeacherAttendanceSheet(context, s.id, title: s.name);
                         await onChanged();
                       }),
-                ),
+                  if (!s.upcoming || s.liveNow)
+                    AppPill(
+                        icon: Icons.fact_check_rounded,
+                        label: t('يدوياً', 'By hand'),
+                        onTap: () => showCpManualAttendance(context, p, session: s, onChanged: onChanged)),
+                ]),
               ],
             ]),
           ),
@@ -600,9 +640,12 @@ class _MaterialTile extends StatelessWidget {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class CpAttendanceTab extends StatefulWidget {
-  const CpAttendanceTab({super.key, required this.profile, this.initial});
+  const CpAttendanceTab({super.key, required this.profile, this.initial, this.onChanged});
   final CourseProfile profile;
   final Map<String, dynamic>? initial;
+
+  /// After marking by hand (reloads the profile's numbers).
+  final Future<void> Function()? onChanged;
 
   @override
   State<CpAttendanceTab> createState() => _CpAttendanceTabState();
@@ -626,11 +669,18 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
 
   Future<void> _load() async {
     try {
-      final r = await ApiClient().get('$_base/${widget.profile.id}/attendance');
+      final p = widget.profile;
+      final r = await ApiClient().get('$_base/${p.id}/attendance',
+          queryParams: p.pastVersion && p.runId != null ? {'run_id': p.runId} : null);
       if (mounted) setState(() => _a = CpAttendance(Map<String, dynamic>.from(r as Map)));
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     }
+  }
+
+  Future<void> _afterMark() async {
+    await _load();
+    await widget.onChanged?.call();
   }
 
   Future<void> _export() async {
@@ -687,6 +737,11 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
               onTap: () => setState(() => _track = k)),
       ],
       if (staff && a.students.isNotEmpty) AppPill(icon: Icons.ios_share_rounded, label: t('تصدير', 'Export'), onTap: _export),
+      if (staff && p.caps.anyAttend && !p.readOnly && !p.closed)
+        AppPill(
+            icon: Icons.fact_check_rounded,
+            label: t('تسجيل يدوي', 'Mark by hand'),
+            onTap: () => showCpManualAttendance(context, p, onChanged: _afterMark)),
     ]);
     final summary = Wrap(spacing: 8, runSpacing: 8, children: [
       AppStatChip(icon: Icons.event_available_rounded, value: '${a.held}', label: t('عُقدت', 'Held'), color: c.success),
@@ -738,9 +793,13 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
         final me = s['me']?.toString();
         final exp = (s['expected'] as num?)?.toInt() ?? 0;
         final pres = (s['present'] as num?)?.toInt() ?? 0;
+        final mark = staff && p.caps.attend('${s['track']}') && !p.readOnly && !p.closed;
         body.add(AppCard(
           margin: const EdgeInsets.only(bottom: 8),
           padding: const EdgeInsets.all(12),
+          onTap: mark
+              ? () => showCpManualAttendance(context, p, sessionId: (s['id'] as num?)?.toInt(), onChanged: _afterMark)
+              : null,
           child: Row(children: [
             Icon(s['track'] == 'section' ? Icons.science_rounded : Icons.co_present_rounded,
                 color: s['track'] == 'section' ? c.purple : c.primary),
@@ -1063,22 +1122,13 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
   final _code = TextEditingController();
   final _reason = TextEditingController();
   List<Map<String, dynamic>>? _requests;
-  bool? _orgOpen;
 
   CourseProfile get p => widget.profile;
-  int? get _orgId => (_map(p.course['org'])['id'] as num?)?.toInt();
 
   @override
   void initState() {
     super.initState();
-    if (p.caps.approveArchive) {
-      _loadRequests();
-      if (_orgId != null) {
-        ApiClient().get('$_base/orgs/$_orgId/archive-settings').then((r) {
-          if (mounted && r is Map) setState(() => _orgOpen = r['open'] == true);
-        }).catchError((_) {});
-      }
-    }
+    if (p.caps.approveArchive) _loadRequests();
   }
 
   @override
@@ -1116,6 +1166,7 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
     final c = context.colors;
     final out = <Widget>[];
     if (p.isStudent && p.closed) out.add(_studentView(context));
+    if (p.caps.viewVersions) out.add(CpVersionsCard(profile: p));
     if (p.caps.manageArchive) {
       final pol = p.archivePolicy ?? const {};
       final mode = '${pol['mode'] ?? 'request'}';
@@ -1162,23 +1213,6 @@ class _CpArchiveTabState extends State<CpArchiveTab> {
       ));
     }
     if (p.caps.approveArchive) {
-      if (_orgOpen != null) {
-        out.add(AppCard(
-          child: AppSwitchTile(
-            title: t('وصول مفتوح لأرشيف المقررات (المؤسسة)', 'Open archive access (organization)'),
-            subtitle: t('عند الإيقاف يحتاج كل وصول موافقة المسؤول', 'When off, every access needs admin approval'),
-            value: _orgOpen!,
-            onChanged: (v) async {
-              final r = await cpCall(() => ApiClient().put('$_base/orgs/$_orgId/archive-settings', body: {'open': v}),
-                  ok: t('تم الحفظ', 'Saved'));
-              if (r != null) {
-                setState(() => _orgOpen = v);
-                await widget.onChanged();
-              }
-            },
-          ),
-        ));
-      }
       out.add(AppSectionTitle(t('طلبات فتح الأرشيف', 'Archive requests')));
       if (_requests == null) {
         out.add(const SizedBox(height: 160, child: AppListSkeleton(items: 2)));

@@ -29,8 +29,29 @@ class CpCaps {
   bool get approveArchive => _b('approve_archive');
   bool get live => _b('live');
   bool get announce => _b('announce');
+  bool get viewVersions => _b('view_versions');
+  bool get archiveCourse => _b('archive_course');
+  bool get courseSettings => _b('course_settings');
   bool manage(String track) => track == 'lecture' ? manageLecture : manageSection;
+  bool attend(String track) => track == 'lecture' ? attendLecture : attendSection;
   bool get anyManage => manageLecture || manageSection;
+  bool get anyAttend => attendLecture || attendSection;
+}
+
+/// One run (term) of an organization course — the course's "versions".
+class CpVersion {
+  CpVersion(this.raw)
+      : id = _i(raw['id']),
+        status = (raw['status'] ?? 'open').toString(),
+        current = raw['current'] == true,
+        term = _m(raw['term']);
+  final Map<String, dynamic> raw, term;
+  final int id;
+  final String status;
+  final bool current;
+  bool get archived => status == 'archived';
+  int get students => _i(raw['students']);
+  int get passed => _i(raw['passed']);
 }
 
 class CpSession {
@@ -69,13 +90,19 @@ class CourseProfile {
         analytics = _m(raw['analytics']),
         archive = raw['archive'] is Map ? _m(raw['archive']) : null,
         archivePolicy = raw['archive_policy'] is Map ? _m(raw['archive_policy']) : null,
-        staff = _m(raw['staff']);
+        staff = _m(raw['staff']),
+        versions = _l(raw['versions']).map(CpVersion.new).toList(),
+        attendanceTarget = raw['attendance_target'] is Map ? CpSession(_m(raw['attendance_target'])) : null;
   final Map<String, dynamic> raw, course, analytics, staff;
   final String role;
   final CpCaps caps;
   final List<CpSession> lectures, sections;
   final List<Map<String, dynamic>> certificates, announcements;
   final Map<String, dynamic>? archive, archivePolicy;
+  final List<CpVersion> versions;
+
+  /// The session the single "Open attendance" button opens (live now / nearest today); null → the picker.
+  final CpSession? attendanceTarget;
 
   int get id => _i(course['id']);
   bool get isOrg => course['kind'] == 'org';
@@ -91,6 +118,19 @@ class CourseProfile {
   Map<String, dynamic>? get instructor => staff['instructor'] is Map ? _m(staff['instructor']) : null;
   Map<String, dynamic> get progress => _m(analytics['progress']);
 
+  /// An earlier run opened from "Versions": read-only for everyone.
+  bool get pastVersion => _m(raw['version'])['past'] == true;
+  int? get runId => _m(raw['version'])['run_id'] is num ? _i(_m(raw['version'])['run_id']) : null;
+
+  /// The student's approved grade for this run (registrar), or null.
+  Map<String, dynamic>? get grade => analytics['grade'] is Map ? _m(analytics['grade']) : null;
+
+  /// Sessions this user may take attendance for, in course order (lectures, then sections) — the picker's list.
+  List<CpSession> get attendableSessions => [
+        if (caps.attendLecture) ...lectures,
+        if (caps.attendSection) ...sections,
+      ];
+
   String name(bool ar) {
     final a = (course['name_ar'] ?? '').toString(), e = (course['name_en'] ?? '').toString();
     return ar ? (a.isNotEmpty ? a : e) : (e.isNotEmpty ? e : a);
@@ -103,16 +143,45 @@ class CourseProfile {
 }
 
 /// Tabs the page shows for this profile, in order. Pure — tested.
-List<String> cpTabs(CourseProfile p) => [
+///   student      review: overview (progress · check-in · grade) · material · attendance · announcements · certificates
+///   TA           its part + attendance + team (own grant) + versions
+///   instructor   everything; admins also archive approval and the org archive rules
+///   earlier run  read-only: material, attendance and announcements only
+List<String> cpTabs(CourseProfile p) {
+  if (p.pastVersion) {
+    return [
       'overview',
       'lecture',
-      if (p.hasSections) 'section',
-      if (p.caps.announce || p.announcements.isNotEmpty) 'announcements',
-      if (p.caps.viewAttendance && !p.readOnly) 'attendance',
-      if (p.certificates.isNotEmpty || p.caps.manageCertificates) 'certificates',
-      if (p.caps.manageStaff || p.role == 'ta') 'team',
-      if (p.caps.manageArchive || p.caps.approveArchive || (p.closed && p.isStudent)) 'archive',
+      if (p.sections.isNotEmpty) 'section',
+      if (p.announcements.isNotEmpty) 'announcements',
+      if (p.caps.viewAttendance && p.isStaff) 'attendance',
     ];
+  }
+  return [
+    'overview',
+    'lecture',
+    if (p.hasSections) 'section',
+    if (p.caps.viewAttendance && !p.readOnly) 'attendance',
+    if (p.caps.announce || p.announcements.isNotEmpty) 'announcements',
+    if (p.certificates.isNotEmpty || p.caps.manageCertificates) 'certificates',
+    if (p.caps.manageStaff || p.role == 'ta') 'team',
+    if (p.caps.manageArchive || p.caps.approveArchive || p.caps.viewVersions || (p.closed && p.isStudent)) 'archive',
+  ];
+}
+
+/// Term kind → (ar, en).
+(String, String) cpTermKindLabel(String kind) => switch (kind) {
+      'term1' => ('الفصل الأول', 'Term 1'),
+      'term2' => ('الفصل الثاني', 'Term 2'),
+      'summer' => ('الفصل الصيفي', 'Summer term'),
+      _ => ('فصل', 'Term'),
+    };
+
+/// "Term 1 · 2026/2027" for a version / term map.
+String cpTermLabel(Map<String, dynamic> term, bool ar) {
+  final k = cpTermKindLabel('${term['kind'] ?? ''}');
+  return [ar ? k.$1 : k.$2, '${term['year_label'] ?? ''}'].where((s) => s.trim().isNotEmpty).join(' · ');
+}
 
 /// The course's state for the header pill: archived · live · running · upcoming (no session held yet).
 String cpStatus(CourseProfile p) {
@@ -199,5 +268,8 @@ class CpAttendance {
       'not_member' => ('هذا الأرشيف لأعضاء المؤسسة فقط', 'This archive is for members of the organization'),
       'ta_section_only' => ('المعيد ينشر لجمهور السكاشن والمعامل فقط', 'Assistants post to sections & labs only'),
       'course_forbidden' => ('ليست لديك صلاحية لهذا الإجراء', 'You do not have permission for this'),
+      'version_not_found' => ('هذه النسخة من المقرر غير موجودة', 'This version of the course was not found'),
+      'session_not_found' => ('الجلسة غير موجودة', 'Session not found'),
+      'session_not_started' => ('لم يبدأ موعد الجلسة بعد', 'The session has not started yet'),
       _ => null,
     };

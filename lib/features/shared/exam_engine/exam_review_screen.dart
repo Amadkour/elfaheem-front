@@ -12,6 +12,7 @@ import 'exam_authoring.dart' show ExamAuthoringApi, examStatusLabel;
 import 'exam_authoring_screen.dart' show ExamEditorScreen, QuestionBankScreen;
 import 'exam_insights_screen.dart' show ExamAnalyticsScreen, ExamAppealsScreen;
 import 'exam_scan_review.dart';
+import 'offline/offline_exam_teacher.dart';
 import 'exam_taking.dart' show examCodeText;
 import 'exam_quick_screen.dart' show openQuickExam;
 import 'exam_results_screen.dart' show ExamResultsScreen;
@@ -379,6 +380,10 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ExamAnalyticsScreen(examId: widget.examId, examTitle: widget.examTitle))),
             icon: const Icon(Icons.insights_rounded), tooltip: t('التحليلات', 'Analytics')),
         IconButton(onPressed: _policy, icon: const Icon(Icons.tune_rounded), tooltip: t('سياسة التصحيح', 'Grading policy')),
+        IconButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OfflineExamPanel(examId: widget.examId, title: widget.examTitle)))
+                .then((_) => _load()),
+            icon: const Icon(Icons.offline_pin_rounded), tooltip: t('الاختبار دون اتصال', 'Offline sitting')),
       ]),
       child: RefreshIndicator(
         onRefresh: _load,

@@ -13,6 +13,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_authoring.dart';
+import 'offline/offline_exam_teacher.dart';
 
 /// Text controllers for dynamic rows, created on first use and disposed with the state. Rows are keyed by their
 /// stable uid, so a removed row's controller is simply never asked for again.
@@ -1702,6 +1703,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                   AccommodationsPanel(items: _accommodations, error: _accError, onAdd: _addAccommodation, onRevoke: _revokeAccommodation),
                 ]),
                 ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+                  if (v.exam.id != null) OfflineExamEntryTile(examId: v.exam.id!, title: v.exam.title),
                   ExamPublishPanel(view: v, onAction: _action, busy: _busyAction, error: _publishError),
                 ]),
               ]),

@@ -10,6 +10,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../features/shared/attendance/attendance_offline_sync.dart';
 import '../features/shared/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_service.dart';
 
 class TopRouteObserver extends NavigatorObserver {
   Route<dynamic>? currentRoute;
@@ -151,6 +152,7 @@ class TopRouteObserver extends NavigatorObserver {
     // 1) Whatever was stored while offline is settled now (idempotent re-send of attendance
     //    requests, refresh of the cached attendance windows).
     AttendanceOfflineSync.instance.onReconnect();
+    OfflineExamSync.instance.onReconnect();          // finished offline exam sittings + answers carried for classmates
 
     // 2) Close the Downloads page only if the APP opened it.
     _awaitingAutoRoute = false;
