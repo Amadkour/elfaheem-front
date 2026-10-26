@@ -22,6 +22,7 @@ import '../../../core/offline/offline_strings.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
+import '../../auth/mfa_entry.dart' show MfaSettingsEntry;
 import '../../parent/student_link_code_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
@@ -288,6 +289,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
+
+                  // ── Security: two-step verification, for the roles the server allows (hidden otherwise) ──
+                  const MfaSettingsEntry(padding: EdgeInsets.symmetric(horizontal: 20)),
 
                   // ── Settings section ─────────────────────────────────────
                   ParentComponent(

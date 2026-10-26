@@ -178,6 +178,10 @@ void main() {
       expect(JoinPolicyDraft(method: 'code_req', approver: 'assistants').validate(), 'Pick at least one assistant');
       expect(orgCodeText('request_code_required'), isNot('request_code_required'));
     });
+
+    test('a refused logo link has its own text', () {
+      expect(orgCodeText('logo_url_not_allowed'), isNot('logo_url_not_allowed'));
+    });
   });
 
   group('schedule draft', () {

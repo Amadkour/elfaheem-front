@@ -8,11 +8,14 @@ import 'package:timeago/timeago.dart' as timeago;
 
 /// Application configuration and context.colors.
 class AppConfig {
-  /// `--dart-define=API_BASE_URL=http://127.0.0.1:8080/api` points a dev build at the local stack
-  /// (back/scripts/dev/setup.*); without it every build, release included, talks to production.
+  /// The production API. Its leaf certificate is the one ApiClient pins on mobile.
+  static const String productionBaseUrl = 'https://nextbrain.site/api';
+
+  /// `--dart-define=API_BASE_URL=http://10.0.2.2:18080/api` points a debug/profile build at the local stack
+  /// (back/scripts/dev/setup.*); without it every build talks to production. A release build accepts only an
+  /// `https://` override (see [resolveApiBaseUrl]).
   static const String _baseUrlOverride = String.fromEnvironment('API_BASE_URL');
-  static const String baseUrl =
-      _baseUrlOverride == '' ? 'https://nextbrain.site/api' : _baseUrlOverride;
+  static final String baseUrl = resolveApiBaseUrl(_baseUrlOverride, release: kReleaseMode);
   static String lang = 'ar';
   static bool testMode = !kReleaseMode; // request/response logging and debug helpers: never in release
 
@@ -111,6 +114,26 @@ class AppConfig {
       debugPrint('[AppConfig] rebuild after disableList change failed: $e');
     }
   }
+}
+
+/// The API base URL a build uses for the `API_BASE_URL` [override] ('' = not set).
+///
+/// - No override (or blank) → production.
+/// - Debug / profile builds take the override as given: the local gateway is plain `http://`.
+/// - A release build takes it only when it is an `https://` URL with a host. Anything else (`http://`, a typo, a
+///   bare host) falls back to production instead of shipping a cleartext or broken endpoint: plain HTTP is not
+///   covered by certificate pinning, and the envelope handshake is unauthenticated, so passwords, tokens and MFA
+///   codes would be readable on the path. Falling back (rather than refusing to start) was chosen because a
+///   release build can only really work against production anyway (mobile pins production's certificate, so any
+///   other host fails closed), and a refusing app would turn an operator's leftover dev variable into an outage
+///   for every user of a web deploy. The release pipeline should reject such a value at build time as well.
+String resolveApiBaseUrl(String override, {required bool release}) {
+  final o = override.trim();
+  if (o.isEmpty) return AppConfig.productionBaseUrl;
+  if (!release) return o;
+  final uri = Uri.tryParse(o);
+  final ok = uri != null && uri.scheme == 'https' && o.toLowerCase().startsWith('https://') && uri.host.isNotEmpty;
+  return ok ? o : AppConfig.productionBaseUrl;
 }
 
 Map<String, dynamic> translation = {};

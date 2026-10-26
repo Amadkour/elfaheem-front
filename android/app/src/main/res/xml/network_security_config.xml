@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext (plain http / ws) is refused everywhere except the device itself and the emulator's host alias.
+  - Every server URL is https / wss: the API (https://nextbrain.site/api, pinned in ApiClient), MinIO media and
+    presigned uploads (MINIO_PUBLIC_URL, which the https web app can only reach over https), LiveKit (ws_url from the
+    server, also used by the https web app, so wss).
+  - 127.0.0.1 / localhost: needed in RELEASE builds too. OfflineVideoService serves decrypted offline videos to the
+    player from a loopback HTTP server (http://127.0.0.1:<port>/…), so this exception must stay.
+  - 10.0.2.2: the Android emulator's alias for the developer machine (the local stack, API_BASE_URL=http://10.0.2.2:…).
+    It is not routable from a real device. (A src/debug overlay could make it debug-only.)
+  NOT WIRED IN YET: AndroidManifest.xml still says android:usesCleartextTraffic="true" (app D-005). Switch only after
+  confirming on the server that MINIO_PUBLIC_URL (and every stored media URL) is https - otherwise every image and
+  video breaks in the next release. Then replace that attribute with
+  android:networkSecurityConfig="@xml/network_security_config" and, in ios/Runner/Info.plist, NSAllowsArbitraryLoads
+  with NSAllowsLocalNetworking.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

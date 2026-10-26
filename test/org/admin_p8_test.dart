@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
+import 'package:flutter_education_app/features/shared/exam_engine/exam_engine_api.dart' show EngineResult;
 import 'package:flutter_education_app/features/admin/admin_feedback_settings.dart';
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart';
 import 'package:flutter_education_app/features/org/org_feedback_risk.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../ui/layout_harness.dart';
+
+/// Answers each refund with the next queued result and records the idempotency keys it was sent.
+class _FakeMoney implements MoneyP8Api {
+  _FakeMoney(this.answers);
+  final List<EngineResult> answers;
+  final keys = <String>[];
+
+  @override
+  Future<EngineResult> refund(int paymentId, RefundDraft d) async {
+    keys.add('${d.body()['idempotency_key']}');
+    return answers.length > 1 ? answers.removeAt(0) : answers.first;   // the last answer repeats
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
 
 void main() {
   setUp(() => AppConfig.lang = 'en');
@@ -140,6 +158,86 @@ void main() {
       AppConfig.lang = 'ar';
       expect(feeCodeText('reason_required', 'x'), 'اكتب السبب');
     });
+
+    // POST /payments/{id}/refund → 409 {code: refund_external_recorded, message, recorded, remaining} (A06)
+    test('409 refund_external_recorded: what was recorded and what is left, in both languages', () {
+      expect(feeCodeText('refund_external_recorded', 'raw'), isNot('raw'));
+      final r = EngineResult.fail(409, 'refund_external_recorded', 'سُجّل', {'code': 'refund_external_recorded', 'recorded': 30.0, 'remaining': 70.0});
+      final x = RefundExternalRecorded.from(r)!;
+      expect(x.recorded, 30.0);
+      expect(x.remaining, 70.0);
+      expect(x.nothingLeft, isFalse);
+      expect(x.text('SAR'), allOf(contains('30 SAR'), contains('70 SAR'), contains('Nothing of your request was refunded')));
+      AppConfig.lang = 'ar';
+      expect(x.text('SAR'), allOf(contains('30 SAR'), contains('70 SAR'), contains('لم يُسترد شيء')));
+      AppConfig.lang = 'en';
+      final none = RefundExternalRecorded.from(EngineResult.fail(409, 'refund_external_recorded', '', {'recorded': '12.5', 'remaining': 0}))!;
+      expect(none.nothingLeft, isTrue);
+      expect(none.text(null), contains('Nothing is left to refund'));
+      // other failures and successes are not this case
+      expect(RefundExternalRecorded.from(EngineResult.fail(409, 'refund_in_progress', '')), isNull);
+      expect(RefundExternalRecorded.from(EngineResult.ok(const {})), isNull);
+    });
+
+    // GET /admin/finance/payments items: refunded_amount (partial included) · refundable_amount (0 unless completed)
+    test('payment rows: refunded and refundable amounts, older servers fall back to amount', () {
+      final f = paymentRefundFigures({'amount': 100, 'refunded_amount': 40.0, 'refundable_amount': 60.0});
+      expect(f.refunded, 40.0);
+      expect(f.refundable, 60.0);
+      final old = paymentRefundFigures({'amount': 100});
+      expect(old.refunded, 0.0);
+      expect(old.refundable, 100.0);
+      expect(paymentRefundFigures({}).refundable, isNull);
+      expect(paymentRefundFigures({'amount': 50, 'refunded_amount': 50, 'refundable_amount': 0}).refundable, 0.0);
+    });
+  });
+
+  group('refund sheet against the server', () {
+    testWidgets('409 refund_external_recorded lowers what is left, keeps the key and reports a change', (t) async {
+      final api = _FakeMoney([
+        EngineResult.fail(409, 'refund_external_recorded', 'x', {'code': 'refund_external_recorded', 'recorded': 30.0, 'remaining': 70.0}),
+        EngineResult.fail(409, 'refund_external_recorded', 'x', {'code': 'refund_external_recorded', 'recorded': 70.0, 'remaining': 0.0}),
+      ]);
+      var changed = 0;
+      await t.pumpWidget(layoutHost(
+          RefundSheet(paymentId: 5, remaining: 100, currency: 'SAR', superAdmin: false, api: api, onChanged: () => changed++),
+          scale: 1));
+      expect(find.textContaining('Left to refund: 100 SAR'), findsOneWidget);
+      Future<void> refund() async {
+        await t.tap(find.text('Refund').last);
+        await t.pumpAndSettle();
+        await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));   // the confirm dialog
+        await t.pumpAndSettle();
+      }
+
+      await refund();
+      expect(api.keys, hasLength(1));
+      expect(changed, 1);
+      expect(find.textContaining('A refund of 30 SAR made in the gateway dashboard'), findsOneWidget);
+      expect(find.textContaining('Already refunded: 30 SAR'), findsOneWidget);
+      expect(find.textContaining('Left to refund: 70 SAR'), findsWidgets);
+      await refund();
+      expect(api.keys, hasLength(2));
+      expect(api.keys[1], api.keys[0], reason: 'nothing was reserved, so the same key is safe to reuse');
+      expect(find.textContaining('Nothing is left to refund'), findsOneWidget);
+      final button = t.widget<AppPrimaryButton>(find.byType(AppPrimaryButton));
+      expect(button.onPressed, isNull, reason: 'nothing left: the refund button is off');
+      expect(find.text('Close'), findsOneWidget);
+    });
+
+    testWidgets('the recorded-refund state fits every screen', (t) async {
+      final api = _FakeMoney([
+        EngineResult.fail(409, 'refund_external_recorded', 'x', {'code': 'refund_external_recorded', 'recorded': 1234.5, 'remaining': 8765.25}),
+      ]);
+      await expectNoLayoutErrors(t, () => RefundSheet(paymentId: 5, remaining: 9999.75, refunded: 0, currency: 'SAR', superAdmin: true, api: api),
+          act: (t) async {
+        await t.tap(find.byType(AppPrimaryButton));
+        await t.pumpAndSettle();
+        await t.tap(find.descendant(of: find.byType(AlertDialog), matching: find.byType(FilledButton)));
+        await t.pumpAndSettle();
+        expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+      });
+    });
   });
 
   group('ledger', () {
@@ -253,6 +351,7 @@ void main() {
     });
     testWidgets('refund and resolve sheets', (t) async {
       await expectNoLayoutErrors(t, () => const RefundSheet(paymentId: 12, remaining: 99.5, currency: 'SAR', superAdmin: true));
+      await expectNoLayoutErrors(t, () => const RefundSheet(paymentId: 12, remaining: 59.5, refunded: 40, currency: 'SAR', superAdmin: false));
       await expectNoLayoutErrors(t, () => const RefundResolveSheet());
     });
     testWidgets('feedback form and export bar', (t) async {

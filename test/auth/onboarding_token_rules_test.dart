@@ -3,8 +3,9 @@
 //   overview · upload-attachment/{email} · create · finalize, DELETE /auth/teacher-documents/{id});
 // - no other route gets it; a header the caller set wins; no token → no header;
 // - the token is forgotten at the end of onboarding (finalize) and when the server says so (`onboarding_token: null`);
-// - a 403 `mfa_enrollment_required` opens the MFA page once per session, never for guests / view-as / the MFA
-//   routes themselves.
+// - only a path on the API itself matches (an absolute URL to another host never gets the token);
+// - a 403 `mfa_enrollment_required` opens the MFA page, never twice at once, never for guests / view-as / the MFA
+//   routes themselves; after the user backs out it comes back on a later refused call (after a short pause).
 import 'dart:convert';
 import 'dart:io';
 
@@ -72,6 +73,15 @@ void main() {
       expect(isTeacherOnboardingPath('/api/v1/admin/required-documents/3'), isFalse);
       expect(isTeacherOnboardingPath('/api/v1/auth/login'), isFalse);
       expect(isTeacherOnboardingPath('/api/v1/auth/teacher-documents/upload-attachment/a@b.c/x'), isFalse);
+    });
+
+    test('only a path on the API itself matches: an absolute URL to any host never gets the token (R3 L3)', () {
+      expect(isTeacherOnboardingPath('api/v1/auth/teacher-profile'), isTrue);
+      expect(isTeacherOnboardingPath('https://evil.example/api/v1/auth/teacher-profile'), isFalse);
+      expect(isTeacherOnboardingPath('https://evil.example/x/api/v1/auth/teacher-documents/finalize'), isFalse);
+      expect(isTeacherOnboardingPath('/proxy/api/v1/auth/teacher-profile'), isFalse);
+      expect(isTeacherOnboardingPath('//evil.example/api/v1/auth/teacher-profile'), isFalse);
+      expect(onboardingHeaderFor('https://evil.example/api/v1/auth/teacher-profile', _tok, {}), isEmpty);
     });
   });
 
@@ -141,11 +151,12 @@ void main() {
       bool needsAuth = true,
       bool guest = false,
       bool viewingAs = false,
-      bool alreadyOpened = false,
+      bool pageOpen = false,
+      Duration? sinceDismissed,
     }) =>
         shouldOpenMfaEnrollment(
             status: status, code: code, path: path, needsAuth: needsAuth, guest: guest, viewingAs: viewingAs,
-            alreadyOpened: alreadyOpened);
+            pageOpen: pageOpen, sinceDismissed: sinceDismissed);
 
     test('opens on a 403 mfa_enrollment_required of a signed-in call', () => expect(open(), isTrue));
 
@@ -159,10 +170,21 @@ void main() {
       expect(open(status: 423), isFalse);
     });
 
-    test('once per session and never from the MFA routes (no loop)', () {
-      expect(open(alreadyOpened: true), isFalse);
+    test('never stacks a second page and never from the MFA routes (no loop)', () {
+      expect(open(pageOpen: true), isFalse);
       expect(open(path: '/api/v1/auth/mfa/status'), isFalse);
       expect(open(path: '/api/v1/auth/mfa/setup'), isFalse);
+    });
+
+    test('backing out does not lose the requirement: the page comes back after the pause (R3 M2)', () {
+      expect(open(sinceDismissed: Duration.zero), isFalse);
+      expect(open(sinceDismissed: const Duration(seconds: 5)), isFalse);
+      expect(open(sinceDismissed: mfaPromptCooldown - const Duration(milliseconds: 1)), isFalse);
+      expect(open(sinceDismissed: mfaPromptCooldown), isTrue);
+      expect(open(sinceDismissed: const Duration(minutes: 10)), isTrue);
+      // still never while it is on screen, nor for guests / view-as
+      expect(open(sinceDismissed: const Duration(minutes: 10), pageOpen: true), isFalse);
+      expect(open(sinceDismissed: const Duration(minutes: 10), viewingAs: true), isFalse);
     });
   });
 }

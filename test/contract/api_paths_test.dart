@@ -22,12 +22,6 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
-  // ProfileProvider.resendOtp has no caller (the OTP screens use MyAuthProvider.resendOtp → /auth/resend-otp, which
-  // exists). The route never existed under this name; remove the method.
-  'POST /api/v1/auth/resend-otp2': 'dead code: ProfileProvider.resendOtp is never called',
-  // MyAuthProvider.resetPassword has no caller; the server route is PUT /api/v1/auth/reset-password, so this POST
-  // would be a 405 if anything used it. Remove the method or switch it to PUT before using it.
-  'POST /api/v1/auth/reset-password': 'dead code with the wrong method (server: PUT), MyAuthProvider.resetPassword',
 };
 
 void main() {

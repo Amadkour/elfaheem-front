@@ -1202,6 +1202,9 @@ class _PaymentCardState extends State<_PaymentCard> {
     final currency = _cur(p['currency']);
     final courseName = AppLangPick.name(course);
     final fees = p['fees'] is Map ? asMap(p['fees']) : null;
+    final refunds = paymentRefundFigures(p);
+    // an older server sends no refundable_amount: then the button stays as before (any completed payment)
+    final canRefund = p['refundable_amount'] == null || (refunds.refundable ?? 0) > 0.0001;
 
     return RequestCardShell(
       accent: color,
@@ -1263,6 +1266,11 @@ class _PaymentCardState extends State<_PaymentCard> {
               if (asStr(p['plan']).isNotEmpty)
                 _MiniChip(Icons.event_repeat_rounded, _planLabel(asStrOrNull(p['plan'])), _blue),
               _MiniChip(Icons.schedule_rounded, shortDateTime(asStrOrNull(p['created_at'])), _grey),
+              if (refunds.refunded > 0.0001)
+                _MiniChip(Icons.undo_rounded, '${t('مسترد', 'Refunded')}: ${money(refunds.refunded, currency)}', c.warning),
+              if (refunds.refunded > 0.0001 && refunds.refundable != null && refunds.refundable! > 0.0001)
+                _MiniChip(Icons.account_balance_wallet_outlined,
+                    '${t('قابل للاسترداد', 'Refundable')}: ${money(refunds.refundable!, currency)}', _grey),
             ],
           ),
 
@@ -1300,7 +1308,7 @@ class _PaymentCardState extends State<_PaymentCard> {
           ],
 
           // ── refund (Phase 8): full or partial; manual / force are offered to the super admin only ──
-          if (widget.ctl == null && status == 'completed' && asInt(p['id']) > 0) ...[
+          if (widget.ctl == null && status == 'completed' && canRefund && asInt(p['id']) > 0) ...[
             const SizedBox(height: 10),
             Align(
               alignment: AlignmentDirectional.centerStart,
@@ -1308,7 +1316,11 @@ class _PaymentCardState extends State<_PaymentCard> {
                 onPressed: () async {
                   final fin = context.read<AdminFinanceProvider>();
                   final changed = await showRefundSheet(context,
-                      paymentId: asInt(p['id']), amount: p['amount'] == null ? null : asDouble(p['amount']), currency: currency);
+                      paymentId: asInt(p['id']),
+                      amount: p['amount'] == null ? null : asDouble(p['amount']),
+                      refunded: refunds.refunded,
+                      refundable: refunds.refundable,
+                      currency: currency);
                   if (changed) {
                     fin.loadSummary();
                     fin.load(fin.tab, silent: true);

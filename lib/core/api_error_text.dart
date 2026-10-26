@@ -36,6 +36,8 @@ String _wait(Duration? d) {
 String apiErrorText(ApiException e) {
   final d = apiErrorDetail(e);
   switch (e.code) {
+    case 'server_busy':                                    // 503 from the Exam Engine / RAG in-flight cap (D-038)
+      return _t(ApiMessages.serverBusyAr, ApiMessages.serverBusyEn);
     case 'too_many_attempts':
       return _t('محاولات كثيرة — حاول مرة أخرى لاحقاً', 'Too many attempts — try again later') + _wait(apiRetryAfter(e));
     case 'otp_cooldown':

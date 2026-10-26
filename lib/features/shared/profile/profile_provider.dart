@@ -133,17 +133,6 @@ class ProfileProvider extends BaseProvider {
     }
   }
 
-  Future<bool> resendOtp(String email) async {
-    final result = await run(
-      () => _api.post(
-        '/api/v1/auth/resend-otp2',
-        body: {'gmail': email},
-        auth: false,
-      ),
-    );
-    return result != null;
-  }
-
   // ── Update profile ────────────────────────────────────────────────────────
   Future<UserModel?> updateProfile({
     String? name,

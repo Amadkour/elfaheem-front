@@ -2,6 +2,7 @@
 // teacher onboarding token holder, and every MFA widget on every screen size (layout harness).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/admin/admin_mfa_page.dart';
 import 'package:flutter_education_app/features/auth/mfa.dart';
 import 'package:flutter_education_app/features/auth/mfa_verify_screen.dart';
@@ -19,8 +20,14 @@ class _FakeApi implements MfaApi {
   int setups = 0;
   String? lastPassword;
 
+  /// Thrown by [status] when set (e.g. a dead enrollment token).
+  Object? statusError;
+
   @override
-  Future<MfaStatus> status() async => current;
+  Future<MfaStatus> status() async {
+    if (statusError != null) throw statusError!;
+    return current;
+  }
 
   @override
   Future<MfaSetupInfo> setup({String? password}) async {
@@ -118,6 +125,19 @@ void main() {
       }
       expect(mfaStepIsDead('mfa_token_expired'), isTrue);
       expect(mfaStepIsDead('mfa_code_invalid'), isFalse, reason: 'a wrong code can be retried');
+    });
+
+    test('the last allowed wrong code ends the step (R3 L1)', () {
+      // server: the 5th wrong code is 400 mfa_code_invalid with attempts_left 0 and burns the challenge
+      expect(mfaFailureEndsStep('mfa_code_invalid', 0), isTrue);
+      expect(mfaFailureEndsStep('mfa_code_invalid', 1), isFalse);
+      expect(mfaFailureEndsStep('mfa_code_invalid', 4), isFalse);
+      expect(mfaFailureEndsStep('mfa_code_invalid', null), isFalse, reason: 'no count sent: let the user retry');
+      for (final dead in ['mfa_token_invalid', 'mfa_token_used', 'mfa_token_expired', 'mfa_token_locked']) {
+        expect(mfaFailureEndsStep(dead, null), isTrue, reason: dead);
+      }
+      expect(mfaFailureEndsStep('too_many_attempts', 0), isFalse, reason: 'a throttle: wait, then retry the same step');
+      expect(mfaFailureEndsStep(null, null), isFalse, reason: 'a network error can be retried');
     });
 
     test('teacher onboarding token: kept, renewed and dropped by the server answers', () {
@@ -226,6 +246,59 @@ void main() {
       expect(api.lastPassword, isNull);
       expect(find.text('Cancel'), findsNothing, reason: 'a forced enrollment cannot be cancelled');
       await t.pumpWidget(const SizedBox());
+    });
+
+    // R3 L5: a forced enrollment never offers the manage actions (they need a real session) and never claims
+    // "not available for this account" when the status could not be read.
+    testWidgets('forced enrollment, account already enrolled: only "Sign in again"', (t) async {
+      final api = _FakeApi(const MfaStatus(enabled: true, allowed: true, required: true, recoveryCodesLeft: 10));
+      await expectNoLayoutErrors(t, () => AdminMfaPage(api: api, enrollToken: 'e'), scaffold: false);
+      await t.pumpWidget(layoutHost(AdminMfaPage(api: api, enrollToken: 'e'), scaffold: false));
+      await t.pump(const Duration(milliseconds: 200));
+      expect(find.text('Make new recovery codes'), findsNothing);
+      expect(find.text('Turn off two-step verification'), findsNothing);
+      expect(find.byKey(const ValueKey('mfa.sign_in_again')), findsOneWidget);
+      expect(api.setups, 0);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('forced enrollment with a dead token: "Sign in again", not "not available"', (t) async {
+      final api = _FakeApi(const MfaStatus())
+        ..statusError = const ApiException(
+            statusCode: 401, message: 'Session expired', type: ApiErrorType.unauthorized, code: 'mfa_token_invalid');
+      await expectNoLayoutErrors(t, () => AdminMfaPage(api: api, enrollToken: 'e'), scaffold: false);
+      await t.pumpWidget(layoutHost(AdminMfaPage(api: api, enrollToken: 'e'), scaffold: false));
+      await t.pump(const Duration(milliseconds: 200));
+      expect(find.text('Two-step verification is not available for this account'), findsNothing);
+      expect(find.text('This sign-in step is no longer valid. Please sign in again'), findsOneWidget);
+      expect(find.byKey(const ValueKey('mfa.sign_in_again')), findsOneWidget);
+      expect(find.text('Retry'), findsNothing, reason: 'retrying a dead token cannot work');
+      expect(find.text('Turn on two-step verification'), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('a failed status load shows the error and Retry, never "not available"', (t) async {
+      final api = _FakeApi(const MfaStatus(allowed: true))
+        ..statusError = const ApiException(statusCode: 0, message: 'No connection', type: ApiErrorType.network);
+      await t.pumpWidget(layoutHost(AdminMfaPage(api: api), scaffold: false));
+      await t.pump(const Duration(milliseconds: 200));
+      expect(find.text('Two-step verification is not available for this account'), findsNothing);
+      expect(find.text('No connection'), findsOneWidget);
+      api.statusError = null;
+      await t.tap(find.text('Retry'));
+      await t.pump(const Duration(milliseconds: 200));
+      expect(find.text('Turn on two-step verification'), findsOneWidget);
+      expect(find.byKey(const ValueKey('mfa.sign_in_again')), findsNothing);
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('MfaStatusView: unknown status / sign in again lay out everywhere', (t) async {
+      await expectNoLayoutErrors(t,
+          () => MfaStatusView(status: MfaStatus.empty, known: false, error: 'A long error that must wrap', onRetry: () {}));
+      await expectNoLayoutErrors(
+          t,
+          () => MfaStatusView(
+              status: const MfaStatus(enabled: true, allowed: true, required: true), onSignInAgain: () {}));
     });
   });
 }

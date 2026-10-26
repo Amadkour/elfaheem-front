@@ -94,9 +94,21 @@ String dataExportStateText(String state) => switch (state) {
       _ => t('لم تطلب نسخة بعد', 'No copy requested yet'),
     };
 
-/// Server codes of the export routes as bilingual text; [fallback] (the server's own message) otherwise.
-String dataExportCodeText(String? code, String fallback) => switch (code) {
-      'export_rate_limited' => t('يمكنك طلب نسخة من بياناتك مرة واحدة كل 24 ساعة', 'You can ask for a copy of your data once every 24 hours'),
+/// `next_request_at` of a 429 `export_rate_limited` (UTC), if the server sent it.
+DateTime? exportNextRequestAtOf(ApiException e) {
+  final d = ApiException.asMap(e.body)?['detail'];
+  return d is Map ? exportUtc(d['next_request_at']) : null;
+}
+
+/// Server codes of the export routes as bilingual text; [fallback] (the server's own message) otherwise. The rate
+/// limit names the time of the next allowed request when known ([nextRequestAt]), else the server's
+/// [cooldownHours] (PRIVACY_EXPORT_COOLDOWN_HOURS, not always 24).
+String dataExportCodeText(String? code, String fallback, {int cooldownHours = 24, DateTime? nextRequestAt}) =>
+    switch (code) {
+      'export_rate_limited' when nextRequestAt != null =>
+        '${t('يمكنك طلب نسخة جديدة بعد', 'You can ask for a new copy after')}: ${AppTime.dateTime(nextRequestAt)}',
+      'export_rate_limited' => t('يمكنك طلب نسخة من بياناتك مرة واحدة كل $cooldownHours ساعة',
+          'You can ask for a copy of your data once every $cooldownHours hours'),
       'export_in_progress' => t('نسخة بياناتك قيد التجهيز بالفعل', 'A copy of your data is already being prepared'),
       'export_not_ready' => t('لا يوجد ملف جاهز للتنزيل', 'There is no file ready to download'),
       'export_expired' => t('انتهت صلاحية الملف، اطلب نسخة جديدة', 'The file has expired — ask for a new copy'),
@@ -311,7 +323,8 @@ class _DataExportPageState extends State<DataExportPage> {
     } catch (e) {
       if (!mounted) return;
       final ex = ApiException.from(e);
-      setState(() => _error = dataExportCodeText(ex.code, ex.message));
+      setState(() => _error = dataExportCodeText(ex.code, ex.message,
+          cooldownHours: _s.cooldownHours, nextRequestAt: exportNextRequestAtOf(ex)));
       await _load(silent: true);
     } finally {
       if (mounted) setState(() => _requesting = false);

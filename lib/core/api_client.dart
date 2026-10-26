@@ -43,6 +43,9 @@ class ApiMessages {
   static const conflict = 'This action conflicts with existing data.';
   static const validation = 'Some of the submitted data is invalid.';
   static const rateLimited = 'Too many requests. Please wait a moment and try again.';
+  // 503 `server_busy`: the Exam Engine / RAG in-flight cap (back D-038) — a moment's wait, not a failure
+  static const serverBusyAr = 'الخادم مشغول الآن — أعد المحاولة بعد لحظات';
+  static const serverBusyEn = 'The server is busy right now — try again in a moment.';
   static const server = 'Something went wrong on our side. Please try again later.';
   static const unknown = 'Something went wrong. Please try again.';
 }
@@ -232,7 +235,9 @@ class ApiException implements Exception {
     // Never leak raw 5xx internals to users; the body is still available.
     // A plain 403 with NO readable server message gets the friendly generic
     // text; if the server sent a readable message, it is shown instead.
-    final message = type == ApiErrorType.server
+    final message = code == 'server_busy'
+        ? (AppConfig.lang == 'ar' ? ApiMessages.serverBusyAr : ApiMessages.serverBusyEn)
+        : type == ApiErrorType.server
         ? ApiMessages.server
         : (type == ApiErrorType.unauthorized && GuestState.active)
         ? translate('guest_login_required') // guest hit something that needs an account
@@ -361,24 +366,6 @@ class ApiException implements Exception {
 class _ApiLogInterceptor extends Interceptor {
   static const _tsKey = '_log_ts';
   static const _maxBodyChars = 4000;
-  static const _sensitiveKeys = {
-    'authorization',
-    'x-exam-session',
-    'x-enc-session',
-    'exam_session',
-    'password',
-    'new_password',
-    'old_password',
-    'current_password',
-    'access_token',
-    'refresh_token',
-    'token',
-    'secret',
-    'x-onboarding-token',
-    'onboarding_token',
-    'mfa_token',
-    'mfa_enroll_token',
-  };
 
   static const _encoder = JsonEncoder.withIndent('  ');
 
@@ -502,28 +489,72 @@ class _ApiLogInterceptor extends Interceptor {
     return out;
   }
 
-  /// Recursively masks sensitive values so secrets never reach the console.
-  dynamic _redact(dynamic v) {
-    if (v is Map) {
-      return {
-        for (final e in v.entries)
-          e.key.toString(): _sensitiveKeys.contains(e.key.toString().toLowerCase())
-              ? '***'
-              : _redact(e.value),
-      };
-    }
-
-    if (v is List) return v.map(_redact).toList();
-
-    return v;
-  }
+  dynamic _redact(dynamic v) => redactForLog(v);
 }
 
-// ── Pure request rules (unit-tested in test/auth/api_client_rules_test.dart) ──
+/// Keys whose values never reach the debug console (compared lower-case). MFA: `secret` and `otpauth_uri` carry the
+/// TOTP seed, `recovery_codes` / `recovery_code` sign in without the phone.
+const logSensitiveKeys = {
+  'authorization',
+  'x-exam-session',
+  'x-enc-session',
+  'exam_session',
+  'password',
+  'new_password',
+  'old_password',
+  'current_password',
+  'access_token',
+  'refresh_token',
+  'token',
+  'secret',
+  'x-onboarding-token',
+  'onboarding_token',
+  'mfa_token',
+  'mfa_enroll_token',
+  'otpauth_uri',
+  'recovery_codes',
+  'recovery_code',
+  'otp',
+};
+
+/// Server error codes (`mfa_code_invalid`, `DEVICE_MISMATCH`) stay readable in a `code` field; any other `code`
+/// value (a 6-digit TOTP, a recovery code, a join or coupon code) is masked.
+final _errorCodeShape = RegExp(r'^[A-Za-z]+(_[A-Za-z0-9]+)+$');
+
+/// Recursively masks sensitive values so secrets never reach the console. A JSON text body is decoded first (some
+/// web / proxy paths deliver bodies as a String); any other value is returned as is.
+dynamic redactForLog(dynamic v) {
+  if (v is String && v.length > 1 && (v.startsWith('{') || v.startsWith('['))) {
+    try {
+      final decoded = jsonDecode(v);
+      if (decoded is Map || decoded is List) return redactForLog(decoded);
+    } catch (_) {}
+    return v;
+  }
+  if (v is Map) {
+    return {
+      for (final e in v.entries)
+        e.key.toString(): _maskLogValue(e.key.toString().toLowerCase(), e.value),
+    };
+  }
+  if (v is List) return v.map(redactForLog).toList();
+  return v;
+}
+
+dynamic _maskLogValue(String key, dynamic value) {
+  if (logSensitiveKeys.contains(key)) return '***';
+  if (key == 'code' && value != null && !(value is String && _errorCodeShape.hasMatch(value))) return '***';
+  return redactForLog(value);
+}
+
+// ── Pure request rules (unit-tested in test/auth/onboarding_token_rules_test.dart) ──
 
 /// True for the teacher onboarding routes the server guards with `onboarding_user` (back/services/auth_service.py):
 /// POST /auth/teacher-profile and /auth/teacher-documents overview / upload-attachment/{email} / create / finalize,
 /// plus DELETE /auth/teacher-documents/{id}. Not `teacher-profile-extras`, `required-types` or `{id}/public`.
+///
+/// Only a RELATIVE path (resolved against the API base) matches: the pattern is anchored, so an absolute URL to
+/// another host whose path happens to end the same way never receives the onboarding token.
 bool isTeacherOnboardingPath(String path) {
   final q = path.indexOf('?');
   final p = (q < 0 ? path : path.substring(0, q)).replaceFirst(RegExp(r'/+$'), '');
@@ -531,7 +562,7 @@ bool isTeacherOnboardingPath(String path) {
 }
 
 final _onboardingPath = RegExp(
-  r'/api/v1/auth/(teacher-profile|teacher-documents(/(overview|finalize|upload-attachment/[^/]+|\d+))?)$',
+  r'^/?api/v1/auth/(teacher-profile|teacher-documents(/(overview|finalize|upload-attachment/[^/?#]+|\d+))?)$',
 );
 
 /// The `X-Onboarding-Token` header an onboarding request still lacks (empty when it is not an onboarding route,
@@ -542,10 +573,16 @@ Map<String, String> onboardingHeaderFor(String path, String? token, Map<String, 
   return has ? const {} : {'X-Onboarding-Token': token};
 }
 
+/// After the user backs out of the enrollment page, a refused call does not reopen it for this long: the burst of
+/// parallel 403s a dashboard fires, or a screen that reloads when it is shown again, would otherwise push the page
+/// straight back and trap the user. After the pause the next refused call opens it again, until MFA is on.
+const mfaPromptCooldown = Duration(seconds: 30);
+
 /// Whether a failed request should open the MFA enrollment page: a 403 `mfa_enrollment_required` on an
 /// authenticated call by a signed-in user (never a guest, never while viewing as someone else), not from the MFA
-/// routes themselves (they are exempt server-side; this also keeps the page from re-opening itself), and only when
-/// the page has not been opened yet in this session.
+/// routes themselves (they are exempt server-side; this also keeps the page from re-opening itself), not while the
+/// page is already open, and not within [mfaPromptCooldown] of the user leaving it ([sinceDismissed]; null = it was
+/// not dismissed in this session).
 bool shouldOpenMfaEnrollment({
   required int? status,
   required String? code,
@@ -553,14 +590,16 @@ bool shouldOpenMfaEnrollment({
   required bool needsAuth,
   required bool guest,
   required bool viewingAs,
-  required bool alreadyOpened,
+  required bool pageOpen,
+  Duration? sinceDismissed,
 }) =>
     status == 403 &&
     code == 'mfa_enrollment_required' &&
     needsAuth &&
     !guest &&
     !viewingAs &&
-    !alreadyOpened &&
+    !pageOpen &&
+    (sinceDismissed == null || sinceDismissed >= mfaPromptCooldown) &&
     !path.contains('/api/v1/auth/mfa/');
 
 // ── ApiClient ─────────────────────────────────────────────────────────────────
@@ -760,7 +799,7 @@ class ApiClient {
 
   factory ApiClient() => instance;
 
-  static const String _base = AppConfig.baseUrl;
+  static final String _base = AppConfig.baseUrl;
 
   // Public so room.dart can read the base URL for the JS compositor.
   String get baseUrl => _base;
@@ -945,7 +984,8 @@ class ApiClient {
           needsAuth: needsAuth,
           guest: GuestState.active,
           viewingAs: ViewAsState.targetId != null,
-          alreadyOpened: _mfaPrompted,
+          pageOpen: _mfaPageOpen,
+          sinceDismissed: _mfaDismissedAt == null ? null : DateTime.now().difference(_mfaDismissedAt!),
         )) {
           _openMfaEnrollment();
         }
@@ -1141,7 +1181,7 @@ class ApiClient {
     try {
       ViewAsState.instance.stop(); // session is dead → leave view-as too
       await _storage.clear();
-      _mfaPrompted = false;
+      _mfaDismissedAt = null;
       TeacherOnboardingToken.clear();
 
       if (AppConfig.testMode) log('redirect to login', name: 'API');
@@ -1155,18 +1195,24 @@ class ApiClient {
     }
   }
 
-  /// Set when the MFA enrollment page was opened for this session; reset only by a new session ([saveTokens]) or
-  /// by signing out ([clearTokens], login redirect). So a user who backs out of the page sees the error text on the
-  /// next refused call instead of the page again — never a loop.
-  bool _mfaPrompted = false;
+  /// The MFA enrollment page this client opened is on screen (a second refused call never stacks another one).
+  bool _mfaPageOpen = false;
+
+  /// When the user last backed out of that page; cleared by a new session ([saveTokens]) and by signing out. A
+  /// refused call opens the page again once [mfaPromptCooldown] has passed, so the requirement is never lost
+  /// until the account has MFA (the profile / settings entry opens it any time).
+  DateTime? _mfaDismissedAt;
 
   /// 403 `mfa_enrollment_required`: the session predates `MFA_REQUIRED_ROLES` for this role. Opens the enrollment
   /// page (A07's [AdminMfaPage], which works with the normal session: `/auth/mfa/*` stays open server-side).
   void _openMfaEnrollment() {
     final nav = navigatorKey.currentState;
-    if (_mfaPrompted || nav == null) return;
-    _mfaPrompted = true;
-    nav.push(MaterialPageRoute<void>(builder: (_) => const AdminMfaPage()));
+    if (_mfaPageOpen || nav == null) return;
+    _mfaPageOpen = true;
+    nav.push(MaterialPageRoute<void>(builder: (_) => const AdminMfaPage())).whenComplete(() {
+      _mfaPageOpen = false;
+      _mfaDismissedAt = DateTime.now();
+    });
   }
 
   bool _deviceDialogOpen = false;
@@ -1545,7 +1591,7 @@ class ApiClient {
     required String access,
     required String refresh,
   }) {
-    _mfaPrompted = false; // a new session (login, MFA confirm): a later refusal may open the page again, once
+    _mfaDismissedAt = null; // a new session (login, MFA confirm): a later refusal may open the page right away
     // A new session never inherits an earlier account's onboarding token; the login answer that carries this
     // session's token is read right after (MyAuthProvider.completeSession). Token refreshes don't come here.
     TeacherOnboardingToken.clear();
@@ -1553,7 +1599,7 @@ class ApiClient {
   }
 
   Future<void> clearTokens() {
-    _mfaPrompted = false;
+    _mfaDismissedAt = null;
     TeacherOnboardingToken.clear();
     return _storage.clear();
   }

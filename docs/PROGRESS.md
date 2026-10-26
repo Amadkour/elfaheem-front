@@ -15,7 +15,7 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 | 7 | RAG service + evaluation | not started | |
 | 8 | Feedback store, monetization, analytics, appeals | not started | |
 | 9 | Frontend completion, localization, accessibility | **done 2026-10-26** (app D-004, back D-026; review round app D-005) | engine exam authoring (bank, 10 types, rubric, sections, proctoring, lifecycle), paper flow (sheets, scans, mapping, marks import), admin money / feedback / risk screens, RAG library, answers survive app kill, release signing + obfuscation script, API-path contract test; flutter analyze 0/0, 426 tests |
-| 10 | Hardening, capacity doc, final docs | not started | |
+| 10 | Hardening, capacity doc, final docs | **done 2026-10-26** (app D-006 … D-008, back D-027 … D-044) | MFA screens, teacher onboarding token, "Download my data", RAG / exam organization-status and quota texts, contract test over every `ApiClient` call, `API_BASE_URL` dart-define, CI runs `test/auth/` + `test/contract/`; flutter analyze 0/0 |
 
 ## Phase 1 — Setup, audit, baseline
 
@@ -108,8 +108,100 @@ Companion files: `docs/AUDIT.md` (phase-1 audit), `docs/DECISIONS.md` (design de
 - `ApiClient`: `getBytes` / `postForBytes` (outside the envelope encryption, auth and pinning kept) and `postFiles` (several files under one field).
 - Tests: `test/org/exam_review_test.dart` (parsing, approvable count, helpers, layout harness over the card, the editor and the OCR words).
 
+## Phase 10 — app side (2026-10-26, commit `a383f33`)
+
+### Done
+- **MFA (back D-027, app D-006)**: `lib/features/auth/mfa.dart` (models, code texts, `MfaApi` / `RemoteMfaApi`),
+  `mfa_verify_screen.dart` (`openMfaStep`, `MfaCodeForm`, `MfaVerifyScreen`: code or recovery code), and
+  `lib/features/admin/admin_mfa_page.dart` (`AdminMfaPage`: status, enrolment with a QR code via `qr_flutter` plus
+  the secret as text, recovery codes shown once, regenerate, disable, forced enrolment with the enroll token). The
+  password and Google login flows open the step when the server answers `mfa_required` /
+  `mfa_enrollment_required`; the token pair from confirm is saved at once (`MyAuthProvider.completeSession`).
+  Entry: "Two-step verification" tile in the admin services hub (Support & security). A 403
+  `mfa_enrollment_required` opens `AdminMfaPage` once per session (`shouldOpenMfaEnrollment` in `api_client.dart`;
+  never for guests, view-as, `auth:false` calls or the MFA routes).
+- **Teacher onboarding token (back D-028, app D-006)**: `lib/features/auth/teacher_onboarding_token.dart`
+  (`TeacherOnboardingToken`, in memory) is read from the verify-otp / login / google / mfa-verify / teacher-profile
+  answers and sent as `X-Onboarding-Token` by `teacher_document_provider.dart` (overview, upload, create, finalize,
+  delete) and on teacher-profile; the `ApiClient` interceptor also adds it to any onboarding path that lacks it
+  (`isTeacherOnboardingPath`, `onboardingHeaderFor`). `ApiClient` methods gained an optional `headers:` argument
+  (delete, postMultipart, patch, postForm, postFiles, uploadImage, getBytes, postForBytes). Cleared on finalize, on
+  `onboarding_token: null`, on logout and on every new or ended session; the token, `mfa_token` and
+  `mfa_enroll_token` are redacted from request logs.
+- **"Download my data" (back D-029)**: `lib/features/shared/profile/privacy_export.dart` (`DataExportPage`: status,
+  request, download, polling every 5 s while queued / processing, saved with `p8SaveBytes`), a tile in the profile
+  help group behind feature key `profile.data_export`.
+- **Organization status and RAG quota texts (back D-032)**: `examCodeText` (`exam_taking.dart`) and
+  `ragLibraryCodeText` / `ragResultText` (`rag_library.dart`) map `orgs_disabled`, `org_not_approved` (with its
+  `status`), `org_inactive`, `rag_quota_exceeded` (with the numbers) and `super_admin_required`; `RagQuota` +
+  presentational `RagQuotaBar` on the library screen; the chat (`rag_chat.dart` `ragCodeText`,
+  `ragChatResultText`, `ragOrgBlocked`) shows the org-blocked text on ask, poll and history load.
+- **API drift guard over the whole app (back D-041, app D-007)**: `test/contract/api_call_scan.dart` resolves every
+  `ApiClient` call in `lib/**.dart` to a method + path template; `api_paths_test.dart` matches them against the
+  server snapshot `test/contract/api_paths.json` (core + exam + rag) with a commented `knownMissing` allow-list (3
+  entries) that fails when stale; 964 calls found, 893 verified.
+- **`API_BASE_URL` (app D-008)**: `AppConfig.baseUrl` = `--dart-define=API_BASE_URL=…`, default
+  `https://nextbrain.site/api`, so a dev build points at the local stack (`back/scripts/dev/setup.*`, gateway on
+  port 18080) without editing code.
+- **CI**: the tests step runs `test/org/ test/export/ test/ui/ test/auth/`, and a separate step runs
+  `test/contract/`.
+- **Docs**: `README.md` rewritten (quick start, demo accounts), `docs/SECURITY_SCAN.md` (secret, dependency and
+  platform-config scan), `docs/ARCHITECTURE.md`; developer documents in `documents/` (built by
+  `documents/_build/build_*.py`; the folder is listed in `.gitignore`).
+
+### Checks at the end of the phase
+| Check | Result |
+|---|---|
+| `flutter analyze` | 0 errors, 0 warnings (infos pre-existing) |
+| `flutter test test/auth/` | 28 pass (`mfa_test.dart` 18 incl. the layout harness on every MFA widget, `onboarding_token_rules_test.dart` 10) |
+| `flutter test test/contract/` | 14 pass (13 scanner / matcher unit tests + the contract test) |
+| New tests in `test/org/` / `test/ui/` | `rag_quota_status_test.dart` 8, `rag_chat_org_status_test.dart` 4, `privacy_export_layout_test.dart` 12, `admin_services_hub_mfa_test.dart` 3 |
+
+### Not done / open
+- Closed by the review round (D-009, below): the two dead calls and their `knownMissing` entries, the MFA entry for
+  org-admin / org-staff, the Super-Admin RAG quota screen, the refund sheet's 409 `refund_external_recorded` and
+  refunded / refundable figures, the `role_swap` label; `macos/Flutter/ephemeral/` is untracked.
+- Owner / platform: rotate the Paymob key found in history (0cc7e27); the `flutter_webrtc` fork on `ref: main` (M144);
+  `usesCleartextTraffic` / `NSAllowsArbitraryLoads` stay on until the server's media URLs are confirmed https (the
+  replacement is prepared, D-009).
+- The inline `t(ar, en)` strings of the MFA / export screens are not in `assets/translation.json`; the 503
+  `server_busy` of the Exam Engine / RAG (back D-045) has no text of its own yet.
+
 ## Review rounds
 _(one entry per phase: reviewer, findings count by severity, fixes)_
+
+### Phase 10 (2026-10-26)
+One fresh-context reviewer on `git diff d168043 -- lib test .github` (R3: 0 critical · 0 high · 2 medium · 7 low, plus
+2 notes on older code), payloads checked against `../back`; fixes F3, then the app's open Phase 10 items (G4). All
+findings fixed (app D-009, back D-045):
+- **M1** a release build used `API_BASE_URL` as given, so a leftover `http://` dev value would ship without TLS or
+  pinning → `resolveApiBaseUrl(override, release:)` in `lib/config/app_config.dart`: release accepts only an
+  `https://` URL with a host, else production (`AppConfig.baseUrl` is `final` now).
+- **M2** org admins / staff had no way into MFA → `MfaSettingsEntry` (`lib/features/auth/mfa_entry.dart`, feature key
+  `profile.mfa`, shown when `GET /auth/mfa/status` says allowed / enabled / required) on `ProfileScreen` and the org
+  dashboard's settings page; the forced prompt tracks `_mfaPageOpen` / `_mfaDismissedAt` and reopens on a later 403
+  after `mfaPromptCooldown` (30 s) instead of once per session.
+- Lows: the 5th wrong code ends the step (`mfaFailureEndsStep`); `redactForLog` / `logSensitiveKeys` also mask
+  `otpauth_uri`, `recovery_codes`, `recovery_code`, `otp` and non-error `code` values; `isTeacherOnboardingPath` is
+  anchored; super-admin MFA reset (`resetUserMfa`, `confirmResetUserMfa`) on AdminAdminsPage rows and the
+  AdminUsersPage detail sheet; forced-enrolment edge cases (already enrolled, dead enroll token, failed status load);
+  the step number uses `colorScheme.onPrimary`; the 429 `export_rate_limited` text names the next allowed time.
+- Open items (G4): dead calls `MyAuthProvider.resetPassword` / `ProfileProvider.resendOtp` removed (contract scan:
+  1 known-missing left); refund sheet handles 409 `refund_external_recorded` (`RefundExternalRecorded`, same
+  idempotency key, Refund off at 0) and the cards show refunded / refundable (`paymentRefundFigures`); RAG quota
+  override for the Super Admin (`lib/features/shared/rag/rag_quota_admin.dart`, entry `org.rag_quota` in the
+  organization review sheet); `role_swap` / `llm_disagrees` flag labels; `DocStatusBadge` on the instructor profile;
+  `feeConflictText` for 409 `fee_already_paid` / `fee_under_review` without a token; `orgErrorText` maps
+  `logo_url_not_allowed`; `.gitignore` gains secret / key / docs-venv patterns.
+- **Prepared, not wired in:** `android/app/src/main/res/xml/network_security_config.xml` (cleartext only for
+  127.0.0.1 / localhost — the offline-video loopback server needs it in release — and 10.0.2.2); the manifest keeps
+  `usesCleartextTraffic="true"` and `Info.plist` keeps `NSAllowsArbitraryLoads` until the owner confirms
+  `MINIO_PUBLIC_URL` is https (back DEPLOY "Owner checks").
+
+Checks: `flutter analyze` 0 warnings / 0 errors (240 infos, unchanged); `flutter test test/org/ test/export/ test/ui/
+test/auth/ test/contract/` 578 passed; new tests `test/auth/api_base_url_test.dart`, `log_redaction_test.dart`,
+`test/ui/mfa_entry_layout_test.dart`, `doc_status_badge_layout_test.dart`, `test/org/rag_quota_admin_test.dart`,
+`org_creation_fee_conflict_test.dart`; contract scan 971 calls, 902 matched, 1 known-missing, 0 unknown.
 
 ### Phase 5 (2026-10-25)
 App findings from the architecture and security reviews (backend D-019), all fixed: a submit right after the 20-minute exam session expired dropped the last autosave batch (a flush that meets `exam_session_invalid` renews the session and resends the SAME batch; submit now waits until the queue is empty and says so when it cannot); the web integrity hooks reported two `tab_switch` for one Alt-Tab (visibility + blur) so the default "max 1" rule fired on the first switch (`IntegrityDedupe`: one per 1.5 s burst, unit-tested); a blank numeric value with a unit chosen was sent as an answer and flagged the whole attempt for review (`encodeNumeric` sends `{}` when blank); failures carry the server's `detail` (`EngineResult.detail`: reason, question_id, …) instead of an empty map; one permanently refused autosave item poisoned the queue (the server now answers `rejected` per item and the app drops items refused for good: `question_not_in_paper`, `bad_answer`, `answer_too_large`, one-way); failed event uploads were dropped (re-queued unless the refusal is permanent); time-up now submits within the server's grace instead of waiting for the sweeper; the consent `accepted` flag is a boolean; the test-mode request logger redacts `X-Exam-Session` / `X-Enc-Session`; `EngineExamCard` joined the layout harness — and overflowed at 320 px with large text (the action pill moved under the texts). New codes have texts (`too_many_requests`, `answer_too_large`, `attempt_rejected`, `teachers_only`, `course_not_in_org`, `section_locked`, …).

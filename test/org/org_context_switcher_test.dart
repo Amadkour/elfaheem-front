@@ -1,5 +1,6 @@
 // Phase 3 — the Personal / Organizations switcher sits at the top for everyone: with no membership yet it still
 // opens and offers "join another organization"; organizations under review are listed but not enterable.
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -92,5 +93,20 @@ void main() {
     }
     expect(apiRetryAfter(ex('too_many_attempts', {'retry_after_minutes': 2})), const Duration(minutes: 2));
     expect(apiRetryAfter(ex('otp_invalid', {})), isNull);
+  });
+
+  test('a busy engine (503 server_busy) says "try again in a moment", not a server failure, in both languages', () {
+    for (final lang in ['ar', 'en']) {
+      AppConfig.lang = lang;
+      final e = ApiException.fromResponse(Response(
+        requestOptions: RequestOptions(path: '/api/v1/exam/attempts/1/answers'),
+        statusCode: 503,
+        data: {'detail': {'code': 'server_busy', 'message': 'الخادم مشغول الآن — أعد المحاولة بعد لحظات'}},
+      ));
+      final want = lang == 'ar' ? ApiMessages.serverBusyAr : ApiMessages.serverBusyEn;
+      expect(e.code, 'server_busy');
+      expect(e.message, want);
+      expect(apiErrorText(e), want);
+    }
   });
 }

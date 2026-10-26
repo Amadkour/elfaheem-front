@@ -9,6 +9,7 @@
 //                                          + {recovery_codes}
 //   POST /api/v1/auth/mfa/disable          {password, code | recovery_code}
 //   POST /api/v1/auth/mfa/recovery-codes   {code} → {recovery_codes}
+//   POST /api/v1/auth/mfa/users/{id}/reset super admin: remove another user's MFA → {reset: true}
 //
 // The enrollment token is not a session: it is sent by hand (`auth: false` + Authorization header) and only the
 // three enrollment routes accept it. Everything here is pure or a thin API; the screens are in
@@ -157,6 +158,12 @@ String mfaCodeText(String? code, String fallback) => switch (code) {
 bool mfaStepIsDead(String? code) =>
     code == 'mfa_token_invalid' || code == 'mfa_token_used' || code == 'mfa_token_expired' || code == 'mfa_token_locked';
 
+/// True when a failed second step leaves nothing to retry: a dead token ([mfaStepIsDead]), or the last allowed
+/// wrong code (400 `mfa_code_invalid` with `attempts_left: 0`: the server has already burned the challenge, so the
+/// next try could only answer `mfa_token_used`).
+bool mfaFailureEndsStep(String? code, int? attemptsLeft) =>
+    mfaStepIsDead(code) || (code == 'mfa_code_invalid' && attemptsLeft != null && attemptsLeft <= 0);
+
 /// `attempts_left` of a 400 `mfa_code_invalid`, if the server sent it.
 int? attemptsLeftOf(ApiException e) {
   final d = ApiException.asMap(e.body)?['detail'];
@@ -173,6 +180,13 @@ abstract class MfaApi {
   Future<Map<String, dynamic>> confirm(String code);
   Future<void> disable({required String password, String? code, String? recoveryCode});
   Future<List<String>> regenerateRecoveryCodes(String code);
+}
+
+/// Super admin only: removes another user's two-step verification (lost phone AND lost recovery codes). The server
+/// signs that user out everywhere; they enroll again at the next login when their role requires it. 400
+/// `mfa_reset_self` for the caller's own account, 409 `mfa_not_enabled` when the user has none, 404 unknown user.
+Future<void> resetUserMfa(int userId, {ApiClient? api}) async {
+  await (api ?? ApiClient()).post('/api/v1/auth/mfa/users/$userId/reset');
 }
 
 List<String> recoveryCodesOf(dynamic body) =>

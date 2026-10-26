@@ -1033,39 +1033,14 @@ class _DocumentCard extends StatelessWidget {
                     children: [
                       Text(doc.title, style: c.bodyBold.copyWith(fontSize: 13)),
                       const SizedBox(height: 4),
-                      Row(
+                      // the real review status: the teacher (and reviewing admins) also get pending / rejected
+                      // documents here; everyone else gets approved ones only
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: c.success.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.verified_rounded,
-                                  size: 11,
-                                  color: c.success,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'verified'.tr,
-                                  style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: c.success,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
+                          DocStatusBadge(status: doc.status),
                           Text(
                             _fmtDate(doc.uploadedAt),
                             style: c.caption.copyWith(fontSize: 10),
@@ -1101,6 +1076,45 @@ class _DocumentCard extends StatelessWidget {
   }
 
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+}
+
+/// A teacher document's review status as a small pill: approved → "Verified", pending → "Pending review",
+/// rejected → "Rejected". Unknown values show as pending (never as verified).
+class DocStatusBadge extends StatelessWidget {
+  const DocStatusBadge({super.key, required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (IconData icon, Color color, String label) = switch (status) {
+      'approved' => (Icons.verified_rounded, c.success, 'verified'.tr),
+      'rejected' => (Icons.cancel_outlined, c.danger, 'doc_rejected'.tr),
+      _ => (Icons.hourglass_top_rounded, c.warning, 'doc_pending'.tr),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: 'bahji', fontSize: 10, fontWeight: FontWeight.w700, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Tappable full-screen image preview ───────────────────────────────────────

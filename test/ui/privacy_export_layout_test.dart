@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/profile/privacy_export.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -73,6 +74,19 @@ void main() {
           expect(dataExportStateText(st), isNotEmpty);
         }
       }
+      // R3 L7: the rate limit follows the server's cooldown (PRIVACY_EXPORT_COOLDOWN_HOURS) or names the next time
+      AppConfig.lang = 'en';
+      expect(dataExportCodeText('export_rate_limited', 'F', cooldownHours: 48), contains('48 hours'));
+      expect(dataExportCodeText('export_rate_limited', 'F'), contains('24 hours'));
+      final next = DateTime.utc(2026, 10, 27, 9);
+      final withNext = dataExportCodeText('export_rate_limited', 'F', nextRequestAt: next);
+      expect(withNext, startsWith('You can ask for a new copy after: '));
+      expect(withNext, contains(AppTime.dateTime(next)));
+      final ex = ApiException(statusCode: 429, message: 'x', code: 'export_rate_limited', body: {
+        'detail': {'code': 'export_rate_limited', 'next_request_at': '2026-10-27T09:00:00'}
+      });
+      expect(exportNextRequestAtOf(ex), next);
+      expect(exportNextRequestAtOf(const ApiException(statusCode: 429, message: 'x')), isNull);
       AppConfig.lang = 'ar';
       expect(dataExportEntryLabel(), 'تنزيل بياناتي');
       AppConfig.lang = 'en';

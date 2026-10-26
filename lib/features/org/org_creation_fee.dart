@@ -31,6 +31,23 @@ String money(dynamic amount, String currency) {
   return '$s $currency';
 }
 
+/// The text of a refused checkout / transfer. 409 `fee_already_paid` / `fee_under_review` carry the existing
+/// `payment`; for a caller without an account the server leaves its `token` out (an e-mail proves nothing), so a
+/// device that does not hold the token itself ([haveToken]) cannot use that payment: say where it can be used
+/// instead of "you can send the request". Everything else → [orgErrorText].
+String feeConflictText(OrgCall r, {required bool haveToken}) {
+  final code = r.code;
+  final p = r.detail['payment'];
+  if (!haveToken && (code == 'fee_already_paid' || code == 'fee_under_review') && p is Map && p['token'] == null) {
+    return code == 'fee_already_paid'
+        ? t('هذا البريد دفع رسوم الإنشاء بالفعل من جهاز أو متصفح آخر. أرسل الطلب من الجهاز الذي دفعت منه، أو سجّل الدخول بالحساب الذي دفعت به، أو تواصل مع الدعم.',
+            'This e-mail has already paid the fee from another device or browser. Send the request from the device you paid on, sign in with the account you paid with, or contact support.')
+        : t('إيصال تحويل لهذا البريد قيد المراجعة بالفعل. تابعه من الجهاز الذي أرسلته منه، أو تواصل مع الدعم.',
+            'A transfer receipt for this e-mail is already being reviewed. Follow it on the device you sent it from, or contact support.');
+  }
+  return r.error == null ? '' : orgErrorText(r.error!);
+}
+
 /// Fee status + payment. [email] is read when the applicant has no account yet (the payment is tied to it);
 /// [onReady] reports whether a request may be sent now and the payment token to send with it.
 class OrgCreationFeePanel extends StatefulWidget {
@@ -108,13 +125,16 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
       return appToast(t('اكتب بريدك الإلكتروني أولاً — تُربط الدفعة به', 'Enter your e-mail first — the payment is tied to it'), error: true);
     }
     setState(() => _busy = true);
-    final r = await orgCall(() => ApiClient().post('$_feePath/checkout', auth: widget.loggedIn, body: {
-          'method': _method,
-          if (_email.contains('@')) 'email': _email,
-        }));
+    final r = await orgCall(
+        () => ApiClient().post('$_feePath/checkout', auth: widget.loggedIn, body: {
+              'method': _method,
+              if (_email.contains('@')) 'email': _email,
+            }),
+        quiet: true);
     if (!mounted) return;
     setState(() => _busy = false);
     if (!r.ok) {
+      appToast(feeConflictText(r, haveToken: _token != null), error: true);
       if (r.code == 'fee_already_paid' || r.code == 'fee_under_review') await reload();
       return;
     }
@@ -134,6 +154,7 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
           amount: money(_s?['amount'], '${_s?['currency'] ?? ''}'),
           email: _email,
           loggedIn: widget.loggedIn,
+          haveToken: _token != null,
           onToken: _remember,
         ));
     if (ok == true) await reload();
@@ -249,10 +270,13 @@ class OrgCreationFeePanelState extends State<OrgCreationFeePanel> {
 
 class _TransferSheet extends StatefulWidget {
   const _TransferSheet({required this.method, required this.details, required this.amount, required this.email,
-      required this.loggedIn, required this.onToken});
+      required this.loggedIn, required this.onToken, this.haveToken = false});
   final String method, amount, email;
   final Map<String, dynamic> details;
   final bool loggedIn;
+
+  /// this device already holds a fee token (see [feeConflictText])
+  final bool haveToken;
   final Future<void> Function(String?) onToken;
 
   @override
@@ -290,9 +314,11 @@ class _TransferSheetState extends State<_TransferSheet> {
             fileField: 'proof_image',
             fileName: _image!.name,
             fileBytes: bytes),
-        ok: t('أُرسل الإيصال للمراجعة', 'Receipt sent for review'));
+        ok: t('أُرسل الإيصال للمراجعة', 'Receipt sent for review'),
+        quiet: true);
     if (!mounted) return;
     setState(() => _busy = false);
+    if (!r.ok) appToast(feeConflictText(r, haveToken: widget.haveToken), error: true);
     if (r.ok) {
       await widget.onToken('${r.map['token']}');
       if (mounted) Navigator.pop(context, true);

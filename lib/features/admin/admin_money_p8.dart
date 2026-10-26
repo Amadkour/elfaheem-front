@@ -84,6 +84,7 @@ String feeCodeText(String? code, String fallback) => switch (code) {
       'refund_failed' => t('فشلت هذه العملية سابقاً — ابدأ عملية جديدة', 'This request failed earlier — start a new one'),
       'refund_manual_forbidden' => t('الاسترداد اليدوي للمشرف العام فقط', 'Manual refunds are for the super admin only'),
       'refund_manual_needs_force' => t('هذه البوابة تسترد آلياً — فعّل «إجبار» واكتب السبب لتسجيل استرداد يدوي', 'This gateway refunds by API — tick "Force" and give a reason to record a manual refund'),
+      'refund_external_recorded' => t('سُجّل استرداد تم من لوحة بوابة الدفع مباشرة — راجع المتبقي ثم أعد المحاولة', 'A refund made in the gateway dashboard was just recorded — check what is left, then try again'),
       'reason_required' => t('اكتب السبب', 'A reason is required'),
       'currency_mismatch' => t('عملة الدورة تختلف عن عملة البوابة', 'The course currency differs from the gateway currency'),
       'orgs_disabled' => t('المؤسسات متوقفة على المنصة', 'Organizations are switched off on the platform'),
@@ -287,6 +288,45 @@ class RefundOutcome {
     return RefundOutcome(asInt(r['id']), asStr(r['status'], 'succeeded'), asDouble(r['amount']), asStr(r['currency']),
         asBool(r['outcome_unknown']), asBool(r['manual']), j['refunded_amount'] == null ? null : asDouble(j['refunded_amount']));
   }
+}
+
+/// 409 `refund_external_recorded` `{recorded, remaining}` (major units): before calling the gateway the server found a
+/// refund made in the gateway's own dashboard, recorded it, and refunded nothing. Nothing was reserved, so a retry with
+/// the same idempotency key is safe — but the admin must first see what is left (they may be about to refund it twice).
+class RefundExternalRecorded {
+  const RefundExternalRecorded(this.recorded, this.remaining);
+  final double recorded;
+
+  /// what is still refundable after the recorded refund; null = the server did not say
+  final double? remaining;
+
+  bool get nothingLeft => remaining != null && remaining! <= 0.0001;
+
+  static RefundExternalRecorded? from(EngineResult r) {
+    if (r.ok || r.code != 'refund_external_recorded') return null;
+    final d = r.detail;
+    return RefundExternalRecorded(asDouble(d['recorded']), d['remaining'] == null ? null : asDouble(d['remaining']));
+  }
+
+  String text(String? currency) {
+    final head = t('وُجد استرداد بقيمة ${money(recorded, currency)} تم من لوحة بوابة الدفع مباشرة، وسُجّل الآن. لم يُسترد شيء من طلبك.',
+        'A refund of ${money(recorded, currency)} made in the gateway dashboard was found and recorded. Nothing of your request was refunded.');
+    if (remaining == null) return '$head ${t('راجع المبلغ المتبقي ثم أعد المحاولة.', 'Check what is left, then try again.')}';
+    if (nothingLeft) return '$head ${t('لم يبقَ شيء للاسترداد.', 'Nothing is left to refund.')}';
+    return '$head ${t('المتبقي القابل للاسترداد الآن', 'Left to refund now')}: ${money(remaining!, currency)}. '
+        '${t('راجع المبلغ ثم أعد المحاولة إن لزم.', 'Check the amount, then try again if still needed.')}';
+  }
+}
+
+/// What a payment row says about refunds (`GET /admin/finance/payments` items): `refunded_amount` (succeeded refunds,
+/// partial included) and `refundable_amount` (0 unless the payment is completed). An older server sends neither: then
+/// the whole amount counts as refundable, as before.
+({double refunded, double? refundable}) paymentRefundFigures(Map<String, dynamic> p) {
+  final refunded = p['refunded_amount'] == null ? 0.0 : asDouble(p['refunded_amount']);
+  final double? refundable = p['refundable_amount'] != null
+      ? asDouble(p['refundable_amount'])
+      : (p['amount'] == null ? null : math.max(0.0, asDouble(p['amount']) - refunded));
+  return (refunded: refunded, refundable: refundable);
 }
 
 String refundStatusText(String s) => switch (s) {
@@ -841,24 +881,40 @@ class _OrgFeeFormState extends State<OrgFeeForm> {
 
 // ── refunds ───────────────────────────────────────────────────────────────────────────────────────────────────
 
-/// Opens the refund sheet of a payment. Returns true when something changed (the caller reloads its list).
+/// Opens the refund sheet of a payment. Returns true when something changed (the caller reloads its list) — also
+/// when the sheet was swiped away after the server recorded a gateway-dashboard refund (409 `refund_external_recorded`).
+/// [refundable] is the server's `refundable_amount` when it sends one; otherwise `amount − refunded`.
 Future<bool> showRefundSheet(BuildContext context,
-    {required int paymentId, double? amount, double refunded = 0, String? currency, bool? superAdmin, MoneyP8Api? api}) async {
+    {required int paymentId, double? amount, double refunded = 0, double? refundable, String? currency, bool? superAdmin, MoneyP8Api? api}) async {
   final sup = superAdmin ?? isSuperNow(context);
+  var changed = false;
   final r = await showAppSheet<bool>(
       context,
       (_) => RefundSheet(
-          paymentId: paymentId, remaining: amount == null ? null : math.max(0, amount - refunded), currency: currency, superAdmin: sup, api: api));
-  return r == true;
+          paymentId: paymentId,
+          remaining: refundable ?? (amount == null ? null : math.max(0, amount - refunded)),
+          refunded: refunded,
+          currency: currency,
+          superAdmin: sup,
+          api: api,
+          onChanged: () => changed = true));
+  return r == true || changed;
 }
 
 class RefundSheet extends StatefulWidget {
-  const RefundSheet({super.key, required this.paymentId, this.remaining, this.currency, required this.superAdmin, this.api});
+  const RefundSheet(
+      {super.key, required this.paymentId, this.remaining, this.refunded = 0, this.currency, required this.superAdmin, this.api, this.onChanged});
   final int paymentId;
   final double? remaining;
+
+  /// already refunded (succeeded refunds, partial included)
+  final double refunded;
   final String? currency;
   final bool superAdmin;
   final MoneyP8Api? api;
+
+  /// called when the server recorded something even though this request refunded nothing
+  final VoidCallback? onChanged;
 
   @override
   State<RefundSheet> createState() => _RefundSheetState();
@@ -866,12 +922,15 @@ class RefundSheet extends StatefulWidget {
 
 class _RefundSheetState extends State<RefundSheet> {
   late final MoneyP8Api _api = widget.api ?? MoneyP8Api();
-  late RefundDraft _d = RefundDraft(remaining: widget.remaining);
+  late double? _remaining = widget.remaining;        // lowered when the server records a gateway-dashboard refund
+  late double _refunded = widget.refunded;
+  late RefundDraft _d = RefundDraft(remaining: _remaining);
   String? _sentSig;                                  // what the current idempotency key was used for
   bool _renewKey = false;
   final _amount = TextEditingController(), _reason = TextEditingController();
   bool _busy = false;
   String? _err;
+  RefundExternalRecorded? _external;
   RefundOutcome? _out;
 
   @override
@@ -887,9 +946,10 @@ class _RefundSheetState extends State<RefundSheet> {
       ..reason = _reason.text;
     final sig = '${_d.amount.trim()}|${_d.manual}|${_d.force}';
     if (_renewKey || (_sentSig != null && _sentSig != sig)) {   // another refund than the one the key was used for
-      _d = RefundDraft(amount: _d.amount, reason: _d.reason, manual: _d.manual, force: _d.force, remaining: widget.remaining);
+      _d = RefundDraft(amount: _d.amount, reason: _d.reason, manual: _d.manual, force: _d.force, remaining: _remaining);
       _renewKey = false;
     }
+    _d.remaining = _remaining;
     final e = _d.validate(superAdmin: widget.superAdmin);
     if (e != null) {
       setState(() => _err = draftErrorText(e));
@@ -906,10 +966,23 @@ class _RefundSheetState extends State<RefundSheet> {
     final r = await _api.refund(widget.paymentId, _d);
     if (!mounted) return;
     if (!r.ok && (r.code == 'refund_failed' || r.code == 'refund_gateway_failed')) _renewKey = true;   // a new attempt needs a new key
+    // 409 refund_external_recorded: nothing was reserved, so the same key stays valid for a deliberate retry
+    final ext = RefundExternalRecorded.from(r);
+    if (ext != null) widget.onChanged?.call();
     setState(() {
       _busy = false;
       if (r.ok) {
         _out = RefundOutcome.fromJson(r.map);
+        _external = null;
+      } else if (ext != null) {
+        _external = ext;
+        _err = null;
+        _refunded += ext.recorded;
+        if (ext.remaining != null) {
+          _remaining = ext.remaining;
+        } else if (_remaining != null) {
+          _remaining = math.max(0, _remaining! - ext.recorded);
+        }
       } else {
         _err = feeCodeText(r.code, r.message);
       }
@@ -950,8 +1023,14 @@ class _RefundSheetState extends State<RefundSheet> {
             AppPrimaryButton(label: t('تسوية مع البوابة', 'Reconcile with the gateway'), icon: Icons.sync_rounded, busy: _busy, onPressed: _busy ? null : _reconcile),
           TextButton(onPressed: () => Navigator.pop(context, true), child: Text(t('تم', 'Done'))),
         ] else ...[
-          if (widget.remaining != null)
-            Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('${t('المتبقي القابل للاسترداد', 'Left to refund')}: ${money(widget.remaining!, widget.currency)}', style: appText(13, c: c.textMedium))),
+          if (_external != null)
+            Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: AppBanner(icon: Icons.info_outline_rounded, color: c.warning, text: _external!.text(widget.currency))),
+          if (_refunded > 0.0001)
+            Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('${t('مسترد سابقاً', 'Already refunded')}: ${money(_refunded, widget.currency)}', style: appText(13, c: c.textMedium))),
+          if (_remaining != null)
+            Padding(padding: const EdgeInsets.only(bottom: 10), child: Text('${t('المتبقي القابل للاسترداد', 'Left to refund')}: ${money(_remaining!, widget.currency)}', style: appText(13, c: c.textMedium))),
           AppField(controller: _amount, label: t('المبلغ (فارغ = كل المتبقي)', 'Amount (empty = everything left)'), keyboard: const TextInputType.numberWithOptions(decimal: true)),
           AppField(controller: _reason, label: t('السبب', 'Reason'), maxLines: 2),
           if (widget.superAdmin) ...[
@@ -972,7 +1051,12 @@ class _RefundSheetState extends State<RefundSheet> {
           ],
           if (_err != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _err!)),
           const SizedBox(height: 12),
-          AppPrimaryButton(label: t('استرداد', 'Refund'), icon: Icons.undo_rounded, busy: _busy, onPressed: _busy ? null : _submit),
+          AppPrimaryButton(
+              label: t('استرداد', 'Refund'),
+              icon: Icons.undo_rounded,
+              busy: _busy,
+              onPressed: _busy || (_remaining != null && _remaining! <= 0.0001) ? null : _submit),
+          if (_external != null) TextButton(onPressed: () => Navigator.pop(context, true), child: Text(t('إغلاق', 'Close'))),
         ],
       ]),
     );

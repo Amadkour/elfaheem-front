@@ -9,6 +9,8 @@
 //   GET    /orgs/{id}/quota                          {docs, bytes, max_docs, max_bytes, override} — also `quota` in the
 //                                                    managers' list and in the settings (Phase 10); an upload past it
 //                                                    → 409 rag_quota_exceeded {limit: docs|bytes, quota}
+//   PUT    /orgs/{id}/quota                          {max_docs, max_bytes} the Super Admin's override (null = platform
+//                                                    default, 0 = unlimited) — screen in rag_quota_admin.dart
 library;
 
 import 'dart:typed_data';
@@ -326,5 +328,11 @@ class RagLibraryApi {
   Future<EngineResult> saveSettings(int orgId, String generator, bool allowExternal) =>
       engineCall(() => _api.put('$base/orgs/$orgId/settings', body: RagOrgSettings.body(generator, allowExternal)));
   Future<EngineResult> answersFeedback(int orgId) => engineCall(() => _api.get('$base/orgs/$orgId/answers/feedback'));
+
+  /// Usage and limits (library managers and the Super Admin).
+  Future<EngineResult> quota(int orgId) => engineCall(() => _api.get('$base/orgs/$orgId/quota'));
+
+  /// The Super Admin's override — replaces both values: `{max_docs, max_bytes}`, null = platform default, 0 = unlimited.
+  Future<EngineResult> saveQuota(int orgId, Map<String, dynamic> body) => engineCall(() => _api.put('$base/orgs/$orgId/quota', body: body));
 }
 

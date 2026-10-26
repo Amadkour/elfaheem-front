@@ -30,6 +30,8 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_list.dart' show RowCard;
 import 'admin_view_as_page.dart' show startViewAs;
+import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
+import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 
 class _AdminsApi {
@@ -425,6 +427,7 @@ class _AdminTile extends StatelessWidget {
     final name = asStr(row['name']);
     final active = asBool(row['is_active'], true);
     final isSuperRow = asStr(row['role']) == 'super-admin';
+    final isMe = context.read<MyAuthProvider>().currentUser?.id == id;
 
     return RowCard(
       onTap: () => _openAdminForm(context, p, existing: row),
@@ -490,6 +493,14 @@ class _AdminTile extends StatelessWidget {
                 name: name,
                 role: 'admin',
               ),
+            ),
+          // Lost phone AND recovery codes: remove their two-step verification (not your own: turn it off instead)
+          if (!isMe)
+            IconButton(
+              key: ValueKey('admin.mfa_reset.$id'),
+              tooltip: mfaResetLabel(),
+              icon: Icon(Icons.phonelink_erase_rounded, color: c.textMedium),
+              onPressed: () => confirmResetUserMfa(context, userId: id, name: name),
             ),
           IconButton(
             tooltip: 'btn_edit'.tr,

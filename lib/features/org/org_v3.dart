@@ -285,6 +285,8 @@ Map<String, String> _codeTexts() => {
       'not_running': t('التوليد انتهى بالفعل', 'The generation already finished'),
       'schedule_conflict': t('توجد تعارضات تمنع الحفظ', 'There are clashes that block this'),
       'cannot_shift': t('لا يوجد وقت فارغ قريب لنقل الحصص المتعارضة', 'No nearby free time to move the clashing sessions'),
+      // organization / department profile
+      'logo_url_not_allowed': t('ارفع الشعار من التطبيق أو استخدم رابط https عاماً', 'Upload the logo in the app or use a public https link'),
     };
 
 /// The text of one server code (local checks reuse the server's wording).

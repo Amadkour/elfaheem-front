@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Flutter education platform (VOD courses, live sessions, attendance, organizations) — package name `flutter_education_app`, Firebase project `elfaheem`, backend at `AppConfig.baseUrl` (`https://nextbrain.site/api`). Targets Android, iOS and Web (web is deployed to Firebase Hosting from `build/web`). Default UI language is Arabic (RTL); English is also supported.
+Flutter education platform (VOD courses, live sessions, attendance, organizations) — package name `flutter_education_app`, Firebase project `elfaheem`, backend at `AppConfig.baseUrl` (`https://nextbrain.site/api` unless built with `--dart-define=API_BASE_URL=…`; a release build accepts only an `https://` override, see `resolveApiBaseUrl`). Targets Android, iOS and Web (web is deployed to Firebase Hosting from `build/web`). Default UI language is Arabic (RTL); English is also supported.
 
 ## Commands
 
@@ -12,7 +12,8 @@ Flutter education platform (VOD courses, live sessions, attendance, organization
 flutter pub get
 flutter analyze                      # lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
 flutter run                          # add -d chrome for web
-flutter test test/org/ test/export/ test/ui/   # the real suites; test/widget_test.dart is the stock counter template and fails
+flutter run --dart-define=API_BASE_URL=http://10.0.2.2:18080/api   # local stack (back/scripts/dev/setup.*); default is production
+flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/   # the real suites (CI runs them all); test/widget_test.dart is the stock counter template and fails
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 flutter build web && firebase deploy --only hosting
 dart run flutter_launcher_icons      # regenerate app icons
@@ -43,6 +44,7 @@ The code is not `dart format`-ed (formatting `lib/features/org` would rewrite ev
 - App-layer envelope encryption (X25519 → HKDF → AES-256-GCM, `{"n","ct"}` bodies) and certificate pinning on mobile (`_pinnedCertSha256`). Server cert rotation requires updating the pin list.
 - Sends device-ID headers (device binding / blocked-device dialog lives in `features/student/courses/security/`).
 - Adds `X-View-As: <id>` while super-admin "view as" mode is active (`utils/widget/view_as_state.dart`).
+- Adds `X-Onboarding-Token` to teacher onboarding routes (`isTeacherOnboardingPath`; token kept in memory by `lib/features/auth/teacher_onboarding_token.dart`), and opens `AdminMfaPage` on 403 `mfa_enrollment_required` (`shouldOpenMfaEnrollment`: never two at once, again only 30 s after the user left it). The settings entry for every role the server allows is `MfaSettingsEntry` (`lib/features/auth/mfa_entry.dart`, feature key `profile.mfa`). Debug request logs go through `redactForLog`: add any new secret field to `logSensitiveKeys`. MFA: `lib/features/auth/mfa.dart` (API + code texts), `mfa_verify_screen.dart` (`openMfaStep`, the login step), `lib/features/admin/admin_mfa_page.dart` (enrolment / status). Every method takes an optional `headers:`.
 
 **Server-driven theme & feature flags** — `ThemeConfigProvider` (`lib/config/theme/`) loads the theme from `GET /api/v1/theme/{platform}` and builds `materialTheme()`. Always read colors via `context.colors`, never hard-coded colors. The same response sets `AppConfig.disableList` (feature kill-switch ids, e.g. `profile.logout`, `teacher_tab_analysis`). To make UI switchable, wrap it in `ParentComponent(featureKey: '...')` (hides it), or give a `BasePage` a `ValueKey('<id>')` (shows a "coming soon" page). `AppConfig.setDisableList` rebuilds the whole widget tree when the list changes.
 
@@ -61,7 +63,7 @@ A super-admin OFF always wins, because an organization can only add keys. Hidden
 
 **Localization** — Strings live in `assets/translation.json` as `{ "key": { "en": "...", "ar": "..." } }`. Use `translate('key')` or `'key'.tr`; a missing key falls back to the key itself. Add both `en` and `ar` for every new key. Current language is `AppConfig.lang` (switched by `LangProvider`); use `pageDirection` for RTL/LTR.
 
-**Offline** — `lib/core/offline/` holds connectivity (one app-wide online/offline answer, wired into `topRouteObserver`) and encrypted offline video downloads (AES-CTR via pointycastle). Offline attendance can relay through a nearby online classmate (`features/shared/attendance/`, `nearby_connections`, Android only).
+**Offline** — `lib/core/offline/` holds connectivity (one app-wide online/offline answer, wired into `topRouteObserver`) and encrypted offline video downloads (AES-CTR via pointycastle). Offline attendance can relay through a nearby online classmate (`features/shared/attendance/`: `nearby_connections` between Android phones, plus a Bluetooth LE GATT transport in `relay_ble_transport.dart` for iPhones and Android ↔ iPhone — that file was written without checking the package source; see its header).
 
 **Course video player (`lib/features/shared/session/video/`)** — `VideoPlayerScreen(material, playlist:)` is the one player for every caller (session material grid, course profile, downloads); it calls `POST …/materials/{id}/play` itself, plays the encrypted offline copy when `OfflineVideoService.localVariant` has one, and keeps screen protection (`screen_protector`) and wakelock on for the whole visit — switching lectures happens in place (`_openLecture`), never by pushing a second screen. Pure parts (resume logic `VodResume`, `vodPlaylist`/`vodNextOf`, next-up card, lecture list, HUD, captions, skeleton) live in `vod_player_parts.dart` so `test/ui/vod_player_layout_test.dart` can test them without a platform player; the full screen is tested only in its error state with `debugDefaultTargetPlatformOverride = TargetPlatform.iOS` (the Android PiP plugin leaks a timer in tests). Captions are server `.vtt` files (`captions_url`, uploaded by teachers via `POST …/materials/{id}/captions`) and are saved next to offline downloads. On phones swipes change the real screen brightness and media volume (`screen_brightness`, `volume_controller`); elsewhere the player dims/attenuates itself.
 

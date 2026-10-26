@@ -33,6 +33,7 @@ import 'package:flutter_education_app/features/shared/profile/components/setting
 import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart' show SettingsTile;
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show ProfileHeader;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart' show WideShell, RailShell, MobileShell;
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart' show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -1047,6 +1048,8 @@ class _OrgAccountPage extends StatelessWidget {
           SettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
         ],
         const SizedBox(height: 20),
+        // two-step verification of the signed-in org admin / staff member (shown when the server allows it)
+        const MfaSettingsEntry(),
         SettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
           tile(Icons.translate_rounded, AdminPalette.violet.last, 'change_language'.tr,
               () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeLanguageScreen()))),

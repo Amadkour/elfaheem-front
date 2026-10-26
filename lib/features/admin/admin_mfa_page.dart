@@ -38,17 +38,27 @@ class MfaStatusView extends StatelessWidget {
     required this.status,
     this.loading = false,
     this.busy = false,
+    this.known = true,
     this.error,
     this.onSetup,
     this.onRegenerate,
     this.onDisable,
     this.onRetry,
+    this.onSignInAgain,
   });
 
   final MfaStatus status;
   final bool loading, busy;
+
+  /// False when the status could not be loaded: the card is not shown, so nothing (not even "not available for
+  /// this account") is claimed about the account.
+  final bool known;
   final String? error;
   final VoidCallback? onSetup, onRegenerate, onDisable, onRetry;
+
+  /// A forced enrollment that cannot go on (its token is no longer valid, or MFA is already on): the only action
+  /// left is signing in again, so the manage actions (which need a real session) are hidden.
+  final VoidCallback? onSignInAgain;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +92,7 @@ class MfaStatusView extends StatelessWidget {
             ),
           const SizedBox(height: 12),
         ],
-        if (s.required && !s.enabled) ...[
+        if (known && s.required && !s.enabled && onSignInAgain == null) ...[
           AppBanner(
               icon: Icons.policy_rounded,
               color: c.warning,
@@ -90,7 +100,7 @@ class MfaStatusView extends StatelessWidget {
                   'Your account must use two-step verification. Turn it on to continue.')),
           const SizedBox(height: 12),
         ],
-        AppCard(
+        if (known) AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
               Text(t('الحالة', 'Status'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
@@ -113,14 +123,18 @@ class MfaStatusView extends StatelessWidget {
             if (!s.enabled && !s.allowed)
               AppInfoRow(Icons.info_outline_rounded,
                   t('التحقق بخطوتين غير متاح لهذا الحساب', 'Two-step verification is not available for this account')),
+            if (s.enabled && onSignInAgain != null)
+              AppInfoRow(Icons.login_rounded,
+                  t('التحقق بخطوتين مفعّل لهذا الحساب. سجّل الدخول مرة أخرى بالرمز من تطبيق المصادقة.',
+                      'Two-step verification is on for this account. Sign in again with the code from your authenticator app.')),
             const SizedBox(height: 14),
-            if (!s.enabled && s.allowed)
+            if (onSignInAgain == null && !s.enabled && s.allowed)
               AppPrimaryButton(
                   label: t('تفعيل التحقق بخطوتين', 'Turn on two-step verification'),
                   icon: Icons.qr_code_2_rounded,
                   busy: busy,
                   onPressed: busy ? null : onSetup),
-            if (s.enabled) ...[
+            if (onSignInAgain == null && s.enabled) ...[
               AppPrimaryButton(
                   label: t('إنشاء رموز استرداد جديدة', 'Make new recovery codes'),
                   icon: Icons.refresh_rounded,
@@ -144,6 +158,14 @@ class MfaStatusView extends StatelessWidget {
             ],
           ]),
         ),
+        if (onSignInAgain != null) ...[
+          const SizedBox(height: 12),
+          AppPrimaryButton(
+              key: const ValueKey('mfa.sign_in_again'),
+              label: t('تسجيل الدخول مرة أخرى', 'Sign in again'),
+              icon: Icons.login_rounded,
+              onPressed: busy ? null : onSignInAgain),
+        ],
       ],
     ]);
   }
@@ -174,7 +196,7 @@ class MfaSetupView extends StatelessWidget {
       CircleAvatar(
           radius: 13,
           backgroundColor: c.primary,
-          child: Text('$n', style: appText(12, w: FontWeight.w800, c: Colors.white))),
+          child: Text('$n', style: appText(12, w: FontWeight.w800, c: Theme.of(context).colorScheme.onPrimary))),
       const SizedBox(width: 10),
       Expanded(child: Text(title, style: appText(14, w: FontWeight.w800, c: c.textDark))),
     ]);
@@ -195,6 +217,7 @@ class MfaSetupView extends StatelessWidget {
                     'For example Google Authenticator, Microsoft Authenticator or 1Password.'),
                 style: appText(12.5, c: c.textMedium, h: 1.5)),
             const SizedBox(height: 12),
+            // The QR code stays dark-on-white in both themes on purpose: authenticator scanners need that contrast.
             if (info.otpauthUri.isNotEmpty)
               Center(
                 child: Container(
@@ -363,9 +386,34 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
   List<String> _codes = const [];
   _Stage _stage = _Stage.status;
   bool _loading = true, _busy = false;
+
+  /// The status was loaded at least once (a failed load shows only the error, never "not available").
+  bool _known = false;
+
+  /// Forced enrollment whose token the server no longer accepts (expired, other device, account changed).
+  bool _dead = false;
   String? _error;
 
   bool get _forced => widget.enrollToken != null;
+
+  /// A forced enrollment cannot go on: the token is dead, or the account already has MFA (the manage routes need a
+  /// real session, which this page does not have). The way out is a new sign-in.
+  bool get _mustSignInAgain => _forced && (_dead || _status.enabled);
+
+  /// True (and the page switched to "sign in again") when [e] says the enrollment token is no longer valid.
+  bool _forcedTokenDead(Object e) {
+    final ex = ApiException.from(e);
+    if (!_forced || !(ex.statusCode == 401 || mfaStepIsDead(ex.code))) return false;
+    final code = mfaStepIsDead(ex.code) ? ex.code : 'mfa_token_invalid';
+    setState(() {
+      _dead = true;
+      _stage = _Stage.status;
+      _error = mfaCodeText(code, ex.message);
+    });
+    return true;
+  }
+
+  void _signInAgain() => Navigator.of(context).maybePop();
 
   @override
   void initState() {
@@ -392,10 +440,13 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
     try {
       final s = await _api.status();
       if (!mounted) return;
-      setState(() => _status = s);
+      setState(() {
+        _status = s;
+        _known = true;
+      });
       if (_forced && !s.enabled) await _startSetup();      // forced: straight to the QR code
     } catch (e) {
-      if (mounted) setState(() => _error = _text(e));
+      if (mounted && !_forcedTokenDead(e)) setState(() => _error = _text(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -468,7 +519,7 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
       final ex = ApiException.from(e);
       if (ex.code == 'mfa_already_enabled') {
         await _load();
-      } else if (mounted) {
+      } else if (mounted && !_forcedTokenDead(e)) {
         setState(() => _error = _text(e));
         if (_stage == _Stage.status) appToast(_text(e), error: true);
       }
@@ -497,7 +548,7 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
         _stage = _Stage.codes;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = _text(e));
+      if (mounted && !_forcedTokenDead(e)) setState(() => _error = _text(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -584,11 +635,13 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
           status: _status,
           loading: _loading,
           busy: _busy,
+          known: _known && !_dead,
           error: _error,
           onSetup: _startSetup,
           onRegenerate: _regenerate,
           onDisable: _disable,
-          onRetry: _load,
+          onRetry: _dead ? null : _load,
+          onSignInAgain: _mustSignInAgain ? _signInAgain : null,
         ),
     };
     return PopScope(
@@ -602,5 +655,31 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
         child: body,
       ),
     );
+  }
+}
+
+/// Label of the super-admin action that removes another user's two-step verification.
+String mfaResetLabel() => t('إعادة تعيين التحقق بخطوتين', 'Reset two-step verification');
+
+/// Super admin: asks, then removes the two-step verification of user [userId] ([name] in the question), for a user
+/// who lost both the phone and the recovery codes. The server signs that user out everywhere. Returns true when it
+/// was removed; server refusals (`mfa_not_enabled`, `mfa_reset_self`, …) are shown as a toast. [reset] is for tests.
+Future<bool> confirmResetUserMfa(BuildContext context,
+    {required int userId, required String name, Future<void> Function(int userId)? reset}) async {
+  final ok = await appConfirm(context,
+      danger: true,
+      confirmLabel: t('إعادة التعيين', 'Reset'),
+      message: t(
+          'إزالة التحقق بخطوتين من حساب "$name"؟ سيُسجَّل خروجه من كل الأجهزة، وإن كان دوره يتطلب التحقق بخطوتين فسيُطلب منه إعداده من جديد عند الدخول. استخدم هذا فقط بعد التأكد من هويته.',
+          'Remove two-step verification from "$name"? They are signed out on every device and, if their role requires it, set it up again at their next sign-in. Only do this after you have confirmed who they are.'));
+  if (!ok) return false;
+  try {
+    await (reset ?? resetUserMfa)(userId);
+    appToast(t('تمت إزالة التحقق بخطوتين من الحساب', 'Two-step verification was removed from the account'));
+    return true;
+  } catch (e) {
+    final ex = ApiException.from(e);
+    appToast(mfaCodeText(ex.code, ex.message), error: true);
+    return false;
   }
 }

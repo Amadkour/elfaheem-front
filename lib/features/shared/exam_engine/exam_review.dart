@@ -188,6 +188,10 @@ String flagText(String f) => switch (f) {
       'antonym' => t('عكس المعنى المطلوب', 'Opposite of the expected idea'),
       'contradiction' => t('تناقض مع المعيار', 'Contradicts the criterion'),
       'trap' => t('قريب من خطأ شائع', 'Close to a known wrong answer'),
+      // the answer gives one concept's properties to another (exam_engine/grading/features.py ROLE_SWAP_FLAG)
+      'role_swap' => t('تبديل الأدوار بين المفاهيم', 'Roles swapped between concepts'),
+      // only when GRADER_LLM_CHECK is on (off today): a second check disagrees, the answer goes to the teacher
+      'llm_disagrees' => t('فحص ثانٍ يخالف هذا التصحيح', 'A second check disagrees with this mark'),
       'empty' => t('إجابة فارغة', 'Empty answer'),
       'ocr_low_confidence' => t('قراءة الخط غير مؤكدة — راجع النص', 'Handwriting reading uncertain — check the text'),
       _ => f,

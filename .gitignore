@@ -72,3 +72,16 @@ android/key.properties
 *.jks
 *.keystore
 build/debug-info/
+
+# secrets and signing material (never committed; Phase 10, A02 / D1)
+.env*
+*firebase-adminsdk*.json
+*service-account*.json
+*.p12
+*.p8
+*.pem
+*.mobileprovision
+
+# developer-documents toolchain (D1)
+.docvenv/
+documents/_build/__pycache__/

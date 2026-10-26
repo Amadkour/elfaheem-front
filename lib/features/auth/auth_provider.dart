@@ -342,9 +342,11 @@ class MyAuthProvider extends BaseProvider {
       return true;
     } catch (e) {
       final ex = ApiException.from(e);
-      mfaError = mfaCodeText(ex.code, ex.message);
       mfaAttemptsLeft = attemptsLeftOf(ex);
-      mfaStepDead = mfaStepIsDead(ex.code);
+      mfaStepDead = mfaFailureEndsStep(ex.code, mfaAttemptsLeft);
+      // the last wrong code burned the step: say so ("sign in again"), not just "the code is not correct"
+      final burned = mfaStepDead && !mfaStepIsDead(ex.code);
+      mfaError = burned ? mfaCodeText('mfa_token_locked', ex.message) : mfaCodeText(ex.code, ex.message);
       return false;
     } finally {
       isVerifyingMfa = false;
@@ -940,23 +942,6 @@ class MyAuthProvider extends BaseProvider {
       resetEmailMasked = result['email_masked']?.toString();
     }
     notifyListeners();
-  }
-
-  // ── Reset Password ────────────────────────────────────────────────────────────
-
-  Future<bool> resetPassword({
-    required String gmail,
-    required String code,
-    required String newPassword,
-  }) async {
-    final result = await run(
-          () => _api.post(
-        '/api/v1/auth/reset-password',
-        body: {'gmail': gmail, 'code': code, 'new_password': newPassword},
-        auth: false,
-      ),
-    );
-    return result != null;
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────────

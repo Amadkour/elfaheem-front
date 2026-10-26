@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../org/org_common.dart' show openFileUrl, orgTypeIcons, orgTypeLabels;
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
+import '../shared/rag/rag_quota_admin.dart' show showRagQuotaAdminSheet;
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
@@ -248,6 +249,18 @@ Future<void> _openReview(BuildContext context, int id) async {
               icon: const Icon(Icons.payments_rounded),
               label: Text(t('رسوم العضوية', 'Membership fees'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
             ),
+            // the assistant library's per-organization quota: the Super Admin's override (PUT /rag/orgs/{id}/quota)
+            if (isSuperNow(ctx)) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const ValueKey('org.rag_quota'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                onPressed: () => showRagQuotaAdminSheet(ctx, orgId: asInt(d['id']), orgName: orgNameOf(d)),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: Text(t('حصة مكتبة المساعد', 'Assistant library quota'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              ),
+            ],
           ]),
         );
       }));
