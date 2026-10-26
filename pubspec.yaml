@@ -200,6 +200,12 @@ flutter:
     - family: CertMarkaziBold
       fonts:
         - asset: assets/fonts/cert/MarkaziText-Bold.ttf
+    # exam papers (exam_paper.dart): full Arabic presentation forms, which package:pdf needs (Cairo / Tajawal lack some)
+    - family: PaperPlex
+      fonts:
+        - asset: assets/fonts/plex/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/plex/IBMPlexSansArabic-Bold.ttf
+          weight: 700
     - family: bahji
       fonts:
         - asset: assets/fonts/Bahij_TheSansArabic-Bold.ttf

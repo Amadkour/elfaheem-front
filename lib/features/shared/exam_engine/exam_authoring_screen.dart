@@ -13,6 +13,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asDouble, asInt, asMap, asMapList, t;
 import 'exam_authoring.dart';
+import 'exam_paper_sheet.dart' show openExamPaper;
 import 'offline/offline_exam_teacher.dart';
 
 /// Text controllers for dynamic rows, created on first use and disposed with the state. Rows are keyed by their
@@ -1661,6 +1662,13 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
         key: const ValueKey('exam.authoring'),
         appBar: AppBar(
           title: Text(v?.exam.title.isNotEmpty == true ? v!.exam.title : t('تحرير الاختبار', 'Edit exam'), maxLines: 1, overflow: TextOverflow.ellipsis),
+          actions: [
+            if (v != null && v.questionCount > 0)
+              IconButton(
+                  onPressed: () => openExamPaper(context, examId: v.exam.id!),
+                  icon: const Icon(Icons.print_rounded),
+                  tooltip: t('ورقة الامتحان للطباعة', 'Printable exam paper')),
+          ],
           bottom: TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
             Tab(text: t('الإعدادات', 'Settings')),
             Tab(text: t('الأقسام والأسئلة', 'Sections & questions')),
