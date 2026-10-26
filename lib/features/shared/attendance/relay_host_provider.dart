@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../exam_engine/offline/offline_exam_relay.dart';
+
 import 'attendance_crypto.dart';
 import 'attendance_permissions.dart';
 import 'attendance_repository.dart';
@@ -93,6 +95,8 @@ class RelayHostProvider extends ChangeNotifier {
 
   /// Everything the relay does: forward, never decide.
   Future<Map<String, dynamic>> _handle(Map<String, dynamic> req) async {
+    // an offline exam handed out / answers collected (same link, same opt-in)
+    if ('${req['t']}'.startsWith('exam_')) return OfflineExamHost.instance.handle(req);
     try {
       switch (req['t']) {
         case 'hello':

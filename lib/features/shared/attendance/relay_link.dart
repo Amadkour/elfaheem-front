@@ -71,12 +71,15 @@ class RelayCollector {
 
 bool isReply(Map<String, dynamic> m) {
   final t = m['t'];
-  return t == 'window' || t == 'result' || t == 'error' || (t == 'witness' && m.containsKey('sig'));
+  return t == 'window' || t == 'result' || t == 'error' || (t == 'witness' && m.containsKey('sig')) ||
+      t == 'exam_offer' || t == 'exam_chunk' || t == 'exam_keyed' || t == 'exam_ack' || t == 'exam_receipt';
 }
 
 bool isRequest(Map<String, dynamic> m) {
   final t = m['t'];
-  return t == 'hello' || t == 'submit' || (t == 'witness' && m.containsKey('att'));
+  return t == 'hello' || t == 'submit' || (t == 'witness' && m.containsKey('att')) ||
+      // offline exams (exam_engine/offline/offline_exam_relay.dart)
+      t == 'exam_hello' || t == 'exam_part' || t == 'exam_key' || t == 'exam_submit';
 }
 
 Uint8List encodeMsg(Map<String, dynamic> m) => Uint8List.fromList(utf8.encode(jsonEncode(m)));

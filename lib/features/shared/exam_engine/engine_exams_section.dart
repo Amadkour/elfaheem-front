@@ -10,12 +10,15 @@ import '../../admin/admin_common.dart' show asInt, asMapList, t;
 import 'exam_engine_api.dart';
 import 'exam_result_screen.dart';
 import 'exam_taking_screen.dart';
+import 'offline/offline_exam_screen.dart';
+import 'offline/offline_exam_service.dart';
 
 /// Plain-values card for one engine exam (under the layout harness).
 class EngineExamCard extends StatelessWidget {
-  const EngineExamCard({super.key, required this.exam, required this.onOpen});
+  const EngineExamCard({super.key, required this.exam, required this.onOpen, this.offlineSaved = false});
   final Map<String, dynamic> exam;
   final VoidCallback? onOpen;
+  final bool offlineSaved;                 // the encrypted copy for a sitting without internet is on this phone
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +63,10 @@ class EngineExamCard extends StatelessWidget {
             const SizedBox(height: 6),
             // the action sits under the texts, not beside them: at 320 px with large text a trailing pill left the
             // title column 26 px wide (layout harness)
-            Align(alignment: AlignmentDirectional.centerStart, child: AppBadgePill(action, color: canStart || open ? c.primary : c.textLight)),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              AppBadgePill(action, color: canStart || open ? c.primary : c.textLight),
+              if (offlineSaved) AppBadgePill(t('محفوظ للحل دون اتصال', 'Saved for offline'), color: c.success, icon: Icons.offline_pin_rounded),
+            ]),
           ]),
         ),
       ]),
@@ -81,6 +87,8 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
   final _api = ExamEngineApi();
   List<Map<String, dynamic>>? _items;
   bool _hidden = false;
+  bool _offline = false;                   // no connection: the exams kept on this phone are shown instead
+  final Set<int> _saved = {};
 
   @override
   void initState() {
@@ -95,15 +103,37 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
     setState(() {
       if (!r.ok) {
         _hidden = true;                    // not deployed, not routed, not a student here: the legacy list stands alone
+        _offline = r.status == 0 && offlineExamsSupported;
         return;
       }
       _items = asMapList(r.map['items']);
       _hidden = _items!.isEmpty;
     });
+    if (r.ok) _warmOffline();
+  }
+
+  /// Online: keep the encrypted copy (and its key once the exam opens) of every offline-enabled exam on the phone.
+  Future<void> _warmOffline() async {
+    final offline = (_items ?? const []).where((e) => e['offline'] == true).toList();
+    if (offline.isEmpty || !offlineExamsSupported) return;
+    await OfflineExamSync.instance.warmOnce();
+    for (final e in offline) {
+      final p = await OfflineExamSync.instance.warmExam(e);
+      if (p != null && mounted) setState(() => _saved.add(p.examId));
+    }
   }
 
   Future<void> _open(Map<String, dynamic> exam) async {
     final results = asMapList(exam['results']);
+    if (exam['offline'] == true) {
+      final begun = await offlineSittingFor(asInt(exam['id']));       // begun offline on this phone: continue there
+      if (!mounted) return;
+      if (begun != null) {
+        await openOfflineExam(context, begun);
+        if (mounted) await _load();
+        return;
+      }
+    }
     if (exam['can_start'] == true || exam['open_attempt_id'] != null) {
       String? passcode;
       if (exam['has_passcode'] == true && exam['open_attempt_id'] == null) {
@@ -139,12 +169,13 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
 
   @override
   Widget build(BuildContext context) {
+    if (_offline) return Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 8), child: OfflineExamsList(courseId: widget.courseId, shrinkWrap: true));
     if (_hidden || _items == null) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         AppSectionTitle(t('اختبارات المقرر', 'Course exams'), subtitle: t('اختبارات بتوقيت الخادم وحفظ تلقائي', 'Server-timed exams with autosave')),
-        for (final e in _items!) Padding(padding: const EdgeInsets.only(bottom: 10), child: EngineExamCard(exam: e, onOpen: () => _open(e))),
+        for (final e in _items!) Padding(padding: const EdgeInsets.only(bottom: 10), child: EngineExamCard(exam: e, onOpen: () => _open(e), offlineSaved: _saved.contains(asInt(e['id'])))),
       ]),
     );
   }
