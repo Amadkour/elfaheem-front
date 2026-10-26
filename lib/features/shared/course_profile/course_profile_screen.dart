@@ -5,9 +5,11 @@
 //   assistant (TA)      sections/labs by default; lecture content / lecture attendance when the instructor grants it
 //   student             material + secured video player, sessions, own attendance, progress, certificates
 //   closed course       read-only material behind an archive pass (auto · request · code)
+//   earlier version     staff open a past run (term) from Archive → Versions: read-only (runId)
 //
 // Open with openCourseProfile(context, courseId) or the named route '/course-profile' (arguments: course id).
-// The server decides the role and the capabilities (GET /api/v1/course-profile/{id}); tabs come from cpTabs().
+// The server decides the role and the capabilities (GET /api/v1/course-profile/{id}[?run_id=]) and enforces them on
+// every write; tabs come from cpTabs(). The header is identity only — each role's numbers live on its overview.
 library;
 
 import 'package:flutter/material.dart';
@@ -22,7 +24,6 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../rag/rag_chat_screen.dart';
 
 import '../../admin/admin_common.dart' show t;
-import '../../student/analysis/student_course_analytics_screen.dart';
 import 'course_profile_announcements.dart';
 import 'course_profile_models.dart';
 import 'course_profile_parts.dart';
@@ -30,16 +31,19 @@ import 'course_profile_parts.dart';
 /// At or above this width the page shows a side rail (next session · announcements · team).
 const double kCpRailBreak = 1000;
 
-/// Opens the course profile.
-Future<void> openCourseProfile(BuildContext context, int courseId) =>
+/// Opens the course profile (an earlier version with [runId]).
+Future<void> openCourseProfile(BuildContext context, int courseId, {int? runId}) =>
     Navigator.of(context).push(MaterialPageRoute(
       settings: RouteSettings(name: '/course-profile', arguments: courseId),
-      builder: (_) => CourseProfileScreen(courseId: courseId),
+      builder: (_) => CourseProfileScreen(courseId: courseId, runId: runId),
     ));
 
 class CourseProfileScreen extends StatefulWidget {
-  const CourseProfileScreen({super.key, required this.courseId, this.initial, this.initialTab});
+  const CourseProfileScreen({super.key, required this.courseId, this.initial, this.initialTab, this.runId});
   final int courseId;
+
+  /// An earlier run (version) of the course, read-only. Null = the current one.
+  final int? runId;
 
   /// Optional preloaded payload (tests, or a caller that already fetched it).
   final Map<String, dynamic>? initial;
@@ -67,7 +71,8 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
 
   Future<void> _load() async {
     try {
-      final r = await ApiClient().get('/api/v1/course-profile/${widget.courseId}');
+      final r = await ApiClient().get('/api/v1/course-profile/${widget.courseId}',
+          queryParams: widget.runId == null ? null : {'run_id': widget.runId});
       if (!mounted) return;
       setState(() {
         _p = CourseProfile(Map<String, dynamic>.from(r as Map));
@@ -130,7 +135,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
                         SliverPadding(
                           padding: EdgeInsets.fromLTRB(pad, 12, pad, 0),
                           sliver: SliverList.list(children: [
-                            CpHeader(profile: p, onOpenAnalytics: p.isStudent ? () => _openAnalytics(p) : null),
+                            CpHeader(profile: p),
                             const SizedBox(height: 12),
                             ..._banners(context, p),
                           ]),
@@ -164,12 +169,22 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
     );
   }
 
-  void _openAnalytics(CourseProfile p) => Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => StudentCourseAnalyticsScreen(courseId: p.id, courseTitle: p.name(AppConfig.lang == 'ar'))));
-
   List<Widget> _banners(BuildContext context, CourseProfile p) {
     final c = context.colors;
     final out = <Widget>[];
+    if (p.pastVersion) {
+      final term = p.course['term'] is Map ? Map<String, dynamic>.from(p.course['term'] as Map) : const <String, dynamic>{};
+      final label = cpTermLabel(term, AppConfig.lang == 'ar');
+      return [
+        AppBanner(
+          icon: Icons.history_rounded,
+          color: c.accent,
+          text: t('نسخة سابقة من المقرر ($label) — للاطلاع فقط، ارجع للنسخة الحالية بزر الرجوع',
+              'An earlier version of the course ($label) — view only; go back for the current one'),
+        ),
+        const SizedBox(height: 10),
+      ];
+    }
     if (p.closed && p.isStudent) {
       final granted = p.archiveState == 'granted';
       out.add(AppBanner(
@@ -206,7 +221,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
   Widget _body(CourseProfile p, bool wide) => switch (_tab) {
         'lecture' => CpTrackTab(profile: p, track: 'lecture', onChanged: _load),
         'section' => CpTrackTab(profile: p, track: 'section', onChanged: _load),
-        'attendance' => CpAttendanceTab(profile: p),
+        'attendance' => CpAttendanceTab(profile: p, onChanged: _load),
         'announcements' => CpAnnouncementsTab(profile: p, onChanged: _load, load: widget.initial == null),
         'certificates' => CpCertificatesTab(profile: p, onChanged: _load),
         'team' => CpTeamTab(profile: p, onChanged: _load),
@@ -289,25 +304,22 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant _TabsDelegate old) => old.child != child || old.pad != pad;
 }
 
-/// The hero: course identity (code · status · term · organization), the instructor, the progress that matters to
-/// this role, and four numbers.
+/// The hero: who and what this course is — code · status · role chips, the name, organization · term, the instructor.
+/// Numbers are on the overview, per role.
 class CpHeader extends StatelessWidget {
-  const CpHeader({super.key, required this.profile, this.onOpenAnalytics});
+  const CpHeader({super.key, required this.profile});
   final CourseProfile profile;
-  final VoidCallback? onOpenAnalytics;
 
   @override
   Widget build(BuildContext context) {
     final p = profile;
     final c = context.colors;
     final ar = AppConfig.lang == 'ar';
-    final a = p.analytics;
     final org = p.course['org'] is Map ? Map<String, dynamic>.from(p.course['org'] as Map) : null;
     final term = p.course['term'] is Map ? Map<String, dynamic>.from(p.course['term'] as Map) : null;
     final teacher = p.instructor?['name'] ?? (p.course['teacher'] is Map ? (p.course['teacher'] as Map)['name'] : null);
     final orgName = org == null ? '' : '${(ar ? org['name_ar'] : org['name_en']) ?? org['name_ar'] ?? ''}';
-    final where = [orgName, if (term != null) '${term['year_label'] ?? ''}'].where((s) => s.trim().isNotEmpty).join(' · ');
-    String pct(dynamic v) => v is num ? '${v.round()}%' : '—';
+    final where = [orgName, if (term != null) cpTermLabel(term, ar)].where((s) => s.trim().isNotEmpty).join(' · ');
 
     final (statusLabel, statusColor) = switch (cpStatus(p)) {
       'archived' => (t('مؤرشف', 'Archived'), c.warning),
@@ -315,24 +327,6 @@ class CpHeader extends StatelessWidget {
       'upcoming' => (t('لم يبدأ بعد', 'Starts soon'), c.accent),
       _ => (t('جارٍ', 'In progress'), c.success),
     };
-    final progress = p.isStudent ? p.progress['overall'] : (p.isStaff ? a['avg_progress'] : null);
-
-    final stats = <(IconData, String, String)>[
-      if (p.isStudent) ...[
-        (Icons.how_to_reg_rounded, (a['expected'] ?? 0) == 0 ? '—' : '${a['attended']}/${a['expected']}', t('الحضور', 'Attendance')),
-        (Icons.co_present_rounded, '${a['lectures'] ?? 0}', t('محاضرات', 'Lectures')),
-        (Icons.science_rounded, '${a['sections'] ?? 0}', t('سكاشن', 'Sections')),
-        (Icons.workspace_premium_rounded, '${p.certificates.where((x) => x['issued'] == true).length}', t('شهادات', 'Certificates')),
-      ] else if (p.isStaff) ...[
-        (Icons.people_alt_rounded, '${a['students'] ?? 0}', t('الطلاب', 'Students')),
-        (Icons.how_to_reg_rounded, pct(a['attendance_rate']), t('نسبة الحضور', 'Attendance')),
-        (Icons.warning_amber_rounded, '${a['at_risk'] ?? 0}', t('معرّضون للحرمان', 'At risk')),
-        (Icons.event_busy_rounded, '${a['missed_by_staff'] ?? 0}', t('لم تُعقد', 'Not held')),
-      ] else ...[
-        (Icons.co_present_rounded, '${a['lectures'] ?? 0}', t('محاضرات', 'Lectures')),
-        (Icons.science_rounded, '${a['sections'] ?? 0}', t('سكاشن', 'Sections')),
-      ],
-    ];
 
     Widget chip(String label, {Color? dot, IconData? icon}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -359,7 +353,7 @@ class CpHeader extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(c.radiusLarge),
         gradient: LinearGradient(
-          colors: [c.primary, c.primaryDark],
+          colors: p.pastVersion ? [c.textMedium, c.textDark] : [c.primary, c.primaryDark],
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
         ),
@@ -367,10 +361,13 @@ class CpHeader extends StatelessWidget {
       ),
       child: LayoutBuilder(builder: (context, box) {
         final roomy = box.maxWidth >= 640;
-        final identity = Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 6, runSpacing: 6, children: [
             if (p.course['code'] != null) chip('${p.course['code']}', icon: Icons.tag_rounded),
-            chip(statusLabel, dot: statusColor),
+            if (p.pastVersion)
+              chip(t('نسخة سابقة', 'Earlier version'), icon: Icons.history_rounded)
+            else
+              chip(statusLabel, dot: statusColor),
             chip(cpRoleLabel(p.role), icon: Icons.badge_rounded),
           ]),
           const SizedBox(height: 10),
@@ -381,7 +378,7 @@ class CpHeader extends StatelessWidget {
             Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: Colors.white70)),
           ],
           if (teacher != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Row(children: [
               AppAvatar(name: '$teacher', url: p.instructor?['image_url']?.toString(), size: 28),
               const SizedBox(width: 8),
@@ -390,52 +387,6 @@ class CpHeader extends StatelessWidget {
                     style: appText(13, w: FontWeight.w700, c: Colors.white)),
               ),
             ]),
-          ],
-        ]);
-        final bar = progress is num
-            ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(p.isStudent ? t('تقدّمك في المقرر', 'Your progress') : t('متوسط تقدّم الطلاب', 'Average student progress'),
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: Colors.white70)),
-                  ),
-                  Text(pct(progress), style: appText(14, w: FontWeight.w800, c: Colors.white)),
-                ]),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: (progress / 100).clamp(0.0, 1.0).toDouble(),
-                    minHeight: 7,
-                    backgroundColor: Colors.white24,
-                    valueColor: const AlwaysStoppedAnimation(Colors.white),
-                  ),
-                ),
-              ])
-            : null;
-        final perRow = roomy ? stats.length : 2;
-        final tileW = ((box.maxWidth - 10 * (perRow - 1)) / perRow).floorToDouble();
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          identity,
-          if (bar != null) ...[const SizedBox(height: 16), bar],
-          if (stats.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Wrap(spacing: 10, runSpacing: 10, children: [
-              for (final s in stats)
-                SizedBox(width: tileW, child: AppHeroStat(icon: s.$1, value: s.$2, label: s.$3)),
-            ]),
-          ],
-          if (onOpenAnalytics != null) ...[
-            const SizedBox(height: 12),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: TextButton.icon(
-                style: TextButton.styleFrom(foregroundColor: Colors.white),
-                onPressed: onOpenAnalytics,
-                icon: const Icon(Icons.insights_rounded, size: 18),
-                label: Text(t('تحليلاتي في المقرر', 'My course analytics')),
-              ),
-            ),
           ],
         ]);
       }),

@@ -265,12 +265,18 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 // ════════════════════════════════════════════════════════════════════════════
 
 /// Teacher course profile: one card. While an attendance is running it shows the live code and
-/// counter and reopens the sheet; otherwise it opens the lesson picker (newest first).
+/// counter and reopens the sheet; otherwise it opens [target] directly (the lesson happening now),
+/// or the lesson picker (newest first) when there is none.
 class TeacherAttendanceCourseEntry extends StatelessWidget {
-  const TeacherAttendanceCourseEntry({super.key, required this.sessions});
+  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target,
+      this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 8)});
 
   /// Course order 1…n (the picker shows them inverted).
   final List<LauncherSession> sessions;
+
+  /// The lesson one tap opens (server-picked: live now / nearest today). Null → the picker.
+  final LauncherSession? target;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +287,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
         final t = TeacherAttendanceController.instance;
         final running = t.isOpen;
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: padding,
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // The web app is waiting for the classroom location from this phone.
             if (t.webLocationRequested && !kIsWeb) ...[
@@ -296,6 +302,8 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
             onTap: () {
               if (running) {
                 openAttendanceLive(context);
+              } else if (target != null) {
+                showTeacherAttendanceSheet(context, target!.id, title: target!.name);
               } else {
                 showSessionPickerSheet(context, sessions);
               }
@@ -311,12 +319,16 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               Expanded(
                 child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(running ? attT('att_t_running') : attT('att_launch_btn'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                           fontFamily: 'tajawal', fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
                   Text(
                     running
                         ? '${attT('att_t_present')}: ${t.code?.presentCount ?? 0}'
-                        : attT('att_t_entry_sub'),
+                        : (target?.name ?? attT('att_t_entry_sub')),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
                   ),
                 ]),
