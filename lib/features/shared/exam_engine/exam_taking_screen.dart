@@ -4,6 +4,7 @@
 // The screen talks to the engine through [ExamEngineApi]; the pure pieces live in exam_taking.dart.
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -13,6 +14,7 @@ import 'package:screen_protector/screen_protector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t, asMapList;
+import '../../admin/admin_money_p8.dart' show p8SaveBytes;
 import '../../student/courses/security/device_id_service.dart';
 import 'exam_consent_screen.dart';
 import 'exam_engine_api.dart';
@@ -43,17 +45,23 @@ Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {St
       appToast(examCodeText(r.code ?? '') == (r.code ?? '') ? r.message : examCodeText(r.code ?? ''), error: true);
       return;
     }
-    await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ExamTakingScreen(examTitle: title, startReply: r.map, deviceId: deviceId)));
+    await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ExamTakingScreen(examTitle: title, startReply: r.map, deviceId: deviceId,
+        examId: examId, hasPaperFile: exam['has_paper_file'] == true, paperFile: exam['paper_file'] is Map ? asMap(exam['paper_file']) : null)));
   }
 
   await start(context);
 }
 
 class ExamTakingScreen extends StatefulWidget {
-  const ExamTakingScreen({super.key, required this.examTitle, required this.startReply, required this.deviceId});
+  const ExamTakingScreen({super.key, required this.examTitle, required this.startReply, required this.deviceId, this.examId, this.hasPaperFile = false, this.paperFile});
   final String examTitle;
   final Map<String, dynamic> startReply;   // {attempt, exam_session, resumed, accommodation}
   final String deviceId;
+  final int? examId;
+
+  /// The exam is given as a file (quick exam): the app bar offers it for download.
+  final bool hasPaperFile;
+  final Map<String, dynamic>? paperFile;   // {name, content_type, size}
 
   @override
   State<ExamTakingScreen> createState() => _ExamTakingScreenState();
@@ -262,6 +270,30 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     _persistPending();
   }
 
+  /// A `file_upload` answer goes straight to the server (not through the autosave queue).
+  Future<void> _uploadFile(PaperQuestion q) async {
+    if (_locked || _finished) return;
+    final f = await FilePicker.pickFile(type: FileType.custom, allowedExtensions: const ['pdf', 'docx', 'doc', 'png', 'jpg', 'jpeg']);
+    if (f == null || !mounted) return;
+    final bytes = kIsWeb || f.path == null ? await f.readAsBytes() : null;
+    final r = await _api.uploadAnswerFile(_attemptId, q.questionId,
+        fileName: f.name, bytes: bytes, path: kIsWeb ? null : f.path, session: _session, deviceId: widget.deviceId);
+    if (!mounted) return;
+    if (!r.ok) return appToast(examCodeText(r.code ?? '') == (r.code ?? '') ? r.message : examCodeText(r.code ?? ''), error: true);
+    setState(() => q.answer = {'file': asMap(r.map['file'])});
+    appToast(t('رُفع ملف إجابتك', 'Your answer file is uploaded'));
+  }
+
+  Future<void> _downloadPaper() async {
+    try {
+      final bytes = await _api.paperFile(widget.examId!);
+      final f = widget.paperFile;
+      await p8SaveBytes(bytes, '${f?['name'] ?? 'exam.pdf'}', mime: '${f?['content_type'] ?? 'application/octet-stream'}');
+    } catch (e) {
+      appToast('$e', error: true);
+    }
+  }
+
   void _goTo(int i) {
     final all = _paper.all;
     if (i < 0 || i >= all.length) return;
@@ -333,7 +365,11 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
         key: const ValueKey('exam.taking'),
         appBar: AppBar(
           title: Text(widget.examTitle, overflow: TextOverflow.ellipsis),
-          actions: [ExamTimerChip(remainingSeconds: left, timed: _clock.timed)],
+          actions: [
+            if (widget.hasPaperFile && widget.examId != null)
+              IconButton(onPressed: _downloadPaper, icon: const Icon(Icons.file_download_rounded), tooltip: t('ملف الامتحان', 'Exam file')),
+            ExamTimerChip(remainingSeconds: left, timed: _clock.timed),
+          ],
         ),
         child: q == null
             ? AppEmpty(icon: Icons.quiz_outlined, title: t('لا توجد أسئلة إلكترونية في هذه الورقة', 'No online questions in this paper'))
@@ -347,6 +383,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
                     section: _paper.sections[q.sectionIndex],
                     enabled: !_locked && !_finished,
                     onAnswer: (a) => _answer(q, a),
+                    onPickFile: () => _uploadFile(q),
                   ),
                 ),
                 ExamNavBar(
@@ -439,11 +476,14 @@ class ExamProgressBar extends StatelessWidget {
 }
 
 class ExamQuestionCard extends StatefulWidget {
-  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer});
+  const ExamQuestionCard({super.key, required this.question, required this.section, required this.enabled, required this.onAnswer, this.onPickFile});
   final PaperQuestion question;
   final PaperSection section;
   final bool enabled;
   final void Function(Map<String, dynamic> answer) onAnswer;
+
+  /// `file_upload`: pick and upload the answer file.
+  final VoidCallback? onPickFile;
 
   @override
   State<ExamQuestionCard> createState() => _ExamQuestionCardState();
@@ -577,8 +617,20 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
         return [TextField(controller: _text, enabled: enabled, minLines: q.type == 'essay' ? 6 : 2, maxLines: q.type == 'essay' ? 20 : 4,
             decoration: InputDecoration(hintText: t('اكتب إجابتك هنا', 'Write your answer here')),
             onChanged: (v) => widget.onAnswer(encodeText(v)))];
+      case 'file_upload':
+        final file = a['file'] is Map ? asMap(a['file']) : null;
+        return [
+          if (file != null)
+            AppBanner(icon: Icons.task_alt_rounded, color: context.colors.success, text: '${file['name'] ?? ''}'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: enabled ? widget.onPickFile : null,
+            icon: const Icon(Icons.upload_file_rounded),
+            label: Text(file == null ? t('ارفع ملف إجابتك (PDF أو Word أو صورة)', 'Upload your answer (PDF, Word or a photo)') : t('استبدال الملف', 'Replace the file')),
+          ),
+        ];
       default:
-        return [AppBanner(icon: Icons.info_outline_rounded, text: t('هذا النوع من الأسئلة يُجاب عليه ورقياً أو برفع ملف (قريباً)', 'This question type is answered on paper or by file upload (coming soon)'))];
+        return [AppBanner(icon: Icons.info_outline_rounded, text: t('هذا النوع من الأسئلة يُجاب عليه ورقياً', 'This question type is answered on paper'))];
     }
   }
 

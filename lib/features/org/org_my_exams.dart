@@ -26,6 +26,9 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
+import '../shared/exam_engine/exam_quick.dart' show examForSlot;
+import '../shared/exam_engine/exam_quick_screen.dart' show showSlotExamSheet;
 import 'org_schedule_versions.dart' show calendarDate;
 import 'org_v3.dart';
 
@@ -58,6 +61,7 @@ class MyExam {
   final int? myRoomId;
 
   bool get invigilating => role == 'invigilator';
+  bool get teaching => role == 'teacher';
 
   String get courseName => _pick(course) ?? '#$courseId';
   String get orgName => _pick(organization) ?? '';
@@ -345,6 +349,22 @@ class _NextExamHeroState extends State<_NextExamHero> {
   }
 }
 
+/// A teacher's timetabled exam: create the engine exam now (or not), or open the one already made from this slot.
+Future<void> openTeacherSlotExam(BuildContext context, MyExam e) async {
+  final scope = await ExamAuthoringApi().resolveScope(e.courseId, orgId: e.orgId);
+  if (!context.mounted) return;
+  if (scope.list.unavailable) return appToast(t('الاختبارات الإلكترونية تحتاج تحديث الخادم', 'Online exams need a server update'), error: true);
+  await showSlotExamSheet(context,
+      courseName: e.courseName,
+      courseId: e.courseId,
+      orgId: scope.orgId,
+      slotId: e.id,
+      kind: e.kind,
+      startsAt: e.start,
+      endsAt: e.end,
+      exam: scope.list.ok ? examForSlot(asMapList(scope.list.map['items']), e.id) : null);
+}
+
 class _ExamCard extends StatelessWidget {
   const _ExamCard({required this.e});
   final MyExam e;
@@ -357,6 +377,7 @@ class _ExamCard extends StatelessWidget {
     final running = !over && !e.start!.isAfter(now);
     final accent = over ? c.textLight : (e.kind == 'midterm' ? c.primary : c.warning);
     return AppCard(
+      onTap: e.teaching ? () => openTeacherSlotExam(context, e) : null,
       padding: const EdgeInsets.all(14),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Container(
@@ -384,6 +405,7 @@ class _ExamCard extends StatelessWidget {
             Wrap(spacing: 6, runSpacing: 6, children: [
               if (running) AppTag(t('جارٍ الآن', 'On now'), c.success, icon: Icons.circle),
               if (e.invigilating) AppTag(t('أنت مراقب', 'You invigilate'), c.primaryDark, icon: Icons.visibility_rounded),
+              if (e.teaching) AppTag(t('مقررك — اضغط لإنشاء الاختبار', 'Your course — tap to create the exam'), c.primary, icon: Icons.edit_note_rounded),
               if (over) AppTag(t('انتهى', 'Over'), c.textLight),
             ]),
             if (e.roomNames.isNotEmpty) ...[
