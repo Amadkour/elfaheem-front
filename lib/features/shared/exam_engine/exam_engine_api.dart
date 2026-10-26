@@ -3,6 +3,8 @@
 // Every call returns an [EngineResult]: `ok`, the JSON map, and on failure the ApiException's status / code so
 // screens can map codes with `examCodeText`. `unavailable` is true when the engine is not routed yet (a bare 404
 // "Not Found" / 405 from the proxy, or no network at all): the legacy exam flow stays in charge then.
+import 'dart:typed_data';
+
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../admin/admin_common.dart' show asMap;
@@ -85,6 +87,15 @@ class ExamEngineApi {
 
   Future<EngineResult> events(int attemptId, List<Map<String, dynamic>> events, {required String session, String? deviceId}) =>
       engineCall(() => _api.post('$base/attempts/$attemptId/events', body: {'events': events}, headers: _h(session, deviceId)));
+
+  /// A `file_upload` answer: stored by the server, which saves the answer as {file: {name, content_type, size, sha256}}.
+  Future<EngineResult> uploadAnswerFile(int attemptId, int questionId,
+          {required String fileName, Uint8List? bytes, String? path, required String session, String? deviceId}) =>
+      engineCall(() => _api.postMultipart('$base/attempts/$attemptId/files?question_id=$questionId',
+          fields: const {}, fileField: 'file', fileName: fileName, fileBytes: bytes, filePath: path, headers: _h(session, deviceId)));
+
+  /// The exam given as a file (settings.paper_file), while the student may sit it.
+  Future<Uint8List> paperFile(int examId) => _api.getBytes('$base/exams/$examId/paper-file');
 
   Future<EngineResult> result(int attemptId) => engineCall(() => _api.get('$base/attempts/$attemptId/result'));
 
