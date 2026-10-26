@@ -63,7 +63,7 @@ class TransferPaymentProvider extends BaseProvider {
   }
 
   Future<void> cancelAndRetryManualTransfer() async {
-    final r = await run(
+    await run(
           () => api.post(
         '/api/v1/payments/transfers/cancel-mine',
         queryParams: {'course_id': courseId},

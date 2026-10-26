@@ -17,6 +17,7 @@ import 'org_access_page.dart' show OrgAccessPage, OrgActivityPage;
 import 'org_department_dashboard.dart' show openDepartmentDashboard;
 import 'org_departments_page.dart' show DeptLogo;
 import 'org_platform_settings_page.dart' show OrgPlatformSettingsPage;
+import 'org_sharing_pages.dart' show OrgSharingPage;
 import 'org_providers.dart';
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
@@ -63,6 +64,7 @@ class _OrgWorkspaceState extends State<OrgWorkspace> {
       if (s.can('terms')) ('terms', Icons.gavel_rounded, c.warning, t('اللوائح', 'Regulations'), const OrgTermsAdminPage()),
       if (s.can('roles')) ('roles', Icons.admin_panel_settings_rounded, c.purple, t('الأدوار والصلاحيات', 'Roles & privileges'), const OrgAccessPage()),
       if (s.isOrgAdmin) ('platform', Icons.tune_rounded, c.primary, t('الوقت والميزات', 'Time & features'), const OrgPlatformSettingsPage()),
+      if (s.canAny('sharing')) ('sharing', Icons.handshake_rounded, c.success, t('المشاركة مع المؤسسات', 'Sharing with organizations'), const OrgSharingPage()),
       if (s.can('audit')) ('audit', Icons.history_rounded, c.textMedium, t('سجل النشاط', 'Activity log'), const OrgActivityPage()),
       if (s.canAny('complaints') || s.canAny('forms'))
         ('datacenter', Icons.insights_rounded, c.primary, t('مركز البيانات', 'Data Center'), DataCenterPage(orgId: s.currentId, embedded: true)),

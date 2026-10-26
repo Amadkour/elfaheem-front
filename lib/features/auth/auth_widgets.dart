@@ -17,7 +17,6 @@ import 'auth_provider.dart';
 // ── Brand colours ─────────────────────────────────────────────────────────────
 const _kBrandLight = Color(0xFFEBF1FD);
 const _kBorder = Color(0xFFE5E7EB);
-const _kText = Color(0xFF16181D);
 const _kMuted = Color(0xFF6B7280);
 
 // ── 1. Sidebar (web only) ─────────────────────────────────────────────────────

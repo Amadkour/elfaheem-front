@@ -38,6 +38,7 @@ import 'compalints/complaint_provider.dart';
 import 'compalints/complaints_screen.dart';
 import 'course_instractor_profile.dart';
 import 'components/setting_title.dart';
+import 'privacy_export.dart' show DataExportPage, dataExportEntryLabel;
 import 'profile_provider.dart' show ProfileProvider;
 import 'update_account_widget.dart';
 import '../../../utils/helpers.dart';
@@ -397,6 +398,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               iconColor: c.success,
                               label: 'privacy'.tr,
                               onTap: () => _push(TermsScreen()),
+                            ),
+                          ),
+                          ParentComponent(
+                            featureKey: 'profile.data_export',
+                            child: SettingsTile(
+                              icon: Icons.inventory_2_rounded,
+                              iconBg: c.primaryTint,
+                              iconColor: c.primary,
+                              label: dataExportEntryLabel(),
+                              onTap: () => _push(const DataExportPage()),
                             ),
                           ),
                           ParentComponent(

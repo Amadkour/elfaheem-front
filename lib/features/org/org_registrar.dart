@@ -10,6 +10,8 @@
 //   decisionKindText / riskText / decisionActionText
 library;
 
+import 'dart:math';
+
 import 'package:flutter_education_app/design/app_kit.dart' show AppTime;
 
 import '../admin/admin_common.dart';
@@ -106,6 +108,10 @@ String registrarCodeText(String code) => switch (code) {
       'auto_registration' => t('التسجيل في برنامجك تلقائي حسب الفرقة', 'Registration in your program is automatic by year'),
       'course_not_configured' => t('لم تُحدَّد الساعات المعتمدة للمقرر بعد', "The course's credit hours are not set yet"),
       'window_closed' => t('فترة التسجيل مغلقة', 'The registration window is closed'),
+      'pending_limit' => t('لديك طلبات قيد الانتظار بالفعل — انتظر نتيجتها أولاً', 'You already have requests waiting — wait for their result first'),
+      'idempotency_mismatch' => t('أُعيد استخدام مفتاح الطلب لطلب مختلف — أعد المحاولة', 'The request key was reused for a different request — try again'),
+      'gone' => t('لم يعد المقرر أو الفصل موجوداً', 'The course or term no longer exists'),
+      'internal' => t('تعذر إتمام الطلب — تواصل مع شؤون الطلاب', 'The request could not be completed — contact the registrar'),
       'not_offered_this_term' => t('لا يُطرح في هذا الفصل', 'Not offered this term'),
       'other_program' => t('تابع لقسم علمي آخر', 'Belongs to another department'),
       'already_registered' => t('مسجّل بالفعل', 'Already registered'),
@@ -265,3 +271,61 @@ class RegCart {
 
 /// GPA to two decimals (null → "—").
 String gpaText(dynamic v) => v == null ? '—' : asDouble(v).toStringAsFixed(2);
+
+// ── queue-first registration (server: POST …/register-requests, D-015) ──────────────────────────────────────────
+
+/// Is a queued registration request finished?
+bool regRequestDone(String? status) => status == 'done' || status == 'failed';
+
+/// What the waiting sheet says while the request is in the queue.
+String regQueueText(String? status, {int? depth}) => switch (status) {
+      'queued' => depth != null && depth > 1
+          ? t('طلبك في الصف — أمامك ${depth - 1}', 'In line — ${depth - 1} ahead of you')
+          : t('طلبك في الصف', 'Your request is in line'),
+      'processing' => t('يتم تسجيلك الآن…', 'Registering you now…'),
+      'done' => t('تم', 'Done'),
+      'failed' => t('لم يُقبل الطلب', 'The request was not accepted'),
+      _ => t('جارٍ الإرسال…', 'Sending…'),
+    };
+
+/// One line per course from a finished request (`result` of the status reply or the synchronous reply):
+/// a cart `{results: {courseId: {status, blocks}}}` or a single `{status, registration, blocks}`.
+List<String> regResultLines(Map<String, dynamic> result, String Function(int id) nameOf) {
+  final lines = <String>[];
+  final results = asMap(result['results']);
+  if (results.isNotEmpty) {
+    results.forEach((cid, v) {
+      final m = asMap(v);
+      final st = '${m['status']}';
+      final why = st == 'rejected' ? blockText(asMapList(m['blocks']).firstOrNull ?? const {}, courseName: nameOf) : regStatusText(st);
+      lines.add('${nameOf(asInt(cid))}: $why');
+    });
+    return lines;
+  }
+  final st = '${result['status'] ?? ''}';
+  if (st.isEmpty) return lines;
+  final cid = asInt(asMap(result['registration'])['course_id']);
+  final why = st == 'rejected' ? blockText(asMapList(result['blocks']).firstOrNull ?? const {}, courseName: nameOf) : regStatusText(st);
+  lines.add(cid > 0 ? '${nameOf(cid)}: $why' : why);
+  return lines;
+}
+
+/// Was a submit turned away before anything was stored (admission control 503, throttle 429, a dying server, or
+/// no answer at all — a dropped socket, status 0)? The client may retry with the SAME idempotency key; nothing is
+/// registered until a 202 / 200 comes back, and a key that did get through returns the same request.
+bool regQueueBusy(String? code, int statusCode) =>
+    code != 'pending_limit' && code != 'idempotency_mismatch' && (code == 'too_many_attempts' || statusCode == 429 || statusCode >= 500 || statusCode <= 0);
+
+/// After the retries: was the request CERTAINLY not stored (429 throttle, 503 admission control) — or do we simply
+/// not know (another 5xx, no answer)? The server stores the request before it dispatches it, so a 500 or a dropped
+/// socket may hide a stored request: say "could not confirm" and point to My requests, never "nothing was registered".
+bool regSubmitCertainlyRejected(String? code, int statusCode) => statusCode == 429 || statusCode == 503 || code == 'too_many_attempts';
+
+/// How long to wait before the next status poll: what the server says (`poll_after_ms`), kept between 1 and 10 s.
+int regPollAfterMs(Object? v) {
+  final n = asInt(v);
+  return n <= 0 ? 1500 : n.clamp(1000, 10000);
+}
+
+/// A client-side idempotency key: one per submit attempt, reused by that attempt's retries.
+String newIdempotencyKey() => '${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}-${Random().nextInt(1 << 30).toRadixString(36)}';

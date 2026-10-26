@@ -358,7 +358,6 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = context.read<AdminUsersProvider>();
 
     if (loading) {

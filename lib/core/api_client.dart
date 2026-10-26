@@ -14,10 +14,13 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/token_storage.dart';
 import 'package:flutter_education_app/main.dart';
+import 'package:flutter/material.dart' show MaterialPageRoute;
+import '../features/admin/admin_mfa_page.dart' show AdminMfaPage;
+import '../features/auth/teacher_onboarding_token.dart';
 import '../features/shared/guest/guest_state.dart';
 import '../features/student/courses/security/device_blocked_dialog.dart';
 import '../features/student/courses/security/device_id_service.dart';
@@ -353,36 +356,6 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode, ${type.name}): $message';
 }
 
-// ── Token Storage ─────────────────────────────────────────────────────────────
-
-class TokenStorage {
-  static const _accessKey = 'access_token';
-  static const _refreshKey = 'refresh_token';
-
-  Future<void> save({
-    required String access,
-    required String refresh,
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.setString(_accessKey, access);
-    await prefs.setString(_refreshKey, refresh);
-  }
-
-  Future<String?> get accessToken async =>
-      (await SharedPreferences.getInstance()).getString(_accessKey);
-
-  Future<String?> get refreshToken async =>
-      (await SharedPreferences.getInstance()).getString(_refreshKey);
-
-  Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    await prefs.remove(_accessKey);
-    await prefs.remove(_refreshKey);
-  }
-}
-
 // ── Logging interceptor (only attached when AppConfig.showLogs == true) ──────
 
 class _ApiLogInterceptor extends Interceptor {
@@ -390,6 +363,9 @@ class _ApiLogInterceptor extends Interceptor {
   static const _maxBodyChars = 4000;
   static const _sensitiveKeys = {
     'authorization',
+    'x-exam-session',
+    'x-enc-session',
+    'exam_session',
     'password',
     'new_password',
     'old_password',
@@ -398,6 +374,10 @@ class _ApiLogInterceptor extends Interceptor {
     'refresh_token',
     'token',
     'secret',
+    'x-onboarding-token',
+    'onboarding_token',
+    'mfa_token',
+    'mfa_enroll_token',
   };
 
   static const _encoder = JsonEncoder.withIndent('  ');
@@ -539,6 +519,50 @@ class _ApiLogInterceptor extends Interceptor {
   }
 }
 
+// ── Pure request rules (unit-tested in test/auth/api_client_rules_test.dart) ──
+
+/// True for the teacher onboarding routes the server guards with `onboarding_user` (back/services/auth_service.py):
+/// POST /auth/teacher-profile and /auth/teacher-documents overview / upload-attachment/{email} / create / finalize,
+/// plus DELETE /auth/teacher-documents/{id}. Not `teacher-profile-extras`, `required-types` or `{id}/public`.
+bool isTeacherOnboardingPath(String path) {
+  final q = path.indexOf('?');
+  final p = (q < 0 ? path : path.substring(0, q)).replaceFirst(RegExp(r'/+$'), '');
+  return _onboardingPath.hasMatch(p);
+}
+
+final _onboardingPath = RegExp(
+  r'/api/v1/auth/(teacher-profile|teacher-documents(/(overview|finalize|upload-attachment/[^/]+|\d+))?)$',
+);
+
+/// The `X-Onboarding-Token` header an onboarding request still lacks (empty when it is not an onboarding route,
+/// there is no token, or the caller already set the header itself — a header the caller set always wins).
+Map<String, String> onboardingHeaderFor(String path, String? token, Map<String, dynamic> existing) {
+  if (token == null || token.isEmpty || !isTeacherOnboardingPath(path)) return const {};
+  final has = existing.keys.any((k) => k.toLowerCase() == 'x-onboarding-token');
+  return has ? const {} : {'X-Onboarding-Token': token};
+}
+
+/// Whether a failed request should open the MFA enrollment page: a 403 `mfa_enrollment_required` on an
+/// authenticated call by a signed-in user (never a guest, never while viewing as someone else), not from the MFA
+/// routes themselves (they are exempt server-side; this also keeps the page from re-opening itself), and only when
+/// the page has not been opened yet in this session.
+bool shouldOpenMfaEnrollment({
+  required int? status,
+  required String? code,
+  required String path,
+  required bool needsAuth,
+  required bool guest,
+  required bool viewingAs,
+  required bool alreadyOpened,
+}) =>
+    status == 403 &&
+    code == 'mfa_enrollment_required' &&
+    needsAuth &&
+    !guest &&
+    !viewingAs &&
+    !alreadyOpened &&
+    !path.contains('/api/v1/auth/mfa/');
+
 // ── ApiClient ─────────────────────────────────────────────────────────────────
 //
 // Every method (GET, POST, PUT, DELETE, multipart) goes through Dio and
@@ -589,8 +613,10 @@ class _EncryptionInterceptor extends Interceptor {
   _EncSession? _session;
   Future<_EncSession>? _handshake;
 
+  // `noEnc`: binary downloads (scan images, PDFs) opt out — the server would otherwise wrap the bytes in a JSON
+  // envelope. Auth, TLS and certificate pinning still apply to them.
   bool _skips(RequestOptions o) =>
-      o.path.contains('/security/handshake') || o.data is FormData;
+      o.path.contains('/security/handshake') || o.data is FormData || o.extra['noEnc'] == true;
 
   Future<_EncSession> _ensureSession() {
     final cached = _session;
@@ -606,8 +632,6 @@ class _EncryptionInterceptor extends Interceptor {
     // A bare Dio instance, deliberately NOT the pinned/encrypted one above —
     // the handshake bootstraps the very session this interceptor is part of,
     // so it can't depend on itself. TLS + AppConfig.baseUrl still apply.
-    // ignore: avoid_print
-    ////print('[ENC] client_public=${_hex(clientPublic.bytes)}');
 
     final res = await Dio(BaseOptions(baseUrl: AppConfig.baseUrl)).post(
       '/api/v1/security/handshake',
@@ -615,8 +639,6 @@ class _EncryptionInterceptor extends Interceptor {
     );
     final serverPublicBytes = base64Decode(res.data['server_public_key'] as String);
     final sessionId = res.data['session_id'] as String;
-    // ignore: avoid_print
-    ////print('[ENC] session_id=$sessionId server_public=${_hex(serverPublicBytes)}');
 
     final serverPublic = SimplePublicKey(serverPublicBytes, type: KeyPairType.x25519);
     final shared = await algo.sharedSecretKey(
@@ -624,25 +646,17 @@ class _EncryptionInterceptor extends Interceptor {
       remotePublicKey: serverPublic,
     );
     final sharedBytes = await shared.extractBytes();
-    // ignore: avoid_print
-    //print('[ENC] session_id=$sessionId shared_secret=${_hex(sharedBytes)}');
     final derived = await _kdfAlgo.deriveKey(
       secretKey: SecretKey(sharedBytes),
       nonce: _hkdfSalt,   // HKDF salt — must match server's explicit _HKDF_SALT
       info: _hkdfInfo,
     );
-    final derivedBytes = await derived.extractBytes();
-    // ignore: avoid_print
-    //print('[ENC] session_id=$sessionId derived_key=${_hex(derivedBytes)}');
 
     final session = _EncSession(sessionId, derived);
     _session = session;
     return session;
   }
 
-  // REMOVE before shipping — debug only.
-  static String _hex(List<int> bytes) =>
-      bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   Future<void> _tryDecrypt(Response? response) async {
     if (response == null) return;
     // Body may be a Map (normal), a JSON String (some web paths) or null
@@ -881,6 +895,11 @@ class ApiClient {
         }
       }
 
+      // Teacher onboarding: every onboarding route carries the onboarding token (docs/SECURITY_SCAN.md F2), also
+      // the ones a caller forgot to pass it to. The server reads it before `Authorization`, so a stale bearer left
+      // from an earlier session can't turn the call into a 401.
+      options.headers.addAll(onboardingHeaderFor(options.path, TeacherOnboardingToken.value, options.headers));
+
       // Device identity on EVERY request (server binds / checks it).
       // If it cannot be produced we send nothing: the server answers
       // DEVICE_ID_MISSING and the blocked-device dialog explains it, rather
@@ -919,6 +938,17 @@ class ApiClient {
       if (status == 403 && needsAuth) {
         final raw = error.response?.data;
         final (code, _) = ApiException.codedDetail(raw);
+        if (shouldOpenMfaEnrollment(
+          status: status,
+          code: code,
+          path: req.path,
+          needsAuth: needsAuth,
+          guest: GuestState.active,
+          viewingAs: ViewAsState.targetId != null,
+          alreadyOpened: _mfaPrompted,
+        )) {
+          _openMfaEnrollment();
+        }
         if (code == 'DEVICE_MISMATCH' || code == 'DEVICE_ID_MISSING') {
           if (error.requestOptions.path.endsWith('/sessions')) {
             final courseId = error.requestOptions.path
@@ -991,28 +1021,34 @@ class ApiClient {
   ///
   /// On Flutter Web application/json triggers a CORS preflight (OPTIONS);
   /// FastAPI's CORSMiddleware is expected to answer it.
+  /// `headers`: extra request headers a feature needs (the Exam Engine's `X-Exam-Session`); auth / device headers
+  /// are still added by the interceptors and win on conflict.
   Options _jsonOpts({
     bool auth = true,
     required String method,
+    Map<String, String>? headers,
   }) =>
       Options(
         method: method,
         contentType: Headers.jsonContentType,
         receiveTimeout: const Duration(seconds: 30),
+        headers: headers,
         extra: {'auth': auth},
       );
 
   /// GET calls: no Content-Type (avoids needless preflight on public GETs).
   /// Authenticated GETs may still preflight because of `Authorization`.
-  Options _getOpts({bool auth = true}) => Options(
+  Options _getOpts({bool auth = true, Map<String, String>? headers}) => Options(
     method: 'GET',
     receiveTimeout: const Duration(seconds: 30),
+    headers: headers,
     extra: {'auth': auth},
   );
 
   /// File uploads/downloads: no send/receive timeout.
-  Options _fileOpts({bool auth = true, String method = 'POST'}) => Options(
+  Options _fileOpts({bool auth = true, String method = 'POST', Map<String, String>? headers}) => Options(
     method: method,
+    headers: headers,
     extra: {'auth': auth},
   );
 
@@ -1058,9 +1094,11 @@ class ApiClient {
     if (refresh == null) return _RefreshResult.rejected;
 
     try {
+      // Body only (the query parameter leaked into access logs). The reply carries a NEW refresh token;
+      // the old one is dead, and reusing it signs the whole session out (401 refresh_reuse).
       final res = await _dio.post(
         '/api/v1/auth/refresh',
-        queryParameters: {'refresh_token': refresh},
+        data: {'refresh_token': refresh},
         options: Options(extra: {'auth': false, '_retried': true}),
       );
 
@@ -1103,6 +1141,8 @@ class ApiClient {
     try {
       ViewAsState.instance.stop(); // session is dead → leave view-as too
       await _storage.clear();
+      _mfaPrompted = false;
+      TeacherOnboardingToken.clear();
 
       if (AppConfig.testMode) log('redirect to login', name: 'API');
 
@@ -1113,6 +1153,20 @@ class ApiClient {
     } finally {
       Future.delayed(const Duration(seconds: 2), () => _redirecting = false);
     }
+  }
+
+  /// Set when the MFA enrollment page was opened for this session; reset only by a new session ([saveTokens]) or
+  /// by signing out ([clearTokens], login redirect). So a user who backs out of the page sees the error text on the
+  /// next refused call instead of the page again — never a loop.
+  bool _mfaPrompted = false;
+
+  /// 403 `mfa_enrollment_required`: the session predates `MFA_REQUIRED_ROLES` for this role. Opens the enrollment
+  /// page (A07's [AdminMfaPage], which works with the normal session: `/auth/mfa/*` stays open server-side).
+  void _openMfaEnrollment() {
+    final nav = navigatorKey.currentState;
+    if (_mfaPrompted || nav == null) return;
+    _mfaPrompted = true;
+    nav.push(MaterialPageRoute<void>(builder: (_) => const AdminMfaPage()));
   }
 
   bool _deviceDialogOpen = false;
@@ -1197,13 +1251,14 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.get(
           path,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _getOpts(auth: auth),
+          options: _getOpts(auth: auth, headers: headers),
         ),
       );
 
@@ -1215,6 +1270,7 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.post(
@@ -1222,7 +1278,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'POST'),
+          options: _jsonOpts(auth: auth, method: 'POST', headers: headers),
         ),
       );
 
@@ -1234,6 +1290,7 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.put(
@@ -1241,9 +1298,47 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'PUT'),
+          options: _jsonOpts(auth: auth, method: 'PUT', headers: headers),
         ),
       );
+
+  // ── Binary downloads and multi-file uploads (Exam Engine scans, answer sheets) ──
+
+  /// GET raw bytes (an image, a PDF). Outside the envelope encryption (see `noEnc` in the interceptor).
+  Future<Uint8List> getBytes(String path, {Map<String, dynamic>? queryParams, Map<String, String>? headers}) async {
+    final res = await _execute(() => _dio.get(path, queryParameters: queryParams,
+        options: Options(method: 'GET', responseType: ResponseType.bytes, headers: headers,
+            extra: {'auth': true, 'noEnc': true})));
+    return _asBytes(res);
+  }
+
+  /// POST a JSON body and receive raw bytes (e.g. a generated PDF). The body is small and not sensitive (ids).
+  Future<Uint8List> postForBytes(String path, {dynamic body, Map<String, String>? headers}) async {
+    final res = await _execute(() => _dio.post(path, data: body,
+        options: Options(method: 'POST', contentType: Headers.jsonContentType, responseType: ResponseType.bytes,
+            headers: headers, extra: {'auth': true, 'noEnc': true})));
+    return _asBytes(res);
+  }
+
+  /// multipart/form-data POST with several files under one field (`files`), plus plain fields.
+  Future<dynamic> postFiles(String path, {required List<(String, Uint8List)> files, String field = 'files',
+      Map<String, dynamic> fields = const {}, Map<String, String>? headers}) {
+    final form = FormData();
+    for (final e in fields.entries) {
+      if (e.value != null) form.fields.add(MapEntry(e.key, '${e.value}'));
+    }
+    for (final (name, bytes) in files) {
+      final lower = name.toLowerCase();
+      final mime = lower.endsWith('.pdf') ? 'application/pdf' : lower.endsWith('.png') ? 'image/png'
+          : lower.endsWith('.webp') ? 'image/webp' : lower.endsWith('.csv') ? 'text/csv'
+          : lower.endsWith('.xlsx') ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'image/jpeg';
+      form.files.add(MapEntry(field, MultipartFile.fromBytes(bytes, filename: name, contentType: MediaType.parse(mime))));
+    }
+    return _execute(() => _dio.post(path, data: form, options: _fileOpts(headers: headers)));
+  }
+
+  static Uint8List _asBytes(dynamic res) =>
+      res is Uint8List ? res : (res is List ? Uint8List.fromList(List<int>.from(res)) : Uint8List(0));
 
   // ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -1256,6 +1351,7 @@ class ApiClient {
         String? fileName,
         Uint8List? fileBytes,
         bool auth = true,
+        Map<String, String>? headers,
       }) {
     String mime = 'image/jpeg';
     final lower = (fileName ?? '').toLowerCase();
@@ -1273,7 +1369,7 @@ class ApiClient {
         ),
     });
     return _execute(
-          () => _dio.post(path, data: form, options: _fileOpts(auth: auth)),
+          () => _dio.post(path, data: form, options: _fileOpts(auth: auth, headers: headers)),
     );
   }
 
@@ -1284,6 +1380,7 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.patch(
@@ -1291,7 +1388,7 @@ class ApiClient {
           data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'PATCH'),
+          options: _jsonOpts(auth: auth, method: 'PATCH', headers: headers),
         ),
       );
 
@@ -1300,13 +1397,14 @@ class ApiClient {
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) =>
       _execute(
             () => _dio.delete(
           path,
           queryParameters: queryParams,
           cancelToken: cancelToken,
-          options: _jsonOpts(auth: auth, method: 'DELETE'),
+          options: _jsonOpts(auth: auth, method: 'DELETE', headers: headers),
         ),
       );
 
@@ -1318,6 +1416,7 @@ class ApiClient {
         String fieldName = 'file',
         void Function(int sent, int total)? onSendProgress,
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) async {
     final ext = p.extension(file.path).replaceFirst('.', '').toLowerCase();
     final mime = _imageMime(ext);
@@ -1339,7 +1438,7 @@ class ApiClient {
             contentType: MediaType.parse(mime),
           ),
         }),
-        options: _fileOpts(),
+        options: _fileOpts(headers: headers),
         onSendProgress: onSendProgress,
         cancelToken: cancelToken,
       ),
@@ -1366,6 +1465,7 @@ class ApiClient {
         int maxRetries = 0,
         Duration retryDelay = const Duration(seconds: 2),
         CancelToken? cancelToken,
+        Map<String, String>? headers,
       }) async {
     assert(
     filePath != null || fileBytes != null,
@@ -1415,7 +1515,7 @@ class ApiClient {
               () => _dio.post(
             path,
             data: form,
-            options: _fileOpts(auth: auth),
+            options: _fileOpts(auth: auth, headers: headers),
             onSendProgress: onSendProgress,
             cancelToken: cancelToken,
           ),
@@ -1444,12 +1544,28 @@ class ApiClient {
   Future<void> saveTokens({
     required String access,
     required String refresh,
-  }) =>
-      _storage.save(access: access, refresh: refresh);
+  }) {
+    _mfaPrompted = false; // a new session (login, MFA confirm): a later refusal may open the page again, once
+    // A new session never inherits an earlier account's onboarding token; the login answer that carries this
+    // session's token is read right after (MyAuthProvider.completeSession). Token refreshes don't come here.
+    TeacherOnboardingToken.clear();
+    return _storage.save(access: access, refresh: refresh);
+  }
 
-  Future<void> clearTokens() => _storage.clear();
+  Future<void> clearTokens() {
+    _mfaPrompted = false;
+    TeacherOnboardingToken.clear();
+    return _storage.clear();
+  }
 
   Future<String?> get accessToken => _storage.accessToken;
+
+  Future<String?> get refreshToken => _storage.refreshToken;
+
+  /// Synchronous session flag (see TokenStorage.hasSession); `primeSession()` loads it at start-up.
+  bool get hasSession => _storage.hasSession;
+
+  Future<void> primeSession() => _storage.prime();
 
   // ── MIME helpers ──────────────────────────────────────────────────────────
 

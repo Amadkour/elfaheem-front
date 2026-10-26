@@ -683,12 +683,11 @@ class _ColumnEditorState extends State<_ColumnEditor> {
 
 /// A small tappable chip that inserts something into the formula.
 class _InsertChip extends StatelessWidget {
-  const _InsertChip({required this.label, required this.color, required this.onTap, this.tooltip, this.mono = true, this.selected = false, this.icon});
+  const _InsertChip({required this.label, required this.color, required this.onTap, this.mono = true, this.selected = false, this.icon});
 
   final String label;
   final Color color;
   final VoidCallback onTap;
-  final String? tooltip;
   final bool mono, selected;
   final IconData? icon;
 
@@ -713,7 +712,7 @@ class _InsertChip extends StatelessWidget {
         ]),
       ),
     );
-    return tooltip == null ? chip : Tooltip(message: tooltip!, child: chip);
+    return chip;
   }
 }
 

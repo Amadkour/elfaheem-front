@@ -28,6 +28,7 @@ import 'package:url_launcher/url_launcher.dart'; // already used by complaint_at
 
 import 'admin_common.dart';
 import 'admin_finance_provider.dart';
+import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -56,7 +57,19 @@ class _View extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: t('المدفوعات والتحويلات', 'Payments & payouts')),
+      appBar: ScreenAppBar(title: t('المدفوعات والتحويلات', 'Payments & payouts'), actions: [
+        // Phase 8: fee policy · per-organization fees · ledger report
+        IconButton(
+          tooltip: t('الرسوم والتقارير المالية', 'Fees & financial reports'),
+          icon: const Icon(Icons.account_balance_wallet_outlined),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminMoneyPage())),
+        ),
+        IconButton(
+          tooltip: t('معالجة استرداد معلّق', 'Resolve a pending refund'),
+          icon: const Icon(Icons.sync_alt_rounded),
+          onPressed: () => showRefundResolveSheet(context),
+        ),
+      ]),
       child: Column(
         children: [
           const _SummaryStrip(),
@@ -1283,6 +1296,28 @@ class _PaymentCardState extends State<_PaymentCard> {
                   ),
                 ),
               ],
+            ),
+          ],
+
+          // ── refund (Phase 8): full or partial; manual / force are offered to the super admin only ──
+          if (widget.ctl == null && status == 'completed' && asInt(p['id']) > 0) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final fin = context.read<AdminFinanceProvider>();
+                  final changed = await showRefundSheet(context,
+                      paymentId: asInt(p['id']), amount: p['amount'] == null ? null : asDouble(p['amount']), currency: currency);
+                  if (changed) {
+                    fin.loadSummary();
+                    fin.load(fin.tab, silent: true);
+                  }
+                },
+                icon: const Icon(Icons.undo_rounded, size: 18),
+                label: Text(t('استرداد', 'Refund')),
+                style: OutlinedButton.styleFrom(foregroundColor: _violet),
+              ),
             ),
           ],
 

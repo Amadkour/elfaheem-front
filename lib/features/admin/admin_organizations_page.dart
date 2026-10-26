@@ -131,6 +131,7 @@ Future<void> _openReview(BuildContext context, int id) async {
   final d = await OrgApi.i.getMap('$_base/$id');
   if (d == null || !context.mounted) return;
   bool trustChildren = asMap(d['settings'])['child_approval'] == 'parent';
+  bool sharingOn = asMap(asMap(d['settings'])['sharing'])['enabled'] != false;
   bool busy = false;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -201,6 +202,17 @@ Future<void> _openReview(BuildContext context, int id) async {
                   if (status == 'approved') {
                     await OrgApi.i.put('$_base/$id/policy', {'child_approval': v ? 'parent' : 'platform'}, t('تم', 'Done'));
                   }
+                },
+              ),
+            if (d['parent_id'] == null && status == 'approved')
+              OrgSwitchRow(
+                key: const ValueKey('org.sharing'),
+                title: t('مشاركة البيانات مع المؤسسات الأخرى', 'Data sharing with other organizations'),
+                subtitle: t('إيقافها يمنع هذه المؤسسة من عرض أي مشاركة أو التحقق من خريجيها', 'Off: this organization cannot offer shares or answer graduate verification'),
+                value: sharingOn,
+                onChanged: (v) async {
+                  set(() => sharingOn = v);
+                  await OrgApi.i.put('$_base/$id/sharing', {'enabled': v}, t('تم', 'Done'));
                 },
               ),
             const SizedBox(height: 8),

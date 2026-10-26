@@ -31,6 +31,7 @@ import 'admin_devices_page.dart';
 import 'admin_features_page.dart';
 import 'admin_platform_settings_page.dart';
 import 'admin_finance_page.dart';
+import 'admin_mfa_page.dart';
 import 'admin_flags_settings_page.dart';
 import 'admin_organizations_page.dart';
 import 'admin_parent_link_settings_page.dart';
@@ -62,10 +63,20 @@ class AdminService {
     this.badge,
     this.featureKey,
     this.visible = true,
+    this.label,
+    this.desc,
   });
 
   final String labelKey;
   final String descKey;
+
+  /// Inline texts (already bilingual, `t(ar, en)`) that replace the translation keys; for services whose strings
+  /// are not in translation.json.
+  final String? label;
+  final String? desc;
+
+  String get labelText => label ?? labelKey.tr;
+  String get descText => desc ?? descKey.tr;
   final IconData icon;
   final List<Color> colors;
   final VoidCallback onTap;
@@ -310,6 +321,15 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           onTap: () => push(const AdminAuthSettingsPage()),
         ),
         AdminService(
+          labelKey: 'mfa',
+          descKey: 'mfa',
+          label: mfaEntryLabel(),
+          desc: t('تطبيق مصادقة يحمي حسابك مع كلمة المرور', 'An authenticator app protects your account on top of the password'),
+          icon: Icons.phonelink_lock_rounded,
+          colors: AdminPalette.violet,
+          onTap: () => push(const AdminMfaPage()),
+        ),
+        AdminService(
           labelKey: 'required_documents_title',
           descKey: 'svc_documents_d',
           icon: Icons.folder_shared_rounded,
@@ -389,7 +409,7 @@ Widget adminServiceTile(AdminService s) {
       icon: s.icon,
       iconBg: s.colors.last.withAlpha(38),
       iconColor: s.colors.last,
-      label: s.labelKey.tr,
+      label: s.labelText,
       onTap: s.onTap,
     ),
   );
@@ -513,7 +533,7 @@ class ServiceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        service.labelKey.tr,
+                        service.labelText,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: adminText(
@@ -524,7 +544,7 @@ class ServiceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        service.descKey.tr,
+                        service.descText,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: adminText(

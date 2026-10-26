@@ -90,7 +90,6 @@ class _ReportsBodyState extends State<_ReportsBody> {
   Widget build(BuildContext context) => ChangeNotifierProvider.value(
     value: _p,
     child: Consumer<ParentReportsProvider>(builder: (context, p, _) {
-      final c = context.colors;
       return Column(children: [
         // period + date selector ------------------------------------------------
         Padding(

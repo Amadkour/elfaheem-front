@@ -45,7 +45,6 @@ Future<Uint8List?> _pickImage(BuildContext context) async {
 }
 
 void _toast(BuildContext context, String message, {bool error = false}) {
-  final c = context.colors;
   showAppNotice(message, error: true);
 }
 

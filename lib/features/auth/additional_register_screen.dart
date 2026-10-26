@@ -1229,9 +1229,3 @@ IconData _materialIcon(String token) => switch (token) {
   'verified' => Icons.verified_outlined,
   _ => Icons.insert_drive_file_outlined,
 };
-
-String _statusLabel(String status) => switch (status) {
-  'approved' => 'doc_approved'.tr,
-  'rejected' => 'doc_rejected'.tr,
-  _ => 'doc_pending'.tr,
-};

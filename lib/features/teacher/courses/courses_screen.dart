@@ -157,46 +157,6 @@ class _CoursesProgress extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  Header variants
-// ═══════════════════════════════════════════════════════════════════════════════
-
-class _WebHeader extends StatelessWidget {
-  const _WebHeader();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 60,
-    padding: const EdgeInsets.symmetric(horizontal: 28),
-    decoration: BoxDecoration(
-      color: context.colors.cardBg,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
-          blurRadius: 12,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 4,
-          height: 24,
-          decoration: BoxDecoration(
-            gradient: context.colors.primaryGradient,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text('my_courses'.tr, style: context.colors.h2.copyWith(fontSize: 17)),
-        const Spacer(),
-        _AddCourseButton(compact: false),
-      ],
-    ),
-  );
-}
-
 class _FloatingAddBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) => FloatingActionButton(
@@ -216,50 +176,6 @@ class _FloatingAddBtn extends StatelessWidget {
         boxShadow: context.colors.primaryShadow,
       ),
       child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
-    ),
-  );
-}
-
-class _AddCourseButton extends StatelessWidget {
-  final bool compact;
-
-  const _AddCourseButton({required this.compact});
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: () => Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const CourseFormScreen())),
-    child: Container(
-      height: 38,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 18),
-      decoration: BoxDecoration(
-        gradient: context.colors.primaryGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.primary.withValues(alpha: 0.32),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.add_rounded, color: Colors.white, size: 16),
-          const SizedBox(width: 6),
-          Text(
-            compact ? 'add'.tr : 'add_course'.tr,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              fontFamily: 'bahji',
-            ),
-          ),
-        ],
-      ),
     ),
   );
 }

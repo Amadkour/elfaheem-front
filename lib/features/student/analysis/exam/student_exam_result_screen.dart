@@ -108,7 +108,6 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final canRetry = s.canRetry;
     final remaining = s.remainingSubmissions;
 

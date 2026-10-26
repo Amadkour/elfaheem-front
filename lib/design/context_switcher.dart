@@ -23,6 +23,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../features/admin/admin_common.dart' show asInt, asMap;
+import '../features/org/org_access_joining.dart' show openOrgJoin;
 import '../features/org/org_common.dart' show orgColor, orgTypeIcons;
 import '../features/org/org_member_dashboard.dart' show orgRolesLine;
 import '../features/org/org_ui.dart' show orgNameOf;
@@ -30,8 +31,11 @@ import '../features/org/org_ui.dart' show orgNameOf;
 /// Feature key that hides the organization side of the home screens (platform kill-switch).
 const String kContextSwitchFeature = 'home.org_tab';
 
+/// The switcher sits at the top of every home as long as organizations exist on the platform: a person with no
+/// membership yet still opens it to find or join one (`AppModeController.available` only says whether there is a
+/// live organization to switch INTO).
 bool contextSwitchVisible(AppModeController ctl) =>
-    ctl.available && !AppConfig.disableList.contains(kContextSwitchFeature);
+    AppConfig.orgsEnabled && !AppConfig.disableList.contains(kContextSwitchFeature);
 
 /// What waits in every organization except the one open now (badge on the pill).
 int pendingElsewhere(AppModeController ctl) {
@@ -115,7 +119,6 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
         final tone = inOrg ? orgColor(context, org) : c.primary;
         final label = inOrg ? orgNameOf(org) : 'ctx_personal'.tr;
         final badge = pendingElsewhere(ctl);
-        final canPick = ctl.liveEntries.length > 1 || widget.allowPersonal;
 
         final pill = Semantics(
           button: true,
@@ -126,7 +129,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
             child: InkWell(
               key: const ValueKey('ctx.pill'),
               customBorder: const StadiumBorder(),
-              onTap: canPick ? () => showContextSwitcherSheet(context, allowPersonal: widget.allowPersonal) : null,
+              onTap: () => showContextSwitcherSheet(context, allowPersonal: widget.allowPersonal), // always: join is offered
               child: Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(5, 5, 12, 5),
                 child: Row(
@@ -159,10 +162,8 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                       ),
                     ),
                     if (badge > 0) ...[const SizedBox(width: 6), _Count(badge, color: c.danger)],
-                    if (canPick) ...[
-                      const SizedBox(width: 2),
-                      Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
-                    ],
+                    const SizedBox(width: 2),
+                    Icon(Icons.unfold_more_rounded, size: 18, color: c.textMedium),
                   ],
                 ),
               ),
@@ -253,6 +254,15 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
               style: appText(12, w: FontWeight.w800, c: c.textLight),
             ),
           ),
+          if (ctl.entries.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'ctx_no_orgs'.tr,
+                key: const ValueKey('ctx.sheet.empty'),
+                style: appText(13, c: c.textMedium),
+              ),
+            ),
           for (final e in ctl.liveEntries)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -270,11 +280,48 @@ Future<void> showContextSwitcherSheet(BuildContext context, {bool allowPersonal 
                 },
               ),
             ),
+          // organizations that are not open yet (under review / suspended): shown, not enterable
+          for (final e in ctl.entries.where((e) => !ctl.liveEntries.contains(e)))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Opacity(
+                opacity: 0.7,
+                child: AppActionCard(
+                  key: ValueKey('ctx.sheet.pending.${asInt(asMap(e['organization'])['id'])}'),
+                  icon: Icons.hourglass_top_rounded,
+                  color: c.warning,
+                  title: orgNameOf(asMap(e['organization'])),
+                  subtitle: _statusText(asMap(e['organization'])['status']),
+                  onTap: () {},
+                ),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: AppActionCard(
+              key: const ValueKey('ctx.sheet.join'),
+              icon: Icons.group_add_rounded,
+              color: c.primary,
+              title: 'ctx_join_new'.tr,
+              subtitle: 'ctx_join_new_hint'.tr,
+              onTap: () {
+                Navigator.pop(ctx);
+                openOrgJoin(context, onDone: () => ctl.refresh());
+              },
+            ),
+          ),
         ],
       ),
     );
   });
 }
+
+String _statusText(Object? status) => switch ('$status') {
+      'pending' || 'submitted' || 'review' => 'ctx_org_pending'.tr,
+      'suspended' => 'ctx_org_suspended'.tr,
+      'rejected' => 'ctx_org_rejected'.tr,
+      _ => 'ctx_org_pending'.tr,
+    };
 
 class _ContextMark extends StatelessWidget {
   const _ContextMark({required this.icon, required this.tone});

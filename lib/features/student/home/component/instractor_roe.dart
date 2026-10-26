@@ -5,13 +5,6 @@ import 'package:provider/provider.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../home_provider.dart';
 
-const List<List<Color>> _avatarGradients = [
-  [Color(0xFF5B4FCF), Color(0xFF9B93FF)],
-  [Color(0xFFFF8C42), Color(0xFFFFBA80)],
-  [Color(0xFFFF4D6A), Color(0xFFFF8FA3)],
-  [Color(0xFF2EC4B6), Color(0xFF70DFD8)],
-];
-
 class InstructorsRow extends StatelessWidget {
   const InstructorsRow({super.key});
 
