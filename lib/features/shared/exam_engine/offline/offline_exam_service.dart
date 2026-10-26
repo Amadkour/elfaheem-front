@@ -253,6 +253,8 @@ class OfflineExamSync {
     final p = OfflinePackage.fromJson(asMap(reply['package']));
     if (!p.intact) return null;
     p.json['_from'] = {'from': from};                // where it came from: a step of the delivery chain
+    // the per-student wrap table: this phone passes it on at the start; only each entry's owner can open it
+    if (reply['keys'] is Map) p.json['_wraps'] = Map<String, dynamic>.from(reply['keys'] as Map);
     final k = reply['key'];
     if (k is String && k.isNotEmpty && await saveKeyIfValid(p, base64Decode(k))) p.json['_key_from'] = {'from': from};
     await store.savePackage(p);

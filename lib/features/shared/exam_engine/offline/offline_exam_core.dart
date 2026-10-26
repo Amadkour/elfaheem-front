@@ -101,6 +101,116 @@ Future<Map<String, dynamic>> openPackage(OfflinePackage p, List<int> key) async 
   return asMap(jsonDecode(utf8.decode(plain)));
 }
 
+// ═══════════════════════════════════════════ one copy, a paper per student ════════════════════════════════════
+
+/// A deterministic stream of 48-bit numbers: HMAC-SHA256("exam-offline-shuffle-v1", "<seed>|<label>|<i>")[:6] — the
+/// server's `offline._draws`, byte for byte (48 bits stay exact on the web too).
+Iterable<int> _draws(String seed, String label) sync* {
+  final mac = dc.Hmac(dc.sha256, utf8.encode('exam-offline-shuffle-v1'));
+  for (var i = 0;; i++) {
+    final d = mac.convert(utf8.encode('$seed|$label|$i')).bytes;
+    var v = 0;
+    for (var k = 0; k < 6; k++) {
+      v = v * 256 + d[k];
+    }
+    yield v;
+  }
+}
+
+/// Fisher–Yates from the last index down, j = draw mod (i + 1) — the server's `offline.shuffled`.
+List<T> seededShuffle<T>(List<T> items, String seed, String label) {
+  final out = List<T>.of(items);
+  final g = _draws(seed, label).iterator;
+  for (var i = out.length - 1; i > 0; i--) {
+    g.moveNext();
+    final j = g.current % (i + 1);
+    final x = out[i];
+    out[i] = out[j];
+    out[j] = x;
+  }
+  return out;
+}
+
+String _optionId(dynamic o) => '${o is Map ? o['id'] : o}';
+
+/// This student's paper from the package's whole sections (the server's `offline.student_paper`): the pool drawn with
+/// the required questions always in, then question and option order shuffled when the section says so.
+Map<String, dynamic> studentPaper(Map<String, dynamic> paper, String packageId, int studentId) {
+  final seed = '$packageId|$studentId';
+  final sections = <Map<String, dynamic>>[];
+  for (final sec in asMapList(paper['sections'])) {
+    final sid = sec['section_id'];
+    var qs = asMapList(sec['questions']);
+    final size = sec['pool_size'] == null ? 0 : asInt(sec['pool_size']);
+    if (size > 0 && size < qs.length) {
+      final required = [for (final q in qs) if (q['required'] == true) asInt(q['question_id'])];
+      final others = [for (final q in qs) if (q['required'] != true) asInt(q['question_id'])];
+      final keep = {...required, ...seededShuffle(others, seed, 'pool|$sid').take(max(0, size - required.length))};
+      qs = qs.where((q) => keep.contains(asInt(q['question_id']))).toList();
+    }
+    if (sec['shuffle_questions'] == true) qs = seededShuffle(qs, seed, 'q|$sid');
+    final out = <Map<String, dynamic>>[];
+    for (final q in qs) {
+      final body = Map<String, dynamic>.from(asMap(q['body']));
+      final opts = body['options'] is List ? List<dynamic>.from(body['options'] as List) : const <dynamic>[];
+      if (sec['shuffle_options'] == true && opts.isNotEmpty) {
+        final byId = {for (final o in opts) _optionId(o): o};
+        body['options'] = [for (final id in seededShuffle([for (final o in opts) _optionId(o)], seed, 'o|${q['question_id']}')) byId[id]];
+      }
+      out.add({...q, 'body': body});
+    }
+    sections.add({...sec, 'questions': out});
+  }
+  return {'sections': sections};
+}
+
+/// Opens this student's entry of the wrap table (the exam key sealed for them alone); null when it is not theirs.
+Future<List<int>?> openWrap({required String wrap, required int examId, required int n, required int studentId, required String studentKeyHex}) async {
+  try {
+    final raw = base64Decode(wrap);
+    final box = SecretBox(raw.sublist(12, raw.length - 16), nonce: raw.sublist(0, 12), mac: Mac(raw.sublist(raw.length - 16)));
+    return await _aes.decrypt(box, secretKey: SecretKey(hexBytes(studentKeyHex)), aad: utf8.encode('wrap|$examId|$n|$studentId'));
+  } catch (_) {
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════ the encrypted link ══════════════════════════════════════════════
+
+/// Everything exam-related between two phones is encrypted: X25519 between a fresh key of each side, HKDF-SHA256,
+/// AES-256-GCM. Someone listening to the Bluetooth / Wi-Fi traffic reads nothing; the exam key itself never travels
+/// readable even inside it when the per-student wrap table exists.
+class ExamLink {
+  ExamLink._(this._pair, this.pub);
+  final SimpleKeyPair _pair;
+  final String pub;
+  final Map<String, SecretKey> _sessions = {};
+  static final _x = X25519();
+  static final _kdf = Hkdf(hmac: Hmac.sha256(), outputLength: 32);
+
+  static Future<ExamLink> create() async {
+    final pair = await _x.newKeyPair();
+    return ExamLink._(pair, base64Encode((await pair.extractPublicKey()).bytes));
+  }
+
+  Future<SecretKey> _session(String remotePub) async => _sessions[remotePub] ??= await () async {
+        final shared = await _x.sharedSecretKey(keyPair: _pair, remotePublicKey: SimplePublicKey(base64Decode(remotePub), type: KeyPairType.x25519));
+        return _kdf.deriveKey(secretKey: shared, nonce: utf8.encode('nb-exam-link-v1'), info: utf8.encode('exam-link'));
+      }();
+
+  Future<String> seal(String remotePub, String plain) async {
+    final box = await _aes.encrypt(utf8.encode(plain), secretKey: await _session(remotePub), nonce: _aes.newNonce());
+    return base64Encode([...box.nonce, ...box.cipherText, ...box.mac.bytes]);
+  }
+
+  /// Throws when the box was not made for this link (or was changed on the way).
+  Future<String> open(String remotePub, String box) async {
+    final raw = base64Decode(box);
+    final b = SecretBox(raw.sublist(12, raw.length - 16), nonce: raw.sublist(0, 12), mac: Mac(raw.sublist(raw.length - 16)));
+    return utf8.decode(await _aes.decrypt(b, secretKey: await _session(remotePub)));
+  }
+}
+
 // ═══════════════════════════════════════════ the timer ═══════════════════════════════════════════════════════
 
 /// The offline timer. Time counts with the phone's MONOTONIC clock while the app runs (changing the date/time does not

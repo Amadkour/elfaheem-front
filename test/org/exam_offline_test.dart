@@ -24,6 +24,7 @@ const _vPackage = {
   'data': '+VswP5tEeAOhVRWyUHxj+p9y6qcfQTykOJxFZVUtZbf1GSK2mXJo8A1qs9lyROEfi9B9l+rZnaNJCkpRWpNOGangOzAWsVVT0omW0xXuatvDFwqf1Wi6RKRQxbJCzjBxJzbaQqlZ1thOjEoX5CmnOSOYi3pca3fd9zfqm6oRCBbMKmbds7PPd6hDpgDnVsxWse2JcOlgemHDAJ7xxCx3b0z634m2PTE2OJIVqzwTwqan4uE+KjYjFjEotgaqo/ugYpQjdGWHXxnKscME8UlhLVfDc8aO0gmyV35h/koisrvAgWhNbprc7xf1ixkVF3sR2uaz0Aj1NpisH51PO73EnJZQJuoIZfrq9Vyp0WappB20APBxEPcRg2ffiICFbHg3PKaEVrkbthbOfDAWCHdfnNWE',
 };
 const _vSeal = '67040bfa02bcb6e6cc438734af935f775f2552e4f64b889de803d6a9a9903aed';
+const _vWrap = 'AAECAwQFBgcICQoLXjJBtl6+47cltT4jw5nOLpbVmsTTj6S+w07WONdkXaMiVWGr2/G3VzL9p0n8QhyR';
 const _vReceipt = '365718423514e74dfb5c1af3ecc8ceccc32d3b96175e717b53d61cf3e5604861';
 
 void main() {
@@ -165,6 +166,74 @@ void main() {
       expect(offlineFlagText('clock_changed'), isNot('clock_changed'));
       expect(offlineStepText({'step': 'package', 'from': 'peer'}), contains(lang == 'ar' ? 'زميل' : 'classmate'));
     }
+  });
+
+  group('a paper per student (same algorithm as the server, vectors from offline.py)', () {
+    test('seeded shuffle', () {
+      expect(seededShuffle('abcdefgh'.split(''), '7.2|42', 'o|5'), ['d', 'h', 'b', 'e', 'a', 'g', 'f', 'c']);
+    });
+
+    test('pool with a required question, shuffled questions and options', () {
+      final paper = {
+        'sections': [
+          {
+            'section_id': 3, 'mode': 'online', 'navigation': 'free', 'shuffle_questions': true, 'shuffle_options': true, 'pool_size': 3,
+            'questions': [
+              for (final q in [10, 11, 12, 13, 14])
+                {'question_id': q, 'type': 'mcq_single', 'points': 1, 'required': q == 10,
+                 'body': {'prompt': 'q$q', 'options': [for (final o in 'abcd'.split('')) {'id': o, 'text': o}]}},
+            ],
+          },
+        ],
+      };
+      final mine = studentPaper(paper, '7.2', 42)['sections'] as List;
+      final got = [
+        for (final q in (mine.first as Map)['questions'] as List)
+          [q['question_id'], [for (final o in (q['body'] as Map)['options'] as List) (o as Map)['id']]],
+      ];
+      expect(got, [
+        [12, ['b', 'a', 'd', 'c']],
+        [10, ['b', 'd', 'a', 'c']],
+        [14, ['b', 'a', 'd', 'c']],
+      ]);
+      final other = studentPaper(paper, '7.2', 43);
+      expect(jsonEncode(other), isNot(jsonEncode(studentPaper(paper, '7.2', 42))), reason: 'another student, another paper');
+      expect(jsonEncode(studentPaper(paper, '7.2', 42)), jsonEncode(studentPaper(paper, '7.2', 42)), reason: 'stable after an app restart');
+    });
+
+    test('a section without shuffle or pool is left as authored', () {
+      final paper = {
+        'sections': [
+          {'section_id': 1, 'mode': 'online', 'navigation': 'one_way', 'questions': [
+            {'question_id': 1, 'body': {'options': [{'id': 'a'}, {'id': 'b'}]}},
+            {'question_id': 2, 'body': {'prompt': 'x'}},
+          ]},
+        ],
+      };
+      final q = ((studentPaper(paper, '1.1', 5)['sections'] as List).first as Map)['questions'] as List;
+      expect([for (final x in q) (x as Map)['question_id']], [1, 2]);
+      expect(((q.first as Map)['body'] as Map)['options'], [{'id': 'a'}, {'id': 'b'}]);
+    });
+  });
+
+  group('nothing readable on the air', () {
+    test('the server wrap opens with the student key only, and gives the exam key', () async {
+      final key = await openWrap(wrap: _vWrap, examId: 7, n: 2, studentId: 42, studentKeyHex: _vSeal);
+      expect(base64Encode(key!), _vOpen);
+      expect(await openWrap(wrap: _vWrap, examId: 7, n: 2, studentId: 43, studentKeyHex: _vSeal), isNull, reason: 'bound to the student');
+      expect(await openWrap(wrap: _vWrap, examId: 7, n: 2, studentId: 42, studentKeyHex: 'ab' * 32), isNull, reason: 'a classmate key fails');
+    });
+
+    test('the link: both sides derive one key; a listener with its own key reads nothing', () async {
+      final a = await ExamLink.create(), b = await ExamLink.create(), eve = await ExamLink.create();
+      final box = await a.seal(b.pub, '{"key":"secret"}');
+      expect(box.contains('secret'), isFalse);
+      expect(await b.open(a.pub, box), '{"key":"secret"}');
+      expect(await a.open(b.pub, await b.seal(a.pub, 'back')), 'back');
+      await expectLater(eve.open(a.pub, box), throwsA(anything));
+      final raw = base64Decode(box)..[20] ^= 1;
+      await expectLater(b.open(a.pub, base64Encode(raw)), throwsA(anything), reason: 'changed on the way');
+    });
   });
 
   group('layout', () {

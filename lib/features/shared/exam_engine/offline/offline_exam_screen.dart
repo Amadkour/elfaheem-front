@@ -319,7 +319,8 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
   void initState() {
     super.initState();
     _s = widget.sitting;
-    _paper = Paper.fromJson(asMap(widget.content['paper']));
+    // one copy for the hall, a paper per student: pool, question and option order from "<package>|<student>"
+    _paper = Paper.fromJson(studentPaper(asMap(widget.content['paper']), widget.package.packageId, _s.studentId));
     for (final q in _paper.all) {
       q.answer = _s.answers[q.questionId];
       q.saveSeq = _s.seq[q.questionId] ?? 0;
