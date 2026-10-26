@@ -19,6 +19,7 @@ import 'prejoin_layout.dart';
 import 'prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
 import 'room.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -148,6 +149,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
     if (!_canPublish) {
       // Listen-only guest: no tracks are ever created, no permission prompt.
       _enableAudio = false;
@@ -350,6 +352,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
       unawaited(_audioTrack?.stop());
       unawaited(_videoTrack?.stop());
     }
+    AppAssistant.release();
     super.dispose();
   }
 

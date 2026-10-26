@@ -33,6 +33,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../admin/admin_common.dart' show t;
 import 'vod_player_parts.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -272,6 +273,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
 
     _activeVariant = _mat.defaultVideoVariant;
 
@@ -443,6 +445,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       if (_isFullScreen) webfs.exitLandscapeFullscreen();
     }
     _restoreSystemUI();
+    AppAssistant.release();
     super.dispose();
   }
 

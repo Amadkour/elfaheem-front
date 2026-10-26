@@ -1,7 +1,9 @@
 // The documents assistant (Phase 7, D-022): ask the organization's / course's documents, get an answer quoted from
 // them with its sources. `app: true` is the app assistant: the platform's own documents (terms, about, guides) for
-// every user, with no organization or course. `RagAnswerCard` is presentational (tested under the layout harness); the screen owns the
-// API calls and the polling.
+// every user, with no organization or course. [RagChatView] is the conversation itself (history, answers, the
+// question box) without a page around it: [RagChatScreen] puts it in a page, the floating app assistant
+// (app_assistant.dart) in its pop-up. `RagAnswerCard` is presentational (tested under the layout harness); the view
+// owns the API calls and the polling.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -26,20 +28,69 @@ class RagChatScreen extends StatefulWidget {
 }
 
 class _RagChatScreenState extends State<RagChatScreen> {
-  final _api = RagApi();
+  final _chat = GlobalKey<RagChatViewState>();
+  bool _manager = false; // library managers get the Library action (from the documents list: manager: true)
+
+  @override
+  Widget build(BuildContext context) {
+    return BasePage(
+      key: const ValueKey('rag.assistant'),
+      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
+          actions: [
+            if (_manager)
+              IconButton(
+                  tooltip: t('مكتبة المستندات', 'Documents library'),
+                  icon: const Icon(Icons.folder_copy_outlined),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => RagLibraryScreen(orgId: widget.orgId, courseId: widget.courseId, app: widget.app)))),
+            IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: () => _chat.currentState?.refresh()),
+            if (widget.orgId != null) const ContextExitButton(),
+          ]),
+      child: RagChatView(
+          key: _chat,
+          orgId: widget.orgId,
+          courseId: widget.courseId,
+          app: widget.app,
+          onManager: (m) {
+            if (m != _manager) setState(() => _manager = m);
+          }),
+    );
+  }
+}
+
+/// The conversation: the caller's earlier questions with their answers, then the question box. Fills the height it
+/// is given (it must be bounded: an Expanded, a page body, a sized pop-up).
+class RagChatView extends StatefulWidget {
+  const RagChatView({super.key, this.orgId, this.courseId, this.app = false, this.onManager, this.compact = false, this.api});
+  final int? orgId;
+  final int? courseId;
+  final bool app;
+
+  /// Whether the caller manages this library (the documents list answers `manager: true`).
+  final ValueChanged<bool>? onManager;
+
+  /// A narrow pop-up: tighter padding.
+  final bool compact;
+  final RagApi? api;
+
+  @override
+  State<RagChatView> createState() => RagChatViewState();
+}
+
+class RagChatViewState extends State<RagChatView> {
+  late final RagApi _api = widget.api ?? RagApi();
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final List<RagAnswer> _items = [];
   bool _loading = true;
   bool _sending = false;
-  bool _manager = false; // library managers get the Library action (from the documents list: manager: true)
   String? _error;
 
   @override
   void initState() {
     super.initState();
     _history();
-    _checkManager();
+    if (widget.onManager != null) _checkManager();
   }
 
   @override
@@ -47,6 +98,12 @@ class _RagChatScreenState extends State<RagChatScreen> {
     _input.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  /// Reloads the history (the page's Refresh action).
+  void refresh() {
+    setState(() => _error = null);
+    _history();
   }
 
   Future<void> _history() async {
@@ -64,8 +121,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
   Future<void> _checkManager() async {
     final r = await RagLibraryApi().list(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
     if (!mounted || !r.ok) return;
-    final m = RagLibrary.fromJson(r.map).manager;
-    if (m != _manager) setState(() => _manager = m);
+    widget.onManager?.call(RagLibrary.fromJson(r.map).manager);
   }
 
   void _toEnd() => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -112,62 +168,46 @@ class _RagChatScreenState extends State<RagChatScreen> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return BasePage(
-      key: const ValueKey('rag.assistant'),
-      appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
-          actions: [
-            if (_manager)
-              IconButton(
-                  tooltip: t('مكتبة المستندات', 'Documents library'),
-                  icon: const Icon(Icons.folder_copy_outlined),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => RagLibraryScreen(orgId: widget.orgId, courseId: widget.courseId, app: widget.app)))),
-            IconButton(tooltip: t('تحديث', 'Refresh'), icon: const Icon(Icons.refresh_rounded), onPressed: () {
-              setState(() => _error = null);
-              _history();
-            }),
-            if (widget.orgId != null) const ContextExitButton(),
-          ]),
-      child: Column(children: [
-        Expanded(
-          child: ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
-            AppBanner(icon: Icons.menu_book_rounded, color: c.primary,
-                text: widget.app
-                    ? t('الإجابات من شروط التطبيق وصفحاته وأدلته فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
-                        'Answers come only from the app\'s terms, pages and guides, with their sources. If the answer is not there, the assistant says so.')
-                    : t('الإجابات من مستندات مؤسستك ومقرراتك فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
-                        'Answers come only from your organization\'s and courses\' documents, with their sources. If the answer is not there, the assistant says so.')),
-            const SizedBox(height: 10),
-            if (_loading) const AppListSkeleton(items: 2),
-            if (!_loading && _items.isEmpty && _error == null)
-              AppEmpty(
-                  icon: Icons.question_answer_outlined,
-                  title: widget.app
-                      ? t('اسأل عن التطبيق: الاشتراك، الاسترداد، الأجهزة، الخصوصية…', 'Ask about the app: subscriptions, refunds, devices, privacy…')
-                      : t('اسأل عن اللوائح أو الشروط أو محتوى المقرر', 'Ask about regulations, terms or course content')),
-            for (final a in _items) RagAnswerCard(answer: a, onRate: (helpful) => _rate(a, helpful)),
-            if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
+    final side = widget.compact ? 12.0 : 16.0;
+    return Column(children: [
+      Expanded(
+        child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
+          AppBanner(icon: Icons.menu_book_rounded, color: c.primary,
+              text: widget.app
+                  ? t('الإجابات من شروط التطبيق وصفحاته وأدلته فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
+                      'Answers come only from the app\'s terms, pages and guides, with their sources. If the answer is not there, the assistant says so.')
+                  : t('الإجابات من مستندات مؤسستك ومقرراتك فقط، مع ذكر المصدر. إن لم تكن الإجابة فيها سيخبرك المساعد بذلك.',
+                      'Answers come only from your organization\'s and courses\' documents, with their sources. If the answer is not there, the assistant says so.')),
+          const SizedBox(height: 10),
+          if (_loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
+          if (!_loading && _items.isEmpty && _error == null)
+            AppEmpty(
+                icon: Icons.question_answer_outlined,
+                title: widget.app
+                    ? t('اسأل عن التطبيق: الاشتراك، الاسترداد، الأجهزة، الخصوصية…', 'Ask about the app: subscriptions, refunds, devices, privacy…')
+                    : t('اسأل عن اللوائح أو الشروط أو محتوى المقرر', 'Ask about regulations, terms or course content')),
+          for (final a in _items) RagAnswerCard(answer: a, onRate: (helpful) => _rate(a, helpful)),
+          if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
+        ]),
+      ),
+      SafeArea(
+        top: false,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(side, 4, side, 10),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(child: AppField(controller: _input, label: t('سؤالك', 'Your question'), maxLines: 3)),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              tooltip: t('إرسال', 'Send'),
+              onPressed: _sending ? null : _send,
+              icon: _sending
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.send_rounded),
+            ),
           ]),
         ),
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
-            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Expanded(child: AppField(controller: _input, label: t('سؤالك', 'Your question'), maxLines: 3)),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                tooltip: t('إرسال', 'Send'),
-                onPressed: _sending ? null : _send,
-                icon: _sending
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.send_rounded),
-              ),
-            ]),
-          ),
-        ),
-      ]),
-    );
+      ),
+    ]);
   }
 }
 

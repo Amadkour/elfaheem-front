@@ -186,6 +186,10 @@ class TopRouteObserver extends NavigatorObserver {
   /// Drives OfflineShortcutOverlay.
   final ValueNotifier<bool> shortcutVisible = ValueNotifier<bool>(false);
 
+  /// The route on top, updated after each navigation (deferred like [shortcutVisible]); the floating app
+  /// assistant listens to it.
+  final ValueNotifier<Route<dynamic>?> topRoute = ValueNotifier<Route<dynamic>?>(null);
+
   bool _shortcutDismissed = false;
   bool _refreshQueued = false;
 
@@ -196,6 +200,7 @@ class TopRouteObserver extends NavigatorObserver {
     _refreshQueued = true;
     scheduleMicrotask(() {
       _refreshQueued = false;
+      topRoute.value = currentRoute;
       final v = _computeShortcut();
       if (shortcutVisible.value != v) shortcutVisible.value = v;
     });

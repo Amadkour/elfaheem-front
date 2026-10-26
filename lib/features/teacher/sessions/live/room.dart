@@ -23,6 +23,7 @@ import 'widgets/live_chat.dart';
 import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
 import 'widgets/live_hands.dart';
 import 'widgets/live_reactions.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
@@ -768,6 +769,7 @@ class _RoomPageState extends State<RoomPage>
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
     _setUpListeners();
     // A class can last hours: never let the phone sleep (it pauses camera / mic on many devices).
     WakelockPlus.enable().catchError((_) {});
@@ -972,6 +974,7 @@ class _RoomPageState extends State<RoomPage>
       _stopLiveKitAudioTap();
       unawaited(_drainAndDispose(rec));
     }
+    AppAssistant.release();
     super.dispose();
   }
 

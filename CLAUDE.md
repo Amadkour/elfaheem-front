@@ -10,17 +10,22 @@ Flutter education platform (VOD courses, live sessions, attendance, organization
 
 ```bash
 flutter pub get
-flutter analyze                      # lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
+flutter analyze --no-fatal-infos --fatal-warnings   # the CI gate (exit 0 = no warnings/errors); lints: package:flutter_lints/flutter.yaml; platform dirs are excluded
 flutter run                          # add -d chrome for web
 flutter run --dart-define=API_BASE_URL=http://10.0.2.2:18080/api   # local stack (back/scripts/dev/setup.*); default is production
 flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/   # the real suites (CI runs them all); test/widget_test.dart is the stock counter template and fails
 flutter test test/some_test.dart --plain-name "name"   # run a single test
 flutter build web && firebase deploy --only hosting
+scripts/build_release.sh apk|appbundle|ipa|web   # release builds: obfuscated, symbols in build/debug-info/; signing from android/key.properties / env (never committed)
 dart run flutter_launcher_icons      # regenerate app icons
 dart run flutter_native_splash:create  # regenerate splash screens (android/ios drawables + assets/images/splash*.png)
 ```
 
-`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`, `main`) in `dependency_overrides`; `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment). Don't add the `excel` package: it forces `archive` 3.x, which downgrades `image` and `flutter_launcher_icons`. That's why every Excel/Word file is written by hand on top of `archive` 4. When adding a package, check that `pubspec.lock` gains only that package and nothing gets downgraded.
+CI (`.github/workflows/ci.yml`, Flutter 3.47.7 stable) gates on: 0 analyzer warnings/errors (plain `flutter analyze` exits 1 on info lints, which are allowed — use the flags above, or count `" warning - "` / `" error - "` lines), the test suites above, `flutter build web --release`, and gitleaks over the tree and the new commits (`.gitleaks.toml`: an allowlist entry must match rule AND path AND value, with a reason).
+
+**API contract test (`test/contract/`)** — scans every path handed to `ApiClient` and checks it against the backend's route snapshot `test/contract/api_paths.json` (`/api/v1/exam/…` against the Exam Engine, `/api/v1/rag/…` against RAG, the rest against the core). After adding a server route, regenerate the snapshot from `../back`: `python scripts/contract/export_api_paths.py --front ../nextbrain-front`. A call the server deliberately lacks goes in `knownMissing` with a reason; the test also fails when an entry is no longer needed.
+
+`flutter_webrtc` is overridden to a fork (`github.com/Amadkour/flutter-webrtc`) in `dependency_overrides`, pinned to a commit `ref:` (change it on purpose, D-010); `screen_protector` is pinned to 1.5.1 on purpose (see the pubspec comment). Don't add the `excel` package: it forces `archive` 3.x, which downgrades `image` and `flutter_launcher_icons`. That's why every Excel/Word file is written by hand on top of `archive` 4. When adding a package, check that `pubspec.lock` gains only that package and nothing gets downgraded.
 
 `EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart` writes `sample.xlsx`, `sample.docx` and `sample.pdf` into `<dir>`, so they can be opened in Office to check how they render.
 
@@ -28,7 +33,9 @@ dart run flutter_native_splash:create  # regenerate splash screens (android/ios 
 
 Dart test gotchas: a record that holds a list never equals another (`expect((a.list, b), …)` fails) — expect the list on its own; the wildcard pattern is `(_, _)`, not `(_, __)` (lint). `AppConfig.lang` is set in `setUp` and flipped inside a test to check both languages.
 
-The code is not `dart format`-ed (formatting `lib/features/org` would rewrite every file). Don't run `dart format` on files you edit: it buries the real change in thousands of lines of re-wrapping.
+The code is not `dart format`-ed (formatting `lib/features/org` would rewrite every file). Don't run `dart format` on files you edit: it buries the real change in thousands of lines of re-wrapping. New files are written formatted by hand (D-003).
+
+Docs: `D-nnn` references point to `docs/DECISIONS.md` (design decisions and deliberate deviations; add one when you deviate). `docs/ARCHITECTURE.md` is the long-form architecture, `docs/PROGRESS.md` the phase log of the platform refactor, `TIMETABLE_NOTES.md` the running notes of the timetable rebuild, and `documents/` holds developer guides and slides.
 
 ## Architecture
 
@@ -45,6 +52,11 @@ The code is not `dart format`-ed (formatting `lib/features/org` would rewrite ev
 - Sends device-ID headers (device binding / blocked-device dialog lives in `features/student/courses/security/`).
 - Adds `X-View-As: <id>` while super-admin "view as" mode is active (`utils/widget/view_as_state.dart`).
 - Adds `X-Onboarding-Token` to teacher onboarding routes (`isTeacherOnboardingPath`; token kept in memory by `lib/features/auth/teacher_onboarding_token.dart`), and opens `AdminMfaPage` on 403 `mfa_enrollment_required` (`shouldOpenMfaEnrollment`: never two at once, again only 30 s after the user left it). The settings entry for every role the server allows is `MfaSettingsEntry` (`lib/features/auth/mfa_entry.dart`, feature key `profile.mfa`). Debug request logs go through `redactForLog`: add any new secret field to `logSensitiveKeys`. MFA: `lib/features/auth/mfa.dart` (API + code texts), `mfa_verify_screen.dart` (`openMfaStep`, the login step), `lib/features/admin/admin_mfa_page.dart` (enrolment / status). Every method takes an optional `headers:`.
+- Maps 503 `server_busy` (the Exam Engine / RAG in-flight cap) to `ApiMessages.serverBusyAr/En`; coded errors outside org screens get bilingual text in `lib/core/api_error_text.dart` (`apiErrorText`).
+
+Cleartext is refused on devices except `127.0.0.1` / `localhost` (the offline-video loopback server) and `10.0.2.2` (emulator → local stack): `android/app/src/main/res/xml/network_security_config.xml` and iOS `NSAllowsLocalNetworking` (D-010). Every server, media and LiveKit URL must be https / wss.
+
+**Exam Engine and RAG clients (`lib/features/shared/exam_engine/`, `lib/features/shared/rag/`)** — separate backend services (`../back/exam_engine`, `../back/rag_service`) reached through the same `ApiClient` under `/api/v1/exam/…` and `/api/v1/rag/…`. Engine calls go through `engineCall` → `EngineResult`; `unavailable` (bare 404 / 405) means the engine is not routed and the legacy exam flow stays in charge. Server codes become text via `examCodeText` (exam files) and the RAG files' own maps. Pure, unit-tested parts: `Paper`, `ServerClock`, `AutosaveQueue` (pending answers, `restore()` after an app kill), `EventBuffer`, `PolicyAction` in `exam_taking.dart`; `RagCitation`, `RagAnswer`, `answerRuns` in `rag_chat.dart`. Tests: `test/org/exam_*_test.dart`, `test/org/rag_*_test.dart`. User-facing behaviour of these features is described in `docs/NEW_FEATURES_GUIDE.md`.
 
 **Server-driven theme & feature flags** — `ThemeConfigProvider` (`lib/config/theme/`) loads the theme from `GET /api/v1/theme/{platform}` and builds `materialTheme()`. Always read colors via `context.colors`, never hard-coded colors. The same response sets `AppConfig.disableList` (feature kill-switch ids, e.g. `profile.logout`, `teacher_tab_analysis`). To make UI switchable, wrap it in `ParentComponent(featureKey: '...')` (hides it), or give a `BasePage` a `ValueKey('<id>')` (shows a "coming soon" page). `AppConfig.setDisableList` rebuilds the whole widget tree when the list changes.
 

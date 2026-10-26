@@ -21,6 +21,7 @@ import 'exam_engine_api.dart';
 import 'exam_integrity.dart';
 import 'exam_result_screen.dart';
 import 'exam_taking.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 
 /// Entry point from an exam list: consent → attempt → taking screen. Shows the server's refusal when there is one.
 Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {String? passcode}) async {
@@ -88,6 +89,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
     final attempt = asMap(widget.startReply['attempt']);
     _attemptId = asInt(attempt['id']);
     _session = '${widget.startReply['exam_session']}';
@@ -112,6 +114,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
     _integrity.stop();
     _protectScreen(false);
     _persistPending();                                  // finished → the stored copy is removed
+    AppAssistant.release();
     super.dispose();
   }
 

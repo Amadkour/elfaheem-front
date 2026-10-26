@@ -28,6 +28,7 @@ import '../../../utils/widget/base_page.dart';
 import '../../teacher/sessions/live/prejoin.dart';
 import '../../teacher/sessions/model/live_response_model.dart';
 import 'guest_live_api.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 
 /// SharedPreferences key of the last name a guest typed.
 const String kGuestLiveNamePref = 'guest_live_name';
@@ -68,6 +69,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
     unawaited(_restorePrefs());
     unawaited(_load(first: true));
   }
@@ -78,6 +80,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
     _rateTimer?.cancel();
     _nameCtrl.dispose();
     _pinCtrl.dispose();
+    AppAssistant.release();
     super.dispose();
   }
 

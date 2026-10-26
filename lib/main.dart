@@ -45,6 +45,7 @@ import 'features/shared/attendance/attendance_teacher_banner.dart';
 import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
 import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
+import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
@@ -517,6 +518,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           // laid out in the wrong direction.
           builder: (_, child) => Directionality(
             textDirection: Helpers.pageDirection,
+            // the floating app assistant: a bubble above every signed-in screen (rag/app_assistant.dart)
+            child: AppAssistantHost(
+            navigatorKey: navigatorKey,
             child: GuestBanner(
             child: ViewAsBanner(
               child: AttendanceTeacherBanner(
@@ -539,7 +543,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          )),
+          ))),
           supportedLocales: context
               .read<LangProvider>()
               .languages

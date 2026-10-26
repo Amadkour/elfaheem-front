@@ -21,6 +21,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, t;
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
 
 Color ragStatusColor(BuildContext context, String s) {
@@ -50,6 +51,7 @@ class RagLibraryScreen extends StatefulWidget {
 class _RagLibraryScreenState extends State<RagLibraryScreen> {
   late final RagLibraryApi _api = widget.api ?? RagLibraryApi();
   RagLibrary? _lib;
+  RagLibrary? _active; // the last list without the archived filter: the app library's overview counts it
   String _filter = '';
   bool _loading = true;
   String? _error;
@@ -76,6 +78,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       _loading = false;
       if (r.ok) {
         _lib = RagLibrary.fromJson(r.map);
+        if (_filter != 'archived') _active = _lib;
         _error = null;
       } else if (!silent) {
         _error = r.unavailable ? t('المكتبة غير متاحة بعد على هذا الخادم', 'The library is not available on this server yet') : ragResultText(r);
@@ -189,15 +192,23 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
               ? const AppListSkeleton()
               : _error != null
                   ? AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-                  : shown.isEmpty
-                      ? AppEmpty(icon: Icons.folder_open_rounded, title: t('لا مستندات', 'No documents'), message: t('ارفع لائحة أو دليلاً ليجيب المساعد منه.', 'Upload a regulation or guide for the assistant to answer from.'))
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                          itemCount: shown.length,
-                          separatorBuilder: (_, _) => const SizedBox(height: 10),
-                          itemBuilder: (_, i) {
-                            final d = shown[i];
-                            return RagDocumentCard(
+                  : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
+                      // the platform admins' dashboard of the app assistant (the app library)
+                      if (widget.app && lib?.manager == true && _active != null) ...[
+                        RagLibraryOverview(
+                            library: _active!,
+                            onUpload: _upload,
+                            onSync: _syncApp,
+                            onTry: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RagChatScreen(app: true)))),
+                        const SizedBox(height: 14),
+                      ],
+                      if (shown.isEmpty)
+                        AppEmpty(icon: Icons.folder_open_rounded, title: t('لا مستندات', 'No documents'), message: t('ارفع لائحة أو دليلاً ليجيب المساعد منه.', 'Upload a regulation or guide for the assistant to answer from.'))
+                      else
+                        for (final d in shown)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: RagDocumentCard(
                               doc: d,
                               working: _working.contains(d.id),
                               manager: lib?.manager == true,
@@ -205,9 +216,9 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
                               onReindex: d.canReindex ? () => _run(d, () => _api.reindex(d.id), done: t('بدأت إعادة الفهرسة', 'Reindexing started')) : null,
                               onArchive: d.archived ? null : () => _archive(d),
                               onNewVersion: d.archived ? null : () => _upload(replaces: d),
-                            );
-                          },
-                        ),
+                            ),
+                          ),
+                    ]),
         ),
       ]),
       floatingActionButton: lib?.manager == true
@@ -221,6 +232,46 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
   }
 }
 
+
+/// The app assistant's dashboard header (platform admins, app library): what the assistant answers from — ready,
+/// being processed, failed — how much is indexed, and the three things to do: add documents, re-read the app's own
+/// pages, try the assistant.
+class RagLibraryOverview extends StatelessWidget {
+  const RagLibraryOverview({super.key, required this.library, this.onUpload, this.onSync, this.onTry});
+  final RagLibrary library;
+  final VoidCallback? onUpload, onSync, onTry;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final counts = library.counts();
+    final docs = library.items;
+    final size = docs.fold<int>(0, (a, d) => a + d.size);
+    final chunks = docs.fold<int>(0, (a, d) => a + d.chunks);
+    final busy = (counts['queued'] ?? 0) + (counts['processing'] ?? 0);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppBanner(
+          icon: Icons.smart_toy_rounded,
+          color: c.primary,
+          text: t('يجيب مساعد التطبيق كل المستخدمين من هذه المستندات ومن صفحات الشروط و«عن التطبيق» (تُقرأ تلقائياً). أضف أدلة الاستخدام والأسئلة الشائعة ليعرف المساعد ميزات التطبيق.',
+              'The app assistant answers every user from these documents and from the terms and About pages (read automatically). Add user guides and FAQs so it knows the app\'s features.')),
+      const SizedBox(height: 12),
+      AppGrid(padding: EdgeInsets.zero, minTile: 150, children: [
+        AppStatTile(icon: Icons.task_alt_rounded, label: ragStatusText('ready'), value: counts['ready'] ?? 0, color: c.success),
+        AppStatTile(icon: Icons.hourglass_top_rounded, label: ragStatusText('processing'), value: busy, color: c.warning),
+        AppStatTile(icon: Icons.error_outline_rounded, label: ragStatusText('failed'), value: counts['failed'] ?? 0, color: c.danger),
+        AppStatTile(icon: Icons.data_usage_rounded, label: t('الحجم', 'Size'), value: ragSizeText(size)),
+        AppStatTile(icon: Icons.segment_rounded, label: t('مقاطع مفهرسة', 'Indexed passages'), value: chunks),
+      ]),
+      const SizedBox(height: 12),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        if (onUpload != null) AppPill(icon: Icons.upload_file_rounded, label: t('رفع مستندات', 'Upload documents'), onTap: onUpload!),
+        if (onSync != null) AppPill(icon: Icons.sync_rounded, label: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), onTap: onSync!),
+        if (onTry != null) AppPill(icon: Icons.question_answer_outlined, label: t('جرّب المساعد', 'Try the assistant'), onTap: onTry!),
+      ]),
+    ]);
+  }
+}
 
 /// How full the organization's library is: "12 / 200 documents · 40.0 MB / 500.0 MB", with a bar when limited.
 class RagQuotaBar extends StatelessWidget {

@@ -90,7 +90,8 @@ void appToast(String message, {bool error = false}) => admin.toast(message, erro
 typedef AppSheetHeader = admin.SheetHeader;
 
 // ── New: list skeleton (premium loading for any list / feed / grid page) ───
-/// The calm shape of a list while it loads — the page does not jump when data arrives.
+/// The calm shape of a list while it loads — the page does not jump when data arrives. Shrink-wrapped, so it also
+/// works inside another scroll view (a chat's ListView) where the height is unbounded.
 class AppListSkeleton extends StatelessWidget {
   const AppListSkeleton({super.key, this.items = 6, this.withAvatar = true, this.padding});
   final int items;
@@ -102,6 +103,7 @@ class AppListSkeleton extends StatelessWidget {
     final c = context.colors;
     return dl.DlShimmer(
       child: ListView.separated(
+        shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         padding: padding ?? const EdgeInsets.fromLTRB(16, 14, 16, 0),
         itemCount: items,
