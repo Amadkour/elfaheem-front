@@ -4,8 +4,10 @@
 // against a fake LiveRoomApi — ApiClient is a singleton and cannot be faked, the API class can.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _ref = LiveRoomRef.meeting(7);
@@ -216,5 +218,48 @@ void main() {
     await tester.pump(const Duration(seconds: 15));
     expect(api.calls, 3);
     c.dispose();
+  });
+
+  testWidgets('live stream: lobby_updated for this room refreshes at once; the poll stretches x 4 while connected', (tester) async {
+    await tester.pumpWidget(const SizedBox());
+    api = _FakeLobbyApi(_ref);
+    final connected = ValueNotifier<bool>(false);
+    var binds = 0, releases = 0;
+    final stream = LiveStreamHandle(connected: connected, bind: () => binds++, release: () => releases++);
+    c = LiveLobbyController(_ref, api: api, sound: false, stream: stream);
+    c.start();
+    await tester.pump();
+    expect(api.calls, 1);
+    expect(binds, 1);
+
+    LiveEvents.instance.emit(LiveEvents.lobbyUpdated, {'kind': 'session', 'id': '7'});
+    await tester.pump();
+    expect(api.calls, 1, reason: 'another room');
+    LiveEvents.instance.emit(LiveEvents.lobbyUpdated, {'kind': 'meeting', 'id': '7'});
+    await tester.pump();
+    expect(api.calls, 2, reason: 'this room: refresh at once');
+    await tester.pump(const Duration(seconds: 15));
+    expect(api.calls, 3, reason: 'the idle cadence from that refresh, no follow-up');
+
+    connected.value = true;
+    expect(c.live, isTrue);
+    await tester.pump(const Duration(seconds: 59));
+    expect(api.calls, 3, reason: '15 s x 4 while the stream is connected');
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.calls, 4);
+    c.sheetOpened();
+    await tester.pump();
+    expect(api.calls, 5);
+    await tester.pump(const Duration(seconds: 15));
+    expect(api.calls, 5, reason: '4 s x 4 with the sheet open');
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.calls, 6);
+    c.sheetClosed();
+    connected.value = false;
+    await tester.pump(const Duration(seconds: 15));
+    expect(api.calls, 7, reason: 'back to 15 s from the moment the stream dropped');
+    c.dispose();
+    expect(releases, 1);
+    connected.dispose();
   });
 }

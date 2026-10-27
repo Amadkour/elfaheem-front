@@ -68,6 +68,11 @@ class LiveEvents {
   /// The teacher started a quiz in the room: `{course_id}`.
   static const quizStarted = 'quiz_started';
 
+  /// A student checked in to the teacher's open attendance window: `{session_id}` (the window's session). The
+  /// teacher's roster refreshes on it instead of polling; the backend must emit it from the check-in path
+  /// (services/attendance_service.py — not emitted yet, the roster falls back to a 30 s poll until it is).
+  static const attendanceRosterUpdated = 'attendance_roster_updated';
+
   /// Local (not from the server): fired by TopRouteObserver when the app goes online/offline.
   static const connectivity = 'connectivity_changed';
 
@@ -83,6 +88,7 @@ class LiveEvents {
     jobUpdated,
     sessionLive,
     quizStarted,
+    attendanceRosterUpdated,
   };
 
   /// The VISIBLE notifications of the same features (data["type"]) also nudge
@@ -90,6 +96,7 @@ class LiveEvents {
   static String? fromNotificationType(String? type) => switch (type) {
     'complain' => complaints,
     'transfer_review' => transfers,
+    'payment_success' => payments, // the checkout's verification wait ends on it
     _ => null,
   };
 

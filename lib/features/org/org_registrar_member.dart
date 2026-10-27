@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -156,14 +157,22 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
       var sheetOpen = true;                        // the student may swipe the sheet away: then nothing must be popped
       final sheet = showAppSheet<void>(context, (_) => RegQueueSheet(progress: progress)).whenComplete(() => sheetOpen = false);
       final until = DateTime.now().add(const Duration(seconds: 75));
-      while (mounted && !regRequestDone('${req['status']}') && DateTime.now().isBefore(until)) {
-        await Future<void>.delayed(Duration(milliseconds: regPollAfterMs(req['poll_after_ms'])));
-        final s = await orgCall(() => OrgApi.i.api.get('$_b/register-requests/$tid'), quiet: true);
-        if (!mounted) return;
-        if (s.ok) {
-          req = s.map;
-          progress.value = req;
+      // the worker's `job_updated{kind: registration, tracking_id}` fetches at once; the server's poll_after_ms
+      // (4 × while the live stream is connected) is the fallback
+      final watch = JobWatch(kind: 'registration', match: (e) => '${e.data['tracking_id'] ?? ''}' == tid || e.id == '${req['id'] ?? ''}');
+      try {
+        while (mounted && !regRequestDone('${req['status']}') && DateTime.now().isBefore(until)) {
+          await watch.next(Duration(milliseconds: regPollAfterMs(req['poll_after_ms'])));
+          if (!mounted) return;
+          final s = await orgCall(() => OrgApi.i.api.get('$_b/register-requests/$tid'), quiet: true);
+          if (!mounted) return;
+          if (s.ok) {
+            req = s.map;
+            progress.value = req;
+          }
         }
+      } finally {
+        watch.dispose();
       }
       if (mounted && sheetOpen) Navigator.of(context, rootNavigator: true).pop();
       await sheet;

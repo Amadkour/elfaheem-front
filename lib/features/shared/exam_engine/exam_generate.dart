@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
 import '../rag/rag_chat.dart' show RagApi;
@@ -218,15 +219,24 @@ class ExamGenApi {
 
   Future<EngineResult> get(int id) => engineCall(() => _api.get('$base/exam-drafts/$id'));
 
-  /// Polls until the draft is written (or [timeout]): every 1.5 s, then slower.
+  /// The poll while the live stream is connected: `job_updated{kind: exam_draft, id}` fetches at once then.
+  static const waitLive = Duration(seconds: 15);
+
+  /// Polls until the draft is written (or [timeout]): every 1.5 s, then slower (every [waitLive] while the live
+  /// stream carries the draft's events).
   Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 4)}) async {
     final end = DateTime.now().add(timeout);
     var every = const Duration(milliseconds: 1500);
     var r = await get(id);
-    while (r.ok && !ExamGenDraft.fromJson(asMap(r.map)).done && DateTime.now().isBefore(end)) {
-      await Future<void>.delayed(every);
-      if (every < const Duration(seconds: 5)) every += const Duration(milliseconds: 500);
-      r = await get(id);
+    final watch = JobWatch(kind: 'exam_draft', id: '$id');
+    try {
+      while (r.ok && !ExamGenDraft.fromJson(asMap(r.map)).done && DateTime.now().isBefore(end)) {
+        await watch.next(every, fallbackEvery: waitLive);
+        if (every < const Duration(seconds: 5)) every += const Duration(milliseconds: 500);
+        r = await get(id);
+      }
+    } finally {
+      watch.dispose();
     }
     return r;
   }

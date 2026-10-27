@@ -8,6 +8,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
 import 'attendance_models.dart';
 import 'attendance_repository.dart';
@@ -38,8 +40,13 @@ class TeacherAttendanceProvider extends ChangeNotifier {
   Timer? _tick;
   int _sinceSync = 0;
   bool _disposed = false;
+  JobWatch? _events;
 
-  static const _syncEvery = 5; // seconds: refresh counter + resync clock
+  /// Seconds between counter / clock resyncs — the FALLBACK: the code is re-read when its rotation ends and a
+  /// check-in arrives as the live event `attendance_roster_updated{session_id}` (or `attention_changed`), which
+  /// resyncs at once. The backend must emit `attendance_roster_updated` from the check-in path
+  /// (services/attendance_service.py); until it does the counter is 30 s behind at most.
+  static const _syncEvery = 30;
   static const options = [10, 15, 30, 60];
   static const witnessOptions = [0, 1, 2, 3, 4, 5];
 
@@ -112,6 +119,16 @@ class TeacherAttendanceProvider extends ChangeNotifier {
 
   void _startTicker() {
     _tick?.cancel();
+    _events?.dispose();
+    _events = JobWatch(
+      names: const {LiveEvents.attendanceRosterUpdated, LiveEvents.attentionChanged},
+      match: (e) => e.type == LiveEvents.attentionChanged || e.data['session_id'] == null || '${e.data['session_id']}' == '$sessionId',
+      onEvent: (_) async {
+        if (_disposed || window == null || closed) return;
+        await _sync();
+        if (!_disposed) notifyListeners();
+      },
+    );
     _tick = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_disposed) return;
       secondsLeft = secondsLeft > 0 ? secondsLeft - 1 : 0;
@@ -126,6 +143,7 @@ class TeacherAttendanceProvider extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _events?.dispose();
     _tick?.cancel();
     host?.releaseCheckIn();
     super.dispose();

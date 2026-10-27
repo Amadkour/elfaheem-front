@@ -8,6 +8,7 @@
 // [ragCodeText], [ragChatResultText], [ragOrgBlocked].
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
@@ -283,19 +284,29 @@ class RagApi {
   Future<EngineResult> starters({int? orgId, int? courseId, bool app = false}) => engineCall(() => _api.get('$base/starters',
       queryParams: {'org_id': ?orgId, 'course_id': ?courseId, if (app) 'app': true, 'lang': AppConfig.lang == 'en' ? 'en' : 'ar'}));
 
-  /// Polls until the worker answered (or [timeout]), every second at first and then up to every 5 s; the last state
-  /// otherwise (the screen keeps it as "still working" and asks again on refresh). [onUpdate] gets every poll
-  /// (the stage changes on the way).
+  /// The poll while the live stream is connected: `job_updated{kind: rag_query, id}` fetches at once then.
+  static const waitLive = Duration(seconds: 8);
+
+  /// Polls until the worker answered (or [timeout]), every second at first and then up to every 4 s — every
+  /// [waitLive] while the live stream is connected, where the job's event (`stage` shown at once) fetches early;
+  /// the last state otherwise (the screen keeps it as "still working" and asks again on refresh). [onUpdate] gets
+  /// every poll (the stage changes on the way).
   Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 3), void Function(RagAnswer)? onUpdate}) async {
     final end = DateTime.now().add(timeout);
     var every = const Duration(seconds: 1);
     var r = await query(id);
     if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
-    while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
-      await Future<void>.delayed(every);
-      if (every < const Duration(seconds: 4)) every += const Duration(milliseconds: 500);
-      r = await query(id);
-      if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
+    final watch = JobWatch(kind: 'rag_query', id: '$id');
+    try {
+      while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
+        final stage = (await watch.next(every, fallbackEvery: waitLive))?.stage;
+        if (stage != null && stage.isNotEmpty) onUpdate?.call(RagAnswer.fromJson({...r.map, 'stage': stage}));
+        if (every < const Duration(seconds: 4)) every += const Duration(milliseconds: 500);
+        r = await query(id);
+        if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
+      }
+    } finally {
+      watch.dispose();
     }
     return r;
   }

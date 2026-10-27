@@ -17,6 +17,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -270,7 +271,7 @@ class _DataExportPageState extends State<DataExportPage> {
   DataExportStatus _s = DataExportStatus.empty;
   bool _loading = true, _requesting = false, _downloading = false;
   String? _error;
-  Timer? _poll;
+  EventOrPoll? _poll;
 
   @override
   void initState() {
@@ -280,13 +281,18 @@ class _DataExportPageState extends State<DataExportPage> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
+  /// While the build runs: `job_updated{kind: export}` reloads at once, the poll ([DataExportPage.pollEvery], 4 ×
+  /// slower while the live stream is connected) is the fallback.
   void _follow() {
-    _poll?.cancel();
-    if (_s.busy && mounted) _poll = Timer(widget.pollEvery, () => _load(silent: true));
+    if (!_s.busy || !mounted) {
+      _poll?.stop();
+      return;
+    }
+    (_poll ??= EventOrPoll(kind: 'export', every: widget.pollEvery, poll: () => _load(silent: true))).start();
   }
 
   Future<void> _load({bool silent = false}) async {

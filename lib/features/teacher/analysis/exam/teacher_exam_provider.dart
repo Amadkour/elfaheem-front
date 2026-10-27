@@ -4,6 +4,7 @@ import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exa
 import '../../../../config/app_config.dart';
 import '../../../../core/api_client.dart';
 import '../../../shared/models/exam_model.dart';
+import '../../sessions/live/widgets/live_quiz.dart';
 import 'exam_files.dart';
 
 class TeacherExamProvider extends ChangeNotifier {
@@ -182,6 +183,8 @@ class TeacherExamProvider extends ChangeNotifier {
           ? await _api.unpublishExam(exam.id)
           : await _api.publishExam(exam.id);
       _replaceExam(updated);
+      // the teacher's open live room tells its students over LiveKit (topic 'quiz'): they fetch /exams/active
+      if (!exam.isPublished) LiveQuizBroadcast.started(examId: exam.id, courseId: courseId);
       return null;
     } on ApiException catch (e) {
       return e.message;

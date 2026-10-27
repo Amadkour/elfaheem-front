@@ -16,6 +16,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
@@ -42,6 +43,9 @@ Future<bool> openExternalUrl(String url) async {
 
 /// How often GET /me/cloud is asked after the browser opened the auth page.
 const cloudConnectPoll = Duration(seconds: 3);
+
+/// The same wait while the live stream is connected (`job_updated{kind: cloud, id: provider}` ends it at once).
+const cloudConnectPollLive = Duration(seconds: 20);
 
 /// The poll gives up after this (the person closed the browser without finishing).
 const cloudConnectTimeout = Duration(minutes: 5);
@@ -275,7 +279,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
   RecordingQuality _quality = RecordingQuality.p720;
   bool _busy = false;
   String? _error;
-  Timer? _poll;
+  EventOrPoll? _poll;
   DateTime? _pollStarted;
 
   @override
@@ -292,7 +296,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -328,8 +332,8 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
         throw const ApiException(statusCode: 0, message: '', code: 'cloud_auth_failed');
       }
       _pollStarted = DateTime.now();
-      _poll?.cancel();
-      _poll = Timer.periodic(cloudConnectPoll, (_) => _tick(p));
+      _poll?.dispose();
+      _poll = EventOrPoll(kind: 'cloud', id: p.wire, every: cloudConnectPoll, fallbackEvery: cloudConnectPollLive, poll: () => _tick(p))..start();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -340,10 +344,10 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
   }
 
   Future<void> _tick(CloudProvider p) async {
-    if (!mounted) return _poll?.cancel();
+    if (!mounted) return _poll?.stop();
     final started = _pollStarted;
     if (started != null && DateTime.now().difference(started) > cloudConnectTimeout) {
-      _poll?.cancel();
+      _poll?.stop();
       setState(() {
         _connecting = null;
         _error = t('انتهى وقت الربط، حاول مرة أخرى', 'Connecting timed out, try again');
@@ -362,7 +366,7 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
         }
       });
       if (done) {
-        _poll?.cancel();
+        _poll?.stop();
         appToast(t('تم ربط ${p.label}', '${p.label} connected'));
       }
     } catch (_) {
@@ -489,8 +493,10 @@ class RecordingStatusCard extends StatelessWidget {
   }
 }
 
-/// How often an in-progress recording is re-read in the meeting detail.
+/// How often an in-progress recording is re-read in the meeting detail (while the live stream is connected
+/// [recordingStatusPollLive]: `job_updated{kind: recording, id}` re-reads at once then).
 const recordingStatusPoll = Duration(seconds: 5);
+const recordingStatusPollLive = Duration(seconds: 20);
 
 /// The latest recording of a meeting, kept fresh: starts from [initial] (the detail's `recording`) or
 /// GET /live/meeting/{id}/recordings, polls while in progress, Retry → POST …/retry, Open → the drive link.
@@ -512,7 +518,7 @@ class _MeetingRecordingStatusState extends State<MeetingRecordingStatus> {
   late final MeetingRecordingApi _api = widget.api ?? RemoteMeetingRecordingApi();
   MeetingRecording? _r;
   bool _busy = false;
-  Timer? _poll;
+  EventOrPoll? _poll;
 
   @override
   void initState() {
@@ -533,15 +539,21 @@ class _MeetingRecordingStatusState extends State<MeetingRecordingStatus> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
   void _schedule() {
-    _poll?.cancel();
     final r = _r;
-    if (r == null || !r.inProgress) return;
-    _poll = Timer(recordingStatusPoll, _refreshOne);
+    if (r == null || !r.inProgress) {
+      _poll?.stop();
+      return;
+    }
+    if (_poll?.id != '${r.id}') {
+      _poll?.dispose();
+      _poll = EventOrPoll(kind: 'recording', id: '${r.id}', every: recordingStatusPoll, fallbackEvery: recordingStatusPollLive, poll: _refreshOne);
+    }
+    _poll!.start();
   }
 
   Future<void> _reload() async {
@@ -700,7 +712,7 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
   bool _loading = true;
   String? _error;
   CloudProvider? _connecting;
-  Timer? _poll;
+  EventOrPoll? _poll;
   DateTime? _pollStarted;
 
   @override
@@ -711,7 +723,7 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -749,8 +761,8 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
         throw const ApiException(statusCode: 0, message: '', code: 'cloud_auth_failed');
       }
       _pollStarted = DateTime.now();
-      _poll?.cancel();
-      _poll = Timer.periodic(cloudConnectPoll, (_) => _tick(p));
+      _poll?.dispose();
+      _poll = EventOrPoll(kind: 'cloud', id: p.wire, every: cloudConnectPoll, fallbackEvery: cloudConnectPollLive, poll: () => _tick(p))..start();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -761,10 +773,10 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
   }
 
   Future<void> _tick(CloudProvider p) async {
-    if (!mounted) return _poll?.cancel();
+    if (!mounted) return _poll?.stop();
     final started = _pollStarted;
     if (started != null && DateTime.now().difference(started) > cloudConnectTimeout) {
-      _poll?.cancel();
+      _poll?.stop();
       setState(() {
         _connecting = null;
         _error = t('انتهى وقت الربط، حاول مرة أخرى', 'Connecting timed out, try again');
@@ -780,7 +792,7 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
         if (done) _connecting = null;
       });
       if (done) {
-        _poll?.cancel();
+        _poll?.stop();
         appToast(t('تم ربط ${p.label}', '${p.label} connected'));
       }
     } catch (_) {

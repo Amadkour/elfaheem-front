@@ -24,6 +24,8 @@ import 'package:flutter_education_app/features/student/enrollment/transfer/trans
 import 'package:moyasar/moyasar.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../config/app_config.dart';
+import '../../../core/live/event_wait.dart';
+import '../../../utils/live_events.dart';
 import '../../student/models.dart';
 import 'checkout_pages.dart';
 import 'enrollment_models.dart';
@@ -627,23 +629,30 @@ class EnrollmentProvider extends PaymentFlowProvider {
     }
 
     setStep(EnrollStep.verifying);
-    for (var attempt = 0; attempt < 18 && !isDisposed; attempt++) {
-      await Future.delayed(const Duration(seconds: 5));
-      if (isDisposed) return;
+    // the 3DS outcome also arrives as `payments_updated` (live bus) / the visible `payment_success` push: verify at
+    // once on either; the 5 s poll is the fallback
+    final watch = JobWatch(names: const {LiveEvents.payments}, match: (e) => e.paymentId == null || e.paymentId == paymentId);
+    try {
+      for (var attempt = 0; attempt < 18 && !isDisposed; attempt++) {
+        await watch.next(const Duration(seconds: 5), fallbackEvery: const Duration(seconds: 5));
+        if (isDisposed) return;
 
-      final r = asJsonMap(await run(() async => api.post(
-        '/api/v1/payments/$paymentId/verify',
-        queryParams: {'transaction_id': transactionId},
-      )));
-      final status = r?['status'] as String?;
-      if (status == 'completed' || status == 'paid') {
-        setStep(EnrollStep.success);
-        return;
+        final r = asJsonMap(await run(() async => api.post(
+          '/api/v1/payments/$paymentId/verify',
+          queryParams: {'transaction_id': transactionId},
+        )));
+        final status = r?['status'] as String?;
+        if (status == 'completed' || status == 'paid') {
+          setStep(EnrollStep.success);
+          return;
+        }
+        if (status == 'failed') {
+          setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
+          return;
+        }
       }
-      if (status == 'failed') {
-        setStep(EnrollStep.failed, reason: 'payment_failed_try_other_method'.tr);
-        return;
-      }
+    } finally {
+      watch.dispose();
     }
     setStep(EnrollStep.pending);
   }

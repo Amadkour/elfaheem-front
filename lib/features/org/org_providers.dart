@@ -13,6 +13,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
@@ -284,9 +285,8 @@ class OrgScheduleProvider extends AdminBase {
   List<Map<String, dynamic>> termNeeds = [];
   bool termNeedsLoaded = false;
   Map<String, dynamic>? genRun;      // the run being followed (queued / running / waiting / just finished)
-  Timer? _poll;
+  EventOrPoll? _poll;                // the run follow: the live event or the fallback poll, one request in flight
   int _followSeq = 0;                // bumped by every _follow: a poll of an older follow never writes genRun
-  bool _polling = false;             // one request in flight at a time
   bool _disposed = false;
 
   Future<void> loadSetup() async {
@@ -332,7 +332,7 @@ class OrgScheduleProvider extends AdminBase {
   @override
   void dispose() {
     _disposed = true;
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -411,23 +411,26 @@ class OrgScheduleProvider extends AdminBase {
     if (runIsOpen(run)) _follow(scheduleId, asInt(run['id']));
   }
 
-  /// Polls the run every 2 s until it is closed. No time cap: a ladder run may wait for a decision for as long as
-  /// the server allows. The run is lost only after 5 failed polls in a row or a 404; polls never overlap, and a
-  /// poll of an earlier follow (another run, or a closed studio) never writes [genRun].
+  /// Polls the run every 2 s until it is closed — every 10 s while the live stream is connected, where the event
+  /// `job_updated{kind: schedule_run, id}` fetches at once. No time cap: a ladder run may wait for a decision for
+  /// as long as the server allows. The run is lost only after 5 failed polls in a row or a 404; polls never
+  /// overlap, and a poll of an earlier follow (another run, or a closed studio) never writes [genRun].
   void _follow(int scheduleId, int runId) {
-    _poll?.cancel();
+    _poll?.dispose();
     final seq = ++_followSeq;
-    _polling = false;
     var misses = 0;
-    _poll = Timer.periodic(const Duration(seconds: 2), (tm) async {
-      if (_polling) return;
-      _polling = true;
-      try {
+    late final EventOrPoll w;
+    w = EventOrPoll(
+      kind: 'schedule_run',
+      id: '$runId',
+      every: const Duration(seconds: 2),
+      fallbackEvery: const Duration(seconds: 10),
+      poll: () async {
         final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
-        if (_disposed || seq != _followSeq) return tm.cancel();
+        if (_disposed || seq != _followSeq) return w.stop();
         final lost = !r.ok && (++misses >= 5 || r.endpointMissing || r.error?.statusCode == 404);
         if (lost) {
-          tm.cancel();
+          w.stop();
           genRun = {...?genRun, 'status': 'failed', 'error': t('انقطعت متابعة التوليد — أعد فتح الجدول', 'Lost track of the generation — reopen the timetable')};
           notifyListeners();
           return;
@@ -437,14 +440,14 @@ class OrgScheduleProvider extends AdminBase {
         genRun = r.map;
         notifyListeners();
         if (!runIsOpen(genRun)) {
-          tm.cancel();
+          w.stop();
           if (schedule?['id'] == scheduleId) await open(scheduleId);   // slots + result as stored by the server
           await loadSetup();
         }
-      } finally {
-        _polling = false;
-      }
-    });
+      },
+    );
+    _poll = w;
+    w.start();
   }
 
   // ── v4: the relaxation ladder (org_schedule_ladder.dart; server schedule_ladder.py) ──
@@ -512,7 +515,7 @@ class OrgScheduleProvider extends AdminBase {
     if (r.ok) {
       genRun = r.map['run'] != null ? asMap(r.map['run']) : (r.map['id'] != null ? r.map : {...run, 'status': 'running'});
       notifyListeners();
-      if (_poll == null || !_poll!.isActive) _follow(sid, asInt(run['id']));
+      if (_poll?.running != true) _follow(sid, asInt(run['id']));
     }
     return r;
   }
@@ -684,7 +687,7 @@ class OrgScheduleProvider extends AdminBase {
   }
 
   void closeSchedule() {
-    _poll?.cancel();
+    _poll?.dispose();
     _followSeq++;
     genRun = null;
     schedule = null;

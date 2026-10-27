@@ -9,6 +9,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
@@ -47,7 +48,7 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
   bool _advanced = false;
   String? _picked;
   String? _err;
-  Timer? _poll;
+  EventOrPoll? _poll;
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     _focus.dispose();
     super.dispose();
   }
@@ -65,7 +66,6 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
   List<RagDocument> get _mine => _docs.where((d) => d.scope == 'course' && d.courseId == widget.courseId && !d.archived).toList();
 
   Future<void> _load() async {
-    _poll?.cancel();
     final r = await _lib.list(courseId: widget.courseId);
     if (!mounted) return;
     setState(() {
@@ -77,7 +77,18 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
       _docs = RagLibrary.fromJson(asMap(r.map)).items;
       if (_step != ExamGenStep.generating) _step = examGenStepOf(_docs, widget.courseId);
     });
-    if (_step == ExamGenStep.processing) _poll = Timer(const Duration(seconds: 4), _load);
+    // the uploaded file being read: `job_updated{kind: rag_ingest}` reloads at once; the poll (4 s, 16 s while the
+    // live stream is connected) is the fallback
+    if (_step == ExamGenStep.processing) {
+      (_poll ??= EventOrPoll(
+              match: (e) => e.kind == 'rag_ingest' || e.kind == 'ingest',
+              every: const Duration(seconds: 4),
+              fallbackEvery: const Duration(seconds: 16),
+              poll: _load))
+          .start();
+    } else {
+      _poll?.stop();
+    }
   }
 
   Future<(String, Uint8List)?> _pick() async {

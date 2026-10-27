@@ -1,6 +1,4 @@
 
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
@@ -13,8 +11,9 @@ class StudentExamsTab extends StatefulWidget {
   State<StudentExamsTab> createState() => _StudentExamsTabState();
 }
 
+// Fetched on open, on resume and on pull-to-refresh only — no poll: the exam-reminder push covers "starts soon".
 class _StudentExamsTabState extends State<StudentExamsTab>
-    with AutomaticKeepAliveClientMixin {
+    with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   @override
   bool get wantKeepAlive => true;
   final ApiClient _api = ApiClient();
@@ -22,25 +21,29 @@ class _StudentExamsTabState extends State<StudentExamsTab>
   List<_UpcomingExam> _upcoming = [];
   bool _loading = true;
   String? _error;
-  Timer? _notifTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _load();
-    _startNotifPolling();
+    _pollUpcoming();
   }
 
   @override
   void dispose() {
-    _notifTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  void _startNotifPolling() {
-    _pollUpcoming();
-    _notifTimer =
-        Timer.periodic(const Duration(minutes: 5), (_) => _pollUpcoming());
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    await _load();
+    await _pollUpcoming();
   }
 
   Future<void> _pollUpcoming() async {
@@ -197,7 +200,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                               ]))
                           : RefreshIndicator(
                           color: context.colors.primary,
-                          onRefresh: _load,
+                          onRefresh: _refresh,
                           child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(
                                   20, 4, 20, 32),

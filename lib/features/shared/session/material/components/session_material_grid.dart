@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../core/api_client.dart';
+import '../../../../../core/live/event_wait.dart';
 import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText;
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
@@ -1233,12 +1234,13 @@ class _CaptionsAction extends StatefulWidget {
 
 class _CaptionsActionState extends State<_CaptionsAction> {
   static const _pollEvery = Duration(seconds: 8);
+  static const _pollEveryLive = Duration(seconds: 30); // the fallback while `job_updated{kind: caption}` arrives
   static const _maxPolls = 40; // ≈ 5 minutes
 
   String? _status;
   String? _url;
   bool _busy = false;
-  Timer? _poll;
+  EventOrPoll? _poll;
   int _polls = 0;
 
   SessionMaterialModel get _m => widget.material;
@@ -1267,7 +1269,7 @@ class _CaptionsActionState extends State<_CaptionsAction> {
 
   @override
   void dispose() {
-    _stopPolling();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -1276,16 +1278,14 @@ class _CaptionsActionState extends State<_CaptionsAction> {
     _url = _m.captionsUrl;
   }
 
-  // ── Polling ───────────────────────────────────────────────────────────────
+  // ── Polling (the fallback: the live event `job_updated{kind: caption, id}` refreshes at once) ──────────────
   void _startPolling() {
-    _poll?.cancel();
     _polls = 0;
-    _poll = Timer.periodic(_pollEvery, (_) => _refresh());
+    (_poll ??= EventOrPoll(kind: 'caption', id: '${_m.id}', every: _pollEvery, fallbackEvery: _pollEveryLive, poll: _refresh)).start();
   }
 
   void _stopPolling() {
-    _poll?.cancel();
-    _poll = null;
+    _poll?.stop();
   }
 
   Future<void> _refresh() async {

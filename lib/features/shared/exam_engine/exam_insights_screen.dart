@@ -3,6 +3,7 @@
 // layout harness (test/org/exam_insights_test.dart); the screens own the API calls.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -412,10 +413,16 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
       setState(() { _busy = false; _error = r.message; });
       return;
     }
-    for (var i = 0; i < 30 && mounted; i++) {                 // the worker computes it: poll a little, then leave refresh to the user
-      await Future<void>.delayed(const Duration(seconds: 2));
-      await _load();
-      if (_data?.state == 'ready' || _data?.state == 'failed') break;
+    // the worker computes it: poll a little (at once on `job_updated{kind: exam_analytics}`), then leave refresh to the user
+    final watch = JobWatch(kind: 'exam_analytics', id: '${widget.examId}');
+    try {
+      for (var i = 0; i < 30 && mounted; i++) {
+        await watch.next(const Duration(seconds: 2), fallbackEvery: const Duration(seconds: 2));
+        await _load();
+        if (_data?.state == 'ready' || _data?.state == 'failed') break;
+      }
+    } finally {
+      watch.dispose();
     }
     if (mounted) setState(() => _busy = false);
   }

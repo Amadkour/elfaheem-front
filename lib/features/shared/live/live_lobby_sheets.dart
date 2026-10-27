@@ -5,7 +5,8 @@
 // layout harness can pump it (test/ui/live_lobby_layout_test.dart):
 //
 //   LiveLobbyController     ChangeNotifier the host's room / lobby sheet drive: polls GET …/lobby every 15 s (4 s
-//                           while the LobbySheet is open, nothing in the background), refreshes at once on the
+//                           while the LobbySheet is open, × 4 while the live stream is connected, nothing in the
+//                           background), refreshes at once on the live event `lobby_updated{kind,id}`, on the
 //                           silent push (LiveLobbyEvents, then one follow-up 4 s later) and on resume, plays a short
 //                           system sound + haptic on a new request and keeps it as [latestNew] for the banner.
 //   LobbySheet / LobbyBody  the waiting list (avatar / initials, Admit · Reject · Admit all) and the two switches
@@ -13,7 +14,8 @@
 //   ShareLinkSheet / ShareLinkBody   the room's share link for meetings (can-publish, max guests, PIN, copy / share /
 //                           QR / settings / revoke) — mirrors the session guest-link sheet. showShareLinkSheet(…).
 //   WaitingForHostPage / WaitingForHostScreen   the joiner's "Waiting for the host…" (animated, cancel) with the
-//                           rejected / expired end states; the page polls the request until a decision.
+//                           rejected / expired end states; the page fetches the request once on the live event
+//                           `join_decided{request_id}` and polls it (every 3 s, 15 s while the stream is connected).
 //   LobbyBanner             the in-room strip "X wants to join" with Admit / Reject inline.
 //
 // Strings: t(ar, en) from admin_common.dart (no translation.json edits). Switches: AppSwitchTile only.
@@ -29,7 +31,9 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart' show ApiException;
+import '../../../core/live/event_wait.dart';
 import '../../../design/app_kit.dart';
+import '../../../utils/live_events.dart';
 import '../../admin/admin_common.dart' show t;
 import '../guest/guest_live_api.dart' show guestPinValid;
 import 'live_room.dart';
@@ -44,6 +48,8 @@ import 'live_room.dart';
 /// The poll schedule — every interval is a constructor parameter so a test can run it on a fake clock:
 ///   · lobby sheet open   → every [pollWhileOpen] (4 s), and at once when it opens ([sheetOpened]);
 ///   · sheet closed       → every [pollIdle] (15 s);
+///   · both × [liveStretch] (4) while the live stream (LiveEventsClient) is connected: the poll is then only the
+///     fallback, the event `lobby_updated{kind, id}` refreshes at once;
 ///   · the silent push `live_join_request` ([LiveLobbyEvents]) → at once, then one follow-up after
 ///     [pushFollowUp] (4 s) — a second request often arrives right behind the first;
 ///   · back in the foreground → at once; in the background nothing is polled (WidgetsBindingObserver).
@@ -56,10 +62,19 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
     this.pollWhileOpen = kLobbyPollEvery,
     this.pollIdle = kLobbyPollIdle,
     this.pushFollowUp = kLobbyPollEvery,
-  }) : api = api ?? LiveRoomApi(ref);
+    LiveEvents? bus,
+    LiveStreamHandle? stream,
+  })  : api = api ?? LiveRoomApi(ref),
+        _bus = bus ?? LiveEvents.instance,
+        _stream = stream ?? LiveStreamHandle.app;
 
   final LiveRoomRef ref;
   final LiveRoomApi api;
+  final LiveEvents _bus;
+  final LiveStreamHandle _stream;
+
+  /// How much slower the poll runs while the live stream carries the lobby's events.
+  static const liveStretch = 4;
 
   /// Play the system alert + a haptic on a new request.
   final bool sound;
@@ -88,6 +103,7 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
   LobbyRequest? latestNew;
 
   Timer? _timer;
+  StreamSubscription<LiveEvent>? _events;
   bool _started = false;
   bool _disposed = false;
   bool _fetching = false;
@@ -96,6 +112,9 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
   bool _followUpDue = false;
 
   int get waitingCount => waiting.length;
+
+  /// True while the live stream is connected (the poll is the slow fallback then).
+  bool get live => _stream.connected.value;
 
   /// True while a [LobbySheet] shows this controller's list (the [pollWhileOpen] cadence).
   bool get sheetOpen => _sheetsOpen > 0;
@@ -113,6 +132,9 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
     if (_started || _disposed) return;
     _started = true;
     LiveLobbyEvents.latest.addListener(_onPush);
+    _stream.bind();
+    _stream.connected.addListener(_onStreamChanged);
+    _events = _bus.listen({LiveEvents.lobbyUpdated}, _onLobbyEvent);
     final binding = WidgetsBinding.instance;
     binding.addObserver(this);
     _background = _isBackground(binding.lifecycleState);
@@ -127,6 +149,10 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
     _timer = null;
     _followUpDue = false;
     LiveLobbyEvents.latest.removeListener(_onPush);
+    _events?.cancel();
+    _events = null;
+    _stream.connected.removeListener(_onStreamChanged);
+    _stream.release();
     WidgetsBinding.instance.removeObserver(this);
   }
 
@@ -158,6 +184,21 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
     unawaited(refresh());
   }
 
+  /// `lobby_updated{kind, id}` on the live bus: every new request and every decision — refresh at once, no follow-up.
+  void _onLobbyEvent(LiveEvent e) {
+    if (!_started || _disposed) return;
+    final r = LiveRoomRef.parse(e.kind, e.id);
+    if (r != null && r != ref) return;
+    if (_background) return;
+    unawaited(refresh());
+  }
+
+  /// The stream came or went: the booked poll takes the new cadence from now.
+  void _onStreamChanged() {
+    if (_timer == null || _fetching) return;
+    _scheduleNext();
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final bg = _isBackground(state);
@@ -185,7 +226,8 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
       _followUpDue = false;
       after = pushFollowUp;
     } else {
-      after = sheetOpen ? pollWhileOpen : pollIdle;
+      final base = sheetOpen ? pollWhileOpen : pollIdle;
+      after = live ? base * liveStretch : base;
     }
     _timer = Timer(after, () {
       _timer = null;
@@ -996,10 +1038,14 @@ class WaitingForHostPage extends StatefulWidget {
   State<WaitingForHostPage> createState() => _WaitingForHostPageState();
 }
 
+/// The poll while the live stream is connected (the event `join_decided` fetches at once; this is the fallback).
+const kWaitingPollLive = Duration(seconds: 15);
+
 class _WaitingForHostPageState extends State<WaitingForHostPage> {
   WaitingState _state = WaitingState.waiting;
   Timer? _timer;
   Timer? _lifetime;
+  JobWatch? _watch;
   bool _polling = false;
   bool _done = false;
   int _failures = 0;
@@ -1007,6 +1053,13 @@ class _WaitingForHostPageState extends State<WaitingForHostPage> {
   @override
   void initState() {
     super.initState();
+    final rid = widget.waiting.requestId;
+    if (rid != null && rid.isNotEmpty) {
+      _watch = JobWatch(
+          names: const {LiveEvents.joinDecided},
+          match: (e) => '${e.data['request_id'] ?? ''}' == rid,
+          onEvent: (_) => _poll());
+    }
     _schedule(widget.waiting.pollAfter);
     _lifetime = Timer(kLobbyRequestLifetime, () {
       if (mounted && !_done) setState(() => _state = WaitingState.expired);
@@ -1017,12 +1070,13 @@ class _WaitingForHostPageState extends State<WaitingForHostPage> {
   void dispose() {
     _timer?.cancel();
     _lifetime?.cancel();
+    _watch?.dispose();
     super.dispose();
   }
 
   void _schedule(Duration d) {
     _timer?.cancel();
-    _timer = Timer(d, _poll);
+    _timer = Timer(_watch?.pace(d, fallbackEvery: kWaitingPollLive) ?? d, _poll);
   }
 
   Future<void> _poll() async {

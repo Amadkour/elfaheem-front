@@ -9,6 +9,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
 import 'attendance_location.dart';
 import 'attendance_models.dart';
@@ -84,8 +86,13 @@ class TeacherAttendanceController extends ChangeNotifier {
 
   Timer? _tick;
   int _sinceSync = 0;
+  JobWatch? _events;
 
-  static const _syncEvery = 5;
+  /// Seconds between roster / clock resyncs — the FALLBACK: the code itself is re-read when its rotation ends
+  /// (secondsLeft == 0), and a check-in arrives as the live event `attendance_roster_updated{session_id}` (or any
+  /// `attention_changed`), which resyncs at once. The backend must emit `attendance_roster_updated` from the
+  /// check-in path (services/attendance_service.py) — until it does, the roster is 30 s behind at most.
+  static const _syncEvery = 30;
 
   bool get isOpen => window != null && !closed && (code?.isOpen ?? true);
   bool get isClosing => closed && closingLeft > 0;
@@ -282,6 +289,7 @@ class TeacherAttendanceController extends ChangeNotifier {
   /// Forget the finished window (used by the banner's dismiss / when a new lesson is prepared).
   void clear() {
     _tick?.cancel();
+    _stopEvents();
     window = null;
     code = null;
     closed = false;
@@ -310,6 +318,7 @@ class TeacherAttendanceController extends ChangeNotifier {
 
   void _startTicker() {
     _tick?.cancel();
+    _startEvents();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (closed) return;
       secondsLeft = secondsLeft > 0 ? secondsLeft - 1 : 0;
@@ -319,8 +328,29 @@ class TeacherAttendanceController extends ChangeNotifier {
     });
   }
 
+  /// A check-in (or any badge change) on the live bus → the present counter at once.
+  void _startEvents() {
+    _stopEvents();
+    final sid = sessionId;
+    _events = JobWatch(
+      names: const {LiveEvents.attendanceRosterUpdated, LiveEvents.attentionChanged},
+      match: (e) => e.type == LiveEvents.attentionChanged || e.data['session_id'] == null || '${e.data['session_id']}' == '$sid',
+      onEvent: (_) async {
+        if (closed || window == null) return;
+        await _sync();
+        notifyListeners();
+      },
+    );
+  }
+
+  void _stopEvents() {
+    _events?.dispose();
+    _events = null;
+  }
+
   void _startClosingTicker() {
     _tick?.cancel();
+    _stopEvents();
     _tick = Timer.periodic(const Duration(seconds: 1), (t) {
       if (closingLeft > 0) closingLeft--;
       if (closingLeft <= 0) {

@@ -13,6 +13,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -56,7 +57,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
   String _filter = '';
   bool _loading = true;
   String? _error;
-  Timer? _poll;
+  EventOrPoll? _poll;
   final Set<int> _working = {};
 
   @override
@@ -67,7 +68,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poll?.dispose();
     super.dispose();
   }
 
@@ -85,8 +86,18 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
         _error = r.unavailable ? t('المكتبة غير متاحة بعد على هذا الخادم', 'The library is not available on this server yet') : ragResultText(r);
       }
     });
-    _poll?.cancel();
-    if (_lib?.hasBusy == true) _poll = Timer(const Duration(seconds: 5), () => _load(silent: true));
+    // a document being read: `job_updated{kind: rag_ingest}` reloads at once; the poll is the fallback (5 s, 20 s
+    // while the live stream is connected)
+    if (_lib?.hasBusy == true) {
+      (_poll ??= EventOrPoll(
+              match: (e) => e.kind == 'rag_ingest' || e.kind == 'ingest',
+              every: const Duration(seconds: 5),
+              fallbackEvery: const Duration(seconds: 20),
+              poll: () => _load(silent: true)))
+          .start();
+    } else {
+      _poll?.stop();
+    }
   }
 
   Future<void> _run(RagDocument d, Future<EngineResult> Function() call, {String? done}) async {

@@ -22,7 +22,9 @@ import 'widgets/controls.dart';
 import 'widgets/live_chat.dart';
 import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
 import 'widgets/live_hands.dart';
+import 'widgets/live_quiz.dart';
 import 'widgets/live_reactions.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
@@ -798,6 +800,7 @@ class _RoomPageState extends State<RoomPage>
   ActiveQuiz? _activeQuiz;
   bool _quizVisible = false;
   Timer? _quizPollTimer;
+  StreamSubscription<LiveEvent>? _quizEvents;
   int _currentQuestionIndex = 0;
   Map<int, int> _selectedAnswers = {};
   bool _quizSubmitted = false;
@@ -934,6 +937,7 @@ class _RoomPageState extends State<RoomPage>
     // Guests have no token: the roster and the quiz feed need an account.
     if (!widget.isGuest) _fetchEnrolledStudents();
     if (!widget.isTeacher && !widget.isGuest) _startQuizPolling();
+    if (widget.isTeacher) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
     _startLobby(); // host only; see the "Lobby" region
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -1035,6 +1039,8 @@ class _RoomPageState extends State<RoomPage>
     _lobby?.dispose();
     _reactions.dispose();
     _hands.removeListener(_onHandsChanged);
+    LiveQuizBroadcast.latest.removeListener(_onQuizPublished);
+    _quizEvents?.cancel();
     _hands.dispose();
     _chat.dispose();
     _guestBusy.dispose();
@@ -1283,13 +1289,36 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
-  // ── Quiz polling ───────────────────────────────────────────────────────────
+  // ── Quiz feed (students) ───────────────────────────────────────────────────
+  // One fetch on join. Then the teacher's data packet on topic 'quiz' (LiveQuizBroadcast, sent when they publish
+  // an exam of the course from their open room) and the live event `quiz_started{course_id}` fetch at once; the
+  // periodic poll is only the fallback (a teacher who published from another device).
+  static const _quizFallbackPoll = Duration(minutes: 5);
+
   void _startQuizPolling() {
-    _quizPollTimer = Timer.periodic(
-      const Duration(seconds: 30),
-          (_) => _pollActiveQuiz(),
-    );
+    _quizPollTimer = Timer.periodic(_quizFallbackPoll, (_) => _pollActiveQuiz());
+    _quizEvents = LiveEvents.instance.listen({LiveEvents.quizStarted}, (e) {
+      final cid = int.tryParse('${e.data['course_id'] ?? ''}');
+      if (cid == null || cid == widget.courseId) _pollActiveQuiz();
+    });
     _pollActiveQuiz();
+  }
+
+  /// A 'quiz' packet from the teacher: fetch the active exam now (students only; a guest has no token).
+  void _onQuizPacket(List<int> bytes) {
+    if (widget.isTeacher || widget.isGuest) return;
+    final s = LiveQuizBroadcast.decode(bytes);
+    if (s == null || (s.courseId != null && s.courseId != widget.courseId)) return;
+    _pollActiveQuiz();
+  }
+
+  /// Teacher: an exam of this course was just published → one reliable packet on topic 'quiz'.
+  void _onQuizPublished() {
+    final s = LiveQuizBroadcast.latest.value;
+    if (s == null || !widget.isTeacher || !mounted) return;
+    if (s.courseId != null && s.courseId != widget.courseId) return;
+    unawaited(widget.room.localParticipant
+        ?.publishData(LiveQuizBroadcast.encode(s), reliable: true, topic: kLiveQuizTopic));
   }
 
   Future<void> _pollActiveQuiz() async {
@@ -1576,6 +1605,10 @@ class _RoomPageState extends State<RoomPage>
       final senderName = (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity;
       if (event.topic == kLiveReactionTopic) {
         _reactions.receive(event.data, fallbackName: senderName);
+        return;
+      }
+      if (event.topic == kLiveQuizTopic) {
+        _onQuizPacket(event.data);
         return;
       }
       // Hands and chat: matched by topic, and by payload type for senders that set no topic.
