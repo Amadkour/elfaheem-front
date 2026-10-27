@@ -5,6 +5,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -107,6 +108,7 @@ class _ViewState extends State<_View> {
     final isAr = AppConfig.lang == 'ar';
 
     Widget body;
+    var scrollable = false; // the plans list scrolls by itself; the status cards are laid out by AppRefresh
     if (!p.loaded) {
       body = const Center(child: AppLoadingIndicator());
     } else if (p.error != null && p.plans.isEmpty) {
@@ -141,6 +143,7 @@ class _ViewState extends State<_View> {
       );
     } else {
       final transferEnabled = p.transfer['bank_transfer_enabled'] == true || p.transfer['instapay_enabled'] == true;
+      scrollable = true;
       body = ListView(padding: const EdgeInsets.all(16), children: [
         Icon(Icons.workspace_premium_rounded, size: 56, color: c.primary),
         const SizedBox(height: 8),
@@ -264,8 +267,11 @@ class _ViewState extends State<_View> {
       textDirection: dir,
       child: Scaffold(
         backgroundColor: c.background,
-        appBar: AppBar(title: Text('sub_title'.tr, style: const TextStyle(fontFamily: 'tajawal'))),
-        body: body,
+        appBar: AppBar(
+          title: Text('sub_title'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+          actions: [AppRefreshAction(onRefresh: p.load)],
+        ),
+        body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
       ),
     );
   }

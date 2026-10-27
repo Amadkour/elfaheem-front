@@ -1171,6 +1171,7 @@
  ],
  "rag": [
   "DELETE /api/v1/rag/documents/{doc_id:int}",
+  "DELETE /api/v1/rag/qa/{qa_id:int}",
   "GET /api/v1/rag/admin/exam-drafts",
   "GET /api/v1/rag/admin/overview",
   "GET /api/v1/rag/admin/queries",
@@ -1183,6 +1184,7 @@
   "GET /api/v1/rag/orgs/{org_id:int}/answers/feedback",
   "GET /api/v1/rag/orgs/{org_id:int}/quota",
   "GET /api/v1/rag/orgs/{org_id:int}/settings",
+  "GET /api/v1/rag/qa",
   "GET /api/v1/rag/queries",
   "GET /api/v1/rag/queries/{query_id:int}",
   "GET /api/v1/rag/starters",
@@ -1194,9 +1196,13 @@
   "POST /api/v1/rag/documents",
   "POST /api/v1/rag/documents/{doc_id:int}/reindex",
   "POST /api/v1/rag/exam-drafts",
+  "POST /api/v1/rag/qa",
+  "POST /api/v1/rag/qa/from-query/{query_id:int}",
+  "POST /api/v1/rag/qa/{qa_id:int}/toggle",
   "POST /api/v1/rag/queries/{query_id:int}/feedback",
   "PUT /api/v1/rag/admin/settings",
   "PUT /api/v1/rag/orgs/{org_id:int}/quota",
-  "PUT /api/v1/rag/orgs/{org_id:int}/settings"
+  "PUT /api/v1/rag/orgs/{org_id:int}/settings",
+  "PUT /api/v1/rag/qa/{qa_id:int}"
  ]
 }

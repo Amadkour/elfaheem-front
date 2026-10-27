@@ -9,6 +9,7 @@ library;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
@@ -151,6 +152,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const ChangePasswordScreen()),
                             ),
                           ),
+                          const CalendarEntryTile(),
                           // Downloaded (encrypted) videos — native apps only.
                           if (!kIsWeb && !context.read<MyAuthProvider>().isTeacher)
                             ParentComponent(

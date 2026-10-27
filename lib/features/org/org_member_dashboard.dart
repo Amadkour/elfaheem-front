@@ -36,7 +36,7 @@ import 'org_courses_page.dart' show OrgCoursesPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
 import 'org_my_exams.dart' show openMyExams;
-import 'org_member_today.dart' show OrgTodayAgenda;
+import 'org_member_today.dart' show OrgTodayAgenda, orgTodayEpoch;
 import 'org_member_space.dart' show OrgMemberSpace;
 import 'org_people_page.dart' show OrgPeoplePage;
 import 'org_providers.dart' show OrgSession;
@@ -518,8 +518,11 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
                 icon: const Icon(Icons.inbox_rounded)),
         ],
       ),
-      child: RefreshIndicator(
-        onRefresh: ctl.refresh,
+      child: AppRefresh(
+        onRefresh: () {
+          orgTodayEpoch.value++; // today's agenda reloads too
+          return ctl.refresh();
+        },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(top: 4, bottom: 32),

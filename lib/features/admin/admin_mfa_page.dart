@@ -64,7 +64,7 @@ class MfaStatusView extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = status;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), physics: const AlwaysScrollableScrollPhysics(), children: [
       AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -651,8 +651,8 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
         key: const ValueKey('admin.mfa'),
         useWebCard: true,
         maxWith: 760,
-        appBar: ScreenAppBar(title: mfaEntryLabel()),
-        child: body,
+        appBar: ScreenAppBar(title: mfaEntryLabel(), actions: [if (!_dead) AppRefreshAction(onRefresh: _load)]),
+        child: body is MfaStatusView && !_dead ? AppRefresh(onRefresh: _load, child: body) : body,
       ),
     );
   }

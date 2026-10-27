@@ -16,8 +16,8 @@
 // The organization switcher sits in the hero; changing it bumps OrgSession.epoch so every section reloads.
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -261,8 +261,8 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
             textDirection: dir,
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth;
-              final isWide = w >= 1000;
-              final isRail = kIsWeb && w >= 600;
+              final isWide = w >= Breakpoints.desktop;
+              final isRail = w >= Breakpoints.mobile;
               final entries = _items(session, compact: !isWide && !isRail);
               tabs.keys = [for (final e in entries) e.$1];
               final items = [for (final e in entries) e.$2];

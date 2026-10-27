@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
@@ -172,7 +172,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               };
             }
             final w = constraints.maxWidth;
-            if (w >= 900) {
+            if (w >= Breakpoints.desktop) {
               return WideShell(
                 currentIndex: _currentIndex,
                 onTap: (i) {
@@ -182,7 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 unreadCount: unread,
               );
             }
-            if (kIsWeb && w >= 600) {
+            if (w >= Breakpoints.mobile) {
               return RailShell(
                 currentIndex: _currentIndex,
                 onTap: (i) {
@@ -207,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// WIDE LAYOUT (≥ 900 px) — persistent sidebar + topbar
+// WIDE LAYOUT (≥ Breakpoints.desktop) — persistent sidebar + topbar
 // ─────────────────────────────────────────────────────────────────────────────
 
 class WideShell extends StatelessWidget {
@@ -640,27 +640,12 @@ class _WideTopBar extends StatelessWidget {
 }
 
 /// Opens the personal overall calendar ('/calendar' with no org/dept = every source the user belongs to).
+/// The same icon every role uses: [CalendarEntryIcon] (lib/design/calendar_entry.dart, kill switch `calendar.entry`).
 class CalendarIcon extends StatelessWidget {
   const CalendarIcon({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: 'my_calendar'.tr,
-      child: GestureDetector(
-        onTap: () => Navigator.of(context).pushNamed('/calendar'),
-        child: Container(
-          padding: EdgeInsets.all(7),
-          margin: EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: context.colors.accent2,
-          ),
-          child: Icon(Icons.event_rounded, color: Colors.white, size: 20),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const CalendarEntryIcon();
 }
 
 class NotificationIcon extends StatelessWidget {

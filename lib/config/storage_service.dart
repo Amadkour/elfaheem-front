@@ -20,6 +20,9 @@ class StorageService {
   // ── Keys ──────────────────────────────────────────────────────────────────────
   static const _userKey = 'current_user'; // JSON-encoded UserModel
 
+  /// The dark-mode choice (ProfileProvider.darkMode); the boot splash reads it before the first frame (SplashTheme).
+  static const darkModeKey = 'is_dark';
+
   // ── Singleton ─────────────────────────────────────────────────────────────────
 
   static Future<StorageService> getInstance() async {
@@ -42,10 +45,10 @@ class StorageService {
     }
   }
 
-  bool? get loadMode => _prefs.getBool('is_dark');
+  bool? get loadMode => _prefs.getBool(darkModeKey);
 
   Future<void> saveMode(bool isDark) async =>
-      await _prefs.setBool('is_dark', isDark);
+      await _prefs.setBool(darkModeKey, isDark);
 
   String? get loadLanguage => _prefs.getString('lang');
 

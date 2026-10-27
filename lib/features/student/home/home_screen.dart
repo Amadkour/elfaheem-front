@@ -19,6 +19,7 @@ import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
+import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
@@ -154,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refresh() async {
     if (!GuestState.active) context.read<StudentSchedulesProvider>().fetch();
     AppModeController.instance.refresh();
+    orgTodayEpoch.value++; // the organization's today agenda (Organization mode)
     await context.read<HomeProvider>().init(context);
   }
 

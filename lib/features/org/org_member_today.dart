@@ -47,6 +47,9 @@ List<Map<String, dynamic>> orgTodaySessions(List<Map<String, dynamic>> timetable
   return out;
 }
 
+/// Bumped by the hosts' pull-to-refresh (student / teacher home, member dashboard): every [OrgTodayAgenda] reloads.
+final ValueNotifier<int> orgTodayEpoch = ValueNotifier(0);
+
 class OrgTodayAgenda extends StatefulWidget {
   const OrgTodayAgenda({super.key, required this.orgId});
   final int orgId;
@@ -82,7 +85,14 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
   @override
   void initState() {
     super.initState();
+    orgTodayEpoch.addListener(_load);
     _load();
+  }
+
+  @override
+  void dispose() {
+    orgTodayEpoch.removeListener(_load);
+    super.dispose();
   }
 
   Future<void> _load() async {

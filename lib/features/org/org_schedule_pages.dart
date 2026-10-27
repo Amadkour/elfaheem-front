@@ -15,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppField, AppPrimaryButton, AppSectionTitle, showAppSheet;
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -105,7 +106,7 @@ class _SetupTab extends StatelessWidget {
     final p = context.watch<OrgScheduleProvider>();
     final s = context.watch<OrgSession>();
     final c = context.colors;
-    return ListView(
+    return AppRefresh(onRefresh: p.loadSetup, child: ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       children: [
         Section(
@@ -228,7 +229,7 @@ class _SetupTab extends StatelessWidget {
                 ),
         ),
       ],
-    );
+    ));
   }
 }
 
@@ -290,7 +291,7 @@ class _PlanningTab extends StatelessWidget {
     final canEdit = s.can('schedule', 'update');
     final people = {for (final m in p.staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']}'};
 
-    return ListView(
+    return AppRefresh(onRefresh: p.loadSetup, child: ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
       children: [
         if (p.periods.isEmpty)
@@ -393,7 +394,7 @@ class _PlanningTab extends StatelessWidget {
                 ),
         ),
       ],
-    );
+    ));
   }
 }
 
@@ -694,7 +695,7 @@ class _TimetablesTab extends StatelessWidget {
     ];
     return Stack(
       children: [
-        p.schedules.isEmpty
+        AppRefresh(onRefresh: p.loadSetup, child: p.schedules.isEmpty
             ? ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
                 children: [
@@ -767,7 +768,7 @@ class _TimetablesTab extends StatelessWidget {
                       ),
                     ),
                 ],
-              ),
+              )),
         if (s.can('schedule', 'insert'))
           PositionedDirectional(
             bottom: 16,

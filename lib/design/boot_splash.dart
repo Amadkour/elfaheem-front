@@ -39,6 +39,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/storage_service.dart' show StorageService;
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,6 +167,21 @@ class SplashState extends ChangeNotifier {
 // ─────────────────────────────────────────────────────────────────────────────
 // Pacing: the progress bar follows the init steps AND this device's usual boot time
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// The saved dark-mode choice (ProfileProvider.darkMode, [StorageService.darkModeKey]): the splash follows it when
+/// one is cached, else the OS brightness — so a dark-mode user never gets a light flash at launch. main.dart's
+/// bootstrap starts [load] before the first frame and never awaits it (the value lands while the artwork decodes).
+abstract final class SplashTheme {
+  static final ValueNotifier<bool?> dark = ValueNotifier(null);
+
+  static Future<void> load() async {
+    try {
+      dark.value = (await SharedPreferences.getInstance()).getBool(StorageService.darkModeKey);
+    } catch (e) {
+      debugPrint('[splash] theme load: $e');
+    }
+  }
+}
 
 /// Progress pacing. The step count is coarse (one slow step would freeze the
 /// bar), so the bar also follows the elapsed time against the boot time this
@@ -359,10 +375,16 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     if (!_s.clock.isRunning) _s.clock.start();
+    SplashTheme.dark.addListener(_onTheme);
+  }
+
+  void _onTheme() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    SplashTheme.dark.removeListener(_onTheme);
     _tick.dispose();
     super.dispose();
   }
@@ -388,7 +410,8 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final mq = MediaQuery.maybeOf(context);
     final reduce = mq?.disableAnimations ?? SplashArt.reduceMotion;
-    final dark = (mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark;
+    final dark = SplashTheme.dark.value ??
+        ((mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark);
     final bg = dark ? splashEmerald : splashCream;
     final accent = dark ? splashCream : splashEmerald;
     final ink = dark ? splashCream : const Color(0xFF14362B);

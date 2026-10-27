@@ -191,6 +191,7 @@ class _CalendarViewState extends State<CalendarView> {
           onPrev: () => _go(view!, calShift(view, _anchor, -1)),
           onNext: () => _go(view!, calShift(view, _anchor, 1)),
           onToday: () => _go(view ?? CalView.day, AppTime.toZone(DateTime.now().toUtc())),
+          onRefresh: _load,
         ),
         if (!_dept && counts.length > 1)
           SizedBox(
@@ -230,7 +231,7 @@ class _CalendarViewState extends State<CalendarView> {
                   : IconButton(tooltip: t('عرض', 'Open'), onPressed: () => _openMeeting(_firstPending!.meetingId!), icon: const Icon(Icons.open_in_new_rounded)),
             ),
           ),
-        Expanded(child: _body(context, view, shown)),
+        Expanded(child: AppRefresh(onRefresh: _load, child: _body(context, view, shown))),
       ]),
       PositionedDirectional(
         end: 16,
@@ -319,6 +320,7 @@ class _Toolbar extends StatelessWidget {
     required this.onPrev,
     required this.onNext,
     required this.onToday,
+    this.onRefresh,
   });
 
   final CalView view;
@@ -326,6 +328,7 @@ class _Toolbar extends StatelessWidget {
   final bool loading;
   final ValueChanged<CalView> onView;
   final VoidCallback onPrev, onNext, onToday;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -356,6 +359,7 @@ class _Toolbar extends StatelessWidget {
             child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
           ),
           if (loading) SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary)),
+          if (onRefresh != null && !loading) AppRefreshAction(onRefresh: onRefresh!, size: 20),
           TextButton.icon(
             onPressed: onToday,
             icon: const Icon(Icons.today_rounded, size: 18),

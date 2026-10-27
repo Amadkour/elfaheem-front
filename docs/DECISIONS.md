@@ -370,3 +370,46 @@ and a shorter web token TTL (server-side decisions, not the app's).
 `firebase.json` or the browser blocks it silently — check the console after the first deploy. `'unsafe-inline'`
 scripts stay allowed, so the header blocks remote script loads and exfiltration to unknown hosts rather than
 every inline injection.
+
+## D-061 — Picture-in-Picture for the course player stays Android-only; the pre-join mic meter uses LiveKit's visualizer · 2026-10-28 · accepted
+
+**Context.** `VideoPlayerScreen` minimizes to a system PiP window through `package:floating` (6.0.0), whose
+pubspec declares the Android platform only ("Available only for Android", iOS and web "not planned"); the
+parity audit (`docs/polish/screens-parity.md`, "Picture-in-Picture") flagged the iOS gap as unexplained. The
+pre-join microphone meter was web-only (`prejoin_mic_meter_stub.dart` returned 0 off the web).
+**Decision.** iOS PiP is deferred: the Minimize button is drawn only when `_pipAvailable` is true, and that flag
+is set only on Android (`_initOrientationAndPip`), so iOS shows no dead button. Real iOS PiP needs
+`AVPictureInPictureController` over an `AVPlayerLayer` — `video_player`'s iOS implementation does not expose its
+layer, so it would mean a second native player (or a plugin that brings one) under the same controls, offline
+AES-CTR source and screen protection. That is a separate piece of work, not a flag. The pre-join meter on
+Android / iOS reads `livekit_client`'s own `createVisualizer(track)` (an `AudioTrackSink` the plugin attaches
+to the local flutter_webrtc track by id, so it works before any room exists; bands normalised 0–1, the meter
+shows the loudest band) — no new package, nothing in `pubspec.lock` changed.
+**Rejected.** A second PiP plugin for iOS (`fl_pip`, `simple_pip_mode`, …: another native player path next to
+`video_player`, and `floating` would still be the Android one); a hand-rolled iOS PiP over `video_player`'s
+private layer (breaks on the plugin's next release); a new mic-level plugin (the LiveKit visualizer and the
+web analyser already cover every platform).
+**Consequences.** iOS keeps background audio (`UIBackgroundModes: audio` is already in `Info.plist`) but no
+floating window; the parity table says "deferred (D-061)" rather than "gap". If `floating` ever gains iOS, the
+only change is the `defaultTargetPlatform` check in `_initOrientationAndPip`. The meter's native scale is the
+visualizer's peak band; calibrate `micLevelFromBands` on a device if a normal voice does not reach the middle
+segments.
+
+## D-061 — One breakpoint system: phone < 700 · rail 700–999 on every platform · wide ≥ 1000 · 2026-10-28 · accepted
+
+**Context.** Three breakpoint systems coexisted: `responsive_framework` (450 / 800 / 1920) in `main.dart`,
+`Breakpoints` (700 / 900 / 1200) in a course-detail component file, and the role shells' own constants — the
+student and teacher shells opened the sidebar at 900, parent / admin / organization at 1000, and the rail shell
+(600–899 / 999) was web-only, so a tablet app got the phone shell with a bottom bar.
+**Decision.** `lib/design/app_responsive.dart` is the single source (`Breakpoints.mobile = 700`,
+`Breakpoints.desktop = 1000`, `Breakpoints.shellFor(width)` → mobile · rail · wide); the old path re-exports it.
+Every role shell picks its shell from it, and the rail shell is available on every platform. 1000 rather than
+the 1200 first proposed: between 1000 and 1199 every shell showed the sidebar before, so 1200 would have taken it
+away from laptops; 1000 only moves the student / teacher shells at 900–999 from a 240 px sidebar beside 660 px of
+content to the rail, which is what that width wants. 700 rather than 600 for the rail: it is the line the
+calendar's week view and the course detail's two-column layout already use, so one width changes everything at
+once; a landscape phone (≥ 700 logical px) gets the rail, a short-and-wide window's natural shell.
+`responsive_framework` stays in `main.dart`: it scales text and margins and makes no layout decision.
+**Rejected.** Keeping two desktop widths (900 for some roles, 1000 for others); a rail shell gated on `kIsWeb`.
+**Consequences.** A new shell or a two-column layout reads `Breakpoints` (or `context.isMobile` /
+`isTablet` / `isDesktop`), never a literal; `test/ui/app_responsive_test.dart` pins the mapping.

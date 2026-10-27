@@ -8,6 +8,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
 import '../auth/auth_provider.dart';
@@ -136,7 +137,11 @@ class _View extends StatelessWidget {
           // ── home: greeting · what waits for a decision · shortcuts (then the platform numbers below)
           HomeEntrance(
             index: 0,
-            child: HomeHeader(name: name, subtitle: 'home_admin_sub'.tr, padding: const EdgeInsets.fromLTRB(6, 6, 6, 16)),
+            child: HomeHeader(
+                name: name,
+                subtitle: 'home_admin_sub'.tr,
+                actions: const [CalendarEntryIcon()],
+                padding: const EdgeInsets.fromLTRB(6, 6, 6, 16)),
           ),
           HomeEntrance(
             index: 1,

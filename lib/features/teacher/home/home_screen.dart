@@ -13,12 +13,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
+import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
@@ -97,6 +99,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
   Future<void> _refresh() async {
     await context.read<TeacherHomeProvider>().init();
     AppModeController.instance.refresh();
+    orgTodayEpoch.value++; // the organization's today agenda (Organization mode)
   }
 
   @override
@@ -128,7 +131,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         child: HomeHeader(
                           name: user?.name ?? 'sir'.tr,
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                          actions: [NotificationIcon(unreadCount: unread)],
+                          actions: [const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
                           contextSwitcher: const ContextSwitcher(),
                         ),
                       ),

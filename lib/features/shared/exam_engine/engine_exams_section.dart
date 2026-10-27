@@ -174,7 +174,10 @@ class _EngineExamsSectionState extends State<EngineExamsSection> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSectionTitle(t('اختبارات المقرر', 'Course exams'), subtitle: t('اختبارات بتوقيت الخادم وحفظ تلقائي', 'Server-timed exams with autosave')),
+        // embedded in the host's scroll view (its pull does not reach this section): a refresh button on every platform
+        AppSectionTitle(t('اختبارات المقرر', 'Course exams'),
+            subtitle: t('اختبارات بتوقيت الخادم وحفظ تلقائي', 'Server-timed exams with autosave'),
+            trailing: AppRefreshAction(onRefresh: _load, always: true, size: 20)),
         for (final e in _items!) Padding(padding: const EdgeInsets.only(bottom: 10), child: EngineExamCard(exam: e, onOpen: () => _open(e), offlineSaved: _saved.contains(asInt(e['id'])))),
       ]),
     );

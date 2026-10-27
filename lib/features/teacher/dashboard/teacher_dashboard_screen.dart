@@ -1,8 +1,8 @@
 library;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
@@ -139,7 +139,7 @@ class _State extends State<TeacherDashboardScreen> {
                 }
 
                 final w = constraints.maxWidth;
-                if (w >= 900) {
+                if (w >= Breakpoints.desktop) {
                   return WideShell(
                     currentIndex: provider.currentTab,
                     onTap: (i) {
@@ -149,7 +149,7 @@ class _State extends State<TeacherDashboardScreen> {
                     unreadCount: unread,
                   );
                 }
-                if (kIsWeb && w >= 600) {
+                if (w >= Breakpoints.mobile) {
                   return RailShell(
                     currentIndex: provider.currentTab,
                     onTap: (i) {

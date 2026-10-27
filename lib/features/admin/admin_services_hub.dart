@@ -9,6 +9,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
@@ -433,9 +434,12 @@ Widget adminServiceTile(AdminService s) {
 
 // ── web: hub page (one sidebar tab = one group) ──────────────────────────────
 class AdminServicesHub extends StatelessWidget {
-  const AdminServicesHub({super.key, required this.groupId});
+  const AdminServicesHub({super.key, required this.groupId, this.onRefresh});
 
   final String groupId;
+
+  /// Reloads the counts on the cards (the dashboard's badge refresh); null = no pull-to-refresh.
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -446,8 +450,7 @@ class AdminServicesHub extends StatelessWidget {
     ).firstWhere((g) => g.id == groupId);
     final items = group.visibleServices;
 
-    return SafeArea(
-      child: SingleChildScrollView(
+    final body = SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: Align(
           alignment: Alignment.topCenter,
@@ -501,7 +504,9 @@ class AdminServicesHub extends StatelessWidget {
             ),
           ),
         ),
-      ),
+      );
+    return SafeArea(
+      child: onRefresh == null ? body : AppRefresh(onRefresh: onRefresh!, child: body),
     );
   }
 }

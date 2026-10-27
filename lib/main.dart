@@ -111,6 +111,7 @@ Future<void> _bootstrap() async {
   SplashState.instance.expected = kIsWeb ? 7 : 10;
   // Decode the splash artwork first (bounded): the native splash stays up meanwhile, so Flutter's first
   // frame already shows the logo exactly where the native one was — no blank flash.
+  unawaited(SplashTheme.load()); // the user's dark-mode choice, usually read before the first frame
   await SplashArt.preload().timeout(const Duration(milliseconds: 800), onTimeout: () {});
   runApp(const _BootApp());
 

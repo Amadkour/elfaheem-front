@@ -8,7 +8,6 @@
 //   case '/parent_dashboard': → const ParentDashboardScreen()
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
@@ -29,6 +28,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../design/app_switch.dart';
+import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../auth/reauth_sheet.dart';
 import '../shared/profile/change_language_screen.dart';
@@ -197,11 +197,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 if (mounted) tabs.onChangeTab(i);
               }
 
-              if (w >= 1000) {
+              if (w >= Breakpoints.desktop) {
                 return WideShell(
                     currentIndex: tabs.currentTab, onTap: onTap, dashboardItems: _items, unreadCount: 0);
               }
-              if (kIsWeb && w >= 600) {
+              if (w >= Breakpoints.mobile) {
                 return RailShell(
                     currentIndex: tabs.currentTab, onTap: onTap, dashboardItems: _items, unreadCount: 0);
               }
@@ -223,7 +223,7 @@ class _ParentTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BasePage(
-        appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
+        appBar: ScreenAppBar(title: titleKey.tr, showBack: false, actions: const [CalendarEntryIcon()]),
         child: epoch == null
             ? child
             : ValueListenableBuilder<int>(
@@ -294,6 +294,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                       label: 'change_password'.tr,
                       onTap: () => _push(const ChangePasswordScreen()),
                     ),
+                    const CalendarEntryTile(),
                   ],
                 ),
               ),

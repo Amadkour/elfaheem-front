@@ -18,7 +18,6 @@
 // Register the route in main.dart:  case '/admin_dashboard': → AdminDashboardScreen()
 library;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
@@ -40,6 +39,7 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../design/app_switch.dart';
+import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
@@ -211,7 +211,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           _AdminTab(
             titleKey: label,
             onRefresh: _refreshBadges,
-            child: AdminServicesHub(groupId: groupId),
+            child: AdminServicesHub(groupId: groupId, onRefresh: _refreshBadges),
           ),
         );
 
@@ -336,8 +336,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 }
 
                 final w = constraints.maxWidth;
-                final isWide = w >= 1000;
-                final isRail = kIsWeb && w >= 600;
+                final isWide = w >= Breakpoints.desktop;
+                final isRail = w >= Breakpoints.mobile;
                 final items = (isWide || isRail) ? _wideItems : _mobileItems;
 
                 // The two layouts have different tab counts → never point past the end.
@@ -401,7 +401,7 @@ class _AdminTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     // Mirrors the shell choice in _AdminDashboardScreenState.build.
-    final isMobileShell = !(w >= 1000) && !(kIsWeb && w >= 600);
+    final isMobileShell = w < Breakpoints.mobile;
 
     final page = BasePage(
       appBar: ScreenAppBar(title: titleKey.tr, showBack: false),
@@ -505,6 +505,7 @@ class _MorePageState extends State<_MorePage> {
                     title: 'settings'.tr,
                     icon: Icons.settings_rounded,
                     children: [
+                      const CalendarEntryTile(),
                       SettingsTile(
                         icon: Icons.manage_accounts_rounded,
                         iconBg: AdminPalette.indigo.last.withAlpha(38),

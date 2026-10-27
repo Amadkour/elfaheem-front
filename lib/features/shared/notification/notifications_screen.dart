@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
@@ -38,9 +39,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         )
             : Column(
           children: [
-            ScreenAppBar(title: 'notifications'.tr),
+            ScreenAppBar(title: 'notifications'.tr, actions: [AppRefreshAction(onRefresh: provider.fetchNotifications)]),
             Expanded(
-              child: provider.allNotifs.isEmpty
+              child: AppRefresh(
+                onRefresh: provider.fetchNotifications,
+                scrollable: provider.allNotifs.isNotEmpty,
+                child: provider.allNotifs.isEmpty
                   ? Center(
                 child: Icon(
                   Icons.notifications_active_rounded,
@@ -64,6 +68,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   )),
                   const SizedBox(height: 24),
                 ],
+              ),
               ),
             ),
           ],
