@@ -21,6 +21,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, t;
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
+import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
 
@@ -199,6 +200,7 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
                             library: _active!,
                             onUpload: _upload,
                             onSync: _syncApp,
+                            onGuide: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage())),
                             onTry: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RagChatScreen(app: true)))),
                         const SizedBox(height: 14),
                       ],
@@ -234,12 +236,12 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
 
 
 /// The app assistant's dashboard header (platform admins, app library): what the assistant answers from — ready,
-/// being processed, failed — how much is indexed, and the three things to do: add documents, re-read the app's own
-/// pages, try the assistant.
+/// being processed, failed — how much is indexed, and what to do: add documents, re-read the app's own pages, manage
+/// the app features guide (what the assistant knows about each feature, per role), try the assistant.
 class RagLibraryOverview extends StatelessWidget {
-  const RagLibraryOverview({super.key, required this.library, this.onUpload, this.onSync, this.onTry});
+  const RagLibraryOverview({super.key, required this.library, this.onUpload, this.onSync, this.onGuide, this.onTry});
   final RagLibrary library;
-  final VoidCallback? onUpload, onSync, onTry;
+  final VoidCallback? onUpload, onSync, onGuide, onTry;
 
   @override
   Widget build(BuildContext context) {
@@ -253,8 +255,8 @@ class RagLibraryOverview extends StatelessWidget {
       AppBanner(
           icon: Icons.smart_toy_rounded,
           color: c.primary,
-          text: t('يجيب مساعد التطبيق كل المستخدمين من هذه المستندات ومن صفحات الشروط و«عن التطبيق» (تُقرأ تلقائياً). أضف أدلة الاستخدام والأسئلة الشائعة ليعرف المساعد ميزات التطبيق.',
-              'The app assistant answers every user from these documents and from the terms and About pages (read automatically). Add user guides and FAQs so it knows the app\'s features.')),
+          text: t('يجيب مساعد التطبيق كل المستخدمين من هذه المستندات، ومن الشروط و«عن التطبيق» و«دليل ميزات التطبيق» (تُقرأ تلقائياً). عدّل الدليل لتحدد ما يشرحه المساعد عن كل ميزة ولمن.',
+              'The app assistant answers every user from these documents and from the terms, About and "App features guide" pages (read automatically). Edit the guide to decide what it explains about each feature, and for whom.')),
       const SizedBox(height: 12),
       AppGrid(padding: EdgeInsets.zero, minTile: 150, children: [
         AppStatTile(icon: Icons.task_alt_rounded, label: ragStatusText('ready'), value: counts['ready'] ?? 0, color: c.success),
@@ -267,6 +269,7 @@ class RagLibraryOverview extends StatelessWidget {
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (onUpload != null) AppPill(icon: Icons.upload_file_rounded, label: t('رفع مستندات', 'Upload documents'), onTap: onUpload!),
         if (onSync != null) AppPill(icon: Icons.sync_rounded, label: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), onTap: onSync!),
+        if (onGuide != null) AppPill(icon: Icons.menu_book_rounded, label: t('دليل ميزات التطبيق', 'App features guide'), onTap: onGuide!),
         if (onTry != null) AppPill(icon: Icons.question_answer_outlined, label: t('جرّب المساعد', 'Try the assistant'), onTap: onTry!),
       ]),
     ]);

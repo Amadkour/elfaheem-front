@@ -61,7 +61,7 @@ void main() {
         ],
       });
       await expectNoLayoutErrors(
-          tester, () => SingleChildScrollView(child: RagLibraryOverview(library: lib, onUpload: () {}, onSync: () {}, onTry: () {})));
+          tester, () => SingleChildScrollView(child: RagLibraryOverview(library: lib, onUpload: () {}, onSync: () {}, onGuide: () {}, onTry: () {})));
     });
   });
 }

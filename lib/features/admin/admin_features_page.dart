@@ -6,6 +6,8 @@
 //     the organization grant, the description, and delete (features added from here only)
 //   • "Add feature": key + Arabic / English names + group (existing or new) + description + grants
 // A feature switched OFF here disappears for everyone — organization admins can never switch it back on.
+// The app bar opens the app features guide (admin_feature_guide.dart): user-level features built on these switches,
+// with what the app assistant explains about each.
 //
 // GET/POST /api/v1/admin/features/catalog · PUT …/catalog/{key}/org-manageable · PUT …/catalog/{key}/description ·
 // DELETE …/catalog/{key} · PUT /api/v1/admin/features/{key} {hidden, platforms} · PUT /api/v1/admin/features/{key}/access
@@ -20,6 +22,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../org/org_v3.dart';
 import 'admin_common.dart' show asMap, asMapList, t;
+import 'admin_feature_guide.dart' show AdminFeatureGuidePage;
 
 const _catalog = '/api/v1/admin/features/catalog';
 const _features = '/api/v1/admin/features';
@@ -144,7 +147,12 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     return BasePage(
       useWebCard: true,
       maxWith: 1000,
-      appBar: ScreenAppBar(title: t('الميزات', 'Features')),
+      appBar: ScreenAppBar(title: t('الميزات', 'Features'), actions: [
+        IconButton(
+            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
+            icon: const Icon(Icons.menu_book_rounded),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
+      ]),
       floatingActionButton: _super && _data != null
           ? FloatingActionButton.extended(
               onPressed: _openCreate,
