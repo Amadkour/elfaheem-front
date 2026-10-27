@@ -164,6 +164,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   void initState() {
     super.initState();
     _pending = widget.channels.isEmpty ? ['email'] : List.of(widget.channels);
+    _phoneChangeCodePending = widget.flow == OtpFlowEnum.phoneChange;
     _allChannels = List.of(_pending);
     _computeWays();
 
@@ -284,9 +285,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     _focusNodes[0].requestFocus();
   }
 
+  /// A phone change (PUT /auth/me) already sent the first code to the new number: the first phone code way
+  /// opens as "sent" (a resend now would only answer 429 otp_cooldown).
+  bool _phoneChangeCodePending = false;
+
   /// First time a code way is selected: ask the server to send it.
   Future<void> _ensureSent(VerifyWay w) async {
     if (_sent.contains(w)) return;
+    if (_phoneChangeCodePending && w.channel == 'phone') {
+      _phoneChangeCodePending = false;
+      _sent.add(w);
+      _cooldown[w] = resendSeconds;
+      return;
+    }
     _sent.add(w);
     _cooldown[w] = resendSeconds;
     setState(() => _sending = true);
