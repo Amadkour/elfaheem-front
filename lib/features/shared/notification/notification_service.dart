@@ -69,6 +69,23 @@ class NotificationService {
     importance: Importance.max,
   );
 
+  /// A push with `action: generate` (a term without a timetable, back: schedule_auto) gets one more button that
+  /// runs the one-tap generation without opening the app first (Android action · iOS category).
+  static const generateActionId = 'org_timetable_generate';
+  static const generateCategoryId = 'org_timetable';
+
+  static NotificationDetails _withGenerateAction() => NotificationDetails(
+        android: AndroidNotificationDetails(
+          'elfaheem_main',
+          'ElFaheem Notifications',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+          actions: [AndroidNotificationAction(generateActionId, AppConfig.lang == 'ar' ? 'ولّد الجدول الآن' : 'Generate now', showsUserInterface: true)],
+        ),
+        iOS: const DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true, categoryIdentifier: generateCategoryId),
+      );
+
   static const _notifDetails = NotificationDetails(
     android: AndroidNotificationDetails(
       'elfaheem_main',
@@ -117,13 +134,18 @@ class NotificationService {
       const androidSettings = AndroidInitializationSettings(
         '@mipmap/ic_launcher',
       );
-      const iosSettings = DarwinInitializationSettings(
+      final iosSettings = DarwinInitializationSettings(
         requestAlertPermission: true,
         requestBadgePermission: true,
         requestSoundPermission: true,
+        notificationCategories: [
+          DarwinNotificationCategory(generateCategoryId, actions: [
+            DarwinNotificationAction.plain(generateActionId, AppConfig.lang == 'ar' ? 'ولّد الجدول الآن' : 'Generate now', options: {DarwinNotificationActionOption.foreground}),
+          ]),
+        ],
       );
       await _plugin.initialize(
-        settings: const InitializationSettings(
+        settings: InitializationSettings(
           android: androidSettings,
           iOS: iosSettings,
         ),
@@ -304,7 +326,7 @@ class NotificationService {
       id: message.hashCode,
       title: notification.title,
       body: notification.body,
-      notificationDetails: _notifDetails,
+      notificationDetails: message.data['action'] == 'generate' ? _withGenerateAction() : _notifDetails,
       payload: jsonEncode(
         message.data,
       ), // lets a tap on the local notification open the right screen
@@ -384,7 +406,15 @@ class NotificationService {
     try {
       final p = response.payload;
       if (p != null && p.isNotEmpty) {
-        _openOrQueue(Map<String, dynamic>.from(jsonDecode(p) as Map));
+        final data = Map<String, dynamic>.from(jsonDecode(p) as Map);
+        if (response.actionId == generateActionId) {
+          // the button on the notification: generate now, then open the Timetable section (text = why it could not)
+          AppNavigator.generateTermFromPush(data).then((text) {
+            if (text != null && text.isNotEmpty) Helpers.showMessage(text);
+          });
+          return;
+        }
+        _openOrQueue(data);
         return;
       }
     } catch (_) {}

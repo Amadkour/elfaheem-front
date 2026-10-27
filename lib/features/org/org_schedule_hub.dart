@@ -123,10 +123,15 @@ class TimetableJourney {
     };
 
 class NextStepBanner extends StatelessWidget {
-  const NextStepBanner({super.key, required this.title, required this.body, required this.action, required this.tone, this.onAction});
+  const NextStepBanner({super.key, required this.title, required this.body, required this.action, required this.tone, this.onAction, this.secondary, this.onSecondary, this.secondaryIcon = Icons.auto_fix_high_rounded});
   final String title, body, action;
   final int tone;
   final VoidCallback? onAction;
+
+  /// An optional second way (e.g. "Fix automatically" next to "Review the result").
+  final String? secondary;
+  final VoidCallback? onSecondary;
+  final IconData secondaryIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -150,14 +155,22 @@ class NextStepBanner extends StatelessWidget {
         final button = action.isEmpty || onAction == null
             ? null
             : AppPrimaryButton(label: action, icon: Icons.arrow_forward_rounded, onPressed: onAction);
-        if (box.maxWidth < 560 || button == null) {
+        final second = secondary == null || onSecondary == null
+            ? null
+            : OutlinedButton.icon(onPressed: onSecondary, icon: Icon(secondaryIcon, size: 18), label: Text(secondary!, maxLines: 1, overflow: TextOverflow.ellipsis));
+        // AppPrimaryButton fills its width: it always sits in a bounded box
+        final buttons = Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (second != null) second,
+          if (button != null) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 260, minWidth: 160), child: button),
+        ]);
+        if (box.maxWidth < 560 || (button == null && second == null)) {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Icon(Icons.flag_rounded, color: col),
               const SizedBox(width: 10),
               Expanded(child: text),
             ]),
-            if (button != null) ...[const SizedBox(height: 10), Align(alignment: AlignmentDirectional.centerEnd, child: button)],
+            if (button != null || second != null) ...[const SizedBox(height: 10), Align(alignment: AlignmentDirectional.centerEnd, child: buttons)],
           ]);
         }
         return Row(children: [
@@ -165,8 +178,7 @@ class NextStepBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: text),
           const SizedBox(width: 12),
-          // AppPrimaryButton fills its width: an unbounded Row slot would throw
-          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 260), child: button),
+          ConstrainedBox(constraints: const BoxConstraints(maxWidth: 440), child: buttons),
         ]);
       }),
     );

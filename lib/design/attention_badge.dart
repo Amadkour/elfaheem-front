@@ -119,6 +119,7 @@ String? orgSubPage(String section, String? sub) => switch ((section, sub)) {
       ('academics', 'decisions') => 'registrar',
       ('services', 'forms') => 'forms',
       ('services', 'complaints') => 'complaints',
+      ('timetable', 'generate') => 'generate',           // the term cards ("Generate now")
       _ => null,
     };
 

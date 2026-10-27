@@ -178,6 +178,29 @@ Accepted:
   unpinned Dio instances; the device-blocked dialog fires only on `/auth/login`. Org staff on `/org_member` reach the
   MFA entry from the personal `ProfileScreen`.
 
+## D-011 — Timetable fixes are previewed on the grid, and the review stage has one AI button · 2026-10-27 · accepted
+
+**Context.** Fixing a timetable meant one text confirmation per conflict, a "regenerate to use it" toast after every
+data fix, and no way to see what a fix moves before it is saved. A term without a timetable was discovered only by
+opening the Timetables tab and the wizard.
+**Decision.** `org_schedule_preview.dart` draws BEFORE / AFTER as two compact grids (`MiniTimetable`) from the server's
+`remedies/preview` (or a quick action's `changes`): red where a session was, green where it lands; Apply is the only
+write. `org_schedule_autopilot.dart` adds the one-tap path: `TermTimetableCard` ("Generate now" →
+`POST …/schedules/auto`) on the Timetables tab, the org dashboard's attention queue and the notification deep link
+(`org_timetable` → the Timetable section on that draft, via `timetableRequest`); "Fix automatically" on the next-step
+banner, the toolbar and the Quick Actions panel starts `POST …/autopilot`, which the studio follows like a generation.
+"Create timetable" now starts the autopilot and falls back to the plain complete generation on an older server. Data
+fixes no longer end in a toast: the panel offers "Re-solve now".
+**Consequences.** The remedies panel and the quick actions share one comparison sheet; an older server without the
+preview route still gets the text confirmation. The mini grids scroll sideways on phones and clip (never overflow) at
+large text sizes (`test/ui/autopilot_layout_test.dart`); pure logic in `test/org/org_autopilot_test.dart`.
+**Round 2 (same day).** Every "Fix automatically" goes through `runAutopilotWithPlan`: the data fixes the run would make
+are shown first (`DataFixPicker`, people / room changes unticked), then the run starts. The summary card offers "Undo
+everything" (the `autopilot_before` revision). The Timetables tab shows the server's full blockers
+(`GET …/schedules/term-needs`). A second tap while a one-tap run is going follows that run instead of failing. A
+"term without a timetable" push shows a "Generate now" button (Android action / iOS category) that calls the one-tap
+route from the notification; this part was written against the plugin's API without a device run.
+
 ## D-010 — Cleartext only to the device itself; the WebRTC fork pinned to a commit · 2026-10-26 · accepted
 
 **Context.** D-005 kept `android:usesCleartextTraffic="true"` and iOS `NSAllowsArbitraryLoads` until production was

@@ -279,6 +279,9 @@ class OrgScheduleProvider extends AdminBase {
   // v3: facility types · academic terms · generation runs
   List<String> builtinKinds = const ['lecture', 'lab', 'hall', 'office', 'other'];
   List<Map<String, dynamic>> facilityTypes = [], terms = [];
+  /// GET …/schedules/term-needs: the current / next term without a timetable, with the server's blockers
+  List<Map<String, dynamic>> termNeeds = [];
+  bool termNeedsLoaded = false;
   Map<String, dynamic>? genRun;      // the run being followed (queued / running / just finished)
   Timer? _poll;
   bool _disposed = false;
@@ -293,6 +296,7 @@ class OrgScheduleProvider extends AdminBase {
           queryParams: {'role': 'teacher,teacher_assistant,admin_assistant', 'size': 100}), makLoading: false),
       orgCall(() => api.get('$base/facility-types'), quiet: true),
       orgCall(() => api.get('$base/academic/terms'), quiet: true),
+      orgCall(() => api.get('$base/schedules/term-needs'), quiet: true),
     ]);
     if (_disposed) return;
     List<Map<String, dynamic>> items(dynamic r) => r is Map ? asMapList(r['items']) : [];
@@ -307,6 +311,11 @@ class OrgScheduleProvider extends AdminBase {
       facilityTypes = asMapList(ft.map['items']);
     }
     terms = asMapList(tm.map['items']);
+    final tn = rs[7] as OrgCall;
+    if (tn.ok) {
+      termNeeds = asMapList(tn.map['items']);
+      termNeedsLoaded = true;
+    }
     loaded = true;
     notifyListeners();
   }
@@ -355,6 +364,48 @@ class OrgScheduleProvider extends AdminBase {
       _follow(asInt(id), asInt(run['id']));
     }
     return r;
+  }
+
+  /// The autopilot (POST …/autopilot, 202 {run}): data fixes → complete generation → every automatic remedy of every
+  /// hard conflict → re-solve, as ONE background run the studio follows like a generation.
+  Future<OrgCall> startAutopilot({List<String>? dataFixKeys}) async {
+    final id = schedule!['id'];
+    final r = await orgCall(() => api.post('$base/schedules/$id/autopilot', body: {'data_fix_keys': ?dataFixKeys}), quiet: true);
+    final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
+    if (run.isNotEmpty) followRun(asInt(id), run);
+    return r;
+  }
+
+  /// A term's timetable in one tap (POST …/schedules/auto {term_id}, 202 {schedule, run, existing}): the draft is
+  /// created when the term has none and the autopilot runs on it; the timetable is opened and the run followed.
+  Future<OrgCall> generateForTerm(int termId) async {
+    final r = await orgCall(() => api.post('$base/schedules/auto', body: {'term_id': termId}), quiet: true);
+    if (!r.ok) {
+      final run = asMap(r.detail['run']);
+      if (r.code == 'generation_running' && run['schedule_id'] != null) {   // someone already pressed it: follow that run
+        final sid = asInt(run['schedule_id']);
+        await loadSetup();
+        await open(sid);
+        followRun(sid, run);
+        return const OrgCall(true);
+      }
+      return r;
+    }
+    final sid = asInt(asMap(r.map['schedule'])['id']);
+    await loadSetup();
+    await open(sid);
+    followRun(sid, asMap(r.map['run']));
+    return r;
+  }
+
+  /// GET …/autopilot/plan: the data fixes an attended run would apply (quiet; an older server has no route).
+  Future<OrgCall> autopilotPlan() => orgCall(() => api.get('$base/schedules/${schedule!['id']}/autopilot/plan'), quiet: true);
+
+  /// Follow [run] of [scheduleId] until it ends (the live panel reads [genRun]).
+  void followRun(int scheduleId, Map<String, dynamic> run) {
+    genRun = run;
+    notifyListeners();
+    if (runIsOpen(run)) _follow(scheduleId, asInt(run['id']));
   }
 
   void _follow(int scheduleId, int runId) {

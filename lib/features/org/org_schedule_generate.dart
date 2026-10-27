@@ -32,8 +32,10 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show RowCard;
 import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
+import 'org_schedule_autopilot.dart';
 import 'org_schedule_insights.dart';
 import 'org_schedule_optimizer.dart';
+import 'org_schedule_preview.dart';
 import 'org_schedule_remedies.dart';
 import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
@@ -277,9 +279,11 @@ class TimetableCompletion {
 /// One quick action: relax [rule] alone (null = re-solve the affected part as is). [before] / [after] = unplaced
 /// sessions + hard conflicts.
 class QuickAction {
-  const QuickAction({this.rule, required this.before, required this.after, this.fixes = const [], this.breaks = 0});
+  const QuickAction({this.rule, required this.before, required this.after, this.fixes = const [], this.breaks = 0, this.hardAfter = 0, this.unplacedAfter = 0, this.changes = const []});
   final String? rule;
   final int before, after, breaks;
+  final int hardAfter, unplacedAfter; // what the re-solve leaves
+  final List<Map<String, dynamic>> changes; // what it moves / places (schedule_reassign._diff shape) — the preview
   final List<({int courseId, String kind, int? group, int n})> fixes;
 
   int get deltaPct => before == 0 ? 0 : ((100 * (after - before)) / before).round();
@@ -290,6 +294,9 @@ class QuickAction {
         before: asInt(m['before']),
         after: asInt(m['after']),
         breaks: asInt(m['breaks']),
+        hardAfter: asInt(m['hard_after']),
+        unplacedAfter: asInt(m['unplaced_after']),
+        changes: asMapList(m['changes']),
         fixes: [
           for (final f in asMapList(m['fixes']))
             (courseId: asInt(f['course_id']), kind: '${f['kind'] ?? 'lecture'}', group: f['group_no'] == null ? null : asInt(f['group_no']), n: asInt(f['n'], 1))
@@ -298,13 +305,15 @@ class QuickAction {
 }
 
 class QuickActionsReport {
-  const QuickActionsReport({required this.before, required this.actions, this.candidates = const []});
-  final int before;
+  const QuickActionsReport({required this.before, required this.actions, this.candidates = const [], this.hard = 0, this.unplaced = 0});
+  final int before, hard, unplaced;
   final List<QuickAction> actions; // best first
   final List<String> candidates; // the Locked rules that were tried
 
   factory QuickActionsReport.of(Map<String, dynamic> m) => QuickActionsReport(
         before: asInt(m['before']),
+        hard: asInt(m['hard']),
+        unplaced: asInt(m['unplaced']),
         actions: [for (final a in asMapList(m['actions'])) if (a['rule'] == null || _relaxable.contains(a['rule'])) QuickAction.of(a)],
         candidates: [for (final r in (m['candidates'] as List?) ?? const []) '$r'],
       );
@@ -383,10 +392,12 @@ String brokenRuleText(String rule) => switch (rule) {
 //  UI
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// THE "Create timetable" action: no questions — the server generates in the background with the stored rules and
-/// saves a Draft; the studio follows the run (live panel) and shows the result when it ends.
+/// THE "Create timetable" action: no questions — the autopilot generates in the background with the stored rules,
+/// applies every automatic fix of what still clashes and saves a Draft; the studio follows the run (live panel) and
+/// shows the result when it ends. An older server without the autopilot route gets the plain complete generation.
 Future<void> createTimetable(BuildContext context, OrgScheduleProvider p) async {
-  final r = await p.startGeneration(complete: true);
+  var r = await p.startAutopilot();
+  if (!r.ok && r.endpointMissing) r = await p.startGeneration(complete: true);
   if (!r.ok && r.code != 'generation_running') toast(orgErrorText(r.error!), error: true);
 }
 
@@ -539,6 +550,8 @@ String liveHeadline(Map<String, dynamic> run, LiveRun? live) {
   if (run['status'] == 'failed') return t('فشل التوليد — لم يتغير شيء', 'Generation failed — nothing changed');
   if (run['status'] == 'queued') return t('في الانتظار — سيبدأ التوليد خلال لحظات', 'Queued — generation starts in a moment');
   if (live == null) return t('جارٍ التوليد…', 'Generating…');
+  final cur = live.current;
+  if (cur != null && cur.kind.startsWith('fix')) return cur.text;        // the autopilot's fix loop speaks for itself
   if (live.hasBest) {
     return t('أفضل نتيجة حتى الآن: ${live.placed} من ${live.required} حصة · محاولة ${live.round} من ${live.roundsMax} كحد أقصى',
         'Best so far: ${live.placed} of ${live.required} sessions · attempt ${live.round} of at most ${live.roundsMax}');
@@ -826,7 +839,35 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   final busy = <String>{};
   final pfBusy = <String>{}; // pre-flight recommendation keys with a request in flight ('*' = accept-all)
   final rmBusy = <String>{}; // conflict keys with a remedy being applied
+  bool _needRegen = false; // a data fix was saved: the timetable must be re-solved to use it
   String? _seen; // the timetable version + hard-clash count the panel was computed for
+
+  Map<int, String> get _rooms => {for (final r in widget.p.rooms) asInt(r['id']): '${r['name']}'};
+  List<String> get _days => ScheduleDraft.fromJson(widget.p.schedule ?? const {}).days;
+
+  /// Before / after of one change on the grid; false when the person keeps the current version.
+  Future<bool> _preview(ChangePlan plan, {String? applyLabel}) async =>
+      await showChangePreview(context, plan, slots: widget.p.slots, periods: widget.p.periods, days: _days, names: widget.names, people: _people, rooms: _rooms, applyLabel: applyLabel) == true;
+
+  /// The autopilot from the panel: the studio's live panel takes over while it runs.
+  Future<void> _runAutopilot() async {
+    final r = await runAutopilotWithPlan(context, widget.p);
+    if (!mounted || r == null) return;
+    setState(() => _needRegen = false);
+  }
+
+  /// Back to the revision taken before the run; data fixes stay (they are in the audit log).
+  Future<void> _undoAutopilot(AutopilotReport r) async {
+    final id = r.beforeRevisionId;
+    if (id == null) return;
+    final ok = await confirm(context,
+        message: t('يعود الجدول كما كان قبل الإصلاح التلقائي${r.beforeSlots == 0 ? ' (كان فارغاً)' : ''}. تبقى تغييرات البيانات، وهي مسجّلة في السجل.',
+            'The timetable goes back to how it was before the automatic run${r.beforeSlots == 0 ? ' (it was empty)' : ''}. Data changes stay; they are in the audit log.'),
+        confirmLabel: t('تراجع', 'Undo'),
+        danger: true);
+    if (!ok || !mounted) return;
+    await widget.p.restoreRevision(id);
+  }
 
   String get _key => '${widget.p.schedule?['version']}|${widget.p.conflicts.where((x) => x['severity'] == 'error').length}|${runIsOpen(widget.p.genRun)}';
 
@@ -858,7 +899,10 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   /// One ranked way out of a conflict: a slot move / room change / group fix goes through the slot PUT (a remaining
   /// clash asks to force it), `resolve` re-solves the clashing part, the data fixes are the pre-flight ones.
   Future<void> _applyRemedy(RemedyItem item, ActionOption a) async {
-    final ok = await confirm(context, message: '${a.text}\n${a.why}', confirmLabel: t('تطبيق', 'Apply'));
+    // the snapshot before / after with what moves highlighted; an older server without the preview gets the text
+    final pv = await previewRemedy(widget.p, a);
+    if (!mounted) return;
+    final ok = pv.plan != null ? await _preview(pv.plan!) : await confirm(context, message: '${a.text}\n${a.why}', confirmLabel: t('تطبيق', 'Apply'));
     if (!ok || !mounted) return;
     String? reason;
     if (a.kind == 'override') {
@@ -880,7 +924,12 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       return;
     }
     final applied = asMap(r.map['applied']);
-    toast(applied['regenerate'] == true ? t('طُبّق الحل — أعد التوليد لاستخدامه', 'Applied — regenerate to use it') : t('طُبّق الحل', 'Applied'));
+    if (applied['regenerate'] == true) {
+      toast(t('حُفظ التغيير — أعد الحل ليُستخدم', 'Saved — re-solve to use it'));
+      setState(() => _needRegen = true);
+    } else {
+      toast(t('طُبّق الحل', 'Applied'));
+    }
     _loadRemedies();
   }
 
@@ -922,7 +971,8 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     if (r.ok) {
       final applied = asMapList(r.map['applied']).length;
       final skipped = asMapList(r.map['skipped']).length;
-      toast(t('طُبّقت $applied توصية${skipped > 0 ? ' · تعذّر $skipped' : ''} — أعد التوليد', '$applied applied${skipped > 0 ? ' · $skipped skipped' : ''} — regenerate to use them'));
+      toast(t('طُبّقت $applied توصية${skipped > 0 ? ' · تعذّر $skipped' : ''} — أعد الحل', '$applied applied${skipped > 0 ? ' · $skipped skipped' : ''} — re-solve to use them'));
+      if (applied > 0) setState(() => _needRegen = true);
     }
   }
 
@@ -945,7 +995,10 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       if (r.code == 'finding_not_found') _loadPreflight();
       return;
     }
-    if (what == 'accept') toast(t('طُبّقت التوصية — أعد التوليد لاستخدامها', 'Applied — regenerate to use it'));
+    if (what == 'accept') {
+      toast(t('طُبّقت التوصية — أعد الحل لاستخدامها', 'Applied — re-solve to use it'));
+      setState(() => _needRegen = true);
+    }
   }
 
   Future<void> _loadQuick() async {
@@ -970,11 +1023,16 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
   }
 
   Future<void> _apply(QuickAction a) async {
-    final ok = await confirm(context,
-        message: '${quickRuleText(a.rule)}\n${impactText(a.before, a.after)}'
-            '${a.breaks > 0 ? '\n${t('${a.breaks} اقتراح كسر قاعدة ستراجعه', '${a.breaks} rule-break proposal(s) to review')}' : ''}\n'
-            '${t('تُعاد جدولة الحصص المتأثرة فقط، ويبقى الجدول مسودة.', 'Only the affected sessions are re-solved; the timetable stays a draft.')}',
-        confirmLabel: t('تطبيق', 'Apply'));
+    final plan = ChangePlan.quick(
+      title: quickRuleText(a.rule),
+      hardBefore: quick?.hard ?? 0,
+      unplacedBefore: quick?.unplaced ?? 0,
+      hardAfter: a.hardAfter,
+      unplacedAfter: a.unplacedAfter,
+      changes: a.changes,
+      breaks: a.breaks,
+    );
+    final ok = await _preview(plan);
     if (!ok || !mounted) return;
     setState(() => applying = true);
     final r = await applyQuickAction(widget.p, a.rule);
@@ -1022,9 +1080,19 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
       blocks.putIfAbsent('${x['block_id']}', () => x);
     }
     final actions = quick?.actions ?? const <QuickAction>[];
+    final autopilot = AutopilotReport.of(result);
+    if (runIsOpen(p.genRun)) {                       // the autopilot / a generation is writing the timetable
+      return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
+        SheetHeader(t('جارٍ العمل على الجدول', 'Working on the timetable')),
+        GenerationLivePanel(run: p.genRun!, onCancel: () => p.cancelGeneration()),
+      ]);
+    }
     return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
       SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
       _completionCard(context, done, o),
+      if (widget.canEdit && (done.problems > 0 || _needRegen)) _autopilotCard(context, done),
+      if (autopilot != null)
+        Padding(padding: const EdgeInsets.only(top: 10), child: AutopilotSummaryCard(report: autopilot, onUndo: widget.canEdit ? () => _undoAutopilot(autopilot) : null)),
       if (applying) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
       if (preflight != null && preflight!.findings.isNotEmpty && !done.isComplete)
         Padding(
@@ -1145,6 +1213,37 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
                 style: orgText(context, size: 12, color: c.textMedium)),
           ),
       ]),
+    );
+  }
+
+  /// One button for the whole review stage: every automatic fix, validated, then a re-solve — nothing forced.
+  Widget _autopilotCard(BuildContext context, TimetableCompletion d) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.07), borderRadius: BorderRadius.circular(16), border: Border.all(color: c.primary.withValues(alpha: 0.3))),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(Icons.auto_fix_high_rounded, color: c.primary),
+            const SizedBox(width: 8),
+            Expanded(child: Text(_needRegen ? t('حُفظت تغييرات في البيانات — أعد الحل', 'Data changes saved — re-solve now') : t('دع النظام يصلح ما يستطيع', 'Let the system fix what it can'), style: orgText(context, size: 14, w: FontWeight.w800, color: c.primary))),
+          ]),
+          const SizedBox(height: 4),
+          Text(
+              _needRegen
+                  ? t('يُعاد التوليد بالبيانات الجديدة، ثم يُطبَّق أفضل حل تلقائي لكل تعارض يبقى، ولا يُفرض شيء.', 'The timetable is regenerated with the new data, then the best automatic fix of every remaining clash is applied; nothing is forced.')
+                  : t('لكل تعارض (${d.hard}) وحصة بلا موعد (${d.unplaced}) يُطبَّق أفضل حل تلقائي بعد التحقق منه، وتُعاد جدولة ما يلزم فقط. ما يحتاج قراراً بشرياً يبقى لك.',
+                      'For every clash (${d.hard}) and unplaced session (${d.unplaced}) the best automatic fix is applied after validation, and only what must move is re-solved. Whatever needs a human decision stays with you.'),
+              style: orgText(context, size: 12.5, color: c.textMedium)),
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton.icon(onPressed: _runAutopilot, icon: const Icon(Icons.auto_fix_high_rounded, size: 18), label: Text(_needRegen ? t('أعد الحل الآن', 'Re-solve now') : t('أصلح تلقائياً', 'Fix automatically'))),
+          ),
+        ]),
+      ),
     );
   }
 

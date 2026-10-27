@@ -59,7 +59,9 @@ import 'org_ui.dart';
 import 'org_terms_pages.dart';
 import 'org_people_page.dart';
 import 'org_providers.dart';
+import 'org_schedule_autopilot.dart';
 import 'org_schedule_pages.dart';
+import 'org_v3.dart';
 import 'org_sections_page.dart';
 import 'org_feedback_risk.dart';
 import 'org_v3.dart' show orgCall, orgParseUtc, orgUtc;
@@ -88,6 +90,7 @@ class _OrgTabs extends ChangeNotifier {
     if (i < 0 && key == 'services') i = keys.indexOf('settings');
     if (i < 0) return false;
     if (sub != null) pendingSub[keys[i]] = sub;
+    if (key == 'timetable' && sub != null) timetableRequest.value = sub;   // the Timetable section is one page
     currentTab = i;
     notifyListeners();
     return true;
@@ -656,6 +659,52 @@ class _AttentionQueue extends StatelessWidget {
   Widget build(BuildContext context) =>
       ListenableBuilder(listenable: AttentionService.instance, builder: (context, _) => _queue(context));
 
+  /// The term cards in a sheet; Generate now = POST …/schedules/auto, then the Timetable section opens that draft.
+  Future<void> _generateTerms(BuildContext context, List<TermNeed> terms) async {
+    final s = context.read<OrgSession>();
+    final tabs = context.read<_OrgTabs>();
+    final dash = context.read<_OrgDash>();
+    final busy = <int>{};
+    await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SheetHeader(t('فصول بلا جدول', 'Terms without a timetable')),
+              Text(t('يُنشأ الجدول من مقررات الفصل، يُولَّد خلال نحو دقيقة، وتُصلَح تعارضاته تلقائياً؛ ثم تراجعه وتنشره.', 'The timetable is created from the term\'s courses, generated in about a minute and its conflicts fixed automatically; then you review and publish it.'),
+                  style: orgText(ctx, size: 12.5, color: ctx.colors.textMedium)),
+              const SizedBox(height: 10),
+              for (final n in terms)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TermTimetableCard(
+                    need: n,
+                    busy: busy.contains(n.id),
+                    onSetup: () {
+                      Navigator.pop(ctx);
+                      tabs.go('timetable', sub: 'generate');
+                    },
+                    onGenerate: () async {
+                      set(() => busy.add(n.id));
+                      final r = await orgCall(() => s.api.post('${s.base}/schedules/auto', body: {'term_id': n.id}), quiet: true);
+                      if (!ctx.mounted) return;
+                      set(() => busy.remove(n.id));
+                      final running = asMap(r.detail['run']);
+                      if (!r.ok && !(r.code == 'generation_running' && running['schedule_id'] != null)) {
+                        toast(orgErrorText(r.error!), error: true);
+                        return;
+                      }
+                      Navigator.pop(ctx);
+                      // someone already pressed it: open the timetable the run is writing
+                      tabs.go('timetable', sub: 'open:${r.ok ? asMap(r.map['schedule'])['id'] : running['schedule_id']}');
+                      dash.load(s);
+                    },
+                  ),
+                ),
+            ]),
+          );
+        }));
+  }
+
   Widget _queue(BuildContext context) {
     final c = context.colors;
     final s = context.read<OrgSession>();
@@ -710,6 +759,12 @@ class _AttentionQueue extends StatelessWidget {
             t('مقترحات جاهزة للتطبيق بضغطة', 'Ready to apply in one tap'), t('عرض', 'View'), () {
               tabs.go('timetable');
             }),
+        'term_without_timetable' => (
+            Icons.auto_awesome_rounded,
+            n == 1 ? t('فصل دراسي بلا جدول', 'A term has no timetable yet') : t('$n فصول دراسية بلا جدول', '$n terms have no timetable yet'),
+            asMapList(a['terms']).map((x) => TermNeed.of(x)).map((x) => x.ready ? x.label : '${x.label} (${x.blockedTexts.join('، ')})').join(' · '),
+            t('ولّد الآن', 'Generate now'),
+            () => _generateTerms(context, asMapList(a['terms']).map(TermNeed.of).toList())),
         'expiring_memberships' => (Icons.hourglass_bottom_rounded,
             t('$n عضوية تنتهي خلال ${a['days']} يوماً', '$n memberships end within ${a['days']} days'),
             t('مدّدها قبل أن يفقد أصحابها الوصول', 'Extend them before people lose access'), t('تمديد', 'Extend'),
@@ -724,6 +779,17 @@ class _AttentionQueue extends StatelessWidget {
       };
       if (spec == null) continue;
       items.add(_AttentionCard(icon: spec.$1, color: col, title: spec.$2, subtitle: spec.$3, action: spec.$4, onTap: spec.$5));
+    }
+    if (dash.count('term_without_timetable') == 0) {
+      // GET /me/attention knows it before the dashboard reloads (and for the Timetable badge): same card, same flow
+      final live = AttentionService.instance.items(AttentionTabs.orgTimetable, orgId: s.currentId).where((x) => x.kind == 'term_without_timetable').toList();
+      if (live.isNotEmpty) {
+        final n = live.fold<int>(0, (a, x) => a + x.count);
+        items.add(_AttentionCard(icon: Icons.auto_awesome_rounded, color: c.warning,
+            title: n == 1 ? t('فصل دراسي بلا جدول', 'A term has no timetable yet') : t('$n فصول دراسية بلا جدول', '$n terms have no timetable yet'),
+            subtitle: t('بضغطة واحدة يُنشأ الجدول ويُولَّد وتُصلَح تعارضاته', 'One tap creates, generates and fixes the timetable'),
+            action: t('ولّد الآن', 'Generate now'), onTap: () => tabs.go('timetable', sub: 'generate')));
+      }
     }
     // auto-create drafts and open decisions (GET /me/attention): what the server prepared for my approval
     final acad = AttentionService.instance.items(AttentionTabs.orgAcademics, orgId: s.currentId);

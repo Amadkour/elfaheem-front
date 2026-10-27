@@ -73,6 +73,18 @@ why-here, drop preview, iCal). All backend solver suites, the timetable e2e scri
   exposed — `core` is the minimal hitting set per session, which is what admins asked for.
 - Parallel mode is not reproducible across runs when the soft pass hits the time limit.
 
+8g. ✅ Power AI schedule (D-011 / back D-053): the current / next term without a timetable is an attention item
+   (`term_without_timetable`) with "Generate now" (`POST …/schedules/auto {term_id}` → draft + autopilot); the autopilot
+   (`POST …/schedules/{sid}/autopilot`, `schedule_autopilot.py`) chains pre-flight fixes → complete generation → every
+   hard conflict's best validated remedy → partial re-solve inside the ONE run (live panel shows `fix*` steps, result
+   gets `autopilot {before, after, log}`); every remedy / quick action is previewed BEFORE / AFTER on two mini grids
+   (`org_schedule_preview.dart`, `POST …/remedies/preview`). Files: `org_schedule_autopilot.dart`,
+   `org_schedule_preview.dart`; tests `test/org/org_autopilot_test.dart`, `test/ui/autopilot_layout_test.dart`,
+   back `tests/org_v2/e2e_schedule_autopilot.py`. Round 2: data-fix confirmation (`GET …/autopilot/plan`,
+   `DataFixPicker`), "Undo everything" (`autopilot_before` revision), remedies recomputed per applied fix, one audit row
+   per run, cached term blockers (`GET …/schedules/term-needs`), following an already running one-tap run, and a
+   "Generate now" button on the push (untested on a device).
+
 8f. Patience while generating: the run's `summary.steps` (schedule_jobs.Steps — data loaded · attempt n strict /
    bending the flexible rules, with its time budget · attempt result · saving) is shown by `GenerationLivePanel`
    (org_schedule_generate.dart): headline = best so far / current step, the whole-run clock ticking locally between

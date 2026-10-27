@@ -253,6 +253,8 @@ Map<String, String> _codeTexts() => {
       'bad_action': t('الحل لا يحدد الحصة', 'The fix does not name a session'),
       'reassign_not_better': t('النسخة بعد التغيير أسوأ من الحالية', 'The version after the change ranks worse than the current one'),
       'slot_not_found': t('الحصة غير موجودة', 'The session was not found'),
+      'term_not_found': t('الفصل الدراسي غير موجود', 'The term was not found'),
+      'term_has_timetable': t('لهذا الفصل جدول منشور بالفعل', 'This term already has a published timetable'),
       'date_required': t('حدّد تاريخ الحصة', 'Pick the session date'),
       'bad_date': t('التاريخ لا يقع في يوم هذه الحصة', "That date is not on this session's weekday"),
       'not_published': t('الجدول غير منشور بعد', 'The timetable is not published yet'),

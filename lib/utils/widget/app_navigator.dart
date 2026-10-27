@@ -9,11 +9,13 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
+import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
+import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
 
 class AppNavigator {
@@ -35,8 +37,8 @@ class AppNavigator {
   }
 
   /// module: profile | course | course_profile | notifications | my_courses | subscription | org_exams | calendar |
-  /// org_reports
-  static Future<void> openModule(String? module, {int? targetId}) async {
+  /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft)
+  static Future<void> openModule(String? module, {int? targetId, int? orgId}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
     if (nav == null || ctx == null || !ctx.mounted) return;
@@ -74,6 +76,14 @@ class AppNavigator {
       case 'org_reports': // a report sent to me → Received reports
         await nav.push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()));
         return;
+      case 'org_timetable': // a draft timetable is ready / failed → the org dashboard's Timetable section on it
+        if (orgId == null) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId, 'timetable', targetId != null ? 'open:$targetId' : 'generate');
+        if (topRouteObserver.currentRoute?.settings.name != '/org_dashboard') await nav.pushNamed('/org_dashboard');
+        return;
       case 'profile':
         await nav.pushNamed('/profile');
       case 'my_courses':
@@ -98,8 +108,34 @@ class AppNavigator {
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
       final orgId = int.tryParse('${r['org_id'] ?? ''}');
       if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
-      await openModule(module, targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'));
+      await openModule(module, targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'), orgId: orgId);
     } catch (_) {/* tapping must never crash */}
+  }
+
+  /// The "Generate now" button of a "term without a timetable" push (data: org_id, term_id, action: generate):
+  /// runs the one-tap generation (POST …/schedules/auto) and opens the Timetable section on the draft — or, when
+  /// the server still refuses, on the term card with the reasons. Returns a text to show, null when nothing to say.
+  static Future<String?> generateTermFromPush(Map<String, dynamic> data) async {
+    final orgId = int.tryParse('${data['org_id'] ?? ''}');
+    final termId = int.tryParse('${data['term_id'] ?? ''}');
+    if (orgId == null || termId == null || ViewAsState.active) {
+      await openFromPush(data);
+      return null;
+    }
+    int? sid;
+    String? text;
+    try {
+      final r = await ApiClient().post('/api/v1/org/orgs/$orgId/schedules/auto', body: {'term_id': termId});
+      sid = r is Map ? int.tryParse('${(r['schedule'] as Map?)?['id'] ?? ''}') : null;
+    } catch (e) {
+      final err = ApiException.from(e);
+      final run = (ApiException.asMap(err.body)?['detail'] as Map?)?['run'];
+      sid = run is Map ? int.tryParse('${run['schedule_id'] ?? ''}') : null;   // already running: follow it
+      if (err.code != 'generation_running') text = err.message;
+    }
+    await _openOrgFirst(orgId, false);
+    await openModule('org_timetable', targetId: sid, orgId: orgId);
+    return text;
   }
 
   /// FCM payload (tap or foreground). Uses explicit fields when present, else course_id.
@@ -107,11 +143,12 @@ class AppNavigator {
     if (ViewAsState.active) return;
     // course-profile notifications carry {type: course_profile, id: <course id>} (services/organization notify_users)
     final profile = data['type'] == 'course_profile';
-    final module = data['module']?.toString() ?? (profile ? 'course_profile' : null);
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile ? data['id'] : null) ?? ''}');
+    final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
+    final module = data['module']?.toString() ?? (profile ? 'course_profile' : (timetable ? 'org_timetable' : null));
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable ? data['id'] : null) ?? ''}');
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
-    if (module != null) return openModule(module, targetId: target);
+    if (module != null) return openModule(module, targetId: target, orgId: orgId);
     if (target != null) return openCourse(target);
     await navigatorKey.currentState?.pushNamed('/notifications');
   }

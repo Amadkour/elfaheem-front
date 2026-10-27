@@ -31,6 +31,7 @@ import 'org_timetable_wizard.dart';
 import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
 import 'org_schedule_generate.dart';
+import 'org_schedule_autopilot.dart';
 import 'org_schedule_grid.dart';
 import 'org_schedule_reassign.dart';
 import 'org_schedule_groups.dart' show openStudentGroups;
@@ -611,12 +612,36 @@ class _TimetablesTab extends StatelessWidget {
     if (saved != null) await p.open(saved);
   }
 
+  /// One tap: the term's draft is created and the autopilot generates and fixes it; the studio follows the run.
+  Future<void> _generateTerm(BuildContext context, OrgScheduleProvider p, TermNeed n) async {
+    final r = await p.generateForTerm(n.id);
+    if (!r.ok && context.mounted) toast(orgErrorText(r.error!), error: true);
+  }
+
+  /// The current / next term without a timetable, with what the app already knows blocks the generation.
+  List<TermNeed> _needs(OrgScheduleProvider p) {
+    final blocked = [
+      if (p.periods.isEmpty) {'code': 'no_periods', 'text_ar': 'لا توجد فترات زمنية', 'text_en': 'No time periods'},
+      if (p.rooms.isEmpty) {'code': 'no_rooms', 'text_ar': 'لا توجد قاعات مفعّلة', 'text_en': 'No active rooms'},
+    ];
+    if (p.termNeedsLoaded) return [for (final x in p.termNeeds) TermNeed.of(x)];    // the server's full reasons
+    return [for (final n in termsNeedingTimetable(p.terms, p.schedules, AppTime.toZone(DateTime.now().toUtc()))) n.withBlocked(blocked)];
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<OrgScheduleProvider>();
     final s = context.watch<OrgSession>();
     final c = context.colors;
+    // a deep link (notification, attention item): open that timetable / show the term cards
+    final req = timetableRequest.value;
+    if (req != null) {
+      timetableRequest.value = null;
+      final id = req.startsWith('open:') ? int.tryParse(req.substring(5)) : null;
+      if (id != null && p.schedule?['id'] != id) WidgetsBinding.instance.addPostFrameCallback((_) => p.open(id));
+    }
     if (p.schedule != null) return _Studio(onSetup: (id) => _wizard(context, p, id: id), sidePanel: studioQuickActions);
+    final needs = _needs(p);
     final intro = [
       AppHero(
         icon: Icons.calendar_month_rounded,
@@ -632,6 +657,15 @@ class _TimetablesTab extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 12),
+      for (final n in needs)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: TermTimetableCard(
+            need: n,
+            onGenerate: s.can('schedule', 'update') ? () => _generateTerm(context, p, n) : null,
+            onSetup: () => DefaultTabController.maybeOf(context)?.animateTo(2),
+          ),
+        ),
       if (p.periods.isEmpty || p.rooms.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -852,6 +886,9 @@ class _StudioState extends State<_Studio> {
     if (res != null && res.isNotEmpty && context.mounted) await showPublishConflicts(context, res, courseNames);
   }
 
+  /// The autopilot on the open timetable (POST …/autopilot): the run is followed like a generation.
+  Future<void> _autopilot(BuildContext context, OrgScheduleProvider p) => runAutopilotWithPlan(context, p);
+
   void _export(BuildContext context, OrgScheduleProvider p) => showTimetableExport(
     context,
     slots: p.slots,
@@ -1006,7 +1043,16 @@ class _StudioState extends State<_Studio> {
         if ((s.can('schedule', 'update') || active) && journey.next != NextAction.wait)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-            child: NextStepBanner(title: nextText.$1, body: nextText.$2, action: nextText.$3, tone: journey.tone, onAction: nextAction),
+            child: NextStepBanner(
+              title: nextText.$1,
+              body: nextText.$2,
+              action: nextText.$3,
+              tone: journey.tone,
+              onAction: nextAction,
+              // the AI way out of the review stage: every automatic fix applied and re-solved, nothing forced
+              secondary: canEdit && (journey.next == NextAction.reviewResult || journey.next == NextAction.fixClashes) ? t('أصلح تلقائياً', 'Fix automatically') : null,
+              onSecondary: canEdit ? () => _autopilot(context, p) : null,
+            ),
           ),
         // one toolbar: Create timetable (the ONE generation action, no questions) · its rules · add · publish; rest under ⋮
         Padding(
@@ -1021,6 +1067,13 @@ class _StudioState extends State<_Studio> {
                   avatar: running ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.auto_awesome_rounded, size: 18, color: c.primary),
                   label: Text(running ? t('جارٍ الإنشاء…', 'Creating…') : t('إنشاء الجدول', 'Create timetable')),
                   onPressed: running ? null : () => createTimetable(context, p),
+                ),
+              if (canEdit && !running && (errors > 0 || unplaced > 0))
+                ActionChip(
+                  avatar: Icon(Icons.auto_fix_high_rounded, size: 18, color: c.primary),
+                  label: Text(t('إصلاح تلقائي', 'AI fix')),
+                  tooltip: t('يطبّق أفضل حل تلقائي لكل تعارض ويعيد حل ما يلزم، ثم يعرض ما بقي لقرارك', 'Applies the best automatic fix of every clash, re-solves what it must, then shows what is left for you'),
+                  onPressed: () => _autopilot(context, p),
                 ),
               IconButton(
                 tooltip: t('قواعد التوليد', 'Generation rules'),
