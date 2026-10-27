@@ -24,15 +24,15 @@
 | Offline exam sittings | no (`offlineExamsSupported = !kIsWeb`) | yes | yes | by design | |
 | Org join QR scan | no (`joinScannerAvailable = !kIsWeb`) | yes | yes | partly | mobile_scanner supports web; code entry remains |
 | Attendance check-in | only when the teacher allows web; GPS only | full + nearby relay | full + BLE relay | yes | |
-| Picture-in-Picture | no | yes | no | mostly | **iOS gap unexplained**; rotation lock hidden on web |
+| Picture-in-Picture | no | yes | no (deferred, D-061) | yes | rotation lock hidden on web by nature |
 | Live client recording | MediaRecorder canvas | native service | RPScreenRecorder | yes | |
-| Pre-join mic level meter | yes | no | no | no | **gap:** stub returns 0 (`prejoin_mic_meter_stub.dart`) |
+| Pre-join mic level meter | yes | yes (C.4) | yes (C.4) | — | closed 2026-10-28 |
 | Exam integrity signals | tab / full-screen / copy-paste | app background | app background | yes | |
 | Payments | hosted iframe | WebView + Google Pay | WebView + Apple Pay | yes | |
 | Phone verification | QR to scan | opens app | opens app | yes | |
 | Share / pickers / exports | copy link · file picker · browser download | share sheet · camera · saved file | same | yes | |
 | Keyboard shortcuts | yes | no | no | yes | |
-| Push notifications | FCM web token; foreground shown as in-app snackbar (browser Notification call commented out, `notification_service.dart` L314) | local notifications | local notifications | partly | soft gap |
+| Push notifications | FCM web token; foreground = browser Notification popup, toast fallback (C.4); background data pushes relayed to the page (D.2) | local notifications | local notifications | — | closed 2026-10-28 |
 | Crashlytics, Remote Config live, offline banner | no | yes | yes | yes | |
 | Navigation shell | WideShell ≥ 900 (student/teacher) or ≥ 1000 (parent/admin/org); RailShell 600–999 web only | MobileShell below (tablets get phone shell) | same | no | **breakpoints inconsistent** (900 vs 1000; rail web-only) |
 
