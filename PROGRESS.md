@@ -17,7 +17,7 @@ recorded below) · `blocked (why)`.
 |---|---|---|
 | 0.1 | Safety net: branch `feature/platform-polish` in both repos | done |
 | 0.2 | Analysis phase, no code changes → §1 findings, §2 parity matrix, §3 baselines | done (2026-10-28) |
-| 0.3 | Track A1 security and auth fixes | in progress |
+| 0.3 | Track A1 security and auth fixes | done (verified by tests; see owner actions) |
 | 0.4 | Track D real-time + push, remove polling | in progress (D.1 back + D.2 app agents running alongside A1) |
 | 0.5 | Track C feature parity | todo |
 | 0.6 | Track B design system + dashboards + screen polish (A2) | todo |
@@ -81,13 +81,13 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 
 | Id | Track | Task | Status | Changed | Verified by | Next step |
 |---|---|---|---|---|---|---|
-| A1.1 | Auth | S1 phone change: normalise, 409 `PHONE_TAKEN`, reset `phone_verified` + OTP; S9 re-auth for delete / phone change, revoke tokens on deletion | todo | | | start here |
-| A1.2 | Auth | S2 register throttle; S7 phone-link throttle; S10 handshake throttle + shorter TTL | todo | | | |
-| A1.3 | Auth | S3 refuse `OTP_PROVIDER=log` outside dev/test; S5 onboarding e-mail fallback default off; S12 MFA default roles | todo | | | |
-| A1.4 | Auth | S4 re-own unverified accounts on register; S6 uniform answers (no enumeration) | todo | | | |
-| A1.5 | Auth | S11 password policy ≥ 8 + common list (app validators + schemas) | todo | | | |
+| A1.1 | Auth | S1 phone change: normalise, 409 `PHONE_TAKEN`, reset `phone_verified` + OTP (`phone_verification` in the answer); S9 `password` (+ `code` for MFA) on `PUT /auth/me` phone change and `DELETE /auth/me`, deletion bumps `token_version` + revokes refresh tokens | verified | back 2dc8225 | `e2e_auth_hardening.py` 10/10 + 9 auth / MFA scripts pass | Google-only accounts must set a password (forgot-password) before delete / phone change |
+| A1.2 | Auth | S2 register 20/h per IP; S7 phone-link start counted as resend, status 30/15 min; S10 handshake 300/15 min per IP, session TTL 12 h → 2 h | verified | back 2dc8225 | same | |
+| A1.3 | Auth | S3 `OTP_PROVIDER` unset / `log` refused outside development / test; S5 `TEACHER_ONBOARDING_EMAIL_FALLBACK` default false; S12 `MFA_REQUIRED_ROLES` default `super-admin,admin` in production / staging (explicit empty = opt out) | verified | back 2dc8225 | same | **DEPLOY BLOCKER: see §5 owner actions** |
+| A1.4 | Auth | S4 never-verified sign-ups re-owned on register (201, same user id, squatted phone released); S6 unknown identifiers answer uniformly (verify / reset → 400 `otp_invalid`, resend / forgot → 200) | verified | back 2dc8225 | same | residual: forgot-password by phone lists the real account's e-mail way too (bounded by throttles) |
+| A1.5 | Auth | S11 `check_password_policy` ≥ 8 + 34 common passwords → 400 `WEAK_PASSWORD`; app rule ≥ 8 | verified | back 2dc8225, front e33a3c5 | same | |
 | A1.6 | Auth (app) | S14 `getMe()` after bootstrap; S15 server logout on every path; S16 429 on refresh transient; S8 CSP on hosting (D-060); re-auth sheet for delete / phone change; phone change re-verifies by OTP; password ≥ 8; codes `WEAK_PASSWORD` / `PHONE_TAKEN` / `REAUTH_REQUIRED` mapped | verified | e33a3c5 | `flutter test test/auth/ test/contract/` 65 passed; analyze 0/0 | layout test for `reauth_sheet.dart` pending; check the CSP in the browser console after the first web deploy |
-| A1.7 | Auth | Backend e2e `tests/org_v2/e2e_auth_hardening.py` proving S1–S10 closed; app tests for S14–S16 | todo | | | |
+| A1.7 | Auth | `tests/org_v2/e2e_auth_hardening.py` (10 checks); app `refresh_429_test.dart`, `password_rule_test.dart`, `reauth_sheet_layout_test.dart` | verified | | | phone-change → OTP step end-to-end on a running stack not yet exercised (unit-level only) |
 | A2 | Frontend | Screen-by-screen audit and polish on web / Android / iOS | todo | | | after B |
 | B.1 | Design | Design system pass: one shell for all roles (`lib/design/app_shell.dart`), tokens from `context.colors` only (remove ~60 hard-coded colors), one breakpoint system, leaf-level `AttentionBadge` rebuilds, chart primitives (`lib/design/app_charts.dart`, CustomPaint, no new package unless needed) | todo | | | after D, C |
 | B.2 | Dashboards | Super Admin: extend `/admin/overview` (orgs, pending org approvals, 30-day series, alerts), one home with KPIs + trend charts + queue + shortcuts, grouped services | todo | | | |
@@ -112,7 +112,15 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | E.7 | RAG | Monitoring counters in `overview` → super admin dashboard; tenant-leak tests; AFTER numbers | todo | | | |
 | QA | QA | Full suites in both repos after each track; final re-measure | todo | | | |
 
-## 5. Key decisions
+## 5. Key decisions and owner actions
+
+**Owner actions before the next backend deploy (from A1.3, D-060 in `../back/docs/DECISIONS.md`):**
+- `.env.production` has no `OTP_PROVIDER`: set `OTP_PROVIDER=twilio | whatsapp_cloud | none` (with credentials) or the API refuses to start.
+- Admins / super-admins without MFA get the enrolment step at their next login (set `MFA_REQUIRED_ROLES=` explicitly empty to opt out).
+- Teacher onboarding from app builds without `X-Onboarding-Token` is refused unless `TEACHER_ONBOARDING_EMAIL_FALLBACK=true`.
+- Redis is required for the real-time stream (already in compose); nginx needs the `/api/v1/me/events` location from `deploy/nginx/nextbrain.conf.example`.
+- Web: check the browser console for CSP-blocked origins after the first hosting deploy (D-060 in this repo).
+
 
 - 2026-10-28: job tracked in root `PROGRESS.md` (this file); design decisions that deviate from existing conventions go to `docs/DECISIONS.md` as D-nnn as usual.
 - 2026-10-28: per-track analyses in `docs/polish/*.md`; a resumed session reads this file and only the track file it works on.
