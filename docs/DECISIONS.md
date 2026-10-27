@@ -217,3 +217,21 @@ local stack). iOS replaces `NSAllowsArbitraryLoads` with `NSAllowsLocalNetworkin
 M150) stays a separate task with its own device tests.
 **Consequences.** A media or LiveKit URL that is not https / wss fails on the device instead of loading in clear —
 keep `MINIO_PUBLIC_URL` / `LIVEKIT_PUBLIC_URL` https / wss. Updating the fork means changing the `ref:` on purpose.
+
+## D-057 — Governance screens reuse the org kit and ONE shared filter; the Export Hub generalises the report designer · 2026-10-27 · accepted
+
+**Context.** Requests, complaints, forms, routing, delegation, council voting and designed exports (D-057 in
+`../back/docs/DECISIONS.md`, contract in `docs/backend/governance-spec.md`) needed screens for staff, heads,
+council members and plain members, in Arabic RTL and English LTR, on phones and wide screens.
+**Decision.** `lib/features/org/governance/` holds pure models (`gov_models.dart`, incl. the tally rules mirrored
+from the server so previews agree with it), one API client (`gov_api.dart`, one method per route), ONE filter
+(`gov_filter.dart`: `ItemFilter` ↔ query string + `ItemFilterBar`, saved per user on the server) used by every
+list, and presentational widgets that take plain values so the layout harness can pump them. The Export Hub
+(`lib/design/export_hub/`) generalises the complaints report designer into a design document (page, fonts per
+element, many logos and signatures, table style, the council items block with the vote result beside and / or
+below each item), with the PDF / Word / Excel writers hand-written like the rest of the app (no `excel` package,
+D-003); Arabic and English outputs come from different templates, never a mirrored one. `AppTableExport` offers
+"Design…" so every existing table export can go through the hub.
+**Consequences.** New lists in the module must build on `ItemFilter`; a new export anywhere passes an
+`ExportDataset` to `exportHub` instead of writing another sheet. Error codes of the module are mapped in
+`govCodeTexts` and merged into `orgErrorText`.

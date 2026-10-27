@@ -30,6 +30,9 @@ import 'org_providers.dart';
 import 'org_services_pages.dart' show OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show deptIcon, memberRoleLabels, orgNameOf, orgText;
 import 'org_v3.dart' show orgCall, orgParseUtc;
+import 'governance/gov_dashboard.dart' show GovDashboardCard;
+import 'governance/gov_delegations_page.dart' show GovDelegationsPage;
+import 'governance/gov_wiring.dart' show govDeptItemsTab, govEnabled, govOpenCouncilOfDept;
 
 /// Opens the dashboard of one department, carrying the current organization session.
 Future<void> openDepartmentDashboard(BuildContext context,
@@ -197,6 +200,9 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     return [
       if (!wide) (t('نظرة عامة', 'Overview'), Icons.space_dashboard_rounded, 0, _TabList(onRefresh: _load, children: _overview(wide: false))),
       if (showRequests) (t('الطلبات', 'Requests'), Icons.inbox_rounded, waiting, _RequestsTab(d: _d!, unitType: widget.unitType, unitId: widget.unitId, onChanged: _load, onSeeAll: _seeAllRequests)),
+      // governance (D-057): every item routed to / submitted to this entity
+      if (_isDept && _govOn)
+        (t('المعاملات', 'Items'), Icons.account_tree_rounded, 0, govDeptItemsTab(context, context.read<OrgSession>().currentId ?? 0, widget.unitId)),
       if (_cap('view_users'))
         (_isDept ? t('المنضمّون', 'Users') : t('الطلاب', 'Students'), Icons.people_alt_rounded, 0,
             _UsersTab(d: _d!, unitType: widget.unitType, unitId: widget.unitId, onChanged: _load)),
@@ -204,6 +210,13 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
         (_isDept ? t('الفريق', 'Members') : t('هيئة القسم', 'Faculty'), Icons.badge_rounded, 0,
             _TeamTab(d: _d!, isDept: _isDept, onManage: _cap('manage_team') ? _openHub : null, onRefresh: _load)),
     ];
+  }
+
+  /// Items · council · delegations of this entity (D-057): staff with `workflow` rights, the team, or org admins.
+  bool get _govOn {
+    if (!govEnabled()) return false;
+    final s = context.read<OrgSession>();
+    return s.isOrgAdmin || s.can('workflow', 'view', widget.unitId) || _cap('view_team') || _cap('manage_team');
   }
 
   void _seeAllRequests() => _push(t('الانضمام', 'Joining'),
@@ -231,6 +244,12 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
       if (_isDept && _cap('view_materials') && f.contains('materials'))
         (Icons.folder_copy_rounded, t('المكتبة', 'Library'), c.accent2,
             () => _push(t('المكتبة', 'Library'), OrgMaterialsPage(deptId: id))),
+      if (_isDept && _govOn && _unit['council_id'] != null)
+        (Icons.gavel_rounded, t('مجلس القسم', 'Department council'), c.purple,
+            () => govOpenCouncilOfDept(context, context.read<OrgSession>().currentId ?? 0, asInt(_unit['council_id']))),
+      if (_isDept && _govOn && _cap('manage_team'))
+        (Icons.assignment_ind_rounded, t('التفويضات', 'Delegations'), c.warning,
+            () => _push(t('التفويضات', 'Delegations'), GovDelegationsPage(id, embedded: true, orgId: context.read<OrgSession>().currentId))),
       if (_cap('manage_team')) (Icons.person_add_alt_1_rounded, t('إضافة للفريق', 'Add staff'), c.success, _openHub),
       if (_isDept && (_cap('edit_unit') || _cap('view_team') || _cap('view_forms')))
         (Icons.apps_rounded, t('كل أدوات الإدارة', 'All department tools'), null, _openHub),
@@ -246,6 +265,12 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     final pad = wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16);
     final card = [u['location'], u['office_hours'], u['email'], u['phone']].any((x) => '${x ?? ''}'.trim().isNotEmpty);
     return [
+      // governance (D-057): pending · waiting for a decision · overdue · decided, for this entity
+      if (_isDept && s.currentId != null && _govOn) ...[
+        _Title(t('المعاملات', 'Items')),
+        Padding(padding: pad, child: GovDashboardCard(deptId: widget.unitId, orgId: s.currentId, compact: true)),
+        const SizedBox(height: 16),
+      ],
       if (_isDept && s.currentId != null) ...[
         _Title(t('إعلانات القسم', 'Department news')),
         Padding(

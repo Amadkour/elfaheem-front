@@ -2,6 +2,8 @@
 //
 // One place that knows how to open a "module" from a notification tap, a push, a dialog button
 // or a shared link. Everything goes through navigatorKey (main.dart).
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +19,9 @@ import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
+import '../../features/org/governance/gov_wiring.dart' show govOpenAssignmentsLink, govOpenDelegationLink, govOpenItemLink, govOpenSessionLink;
+import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
+import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 
 class AppNavigator {
   AppNavigator._();
@@ -37,8 +42,9 @@ class AppNavigator {
   }
 
   /// module: profile | course | course_profile | notifications | my_courses | subscription | org_exams | calendar |
-  /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft)
-  static Future<void> openModule(String? module, {int? targetId, int? orgId}) async {
+  /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft) |
+  /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4)
+  static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
     if (nav == null || ctx == null || !ctx.mounted) return;
@@ -84,6 +90,22 @@ class AppNavigator {
         AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId, 'timetable', targetId != null ? 'open:$targetId' : 'generate');
         if (topRouteObserver.currentRoute?.settings.name != '/org_dashboard') await nav.pushNamed('/org_dashboard');
         return;
+      // governance (D-057): an item · a council session · a delegation · a form I must answer
+      case 'org_work':
+        if (targetId != null) await govOpenItemLink(nav, ctx, targetId, orgId: orgId);
+        return;
+      case 'org_council':
+        if (targetId != null) await govOpenSessionLink(nav, ctx, targetId, orgId: orgId);
+        return;
+      case 'org_delegations':
+        await govOpenDelegationLink(nav, ctx, null, orgId: orgId);
+        return;
+      case 'org_assignments':
+        await govOpenAssignmentsLink(nav);
+        return;
+      case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
+        await openLiveLobby(LiveRoomRef.parse(kind, targetId));
+        return;
       case 'profile':
         await nav.pushNamed('/profile');
       case 'my_courses':
@@ -108,8 +130,29 @@ class AppNavigator {
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
       final orgId = int.tryParse('${r['org_id'] ?? ''}');
       if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
-      await openModule(module, targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'), orgId: orgId);
+      await openModule(module,
+          targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'),
+          orgId: orgId,
+          kind: (r['kind'] ?? r['related_type'])?.toString());
     } catch (_) {/* tapping must never crash */}
+  }
+
+  /// The `live_lobby` deep link: a meeting opens the calendar on that meeting, a course session stays where the
+  /// host is; the lobby sheet (waiting list, Admit / Reject) opens on top either way.
+  static Future<void> openLiveLobby(LiveRoomRef? ref) async {
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    if (ref == null || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) {
+      await nav.pushNamed('/notifications');
+      return;
+    }
+    if (ref.isMeeting && topRouteObserver.currentRoute?.settings.name != '/calendar') {
+      unawaited(nav.pushNamed('/calendar', arguments: ref.id));
+      await Future<void>.delayed(const Duration(milliseconds: 350)); // let the calendar settle under the sheet
+    }
+    final ctx = navigatorKey.currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await showLobbySheet(ctx, ref);
   }
 
   /// The "Generate now" button of a "term without a timetable" push (data: org_id, term_id, action: generate):
@@ -141,11 +184,16 @@ class AppNavigator {
   /// FCM payload (tap or foreground). Uses explicit fields when present, else course_id.
   static Future<void> openFromPush(Map<String, dynamic> data) async {
     if (ViewAsState.active) return;
+    // a join request for a room I host: {type: live_lobby, kind, id} (live-rooms-spec §4)
+    if (data['type'] == 'live_lobby') {
+      return openModule('live_lobby', targetId: int.tryParse('${data['id'] ?? data['target_id'] ?? ''}'), kind: '${data['kind'] ?? ''}');
+    }
     // course-profile notifications carry {type: course_profile, id: <course id>} (services/organization notify_users)
     final profile = data['type'] == 'course_profile';
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
     final module = data['module']?.toString() ?? (profile ? 'course_profile' : (timetable ? 'org_timetable' : null));
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable ? data['id'] : null) ?? ''}');
+    final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}');
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) return openModule(module, targetId: target, orgId: orgId);

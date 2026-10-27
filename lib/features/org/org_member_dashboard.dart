@@ -45,6 +45,7 @@ import 'org_reports/report_page.dart' show OrgReceivedReportsPage;
 import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
+import 'governance/gov_wiring.dart' show govMemberPills;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Small helpers
@@ -236,6 +237,8 @@ class _OrgBody extends StatelessWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
         AppPill(icon: Icons.event_note_rounded, label: t('امتحاناتي', 'My exams'), onTap: () => openMyExams(context, orgId: orgId)),
         AppPill(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => _space(context, org, 2)),
+        // governance (D-057): submit to an entity · my items · my votes · forms I must answer
+        ...govMemberPills(context, orgId, ({required icon, required label, required onTap}) => AppPill(icon: icon, label: label, onTap: onTap)),
         AppPill(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => _space(context, org, 3)),
         AppPill(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => _space(context, org, 1)),
         AppPill(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => _space(context, org, 4)),

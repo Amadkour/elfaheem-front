@@ -13,6 +13,7 @@ library;
 import 'package:flutter_education_app/core/api_client.dart';
 
 import '../admin/admin_common.dart';
+import 'governance/gov_models.dart' show govCodeTexts;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Calls
@@ -302,7 +303,7 @@ String orgErrorText(ApiException e) {
     if (rs.isNotEmpty) return rs.map((r) => t('${r['text_ar']}', '${r['text_en']}')).join(' · ');
   }
   if (c != null) {
-    final txt = _codeTexts()[c];
+    final txt = _codeTexts()[c] ?? govCodeTexts()[c];   // governance module codes (D-057)
     if (txt != null) {
       if (c == 'too_many_attempts') {
         final m = asInt(asMap(ApiException.asMap(e.body)?['detail'])['retry_after_minutes']);

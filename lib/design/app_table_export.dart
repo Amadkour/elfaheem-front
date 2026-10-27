@@ -19,6 +19,8 @@
 // Column types decide the Excel number format, alignment and printed text: text · number · integer · money ·
 // percent (values 0–100) · date (calendar day) · dateTime (UTC instant, shown through AppTime) · status (tinted pill).
 // `locked` columns are always exported; `allowColumnSelection: false` → the sheet offers the formats only.
+// "Design…" at the bottom of the sheet turns the table into an ExportDataset and opens the Export Hub
+// (lib/design/export_hub/), where the page layout, fonts, logo and signatures can be designed and saved.
 // Pure builders (appTableXlsx / appTableDocx / appTablePdf) live in lib/design/export/ and are unit-tested in
 // test/export/app_table_export_test.dart.
 library;
@@ -40,6 +42,8 @@ import 'export/table_export_docx.dart';
 import 'export/table_export_model.dart';
 import 'export/table_export_pdf.dart';
 import 'export/table_export_xlsx.dart';
+import 'export_hub/export_design.dart' show ExportDataset;
+import 'export_hub/export_hub.dart' show exportHub;
 
 export 'export/table_export_model.dart'
     show AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone, cellText;
@@ -149,6 +153,12 @@ class _ExportSheetState extends State<_ExportSheet> {
     if (!mounted) return;
     setState(() => busy = false);
     if (ok) Navigator.pop(context, true);
+  }
+
+  /// The same table through the Export Hub (designed layouts, saved templates).
+  Future<void> _design() async {
+    final ok = await exportHub(context, ExportDataset.fromTable(e), formats: widget.formats);
+    if (ok && mounted) Navigator.pop(context, true);
   }
 
   void _all(bool on) => setState(() {
@@ -292,8 +302,16 @@ class _ExportSheetState extends State<_ExportSheet> {
         ]),
       ),
       Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 4),
         child: dl.DlPrimaryButton(label: label, icon: _formatIcon(choice.format), busy: busy, onPressed: canExport ? _run : null),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+        child: TextButton.icon(
+          onPressed: busy ? null : _design,
+          icon: const Icon(Icons.design_services_outlined, size: 18),
+          label: Text(tx('tx_export_design', 'Design… (Export Hub)', 'تصميم… (مركز التصدير)'), maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
       ),
     ]);
       return compact ? SingleChildScrollView(child: body) : body;

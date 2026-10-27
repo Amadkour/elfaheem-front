@@ -27,6 +27,9 @@ import 'org_common.dart';
 import 'org_reports/report_page.dart' show OrgComplaintReportPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'governance/gov_api.dart' show GovApi;
+import 'governance/gov_forms_assign.dart' show GovFormAssignmentsView, showGovFormAssignSheet;
+import 'governance/gov_wiring.dart' show govEnabled;
 
 
 /// Shared FAB style.
@@ -397,6 +400,22 @@ class OrgFormResponsesScreen extends StatelessWidget {
                   tooltip: t('تصدير Excel', 'Export Excel'),
                   onPressed: () => exportData(context, 'forms/${form['id']}/export'),
                   icon: const Icon(Icons.file_download_rounded)),
+            // governance (D-057): who MUST answer, who did, reminders
+            if (govEnabled() && s.currentId != null && s.can('forms', 'update', dept))
+              IconButton(
+                  tooltip: t('إسناد النموذج لأشخاص', 'Assign the form'),
+                  onPressed: () => showGovFormAssignSheet(context, GovApi(s.currentId!), asInt(form['id'])),
+                  icon: const Icon(Icons.person_add_alt_1_rounded)),
+            if (govEnabled() && s.currentId != null)
+              IconButton(
+                  tooltip: t('من أجاب ومن لم يجب', 'Assignments'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => BasePage(
+                          useWebCard: true,
+                          maxWith: 900,
+                          appBar: ScreenAppBar(title: t('المكلّفون بالنموذج', 'Form assignments')),
+                          child: GovFormAssignmentsView(asInt(form['id']), orgId: s.currentId)))),
+                  icon: const Icon(Icons.checklist_rounded)),
           ]),
           child: Column(children: [
             const SizedBox(height: 8),

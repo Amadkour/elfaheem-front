@@ -69,6 +69,8 @@ import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'org_academic_pages.dart' show OrgAcademicPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
+import 'governance/gov_dashboard.dart' show GovDashboardCard;
+import 'governance/gov_wiring.dart' show govEnabled, govServiceSubs;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Shell state: current section + the one-call dashboard summary (home + badges)
@@ -337,6 +339,8 @@ List<_Sub> _serviceSubs(OrgSession s) => [
         ('exam_risk', t('مخاطر الامتحانات', 'Exam risk'), Icons.policy_rounded, OrgExamRiskPage(orgId: s.currentId!)),
       if (s.currentId != null && s.isOrgAdmin)
         ('exam_feedback', t('ملاحظات الامتحانات', 'Exam feedback'), Icons.rate_review_rounded, OrgFeedbackSettingsPage(orgId: s.currentId!)),
+      // governance (D-057): items · entities · councils · my votes (hidden by the org.governance kill switch)
+      ...govServiceSubs(s),
     ];
 
 /// Page frame + live reload when the organization changes.
@@ -492,12 +496,16 @@ class _OrgHomePage extends StatelessWidget {
         final kpis = _KpiRow(k: asMap(d['kpis']));
         final units = _UnitsStrip(d: d);
         final activity = _RecentActivity(items: asMapList(d['recent_activity']));
+        final gov = govEnabled() && (s.isOrgAdmin || s.canAny('workflow'))
+            ? const Padding(padding: EdgeInsets.fromLTRB(16, 8, 16, 0), child: GovDashboardCard(compact: true))
+            : const SizedBox.shrink();
         if (!wide) {
-          return ListView(padding: const EdgeInsets.only(bottom: 40), children: [hero, attention, kpis, units, activity]);
+          return ListView(padding: const EdgeInsets.only(bottom: 40), children: [hero, attention, kpis, gov, units, activity]);
         }
         return ListView(padding: const EdgeInsets.only(bottom: 40), children: [
           hero,
           kpis,
+          gov,
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
