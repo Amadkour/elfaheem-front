@@ -325,3 +325,22 @@ from the phone to the drive (the phone may die mid-upload, and the drive token w
 teacher until guests are switched to automatic. The backend schema is revision `0017_live_rooms`. An operator
 must set `GOOGLE_DRIVE_CLIENT_ID/SECRET` and / or `ONEDRIVE_CLIENT_ID/SECRET` (plus `APP_URL` as the public
 backend URL for the OAuth redirect) before the drives show as available.
+
+## D-059 — The live room lives above the Navigator so it can be minimized to a box · 2026-10-27 · accepted
+
+**Context.** People wanted to keep a meeting running in a small box while moving around the app, as video apps do.
+`RoomPage` was a route: leaving the route disposed the LiveKit room, the recorder, chat and timers.
+**Decision.** `LiveRoomLayer` (`lib/features/shared/live/live_room_host.dart`) sits in `MaterialApp.builder`
+around the app's Navigator. `PreJoinPage` opens the room into it (`LiveRoomHost.open`); the layer draws the page
+full-screen inside its own nested Navigator, or, minimized, keeps the page mounted offstage and draws the box
+(`LiveMiniTile`). The back button is answered by an observer registered before `runApp` (so before WidgetsApp's
+own): full-screen it closes the room's dialog, else minimizes; minimized it is the app's. The pre-join page stays
+beneath the full-screen room and removes itself when the room is minimized or closed, so callers that await it
+behave as before. Signing out closes the room.
+**Rejected.** A transparent route left on the stack (a route's barrier eats every touch meant for the pages
+beneath); re-parenting the page with a GlobalKey between a route and the layer (fragile across the route's exit
+animation); a second LiveKit connection for the box (double media, double bandwidth).
+**Consequences.** Inside the room `Navigator.of(context, rootNavigator: true)` is the layer's navigator, so
+`showDialog` lands above the room without changes. Dialogs the room opens on its own (session ended, connection
+lost) call `expand()` first. The Android placeholder screenshot is skipped while minimized (nothing is painted).
+`LiveRoomScope.maybeOf` keeps a plain-route fallback for tests and older hosts.

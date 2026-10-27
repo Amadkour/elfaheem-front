@@ -22,6 +22,8 @@ import 'room.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show WaitingForHostPage;
+import 'package:flutter_education_app/features/shared/live/live_mini_box.dart' show LiveMiniTile;
+import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appToast;
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
@@ -463,38 +465,34 @@ class _PreJoinPageState extends State<PreJoinPage> {
       _joined = true;
 
       if (!context.mounted) return;
-      await Navigator.push<void>(
-        context,
-        MaterialPageRoute(
-          builder: (_) => RoomPage(
-            room,
-            listener,
-            fastConnection: true,
-            onEnd: () async {
-              LocalDebugSave.stop();
-              args.onEnd.call();
-            },
-            isTeacher: args.isTeacher,
-            courseId: args.courseId,
-            sessionId: args.sessionId??localSessionId,
-            // ── Passes the authenticated ApiClient so _ClientRecorder can
-            //    upload chunks with the correct Bearer token ─────────────────
-            apiClient: args.apiClient,
-            // ── Prejoin audio/video toggle state ─────────────────────────────
-            enableAudio: _enableAudio,
-            enableVideo: _enableVideo,
-            recordingEnabled: data.recordingEnabled,
-            sessionName: args.sessionName,
-            isGuest: args.guest,
-            canPublish: args.canPublish,
-            roomRef: args.ref,
-            isHost: args.isHost,
-            canRecord: args.canRecord, // [meeting-recording]
-          ),
-        ),
+      final page = RoomPage(
+        room,
+        listener,
+        fastConnection: true,
+        onEnd: () async {
+          LocalDebugSave.stop();
+          args.onEnd.call();
+        },
+        isTeacher: args.isTeacher,
+        courseId: args.courseId,
+        sessionId: args.sessionId??localSessionId,
+        // ── Passes the authenticated ApiClient so _ClientRecorder can
+        //    upload chunks with the correct Bearer token ─────────────────
+        apiClient: args.apiClient,
+        // ── Prejoin audio/video toggle state ─────────────────────────────
+        enableAudio: _enableAudio,
+        enableVideo: _enableVideo,
+        recordingEnabled: data.recordingEnabled,
+        sessionName: args.sessionName,
+        isGuest: args.guest,
+        canPublish: args.canPublish,
+        roomRef: args.ref,
+        isHost: args.isHost,
+        canRecord: args.canRecord, // [meeting-recording]
       );
+      await _showRoom(context, page, room);
 
-      // Student live-completion: fire after room page pops
+      // Student live-completion: fires after the room closed
       if (!args.isTeacher) {
         await args.onComplete?.call();
       } else {
@@ -566,6 +564,44 @@ class _PreJoinPageState extends State<PreJoinPage> {
         for (var i = 0; i < list.length; i++)
           (list[i].deviceId, list[i].label.isNotEmpty ? list[i].label : '$fallback ${i + 1}'),
       ];
+
+  /// Shows the room. Normally in [LiveRoomLayer] above the Navigator, so it can be minimized to a box while
+  /// the person moves around the app: this pre-join page stays beneath the full-screen room and takes itself
+  /// off the stack the moment the room is minimized (it would show behind the box) or closed — what the
+  /// room's own second pop did. Without a layer (tests, an older host) the room is pushed as a route.
+  Future<void> _showRoom(BuildContext context, RoomPage page, Room room) async {
+    if (!LiveRoomHost.isInstalled) {
+      await Navigator.push<void>(context, MaterialPageRoute(builder: (_) => page));
+      return;
+    }
+    final handle = LiveRoomHost.open(LiveRoomSession(
+      title: widget.args.sessionName ?? '',
+      page: page,
+      mini: (_) => LiveMiniTile(room: room),
+    ));
+    void onMinimized() {
+      if (handle.minimized.value) _dismissSelf();
+    }
+
+    handle.minimized.addListener(onMinimized);
+    await handle.closed;
+    handle.minimized.removeListener(onMinimized);
+    _dismissSelf();
+  }
+
+  /// Takes this page off the stack: pops when it is on top, else removes it from underneath (a notification
+  /// may have pushed a page while the room was full-screen).
+  void _dismissSelf() {
+    if (!mounted) return;
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    final nav = Navigator.of(context);
+    if (route.isCurrent) {
+      nav.pop();
+    } else {
+      nav.removeRoute(route);
+    }
+  }
 
   Future<void> _back() async {
     if (_enableVideo) await _toggleCamera();

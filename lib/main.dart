@@ -45,6 +45,7 @@ import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute,
 import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'features/shared/live/live_room_host.dart' show LiveRoomHost, LiveRoomLayer;
 import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
@@ -105,6 +106,7 @@ Future<void> main() async {
 /// work, then ALWAYS starts the real app. The error screen ([_FatalApp]) is
 /// shown only when startup fails.
 Future<void> _bootstrap() async {
+  LiveRoomHost.installBackHandler(); // before runApp: the live room answers the back button before WidgetsApp
   if (SplashState.instance.steps > 0) SplashState.instance.reset(); // retry after a fatal start
   SplashState.instance.expected = kIsWeb ? 7 : 10;
   // Decode the splash artwork first (bounded): the native splash stays up meanwhile, so Flutter's first
@@ -562,7 +564,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                       ),
                     ],
                     useShortestSide: true,
-                    child: child!,
+                    // the live room above the Navigator: full-screen, or a box while moving around the app
+                    child: LiveRoomLayer(child: child!),
                   ),
                 ),
               ),

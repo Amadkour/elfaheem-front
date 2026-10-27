@@ -226,6 +226,9 @@ Timetable studio → **Create timetable** (or the ladder icon in the toolbar fir
   "Guests join automatically". A new request shows a banner in the room with a sound; when the host is not in the
   room a notification opens the lobby. Whoever waits sees "Waiting for the host…" and gets in the moment the host
   admits them; the server issues the room token only then.
+- **Minimize.** `Minimize` at the top of the room (or the back button) shrinks the live room to a small box that
+  floats over the app: you keep hearing and being heard while you open other pages, can drag the box to any
+  corner, mute or hang up from it, and tap it to come back full-screen. Leaving is still an explicit End.
 - **Recording a meeting.** The creator of an online meeting (not a course session: those keep their course
   recording) taps Record, picks Google Drive or OneDrive (connecting it once in the browser) and a quality
   (1080p / 720p / 480p / audio only). The server assembles the file, moves it to the drive and notifies the

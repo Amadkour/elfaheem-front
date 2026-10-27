@@ -26,6 +26,7 @@ import 'widgets/live_reactions.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
+import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/recording_placeholder.dart';
@@ -1074,6 +1075,33 @@ class _RoomPageState extends State<RoomPage>
     super.dispose();
   }
 
+  /// Leaves the screen. Hosted in [LiveRoomLayer] (the normal way: the room can be minimized to a box) the
+  /// layer is closed and the pre-join page pops itself; pushed as a plain route, the room and the pre-join
+  /// page pop.
+  void _leaveRoom() {
+    if (!mounted) return;
+    final scope = LiveRoomScope.maybeOf(context);
+    if (scope != null) {
+      scope.close();
+      return;
+    }
+    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
+  }
+
+  /// The hang-up button of the minimized box: back to full screen, then the same confirmation as End.
+  Future<void> _leaveFromMiniBox() async {
+    LiveRoomScope.maybeOf(context)?.expand();
+    final ok = await context.showDisconnectDialog();
+    if (ok != true || !mounted) return;
+    await _endSessionWithRecording();
+    try {
+      await widget.room.disconnect();
+    } catch (e) {
+      log('leave from the box: $e');
+    }
+  }
+
   Future<void> _disposeRoomAsync() async {
     await _listener.dispose();
     await widget.room.dispose();
@@ -1155,8 +1183,7 @@ class _RoomPageState extends State<RoomPage>
       }
     }());
 
-    if (mounted) Navigator.pop(context);
-    if (mounted) Navigator.pop(context);
+    _leaveRoom();
     return null;
   }
 
@@ -1458,6 +1485,7 @@ class _RoomPageState extends State<RoomPage>
               event.reason == DisconnectReason.serverShutdown;
       final userLeft = event.reason == DisconnectReason.clientInitiated;
       WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
+        if (mounted) LiveRoomScope.maybeOf(context)?.expand(); // minimized: the dialog must be seen
         if (isTeacherEnd && !widget.isTeacher && mounted) {
           await showDialog(
             context: context,
@@ -1472,8 +1500,7 @@ class _RoomPageState extends State<RoomPage>
             builder: (_) => _ConnectionLostDialog(removed: event.reason == DisconnectReason.participantRemoved),
           );
         }
-        if (mounted) Navigator.pop(context);
-        if (mounted) Navigator.pop(context);
+        _leaveRoom();
       });
     })
     ..on<ParticipantEvent>((_) {
@@ -1578,6 +1605,7 @@ class _RoomPageState extends State<RoomPage>
   /// gets returned. Shared by Android's continuous capture
   /// (_captureAndSendLiveScreen) and Web's single-shot send below.
   Future<Uint8List?> _captureLiveScreenPng() async {
+    if (LiveRoomHost.isMinimized) return null; // offstage in the box: nothing is painted to capture
     try {
       final boundary = _liveScreenCaptureKey.currentContext?.findRenderObject()
       as RenderRepaintBoundary?;
@@ -1894,6 +1922,7 @@ class _RoomPageState extends State<RoomPage>
     // setState() synchronously. Guards against any edge case where that
     // event fires before this State object's listeners are fully wired up.
     _startSessionClock();
+    LiveRoomScope.maybeOf(context)?.bindLeave(_leaveFromMiniBox);
     return Theme(
       data: ThemeData.dark(),
       child: Scaffold(
@@ -2522,6 +2551,12 @@ class _RoomPageState extends State<RoomPage>
   //   2. Client REC badge  — teacher only, shows live elapsed time + state
   Widget _buildRecordingIndicator() {
     final badges = <Widget>[];
+
+    // ── Minimize: the room keeps running in a small box while moving around the app (LiveRoomLayer) ──
+    final scope = LiveRoomScope.maybeOf(context);
+    if (scope != null && !_endingSession) {
+      badges.add(_MinimizeChip(onTap: scope.minimize));
+    }
 
     // ── Total session time — everyone, always (not just teacher/recording) ──
     if (_sessionClockTimer != null) {
@@ -3537,6 +3572,41 @@ class _RoomPageState extends State<RoomPage>
 // _RecBadge — compact glass pill used in the recording indicator
 // ─────────────────────────────────────────────────────────────────────────────
 // ── [meeting-recording] Record / Stop chip (top-right, with the badges) ──────
+/// Top-right chip: shrink the room to the floating box (LiveRoomLayer) and keep using the app.
+class _MinimizeChip extends StatelessWidget {
+  const _MinimizeChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('live_room.minimize'),
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: _surfaceHi.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: _textMid.withValues(alpha: 0.5)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.close_fullscreen_rounded, size: 14, color: _textHigh),
+            const SizedBox(width: 6),
+            Text(
+              t('تصغير', 'Minimize'),
+              style: const TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: _textHigh),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _MeetingRecordChip extends StatelessWidget {
   const _MeetingRecordChip({required this.recording, required this.busy, required this.onTap});
 
