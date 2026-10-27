@@ -26,20 +26,33 @@ recorded below) · `blocked (why)`.
 
 ## 1. Findings (ranked by severity) — filled by the analysis phase
 
-_pending: analysis agents running (auth/security, polling inventory, screens + parity, dashboards, RAG pipeline)._
+Detailed per-track analyses live in `docs/polish/` (read only the one for the track you are on):
+- `docs/polish/realtime-inventory.md` — Track D: every polling site, the backend's FCM-only plumbing, the SSE + `LiveEvents` design. Key facts: no WebSocket/SSE exists; `complaints_updated` is never sent; web service worker shows an empty notification for every data push and drops it for the page; admit/reject is never pushed to the waiting participant.
+
+- `docs/polish/screens-parity.md` — Track C: route table, parity matrix, list screens without pull-to-refresh, dark mode / breakpoint facts.
+
+_pending: auth/security, dashboards, RAG pipeline reports._
 
 ## 2. Parity matrix (feature × Web / Android / iOS)
 
-_pending._
+Full matrix in `docs/polish/screens-parity.md` §B. Unexplained gaps to close (Track C):
+1. Calendar has no plain entry for teacher, parent and admin on any platform (student: top bar; org admin: dashboard button).
+2. Pull-to-refresh missing on ~17 list screens (notifications, calendar, org courses / people / schedule hub / studio / today / changes, section hubs, exams section, attendance, subscription, RAG chat / console, admin services hub, MFA page); admin tabs only get a refresh button in the phone shell.
+3. Pre-join mic level meter is web-only (mobile stub returns 0).
+4. Picture-in-Picture is Android-only (iOS missing).
+5. Web foreground push is a snackbar only (browser Notification call commented out); background-tab data pushes are dropped by the service worker.
+6. Three breakpoint systems (450/800/1920, 700/900/1200, 900 vs 1000 shells); rail shell is web-only.
+7. Boot splash follows OS brightness, not the user's dark-mode choice.
+By nature (recorded, no action): offline downloads / exam sittings, QR scan (could be enabled on web with mobile_scanner), nearby / BLE attendance relay, native recorders, native payments, pickers, share sheets, keyboard shortcuts, Crashlytics.
 
 ## 3. Baselines (before)
 
 | Measure | Before | After | How measured |
 |---|---|---|---|
-| `flutter analyze` warnings / errors | pending | | `flutter analyze --no-fatal-infos --fatal-warnings` |
-| App test suites | pending | | `flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/` |
-| Backend static gate | pending | | `ruff check .` in `../back` |
-| Polling call sites / intervals | pending | | §1 inventory |
+| `flutter analyze` warnings / errors / infos | 0 / 0 / 245 | | `flutter analyze --no-fatal-infos --fatal-warnings` (2026-10-28, HEAD 74cfdc7) |
+| App test suites | 925 passed, 0 failed; contract: 1129 calls, 0 unknown, 72 unresolved | | `flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/` |
+| Backend static gate | 8 ruff errors (pre-existing) | | `ruff check .` in `../back` |
+| Polling call sites / intervals | 7 new-data polls (attention 60 s, lobby 15/4 s, guest 10 s, quiz 30 s, exam tab 5 min, attendance 5 s) + 12 job-progress polls (1–8 s); 0 SSE/WS | | `docs/polish/realtime-inventory.md` |
 | RAG eval (hit rate, correctness, hallucination, latency, memory) | pending | | §5 eval set |
 | Dashboard requests on open | pending | | count of API calls per dashboard open |
 
