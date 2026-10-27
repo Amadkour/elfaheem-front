@@ -223,6 +223,13 @@ import WebRTC
     private var uploadUrl:  String = ""
     private var authToken:  String = ""
     private var chunkSecs:  Int    = 5
+    // Meeting recordings (docs/backend/live-rooms-spec.md §5): the picked quality; 0 = the defaults below.
+    private var videoBitrate: Int  = 0
+    private var maxHeight:    Int  = 0
+    // Audio-only (quality "audio"): no RPScreenRecorder at all — the AVAssetWriter chunk loop runs with
+    // audio tracks only from startMicRecording on (see startAudioOnlyRecording), each chunk's session is
+    // anchored by its first audio sample (handleIncomingAudioFrame), and chunks upload as .m4a / audio/mp4.
+    private var audioOnly:    Bool = false
 
     // ── Chunk loop state ──────────────────────────────────────────────────────
     private var chunkIndex:   Int   = 0
@@ -726,7 +733,13 @@ import WebRTC
                 self.authToken  = args["authToken"]    as? String ?? ""
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
                 self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
-                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs)")
+                self.videoBitrate = args["videoBitrate"] as? Int  ?? 0
+                self.maxHeight    = args["maxHeight"]    as? Int  ?? 0
+                self.audioOnly    = args["audioOnly"]    as? Bool ?? false
+                NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs) audioOnly=\(self.audioOnly)")
+                // Audio-only: the whole recording starts right here (no Phase 2,
+                // no screen capture, no red pill) — see startAudioOnlyRecording.
+                if self.audioOnly { self.startAudioOnlyRecording() }
                 // Emit immediately so Dart's Phase-1 completer resolves.
                 self.emitEvent(["event": "screenLoopStarted"])
                 result(true)
@@ -873,6 +886,30 @@ import WebRTC
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
             self?.confirmRecordingActive(result: result, attemptsLeft: attemptsLeft - 1)
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: - Audio-only recording (meeting recordings, quality "audio")
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Starts the AVAssetWriter chunk loop with audio tracks only, without
+    /// RPScreenRecorder: no screen-capture permission, no red pill. The mic
+    /// PCM arrives through "sendAudioFrame" (LiveKit's own audio tap, see
+    /// room.dart's _startLiveKitAudioTap) and anchors each chunk's session in
+    /// handleIncomingAudioFrame. `recording` is true from here on, so a later
+    /// startScreenCaptureService (a Share tap) answers true at once and the
+    /// broadcast's video frames are simply dropped (no video input / adaptor).
+    private func startAudioOnlyRecording() {
+        guard !recording else { return }
+        paused      = false
+        stopping    = false
+        videoWidth  = 0
+        videoHeight = 0
+        sweepStaleChunks()
+        configureAudioSessionForRecording()
+        recording = true
+        beginChunkWriter()
+        NSLog("[REC] audio-only recording started — chunk #\(chunkIndex)")
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1345,7 +1382,7 @@ import WebRTC
             guard let self = self,
                   let writer = self.assetWriter,
                   writer.status == .writing,
-                  self.writerSessionStarted,
+                  self.writerSessionStarted || self.audioOnly,
                   self.audioInput?.isReadyForMoreMediaData == true else { return }
 
             self.audioSamplesSeenThisChunk += 1
@@ -1355,6 +1392,17 @@ import WebRTC
             ) else { return }
 
             let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            if !self.writerSessionStarted {
+                // Audio-only: there is no video frame to anchor the session,
+                // so the first audio sample of the chunk does (same rule as
+                // the video path — never .zero, see processSampleFromRecorder).
+                writer.startSession(atSourceTime: pts)
+                self.writerSessionStarted = true
+                NSLog("[REC] writer session started (audio-only) at \(CMTimeGetSeconds(pts))s")
+                self.systemAudioQueue.async { [weak self] in
+                    self?.flushPendingSystemAudioFrames()
+                }
+            }
             // Same monotonic-ordering guard as the RPScreenRecorder audio
             // path — protects against this new source and any residual
             // RPScreenRecorder audio (should there ever be any) racing.
@@ -1704,8 +1752,9 @@ import WebRTC
         let scale  = UIScreen.main.scale
         let rawW   = videoWidth  > 0 ? videoWidth  : Int(UIScreen.main.bounds.width  * scale)
         let rawH   = videoHeight > 0 ? videoHeight : Int(UIScreen.main.bounds.height * scale)
-        // Clamp to 720p on the short side to keep files manageable.
-        let maxShort = 720
+        // Clamp to 720p on the short side to keep files manageable — or to the
+        // picked quality of a meeting recording (maxHeight is its longer side).
+        let maxShort = maxHeight > 0 ? max(240, min(maxHeight, 1080)) : 720
         let shortSide = min(rawW, rawH)
         let ratio  = shortSide > maxShort ? CGFloat(maxShort) / CGFloat(shortSide) : 1.0
         let w      = (Int(CGFloat(rawW) * ratio) / 2) * 2   // must be even
@@ -1722,39 +1771,50 @@ import WebRTC
         // chunks. Use a meaningfully lower bitrate whenever the chunk being
         // created is (or will be) a broadcast chunk.
         let isBroadcastChunk = isBroadcasting
-        let bitrate = isBroadcastChunk ? 1_800_000 : 4_000_000   // bps
+        let defaultBitrate = isBroadcastChunk ? 1_800_000 : 4_000_000   // bps
+        let bitrate = videoBitrate > 0 ? min(videoBitrate, defaultBitrate) : defaultBitrate
 
-        let vSettings: [String: Any] = [
-            AVVideoCodecKey:  AVVideoCodecType.h264,
-            AVVideoWidthKey:  w,
-            AVVideoHeightKey: h,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey:       bitrate,
-                AVVideoMaxKeyFrameIntervalKey:  60,
-                AVVideoProfileLevelKey:         AVVideoProfileLevelH264HighAutoLevel,
-                AVVideoAllowFrameReorderingKey: false,
-            ],
-        ]
-        let vi = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
-        vi.expectsMediaDataInRealTime = true
+        // Audio-only: no video track at all — the chunk holds the two audio
+        // tracks below and its session is anchored by the first audio sample
+        // (handleIncomingAudioFrame). videoInput / pixelBufferAdaptor stay nil,
+        // which is what makes every video append path drop its frames.
+        var vi: AVAssetWriterInput? = nil
+        if audioOnly {
+            pixelBufferAdaptor = nil
+        } else {
+            let vSettings: [String: Any] = [
+                AVVideoCodecKey:  AVVideoCodecType.h264,
+                AVVideoWidthKey:  w,
+                AVVideoHeightKey: h,
+                AVVideoCompressionPropertiesKey: [
+                    AVVideoAverageBitRateKey:       bitrate,
+                    AVVideoMaxKeyFrameIntervalKey:  60,
+                    AVVideoProfileLevelKey:         AVVideoProfileLevelH264HighAutoLevel,
+                    AVVideoAllowFrameReorderingKey: false,
+                ],
+            ]
+            let v = AVAssetWriterInput(mediaType: .video, outputSettings: vSettings)
+            v.expectsMediaDataInRealTime = true
+            vi = v
+
+            // Adaptor used by the broadcast-extension path (processSampleFromBroadcast)
+            // to feed decoded JPEG frames in as CVPixelBuffers. Must be created here,
+            // once per chunk/writer, same as videoInput — see jpegToPixelBuffer's
+            // header comment for why appending through this adaptor (vs. manually
+            // building a CMSampleBuffer) is required for the writer to survive a
+            // Share Screen broadcast.
+            let sourcePixelAttrs: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String:   kCVPixelFormatType_32BGRA,
+                kCVPixelBufferWidthKey as String:              w,
+                kCVPixelBufferHeightKey as String:             h,
+                kCVPixelBufferIOSurfacePropertiesKey as String: [:] as CFDictionary,
+            ]
+            pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
+                assetWriterInput:            v,
+                sourcePixelBufferAttributes: sourcePixelAttrs
+            )
+        }
         videoInput = vi
-
-        // Adaptor used by the broadcast-extension path (processSampleFromBroadcast)
-        // to feed decoded JPEG frames in as CVPixelBuffers. Must be created here,
-        // once per chunk/writer, same as videoInput — see jpegToPixelBuffer's
-        // header comment for why appending through this adaptor (vs. manually
-        // building a CMSampleBuffer) is required for the writer to survive a
-        // Share Screen broadcast.
-        let sourcePixelAttrs: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String:   kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String:              w,
-            kCVPixelBufferHeightKey as String:             h,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:] as CFDictionary,
-        ]
-        pixelBufferAdaptor = AVAssetWriterInputPixelBufferAdaptor(
-            assetWriterInput:            vi,
-            sourcePixelBufferAttributes: sourcePixelAttrs
-        )
 
         let aSettings: [String: Any] = [
             AVFormatIDKey:         kAudioFormatMPEG4AAC,
@@ -1814,7 +1874,7 @@ import WebRTC
         systemAudioQueue.sync { self.systemAudioInput = sai }
         systemAudioQueue.sync { self.systemAudioLockedFormat = nil }
 
-        writer.add(vi)
+        if let vi = vi { writer.add(vi) }
         writer.add(ai)
         writer.add(sai)
         writer.startWriting()
@@ -1842,10 +1902,10 @@ import WebRTC
         // configured with, so processSampleFromBroadcast can always draw
         // decoded JPEG frames into a buffer of this exact size (see
         // jpegToPixelBuffer's header comment).
-        chunkVideoWidth  = w
-        chunkVideoHeight = h
+        chunkVideoWidth  = audioOnly ? 0 : w
+        chunkVideoHeight = audioOnly ? 0 : h
 
-        NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) \(w)×\(h)")
+        NSLog("[REC] beginChunkWriter: chunk #\(chunkIndex) \(audioOnly ? "audio-only" : "\(w)×\(h)")")
         scheduleChunkTimer()
     }
 
@@ -2034,6 +2094,13 @@ import WebRTC
 
     private func stopCaptureThenSignal(result: @escaping FlutterResult) {
         stopResult = result
+        if audioOnly {
+            // No RPScreenRecorder was ever started — straight to the ping.
+            stopping = false
+            NSLog("[REC] audio-only stop — queuing finalize ping")
+            enqueueUpload { [weak self] in self?.uploadFinalizePingAsync() }
+            return
+        }
         RPScreenRecorder.shared().stopCapture { [weak self] error in
             if let e = error { NSLog("[REC] stopCapture: \(e.localizedDescription)") }
             guard let self = self else { return }
@@ -2064,8 +2131,10 @@ import WebRTC
         // caller must NOT block waiting for an isFinal upload completion that
         // will never happen — that was the cause of stopRecording hanging for
         // the full 90s Dart timeout with only the pre-share chunk ever landing.
+        // videoInput is nil for an audio-only recording (beginChunkWriter) —
+        // optional here, same as systemAudioInput below.
+        let vi = videoInput
         guard let writer  = assetWriter,
-              let vi      = videoInput,
               let ai      = audioInput,
               let fileURL = currentFile else {
             DispatchQueue.main.async { [weak self] in
@@ -2150,7 +2219,7 @@ import WebRTC
         videoBroadcastSeenThisChunk     = 0
         videoBroadcastAppendedThisChunk = 0
         writerQueue.async { [weak self] in
-            vi.markAsFinished()
+            vi?.markAsFinished()
             ai.markAsFinished()
             sai?.markAsFinished()
             writer.finishWriting {
@@ -2319,10 +2388,12 @@ import WebRTC
         addField("chunk_index", "\(index)")
         addField("is_final",    isFinal ? "1" : "0")
 
-        let fname = String(format: "chunk_%06d.mp4", index)
+        // Audio-only chunks are the same MP4 container with audio tracks only —
+        // named .m4a / audio/mp4 so the server assembles one .m4a from them.
+        let fname = String(format: audioOnly ? "chunk_%06d.m4a" : "chunk_%06d.mp4", index)
         header.append("--\(boundary)\r\n".data(using: .utf8)!)
         header.append("Content-Disposition: form-data; name=\"chunk\"; filename=\"\(fname)\"\r\n".data(using: .utf8)!)
-        header.append("Content-Type: video/mp4\r\n\r\n".data(using: .utf8)!)
+        header.append("Content-Type: \(audioOnly ? "audio/mp4" : "video/mp4")\r\n\r\n".data(using: .utf8)!)
 
         let footer = "\r\n--\(boundary)--\r\n".data(using: .utf8)!
 

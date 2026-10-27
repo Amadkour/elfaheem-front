@@ -23,6 +23,9 @@
 //   table export     → showAppExportSheet(context, AppTableExport(...))  (Excel · Word · PDF + column picker)
 //   wide table/grid  → AppHScroll(child: …)  (draggable scrollbar · mouse drag · shift+wheel)
 //   "needs attention"→ AttentionBadge(tabKey: AttentionTabs.x, child: …) (count + deep links, GET /me/attention)
+//   keyboard (web)   → nothing to do: Enter walks a form and presses its primary button, Ctrl+Enter submits a
+//                      multi-line field, Esc leaves it, Ctrl+K / "/" jumps to the search box (app_keyboard.dart).
+//                      EnterSubmits(onSubmit: …) / EnterSubmits.none decide it by hand for the fields inside.
 library;
 
 import 'package:flutter/material.dart';
@@ -33,6 +36,7 @@ import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
 export 'app_switch.dart';
+export 'app_keyboard.dart' show EnterSubmits;
 export 'attention_badge.dart';
 export '../core/attention/attention_service.dart' show AttentionService, AttentionTabs, AttentionItem;
 export 'app_hscroll.dart';

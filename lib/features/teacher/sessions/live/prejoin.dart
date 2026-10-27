@@ -20,6 +20,9 @@ import 'prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
 import 'room.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show WaitingForHostPage;
+import 'package:flutter_education_app/design/app_kit.dart' show appToast;
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,11 +49,32 @@ class JoinArgs {
     required this.apiClient,
     this.guest = false,
     this.canPublish = true,
+    this.roomRef,
+    this.isHost,
+    this.onPoll,
+    this.canRecord = false,
   });
+
+  /// [meeting-recording] The creator of a calendar meeting may record it to a cloud drive (RoomPage.canRecord).
+  final bool canRecord;
 
   /// True for a visitor who came through a public guest link: no account, no token.
   /// The room then skips every authenticated call (attendance, quizzes, participants…).
   final bool guest;
+
+  /// Which live room this is (course session or calendar meeting, docs/backend/live-rooms-spec.md §1).
+  /// Null → `LiveRoomRef.fromSessionId(sessionId)` (a meeting room keeps the `-meetingId` convention).
+  final LiveRoomRef? roomRef;
+
+  /// Who runs the lobby (share link, admission). Null → `isTeacher && !guest`; a meeting owner passes true
+  /// without being a "teacher" (no recorder, no course-session calls).
+  final bool? isHost;
+
+  /// Polls a waiting lobby request (`onStart` answered `JoinOutcome.waiting`). Null → [LiveRoomApi.poll],
+  /// which picks the public poll when the outcome carries a secret and the member poll otherwise.
+  final Future<JoinOutcome> Function(JoinOutcome waiting)? onPoll;
+
+  LiveRoomRef get ref => roomRef ?? LiveRoomRef.fromSessionId(sessionId ?? 0);
 
   /// False → the participant may only watch and listen: the pre-join screen creates no
   /// microphone / camera tracks and the room shows only Leave, reactions and audio output.
@@ -75,7 +99,9 @@ class JoinArgs {
   final String? sessionName;
 
   /// For teachers:  calls POST /live-sessions/start  → returns LiveResponseModel
-  /// For students:  calls GET  /live-sessions/{id}/join → returns LiveResponseModel
+  /// For students:  calls GET  /live-sessions/{id}/join → returns LiveResponseModel, or a [JoinOutcome]:
+  /// `waiting` shows "Waiting for the host…" and polls until admitted (then the room opens), `admitted`
+  /// carries the join payload, rejected / expired send the person back.
   final Future<dynamic> Function() onStart;
 
   /// Called when the session ends (teacher taps End, or room disconnects).
@@ -417,9 +443,12 @@ class _PreJoinPageState extends State<PreJoinPage> {
       );
 
       final listener = room.createListener();
-      final data = await args.onStart() as LiveResponseModel?;
+      final data = await _resolveJoin(args, args.sessionId ?? localSessionId);
       if (data == null) {
-        throw Exception('No LiveResponseModel returned from onStart');
+        // Waiting cancelled, or the host refused: stay on the pre-join page.
+        await listener.dispose();
+        await room.dispose();
+        return;
       }
 
       await room.prepareConnection(data.url, data.token);
@@ -458,6 +487,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
             sessionName: args.sessionName,
             isGuest: args.guest,
             canPublish: args.canPublish,
+            roomRef: args.ref,
+            isHost: args.isHost,
+            canRecord: args.canRecord, // [meeting-recording]
           ),
         ),
       );
@@ -475,6 +507,35 @@ class _PreJoinPageState extends State<PreJoinPage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  // ── Lobby: onStart may answer "waiting" ───────────────────────────────────
+
+  /// Runs `onStart` and turns its answer into room credentials. A `JoinOutcome.waiting` pushes
+  /// [WaitingForHostPage] over this page and polls until the host decides; null means "do not join"
+  /// (cancelled, rejected, expired — the person is told and stays here).
+  Future<LiveResponseModel?> _resolveJoin(JoinArgs args, int sessionId) async {
+    final res = await args.onStart();
+    if (res is LiveResponseModel) return res;
+    if (res == null) throw Exception('No LiveResponseModel returned from onStart');
+    if (res is! JoinOutcome) throw Exception('Unexpected onStart answer: ${res.runtimeType}');
+    var outcome = res;
+    if (outcome.isWaiting) {
+      if (!mounted) return null;
+      final admitted = await Navigator.of(context).push<JoinOutcome>(
+        MaterialPageRoute(
+          builder: (_) => WaitingForHostPage(waiting: outcome, title: args.sessionName, poll: args.onPoll),
+        ),
+      );
+      if (admitted == null) return null;
+      outcome = admitted;
+    }
+    if (outcome.isRefused) {
+      appToast(liveRoomCodeText(outcome.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired') ?? '', error: true);
+      return null;
+    }
+    if (outcome.url.isEmpty || outcome.token.isEmpty) throw Exception('Join answered without room credentials');
+    return outcome.live(sessionId: sessionId);
   }
 
   // ── Device option lists ───────────────────────────────────────────────────

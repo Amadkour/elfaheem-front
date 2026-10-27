@@ -1,7 +1,8 @@
 // The "generate this exam for me" sheet (logic in exam_generate.dart). At most: give the course file (only when the
-// course has none yet, with one line on the best format) → question types → how many → Generate. The questions come
-// back to the quick builder as an editable draft. [ExamGenForm] and [QuickGenerateCard] are presentational (tested
-// under the layout harness); the sheet owns the calls and the polling.
+// course has none yet, with one line on the best format) → question types → how many → difficulty → Generate; under
+// "Advanced": a focus ("chapter 3 only") and the questions' language (D-012). The questions come back to the quick
+// builder as an editable draft, with one line on what the planner and the reviewer did. [ExamGenForm] and
+// [QuickGenerateCard] are presentational (tested under the layout harness); the sheet owns the calls and the polling.
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -40,6 +41,10 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
   List<RagDocument> _docs = const [];
   GenTypes _types = GenTypes.mixed;
   int _count = genDefaultCount;
+  GenDifficulty _difficulty = GenDifficulty.mixed;
+  GenLang _lang = GenLang.auto;
+  final _focus = TextEditingController();
+  bool _advanced = false;
   String? _picked;
   String? _err;
   Timer? _poll;
@@ -53,6 +58,7 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
   @override
   void dispose() {
     _poll?.cancel();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -107,7 +113,7 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
       _step = ExamGenStep.generating;
       _err = null;
     });
-    final r = await _api.create(courseId: widget.courseId, orgId: widget.orgId, types: _types, count: _count);
+    final r = await _api.create(courseId: widget.courseId, orgId: widget.orgId, types: _types, count: _count, difficulty: _difficulty, focus: _focus.text, lang: _lang);
     if (!mounted) return;
     if (!r.ok) {
       setState(() {
@@ -131,6 +137,8 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
                 : examGenCodeText(draft.error ?? 'no_questions', t('تعذر إنشاء الأسئلة', 'Could not generate the questions'));
       });
     }
+    final summary = examGenSummary(draft);
+    if (summary != null) appToast(summary);
     Navigator.pop(context, questions);
   }
 
@@ -148,10 +156,17 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
           picked: _picked,
           types: _types,
           count: _count,
+          difficulty: _difficulty,
+          lang: _lang,
+          focus: _focus,
+          advanced: _advanced,
           error: _err,
           onUpload: _upload,
           onTypes: (v) => setState(() => _types = v),
           onCount: (v) => setState(() => _count = v.clamp(1, genMaxCount)),
+          onDifficulty: (v) => setState(() => _difficulty = v),
+          onLang: (v) => setState(() => _lang = v),
+          onAdvanced: () => setState(() => _advanced = !_advanced),
           onGenerate: _generate,
         ),
       ]),
@@ -174,6 +189,13 @@ class ExamGenForm extends StatelessWidget {
     this.warning,
     this.picked,
     this.error,
+    this.difficulty = GenDifficulty.mixed,
+    this.lang = GenLang.auto,
+    this.focus,
+    this.advanced = false,
+    this.onDifficulty,
+    this.onLang,
+    this.onAdvanced,
   });
   final ExamGenStep step;
   final List<String> documents;
@@ -186,6 +208,15 @@ class ExamGenForm extends StatelessWidget {
   final ValueChanged<GenTypes> onTypes;
   final ValueChanged<int> onCount;
   final VoidCallback onGenerate;
+
+  /// D-012: difficulty, and under "Advanced" the focus text and the questions' language.
+  final GenDifficulty difficulty;
+  final GenLang lang;
+  final TextEditingController? focus;
+  final bool advanced;
+  final ValueChanged<GenDifficulty>? onDifficulty;
+  final ValueChanged<GenLang>? onLang;
+  final VoidCallback? onAdvanced;
 
   Widget _working(BuildContext context, String text) {
     final c = context.colors;
@@ -218,7 +249,7 @@ class ExamGenForm extends StatelessWidget {
           if (picked != null) Padding(padding: const EdgeInsets.only(top: 6), child: Text(ragFormatAdvice(picked), style: appText(12, c: c.textLight))),
         ],
       ExamGenStep.generating => <Widget>[
-          _working(context, t('نكتب الأسئلة من أهم أجزاء المستند…', 'Writing the questions from the key parts of the document…')),
+          _working(context, t('نختار الموضوعات المهمة، نكتب الأسئلة، ثم نراجعها…', 'Picking the key topics, writing the questions, then reviewing them…')),
         ],
       ExamGenStep.ready => <Widget>[
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -247,6 +278,30 @@ class ExamGenForm extends StatelessWidget {
             IconButton.outlined(
                 tooltip: t('أكثر', 'More'), onPressed: count < genMaxCount ? () => onCount(count + 1) : null, icon: const Icon(Icons.add_rounded, size: 18)),
           ]),
+          const SizedBox(height: 14),
+          Text(t('الصعوبة', 'Difficulty'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final d in GenDifficulty.values) AppChoiceChip(label: genDifficultyLabel(d), selected: difficulty == d, onTap: () => onDifficulty?.call(d)),
+          ]),
+          if (onAdvanced != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                  onPressed: onAdvanced,
+                  icon: Icon(advanced ? Icons.expand_less_rounded : Icons.tune_rounded, size: 18),
+                  label: Text(t('خيارات متقدمة', 'Advanced'))),
+            ),
+          if (advanced) ...[
+            if (focus != null)
+              AppField(controller: focus!, label: t('ركّز على (اختياري)', 'Focus on (optional)'), hint: t('مثال: الفصل الثالث فقط، أو موضوع التمثيل الضوئي', 'e.g. chapter 3 only, or photosynthesis')),
+            const SizedBox(height: 10),
+            Text(t('لغة الأسئلة', 'Question language'), style: appText(13, w: FontWeight.w700, c: c.textDark)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              for (final l in GenLang.values) AppChoiceChip(label: genLangLabel(l), selected: lang == l, onTap: () => onLang?.call(l)),
+            ]),
+          ],
           const SizedBox(height: 14),
           AppPrimaryButton(label: t('أنشئ $count سؤالاً', 'Generate $count questions'), icon: Icons.auto_awesome_rounded, onPressed: onGenerate),
           Padding(

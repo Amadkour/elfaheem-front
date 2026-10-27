@@ -16,11 +16,16 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show showLobbySheet, showShareLinkSheet;
+import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/prejoin.dart';
-import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
+// [meeting-recording] the latest recording's card + the creator's Record right (docs/backend/live-rooms-spec.md §5)
+import '../live/meeting_recording.dart' show MeetingRecording;
+import '../live/meeting_recording_sheets.dart' show MeetingRecordingStatus;
 import 'calendar_api.dart';
 import 'calendar_models.dart';
 
@@ -524,6 +529,18 @@ class _MeetingSheetState extends State<MeetingSheet> {
   String? _error;
   bool _busy = false, _changed = false;
 
+  // [meeting-recording] bumped when the room closes, so the recording card reloads
+  int _recordingRefresh = 0;
+
+  /// The creator may record an online meeting: the server's `can_record`; an older server (no field) → is_owner.
+  bool get _canRecord {
+    final m = _m;
+    if (m == null) return false;
+    final v = m['can_record'];
+    if (v is bool) return v;
+    return m['is_owner'] == true && m['mode'] == 'online';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -598,23 +615,57 @@ class _MeetingSheetState extends State<MeetingSheet> {
   Future<void> _join() async {
     final auth = context.read<MyAuthProvider>();
     final id = widget.meetingId;
+    final owner = _m?['is_owner'] == true;
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => PreJoinPage(
         args: JoinArgs(
           sessionId: -id, // not a course session: keeps the course-session calls of the room away from real ones
+          roomRef: LiveRoomRef.meeting(id),
+          isHost: owner, // the owner runs the lobby (share link, admission) without being a "teacher"
           courseId: 0,
           isTeacher: false,
+          canRecord: _canRecord, // [meeting-recording]
           userId: auth.currentUser?.id ?? -1,
           userName: auth.currentUser?.name ?? '--',
+          sessionName: '${_m?['title'] ?? ''}',
           apiClient: ApiClient(),
-          onStart: () async {
-            final r = asMap(await widget.api.join(id));
-            return LiveResponseModel(sessionId: -id, url: '${r['url']}', token: '${r['token']}');
-          },
+          // POST /meetings/{id}/join: 200 → the room; 202 waiting → PreJoinPage shows "Waiting for the host…"
+          // and polls GET /api/v1/live/requests/{id} until the owner admits (live-rooms-spec §4).
+          onStart: () async => JoinOutcome.parse(await widget.api.join(id)),
           onEnd: () async {},
         ),
       ),
     ));
+    // [meeting-recording] back from the room: the latest recording (and the detail) may have changed
+    if (!mounted) return;
+    setState(() => _recordingRefresh++);
+    unawaited(_load());
+  }
+
+  /// Owner of an online meeting: the share link and the admission lobby (kill switches `live.share_link` / `live.lobby`).
+  Widget _hostActions(BuildContext context) {
+    final ref = LiveRoomRef.meeting(widget.meetingId);
+    final title = '${_m?['title'] ?? ''}';
+    return Wrap(spacing: 8, runSpacing: 8, children: [
+      ParentComponent(
+        featureKey: kLiveShareLinkFeatureKey,
+        child: AppPill(
+          key: const ValueKey('meeting.share_link'),
+          icon: Icons.link_rounded,
+          label: t('رابط المشاركة', 'Share link'),
+          onTap: _busy ? null : () => showShareLinkSheet(context, ref, title: title),
+        ),
+      ),
+      ParentComponent(
+        featureKey: kLiveLobbyFeatureKey,
+        child: AppPill(
+          key: const ValueKey('meeting.lobby'),
+          icon: Icons.meeting_room_rounded,
+          label: t('غرفة الانتظار والقبول', 'Lobby & admission'),
+          onTap: _busy ? null : () => showLobbySheet(context, ref),
+        ),
+      ),
+    ]);
   }
 
   @override
@@ -678,6 +729,21 @@ class _MeetingSheetState extends State<MeetingSheet> {
         if (m['can_join'] == true) ...[
           const SizedBox(height: 14),
           AppPrimaryButton(label: t('انضم الآن', 'Join now'), icon: Icons.videocam_rounded, onPressed: _busy ? null : _join),
+        ],
+        // [meeting-recording] the latest recording: status while it is made, the drive link when done
+        if (online) ...[
+          const SizedBox(height: 12),
+          MeetingRecordingStatus(
+            key: ValueKey('meeting_recording.${widget.meetingId}'),
+            meetingId: widget.meetingId,
+            initial: MeetingRecording.latestOf(m),
+            refreshKey: _recordingRefresh,
+            gap: 0,
+          ),
+        ],
+        if (owner && online && m['status'] != 'cancelled') ...[
+          const SizedBox(height: 10),
+          _hostActions(context),
         ],
         if (!owner && my.isNotEmpty) ...[
           const SizedBox(height: 14),

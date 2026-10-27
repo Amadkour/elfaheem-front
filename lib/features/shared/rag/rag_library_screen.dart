@@ -626,12 +626,27 @@ class _RagSettingsFormState extends State<RagSettingsForm> {
         value: _gen,
         decoration: InputDecoration(labelText: t('طريقة صياغة الإجابة', 'How answers are written')),
         items: [
+          DropdownMenuItem(
+              value: 'default',
+              child: Text(
+                  s.platformGenerator == 'llm'
+                      ? t('حسب إعداد المنصة (يكتبها النموذج)', 'Follow the platform (written by the model)')
+                      : t('حسب إعداد المنصة (اقتباس مباشر)', 'Follow the platform (quoted directly)'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis)),
           DropdownMenuItem(value: 'extractive', child: Text(t('اقتباس مباشر من المستندات', 'Quote the documents directly'), maxLines: 1, overflow: TextOverflow.ellipsis)),
           if (s.llmAvailable || _gen == 'llm') DropdownMenuItem(value: 'llm', child: Text(t('صياغة بنموذج لغوي', 'Written by a language model'), maxLines: 1, overflow: TextOverflow.ellipsis)),
         ],
-        onChanged: (v) => setState(() => _gen = v ?? 'extractive'),
+        onChanged: (v) => setState(() => _gen = v ?? 'default'),
       ),
-      const SizedBox(height: 8),
+      Padding(
+        padding: const EdgeInsets.only(top: 4, bottom: 4),
+        child: Text(
+            s.effectiveGenerator == 'llm'
+                ? t('الآن: يكتب النموذج الإجابات من مستنداتكم ويراجعها مع المصادر.', 'Now: the model writes the answers from your documents and checks them against the sources.')
+                : t('الآن: الإجابات مقتطفة من المستندات مباشرة.', 'Now: answers are quoted straight from the documents.'),
+            style: appText(12, c: c.textMedium)),
+      ),
+      const SizedBox(height: 4),
       if (s.llmAvailable)
         AppSwitchTile(
             title: t('السماح بمزوّد خارجي', 'Allow an external provider'),

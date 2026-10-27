@@ -24,9 +24,20 @@ import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
 import 'widgets/live_hands.dart';
 import 'widgets/live_reactions.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
+import 'widgets/recording_placeholder.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:provider/provider.dart';
 import 'widgets/room_recorder.dart';
+// [meeting-recording] meeting rooms record to the creator's cloud drive (docs/backend/live-rooms-spec.md §5)
+import 'package:flutter_education_app/features/shared/live/meeting_recording.dart'
+    show RecordingQuality, RecordingStart;
+import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart'
+    show showRecordSetupSheet;
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
 import 'widgets/recorder_web_stub.dart'
@@ -238,6 +249,21 @@ class RoomPage extends StatefulWidget {
   /// False → listen-only: no microphone / camera controls at all.
   final bool canPublish;
 
+  // ── Live rooms: share links + admission lobby (docs/backend/live-rooms-spec.md) ──
+  /// Which room this is (course session or calendar meeting). Null → from [sessionId] (negative = meeting).
+  final LiveRoomRef? roomRef;
+
+  /// Runs the lobby. Null → `isTeacher && !isGuest`; a meeting owner passes true (no recorder, no course calls).
+  final bool? isHost;
+
+  LiveRoomRef get ref => roomRef ?? LiveRoomRef.fromSessionId(sessionId);
+
+  bool get host => isHost ?? (isTeacher && !isGuest);
+
+  /// [meeting-recording] The creator of a calendar meeting (the detail's `can_record` / `is_owner`): the room
+  /// offers Record → RecordSetupSheet → chunks to the recording's own route (spec §5). Course sessions ignore it.
+  final bool canRecord;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -254,6 +280,9 @@ class RoomPage extends StatefulWidget {
         this.recordingEnabled = true,
         this.isGuest = false,
         this.canPublish = true,
+        this.roomRef,
+        this.isHost,
+        this.canRecord = false,
       });
 
   @override
@@ -519,6 +548,70 @@ class _RoomPageState extends State<RoomPage>
   ClientRecorder? _recorder;
   bool _recorderStarted = false; // guard: prevents multiple start() calls
   bool _endingSession = false;     // true while awaiting final chunk before onEnd()
+
+  // ── [meeting-recording] begin ─────────────────────────────────────────────
+  // A calendar meeting records to its creator's Google Drive / OneDrive (docs/backend/live-rooms-spec.md §5):
+  // Record opens the setup sheet, the server answers chunk_path, and the same ClientRecorder posts there.
+
+  /// The creator may record this meeting (feature key `live.meeting_recording`).
+  bool get _canRecordMeeting =>
+      widget.ref.isMeeting &&
+      widget.canRecord &&
+      !widget.isGuest &&
+      !AppConfig.disableList.contains('live.meeting_recording');
+
+  /// This device is the one recording: the teacher of a course session, or a meeting creator who pressed
+  /// Record. Every recorder-only gate reads this instead of isTeacher.
+  bool get _recordsHere => widget.isTeacher || _meetingRecording != null;
+
+  RecordingStart? _meetingRecording;
+  bool _meetingRecordBusy = false;
+
+  Future<void> _recordMeeting() async {
+    if (!_canRecordMeeting || _recorder != null || _meetingRecordBusy || _endingSession) return;
+    final start = await showRecordSetupSheet(context, kind: widget.ref.kindName, id: widget.ref.id);
+    if (start == null || !mounted) return;
+    setState(() {
+      _meetingRecording = start;
+      _meetingRecordBusy = true;
+    });
+    try {
+      await _startRecorderOnce(chunkPath: start.chunkPath, quality: start.quality, stopPath: start.stopPath);
+    } catch (e) {
+      log('[REC] meeting recording start error: $e');
+      if (mounted) _showSnack(t('تعذّر بدء التسجيل', 'Could not start the recording'));
+    } finally {
+      if (mounted) setState(() => _meetingRecordBusy = false);
+    }
+  }
+
+  Future<void> _stopMeetingRecording() async {
+    final rec = _recorder;
+    if (rec == null || _meetingRecording == null || _endingSession) return;
+    final ok = await appConfirm(context,
+        message: t('إيقاف التسجيل؟ يُجمَّع الملف ويُرفع إلى سحابتك.', 'Stop recording? The file is assembled and uploaded to your drive.'),
+        confirmLabel: t('إيقاف', 'Stop'));
+    if (!ok || !mounted) return;
+    setState(() {
+      _recorder = null;
+      _meetingRecording = null;
+      _recorderStarted = false; // a new recording may start later in the same room
+    });
+    _stopLiveKitAudioTap();
+    unawaited(_stopAndDrain(rec));
+  }
+
+  /// Leaving a meeting without End (back swipe, disconnect): stop first, then drain — a bare drain would wait
+  /// the whole timeout for a "done" that never comes. Runs in the background after the screen popped.
+  static Future<void> _stopAndDrain(ClientRecorder rec) async {
+    try {
+      await rec.stopRecordingOnly();
+    } catch (e) {
+      log('[REC] meeting stop error: $e');
+    }
+    await _drainAndDispose(rec);
+  }
+  // ── [meeting-recording] end ───────────────────────────────────────────────
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
@@ -840,6 +933,7 @@ class _RoomPageState extends State<RoomPage>
     // Guests have no token: the roster and the quiz feed need an account.
     if (!widget.isGuest) _fetchEnrolledStudents();
     if (!widget.isTeacher && !widget.isGuest) _startQuizPolling();
+    _startLobby(); // host only; see the "Lobby" region
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ── Step 1: request runtime permissions ───────────────────────────────
@@ -937,6 +1031,7 @@ class _RoomPageState extends State<RoomPage>
   @override
   void dispose() {
     widget.room.removeListener(_onRoomDidUpdate);
+    _lobby?.dispose();
     _reactions.dispose();
     _hands.removeListener(_onHandsChanged);
     _hands.dispose();
@@ -972,7 +1067,8 @@ class _RoomPageState extends State<RoomPage>
       final rec = _recorder!;
       _recorder = null;
       _stopLiveKitAudioTap();
-      unawaited(_drainAndDispose(rec));
+      // [meeting-recording] a meeting recording is stopped first (see _stopAndDrain)
+      unawaited(_meetingRecording != null ? _stopAndDrain(rec) : _drainAndDispose(rec));
     }
     AppAssistant.release();
     super.dispose();
@@ -1012,7 +1108,7 @@ class _RoomPageState extends State<RoomPage>
     final rec = _recorder;
     _recorder = null; // detach so dispose() never interferes
 
-    if (widget.isTeacher &&
+    if (_recordsHere && // [meeting-recording]
         rec != null &&
         rec.state != RecState.done &&
         rec.state != RecState.error) {
@@ -1423,7 +1519,7 @@ class _RoomPageState extends State<RoomPage>
       // this bridge. Android/iOS need no equivalent: their local
       // recording captures ambient/room audio through the physical mic,
       // a fundamentally different mechanism unaffected by this gap.
-      if (kIsWeb && widget.isTeacher && event.track is RemoteAudioTrack) {
+      if (kIsWeb && _recordsHere && event.track is RemoteAudioTrack) { // [meeting-recording]
         final nativeStream = web_rec.nativeAudioStreamFromTrack(
           (event.track as RemoteAudioTrack).mediaStreamTrack,
         );
@@ -1432,7 +1528,7 @@ class _RoomPageState extends State<RoomPage>
     })
     ..on<TrackUnsubscribedEvent>((event) {
       _sortParticipants();
-      if (kIsWeb && widget.isTeacher && event.track is RemoteAudioTrack) {
+      if (kIsWeb && _recordsHere && event.track is RemoteAudioTrack) { // [meeting-recording]
         _recorder?.removeRemoteAudioStream(event.participant.sid);
       }
       if (!widget.isTeacher &&
@@ -1513,7 +1609,7 @@ class _RoomPageState extends State<RoomPage>
   /// see _compositorSetPlaceholderImage's doc comment in
   /// recorder_web_impl.dart.
   Future<void> _sendLiveScreenPlaceholderWeb() async {
-    if (!kIsWeb || !widget.isTeacher) return;
+    if (!kIsWeb || !_recordsHere) return; // [meeting-recording]
     final local = widget.room.localParticipant;
     if (local?.isScreenShareEnabled() == true) return;
     if (local?.isCameraEnabled() == true) return;
@@ -1530,7 +1626,7 @@ class _RoomPageState extends State<RoomPage>
   /// changes, participants joining, and camera/share toggles all re-sync
   /// it without re-capturing on every single event.
   void _maybeRefreshWebPlaceholder() {
-    if (!kIsWeb || !widget.isTeacher) return;
+    if (!kIsWeb || !_recordsHere) return; // [meeting-recording]
     _webPlaceholderDebounce?.cancel();
     _webPlaceholderDebounce = Timer(
       const Duration(milliseconds: 1200),
@@ -1538,13 +1634,21 @@ class _RoomPageState extends State<RoomPage>
     );
   }
 
-  Future<void> _startRecorderOnce() async {
+  Future<void> _startRecorderOnce({
+    // [meeting-recording] the recording's own chunk route, quality and stop route (null = course session)
+    String? chunkPath,
+    RecordingQuality? quality,
+    String? stopPath,
+  }) async {
     if (_recorderStarted) return;
     _recorderStarted = true;
 
     _recorder = ClientRecorder(
       sessionId: widget.sessionId,
       apiClient: widget.apiClient,
+      chunkPath: chunkPath,
+      quality: quality,
+      stopPath: stopPath,
     );
     _recorder!.addListener(_onRecorderUpdate);
     _recorder!.onNoMediaWarning = () {
@@ -1602,6 +1706,10 @@ class _RoomPageState extends State<RoomPage>
     // teacherName/sessionTitle/participantCount the web compositor above
     // already uses — sent once here so the native placeholder shows the
     // real session info instead of a flat color.
+    // [meeting-recording] audio-only: nothing draws a frame anywhere — no Android screenshots for the
+    // placeholder, no RPScreenRecorder on iOS. The native side records the audio alone from Phase 1.
+    if (_recorder!.audioOnly) return;
+
     if (Platform.isAndroid) {
       // Starts the periodic real-screenshot capture (see
       // _startLiveScreenCapture) — whatever's genuinely on screen (waiting
@@ -1942,6 +2050,9 @@ class _RoomPageState extends State<RoomPage>
 
               // Participant panel
               if (_showParticipants) _buildParticipantPanel(),
+
+              // Lobby: "X wants to join" (host only; see the "Lobby" region)
+              if (_lobby != null) _buildLobbyBanner(),
 
               // ── Ending-session overlay ───────────────────────────────────────
               // Shown while we wait for the final recording chunk to upload
@@ -2462,8 +2573,17 @@ class _RoomPageState extends State<RoomPage>
       );
     }
 
-    // ── Client recorder badge (teacher only) ──────────────────────────────────
-    if (widget.isTeacher && _recorder != null) {
+    // ── [meeting-recording] Record / Stop for a meeting's creator ─────────────
+    if (_canRecordMeeting && !_endingSession) {
+      badges.add(_MeetingRecordChip(
+        recording: _meetingRecording != null,
+        busy: _meetingRecordBusy,
+        onTap: _meetingRecording == null ? _recordMeeting : _stopMeetingRecording,
+      ));
+    }
+
+    // ── Client recorder badge (the recording device only) ─────────────────────
+    if (_recordsHere && _recorder != null) { // [meeting-recording]
       final rec   = _recorder!;
       final state = rec.state;
 
@@ -2590,11 +2710,14 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildControlsBar() {
     // The bar paints its own glass shell (mobile pill / wide grouped bar) — see LiveControlBar.
     return ListenableBuilder(
-        listenable: Listenable.merge([_reactions, _hands, _chat]),
+        listenable: Listenable.merge([_reactions, _hands, _chat, ?_lobby]),
         builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
         key: _controlsKey,
+        // Lobby (host only): the waiting count on the bar's lobby button.
+        waitingCount: _lobby?.waitingCount ?? 0,
+        onLobby: _lobby == null ? null : _openLobby,
         recordingEnabled: widget.recordingEnabled,
         onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
@@ -2606,19 +2729,20 @@ class _RoomPageState extends State<RoomPage>
         // Null when the action is not available (wrong state, or
         // a transition is already in flight) — ControlsWidget
         // disables the button automatically when the callback is null.
-        onPauseRecording: (widget.isTeacher &&
+        onPauseRecording: (_recordsHere && // [meeting-recording]
             _recorder?.state == RecState.recording &&
             !_isPausingRecording &&
             !_endingSession)
             ? _pauseRecording
             : null,
-        onResumeRecording: (widget.isTeacher &&
+        onResumeRecording: (_recordsHere &&
             _recorder?.state == RecState.paused &&
             !_isResumingRecording &&
             !_endingSession)
             ? _resumeRecording
             : null,
-        recorderState: widget.isTeacher ? _recorder?.state : null,
+        recorderState: _recordsHere ? _recorder?.state : null,
+        recordsHere: _recordsHere, // [meeting-recording] a creator's bar gets Pause / Resume while recording
         onToggleReactions: _reactions.togglePicker,
         reactionsOpen: _reactions.pickerOpen,
         // Hands: students and guests raise; the teacher gets the queue chip.
@@ -2634,6 +2758,75 @@ class _RoomPageState extends State<RoomPage>
       ),
     );
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Lobby — live rooms: share links + admission (docs/backend/live-rooms-spec.md §4)
+  //
+  // Host only (RoomPage.host) and never while `live.lobby` is switched off. The controller polls
+  // GET /api/v1/live/{kind}/{id}/lobby every 15 s (4 s while the lobby sheet is open, nothing in the
+  // background), refreshes at once on the silent push `live_join_request` (LiveLobbyEvents) and on
+  // resume, and plays a short sound on a new request; the bar's lobby
+  // button carries the waiting count and opens LobbySheet; a new request also shows LobbyBanner
+  // (Admit / Reject inline) at the top of the room. Everything else lives in
+  // lib/features/shared/live/ — keep this region the only lobby code in this file.
+  // ═══════════════════════════════════════════════════════════════════════════
+  LiveLobbyController? _lobby;
+
+  void _startLobby() {
+    if (!widget.host || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) return;
+    _lobby = LiveLobbyController(widget.ref)..start();
+  }
+
+  Future<void> _openLobby() async {
+    final c = _lobby;
+    if (c == null) return;
+    _pokeControls();
+    await showLobbySheet(context, widget.ref, controller: c);
+  }
+
+  Widget _buildLobbyBanner() {
+    final c = _lobby!;
+    return ListenableBuilder(
+      listenable: c,
+      builder: (_, _) {
+        final r = c.latestNew;
+        return Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            bottom: false,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              switchInCurve: Curves.easeOutCubic,
+              transitionBuilder: (child, anim) => SlideTransition(
+                position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(anim),
+                child: FadeTransition(opacity: anim, child: child),
+              ),
+              child: r == null
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      key: ValueKey('lobby.banner.${r.id}'),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      child: Center(
+                        child: LobbyBanner(
+                          request: r,
+                          othersWaiting: (c.waitingCount - 1).clamp(0, 999),
+                          busy: c.busy.contains(r.id) || c.busy.contains('*'),
+                          onAdmit: () => c.admit(r.id),
+                          onReject: () => c.reject(r.id),
+                          onOpen: _openLobby,
+                          onDismiss: c.dismissBanner,
+                        ),
+                      ),
+                    ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
 
   // ── Participant panel ──────────────────────────────────────────────────────
   Widget _buildParticipantPanel() {
@@ -3343,6 +3536,48 @@ class _RoomPageState extends State<RoomPage>
 // ─────────────────────────────────────────────────────────────────────────────
 // _RecBadge — compact glass pill used in the recording indicator
 // ─────────────────────────────────────────────────────────────────────────────
+// ── [meeting-recording] Record / Stop chip (top-right, with the badges) ──────
+class _MeetingRecordChip extends StatelessWidget {
+  const _MeetingRecordChip({required this.recording, required this.busy, required this.onTap});
+
+  final bool recording;
+  final bool busy;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = recording ? _recRed : _cyan;
+    final label = recording ? t('إيقاف التسجيل', 'Stop recording') : t('تسجيل', 'Record');
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('live_room.meeting_record'),
+        borderRadius: BorderRadius.circular(999),
+        onTap: busy ? null : onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: _surfaceHi.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color.withValues(alpha: 0.6)),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (busy)
+              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+            else
+              Icon(recording ? Icons.stop_rounded : Icons.fiber_manual_record_rounded, size: 14, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: color),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _RecBadge extends StatelessWidget {
   const _RecBadge({
     required this.dotColor,
@@ -4280,10 +4515,6 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
   final List<EnrolledStudent> enrolledStudents;
   final bool showLogo;
 
-  // Per requirement: show every participant while there are 10 or fewer;
-  // beyond that, show 9 real tiles + one "+N" overflow tile (10 cells
-  // total) rather than letting the grid grow unbounded.
-  static const int _maxTotalCells = 10;
 
   /// Matches a live LiveKit participant against the enrolled-students list
   /// to enrich the tile with data LiveKit itself doesn't carry (photo,
@@ -4336,6 +4567,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
         _TeamsTileData(
           name: p.name.isNotEmpty ? p.name : p.identity,
           isHost: false,
+          isGuest: isGuestIdentity(p.identity),
           // Real per-participant state from the live roster — previously
           // this was hardcoded to "always on" because EnrolledStudent
           // carries no live mic info at all.
@@ -4349,85 +4581,43 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
         ),
     ];
 
-    final overLimit = tiles.length > _maxTotalCells;
-    final shown = overLimit
-        ? tiles.take(_maxTotalCells - 1).toList()
-        : tiles;
-    final overflow = tiles.length - shown.length;
-
-    return Container(
-      color: _bg,
-      child: Column(
-        children: [
-          // Top bar — session title + participant count, kept minimal to
-          // match Teams' own understated in-meeting header.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-            child: Row(
-              children: [
-                if (showLogo) ...[
-                  Image.asset(
-                    'assets/images/app_icon.png',
-                    height: 28,
-                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                  ),
-                  const SizedBox(width: 10),
-                ],
-                Expanded(
-                  child: Text(
-                    (sessionTitle?.trim().isNotEmpty ?? false)
-                        ? sessionTitle!.trim()
-                        : 'lr_live_session'.tr,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      color: _textMid,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(Icons.people_alt_rounded, size: 14, color: _textLow),
-                const SizedBox(width: 4),
-                Text(
-                  '${tiles.length}',
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    color: _textLow,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Tile grid
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 2, 14, 16),
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: shown.length + (overflow > 0 ? 1 : 0),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: tiles.length <= 1 ? 1 : 2,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
-                  childAspectRatio: 16 / 10,
-                ),
-                itemBuilder: (context, i) {
-                  if (i >= shown.length) {
-                    return _TeamsOverflowTile(count: overflow, allTiles: tiles);
-                  }
-                  return _TeamsGridTile(data: shown[i]);
-                },
-              ),
-            ),
-          ),
-        ],
+    // ── Visuals: widgets/recording_placeholder.dart (presentational, layout-tested) ──
+    // tiles[0] is this device's participant (the host when the teacher records);
+    // the roster maps index i to tiles[i + 1]. The host's photo: the LiveKit token
+    // carries none, so the cached signed-in user's photo is used when available.
+    String? hostPhoto;
+    try {
+      hostPhoto = Provider.of<MyAuthProvider>(context, listen: false).currentUser?.imageUrl;
+    } on ProviderNotFoundException {
+      hostPhoto = null;
+    }
+    final me = tiles.first;
+    return RecordingPlaceholderFrame(
+      host: PlaceholderParticipant(
+        name: me.name,
+        imageUrl: me.imageUrl ?? hostPhoto,
+        isHost: local == null || isHostIdentity(local.identity),
+        isGuest: local != null && isGuestIdentity(local.identity),
+        micOn: me.isMicOn,
+        isSpeaking: me.isSpeaking,
+        audioLevel: local?.audioLevel ?? 0,
       ),
+      others: [
+        for (final t in tiles.skip(1))
+          PlaceholderParticipant(
+            name: t.name,
+            imageUrl: t.imageUrl,
+            isGuest: t.isGuest,
+            micOn: t.isMicOn,
+            isSpeaking: t.isSpeaking,
+          ),
+      ],
+      sessionTitle: sessionTitle,
+      platformName: AppIdentity.instance.name,
+      showLogo: showLogo,
+      onTapHost: () => _showParticipantProfileDialog(context, me),
+      onTapOther: (i) => _showParticipantProfileDialog(context, tiles[i + 1]),
+      onTapOverflow: () => _showAllParticipantsDialog(context, tiles),
     );
   }
 }
@@ -4456,6 +4646,7 @@ class _TeamsTileData {
   const _TeamsTileData({
     required this.name,
     required this.isHost,
+    this.isGuest = false,
     required this.isMicOn,
     required this.isSpeaking,
     this.imageUrl,
@@ -4467,6 +4658,7 @@ class _TeamsTileData {
 
   final String name;
   final bool isHost;
+  final bool isGuest;
   final bool isMicOn;
   final bool isSpeaking;
   final String? imageUrl;
@@ -4478,182 +4670,6 @@ class _TeamsTileData {
   // generically in the profile dialog; null if metadata was empty/absent/
   // not JSON.
   final Map<String, dynamic>? extra;
-}
-
-class _TeamsGridTile extends StatelessWidget {
-  const _TeamsGridTile({required this.data});
-  final _TeamsTileData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final trimmed = data.name.trim();
-    final initials = trimmed.isNotEmpty
-        ? trimmed.split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join()
-        : '؟';
-    final hasPhoto = data.imageUrl != null && data.imageUrl!.isNotEmpty;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showParticipantProfileDialog(context, data),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _surfaceHi,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: data.isSpeaking ? _emerald : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Center(
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _avatarColorFor(data.name),
-                    image: hasPhoto
-                        ? DecorationImage(
-                      image: NetworkImage(data.imageUrl!),
-                      fit: BoxFit.cover,
-                    )
-                        : null,
-                  ),
-                  child: hasPhoto
-                      ? null
-                      : Center(
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              if (data.isHost)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Icon(Icons.workspace_premium_rounded,
-                      size: 16, color: _cyan),
-                ),
-              // Real-time "speaking" badge — driven by
-              // Participant.isSpeaking (see build() above), not a name-
-              // matching guess.
-              if (data.isSpeaking)
-                Positioned(
-                  top: 6,
-                  left: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 7, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: _emerald.withValues(alpha: 0.85),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.graphic_eq_rounded,
-                            size: 11, color: Colors.black87),
-                        SizedBox(width: 3),
-                        Text(
-                          'lr_speaking'.tr,
-                          style: TextStyle(
-                            fontFamily: 'tajawal',
-                            color: Colors.black87,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              Positioned(
-                left: 6,
-                bottom: 6,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 90),
-                        child: Text(
-                          trimmed.isNotEmpty ? trimmed : '؟',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        data.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
-                        size: 12,
-                        color: data.isMicOn ? Colors.white70 : _rose,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TeamsOverflowTile extends StatelessWidget {
-  const _TeamsOverflowTile({required this.count, required this.allTiles});
-  final int count;
-  final List<_TeamsTileData> allTiles;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => _showAllParticipantsDialog(context, allTiles),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _surfaceHi,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Center(
-            child: Text(
-              '+$count',
-              style: const TextStyle(
-                fontFamily: 'tajawal',
-                color: _textMid,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Full participant list — opened by tapping the "+N" overflow tile.

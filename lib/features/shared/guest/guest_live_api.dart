@@ -18,6 +18,7 @@
 // to resolve `/live/<token>` as a route (web path, web hash and app links).
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
+import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -97,7 +98,9 @@ class GuestJoinsPage {
 /// `true` for a well-formed PIN: 4–8 digits.
 bool guestPinValid(String pin) => RegExp(r'^\d{4,8}$').hasMatch(pin.trim());
 
-/// What a visitor sees before joining (GET /public/live/{token}).
+/// What a visitor sees before joining (GET /public/live/{token}). A link now points at a course live session OR a
+/// calendar meeting (live-rooms-spec §3): `kind`, `title`, `host_name`, `starts_at`, `guest_admission` and
+/// `signed_in_join` were added to the payload; the session fields keep working for older servers.
 class GuestLiveInfo {
   const GuestLiveInfo({
     required this.sessionId,
@@ -110,6 +113,13 @@ class GuestLiveInfo {
     required this.guestsJoined,
     required this.maxGuests,
     this.requiresPin = false,
+    this.kind = 'session',
+    this.title = '',
+    this.hostName = '',
+    this.startsAt,
+    this.guestAdmission = LiveGuestAdmission.approve,
+    this.signedInJoin = false,
+    this.meetingId,
   });
 
   final int sessionId;
@@ -125,18 +135,60 @@ class GuestLiveInfo {
   /// The visitor must type the link's PIN to join.
   final bool requiresPin;
 
-  factory GuestLiveInfo.fromJson(Map<String, dynamic> j) => GuestLiveInfo(
-        sessionId: (j['session_id'] as num?)?.toInt() ?? 0,
-        sessionName: (j['session_name'] ?? '').toString(),
-        courseName: (j['course_name'] ?? '').toString(),
-        teacherName: (j['teacher_name'] ?? '').toString(),
-        isLive: j['is_live'] == true,
-        canPublish: j['can_publish'] == true,
-        recordingEnabled: j['recording_enabled'] == true,
-        guestsJoined: (j['guests_joined'] as num?)?.toInt() ?? 0,
-        maxGuests: (j['max_guests'] as num?)?.toInt(),
-        requiresPin: j['requires_pin'] == true,
-      );
+  /// `session` | `meeting`.
+  final String kind;
+
+  /// The room's title (`title`, else the session name).
+  final String title;
+
+  /// Who hosts it (`host_name`, else the teacher name).
+  final String hostName;
+
+  /// Meetings: when it starts (UTC).
+  final DateTime? startsAt;
+
+  /// `approve` → visitors wait for the host; `auto` → straight in.
+  final LiveGuestAdmission guestAdmission;
+
+  /// The server offers `POST /api/v1/live/links/{token}/join` to a signed-in viewer.
+  final bool signedInJoin;
+
+  /// `meeting_id` (or `id`) when [kind] is `meeting`.
+  final int? meetingId;
+
+  bool get isMeeting => kind == 'meeting';
+
+  /// The room, for JoinArgs.roomRef / RoomPage (a meeting room keeps the `-meetingId` convention).
+  LiveRoomRef get ref => isMeeting ? LiveRoomRef.meeting(meetingId ?? sessionId) : LiveRoomRef.session(sessionId);
+
+  /// The title to show (`title`, else the session name).
+  String get displayTitle => title.trim().isNotEmpty ? title.trim() : sessionName.trim();
+
+  /// The host to show (`host_name`, else the teacher name).
+  String get displayHost => hostName.trim().isNotEmpty ? hostName.trim() : teacherName.trim();
+
+  factory GuestLiveInfo.fromJson(Map<String, dynamic> j) {
+    final kind = '${j['kind'] ?? 'session'}'.trim().toLowerCase();
+    return GuestLiveInfo(
+      sessionId: (j['session_id'] as num?)?.toInt() ?? (kind == 'meeting' ? 0 : (j['id'] as num?)?.toInt() ?? 0),
+      sessionName: (j['session_name'] ?? '').toString(),
+      courseName: (j['course_name'] ?? '').toString(),
+      teacherName: (j['teacher_name'] ?? '').toString(),
+      isLive: j['is_live'] == true,
+      canPublish: j['can_publish'] == true,
+      recordingEnabled: j['recording_enabled'] == true,
+      guestsJoined: (j['guests_joined'] as num?)?.toInt() ?? 0,
+      maxGuests: (j['max_guests'] as num?)?.toInt(),
+      requiresPin: j['requires_pin'] == true,
+      kind: kind == 'meeting' ? 'meeting' : 'session',
+      title: (j['title'] ?? '').toString(),
+      hostName: (j['host_name'] ?? '').toString(),
+      startsAt: DateTime.tryParse('${j['starts_at'] ?? ''}')?.toUtc(),
+      guestAdmission: liveGuestAdmissionFrom(j['guest_admission']),
+      signedInJoin: j['signed_in_join'] == true,
+      meetingId: kind == 'meeting' ? ((j['meeting_id'] ?? j['id']) as num?)?.toInt() : null,
+    );
+  }
 }
 
 /// The room credentials a guest gets back from POST /public/live/{token}/join.
@@ -158,7 +210,7 @@ class GuestJoin {
   final String identity;
 
   factory GuestJoin.fromJson(Map<String, dynamic> j) => GuestJoin(
-        wsUrl: (j['ws_url'] ?? '').toString(),
+        wsUrl: (j['ws_url'] ?? j['url'] ?? '').toString(),
         token: (j['token'] ?? '').toString(),
         sessionId: (j['session_id'] as num?)?.toInt() ?? 0,
         canPublish: j['can_publish'] != false,
@@ -229,13 +281,16 @@ class GuestLiveApi {
     return GuestLiveInfo.fromJson(Map<String, dynamic>.from(r as Map));
   }
 
-  static Future<GuestJoin> join(String token, String name, {String? pin}) async {
+  /// `POST …/join {name, pin?, consent: true}` → 200 admitted (the join payload: `GuestJoin.fromJson(outcome.payload)`)
+  /// or 202 waiting (`request_id`, `secret`, `poll_after`) — the page then polls
+  /// `GET /api/v1/public/live/requests/{id}?secret=` (LiveRoomApi.pollPublicRequest) until the host decides.
+  static Future<JoinOutcome> join(String token, String name, {String? pin}) async {
     final r = await ApiClient().post(
       '/api/v1/public/live/$token/join',
-      body: {'name': name, if (pin != null && pin.isNotEmpty) 'pin': pin},
+      body: {'name': name, if (pin != null && pin.isNotEmpty) 'pin': pin, 'consent': true},
       auth: false,
     );
-    return GuestJoin.fromJson(Map<String, dynamic>.from(r as Map));
+    return JoinOutcome.parse(r);
   }
 }
 
@@ -271,8 +326,11 @@ String guestLiveErrorText(Object e) {
       return 'guest_live_err_blocked'.tr;
   }
   if (ex.statusCode == 429) return 'guest_live_err_rate_limited'.tr;
-  return ex.message;
+  return liveRoomErrorTextOrNull(ex) ?? ex.message;
 }
+
+/// The live-room codes (lobby, requests, meetings) that the guest page can also meet — null when unknown.
+String? liveRoomErrorTextOrNull(ApiException ex) => liveRoomCodeText(ex.code);
 
 /// 429 / `too_many_requests`: the visitor has to wait a minute before trying again.
 bool guestLiveErrorIsRateLimit(Object e) {

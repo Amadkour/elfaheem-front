@@ -633,6 +633,8 @@ import 'dart:developer';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb, ChangeNotifier;
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_recording.dart'
+    show RecordingQuality, RecorderSettings;
 
 import 'record/recorder_native_android.dart';
 import 'record/recorder_native_shared.dart';
@@ -651,6 +653,9 @@ class ClientRecorder extends ChangeNotifier {
     required this.sessionId,
     required this.apiClient,
     this.chunkSeconds = 5,
+    this.chunkPath,
+    this.quality,
+    this.stopPath,
   }) {
     if (!kIsWeb) {
       _native = native_rec.createNativeBackend(
@@ -675,6 +680,30 @@ class ClientRecorder extends ChangeNotifier {
   final int sessionId;
   final ApiClient apiClient;
   final int chunkSeconds;
+
+  /// Where the chunks go, as an API path (`/api/v1/live/recordings/{rid}/chunk` for a meeting recording to a
+  /// cloud drive — docs/backend/live-rooms-spec.md §5). Null = today's course-session route,
+  /// `/api/v1/live-sessions/{sessionId}/recording-chunk`.
+  final String? chunkPath;
+
+  /// The quality the person picked (meeting recordings): sets the encoders' bitrate / height cap on every
+  /// platform. Null = each platform's built-in defaults (course sessions).
+  final RecordingQuality? quality;
+
+  /// A real audio-only capture (quality `audio`): no canvas / screen surface / placeholder image anywhere —
+  /// web records the mixed audio stream alone, Android an AAC MediaRecorder with no video source, iOS an
+  /// AVAssetWriter with audio tracks only. The native side reads it as `audioOnly` in the start arguments,
+  /// the web compositor as `audioOnly` in its start meta.
+  bool get audioOnly => quality?.audioOnly ?? false;
+
+  /// POSTed once the recording has stopped and every chunk has landed (`/api/v1/live/recordings/{rid}/stop`:
+  /// "is_final without a chunk"), so the server assembles even when the last chunk never carried `is_final`
+  /// (empty final chunk, a native error, a web session with no data). Null = nothing to call (course sessions).
+  final String? stopPath;
+
+  /// The full chunk upload URL this recorder posts to.
+  String get uploadUrl =>
+      '${apiClient.baseUrl}${chunkPath ?? '/api/v1/live-sessions/$sessionId/recording-chunk'}';
 
   // The active native backend on iOS/Android — null on web, where
   // _webRecorder is used instead. See the file header for how the
@@ -787,10 +816,13 @@ class ClientRecorder extends ChangeNotifier {
     if (kIsWeb) {
       await _startWeb();
     } else {
-      final token     = (await apiClient.accessToken) ?? '';
-      final uploadUrl =
-          '${apiClient.baseUrl}/api/v1/live-sessions/$sessionId/recording-chunk';
-      await _native?.start(uploadUrl: uploadUrl, authToken: 'Bearer $token');
+      final token = (await apiClient.accessToken) ?? '';
+      final q = quality;
+      await _native?.start(
+        uploadUrl: uploadUrl,
+        authToken: 'Bearer $token',
+        encoder: q == null ? null : RecorderSettings.of(q).toMap(),
+      );
     }
   }
 
@@ -801,6 +833,7 @@ class ClientRecorder extends ChangeNotifier {
   }) async {
     if (!kIsWeb || _webRecorder == null) return;
     final token = (await apiClient.accessToken) ?? '';
+    final q = quality;
     _webRecorder!.startCompositor(
       sessionId,
       apiClient.baseUrl,
@@ -808,6 +841,11 @@ class ClientRecorder extends ChangeNotifier {
       teacherName: teacherName,
       sessionTitle: sessionTitle,
       participantCount: participantCount,
+      // Meeting recordings: their own chunk route and the picked bitrate (null = the compositor's defaults);
+      // audio-only skips the canvas and records the mixed audio stream alone.
+      uploadUrl: chunkPath == null ? null : uploadUrl,
+      videoBitsPerSecond: q == null || q.audioOnly ? null : RecorderSettings.of(q).videoBitsPerSecond,
+      audioOnly: audioOnly,
     );
   }
 
@@ -816,7 +854,7 @@ class ClientRecorder extends ChangeNotifier {
   /// share/camera yet). No-op on mobile/desktop and if the compositor
   /// hasn't started yet.
   void updateParticipantCount(int count) {
-    if (!kIsWeb) return;
+    if (!kIsWeb || audioOnly) return;
     _webRecorder?.updateParticipantCount(count);
   }
 
@@ -826,7 +864,7 @@ class ClientRecorder extends ChangeNotifier {
   /// placeholder graphic. No-op on mobile/desktop and if the compositor
   /// hasn't started yet.
   void setPlaceholderImage(Uint8List png) {
-    if (!kIsWeb) return;
+    if (!kIsWeb || audioOnly) return; // audio-only: there is no canvas to draw it on
     _webRecorder?.setPlaceholderImage(png);
   }
 
@@ -936,6 +974,7 @@ class ClientRecorder extends ChangeNotifier {
     if (kIsWeb) {
       _set(RecState.done);
       log('[REC] drain complete (web) — chunks=$_uploadedChunks bytes=$_totalBytes');
+      await _postStop();
       return;
     }
     const maxWait = Duration(seconds: 180);
@@ -945,7 +984,26 @@ class ClientRecorder extends ChangeNotifier {
     }
     if (_state != RecState.done) _set(RecState.done);
     log('[REC] drain complete — chunks=$_uploadedChunks bytes=$_totalBytes');
+    await _postStop();
   }
+
+  /// Meeting recordings: tells the server the recording is over once the chunks are up (see [stopPath]). On
+  /// web the chunks keep uploading in the background after stop(), so this first waits for them (bounded).
+  /// Errors are logged, never thrown: a server that already saw the final chunk may refuse a second "final".
+  Future<void> _postStop() async {
+    final path = stopPath;
+    if (path == null || _stopPosted) return;
+    _stopPosted = true;
+    try {
+      if (kIsWeb) await _webRecorder?.waitForBackgroundUploads(timeout: const Duration(minutes: 3));
+      await apiClient.post(path);
+      log('[REC] stop posted → $path');
+    } catch (e) {
+      log('[REC] stop post failed ($path): $e');
+    }
+  }
+
+  bool _stopPosted = false;
 
   @override
   Future<void> dispose() async {
@@ -1004,8 +1062,11 @@ class ClientRecorder extends ChangeNotifier {
     try {
       // getUserMedia() already falls back to audio-only internally when no
       // camera is available — do not call getAudioOnly() again here, that
-      // previously ran the whole retry sequence twice.
-      final stream = await web_rec.getUserMedia(video: true);
+      // previously ran the whole retry sequence twice. An audio-only
+      // recording never opens the camera at all: the mic is all it mixes.
+      final stream = audioOnly
+          ? await web_rec.getAudioOnly()
+          : await web_rec.getUserMedia(video: true);
 
       if (stream == null) {
         log('[REC] Web: no camera/mic available after retries — '

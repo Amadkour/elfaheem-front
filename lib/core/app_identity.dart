@@ -20,10 +20,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const _kCacheKey = 'app_identity_v1';
+const _kSplashLogoKey = 'app_splash_logo_v1'; // {url, b64}: the footer logo's bytes for the first frame / offline
+const _kSplashLogoMaxBytes = 400 * 1024;
 
 String _s(dynamic v) => v == null ? '' : '$v'.trim();
 
@@ -86,6 +89,11 @@ class AppIdentity extends ChangeNotifier {
 
   String _nameAr = '', _nameEn = '';
   String _taglineAr = '', _taglineEn = '';
+  String _splashFooterAr = '', _splashFooterEn = '';
+
+  /// The splash footer logo ("Powered by …"): its URL, and its bytes once cached (shown offline too).
+  String? splashLogoUrl;
+  Uint8List? splashLogoBytes;
   String _missionAr = '', _missionEn = '';
   String? logoUrl;
   List<IdentityStat> stats = const [];
@@ -101,6 +109,9 @@ class AppIdentity extends ChangeNotifier {
   String get name => _pick(_nameAr, _nameEn);
 
   String get tagline => _pick(_taglineAr, _taglineEn);
+
+  /// The line at the bottom of the splash screen ("Powered by Double Y"), '' when unset.
+  String get splashFooter => _pick(_splashFooterAr, _splashFooterEn);
 
   String get mission => _pick(_missionAr, _missionEn);
 
@@ -127,13 +138,45 @@ class AppIdentity extends ChangeNotifier {
       debugPrint('[AppIdentity] package info: $e');
     }
     try {
-      final raw = (await SharedPreferences.getInstance()).getString(_kCacheKey);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kCacheKey);
       if (raw != null) _apply(jsonDecode(raw) as Map<String, dynamic>);
+      _readSplashLogoCache(prefs);
     } catch (e) {
       debugPrint('[AppIdentity] cache read: $e');
     }
     notifyListeners();
     unawaited(refresh());
+  }
+
+  void _readSplashLogoCache(SharedPreferences prefs) {
+    final url = splashLogoUrl;
+    final raw = prefs.getString(_kSplashLogoKey);
+    if (url == null || raw == null) return;
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      if (j['url'] == url) splashLogoBytes = base64Decode(j['b64'] as String);
+    } catch (e) {
+      debugPrint('[AppIdentity] splash logo cache: $e');
+    }
+  }
+
+  /// Downloads the splash footer logo once per URL and keeps its bytes, so the next launch paints it in the
+  /// first frame and offline. Silent on failure (the splash then shows the line without the logo).
+  Future<void> _cacheSplashLogo() async {
+    final url = splashLogoUrl;
+    if (url == null || splashLogoBytes != null) return;
+    try {
+      final r = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 15));
+      if (r.statusCode != 200 || r.bodyBytes.isEmpty || r.bodyBytes.length > _kSplashLogoMaxBytes) return;
+      if (splashLogoUrl != url) return; // changed meanwhile
+      splashLogoBytes = r.bodyBytes;
+      notifyListeners();
+      (await SharedPreferences.getInstance())
+          .setString(_kSplashLogoKey, jsonEncode({'url': url, 'b64': base64Encode(r.bodyBytes)}));
+    } catch (e) {
+      debugPrint('[AppIdentity] splash logo download: $e');
+    }
   }
 
   /// Fetches the newest identity. Silent on failure — the cached one stays.
@@ -149,6 +192,7 @@ class AppIdentity extends ChangeNotifier {
         _apply(json);
         notifyListeners();
         (await SharedPreferences.getInstance()).setString(_kCacheKey, jsonEncode(json));
+        unawaited(_cacheSplashLogo());
       }
     } catch (e) {
       debugPrint('[AppIdentity] refresh: $e');
@@ -167,6 +211,12 @@ class AppIdentity extends ChangeNotifier {
       _missionEn = _s(i['mission_en']);
       final logo = _s(i['logo_url']);
       logoUrl = logo.isEmpty ? null : logo;
+      _splashFooterAr = _s(i['splash_footer_ar']);
+      _splashFooterEn = _s(i['splash_footer_en']);
+      final splashLogo = _s(i['splash_logo_url']);
+      final next = splashLogo.isEmpty ? null : splashLogo;
+      if (next != splashLogoUrl) splashLogoBytes = null; // a new logo: the old bytes are stale
+      splashLogoUrl = next;
     }
     stats = [
       for (final e in (j['stats'] as List? ?? const []))

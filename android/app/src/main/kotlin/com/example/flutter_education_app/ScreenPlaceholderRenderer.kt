@@ -204,6 +204,38 @@ class ScreenPlaceholderRenderer(
         latch.await()
     }
 
+    /**
+     * Audio-only recording (ScreenCaptureService's EXTRA_AUDIO_ONLY): there is
+     * never an encoder surface, so the draw clock runs against an offscreen
+     * pbuffer of the given size instead. Nothing of it is recorded; it only
+     * keeps the live path (switchToLive → drawLiveFrame → onLiveFrameForCapturer)
+     * working should the person share the screen during an audio recording.
+     * Same mechanics as detachEncoderSurfaceForPause(), with the size set here
+     * because no attachEncoderSurface() ever ran. Blocks until applied.
+     */
+    fun attachOffscreenOutput(width: Int, height: Int) {
+        val latch = java.util.concurrent.CountDownLatch(1)
+        glHandler.post {
+            try {
+                if (outputSurface != EGL14.EGL_NO_SURFACE) {
+                    EGL14.eglDestroySurface(eglDisplay, outputSurface)
+                }
+                outputWidth = width
+                outputHeight = height
+                val attribs = intArrayOf(
+                        EGL14.EGL_WIDTH, outputWidth, EGL14.EGL_HEIGHT, outputHeight,
+                        EGL14.EGL_NONE)
+                outputSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, attribs, 0)
+                scheduleNextTick()
+            } catch (e: Exception) {
+                Log.e(TAG, "attachOffscreenOutput failed: ${e.message}", e)
+            } finally {
+                latch.countDown()
+            }
+        }
+        latch.await()
+    }
+
     /** Call on EVERY chunk boundary (first chunk + every ping-pong swap). Blocks until applied. */
     fun attachEncoderSurface(surface: Surface, width: Int, height: Int) {
         val latch = java.util.concurrent.CountDownLatch(1)

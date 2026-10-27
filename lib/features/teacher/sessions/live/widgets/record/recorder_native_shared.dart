@@ -99,6 +99,9 @@ abstract class NativeRecorderBackend {
   Future<bool> start({
     required String uploadUrl,
     required String authToken,
+    // Meeting recordings (docs/backend/live-rooms-spec.md §5): the picked quality as
+    // {videoBitrate, maxHeight, audioOnly}; null keeps the platform's own defaults.
+    Map<String, Object>? encoder,
   }) async {
     try {
       // Open EventChannel BEFORE invoking so we never miss events.
@@ -116,6 +119,7 @@ abstract class NativeRecorderBackend {
         'authToken':    authToken,
         'chunkSeconds': chunkSeconds,
         'chunkIndex':   0,
+        ...?encoder,
       });
 
       if (ok == true) {

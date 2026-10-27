@@ -16156,5 +16156,41 @@
   "ctx_org_rejected": {
     "en": "Rejected",
     "ar": "مرفوضة"
+  },
+  "content_f_splash_footer_ar": {
+    "en": "Splash footer line (Arabic)",
+    "ar": "سطر أسفل شاشة البداية (بالعربية)"
+  },
+  "content_f_splash_footer_en": {
+    "en": "Splash footer line (English)",
+    "ar": "سطر أسفل شاشة البداية (بالإنجليزية)"
+  },
+  "content_splash_footer": {
+    "en": "Splash screen footer",
+    "ar": "أسفل شاشة البداية"
+  },
+  "content_splash_footer_hint": {
+    "en": "A short line and a small logo shown at the bottom of the splash screen when the app opens, e.g. “Powered by Double Y”. Type the line with Edit; upload the logo here (a PNG with a transparent background looks best).",
+    "ar": "سطر قصير وشعار صغير يظهران أسفل شاشة البداية عند فتح التطبيق، مثل «بدعم من Double Y». اكتب السطر من «تعديل»، وارفع الشعار من هنا (الأفضل PNG بخلفية شفافة)."
+  },
+  "content_splash_footer_empty": {
+    "en": "Not set yet — the splash shows only the app version.",
+    "ar": "لم يُضبط بعد — تعرض شاشة البداية رقم الإصدار فقط."
+  },
+  "content_upload_splash_logo": {
+    "en": "Upload footer logo",
+    "ar": "رفع شعار الشاشة"
+  },
+  "content_remove_splash_logo": {
+    "en": "Remove logo",
+    "ar": "إزالة الشعار"
+  },
+  "lr_host": {
+    "en": "Host",
+    "ar": "المضيف"
+  },
+  "lr_you": {
+    "en": "You",
+    "ar": "أنت"
   }
 }

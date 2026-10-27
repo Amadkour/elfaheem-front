@@ -269,6 +269,8 @@ class _AskTextDialogState extends State<_AskTextDialog> {
           controller: _ctrl,
           autofocus: true,
           maxLines: widget.multiline ? 4 : 1,
+          // Enter answers (a multi-line box: Ctrl+Enter on web / desktop, design/app_keyboard.dart)
+          onSubmitted: (_) => Navigator.pop(context, _ctrl.text.trim()),
           style: const TextStyle(fontFamily: 'tajawal'),
           decoration: InputDecoration(
             hintText: widget.hint,

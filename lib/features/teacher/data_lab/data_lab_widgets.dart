@@ -409,6 +409,8 @@ class DlField extends StatelessWidget {
     this.keyboard,
     this.maxLines = 1,
     this.onChanged,
+    this.onSubmitted,
+    this.textInputAction,
     this.ltr = false,
   });
 
@@ -418,6 +420,9 @@ class DlField extends StatelessWidget {
   final TextInputType? keyboard;
   final int maxLines;
   final ValueChanged<String>? onChanged;
+  /// Enter (a multi-line field: Ctrl+Enter on web / desktop, see design/app_keyboard.dart).
+  final ValueChanged<String>? onSubmitted;
+  final TextInputAction? textInputAction;
   final bool ltr;
 
   @override
@@ -432,6 +437,8 @@ class DlField extends StatelessWidget {
         keyboardType: keyboard,
         maxLines: maxLines,
         onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        textInputAction: textInputAction,
         textDirection: ltr ? TextDirection.ltr : null,
         style: dlText(14, c: c.textDark),
         decoration: InputDecoration(

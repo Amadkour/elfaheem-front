@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'live_palette.dart';
 
 /// Breakpoint between the mobile pill and the wide bar.
@@ -100,6 +101,12 @@ class _CountBadge extends StatelessWidget {
 /// Small recording state shown inside the bar.
 enum LiveRecBadge { none, recording, paused }
 
+/// Whether the bar carries the recorder controls — the Pause / Resume button and the REC chip. A teacher's bar
+/// follows the course's record switch exactly as before; anyone else's (a meeting creator) only while THIS device
+/// is the one recording ([recordsHere], room.dart `_recordsHere`). Pure, so the layout test covers every state.
+bool showsRecorderControls({required bool isTeacher, required bool recordingEnabled, required bool recordsHere}) =>
+    isTeacher ? recordingEnabled : recordsHere;
+
 class LiveControlBar extends StatelessWidget {
   const LiveControlBar({
     super.key,
@@ -109,7 +116,35 @@ class LiveControlBar extends StatelessWidget {
     this.groups,
     this.rec = LiveRecBadge.none,
     this.onInteraction,
+    this.onLobby,
+    this.waitingCount = 0,
   });
+
+  /// Admission lobby (host only): non-null adds a "Lobby" button with [waitingCount] as its badge — on phones in the
+  /// pill right after the first two primaries, on wide screens as its own segment before End.
+  final VoidCallback? onLobby;
+  final int waitingCount;
+
+  LiveControlAction? get _lobbyAction => onLobby == null
+      ? null
+      : LiveControlAction(
+          key: const ValueKey('live_room.lobby'),
+          icon: waitingCount > 0 ? Icons.meeting_room_rounded : Icons.meeting_room_outlined,
+          label: t('غرفة الانتظار', 'Lobby'),
+          active: waitingCount > 0,
+          color: waitingCount > 0 ? LivePalette.warning : null,
+          badge: waitingCount,
+          shortcut: 'L',
+          onTap: onLobby,
+        );
+
+  /// [primary] with the lobby button slotted in (after mic / camera).
+  List<LiveControlAction> get _primaryWithLobby {
+    final l = _lobbyAction;
+    if (l == null) return primary;
+    final at = primary.length < 2 ? primary.length : 2;
+    return [...primary.take(at), l, ...primary.skip(at)];
+  }
 
   /// Mobile: shown in the pill while they fit (extra ones move into the "More" sheet).
   final List<LiveControlAction> primary;
@@ -155,6 +190,7 @@ class LiveControlBar extends StatelessWidget {
 
   // ── Mobile ────────────────────────────────────────────────────────────────
   Widget _mobile(BuildContext context, double width) {
+    final primary = _primaryWithLobby;
     final inner = width - 24 - 16;
     final columns = (inner / 56).floor().clamp(3, 7);
     final needMore = secondary.isNotEmpty || primary.length + 1 > columns;
@@ -198,7 +234,11 @@ class LiveControlBar extends StatelessWidget {
 
   // ── Wide ──────────────────────────────────────────────────────────────────
   Widget _wide(BuildContext context) {
-    final segs = (groups ?? [primary, secondary]).where((g) => g.isNotEmpty).toList();
+    final lobby = _lobbyAction;
+    final segs = [
+      ...(groups ?? [primary, secondary]),
+      if (lobby != null) [lobby],
+    ].where((g) => g.isNotEmpty).toList();
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
       child: Center(

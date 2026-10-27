@@ -1,5 +1,7 @@
 // The live-session control bar (LiveControlBar) at phone and web sizes, in Arabic and English, text scale 1.3,
 // with 8 actions: no overflow, the End button is always last, extra actions move into the "More" sheet on phones.
+// Plus the recorder controls of a meeting creator who is not a teacher (showsRecorderControls): Pause while recording,
+// Resume while paused, nothing while not recording.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -97,6 +99,105 @@ void main() {
         await t.tapAt(const Offset(5, 5));
         await t.pump(const Duration(milliseconds: 400));
       }
+    });
+  });
+
+  // ── Recorder controls on a meeting creator's bar (not a teacher) ─────────
+  // ControlsWidget derives these from `recordsHere` (showsRecorderControls) and hands the bar the pause / resume
+  // action plus the REC chip; the bar itself is pumped here with exactly what a creator's bar gets.
+  group('recorder controls for a host who is not a teacher', () {
+    LiveControlAction pauseResume({required bool paused}) => LiveControlAction(
+          key: const ValueKey('live_room.pause_recording'),
+          icon: paused ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded,
+          label: paused ? 'Resume' : 'Pause',
+          active: true,
+          color: paused ? Colors.green : Colors.amber,
+          onTap: () {},
+        );
+
+    Widget hostBar({required LiveRecBadge rec, LiveControlAction? record}) {
+      final a = _eight();
+      final mic = a[0], cam = a[1], react = a[3];
+      final chat = LiveControlAction(key: const ValueKey('live_room.chat'), icon: Icons.chat_bubble_outline_rounded, label: 'Chat', badge: 3, shortcut: 'C', onTap: () {});
+      // No share action: only teachers share; the record group is empty when nothing records here.
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: LiveControlBar(
+          primary: [mic, cam, react, chat],
+          secondary: [?record],
+          groups: [
+            [mic, cam],
+            [?record],
+            [react, chat],
+          ],
+          end: _end(),
+          rec: rec,
+          onLobby: () {},
+          waitingCount: 2,
+        ),
+      );
+    }
+
+    test('showsRecorderControls: a teacher follows the record switch, anyone else follows recordsHere', () {
+      expect(showsRecorderControls(isTeacher: true, recordingEnabled: true, recordsHere: false), isTrue);
+      expect(showsRecorderControls(isTeacher: true, recordingEnabled: true, recordsHere: true), isTrue);
+      expect(showsRecorderControls(isTeacher: true, recordingEnabled: false, recordsHere: true), isFalse);
+      expect(showsRecorderControls(isTeacher: true, recordingEnabled: false, recordsHere: false), isFalse);
+      expect(showsRecorderControls(isTeacher: false, recordingEnabled: true, recordsHere: true), isTrue);
+      expect(showsRecorderControls(isTeacher: false, recordingEnabled: false, recordsHere: true), isTrue);
+      expect(showsRecorderControls(isTeacher: false, recordingEnabled: true, recordsHere: false), isFalse);
+    });
+
+    testWidgets('recording: Pause + REC chip, no share button', (tester) async {
+      await expectNoLayoutErrors(tester, () => hostBar(rec: LiveRecBadge.recording, record: pauseResume(paused: false)), act: (t) async {
+        expect(find.byKey(const ValueKey('live_room.rec_badge')), findsOneWidget);
+        expect(find.byKey(const ValueKey('live_room.share')), findsNothing);
+        expect(find.byKey(const ValueKey('live_room.lobby')), findsOneWidget);
+        if (t.view.physicalSize.width < kLiveControlsMobileBreakpoint) {
+          await t.tap(find.byKey(const ValueKey('live_room.more')));
+          await t.pump(const Duration(milliseconds: 400));
+          expect(find.byKey(const ValueKey('live_room.pause_recording.sheet')), findsOneWidget);
+          expect(find.byIcon(Icons.pause_circle_outline_rounded), findsOneWidget);
+        } else {
+          expect(find.byKey(const ValueKey('live_room.more')), findsNothing);
+          expect(find.byKey(const ValueKey('live_room.pause_recording')), findsOneWidget);
+          expect(find.byIcon(Icons.pause_circle_outline_rounded), findsOneWidget);
+        }
+      });
+    });
+
+    testWidgets('paused: Resume + paused chip', (tester) async {
+      await expectNoLayoutErrors(tester, () => hostBar(rec: LiveRecBadge.paused, record: pauseResume(paused: true)), act: (t) async {
+        expect(find.byKey(const ValueKey('live_room.rec_badge')), findsOneWidget);
+        expect(find.byIcon(Icons.pause_rounded), findsOneWidget, reason: 'the chip shows the pause glyph');
+        if (t.view.physicalSize.width < kLiveControlsMobileBreakpoint) {
+          await t.tap(find.byKey(const ValueKey('live_room.more')));
+          await t.pump(const Duration(milliseconds: 400));
+          expect(find.byKey(const ValueKey('live_room.pause_recording.sheet')), findsOneWidget);
+          expect(find.byIcon(Icons.play_circle_outline_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.pause_circle_outline_rounded), findsNothing);
+        } else {
+          expect(find.byKey(const ValueKey('live_room.pause_recording')), findsOneWidget);
+          expect(find.byIcon(Icons.play_circle_outline_rounded), findsOneWidget);
+          expect(find.byIcon(Icons.pause_circle_outline_rounded), findsNothing);
+        }
+      });
+    });
+
+    testWidgets('not recording: no Pause / Resume anywhere and no chip', (tester) async {
+      await expectNoLayoutErrors(tester, () => hostBar(rec: LiveRecBadge.none), act: (t) async {
+        expect(find.byKey(const ValueKey('live_room.rec_badge')), findsNothing);
+        expect(find.byKey(const ValueKey('live_room.pause_recording')), findsNothing);
+        final more = find.byKey(const ValueKey('live_room.more'));
+        if (more.evaluate().isNotEmpty) {
+          await t.tap(more);
+          await t.pump(const Duration(milliseconds: 400));
+          expect(find.byKey(const ValueKey('live_room.pause_recording.sheet')), findsNothing);
+          expect(find.byIcon(Icons.pause_circle_outline_rounded), findsNothing);
+          expect(find.byIcon(Icons.play_circle_outline_rounded), findsNothing);
+        }
+        expect(find.byKey(const ValueKey('live_room.end')), findsOneWidget);
+      });
     });
   });
 

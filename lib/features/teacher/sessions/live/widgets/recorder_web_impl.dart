@@ -60,6 +60,9 @@ void _compositorStart(
       String teacherName = '',
       String sessionTitle = '',
       int participantCount = 0,
+      String? uploadUrl,
+      int? videoBitsPerSecond,
+      bool audioOnly = false,
     }) {
   // Bundled as JSON rather than adding more positional a5/a6/... params to
   // the dispatcher — keeps the JS-interop surface stable as more placeholder
@@ -68,6 +71,13 @@ void _compositorStart(
     'teacherName': teacherName,
     'sessionTitle': sessionTitle,
     'participantCount': participantCount,
+    // Meeting recordings to a cloud drive: their own chunk route and bitrate
+    // (recorder_compositor.js falls back to the session route / its constant).
+    'uploadUrl': ?uploadUrl,
+    'videoBitsPerSecond': ?videoBitsPerSecond,
+    // Audio-only: the compositor records the mixed audio stream alone (no
+    // canvas, audio/webm;codecs=opus chunks) — see its start().
+    'audioOnly': audioOnly,
   });
   _dispatch('start', sessionId.toJS, apiUrl.toJS, authToken.toJS, meta.toJS);
 }
@@ -310,9 +320,12 @@ class WebRecorder {
         String teacherName = '',
         String sessionTitle = '',
         int participantCount = 0,
+        String? uploadUrl,
+        int? videoBitsPerSecond,
+        bool audioOnly = false,
       }) {
     _started = true;
-    _log('calling compositor start() sessionId=$sessionId apiUrl=$apiUrl');
+    _log('calling compositor start() sessionId=$sessionId apiUrl=$apiUrl audioOnly=$audioOnly');
     try {
       _compositorStart(
         sessionId,
@@ -321,6 +334,9 @@ class WebRecorder {
         teacherName: teacherName,
         sessionTitle: sessionTitle,
         participantCount: participantCount,
+        uploadUrl: uploadUrl,
+        videoBitsPerSecond: videoBitsPerSecond,
+        audioOnly: audioOnly,
       );
     } catch (e) {
       _log('compositorStart error: $e — is recorder_compositor.js loaded in index.html?');

@@ -13,6 +13,7 @@ import '../../../core/api_client.dart';
 import '../../../main.dart';
 import '../../../utils/live_events.dart';
 import '../../../utils/top_route_observer.dart';
+import '../live/live_room.dart' show LiveLobbyEvents;
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import '../../../utils/widget/app_navigator.dart';
@@ -275,6 +276,12 @@ class NotificationService {
         print('[FCM] theme_updated received -> refreshing theme');
         _refreshTheme();
       }
+      return;
+    }
+    // Silent push: someone asks to join a live room the user hosts → the room's lobby refreshes at once
+    // (live-rooms-spec §4). Shows nothing; the visible `live_lobby` notification is a separate push.
+    if (data['type'] == LiveLobbyEvents.pushType) {
+      LiveLobbyEvents.notify(Map<String, dynamic>.from(data));
       return;
     }
     // Silent push: a complaint / manual transfer / payment / payout changed → every open list

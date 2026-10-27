@@ -34,6 +34,8 @@ import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_schedule_autopilot.dart';
 import 'org_schedule_insights.dart';
+import 'org_schedule_ladder.dart' show LadderLive, LadderReport, pendingBlockIds;
+import 'org_schedule_ladder_ui.dart' show LadderLivePanel, LadderResultCard, showLadderSheet;
 import 'org_schedule_optimizer.dart';
 import 'org_schedule_preview.dart';
 import 'org_schedule_remedies.dart';
@@ -195,7 +197,7 @@ class LiveRun {
 
 /// One message of the generation's step log (run.summary.steps[]).
 class LiveStep {
-  const LiveStep({required this.id, required this.kind, required this.textAr, required this.textEn, required this.done, this.round, this.ms, this.at, this.limitS, this.relax, this.improved});
+  const LiveStep({required this.id, required this.kind, required this.textAr, required this.textEn, required this.done, this.round, this.ms, this.at, this.limitS, this.relax, this.improved, this.rung, this.note = const {}, this.elapsedS});
   final int id;
   final String kind, textAr, textEn;
   final bool done;
@@ -203,6 +205,9 @@ class LiveStep {
   final DateTime? at; // when it started (server time)
   final double? limitS; // an attempt's own time budget
   final bool? relax, improved;
+  final String? rung; // a ladder run: the rung this step is about (kind round · applied · decided)
+  final Map<String, dynamic> note; // a ladder run: what the rung changed
+  final double? elapsedS; // a ladder run: seconds since the run started when the step was written
 
   String get text => t(textAr, textEn);
   bool get isAttempt => kind == 'round';
@@ -219,6 +224,9 @@ class LiveStep {
         limitS: m['limit_s'] == null ? null : double.tryParse('${m['limit_s']}'),
         relax: m['relax'] is bool ? m['relax'] as bool : null,
         improved: m['improved'] is bool ? m['improved'] as bool : null,
+        rung: m['rung'] == null ? null : '${m['rung']}',
+        note: asMap(m['note']),
+        elapsedS: m['elapsed_s'] == null ? null : double.tryParse('${m['elapsed_s']}'),
       );
 }
 
@@ -392,11 +400,14 @@ String brokenRuleText(String rule) => switch (rule) {
 //  UI
 // ═════════════════════════════════════════════════════════════════════════════
 
-/// THE "Create timetable" action: no questions — the autopilot generates in the background with the stored rules,
-/// applies every automatic fix of what still clashes and saves a Draft; the studio follows the run (live panel) and
-/// shows the result when it ends. An older server without the autopilot route gets the plain complete generation.
+/// THE "Create timetable" action: no questions — a ladder run (D-013) in the background with the timetable's saved
+/// ladder; it asks in place at every "Ask me" rung and saves a Draft; the studio follows the run (LadderLivePanel) and
+/// shows the result when it ends. An older server without the ladder route gets the autopilot, and without that the
+/// plain complete generation.
 Future<void> createTimetable(BuildContext context, OrgScheduleProvider p) async {
-  var r = await p.startAutopilot();
+  final sid = asInt(p.schedule!['id']);
+  final ladder = await p.loadLadder(sid);
+  var r = ladder != null ? await p.startLadder(sid, auto: false) : await p.startAutopilot();
   if (!r.ok && r.endpointMissing) r = await p.startGeneration(complete: true);
   if (!r.ok && r.code != 'generation_running') toast(orgErrorText(r.error!), error: true);
 }
@@ -1050,6 +1061,24 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     if (mounted) setState(() => busy.remove(block));
   }
 
+  /// "Accept all" on the ladder's result card: every proposal still pending, in one call.
+  Future<void> _acceptAllProposals(List<String> ids) async {
+    final ok = await confirm(context,
+        message: t('قبول كل الاقتراحات (${ids.length})؟ تبقى الحصص كما وضعها التوليد، بالقواعد التي كُسرت.', 'Accept every proposal (${ids.length})? The sessions stay where the run put them, with the rules it bent.'),
+        confirmLabel: t('قبول الكل', 'Accept all'));
+    if (!ok || !mounted) return;
+    setState(() => busy.addAll(ids));
+    await widget.p.decideProposals(ids, accept: true);
+    if (mounted) setState(() => busy.removeAll(ids));
+  }
+
+  final _proposalsKey = GlobalKey();
+
+  void _scrollToProposals() {
+    final ctx = _proposalsKey.currentContext;
+    if (ctx != null) Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300), alignment: 0.05);
+  }
+
   String _name(Map<String, dynamic> x) {
     final g = x['group_no'] == null ? '' : ' · ${t('مجموعة', 'group')} ${x['group_no']}';
     final kind = switch ('${x['kind'] ?? 'lecture'}') { 'lab' => ' · ${t('عملي', 'lab')}', 'tutorial' || 'section' => ' · ${t('سكشن', 'section')}', _ => '' };
@@ -1081,14 +1110,29 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
     }
     final actions = quick?.actions ?? const <QuickAction>[];
     final autopilot = AutopilotReport.of(result);
+    final ladder = LadderReport.of(result);
     if (runIsOpen(p.genRun)) {                       // the autopilot / a generation is writing the timetable
       return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
         SheetHeader(t('جارٍ العمل على الجدول', 'Working on the timetable')),
-        GenerationLivePanel(run: p.genRun!, onCancel: () => p.cancelGeneration()),
+        // a ladder run: the live overlay with the decision inline (the side panel is where the run is watched)
+        if (LadderLive.of(p.genRun) != null) LadderLivePanel(p: p, inlineDecision: true) else GenerationLivePanel(run: p.genRun!, onCancel: () => p.cancelGeneration()),
       ]);
     }
+    final pendingIds = pendingBlockIds(o.proposals);
     return ListView(shrinkWrap: true, padding: const EdgeInsets.fromLTRB(16, 4, 16, 24), children: [
       SheetHeader(done.isComplete ? t('نتيجة التوليد', 'Generation result') : t('الإجراءات السريعة', 'Quick actions')),
+      if (ladder != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: LadderResultCard(
+            report: ladder,
+            names: widget.names,
+            pending: pendingIds.length,
+            onAcceptAll: widget.canEdit && pendingIds.isNotEmpty ? () => _acceptAllProposals(pendingIds) : null,
+            onOpenProposals: pendingIds.isNotEmpty ? _scrollToProposals : null,
+            onOpenLadder: p.schedule?['id'] == null ? null : () => showLadderSheet(context, p, asInt(p.schedule!['id']), canEdit: widget.canEdit),
+          ),
+        ),
       _completionCard(context, done, o),
       if (widget.canEdit && (done.problems > 0 || _needRegen)) _autopilotCard(context, done),
       if (autopilot != null)
@@ -1138,7 +1182,7 @@ class _QuickActionsPanelState extends State<QuickActionsPanel> {
         for (final u in o.unplaced) _problem(context, u, actions),
       ],
       if (blocks.isNotEmpty) ...[
-        _title(context, t('قواعد مرنة كُسرت (اقتراحات)', 'Flexible rules broken (proposals)')),
+        KeyedSubtree(key: _proposalsKey, child: _title(context, t('قواعد مرنة كُسرت (اقتراحات)', 'Flexible rules broken (proposals)'))),
         for (final e in blocks.entries)
           _proposal(context, e.key, [for (final x in o.proposals) if ('${x['block_id']}' == e.key) x]),
       ],

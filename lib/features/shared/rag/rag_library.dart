@@ -332,17 +332,32 @@ class RagUploadDraft {
 }
 
 class RagOrgSettings {
-  const RagOrgSettings({this.generator = 'extractive', this.allowExternal = false, this.llmAvailable = false, this.llmExternal = false});
-  final String generator; // extractive | llm
+  const RagOrgSettings(
+      {this.generator = 'default',
+      this.allowExternal = false,
+      this.llmAvailable = false,
+      this.llmExternal = false,
+      this.effectiveGenerator = 'extractive',
+      this.platformGenerator = 'extractive',
+      this.platformAllowsExternal = false});
+  final String generator; // default (follow the platform, D-012) | extractive | llm
   final bool allowExternal;
   final bool llmAvailable;
   final bool llmExternal;
 
+  /// What the server will actually use for this organization now, and the platform's own choices behind it.
+  final String effectiveGenerator; // llm | extractive
+  final String platformGenerator;
+  final bool platformAllowsExternal;
+
   factory RagOrgSettings.fromJson(Map<String, dynamic> j) => RagOrgSettings(
-      generator: asStr(j['generator']) == 'llm' ? 'llm' : 'extractive',
+      generator: const ['llm', 'default'].contains(j['generator']) ? asStr(j['generator']) : 'extractive',
       allowExternal: asBool(j['allow_external_llm']),
       llmAvailable: asBool(j['llm_available']),
-      llmExternal: asBool(j['llm_external']));
+      llmExternal: asBool(j['llm_external']),
+      effectiveGenerator: asStr(j['effective_generator']) == 'llm' ? 'llm' : 'extractive',
+      platformGenerator: asStr(j['platform_generator']) == 'llm' ? 'llm' : 'extractive',
+      platformAllowsExternal: asBool(j['platform_allows_external']));
 
   /// The body of PUT /orgs/{id}/settings. The external flag only makes sense with the LLM generator.
   static Map<String, dynamic> body(String generator, bool allowExternal) =>

@@ -31,6 +31,8 @@ import 'org_timetable_wizard.dart';
 import 'org_timetable_time.dart';
 import 'org_schedule_hub.dart';
 import 'org_schedule_generate.dart';
+import 'org_schedule_ladder.dart' show LadderLive;
+import 'org_schedule_ladder_ui.dart' show LadderLivePanel, LadderVeil, showLadderDecisionDialog, showLadderSheet;
 import 'org_schedule_autopilot.dart';
 import 'org_schedule_grid.dart';
 import 'org_schedule_reassign.dart';
@@ -808,6 +810,7 @@ class _StudioState extends State<_Studio> {
   List<Map<String, dynamic>> _studentGroups = const [];
   String? _studentName;
   int _view = 0; // 0 grid · 1 the courses that enter the timetable
+  String? _askedDecision; // the ladder decision id the dialog was opened for (once per decision)
 
   // drag & drop preview: the cell under the pointer asks the server (dry run) whether the move is valid
   String? _previewKey;
@@ -932,6 +935,16 @@ class _StudioState extends State<_Studio> {
     final running = runIsOpen(run);
     final result = asMap(sch['result']);
     final editable = !active && !running && s.can('schedule', 'update');
+    // a ladder run (D-013): the live panel / veil are the ladder's; a decision the run waits for is asked in place —
+    // the wide side panel shows it inline, a narrow screen opens the dialog once per decision
+    final ladderLive = running ? LadderLive.of(run) : null;
+    final decision = ladderLive?.isWaiting == true ? ladderLive!.decision : null;
+    if (decision != null && decision.id != _askedDecision && MediaQuery.sizeOf(context).width < 1100) {
+      _askedDecision = decision.id;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showLadderDecisionDialog(context, p, decision);
+      });
+    }
 
     final courseNames = {for (final l in p.loads) asInt(l['course_id']): courseName(l)};
     final people = {for (final m in p.staff) asInt((m['user'] as Map)['id']): '${(m['user'] as Map)['name']}'};
@@ -1076,9 +1089,10 @@ class _StudioState extends State<_Studio> {
                   onPressed: () => _autopilot(context, p),
                 ),
               IconButton(
-                tooltip: t('قواعد التوليد', 'Generation rules'),
-                icon: Icon(Icons.rule_rounded, color: c.primary),
-                onPressed: () => showRulesSheet(context, p, canEdit: canEdit && !running),
+                tooltip: t('سلّم التوليد', 'Generation ladder'),
+                icon: Icon(Icons.stairs_rounded, color: c.primary),
+                // the ladder (D-013); an older server without it gets the legacy rules sheet, also linked from inside
+                onPressed: () => showLadderSheet(context, p, asInt(sch['id']), canEdit: canEdit && !running),
               ),
               if (s.can('schedule', 'insert') && !active)
                 ActionChip(
@@ -1101,7 +1115,9 @@ class _StudioState extends State<_Studio> {
         if (run != null && (running || run['schedule_id'] == null || asInt(run['schedule_id']) == asInt(sch['id'])) && (running || run['status'] == 'failed'))
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-            child: GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
+            // a ladder run: the live overlay; a waiting run offers "Choose…" here (the dialog), the wide side panel
+            // shows the decision inline
+            child: ladderLive != null ? LadderLivePanel(p: p) : GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
           )
         else if (p.slots.isNotEmpty || result.isNotEmpty)
           Padding(
@@ -1211,7 +1227,7 @@ class _StudioState extends State<_Studio> {
                     );
               // a new version is being generated: the current one stays visible, dimmed, with the live step in the middle
               if (running && run != null && _view == 0 && p.slots.isNotEmpty) {
-                main = Stack(children: [main, GenerationVeil(run: run, onCancel: () => p.cancelGeneration())]);
+                main = Stack(children: [main, ladderLive != null ? LadderVeil(p: p) : GenerationVeil(run: run, onCancel: () => p.cancelGeneration())]);
               }
               final panel = widget.sidePanel;
               if (panel == null) return main;

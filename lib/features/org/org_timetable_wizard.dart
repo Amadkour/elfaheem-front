@@ -25,6 +25,8 @@ import 'org_availability_pages.dart' show OrgAvailabilityRequestsPage;
 import 'org_common.dart' show dayLabels;
 import 'org_courses_page.dart' show showOrgCourseForm;
 import 'org_schedule_generate.dart' show GenerationLivePanel, showGenerationResult;
+import 'org_schedule_ladder.dart' show LadderLive;
+import 'org_schedule_ladder_ui.dart' show LadderLivePanel;
 import 'org_providers.dart';
 import 'org_schedule_pages.dart' show showAvailabilitySheet, showPeriodForm, showPublishConflicts, publishWithConsent;
 import 'org_schedule_planning.dart' show applyStudentCount, coursePlanApi, termCourseIds;
@@ -222,7 +224,9 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final d = _d!;
     setState(() => _busy = true);
     await p.open(d.id!);
-    final r = await p.startGeneration(settings: d.settings, keepLocked: _keepLocked, complete: true);
+    // the ladder run (D-013) when the server has it; the wizard's settings are already saved on the draft by _persist
+    final ladder = await p.loadLadder(d.id!);
+    final r = ladder != null ? await p.startLadder(d.id!, auto: false) : await p.startGeneration(settings: d.settings, keepLocked: _keepLocked, complete: true);
     if (!mounted) return;
     setState(() {
       _busy = false;
@@ -879,7 +883,8 @@ class _TimetableWizardState extends State<TimetableWizard> {
     final running = runIsOpen(run);
     final result = asMap(sch['result']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (run != null && (running || run['status'] == 'failed')) GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
+      if (run != null && (running || run['status'] == 'failed'))
+        LadderLive.of(run) != null ? LadderLivePanel(p: p, inlineDecision: true) : GenerationLivePanel(run: run, onCancel: running ? () => p.cancelGeneration() : null),
       const SizedBox(height: 10),
       if (!running && run?['status'] == 'failed')
         RowCard(accent: c.danger, child: Text(t('فشل التوليد ولم يتغير شيء في الجدول. ${run?['error'] ?? ''}', 'Generation failed and nothing in the timetable changed. ${run?['error'] ?? ''}'))),

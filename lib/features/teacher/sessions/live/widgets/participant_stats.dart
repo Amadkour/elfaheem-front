@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:async';
 
+import 'live_palette.dart';
+
 enum StatsType {
   kUnknown,
   kLocalAudioSender,
@@ -140,21 +142,84 @@ class _ParticipantStatsWidgetState extends State<ParticipantStatsWidget> {
   num sendBitrate = 0;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black.withValues(alpha: 0.3),
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-        horizontal: 8,
-      ),
-      child: Column(children: [
-        const Text('audio stats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ...stats['audio']!.entries.map((e) => Text('${e.key}: ${e.value}')),
-        const Text('video stats', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        ...stats['video']!.entries.map((e) => Text('${e.key}: ${e.value}')),
-      ]),
-    );
-  }
+  Widget build(BuildContext context) =>
+      ParticipantStatsPanel(audio: stats['audio']!, video: stats['video']!);
 }
 
+/// The stats overlay as a small glass card (plain values; the LiveKit-bound widget above feeds it).
+/// Scrolls inside itself past 300 px, so a long list never pushes past the tile.
+class ParticipantStatsPanel extends StatelessWidget {
+  const ParticipantStatsPanel({super.key, required this.audio, required this.video});
+  final Map<String, String> audio;
+  final Map<String, String> video;
 
+  @override
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(maxWidth: 260, maxHeight: 300),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: LivePalette.glassBorder),
+        ),
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _StatsTitle(icon: Icons.graphic_eq_rounded, text: 'audio'),
+              for (final e in audio.entries) _StatsRow(k: e.key, v: e.value),
+              const SizedBox(height: 6),
+              _StatsTitle(icon: Icons.videocam_rounded, text: 'video'),
+              for (final e in video.entries) _StatsRow(k: e.key, v: e.value),
+            ],
+          ),
+        ),
+      );
+}
+
+class _StatsTitle extends StatelessWidget {
+  const _StatsTitle({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: LivePalette.accent),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: const TextStyle(
+              color: LivePalette.textHigh,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.6,
+            ),
+          ),
+        ],
+      );
+}
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.k, required this.v});
+  final String k;
+  final String v;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 2),
+        child: Text(
+          '$k: $v',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: LivePalette.textMid,
+            fontSize: 9.5,
+            height: 1.25,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      );
+}

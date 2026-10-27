@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -21,6 +19,7 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:flutter_education_app/design/app_hscroll.dart' show AppScrollBehavior;
+import 'package:flutter_education_app/design/boot_splash.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
@@ -46,6 +45,7 @@ import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute,
 import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
 import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
+import 'design/app_keyboard.dart' show AppKeyboardSupport;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
@@ -105,9 +105,11 @@ Future<void> main() async {
 /// work, then ALWAYS starts the real app. The error screen ([_FatalApp]) is
 /// shown only when startup fails.
 Future<void> _bootstrap() async {
+  if (SplashState.instance.steps > 0) SplashState.instance.reset(); // retry after a fatal start
+  SplashState.instance.expected = kIsWeb ? 7 : 10;
   // Decode the splash artwork first (bounded): the native splash stays up meanwhile, so Flutter's first
   // frame already shows the logo exactly where the native one was — no blank flash.
-  await _SplashArt.preload().timeout(const Duration(milliseconds: 800), onTimeout: () {});
+  await SplashArt.preload().timeout(const Duration(milliseconds: 800), onTimeout: () {});
   runApp(const _BootApp());
 
   try {
@@ -123,7 +125,7 @@ Future<void> _bootstrap() async {
   }
 
   try {
-    _BootProgress.stage = 1;
+    SplashState.instance.setStage(1);
     _runApp();
   } catch (e, s) {
     debugPrint('[bootstrap:runApp] $e\n$s');
@@ -137,6 +139,11 @@ Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
   await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
+  // The splash greets the returning user by name and paces its bar by this device's usual boot time.
+  SplashState.instance.setUser(ApiClient().hasSession ? _storage.savedUser : null);
+  await _safe('pacing', SplashPacing.load, seconds: 2);
+  // The app's identity (name, tagline, version): cached → instant, refreshed in the background.
+  await _safe('identity', _initIdentity, seconds: 3);
 
   await _safe('language', () => readLanguage(), seconds: 8);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
@@ -172,6 +179,7 @@ Future<void> _initCore() async {
   } catch (e) {
     debugPrint('[init:bindConnectivity] $e');
   }
+  SplashState.instance.setOffline(!AppConnectivity.instance.isOnline);
 
   // Offline (encrypted) videos: purge expired copies and load the list, so the
   // start route can be chosen synchronously.
@@ -190,19 +198,32 @@ Future<void> _initCore() async {
   }
 }
 
+Future<void> _initIdentity() async {
+  final id = AppIdentity.instance;
+  void push() {
+    SplashState.instance
+      ..setIdentity(tagline: id.tagline, version: id.installedVersion)
+      ..setFooter(text: id.splashFooter, logoBytes: id.splashLogoBytes, logoUrl: id.splashLogoUrl ?? '');
+  }
+  id.addListener(push); // the background refresh may land while the splash is still up
+  await id.init();
+  push();
+}
+
 /// Runs an init step with a timeout; failures are logged, never fatal.
 Future<T?> _safe<T>(
     String name,
     Future<T> Function() fn, {
       int seconds = 6,
     }) async {
+  SplashState.instance.beginStep(name); // splash status only
   try {
     return await fn().timeout(Duration(seconds: seconds));
   } catch (e) {
     debugPrint('[init:$name] $e');
     return null;
   } finally {
-    _BootProgress.steps++; // splash progress only
+    SplashState.instance.stepDone(name); // splash progress only
   }
 }
 
@@ -469,7 +490,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         : RemoteConfigService.instance.appName;
 
     // The splash dissolves over the first app frame instead of being cut away.
-    return _SplashHandOff(child: AnnotatedRegion<SystemUiOverlayStyle>(
+    return SplashHandOff(child: AnnotatedRegion<SystemUiOverlayStyle>(
       // Light icons (time/battery/signal) in the status bar, on every
       // screen — set once here instead of per-screen, since individual
       // AppBars/Scaffolds would otherwise need to remember to set this
@@ -518,6 +539,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           // laid out in the wrong direction.
           builder: (_, child) => Directionality(
             textDirection: Helpers.pageDirection,
+            // web / desktop keyboards: Enter walks a form and submits it, Ctrl+Enter from a multi-line field, Esc,
+            // Ctrl+K / "/" to the search box — for every text field (design/app_keyboard.dart)
+            child: AppKeyboardSupport(
             // the floating app assistant: a bubble above every signed-in screen (rag/app_assistant.dart)
             child: AppAssistantHost(
             navigatorKey: navigatorKey,
@@ -543,7 +567,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          ))),
+          )))),
           supportedLocales: context
               .read<LangProvider>()
               .languages
@@ -843,7 +867,7 @@ class _PremiumLoadingScreen extends StatelessWidget {
   // otherwise Flutter logs "Could not navigate to initial route".
   Route<dynamic> _splashRoute(RouteSettings _) => PageRouteBuilder(
     settings: const RouteSettings(name: '/'),
-    pageBuilder: (_, _, _) => const _SplashBody(),
+    pageBuilder: (_, _, _) => const BootSplash(),
   );
 
   @override
@@ -856,341 +880,6 @@ class _PremiumLoadingScreen extends StatelessWidget {
         _splashRoute(const RouteSettings(name: '/')),
       ],
     );
-  }
-}
-
-/// Boot progress shown by the splash. Visual only: it never influences how the init steps run.
-abstract final class _BootProgress {
-  /// Finished [_safe] init steps.
-  static int steps = 0;
-
-  /// 0 core init · 1 app mounted (live theme loading) · 2 ready → hand-off.
-  static int stage = 0;
-
-  // language, firebase, remoteConfig, notifications, connectivity (+ offlineVideos, attendanceCourses, crashlytics).
-  static int get _expected => kIsWeb ? 5 : 8;
-
-  static double get target => switch (stage) {
-        0 => 0.06 + 0.62 * (steps / _expected).clamp(0.0, 1.0),
-        1 => 0.82,
-        _ => 1.0,
-      };
-}
-
-/// The native splash artwork, decoded BEFORE the first Flutter frame so that frame already shows the logo
-/// (no blank flash between the native splash and Flutter's).
-abstract final class _SplashArt {
-  static const asset = 'assets/images/splash.png';
-
-  /// flutter_native_splash treats the source image as 4x (Android xxxhdpi, iOS @3x = ¾, web light-4x):
-  /// assets/images/splash.png is 1040×1000 px → 260×250 logical px, centred on the whole window on every
-  /// platform (android_gravity / ios_content_mode: center, fullscreen, web `.center`).
-  static const Size size = Size(260, 250);
-
-  static ui.Image? image;
-
-  /// Reduced motion from the platform: the hand-off overlay sits ABOVE MaterialApp, where there is no MediaQuery.
-  static bool get reduceMotion =>
-      WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
-
-  static Future<void> preload() async {
-    if (image != null) return; // retry after a fatal start: keep the decoded art (no second, leaked copy)
-    try {
-      final views = WidgetsBinding.instance.platformDispatcher.views;
-      final dpr = views.isEmpty ? 3.0 : views.first.devicePixelRatio;
-      final data = await rootBundle.load(asset);
-      final codec = await ui.instantiateImageCodec(
-        data.buffer.asUint8List(),
-        targetWidth: (size.width * dpr).round().clamp(1, 1040),
-      );
-      image = (await codec.getNextFrame()).image;
-    } catch (e) {
-      debugPrint('[splash] preload: $e');
-    }
-  }
-
-  static Widget widget(Size s) {
-    final img = image;
-    if (img != null) {
-      return RawImage(image: img, width: s.width, height: s.height, fit: BoxFit.fill, filterQuality: FilterQuality.medium);
-    }
-    return Image.asset(asset, width: s.width, height: s.height, fit: BoxFit.fill, gaplessPlayback: true);
-  }
-
-  /// Frees the decoded artwork once the hand-off finished (nothing paints it any more; a later splash —
-  /// e.g. a theme reload — falls back to Image.asset).
-  static void release() {
-    final img = image;
-    image = null;
-    img?.dispose();
-  }
-}
-
-/// THE splash, shared by the instant boot screen, the live-theme loading screen and the hand-off overlay.
-///
-/// Frame 1 is pixel-identical to the native splash (same artwork, 260×250 logical px, centred, #FBF7EC /
-/// #0F7B5F). Every value is derived from one shared clock, so re-mounting between those three screens never
-/// restarts or jumps the animation:
-///  * 0–0.35 s  perfectly still (the native frame);
-///  * then      a soft breathing scale + glow behind the mark, and a light shimmer sweeping across it;
-///  * > 1.5 s   (slow start only) a calm progress bar + message fade in below the logo;
-///  * [exit]    the mark zooms gently and fades while the canvas dissolves into the first app screen.
-/// Reduced motion (MediaQuery.disableAnimations): no breathing / shimmer / zoom — only fades.
-class _SplashBody extends StatefulWidget {
-  const _SplashBody({this.exit});
-
-  /// Hand-off progress 0 → 1 (null while still loading).
-  final Animation<double>? exit;
-
-  @override
-  State<_SplashBody> createState() => _SplashBodyState();
-}
-
-class _SplashBodyState extends State<_SplashBody> with SingleTickerProviderStateMixin {
-  static const _cream = Color(0xFFFBF7EC);
-  static const _emerald = Color(0xFF0F7B5F);
-  static const _still = 0.35, _indicatorAt = 1.5;
-
-  static final Stopwatch _clock = Stopwatch();
-  static double _shown = 0, _lastT = 0, _lastTarget = -1, _targetAt = 0;
-
-  static const _msgAr = ['نجهّز لك كل شيء…', 'لحظات ونكون معك', 'نحضّر تجربتك…'];
-  static const _msgEn = ['Getting everything ready…', 'Just a moment…', 'Preparing your experience…'];
-
-  late final AnimationController _tick = AnimationController(vsync: this, duration: const Duration(seconds: 1))
-    ..repeat();
-
-  @override
-  void initState() {
-    super.initState();
-    if (!_clock.isRunning) _clock.start();
-  }
-
-  @override
-  void dispose() {
-    _tick.dispose();
-    super.dispose();
-  }
-
-  double get _t => _clock.elapsedMicroseconds / 1e6;
-
-  /// Eases the bar toward the boot stage, creeping slowly inside a long step so it never looks frozen.
-  static void _advance(double t) {
-    final dt = (t - _lastT).clamp(0.0, 0.25);
-    _lastT = t;
-    final target = _BootProgress.target;
-    if (target != _lastTarget) {
-      _lastTarget = target;
-      _targetAt = t;
-    }
-    final creep = target >= 1 ? 0.0 : 0.09 * (1 - math.exp(-(t - _targetAt) / 5));
-    final goal = math.min(0.97, target + creep);
-    final next = _shown + (goal - _shown) * (1 - math.exp(-dt * (target >= 1 ? 9 : 2.6)));
-    _shown = target >= 1 ? math.max(_shown, next) : math.max(_shown, math.min(next, goal));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final mq = MediaQuery.maybeOf(context);
-    final reduce = mq?.disableAnimations ?? _SplashArt.reduceMotion;
-    final dark = (mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark;
-    final bg = dark ? _emerald : _cream;
-    final accent = dark ? _cream : _emerald;
-    final en = AppConfig.lang == 'en';
-    final msgs = en ? _msgEn : _msgAr;
-    final exit = widget.exit;
-
-    return Directionality(
-      textDirection: en ? TextDirection.ltr : TextDirection.rtl,
-      child: DefaultTextStyle(
-        style: const TextStyle(decoration: TextDecoration.none),
-        child: Semantics(
-          label: en ? 'Loading' : 'جارٍ التحميل',
-          child: LayoutBuilder(builder: (context, box) {
-            final w = box.maxWidth.isFinite ? box.maxWidth : _SplashArt.size.width + 32;
-            final h = box.maxHeight.isFinite ? box.maxHeight : _SplashArt.size.height + 32;
-            // Native size on every real screen; only a window smaller than the artwork scales it down.
-            final fit = math
-                .min(1.0, math.min((w - 32) / _SplashArt.size.width, (h - 32) / _SplashArt.size.height))
-                .clamp(0.2, 1.0);
-            final art = _SplashArt.size * fit;
-            final logo = RepaintBoundary(child: _SplashArt.widget(art));
-            // The visible mark spans ~32–68 % of the artwork's height: sit the indicator just below it.
-            final indicatorTop = (h / 2 + art.height * 0.18 + 40).clamp(0.0, math.max(0.0, h - 56)).toDouble();
-            final barW = math.min(150.0, math.max(0.0, w - 32));
-
-            return AnimatedBuilder(
-              animation: exit == null ? _tick : Listenable.merge([_tick, exit]),
-              builder: (context, _) {
-                final t = _t;
-                _advance(t);
-                final x = exit?.value ?? 0.0;
-
-                final ramp = reduce ? 0.0 : Curves.easeInOut.transform(((t - _still) / 0.8).clamp(0.0, 1.0));
-                final breath = 0.5 - 0.5 * math.cos(2 * math.pi * math.max(0.0, t - _still) / 2.8);
-                final scale = 1 + 0.028 * ramp * breath + (reduce ? 0.0 : 0.12 * Curves.easeOutCubic.transform(x));
-                final cyc = (t - 0.8) % 3.4;
-                final sweep = (!reduce && t > 0.8 && cyc < 1.2 && x == 0)
-                    ? Curves.easeInOutSine.transform(cyc / 1.2)
-                    : -1.0;
-                final glowA = (dark ? 0.16 : 0.11) * ramp * (0.55 + 0.45 * breath) * (1 - x);
-                final bgA = 1 - Curves.easeInOut.transform(x);
-                final logoA = 1 - Curves.easeInCubic.transform(x);
-                final appear = reduce ? (t > _indicatorAt ? 1.0 : 0.0) : ((t - _indicatorAt) / 0.5).clamp(0.0, 1.0);
-                final indA = appear * (1 - (x * 2.2).clamp(0.0, 1.0));
-                final msgIndex = (math.max(0.0, t - _indicatorAt) / 2.6).floor() % msgs.length;
-                final glow = art.width * 1.45;
-
-                return Stack(fit: StackFit.expand, children: [
-                  ColoredBox(color: bg.withValues(alpha: bgA)),
-                  Center(
-                    child: IgnorePointer(
-                      child: Container(
-                        width: glow,
-                        height: glow,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(colors: [
-                            accent.withValues(alpha: glowA),
-                            accent.withValues(alpha: 0),
-                          ]),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Opacity(
-                      opacity: logoA,
-                      child: Transform.scale(
-                        scale: scale,
-                        child: ShaderMask(
-                          blendMode: BlendMode.srcATop,
-                          shaderCallback: (r) {
-                            const clear = Color(0x00FFFFFF);
-                            if (sweep < 0) return const LinearGradient(colors: [clear, clear]).createShader(r);
-                            final c = -0.35 + 1.7 * sweep;
-                            return LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [clear, Colors.white.withValues(alpha: dark ? 0.32 : 0.48), clear],
-                              stops: [(c - 0.14).clamp(0.0, 1.0), c.clamp(0.0, 1.0), (c + 0.14).clamp(0.0, 1.0)],
-                            ).createShader(r);
-                          },
-                          child: logo,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: 16,
-                    right: 16,
-                    top: indicatorTop,
-                    child: Visibility(
-                      visible: indA > 0,
-                      child: Opacity(
-                        opacity: indA,
-                        child: Column(mainAxisSize: MainAxisSize.min, children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(3),
-                            child: SizedBox(
-                              width: barW,
-                              height: 3,
-                              child: ColoredBox(
-                                color: accent.withValues(alpha: 0.16),
-                                child: Align(
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: FractionallySizedBox(
-                                    widthFactor: _shown.clamp(0.0, 1.0),
-                                    heightFactor: 1,
-                                    child: ColoredBox(color: accent.withValues(alpha: 0.85)),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          AnimatedSwitcher(
-                            duration: reduce ? Duration.zero : const Duration(milliseconds: 450),
-                            child: Text(
-                              msgs[msgIndex],
-                              key: ValueKey(msgIndex),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: 'tajawal',
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                decoration: TextDecoration.none,
-                                color: dark ? _cream.withValues(alpha: 0.85) : const Color(0xFF4D6A61),
-                              ),
-                            ),
-                          ),
-                        ]),
-                      ),
-                    ),
-                  ),
-                ]);
-              },
-            );
-          }),
-        ),
-      ),
-    );
-  }
-}
-
-/// Lays the splash over the first real app frame and dissolves it (scale + fade), so the app appears out of
-/// the splash instead of replacing it in one cut. Plays once per launch.
-class _SplashHandOff extends StatefulWidget {
-  const _SplashHandOff({required this.child});
-  final Widget child;
-
-  @override
-  State<_SplashHandOff> createState() => _SplashHandOffState();
-}
-
-class _SplashHandOffState extends State<_SplashHandOff> with SingleTickerProviderStateMixin {
-  static bool _done = false;
-
-  late final AnimationController _out =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 620));
-
-  @override
-  void initState() {
-    super.initState();
-    if (_done) return;
-    _BootProgress.stage = 2;
-    // Let the app paint its first frame underneath, then dissolve the splash.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? _SplashArt.reduceMotion) {
-        _out.duration = const Duration(milliseconds: 220);
-      }
-      _out.forward().whenComplete(() {
-        _done = true;
-        if (mounted) setState(() {});
-        // after the frame that removed the overlay, nothing references the decoded artwork any more
-        WidgetsBinding.instance.addPostFrameCallback((_) => _SplashArt.release());
-        WidgetsBinding.instance.scheduleFrame();
-      });
-    });
-  }
-
-  @override
-  void dispose() {
-    _done = true;
-    _out.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // The app stays the FIRST child at all times, so removing the overlay never re-mounts it.
-    return Stack(fit: StackFit.expand, textDirection: TextDirection.ltr, children: [
-      widget.child,
-      if (!_done) Positioned.fill(child: IgnorePointer(child: _SplashBody(exit: _out))),
-    ]);
   }
 }
 

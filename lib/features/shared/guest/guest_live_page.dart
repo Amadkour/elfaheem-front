@@ -18,6 +18,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../config/app_config.dart';
@@ -25,8 +26,13 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
 import '../../../design/app_kit.dart';
 import '../../../utils/widget/base_page.dart';
+import '../../admin/admin_common.dart' show t;
+import '../../auth/auth_provider.dart';
 import '../../teacher/sessions/live/prejoin.dart';
+import '../../teacher/sessions/live/widgets/participant_info.dart' show isGuestIdentity;
 import '../../teacher/sessions/model/live_response_model.dart';
+import '../live/live_lobby_sheets.dart' show WaitingForHostPage;
+import '../live/live_room.dart';
 import 'guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 
@@ -197,37 +203,10 @@ class _GuestLivePageState extends State<GuestLivePage> {
       _pinError = false;
     });
     try {
-      final j = await GuestLiveApi.join(widget.token, name, pin: info.requiresPin ? pin : null);
+      final outcome = await GuestLiveApi.join(widget.token, name, pin: info.requiresPin ? pin : null);
       unawaited(_rememberName(name));
       if (!mounted) return;
-      _poll?.cancel();
-      await Navigator.of(context).push(
-        // No route name on purpose: a named route would be reported to the browser URL bar.
-        MaterialPageRoute(
-          builder: (_) => PreJoinPage(
-            args: JoinArgs(
-              isTeacher: false,
-              userId: -1,
-              userName: name,
-              sessionId: j.sessionId == 0 ? info.sessionId : j.sessionId,
-              courseId: 0,
-              apiClient: ApiClient(),
-              onStart: () async => LiveResponseModel(
-                sessionId: j.sessionId == 0 ? info.sessionId : j.sessionId,
-                url: j.wsUrl,
-                token: j.token,
-                recordingEnabled: j.recordingEnabled,
-              ),
-              onEnd: () async {},
-              sessionName: info.sessionName,
-              guest: true,
-              canPublish: j.canPublish,
-            ),
-          ),
-        ),
-      );
-      // Back on this page after leaving: refresh (the session may have ended meanwhile).
-      if (mounted) unawaited(_load());
+      await _enter(info, outcome, name: name, withAccount: false);
     } catch (e) {
       if (!mounted) return;
       if (guestLiveErrorIsPin(e)) {
@@ -257,10 +236,113 @@ class _GuestLivePageState extends State<GuestLivePage> {
     }
   }
 
+  // ── Signed-in viewer ──────────────────────────────────────────────────────
+
+  MyAuthProvider? get _auth {
+    try {
+      return context.read<MyAuthProvider>();
+    } catch (_) {
+      return null; // no provider above (tests / previews)
+    }
+  }
+
+  bool get _signedIn => _auth?.isAuthenticated == true;
+
+  String get _accountName => (_auth?.currentUser?.name ?? '').trim();
+
+  /// "Join with my account": POST /api/v1/live/links/{token}/join — a member of the room joins under the member
+  /// rule, anyone else as a named guest under the guest rule (live-rooms-spec §3). Same two answers as Join.
+  Future<void> _joinWithAccount() async {
+    final info = _info;
+    if (info == null || _joining || _rateLimitSeconds > 0 || !_signedIn) return;
+    if (info.recordingEnabled && !_consent) {
+      appToast('guest_live_consent_required'.tr, error: true);
+      return;
+    }
+    setState(() => _joining = true);
+    try {
+      final outcome = await LiveRoomApi.joinLink(widget.token);
+      if (!mounted) return;
+      await _enter(info, outcome, name: _accountName.isEmpty ? _nameCtrl.text.trim() : _accountName, withAccount: true);
+    } catch (e) {
+      if (!mounted) return;
+      if (guestLiveErrorIsRateLimit(e)) {
+        _startRateLimit();
+        return;
+      }
+      appToast(guestLiveErrorText(e), error: true);
+      unawaited(_load());
+    } finally {
+      if (mounted) setState(() => _joining = false);
+    }
+  }
+
+  /// The join answered: admitted → the pre-join page then the room; waiting → "Waiting for the host…" polls the
+  /// request (public with its secret, or the member poll) until admitted; rejected / expired → told, stays here.
+  Future<void> _enter(GuestLiveInfo info, JoinOutcome outcome, {required String name, required bool withAccount}) async {
+    var o = outcome;
+    _poll?.cancel();
+    if (o.isWaiting) {
+      final admitted = await Navigator.of(context).push<JoinOutcome>(
+        MaterialPageRoute(
+          builder: (_) => WaitingForHostPage(waiting: o, title: info.displayTitle, hostName: info.displayHost),
+        ),
+      );
+      if (!mounted) return;
+      if (admitted == null) {
+        unawaited(_load());
+        return;
+      }
+      o = admitted;
+    }
+    if (o.isRefused) {
+      appToast(liveRoomCodeText(o.status == JoinStatus.rejected ? 'join_rejected' : 'request_expired') ?? '', error: true);
+      unawaited(_load());
+      return;
+    }
+    final j = GuestJoin.fromJson(o.payload);
+    final ref = info.ref;
+    final sessionId = ref.isMeeting ? ref.sessionId : (j.sessionId == 0 ? info.sessionId : j.sessionId);
+    // A signed-in member joined as themselves (member identity): the room may use their token; a signed-in
+    // visitor admitted as a named guest, or a plain visitor, stays in guest mode (no authenticated calls).
+    final guest = !withAccount || j.identity.isEmpty || isGuestIdentity(j.identity);
+    await Navigator.of(context).push(
+      // No route name on purpose: a named route would be reported to the browser URL bar.
+      MaterialPageRoute(
+        builder: (_) => PreJoinPage(
+          args: JoinArgs(
+            isTeacher: false,
+            userId: guest ? -1 : (_auth?.currentUser?.id ?? -1),
+            userName: name,
+            sessionId: sessionId,
+            roomRef: ref,
+            courseId: 0,
+            apiClient: ApiClient(),
+            onStart: () async => LiveResponseModel(
+              sessionId: sessionId,
+              url: j.wsUrl,
+              token: j.token,
+              recordingEnabled: j.recordingEnabled,
+            ),
+            onEnd: () async {},
+            sessionName: info.displayTitle,
+            guest: guest,
+            canPublish: j.canPublish,
+          ),
+        ),
+      ),
+    );
+    // Back on this page after leaving: refresh (the session may have ended meanwhile).
+    if (mounted) unawaited(_load());
+  }
+
   @override
   Widget build(BuildContext context) => BasePage(
         enableFooterWidget: false,
         child: GuestLiveContent(
+          signedIn: _signedIn,
+          accountName: _accountName,
+          onJoinWithAccount: _joinWithAccount,
           loading: _loading,
           info: _info,
           error: _error,
@@ -304,10 +386,18 @@ class GuestLiveContent extends StatelessWidget {
     this.rateLimitSeconds = 0,
     this.onPinChanged,
     this.onConsentChanged,
+    this.signedIn = false,
+    this.accountName = '',
+    this.onJoinWithAccount,
   });
 
   final bool loading;
   final GuestLiveInfo? info;
+
+  /// A signed-in viewer gets "Join with my account" next to the guest Join (when `info.signedInJoin`).
+  final bool signedIn;
+  final String accountName;
+  final VoidCallback? onJoinWithAccount;
 
   /// Shown instead of the session card (null → no error).
   final String? error;
@@ -393,6 +483,9 @@ class GuestLiveContent extends StatelessWidget {
                     onConsentChanged: onConsentChanged,
                     onJoin: onJoin,
                     transientError: error,
+                    signedIn: signedIn,
+                    accountName: accountName,
+                    onJoinWithAccount: onJoinWithAccount,
                   ),
                 ),
             ],
@@ -417,10 +510,16 @@ class _SessionCard extends StatefulWidget {
     this.onPinChanged,
     this.onConsentChanged,
     this.transientError,
+    this.signedIn = false,
+    this.accountName = '',
+    this.onJoinWithAccount,
   });
 
   final GuestLiveInfo info;
   final bool joining;
+  final bool signedIn;
+  final String accountName;
+  final VoidCallback? onJoinWithAccount;
   final TextEditingController nameController;
   final TextEditingController? pinController;
   final bool pinError;
@@ -458,24 +557,34 @@ class _SessionCardState extends State<_SessionCard> {
     final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
     final limited = widget.rateLimitSeconds > 0;
     final needsConsent = info.recordingEnabled && !widget.consent;
-    final title = info.sessionName.trim().isNotEmpty ? info.sessionName : 'lr_live_session'.tr;
+    final title = info.displayTitle.isNotEmpty ? info.displayTitle : (info.isMeeting ? t('اجتماع', 'Meeting') : 'lr_live_session'.tr);
+    final host = info.displayHost;
+    final accountJoin = widget.signedIn && info.signedInJoin && widget.onJoinWithAccount != null;
     return AppCard(
       key: ValueKey(live ? 'guest_live.live' : 'guest_live.waiting'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // Status + names
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: AppBadgePill(
+        Wrap(spacing: 6, runSpacing: 6, children: [
+          AppBadgePill(
             (live ? 'guest_live_badge_live' : 'guest_live_badge_waiting').tr,
             icon: live ? Icons.fiber_manual_record_rounded : Icons.schedule_rounded,
             color: live ? c.danger : c.warning,
           ),
-        ),
+          if (info.isMeeting)
+            AppBadgePill(t('اجتماع', 'Meeting'), key: const ValueKey('guest_live.meeting'), icon: Icons.groups_rounded, color: c.primary),
+        ]),
         const SizedBox(height: 10),
         Text(title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.2)),
         const SizedBox(height: 8),
         if (info.courseName.trim().isNotEmpty) AppInfoRow(Icons.menu_book_rounded, info.courseName),
-        if (info.teacherName.trim().isNotEmpty) AppInfoRow(Icons.school_rounded, info.teacherName),
+        if (host.isNotEmpty) AppInfoRow(info.isMeeting ? Icons.person_rounded : Icons.school_rounded, host),
+        if (info.startsAt != null) AppInfoRow(Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
+        AppInfoRow(
+          info.guestAdmission == LiveGuestAdmission.auto ? Icons.door_front_door_outlined : Icons.how_to_reg_rounded,
+          info.guestAdmission == LiveGuestAdmission.auto
+              ? t('تدخل مباشرة بعد الانضمام', 'You come straight in after joining')
+              : t('يقبل المضيف الزوار واحداً واحداً — قد تنتظر قليلاً', 'The host lets visitors in one by one — you may wait a moment'),
+        ),
         AppInfoRow(
           info.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
           (info.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
@@ -591,6 +700,21 @@ class _SessionCardState extends State<_SessionCard> {
           busy: widget.joining,
           onPressed: live && !full && !limited && !needsConsent ? widget.onJoin : null,
         ),
+        if (accountJoin) ...[
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.center,
+            child: AppPill(
+              key: const ValueKey('guest_live.join_account'),
+              icon: Icons.account_circle_rounded,
+              label: widget.accountName.isEmpty
+                  ? t('الانضمام بحسابي', 'Join with my account')
+                  : '${t('الانضمام بحسابي', 'Join with my account')} (${widget.accountName})',
+              color: c.primary,
+              onTap: live && !limited && !needsConsent && !widget.joining ? widget.onJoinWithAccount : null,
+            ),
+          ),
+        ],
       ]),
     );
   }

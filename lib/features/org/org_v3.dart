@@ -254,7 +254,6 @@ Map<String, String> _codeTexts() => {
       'bad_action': t('الحل لا يحدد الحصة', 'The fix does not name a session'),
       'reassign_not_better': t('النسخة بعد التغيير أسوأ من الحالية', 'The version after the change ranks worse than the current one'),
       'slot_not_found': t('الحصة غير موجودة', 'The session was not found'),
-      'term_not_found': t('الفصل الدراسي غير موجود', 'The term was not found'),
       'term_has_timetable': t('لهذا الفصل جدول منشور بالفعل', 'This term already has a published timetable'),
       'date_required': t('حدّد تاريخ الحصة', 'Pick the session date'),
       'bad_date': t('التاريخ لا يقع في يوم هذه الحصة', "That date is not on this session's weekday"),
@@ -485,12 +484,14 @@ Map<String, String> requestStatusLabels() => {
 Map<String, String> runStatusLabels() => {
       'queued': t('في الانتظار', 'Queued'),
       'running': t('جارٍ التوليد', 'Generating'),
+      'waiting': t('بانتظار قرارك', 'Waiting for your decision'),
       'succeeded': t('اكتمل', 'Finished'),
       'failed': t('فشل', 'Failed'),
       'cancelled': t('أُلغي', 'Cancelled'),
     };
 
-bool runIsOpen(Map<String, dynamic>? run) => const {'queued', 'running'}.contains(run?['status']);
+/// A run the server is still working on — or holding for the creator's decision (a ladder run, status `waiting`).
+bool runIsOpen(Map<String, dynamic>? run) => const {'queued', 'running', 'waiting'}.contains(run?['status']);
 
 /// The solver's verdict (schedule.result.status / run.result_status).
 Map<String, String> resultStatusLabels() => {

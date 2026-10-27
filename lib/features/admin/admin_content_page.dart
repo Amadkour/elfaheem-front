@@ -612,6 +612,80 @@ class _AdminContentPageState extends State<AdminContentPage> {
   //  About tab
   // ═══════════════════════════════════════════════════════════════════════════
 
+  /// The splash footer ("Powered by Double Y" + its small logo) as the splash will show it, with its buttons.
+  Widget _splashFooterBlock(Map<String, dynamic> info) {
+    final c = context.colors;
+    final line = _loc(info, 'splash_footer');
+    final logo = asStr(info['splash_logo_url']);
+    final uploading = _uploading == '/about/info/splash-logo';
+    final empty = line.isEmpty && logo.isEmpty;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.inputBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: c.divider),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.vertical_align_bottom_rounded, size: 16, color: c.primary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text('content_splash_footer'.tr,
+                style: adminText(context, size: 12, weight: FontWeight.w800, color: c.primary)),
+          ),
+        ]),
+        const SizedBox(height: 4),
+        Text('content_splash_footer_hint'.tr,
+            style: adminText(context, size: 12, weight: FontWeight.w500, color: c.textMedium, height: 1.5)),
+        const SizedBox(height: 10),
+        if (empty && !uploading)
+          Text('content_splash_footer_empty'.tr,
+              style: adminText(context, size: 13, weight: FontWeight.w600, color: c.textLight))
+        else
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            if (uploading)
+              const SizedBox(width: 26, height: 26, child: CircularProgressIndicator(strokeWidth: 2.4))
+            else if (logo.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 96, maxHeight: 26),
+                child: Image.network(logo, height: 26, fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Icon(Icons.broken_image_rounded, size: 20, color: c.textLight)),
+              ),
+            if ((uploading || logo.isNotEmpty) && line.isNotEmpty) const SizedBox(width: 8),
+            if (line.isNotEmpty)
+              Flexible(
+                child: Text(line,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: adminText(context, size: 13, weight: FontWeight.w700, color: c.textDark)),
+              ),
+          ]),
+        const SizedBox(height: 12),
+        Wrap(spacing: 10, runSpacing: 8, children: [
+          OutlinedButton.icon(
+            onPressed: uploading ? null : () => _pickImage('/about/info/splash-logo'),
+            icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
+            label: Text('content_upload_splash_logo'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+            style: OutlinedButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+          if (logo.isNotEmpty)
+            TextButton.icon(
+              onPressed: uploading
+                  ? null
+                  : () => _run(() => _api.delete('$_write/about/info/splash-logo'), ok: 'content_photo_removed'),
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text('content_remove_splash_logo'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+            ),
+        ]),
+      ]),
+    );
+  }
+
   Widget _identityCard() {
     final c = context.colors;
     final info = _info;
@@ -709,6 +783,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                   ]),
                 ),
               ],
+              _splashFooterBlock(info),
             ],
             const SizedBox(height: 14),
             Wrap(spacing: 10, runSpacing: 8, children: [
@@ -1046,6 +1121,8 @@ const _aboutCfg = _FormCfg(
     _FieldSpec('tagline_en', 'content_f_tagline_en', ltr: true),
     _FieldSpec('mission_ar', 'content_f_mission_ar', lines: 4),
     _FieldSpec('mission_en', 'content_f_mission_en', lines: 4, ltr: true),
+    _FieldSpec('splash_footer_ar', 'content_f_splash_footer_ar'),
+    _FieldSpec('splash_footer_en', 'content_f_splash_footer_en', ltr: true),
   ],
 );
 

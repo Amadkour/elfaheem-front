@@ -22,7 +22,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../shared/attendance/admin_data_lab_page.dart';
-import '../shared/rag/rag_library_screen.dart' show RagLibraryScreen;
+import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
 import 'admin_categories_page.dart';
@@ -380,13 +380,13 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
         AdminService(
           labelKey: 'svc_app_assistant',
           descKey: 'svc_app_assistant_d',
-          label: t('لوحة مساعد التطبيق (RAG)', 'App assistant dashboard (RAG)'),
-          desc: t('المستندات التي يجيب منها المساعد الذكي: رفع، أرشفة، إعادة فهرسة، وتجربة المساعد',
-              'The documents the AI assistant answers from: upload, archive, reindex, and try it'),
-          icon: Icons.smart_toy_rounded,
+          label: t('لوحة المساعد الذكي', 'AI assistant console'),
+          desc: t('إعدادات النموذج والوكلاء، التحليلات، تجربة الأسئلة مع مسارها، ومستندات التطبيق',
+              'Model and agent settings, analytics, a playground with every step traced, and the app documents'),
+          icon: Icons.auto_awesome_rounded,
           colors: AdminPalette.indigo,
           featureKey: 'rag.admin',
-          onTap: () => push(RagLibraryScreen(app: true, title: t('لوحة مساعد التطبيق', 'App assistant dashboard'))),
+          onTap: () => push(const RagAdminConsole()),
         ),
         AdminService(
           labelKey: 'admin_flags_title',

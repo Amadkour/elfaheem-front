@@ -133,19 +133,26 @@ Tips: take sharp, well-lit photos. The app warns "The photo is blurred", "too da
 | The grading queue is full — try again shortly | Many scans are being read. Upload again in a few minutes |
 | The exam service is not available on the server yet | The new exam engine is not installed on this server |
 
-## 2. The documents assistant (RAG)
+## 2. The AI assistant (RAG)
 
-Members ask questions in plain language. The assistant answers **only from your organization's or course's documents**, quotes them and shows where each part came from. If the answer is not in the documents, it says so instead of guessing.
+Members ask questions in plain language, in Arabic or English. The assistant answers **only from the documents it is given** — the app's own terms, pages and features guide, your organization's rules and library, or a course's documents — writes the answer in your language, marks the source of every sentence and checks the answer against those sources before showing it. If the answer is not in the documents, it says so instead of guessing. The model that writes the answers runs **on the platform's own server** (an open-source model, no outside AI service): nothing you ask, and nothing from your organization's documents, leaves the server. That also means an answer takes a little while (usually 10–15 seconds, longer when the platform admin chooses the larger model); the chat shows what the assistant is doing meanwhile.
+
+There are three places to meet it:
+
+- **The app assistant** — the floating ✦ button on every screen (and Profile → App assistant): how to use a feature, the terms and conditions, subscriptions and refunds, devices, privacy. While you are in **Organization mode**, the same button also answers about that organization's rules, regulations and documents, and the header says so.
+- **The documents assistant** of an organization (book icon) or a course (course profile → Ask the course documents).
+- **The exam generator** for teachers (section 2.6).
 
 <!-- figure: rag_flow.png (drawn in the Word copy, documents/07_New_Features_Quick_Guide.docx) -->
 
 ### 2.1 Ask a question (every member)
 
 1. In the organization screen tap the book icon, **Documents assistant (مساعد المستندات)**. For a course: course profile → **Ask the course documents**.
-2. Type in **Your question** (up to 1000 characters) and tap **Send**. You see "Searching the documents…" for a few seconds.
-3. The answer carries numbered marks like [1]. Under **Sources** each source names the document, the section and the page.
-4. "Not found" answers have a search-off icon: the documents do not cover your question. Ask differently, or ask a staff member.
-5. Rate the answer: **Helpful** or **Not helpful**. Library managers see unhelpful questions (without your name) so they can fix the documents.
+2. Type your question (up to 1000 characters) and tap **Send**, or tap one of the suggested questions when the chat is empty — they are built from the sections your library actually contains (the features guide, the terms, your organization's rules, the course's chapters), so they always have an answer, and they change from day to day. While the assistant works you see its steps: **Understand → Search → Write** (and **Verify** when a hosted model is used).
+3. The answer carries numbered marks like [1]; bold terms, lists and numbered steps come from the documents' own wording. Under **Sources** each source names the document, the section and the page; tap one to read the quoted passage. **Copy** copies the answer without the marks.
+4. Under the answer the assistant suggests two or three **follow-up questions** it can answer from the same sources; tap one to continue. It also understands follow-ups you type ("and for teachers?"), because it keeps the last few turns of the chat in mind.
+5. "Not found" answers have a search-off icon: the documents do not cover your question. Ask differently, or ask a staff member. A greeting gets a greeting; a question outside the assistant's scope gets a reminder of what it can help with.
+6. Rate the answer: **Helpful** or **Not helpful**. Library managers and the platform admin see unhelpful questions (without your name) so they can fix the documents.
 
 Limits: 10 questions a minute per person. You only get answers from documents you are allowed to see.
 
@@ -158,7 +165,7 @@ Library managers are organization admins, staff with the right to manage materia
 3. Status goes **Queued → Processing → Ready**. Only Ready documents are used for answers. **Failed** usually means a damaged or password-protected file.
 4. Per document: **Download**, **New version** (replaces the old one), **Reindex**, **Archive** (removed from search at once).
 5. **Unhelpful answers** lists questions that did not help. Add or fix a document.
-6. **Answer settings**: by default the assistant **quotes the documents directly**. "Written by a language model" can be chosen only when the server has one; "Allow an external provider" is a separate choice for the organization admin. A change applies to new questions only.
+6. **Answer settings**: by default the organization **follows the platform** (the Super Admin's choice, normally "written by the model from the sources and checked"). An organization can insist on **Quote the documents directly** (no excerpt leaves the server) or on the model; the line under the choice says what applies right now. A change applies to new questions only.
 
 Tips: documents with clear headings ("Article 5", numbered sections) give the best answers. Scanned PDFs are read by text recognition, so a text PDF is better.
 
@@ -177,6 +184,53 @@ Tips: documents with clear headings ("Article 5", numbered sections) give the be
 | The assistant is still working on your answer — refresh in a moment | Tap Refresh |
 | The file is larger than 30 MB / Unsupported type | Pick a smaller file or a supported type |
 | The assistant is unavailable: this organization is deactivated | See section 5 |
+| I did not understand the question — could you rephrase it? | The message was too short or garbled to search |
+| I can help with the app and your documents only | The question was outside the assistant's scope |
+
+### 2.5 The AI assistant console (super admin)
+
+Admin dashboard → Services → **AI assistant console**. Four tabs:
+
+1. **Overview** — answers in the last 7 / 30 / 90 days, the share found and the share rated helpful, where questions come from (the app assistant, the app inside an organization, organization and course documents), how answers were written (model · quoted · fallback), the median answer time, the queue, and two lists to act on: **Questions without an answer** (add a document that answers them) and **Unhelpful answers**.
+2. **Settings** — how answers are written (by the model, or quoted only), whether organizations use the model by default, the answer style (concise · balanced · detailed), the assistant's name and extra guidance in each language, which agents run (the planner that understands the question and searches in both languages, the verifier that checks every sentence, greetings without the library, the exam planner and reviewer), how many earlier turns the writer sees, how many sources an answer quotes, and — with a hosted model only — the effort per step and the model names. With the platform's own local model the tab shows the model, whether its files are on the server and its speed instead; the planner, verifier and exam reviewer then run as checks in the code (one model call per answer keeps it fast on the server). **Test** checks the model's files; the Playground runs a real answer.
+3. **Playground** — ask exactly as a member would (as the app assistant, inside an organization, or on an organization's documents) and read the **trace**: the intent, the standalone question, the search queries in both languages, the hits with their scores, every model step with its time and tokens, the verifier's verdict and, when the plain answer served instead, why.
+4. **Questions** — every question with its answer and trace; filter by not found, unhelpful or the app assistant, or search the text.
+
+The **App documents** button (top right) is the library the app assistant reads: the terms, the about page and the features guide are synced from the app's own pages; upload more guides there.
+
+### 2.6 Exam questions written from the course documents (teachers)
+
+Quick exam → **Generate the questions for me from the course documents**.
+
+1. Upload the course file if the course has none yet (a Word file or a text PDF works best).
+2. Pick the **type** (mixed · multiple choice · essay), **how many** (1–40) and the **difficulty** (mixed · easy · medium · hard). Under **Advanced**: a **focus** ("chapter 3 only", "photosynthesis") and the questions' **language** (the document's, Arabic or English).
+3. Tap **Generate**. Behind the scenes: tables of contents, copyright pages, references and exercise lists are set aside; a planner picks the topics worth examining; a writer writes each question with the sentence from the text that justifies the answer; a reviewer grades every question and fixes or drops the weak ones. The toast says what happened ("10 questions · 4 topics picked by the planner · reviewer dropped 2").
+4. The questions land in the builder as a draft: review and edit them before publishing.
+
+### 2.7 The timetable ladder: a complete, conflict-free timetable (organization admins)
+
+Timetable studio → **Create timetable** (or the ladder icon in the toolbar first).
+
+1. **The ladder.** Tap the ladder icon to see the rungs in priority order: free moves (nothing is broken), TA limits, doctor limits, rooms (including a new room), split groups, open new times, student times, over capacity, student clash. Drag or use the arrows to reorder; set each rung to **Auto** (break and log), **Ask me** (pause and ask first) or **Locked** (never). The rules under "Never broken" (a person or a room in two sessions, a lab outside a lab, a course's own sessions overlapping, doctor-or-TA) cannot be unlocked. **Options** hold the budget, the solve time per attempt (by size unless you set it), how long a question waits before the recommendation is applied, the capacity overflow and how many rooms / periods / days may be opened. Save the ladder, or save it as a **preset** to reuse next term.
+2. **Generate.** The run first looks for an arrangement that keeps every rule, then climbs the ladder rung by rung until every session is placed. A rung that cannot touch what blocks the remaining sessions is set aside without a trial (the log says so) and tried only if nothing else completes, so the time goes where it helps. The live panel shows the stage, placed / remaining / rules bent, the rung being relaxed and why, the elapsed time of the budget and the step log; **Cancel** keeps the previous timetable untouched. "Fully automatic" never asks: the recommended option is applied and logged.
+3. **Decisions.** When a rung marked "Ask me" is needed, or when no single rung completes the timetable, the run pauses and shows the options: each with how many sessions it places, which rules it bends and how many people it touches; the recommended one is marked with its reason. Pick one, or **Let the system decide**. The run resumes at once; an unanswered question is applied automatically after the timeout.
+4. **The result.** The summary says what was placed, which rungs were applied, which rules were bent, and what was added — a proposed hall or lab (a real room, named "Proposed hall n"), an extra period, a new day, a group split (a new group goes to an eligible colleague with the fewest sessions, and the course plan remembers it) — plus the independent check: zero conflicts. Rejecting the proposal of a session in a proposed room removes that room again when nothing else uses it. Every bent rule is still a proposal: **Accept all** or review them one by one; publishing waits for the decisions. If the ladder could not complete the timetable, "What blocks completion" names the locked rung that would.
+
+### 2.8 Live rooms: share link, lobby and meeting recordings to your drive (hosts, members, guests)
+
+- **Share link.** The host of a course live session or an online meeting creates a link (`Share link`), with an
+  optional PIN, a cap on guests and whether guests may speak. Anyone with the link opens it in the browser or the
+  app: a signed-in member joins with their account, anyone else joins as a named guest.
+- **Lobby.** `Lobby & admission` in the room (the button with the waiting count) or on the meeting: a list of
+  people waiting with Admit / Reject / Admit all, and two switches — "Everyone needs my approval" (members) and
+  "Guests join automatically". A new request shows a banner in the room with a sound; when the host is not in the
+  room a notification opens the lobby. Whoever waits sees "Waiting for the host…" and gets in the moment the host
+  admits them; the server issues the room token only then.
+- **Recording a meeting.** The creator of an online meeting (not a course session: those keep their course
+  recording) taps Record, picks Google Drive or OneDrive (connecting it once in the browser) and a quality
+  (1080p / 720p / 480p / audio only). The server assembles the file, moves it to the drive and notifies the
+  creator; the meeting shows the recording's status and the drive link. Settings → Connected drives manages the
+  accounts.
 
 ## 3. Security you will meet
 

@@ -57,6 +57,12 @@ class ScreenCaptureService : Service() {
         const val EXTRA_CHUNK_SECS  = "chunkSeconds"
         const val EXTRA_IS_FINAL    = "isFinal"
         const val EXTRA_CHUNK_INDEX = "chunkIndex"
+        // Meeting recordings (docs/backend/live-rooms-spec.md §5): the picked quality. 0 = the defaults below.
+        const val EXTRA_VIDEO_BPS   = "videoBitrate"
+        const val EXTRA_MAX_HEIGHT  = "maxHeight"
+        // Audio-only (quality "audio"): MediaRecorder captures the mic alone — AAC in an MP4 container
+        // (.m4a chunks), no video source / encoder surface, no MediaProjection needed for the recording.
+        const val EXTRA_AUDIO_ONLY  = "audioOnly"
 
         private const val TAG       = "ScreenCaptureService"
         private const val VIDEO_BPS = 8_000_000
@@ -98,6 +104,9 @@ class ScreenCaptureService : Service() {
     private var authToken  = ""
     private var chunkSecs  = 5
     private var chunkIndex = 0
+    private var videoBps   = VIDEO_BPS   // EXTRA_VIDEO_BPS when > 0
+    private var maxHeight  = 0           // EXTRA_MAX_HEIGHT: cap on the longer side (0 = none)
+    private var audioOnly  = false       // EXTRA_AUDIO_ONLY: see prepareRecorder()
 
     private var screenWidth  = 1080
     private var screenHeight = 1920
@@ -137,8 +146,11 @@ class ScreenCaptureService : Service() {
                 authToken  = intent.getStringExtra(EXTRA_AUTH_TOKEN) ?: ""
                 chunkSecs  = intent.getIntExtra(EXTRA_CHUNK_SECS,   5)
                 chunkIndex = intent.getIntExtra(EXTRA_CHUNK_INDEX,  0)
+                videoBps   = intent.getIntExtra(EXTRA_VIDEO_BPS, 0).let { if (it > 0) it else VIDEO_BPS }
+                maxHeight  = intent.getIntExtra(EXTRA_MAX_HEIGHT, 0)
+                audioOnly  = intent.getBooleanExtra(EXTRA_AUDIO_ONLY, false)
                 pendingUploads.set(0)
-                Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs")
+                Log.d(TAG, "ACTION_START_MIC_ONLY session=$sessionId chunkSecs=$chunkSecs audioOnly=$audioOnly")
                 try {
                     cacheDir.listFiles()?.forEach { f ->
                         if (f.isDirectory && f.name.startsWith("session_") &&
@@ -167,7 +179,16 @@ class ScreenCaptureService : Service() {
                             onLiveFrameForCapturer = { w, h, rgba ->
                                 ElFaheemBridge.pushFrame(rgba, w, h, System.nanoTime())
                             },
-                    ).also { it.start(screenWidth, screenHeight) }
+                    ).also {
+                        it.start(screenWidth, screenHeight)
+                        // Audio-only: the recorder never gets an encoder surface
+                        // (prepareRecorder skips attachEncoderSurface), but the
+                        // renderer stays alive drawing into an offscreen buffer so
+                        // a later Share still works the same single-projection way
+                        // (ACTION_STORE_PROJECTION → VirtualDisplay → inputSurface →
+                        // onLiveFrameForCapturer); only nothing of it is recorded.
+                        if (audioOnly) it.attachOffscreenOutput(screenWidth, screenHeight)
+                    }
 
                     shouldStop.set(false)
                     shouldPause.set(false)
@@ -618,36 +639,60 @@ class ScreenCaptureService : Service() {
     // renderer's EGL output to this chunk's recorder.surface, whether the
     // renderer is currently drawing a placeholder or real live frames.
 
+    /** The screen size, scaled down so the longer side is at most [maxHeight] (when set), 16-aligned. */
+    private fun encoderSize(): Pair<Int, Int> {
+        val longer = maxOf(screenWidth, screenHeight)
+        if (maxHeight <= 0 || longer <= maxHeight) return screenWidth to screenHeight
+        val ratio = maxHeight.toDouble() / longer
+        fun align16(v: Int) = (v and 0xFFF0).coerceAtLeast(16)
+        return align16((screenWidth * ratio).toInt()) to align16((screenHeight * ratio).toInt())
+    }
+
     private fun prepareRecorder(sessionDir: File, index: Int): MediaRecorder {
         val tmp = tmpFile(sessionDir, index)
         tmp.delete()
 
         val recorder = MediaRecorder(this).also { mediaRecorder = it }
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+        if (audioOnly) {
+            // Audio-only: AAC in an MP4 container (an .m4a chunk) — no video
+            // source, no encoder surface, same chunk rotation / upload path.
+            recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioEncodingBitRate(AUDIO_BPS)
+            recorder.setAudioSamplingRate(44100)
+            recorder.setOutputFile(tmp.absolutePath)
+            recorder.prepare()
+            return recorder
+        }
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         recorder.setAudioEncodingBitRate(AUDIO_BPS)
         recorder.setAudioSamplingRate(44100)
         recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-        recorder.setVideoEncodingBitRate(VIDEO_BPS)
+        recorder.setVideoEncodingBitRate(videoBps)
         recorder.setVideoFrameRate(VIDEO_FPS)
-        recorder.setVideoSize(screenWidth, screenHeight)
+        val (encW, encH) = encoderSize()
+        recorder.setVideoSize(encW, encH)
         recorder.setOutputFile(tmp.absolutePath)
         recorder.prepare()
 
-        placeholderRenderer!!.attachEncoderSurface(recorder.surface, screenWidth, screenHeight)
+        placeholderRenderer!!.attachEncoderSurface(recorder.surface, encW, encH)
 
         return recorder
     }
 
     // ── File path helpers ─────────────────────────────────────────────────────
 
+    /** `.m4a` for an audio-only recording (AAC in MP4), `.mp4` otherwise — also the uploaded name / type. */
+    private fun chunkExt() = if (audioOnly) "m4a" else "mp4"
+
     private fun chunkFile(dir: File, index: Int) =
-            File(dir, "chunk_${index.toString().padStart(6, '0')}.mp4")
+            File(dir, "chunk_${index.toString().padStart(6, '0')}.${chunkExt()}")
 
     private fun tmpFile(dir: File, index: Int) =
-            File(dir, "chunk_${index.toString().padStart(6, '0')}.mp4.tmp")
+            File(dir, "chunk_${index.toString().padStart(6, '0')}.${chunkExt()}.tmp")
 
     // ── upload ────────────────────────────────────────────────────────────────
 
@@ -695,8 +740,8 @@ class ScreenCaptureService : Service() {
             field("chunk_index", index.toString())
             field("is_final",    if (isFinal) "1" else "0")
             out.write(("--$boundary\r\nContent-Disposition: form-data; name=\"chunk\";" +
-                    " filename=\"chunk_${index.toString().padStart(6,'0')}.mp4\"\r\n" +
-                    "Content-Type: video/mp4\r\n\r\n").toByteArray())
+                    " filename=\"chunk_${index.toString().padStart(6,'0')}.${chunkExt()}\"\r\n" +
+                    "Content-Type: ${if (audioOnly) "audio/mp4" else "video/mp4"}\r\n\r\n").toByteArray())
             file.inputStream().use { it.copyTo(out) }
             out.write("\r\n--$boundary--\r\n".toByteArray())
         }
@@ -759,7 +804,11 @@ class ScreenCaptureService : Service() {
             NotificationCompat.Builder(this, CHANNEL_ID)
                     .setContentTitle("Recording session")
                     .setContentText(
-                            if (isPaused) "Recording paused" else "Session recording in progress"
+                            when {
+                                isPaused  -> "Recording paused"
+                                audioOnly -> "Audio recording in progress"
+                                else      -> "Session recording in progress"
+                            }
                     )
                     .setSmallIcon(android.R.drawable.ic_menu_camera)
                     .setPriority(NotificationCompat.PRIORITY_LOW)

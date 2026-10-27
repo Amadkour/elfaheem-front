@@ -177,6 +177,11 @@ class MainActivity : FlutterActivity() {
                             val authToken = call.argument<String>("authToken") ?: ""
                             val chunkSecs = call.argument<Int>("chunkSeconds") ?: 5
                             val chunkIdx  = call.argument<Int>("chunkIndex")   ?: 0
+                            // Meeting recordings: the picked quality (absent for course sessions → 0 = defaults).
+                            val videoBps  = call.argument<Int>("videoBitrate") ?: 0
+                            val maxHeight = call.argument<Int>("maxHeight")    ?: 0
+                            // Audio-only: an AAC MediaRecorder with no video source (see ScreenCaptureService).
+                            val audioOnly = call.argument<Boolean>("audioOnly") ?: false
                             try {
                                 val i = Intent(this, ScreenCaptureService::class.java).apply {
                                     action = ScreenCaptureService.ACTION_START_MIC_ONLY
@@ -185,10 +190,13 @@ class MainActivity : FlutterActivity() {
                                     putExtra(ScreenCaptureService.EXTRA_AUTH_TOKEN,  authToken)
                                     putExtra(ScreenCaptureService.EXTRA_CHUNK_SECS,  chunkSecs)
                                     putExtra(ScreenCaptureService.EXTRA_CHUNK_INDEX, chunkIdx)
+                                    putExtra(ScreenCaptureService.EXTRA_VIDEO_BPS,   videoBps)
+                                    putExtra(ScreenCaptureService.EXTRA_MAX_HEIGHT,  maxHeight)
+                                    putExtra(ScreenCaptureService.EXTRA_AUDIO_ONLY,  audioOnly)
                                 }
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                                     startForegroundService(i) else startService(i)
-                                Log.d(TAG, "startMicRecording: session=$sessionId  chunkSecs=$chunkSecs")
+                                Log.d(TAG, "startMicRecording: session=$sessionId  chunkSecs=$chunkSecs  audioOnly=$audioOnly")
                                 result.success(true)
                             } catch (e: Exception) {
                                 Log.e(TAG, "startMicRecording: ${e.message}", e)

@@ -380,13 +380,17 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
                 ExamProgressBar(index: _index, total: all.length, answered: _paper.answeredCount, locked: _locked, lockReason: _lockReason,
                     warning: _warning, pendingSaves: _queue.length),
                 Expanded(
-                  child: ExamQuestionCard(
-                    key: ValueKey('q.${q.questionId}.$_restored'),
-                    question: q,
-                    section: _paper.sections[q.sectionIndex],
-                    enabled: !_locked && !_finished,
-                    onAnswer: (a) => _answer(q, a),
-                    onPickFile: () => _uploadFile(q),
+                  // Enter in an answer box goes to the next question — never to "Submit" (web / desktop keyboards)
+                  child: EnterSubmits(
+                    onSubmit: _index < all.length - 1 ? () => _goTo(_index + 1) : null,
+                    child: ExamQuestionCard(
+                      key: ValueKey('q.${q.questionId}.$_restored'),
+                      question: q,
+                      section: _paper.sections[q.sectionIndex],
+                      enabled: !_locked && !_finished,
+                      onAnswer: (a) => _answer(q, a),
+                      onPickFile: () => _uploadFile(q),
+                    ),
                   ),
                 ),
                 ExamNavBar(

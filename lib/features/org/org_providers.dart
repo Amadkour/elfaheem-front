@@ -17,6 +17,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
 import 'org_platform_context.dart';
+import 'org_schedule_ladder.dart';
 import 'org_v3.dart';
 
 const orgBase = '/api/v1/org';
@@ -282,8 +283,10 @@ class OrgScheduleProvider extends AdminBase {
   /// GET …/schedules/term-needs: the current / next term without a timetable, with the server's blockers
   List<Map<String, dynamic>> termNeeds = [];
   bool termNeedsLoaded = false;
-  Map<String, dynamic>? genRun;      // the run being followed (queued / running / just finished)
+  Map<String, dynamic>? genRun;      // the run being followed (queued / running / waiting / just finished)
   Timer? _poll;
+  int _followSeq = 0;                // bumped by every _follow: a poll of an older follow never writes genRun
+  bool _polling = false;             // one request in flight at a time
   bool _disposed = false;
 
   Future<void> loadSetup() async {
@@ -408,30 +411,110 @@ class OrgScheduleProvider extends AdminBase {
     if (runIsOpen(run)) _follow(scheduleId, asInt(run['id']));
   }
 
+  /// Polls the run every 2 s until it is closed. No time cap: a ladder run may wait for a decision for as long as
+  /// the server allows. The run is lost only after 5 failed polls in a row or a 404; polls never overlap, and a
+  /// poll of an earlier follow (another run, or a closed studio) never writes [genRun].
   void _follow(int scheduleId, int runId) {
     _poll?.cancel();
+    final seq = ++_followSeq;
+    _polling = false;
     var misses = 0;
-    final until = DateTime.now().add(const Duration(minutes: 4)); // the server's budget is 90 s; never follow forever
     _poll = Timer.periodic(const Duration(seconds: 2), (tm) async {
-      final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
-      if (_disposed) return tm.cancel();
-      final lost = !r.ok && (++misses >= 5 || r.endpointMissing || r.error?.statusCode == 404);
-      if (lost || (r.ok && runIsOpen(r.map) && DateTime.now().isAfter(until))) {
-        tm.cancel();
-        genRun = {...?genRun, 'status': 'failed', 'error': t('انقطعت متابعة التوليد — أعد فتح الجدول', 'Lost track of the generation — reopen the timetable')};
+      if (_polling) return;
+      _polling = true;
+      try {
+        final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
+        if (_disposed || seq != _followSeq) return tm.cancel();
+        final lost = !r.ok && (++misses >= 5 || r.endpointMissing || r.error?.statusCode == 404);
+        if (lost) {
+          tm.cancel();
+          genRun = {...?genRun, 'status': 'failed', 'error': t('انقطعت متابعة التوليد — أعد فتح الجدول', 'Lost track of the generation — reopen the timetable')};
+          notifyListeners();
+          return;
+        }
+        if (!r.ok) return;           // transient: keep following a few more times
+        misses = 0;
+        genRun = r.map;
         notifyListeners();
-        return;
-      }
-      if (!r.ok) return;           // transient: keep following a few more times
-      misses = 0;
-      genRun = r.map;
-      notifyListeners();
-      if (!runIsOpen(genRun)) {
-        tm.cancel();
-        if (schedule?['id'] == scheduleId) await open(scheduleId);   // slots + result as stored by the server
-        await loadSetup();
+        if (!runIsOpen(genRun)) {
+          tm.cancel();
+          if (schedule?['id'] == scheduleId) await open(scheduleId);   // slots + result as stored by the server
+          await loadSetup();
+        }
+      } finally {
+        _polling = false;
       }
     });
+  }
+
+  // ── v4: the relaxation ladder (org_schedule_ladder.dart; server schedule_ladder.py) ──
+
+  /// GET …/schedules/{sid}/ladder: the timetable's ladder, the catalog, the options and the presets. Null when the
+  /// server has no ladder route yet (an older server) or the call failed (toasted).
+  Future<LadderConfig?> loadLadder(int sid) async {
+    final r = await orgCall(() => api.get('$base/schedules/$sid/ladder'), quiet: true);
+    if (!r.ok) {
+      if (!r.endpointMissing) toast(orgErrorText(r.error!), error: true);
+      return null;
+    }
+    return LadderConfig.of(r.map);
+  }
+
+  /// PUT …/schedules/{sid}/ladder {ladder, options, expected_version}: the saved ladder as the server answers it
+  /// (or [c] itself when the answer carries no ladder); null on failure (toasted; a 409 stale_version reloads the
+  /// timetable).
+  Future<LadderConfig?> saveLadder(int sid, LadderConfig c, {int? expectedVersion}) async {
+    final r = await orgCall(
+        () => api.put('$base/schedules/$sid/ladder', body: {...c.toBody(), 'expected_version': ?(expectedVersion ?? c.version)}),
+        ok: t('حُفظ السلّم', 'Ladder saved'), quiet: true);
+    if (!r.ok) {
+      toast(orgErrorText(r.error!), error: true);
+      if (r.code == 'stale_version' && schedule?['id'] == sid) await open(sid);
+      return null;
+    }
+    if (schedule?['id'] == sid && r.map['version'] != null) schedule = {...?schedule, 'version': r.map['version']};
+    final saved = r.map['ladder'] == null ? c : LadderConfig.of(r.map);
+    return saved.copyWith(presets: saved.presets.isEmpty ? c.presets : saved.presets);
+  }
+
+  /// POST …/ladder-presets {name, ladder, options}: the preset the organization now keeps (null on failure).
+  Future<LadderPreset?> savePreset(String name, LadderConfig c) async {
+    final r = await orgCall(() => api.post('$base/ladder-presets', body: {'name': name.trim(), ...c.toBody()}), ok: t('حُفظ الإعداد', 'Preset saved'));
+    if (!r.ok) return null;
+    final m = asMap(r.map['preset'] ?? r.map);
+    return m.isEmpty ? null : LadderPreset.of(m);
+  }
+
+  /// DELETE …/ladder-presets/{id}.
+  Future<bool> deletePreset(String id) async {
+    final r = await orgCall(() => api.delete('$base/ladder-presets/$id'), ok: t('حُذف الإعداد', 'Preset deleted'));
+    return r.ok;
+  }
+
+  /// Starts a ladder run (POST …/generate?background=true {ladder: true, auto, seed}) and follows it; a run already
+  /// in progress (409 generation_running) is followed instead. [auto] true: every decision is taken by the server.
+  Future<OrgCall> startLadder(int sid, {required bool auto, int seed = 7}) async {
+    final r = await orgCall(
+        () => api.post('$base/schedules/$sid/generate', queryParams: {'background': true}, body: {'ladder': true, 'auto': auto, 'seed': seed}),
+        quiet: true);
+    final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
+    if (run.isNotEmpty) followRun(sid, run);
+    return r;
+  }
+
+  /// Answers the decision a waiting ladder run asks for (POST …/runs/{rid}/decide {decision_id, option_id};
+  /// [optionId] "auto" = the recommendation). The answer is the run as it is now, which the follow keeps reading.
+  Future<OrgCall> decide(String decisionId, String optionId) async {
+    final run = genRun;
+    if (run == null) return const OrgCall(null);
+    final sid = asInt(run['schedule_id'] ?? schedule?['id']);
+    final r = await orgCall(() => api.post('$base/schedules/$sid/runs/${run['id']}/decide', body: {'decision_id': decisionId, 'option_id': optionId}));
+    if (r.ok) {
+      genRun = r.map['run'] != null ? asMap(r.map['run']) : (r.map['id'] != null ? r.map : {...run, 'status': 'running'});
+      notifyListeners();
+      if (_poll == null || !_poll!.isActive) _follow(sid, asInt(run['id']));
+    }
+    return r;
   }
 
   /// Saves settings.rules ({key: locked|flexible}) on the timetable. PUT replaces the whole timetable, so every field
@@ -462,10 +545,12 @@ class OrgScheduleProvider extends AdminBase {
     return r;
   }
 
+  /// Cancels the run being followed — on ITS timetable (run.schedule_id; the open timetable when the run has none).
   Future<OrgCall> cancelGeneration() async {
     final run = genRun;
-    if (run == null || schedule == null) return const OrgCall(null);
-    final r = await orgCall(() => api.post('$base/schedules/${schedule!['id']}/runs/${run['id']}/cancel'));
+    final sid = run?['schedule_id'] ?? schedule?['id'];
+    if (run == null || sid == null) return const OrgCall(null);
+    final r = await orgCall(() => api.post('$base/schedules/${asInt(sid)}/runs/${run['id']}/cancel'));
     if (r.ok) {
       genRun = r.map;
       notifyListeners();
@@ -473,13 +558,16 @@ class OrgScheduleProvider extends AdminBase {
     return r;
   }
 
-  /// When a studio is opened, a run that is still going on the server is picked up again.
+  /// When a studio is opened, a run that is still going on the server is picked up again. Only an OPEN run is
+  /// restored: a finished one belongs to the result already stored on the timetable and is never shown again as a
+  /// failure / cancellation banner.
   Future<void> resumeRunIfAny() async {
     final id = schedule?['id'];
     if (id == null) return;
     final r = await orgCall(() => api.get('$base/schedules/$id/runs'), quiet: true);
+    if (_disposed || schedule?['id'] != id) return;
     final runs = asMapList(r.map['items']);
-    genRun = runs.isEmpty ? null : runs.first;
+    genRun = runs.cast<Map<String, dynamic>?>().firstWhere((x) => runIsOpen(x), orElse: () => null);
     notifyListeners();
     if (runIsOpen(genRun)) _follow(asInt(id), asInt(genRun!['id']));
   }
@@ -596,6 +684,9 @@ class OrgScheduleProvider extends AdminBase {
   }
 
   void closeSchedule() {
+    _poll?.cancel();
+    _followSeq++;
+    genRun = null;
     schedule = null;
     slots = [];
     conflicts = [];

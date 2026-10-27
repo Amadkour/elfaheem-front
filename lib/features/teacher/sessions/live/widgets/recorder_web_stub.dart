@@ -25,7 +25,11 @@ class WebRecorder {
         String teacherName = '',
         String sessionTitle = '',
         int participantCount = 0,
+        String? uploadUrl,
+        int? videoBitsPerSecond,
+        bool audioOnly = false,
       }) {}
+  Future<void> waitForBackgroundUploads({Duration timeout = const Duration(minutes: 5)}) async {}
   void updateParticipantCount(int count) {}
   void pause() {}
   void resume() {}

@@ -30,6 +30,7 @@ import '../../student/models.dart';
 import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
+import '../../shared/live/live_room.dart' show JoinOutcome;
 
 class TeacherCourseScreenProvider extends BaseProvider {
   TeacherCourseScreenProvider({
@@ -890,8 +891,10 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return await startLive(sessionId);
   }
 
-  /// Student join: GET /api/v1/live-sessions/{sessionId}/join
-  Future<LiveResponseModel?> _onJoinLiveAsStudent(
+  /// Student join: GET /api/v1/live-sessions/{sessionId}/join.
+  /// A 202 `{status: waiting, request_id, poll_after}` (the teacher asks for approval, live-rooms-spec §4)
+  /// comes back as a [JoinOutcome]: PreJoinPage then shows "Waiting for the host…" and polls.
+  Future<dynamic> _onJoinLiveAsStudent(
       int sessionId,
       BuildContext context,
       ) async {
@@ -899,6 +902,8 @@ class TeacherCourseScreenProvider extends BaseProvider {
           () => _api.get('/api/v1/live-sessions/$sessionId/join'),
     );
     if (result is Map<String, dynamic>) {
+      final outcome = JoinOutcome.parse(result);
+      if (!outcome.isAdmitted) return outcome;
       return LiveResponseModel(
         sessionId: sessionId,
         url: result['ws_url'] as String? ?? '',

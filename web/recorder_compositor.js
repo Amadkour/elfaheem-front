@@ -319,6 +319,10 @@
   let _rafId          = null;   // now holds a setInterval id (see start())
   let _safetyFlushId  = null;   // periodic requestData() safety-net interval
   let _sessionId, _apiUrl, _authToken;
+  let _uploadUrl      = '';   // meeting recordings: their own chunk route (meta.uploadUrl); '' = the session route
+  let _videoBitrate   = VIDEO_BITRATE; // meta.videoBitsPerSecond (the picked quality), else the constant
+  let _audioOnly      = false; // meta.audioOnly: no canvas at all — the mixed audio stream is recorded alone
+  let _chunkExt       = 'webm'; // the uploaded chunk's extension (from the mime the recorder actually uses)
   let _chunkIndex     = 0;
   let _pendingUploads = 0;
   let _stopping       = false;
@@ -385,7 +389,28 @@
     return candidates.find(m => MediaRecorder.isTypeSupported(m)) || 'video/webm';
   }
 
+  // Audio-only recordings (meta.audioOnly): opus in WebM first (Chrome,
+  // Edge, Firefox), then whatever isTypeSupported() accepts — Safari only
+  // knows audio/mp4 (AAC). The server transcodes any of them to one .m4a.
+  function _bestAudioMime() {
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus',
+      'audio/mp4',
+    ];
+    return candidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
+  }
+
+  function _chunkExtFor(mime) {
+    const m = String(mime || '').toLowerCase();
+    if (m.startsWith('audio/mp4')) return 'm4a';
+    if (m.startsWith('audio/ogg')) return 'ogg';
+    return 'webm';
+  }
+
   function _canvasDiag() {
+    if (!_ctx) return;
     try {
       // Sample a small region instead of the whole canvas (cheap) and
       // report whether it's non-uniform/non-black at this instant.
@@ -781,9 +806,9 @@
     const form = new FormData();
     form.append('chunk_index', String(index));
     form.append('is_final',    isFinal ? '1' : '0');
-    form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.webm`);
+    form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.${_chunkExt}`);
 
-    console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal}`);
+    console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal} ext=${_chunkExt}`);
 
     let attempt = 0;
     let uploaded = false;
@@ -791,7 +816,7 @@
     while (attempt <= 3) {
       try {
         const r = await fetch(
-          `${_apiUrl}/api/v1/live-sessions/${_sessionId}/recording-chunk`,
+          _uploadUrl || `${_apiUrl}/api/v1/live-sessions/${_sessionId}/recording-chunk`,
           { method: 'POST', headers: { Authorization: _authToken }, body: form }
         );
         if (r.ok) {
@@ -864,12 +889,20 @@
       _teacherName      = '';
       _sessionTitle     = '';
       _participantCount = 0;
+      _uploadUrl        = '';
+      _videoBitrate     = VIDEO_BITRATE;
+      _audioOnly        = false;
+      _chunkExt         = 'webm';
       try {
         if (meta) {
           const parsed = JSON.parse(meta);
           _teacherName      = String(parsed.teacherName  || '');
           _sessionTitle     = String(parsed.sessionTitle || '');
           _participantCount = Number(parsed.participantCount) || 0;
+          _uploadUrl        = String(parsed.uploadUrl || '');
+          const bps = Number(parsed.videoBitsPerSecond) || 0;
+          if (bps > 0) _videoBitrate = bps;
+          _audioOnly        = parsed.audioOnly === true;
         }
       } catch (e) {
         console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
@@ -881,12 +914,22 @@
       _apiUrl    = apiUrl.replace(/\/$/, '');
       _authToken = authToken;
 
-      console.log(`[Compositor] start() sessionId=${sessionId} apiUrl=${_apiUrl}`);
+      console.log(`[Compositor] start() sessionId=${sessionId} apiUrl=${_apiUrl} audioOnly=${_audioOnly}`);
 
-      _canvas        = document.createElement('canvas');
-      _canvas.width  = CANVAS_W;
-      _canvas.height = CANVAS_H;
-      _ctx           = _canvas.getContext('2d');
+      // Audio-only (meeting recordings with quality "audio"): no canvas is
+      // ever created — _ctx stays null, so _drawFrame()/_canvasDiag() are
+      // no-ops, setPlaceholderImage has nothing to draw on, and the only
+      // thing recorded is the mixed audio of _dest below (the local mic
+      // plus every remote participant added through addStream — that
+      // mixing is exactly the same as in the video mode).
+      _canvas = null;
+      _ctx    = null;
+      if (!_audioOnly) {
+        _canvas        = document.createElement('canvas');
+        _canvas.width  = CANVAS_W;
+        _canvas.height = CANVAS_H;
+        _ctx           = _canvas.getContext('2d');
+      }
 
       _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       // IMPORTANT: actually wait for + verify resume(), and log the result.
@@ -918,30 +961,51 @@
       _silentGain.connect(_dest);
       _silentSource.start();
 
-      const canvasStream = _canvas.captureStream(30);
-      const audioTrack   = _dest.stream.getAudioTracks()[0];
-      // Only attach the destination audio track if the context is actually
-      // running. Attaching a track from a suspended context is what was
-      // corrupting the mux; safer to record video-only than to risk empty
-      // output. We keep retrying resume() in the safety-flush interval
-      // below in case it recovers mid-session, but we do NOT hot-swap the
-      // track into an already-started recorder (MediaRecorder doesn't
-      // support that) — so a context stuck suspended for a whole session
-      // means that session is recorded without audio, not silently dropped.
-      if (audioTrack && _audioCtx.state === 'running') {
-        canvasStream.addTrack(audioTrack);
-        console.log('[Compositor] audio track attached (audioCtx running)');
+      const audioTrack = _dest.stream.getAudioTracks()[0];
+      let recordStream, mime, recorderOptions;
+      if (_audioOnly) {
+        // The mixed audio track alone — no canvas capture, no video track.
+        // A suspended AudioContext has nothing else to fall back to here,
+        // so the track is attached regardless and the periodic resume()
+        // below keeps nudging the context (an audio-only session cannot
+        // be "recorded video-only" instead).
+        if (!audioTrack) {
+          console.error('[Compositor] audio-only start: the mixed audio destination has no track — nothing to record');
+          return;
+        }
+        if (_audioCtx.state !== 'running') {
+          console.warn(`[Compositor] audio-only: audioCtx.state="${_audioCtx.state}" — recording anyway, resume() is retried periodically`);
+        }
+        recordStream = new MediaStream([audioTrack]);
+        mime = _bestAudioMime();
+        recorderOptions = { audioBitsPerSecond: 128_000 };
+        if (mime) recorderOptions.mimeType = mime;
+        _chunkExt = _chunkExtFor(mime);
+        console.log(`[Compositor] audio-only: using mime "${mime || '(browser default)'}" → .${_chunkExt} chunks`);
       } else {
-        console.warn(`[Compositor] SKIPPING audio track — audioCtx.state="${_audioCtx.state}". Recording video-only to avoid corrupting the mux.`);
+        const canvasStream = _canvas.captureStream(30);
+        // Only attach the destination audio track if the context is actually
+        // running. Attaching a track from a suspended context is what was
+        // corrupting the mux; safer to record video-only than to risk empty
+        // output. We keep retrying resume() in the safety-flush interval
+        // below in case it recovers mid-session, but we do NOT hot-swap the
+        // track into an already-started recorder (MediaRecorder doesn't
+        // support that) — so a context stuck suspended for a whole session
+        // means that session is recorded without audio, not silently dropped.
+        if (audioTrack && _audioCtx.state === 'running') {
+          canvasStream.addTrack(audioTrack);
+          console.log('[Compositor] audio track attached (audioCtx running)');
+        } else {
+          console.warn(`[Compositor] SKIPPING audio track — audioCtx.state="${_audioCtx.state}". Recording video-only to avoid corrupting the mux.`);
+        }
+        recordStream = canvasStream;
+        mime = _bestMime();
+        recorderOptions = { mimeType: mime, videoBitsPerSecond: _videoBitrate };
+        _chunkExt = 'webm';
+        console.log(`[Compositor] using mime: ${mime}`);
       }
 
-      const mime = _bestMime();
-      console.log(`[Compositor] using mime: ${mime}`);
-
-      _recorder = new MediaRecorder(canvasStream, {
-        mimeType: mime,
-        videoBitsPerSecond: VIDEO_BITRATE,
-      });
+      _recorder = new MediaRecorder(recordStream, recorderOptions);
 
       _recorder.ondataavailable = (e) => {
         if (!e.data || e.data.size === 0) {
@@ -987,8 +1051,10 @@
       // — a plain interval (unlike requestAnimationFrame) keeps firing even
       // when the tab is hidden/backgrounded, so short/interrupted sessions
       // still get real, encodable video content.
-      _drawFrame();
-      _rafId = setInterval(_drawFrame, 33);
+      if (!_audioOnly) {
+        _drawFrame();
+        _rafId = setInterval(_drawFrame, 33);
+      }
 
       _recorder.start(CHUNK_INTERVAL_MS);
       console.log(`[Compositor] MediaRecorder started timeslice=${CHUNK_INTERVAL_MS}ms`);
@@ -1019,7 +1085,9 @@
     addStream(stream, label) {
       if (!stream) return;
       if (_sources[label]) compositor.removeStream(label);
-      const videoEl   = _makeVideoEl(stream);
+      // Audio-only: no <video> element is ever created (a screen share's
+      // frames have nowhere to go); its audio track is still mixed in.
+      const videoEl   = _audioOnly ? null : _makeVideoEl(stream);
       const audioNode = _connectAudio(stream, label);
       _sources[label] = { stream, videoEl, audioNode };
       console.log(`[Compositor] addStream: ${label} | video=${stream.getVideoTracks().length} audio=${stream.getAudioTracks().length}`);

@@ -218,6 +218,72 @@ M150) stays a separate task with its own device tests.
 **Consequences.** A media or LiveKit URL that is not https / wss fails on the device instead of loading in clear —
 keep `MINIO_PUBLIC_URL` / `LIVEKIT_PUBLIC_URL` https / wss. Updating the fork means changing the `ref:` on purpose.
 
+## D-012 — Enter and shortcuts for every text field come from one keyboard layer, not from each screen · 2026-10-27 · accepted
+
+**Context.** On the web build Enter in a text field did nothing (the default action only takes the focus away) and
+every form would have needed its own `onSubmitted` / `Shortcuts` wiring — 91 files build text fields, with four
+different primary buttons (`PrimaryButton` is a plain `GestureDetector`, so Flutter's own Enter-on-a-focused-button
+never reaches it).
+**Decision.** `AppKeyboardSupport` (`lib/design/app_keyboard.dart`), mounted once in `MaterialApp.builder`, listens
+to `HardwareKeyboard` and decides from the focused field: a field with its own handler or a search / filter box is left
+alone; Enter moves to the next field of the form and on the last one presses the form's primary button, found by one
+pass over the element tree (the enabled, visible `PrimaryButton` / `FilledButton` / `ElevatedButton` that shares the
+deepest ancestor with the field; a dialog with text buttons only uses the last one); Ctrl+Enter does the same from a
+multi-line field; Esc leaves a field; Ctrl+K / "/" focus the search box. It runs only on web and desktop. The web
+engine performs the field's own action (unfocus / next) synchronously after the framework's handler, so a focus move
+is applied in a microtask. `EnterSubmits(onSubmit:)` / `.none` override the guess (the exam's answer box goes to the
+next question, never to Submit).
+**Consequences.** New screens need nothing. The button is a heuristic over the widget tree: a form whose primary
+action is not one of those button types, or whose Save sits in another branch than a nearer button, must say so with
+`EnterSubmits`. `test/ui/app_keyboard_test.dart` drives it with simulated key events.
+
+## D-012 — The assistant is premium by default: a model pipeline with a console, the app assistant follows the open organization · 2026-10-27 · accepted
+
+**Context.** The assistant answered with stitched sentences (the server had no model), exam drafts came from tables
+of contents and copyright pages, and nothing about the assistant could be changed without a deploy. The backend
+side of this change is D-054 in `../back/docs/DECISIONS.md` (pipeline, agents, platform settings, consent).
+**Decision.** The chat (`rag_chat_screen.dart`) renders the writer's answers as blocks (paragraphs, bullets, numbered
+steps, bold terms, `[n]` marks), shows the worker's stage trail while it works (`stage` from the poll), offers the
+writer's follow-up questions as chips and starter prompts when the chat is empty, and marks model-written answers
+"From the sources". The floating app assistant (`app_assistant.dart`) passes the open organization
+(`AppModeController`) as `org_id` with `app: true`, keyed per organization, so inside an organization it answers about
+the app AND the organization's rules and documents. The Super Admin gets `rag_admin_console.dart` (Overview ·
+Settings · Playground with the trace · Questions) in place of the bare documents list; the exam generator sheet gains
+difficulty, focus and language, and reports the planner's and reviewer's work in one toast. An organization's answer
+setting gains `default` (follow the platform) and shows what applies now.
+**Rejected.** A separate "organization assistant" bubble (two bubbles confuse; one bubble that follows the mode is
+what members expect); rendering full Markdown (the server never sends headings, tables or links, so a small block
+parser that cannot be fooled is enough); streaming (the queue-and-poll contract stays, the stage trail gives the
+feedback).
+
+**Addendum (2026-10-27, D-055 in the backend).** The model is now a local open-weight one on the server (no
+commercial provider), so answers take ≈ 10–15 s (about a minute with the larger registered model) and the stage trail is the feedback; the chat's suggested questions
+come from the server (`GET /api/v1/rag/starters`: questions built from the headings the asker's library actually has)
+instead of a fixed list — the fixed list had suggested "how many devices?" to members whose library never stated a
+number, and the assistant answered "not found" to its own suggestion. The built-in list stays only as the fallback for
+an empty library, with that question replaced by one the features guide answers. The admin console's Settings tab
+shows the local model's files status and hides the effort / model knobs and the consent switch, which mean nothing
+with it.
+
+## D-013 — Generation is a ladder the creator orders and locks, followed live, with decisions asked in place · 2026-10-27 · accepted
+
+**Context.** The app knew one "Generate" (strict, then every Flexible rule at once, 90 s), followed a run for at most
+4 minutes and then invented a failed run while the server was still working, let a run of one timetable leak into
+another, and could neither reorder nor save the rules. The backend now climbs a relaxation ladder (D-056 in
+`../back/docs/DECISIONS.md`, contract in `docs/backend/ladder-spec.md`).
+**Decision.** `org_schedule_ladder.dart` holds the pure models (ladder, options, decision, live state, final
+report) and the provider's calls; `org_schedule_ladder_ui.dart` the three presentational pieces, every one taking
+plain values so the layout harness pumps them: the ladder editor (drag to reorder, mode per rung, the fixed rules
+shown locked, numeric options, presets), the live overlay (stage, placed / remaining, conflicts, the rung being
+relaxed and why, the step log, cancel) and the decision dialog (situation, options with impact, the recommended one
+marked, "let the system decide"). The result card reads the server's later additions as data: a rung "set aside"
+by the pre-check (`not_relevant`), a split handed to a colleague (`splits[].staff`), a proposed room removed again
+after a rejected proposal (`removed`). The studio's Create / Generate actions start a ladder run; a `waiting` run is open;
+a run is lost only after five failed polls or a 404, never by a client clock. Runs are scoped to their timetable.
+**Rejected.** A separate screen for decisions (the fork must be answered where the run is watched); client-side
+completion maths (the server's `completion_pct` and proof are the truth); keeping the hard-coded rules list (the
+catalog comes from the server so a new rung needs no app release).
+
 ## D-057 — Governance screens reuse the org kit and ONE shared filter; the Export Hub generalises the report designer · 2026-10-27 · accepted
 
 **Context.** Requests, complaints, forms, routing, delegation, council voting and designed exports (D-057 in
@@ -235,3 +301,27 @@ D-003); Arabic and English outputs come from different templates, never a mirror
 **Consequences.** New lists in the module must build on `ItemFilter`; a new export anywhere passes an
 `ExportDataset` to `exportHub` instead of writing another sheet. Error codes of the module are mapped in
 `govCodeTexts` and merged into `orgErrorText`.
+
+## D-058 — One live-room identity for sessions and meetings; admission is decided before the LiveKit token exists · 2026-10-27 · accepted
+
+**Context.** Hosts wanted a share link, a lobby (approve who joins, or let everyone in), guests who need the
+host's consent, and meeting recordings that land in the creator's own Google Drive / OneDrive at a chosen
+quality, with a notification when the upload is done. Course sessions already had a guest link and a recording
+pipeline into session materials; calendar meetings had neither. Contract: `docs/backend/live-rooms-spec.md`.
+**Decision.** A `LiveRoomRef(kind, id)` (session | meeting) names the room everywhere new; the old
+`sessionId = -meetingId` convention stays only inside `JoinArgs` for the older room code. Admission is enforced
+by the SERVER by withholding the LiveKit token: every join may answer 202 `waiting` and the client polls a
+request until it is admitted, so a waiting person never holds a token (nothing to kick, nothing to leak). The host
+is alerted in the room (4 s poll + the `live_join_request` silent push) and by a normal notification only when
+not in the room, at most once a minute. Meetings record through a separate route family
+(`/live/{kind}/{id}/recordings`, chunks like the session recorder) so the course flow is untouched; the server
+assembles ONE file at the chosen quality, uploads it to the connected drive, deletes its copy and notifies.
+Drive tokens are stored encrypted on the server (the app never sees them); the OAuth consent runs in the
+browser. New UI text is inline `t(ar, en)` (org pattern) so parallel work never fights over `translation.json`.
+**Rejected.** Admitting with LiveKit room metadata / data messages after a token is issued (a refused person
+would already be connected); recording meetings into session materials (they belong to no course); uploading
+from the phone to the drive (the phone may die mid-upload, and the drive token would have to live on it).
+**Consequences.** `guest_admission` defaults to `approve`, so existing session guest links now wait for the
+teacher until guests are switched to automatic. The backend schema is revision `0017_live_rooms`. An operator
+must set `GOOGLE_DRIVE_CLIENT_ID/SECRET` and / or `ONEDRIVE_CLIENT_ID/SECRET` (plus `APP_URL` as the public
+backend URL for the OAuth redirect) before the drives show as available.

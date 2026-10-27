@@ -1,5 +1,7 @@
 // The floating app assistant: a small bubble above every screen of a signed-in user that opens the app assistant
 // (RagChatView with `app: true` — answers from the platform's own documents) in a pop-up, without leaving the page.
+// While the person is in Organization mode (AppModeController) the chat is opened with that organization too
+// (D-012): it then answers about the app AND about the organization's rules and documents, and the header says so.
 //
 // [AppAssistantHost] sits in MaterialApp.builder, above the Navigator, so the pop-up has its own Material and
 // Overlay (text fields, tooltips) and pushes the full-screen chat through the app's navigator key. It is hidden:
@@ -7,19 +9,21 @@
 //   • by the kill-switch `rag.app_assistant` (AppConfig.disableList);
 //   • while a full-screen experience asks for it ([AppAssistant.hide] / [AppAssistant.release]: video player, live
 //     room, exam sitting).
-// The bubble can be dragged; it sticks to the nearer side. [appAssistantPanelRect] (where the pop-up goes) and
-// [appAssistantSnap] (where a dropped bubble ends up) are pure and unit-tested.
+// The bubble can be dragged; it sticks to the nearer side. [appAssistantPanelRect] (where the pop-up goes),
+// [appAssistantSnap] (where a dropped bubble ends up) and [appAssistantOrg] (which organization the chat follows)
+// are pure and unit-tested.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
 import 'package:provider/provider.dart';
 
-import '../../admin/admin_common.dart' show t;
+import '../../admin/admin_common.dart' show asMap, asStr, t;
 import 'rag_chat_screen.dart';
 
 /// Kill-switch id (admin "Features" page / theme disable list).
@@ -50,6 +54,13 @@ class AppAssistant {
   static void release() => scheduleMicrotask(() {
         if (hiddenBy.value > 0) hiddenBy.value--;
       });
+}
+
+/// The organization the app assistant follows: (id, name) while the person is in Organization mode with one open,
+/// else null (the app alone). Pure over the controller's values.
+(int, String)? appAssistantOrg({required bool isOrg, int? orgId, Map<String, dynamic>? entry}) {
+  if (!isOrg || orgId == null) return null;
+  return (orgId, asStr(asMap(entry?['organization'])['name']));
 }
 
 /// Where the pop-up goes in a [screen] (already without the keyboard): a corner card on a wide window, almost the
@@ -91,8 +102,9 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   @override
   Widget build(BuildContext context) {
     final signedIn = context.select<MyAuthProvider, bool>((a) => a.isAuthenticated);
+    final mode = AppModeController.instance;
     return ListenableBuilder(
-      listenable: Listenable.merge([topRouteObserver.topRoute, AppAssistant.hiddenBy, AppAssistant.open, GuestState.instance]),
+      listenable: Listenable.merge([topRouteObserver.topRoute, AppAssistant.hiddenBy, AppAssistant.open, GuestState.instance, mode]),
       builder: (context, _) {
         final route = topRouteObserver.topRoute.value;
         final available = signedIn && !GuestState.active && !AppConfig.disableList.contains(appAssistantFeatureKey);
@@ -103,9 +115,10 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         final open = visible && AppAssistant.open.value;
         if (!available) _everOpened = false;
         if (open) _everOpened = true;
+        final org = appAssistantOrg(isOrg: mode.isOrg, orgId: mode.currentOrgId, entry: mode.current);
         return Stack(fit: StackFit.expand, children: [
           widget.child,
-          if (visible && _everOpened) _panel(context, open),
+          if (visible && _everOpened) _panel(context, open, org),
           if (visible && onPage && !open) _bubbleAt(context),
         ]);
       },
@@ -129,7 +142,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     );
   }
 
-  Widget _panel(BuildContext context, bool open) {
+  Widget _panel(BuildContext context, bool open, (int, String)? org) {
     final mq = MediaQuery.of(context);
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final screen = Size(mq.size.width, mq.size.height - mq.viewInsets.bottom);
@@ -156,8 +169,9 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                   OverlayEntry(
                     maintainState: true,
                     builder: (context) => Column(children: [
-                      _Header(onClose: _close, onExpand: _expand),
-                      const Expanded(child: RagChatView(app: true, compact: true)),
+                      AppAssistantHeader(onClose: _close, onExpand: () => _expand(org), orgName: org?.$2),
+                      // a new key per organization: the history is that organization's
+                      Expanded(child: RagChatView(key: ValueKey('app_assistant_${org?.$1}'), app: true, orgId: org?.$1, compact: true, contextLabel: org?.$2)),
                     ]),
                   ),
                 ]),
@@ -175,9 +189,10 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   }
 
   /// Full screen: the same chat as a page (the history comes back from the server).
-  void _expand() {
+  void _expand((int, String)? org) {
     _close();
-    widget.navigatorKey.currentState?.push(MaterialPageRoute(builder: (_) => const RagChatScreen(app: true)));
+    widget.navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (_) => RagChatScreen(app: true, orgId: org?.$1, title: org == null ? null : t('مساعد التطبيق · ${org.$2}', 'App assistant · ${org.$2}'))));
   }
 }
 
@@ -199,30 +214,36 @@ class _Bubble extends StatelessWidget {
         child: InkWell(
           customBorder: const CircleBorder(),
           onTap: onTap,
-          child: const SizedBox(width: _bubble, height: _bubble, child: Icon(Icons.smart_toy_rounded, color: Colors.white, size: 28)),
+          child: const SizedBox(width: _bubble, height: _bubble, child: Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 26)),
         ),
       ),
     );
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.onClose, required this.onExpand});
+/// The pop-up's header: the assistant's name, the organization it follows (when one is open), expand and close.
+class AppAssistantHeader extends StatelessWidget {
+  const AppAssistantHeader({super.key, required this.onClose, required this.onExpand, this.orgName});
   final VoidCallback onClose, onExpand;
+  final String? orgName;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final sub = orgName == null || orgName!.isEmpty ? null : t('يجيب عن التطبيق وعن $orgName', 'About the app and $orgName');
     return Material(
       color: c.primary,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(14, 6, 4, 6),
         child: Row(children: [
-          const Icon(Icons.smart_toy_rounded, color: Colors.white, size: 22),
+          const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 22),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(t('مساعد التطبيق', 'App assistant'),
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(t('مساعد التطبيق', 'App assistant'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
+              if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 11.5)),
+            ]),
           ),
           IconButton(tooltip: t('ملء الشاشة', 'Full screen'), onPressed: onExpand, icon: const Icon(Icons.open_in_full_rounded, color: Colors.white, size: 20)),
           IconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: const Icon(Icons.close_rounded, color: Colors.white)),

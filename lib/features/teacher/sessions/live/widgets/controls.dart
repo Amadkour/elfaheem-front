@@ -38,6 +38,11 @@ class ControlsWidget extends StatefulWidget {
   // for the combined Pause/Resume button, and to gate the End button.
   final RecState? recorderState;
 
+  /// True when THIS device is the one recording: a course teacher, or a meeting creator who pressed Record
+  /// (room.dart `_recordsHere`). For everyone who is not a teacher it decides whether Pause / Resume and the REC
+  /// chip are shown at all; a teacher's bar keeps following [recordingEnabled] alone (showsRecorderControls).
+  final bool recordsHere;
+
   // Live reactions: opens / closes the emoji picker (null hides the button).
   final VoidCallback? onToggleReactions;
   final bool reactionsOpen;
@@ -65,6 +70,10 @@ class ControlsWidget extends StatefulWidget {
   final int chatUnread;
   final bool chatOpen;
 
+  // Admission lobby (host only): opens the lobby sheet; [waitingCount] is the badge. Null hides the button.
+  final VoidCallback? onLobby;
+  final int waitingCount;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -76,6 +85,7 @@ class ControlsWidget extends StatefulWidget {
         this.onPauseRecording,
         this.onResumeRecording,
         this.recorderState,
+        this.recordsHere = false,
         this.onToggleReactions,
         this.reactionsOpen = false,
         this.recordingEnabled = true,
@@ -89,6 +99,8 @@ class ControlsWidget extends StatefulWidget {
         this.onOpenChat,
         this.chatUnread = 0,
         this.chatOpen = false,
+        this.onLobby,
+        this.waitingCount = 0,
       });
 
   @override
@@ -358,7 +370,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
     final isCamOn   = participant.isCameraEnabled();
     final isSharing = participant.isScreenShareEnabled();
     final mobile    = !kIsWeb && lkPlatformIsMobile();
-    final recOn     = widget.isTeacher && widget.recordingEnabled;
+    final recOn     = showsRecorderControls(
+        isTeacher: widget.isTeacher, recordingEnabled: widget.recordingEnabled, recordsHere: widget.recordsHere);
 
     // ── Devices ─────────────────────────────────────────────────────────────
     final mic = LiveControlAction(
@@ -512,6 +525,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
         end: end,
         rec: LiveRecBadge.none,
         onInteraction: widget.onInteraction,
+        onLobby: widget.onLobby,
+        waitingCount: widget.waitingCount,
       );
     }
 
@@ -527,6 +542,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
       end: end,
       rec: rec,
       onInteraction: widget.onInteraction,
+      onLobby: widget.onLobby,
+      waitingCount: widget.waitingCount,
     );
   }
 
