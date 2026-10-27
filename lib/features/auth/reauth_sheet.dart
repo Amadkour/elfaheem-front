@@ -5,6 +5,7 @@
 // deleting the account, changing the phone number (audit S9 / S1). The caller
 // sends the values with its request; the server answers 400 REAUTH_REQUIRED when
 // they are missing or wrong, which `apiErrorText` turns into a sentence.
+// `ReauthSheetBody` takes plain values so the layout harness can pump it.
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
@@ -23,17 +24,25 @@ class Reauth {
 }
 
 /// Asks for the current password (and an optional two-step code). Null when dismissed.
-Future<Reauth?> askReauth(BuildContext context) =>
-    showAppSheet<Reauth>(context, (_) => const ReauthSheet());
+Future<Reauth?> askReauth(BuildContext context) => showAppSheet<Reauth>(
+      context,
+      (ctx) => ReauthSheetBody(onSubmit: (r) => Navigator.pop(ctx, r)),
+    );
 
-class ReauthSheet extends StatefulWidget {
-  const ReauthSheet({super.key});
+/// The sheet's content: header, hint, password field, the two-step code field when [showMfa], Confirm.
+class ReauthSheetBody extends StatefulWidget {
+  const ReauthSheetBody({super.key, required this.onSubmit, this.showMfa = true});
+
+  final void Function(Reauth) onSubmit;
+
+  /// The app has no cached MFA flag, so the optional code field is shown by default.
+  final bool showMfa;
 
   @override
-  State<ReauthSheet> createState() => _ReauthSheetState();
+  State<ReauthSheetBody> createState() => _ReauthSheetBodyState();
 }
 
-class _ReauthSheetState extends State<ReauthSheet> {
+class _ReauthSheetBodyState extends State<ReauthSheetBody> {
   final _password = TextEditingController();
   final _code = TextEditingController();
 
@@ -48,7 +57,7 @@ class _ReauthSheetState extends State<ReauthSheet> {
     final p = _password.text;
     if (p.isEmpty) return;
     final c = _code.text.trim();
-    Navigator.pop(context, Reauth(password: p, mfaCode: c.isEmpty ? null : c));
+    widget.onSubmit(Reauth(password: p, mfaCode: c.isEmpty ? null : c));
   }
 
   @override
@@ -67,7 +76,8 @@ class _ReauthSheetState extends State<ReauthSheet> {
                 const SizedBox(height: 12),
                 // minLength 1: an existing password may predate the 8-character rule
                 AppPasswordField(controller: _password, label: 'current_password'.tr, minLength: 1),
-                AppField(controller: _code, label: 'reauth_mfa_code'.tr, keyboard: TextInputType.number),
+                if (widget.showMfa)
+                  AppField(controller: _code, label: 'reauth_mfa_code'.tr, keyboard: TextInputType.number),
                 const SizedBox(height: 8),
                 AppPrimaryButton(label: 'confirm'.tr, onPressed: _submit),
               ],
