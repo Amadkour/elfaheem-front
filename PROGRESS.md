@@ -18,10 +18,10 @@ recorded below) · `blocked (why)`.
 | 0.1 | Safety net: branch `feature/platform-polish` in both repos | done |
 | 0.2 | Analysis phase, no code changes → §1 findings, §2 parity matrix, §3 baselines | done (2026-10-28) |
 | 0.3 | Track A1 security and auth fixes | in progress |
-| 0.4 | Track D real-time + push, remove polling | todo |
+| 0.4 | Track D real-time + push, remove polling | in progress (D.1 back + D.2 app agents running alongside A1) |
 | 0.5 | Track C feature parity | todo |
 | 0.6 | Track B design system + dashboards + screen polish (A2) | todo |
-| 0.7 | Track E RAG overhaul (parallel with 0.4–0.6) | todo |
+| 0.7 | Track E RAG overhaul (parallel with 0.4–0.6) | in progress (E.1 eval baseline agent running) |
 | 0.8 | Final verification: full test run, re-measure baselines, final report (§6) | todo |
 
 ## 1. Findings (ranked by severity) — filled by the analysis phase
