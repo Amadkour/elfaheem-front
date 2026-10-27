@@ -420,13 +420,27 @@ class AgendaRow extends StatelessWidget {
               live: sessionStatus == 'voting' && !a.decided,
             ),
           ],
-          if (canVote || myVote != null) ...[
+          if (a.excluded && open) ...[
+            const SizedBox(height: 10),
+            AppBanner(
+              icon: Icons.how_to_vote_outlined,
+              color: c.purple,
+              text: t('هذا البند من تقديمك — لا تصوّت عليه، ويُحسب النصاب من دونك.', 'You submitted this item — you do not vote on it, and the quorum is counted without you.'),
+            ),
+          ] else if (canVote || myVote != null) ...[
             const SizedBox(height: 10),
             MyVoteRow(value: myVote, enabled: canVote, busy: voteBusy, onVote: onVote),
           ],
           if (showVoters && a.votes.isNotEmpty) ...[
             const SizedBox(height: 10),
             VotersList(votes: a.votes),
+          ],
+          if ((showVoters || manager) && a.excludedUsers.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              t('لا يصوّت (مقدّم البند): ${a.excludedUsers.map((u) => u.name).join('، ')}', 'Does not vote (submitted the item): ${a.excludedUsers.map((u) => u.name).join(', ')}'),
+              style: orgText(context, size: 12, color: c.textMedium),
+            ),
           ],
           if (decidedElsewhere) ...[
             const SizedBox(height: 10),
@@ -1041,7 +1055,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     final api = _api!;
     final manager = s.can['manage'];
     final myVote = _optimistic[a.id] ?? a.myVote ?? s.myVotes[a.id];
-    final canVote = s.isVoting && s.can['vote'] && !a.decided && a.status != 'withdrawn';
+    final canVote = s.isVoting && s.can['vote'] && !a.decided && a.status != 'withdrawn' && !a.excluded;
     final showResult = manager || s.resultsVisible || s.isClosed;
     return AgendaRow(
       key: ValueKey('agenda.${a.id}'),

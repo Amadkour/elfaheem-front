@@ -1,6 +1,8 @@
 // lib/features/org/governance/gov_member_pages.dart — the member side (spec §6, `/api/v1/org/public/governance`):
 //
 //   GovSubmitPage(orgId)      submit a complaint / request to an entity: entity → category → type → title · body ·
+//                             (a department's team member may send a request straight to its Department Council:
+//                             `to_council`, the item lands on the next agenda and the member does not vote on it)
 //                             priority · anonymous · attachments (uploaded through the public uploads route)
 //   GovSubmitForm             the presentational form (layout-tested)
 //   GovMyItemsPage            what I submitted + what was routed to me personally → GovItemScreen(member: true)
@@ -49,6 +51,8 @@ class GovSubmitForm extends StatelessWidget {
     required this.onAddAttachment,
     required this.onRemoveAttachment,
     required this.onSubmit,
+    this.toCouncil = false,
+    this.onToCouncil,
     this.busy = false,
     this.uploading = false,
     this.error,
@@ -60,6 +64,10 @@ class GovSubmitForm extends StatelessWidget {
   final String type, priority;
   final TextEditingController title, body;
   final bool anonymous, busy, uploading;
+
+  /// "Put it before the Department Council": shown only when the entity's `canSubmitToCouncil` and the type is a request.
+  final bool toCouncil;
+  final ValueChanged<bool>? onToCouncil;
   final List<GovAttachment> attachments;
   final ValueChanged<Entity?> onEntity;
   final ValueChanged<Category?> onCategory;
@@ -77,6 +85,7 @@ class GovSubmitForm extends StatelessWidget {
     final cats = e?.categories.where((x) => x.isActive).toList() ?? const <Category>[];
     final types = <String>[if (e == null || e.acceptsComplaints) 'complaint', 'request'];
     final complaintOnly = category?.kind == 'complaint';
+    final councilOffer = e != null && e.canSubmitToCouncil && !complaintOnly && type == 'request';
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Text(t('إلى أي جهة؟', 'To which entity?'), style: appText(12, c: c.textLight)),
       const SizedBox(height: 6),
@@ -118,6 +127,20 @@ class GovSubmitForm extends StatelessWidget {
             onTap: complaintOnly ? () {} : () => onType(x),
           ),
       ]),
+      if (councilOffer) ...[
+        const SizedBox(height: 8),
+        AppSwitchTile(
+          icon: Icons.gavel_rounded,
+          title: t('عرضه على مجلس القسم', 'Put it before the Department Council'),
+          subtitle: t('يُدرج في جدول أعمال الجلسة القادمة ويصوّت عليه الأعضاء — ما عداك', 'Goes on the next session\'s agenda; the members vote on it — all but you'),
+          value: toCouncil,
+          onChanged: onToCouncil ?? (_) {},
+        ),
+        if (toCouncil) ...[
+          const SizedBox(height: 6),
+          AppBanner(icon: Icons.how_to_vote_outlined, color: c.purple, text: t('بصفتك مقدّم الطلب لا تصوّت عليه، ويُحسب النصاب من دونك', 'As the submitter you do not vote on it, and the quorum is counted without you')),
+        ],
+      ],
       const SizedBox(height: 12),
       AppField(controller: title, label: t('العنوان', 'Title')),
       const SizedBox(height: 12),
@@ -178,7 +201,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
   late String _type = widget.type;
   final _title = TextEditingController(), _body = TextEditingController();
   var _priority = 'medium';
-  var _anonymous = false, _busy = false, _uploading = false, _failed = false, _missing = false;
+  var _anonymous = false, _busy = false, _uploading = false, _failed = false, _missing = false, _toCouncil = false;
   final _attachments = <GovAttachment>[];
   String? _error;
 
@@ -239,6 +262,7 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
               'body': _body.text.trim(),
               'priority': _priority,
               'is_anonymous': _anonymous,
+              if (_toCouncil && type == 'request' && (_entity?.canSubmitToCouncil ?? false)) 'to_council': true,
               if (_attachments.isNotEmpty) 'attachments': [for (final a in _attachments) a.toJson()],
             }),
         quiet: true);
@@ -296,9 +320,12 @@ class _GovSubmitPageState extends State<GovSubmitPage> {
           busy: _busy,
           uploading: _uploading,
           error: _error,
+          toCouncil: _toCouncil,
+          onToCouncil: (v) => setState(() => _toCouncil = v),
           onEntity: (e) => setState(() {
             _entity = e;
             _category = null;
+            _toCouncil = false;
             if (e != null && !e.acceptsComplaints && _type == 'complaint') _type = 'request';
           }),
           onCategory: (c) => setState(() => _category = c),

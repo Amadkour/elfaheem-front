@@ -126,6 +126,9 @@ void main() {
           for (final a in closed.agenda) AgendaRow(agenda: a, sessionStatus: 'closed', myVote: closed.myVotes[a.id], showResult: true, showVoters: true, onOpenItem: () {}),
           // draft with a drag handle and remove
           AgendaRow(agenda: AgendaItem.fromJson(agendaJson(9, 1, status: 'pending')), sessionStatus: 'draft', manager: true, onRemove: () {}, dragHandle: const Icon(Icons.drag_indicator_rounded)),
+          // the submitter's own item: no vote row, the explanation instead; a manager sees who is left out
+          AgendaRow(agenda: AgendaItem.fromJson(agendaJson(10, 2, excluded: true)), sessionStatus: 'voting', showResult: true),
+          AgendaRow(agenda: AgendaItem.fromJson(agendaJson(11, 3, excluded: true, approve: 2)), sessionStatus: 'voting', showResult: true, showVoters: true, manager: true, onPostpone: () {}),
         ]),
       ),
     );

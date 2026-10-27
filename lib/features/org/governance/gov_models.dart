@@ -194,6 +194,9 @@ Map<String, String> govCodeTexts() => {
       'session_not_found': t('الجلسة غير موجودة', 'Session not found'),
       'session_state': t('حالة الجلسة لا تسمح بهذا الإجراء', 'The session state does not allow this'),
       'not_a_voter': t('التصويت لأعضاء المجلس فقط', 'Only council members may vote'),
+      'own_item': t('مقدّم البند لا يصوّت عليه', 'The person who submitted an item does not vote on it'),
+      'council_requests_only': t('تُعرض الطلبات على المجلس، لا الشكاوى', 'Requests go to the council, complaints do not'),
+      'no_council': t('ليس لهذا القسم مجلس', 'This department has no council'),
       'voting_closed': t('أُغلق التصويت', 'Voting is closed'),
       'no_faculty_council': t('لا يوجد مجلس كلية بعد', 'There is no faculty council yet'),
       'form_not_found': t('النموذج غير موجود', 'Form not found'),
@@ -326,6 +329,7 @@ class Entity {
     this.counts = const EntityCounts(),
     this.can = const GovCan({}),
     this.categories = const [],
+    this.canSubmitToCouncil = false,
     this.raw = const {},
   });
 
@@ -342,6 +346,9 @@ class Entity {
   final EntityCounts counts;
   final GovCan can;
   final List<Category> categories;
+
+  /// Member side: I sit on this scientific department's team, so my request may go straight to its council.
+  final bool canSubmitToCouncil;
   final Map<String, dynamic> raw;
 
   int get id => dept.id;
@@ -368,6 +375,7 @@ class Entity {
       order: asInt(j['order']),
       head: GovUser.from(j['head']),
       members: asInt(j['members']),
+      canSubmitToCouncil: asBool(j['can_submit_to_council']),
       counts: EntityCounts.fromJson(j['counts']),
       can: GovCan(asMap(j['can'])),
       categories: [for (final c in asMapList(j['categories'])) Category.fromJson(c)],
@@ -849,6 +857,8 @@ class AgendaItem {
     this.myVote,
     this.votes = const [],
     this.escalatedItemId,
+    this.excluded = false,
+    this.excludedUsers = const [],
   });
   final int id, order;
   final WorkItem item;
@@ -859,6 +869,11 @@ class AgendaItem {
   final String? note, myVote;
   final List<CouncilVote> votes;
   final int? escalatedItemId;
+
+  /// I brought this item, so I do not vote on it (the server refuses with `own_item` and leaves me out of
+  /// `eligible`); [excludedUsers] names such people to managers and, after the close, to everyone.
+  final bool excluded;
+  final List<GovUser> excludedUsers;
 
   bool get decided => const ['approved', 'rejected', 'tied', 'no_quorum', 'postponed'].contains(status);
   int get voted => approve + reject + abstain;
@@ -878,6 +893,8 @@ class AgendaItem {
         myVote: j['my_vote'] as String?,
         votes: [for (final v in asMapList(j['votes'])) CouncilVote.fromJson(v)],
         escalatedItemId: j['escalated_item_id'] == null ? null : asInt(j['escalated_item_id']),
+        excluded: asBool(j['excluded']),
+        excludedUsers: [for (final u in asMapList(j['excluded_users'])) GovUser.from(u)!],
       );
 }
 
@@ -919,7 +936,7 @@ class CouncilSession {
 
   bool get isVoting => status == 'voting';
   bool get isClosed => status == 'closed';
-  int get pendingMyVotes => isVoting ? agenda.where((a) => a.status == 'voting' && a.myVote == null).length : 0;
+  int get pendingMyVotes => isVoting ? agenda.where((a) => a.status == 'voting' && a.myVote == null && !a.excluded).length : 0;
 
   factory CouncilSession.fromJson(Map<String, dynamic> j) => CouncilSession(
         id: asInt(j['id']),

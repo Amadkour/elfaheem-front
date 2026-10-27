@@ -47,7 +47,7 @@ Map<String, dynamic> sessionJson({String status = 'voting'}) => {
       ],
     };
 
-Map<String, dynamic> agendaJson(int id, int order, {String status = 'voting', String? myVote, int approve = 0, int reject = 0, int abstain = 0, String? note, int? escalated}) => {
+Map<String, dynamic> agendaJson(int id, int order, {String status = 'voting', String? myVote, int approve = 0, int reject = 0, int abstain = 0, String? note, int? escalated, bool excluded = false}) => {
       'id': id,
       'order': order,
       'item': {
@@ -78,6 +78,8 @@ Map<String, dynamic> agendaJson(int id, int order, {String status = 'voting', St
       'note': note,
       'my_vote': myVote,
       'escalated_item_id': escalated,
+      'excluded': excluded,
+      'excluded_users': excluded ? [{'id': 77, 'name': 'Mona Ali'}] : null,
       'votes': [
         for (var i = 0; i < approve; i++) {'user': {'id': 10 + i, 'name': 'Member $i'}, 'vote': 'approve', 'note': i == 0 ? 'With the budget cap' : null, 'at': '2026-11-15T09:0$i:00'},
         for (var i = 0; i < reject; i++) {'user': {'id': 20 + i, 'name': 'عضو $i'}, 'vote': 'reject', 'at': '2026-11-15T10:00:00'},
@@ -198,6 +200,19 @@ void main() {
       expect(s.agenda[3].escalatedItemId, 900);
       // 302 · 303 · 304 are voting without my vote; 301 has one; 305 is withdrawn
       expect(s.pendingMyVotes, 3);
+      expect(s.agenda.every((a) => !a.excluded && a.excludedUsers.isEmpty), isTrue);
+    });
+
+    test('an item I submitted: excluded, named to managers, never counted as waiting for my vote', () {
+      final j = sessionJson();
+      j['agenda'] = [agendaJson(301, 1, excluded: true), agendaJson(302, 2)];
+      final s = CouncilSession.fromJson(j);
+      expect(s.agenda[0].excluded, isTrue);
+      expect(s.agenda[0].excludedUsers.map((u) => u.name), ['Mona Ali']);
+      expect(s.agenda[1].excluded, isFalse);
+      expect(s.pendingMyVotes, 1);
+      AppConfig.lang = 'en';
+      expect(govCodeTexts()['own_item'], contains('does not vote'));
       AppConfig.lang = 'ar';
       expect(s.council?.name, 'مجلس قسم الحاسبات');
     });

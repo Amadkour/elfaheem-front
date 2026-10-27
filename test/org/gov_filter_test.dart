@@ -138,6 +138,7 @@ Map<String, dynamic> sampleEntityJson({String kind = 'scientific', int id = 5}) 
       'head': {'id': 11, 'name': 'Prof. Huda Al-Sayed'},
       'members': 14,
       'accepts_complaints': kind != 'council',
+      'can_submit_to_council': kind == 'scientific',
       'is_active': true,
       'order': 1,
       'features': ['complaints', 'forms'],
@@ -449,6 +450,8 @@ void main() {
 
     test('Entity · Delegation · GovPage facets', () {
       final e = Entity.fromJson(sampleEntityJson());
+      expect(e.canSubmitToCouncil, isTrue);
+      expect(Entity.fromJson(sampleEntityJson(kind: 'service', id: 2)).canSubmitToCouncil, isFalse);
       expect(e.isScientific, isTrue);
       expect(e.councilId, 6);
       expect(e.head?.name, 'Prof. Huda Al-Sayed');

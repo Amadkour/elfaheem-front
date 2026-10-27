@@ -150,7 +150,12 @@ back to the legacy row (status + reviewer note) so both screens agree.
 - Voting: `POST …/agenda/{aid}/vote {vote, note}` by council members while `status: voting`; a vote can be changed
   until the close; one row per person (upsert). Results are visible live to managers and, after close, to every
   member and to the submitter (counts + percentage + outcome).
-- Tally at close per agenda item: `eligible` = council team size at close; `voted` = rows; quorum = `voted ≥
+- **The submitter never votes on their own item.** `access.submitter_id(item)` = `source_user_id` else
+  `created_by`; `POST …/agenda/{aid}/vote` by that person → 403 `own_item`; the row's `eligible_count` (fixed at
+  open-voting, recomputed at close by `row_eligible`) is the council team minus the submitter when they sit on
+  it; the row is left out of their `/me/votes` and of the `council_votes` attention count; `agenda_json` carries
+  `excluded` (= the caller is that person) and `excluded_users` (managers / after close).
+- Tally at close per agenda item: `eligible` = council team size at close (minus the submitter, above); `voted` = rows; quorum = `voted ≥
   ceil(eligible × quorum_pct / 100)` else `no_quorum` → item `postponed` (carried to the next regular session
   automatically). Denominator = approve + reject (+ abstain when `abstain_counts`; + non-voters as abstain when
   `no_vote_rule: abstain`). `approve_pct = approve / denominator × 100` (0 when the denominator is 0).
@@ -243,7 +248,7 @@ Export Hub (data + templates):
 - `GET /councils/{cid}` · `PUT /councils/{cid}/settings` (whole object: `chair_user_id, session_day, session_time, cutoff_days, voting_deadline_hours, quorum_pct, tie_rule, abstain_counts, no_vote_rule, holidays, holiday_rule, auto_agenda, auto_agenda_rules, timezone`).
 - `GET /councils/{cid}/sessions?status=` · `POST /councils/{cid}/sessions` `{kind, scheduled_at, title?, item_ids?}` → 201.
 - `GET /sessions/{sid}` → `{id, council: {...}, kind, title, scheduled_at, status, published_at, voting_opens_at, voting_closes_at, closed_at, eligible_count, version, agenda: [agenda_json…], my_votes: {aid: vote}, results_visible: bool, minutes: {...} | null, can: {manage, vote, export_votes}}`.
-  `agenda_json`: `{id, order, item: item_json, status, approve_count, reject_count, abstain_count, eligible_count, approve_pct, outcome: status, decided_at, note, my_vote, votes: [{user, vote, note, at}] (managers, or after close)}`.
+  `agenda_json`: `{id, order, item: item_json, status, approve_count, reject_count, abstain_count, eligible_count, approve_pct, outcome: status, decided_at, note, my_vote, excluded: bool, excluded_users: [user] | null, votes: [{user, vote, note, at}] (managers, or after close)}`.
 - `POST /sessions/{sid}/agenda` `{item_ids: []}` · `DELETE /sessions/{sid}/agenda/{aid}` · `POST /sessions/{sid}/agenda/{aid}/postpone` · `PUT /sessions/{sid}/agenda/order {ids: []}`.
 - `POST /sessions/{sid}/publish` · `POST /sessions/{sid}/open-voting` · `POST /sessions/{sid}/close {version}` · `POST /sessions/{sid}/cancel {note}` · `PATCH /sessions/{sid}` `{scheduled_at, title, notes, version}`.
 - `POST /agenda/{aid}/vote` `{vote, note?}` → agenda_json · `POST /agenda/{aid}/escalate {note?}`.
@@ -252,8 +257,8 @@ Export Hub (data + templates):
 
 ## 6. API — members (`/api/v1/org/public/governance`, `get_current_user`, `_member_org`)
 
-- `GET /{org_id}/entities` → entities that accept items from members (`kind != council`), each with `categories` (active, with `form_id`) and `accepts_complaints`.
-- `POST /{org_id}/items` `{dept_id, category_id?, type: "complaint" | "request", title, body, priority?, is_anonymous?, attachments?, payload?}` → 201 `{id, ref, status, message}`; a `complaint` ALSO creates the legacy `OrgComplaint` (so the existing complaint thread keeps working) and mirrors it.
+- `GET /{org_id}/entities` → entities that accept items from members (`kind != council`), each with `categories` (active, with `form_id`), `accepts_complaints`, `accepts_requests` and `can_submit_to_council` (a scientific department whose team — or whose council — the member sits on).
+- `POST /{org_id}/items` `{dept_id, category_id?, type: "complaint" | "request", title, body, priority?, is_anonymous?, attachments?, payload?, to_council?}` → 201 `{id, ref, status, message}`; a `complaint` ALSO creates the legacy `OrgComplaint` (so the existing complaint thread keeps working) and mirrors it. `to_council: true` (requests only, 422 `council_requests_only`; 422 `no_council`; 403 unless the member is on the department's or the council's team) creates the item at the department and at once a `vote` route to its Department Council (`routing.submit_to_council`, no routing rules apply to a department's own council): status `in_council`, on the next compiled agenda, and the submitter is excluded from the vote on it (§3).
 - `GET /me/items?org_id=&status=&page=` → items I submitted or that were routed to me personally (same item JSON; `can` reflects the member view).
 - `GET /items/{id}` → full item for the submitter / recipient (internal comments hidden; votes only after close).
 - `POST /items/{id}/comments {body}` · `POST /items/{id}/withdraw`.
