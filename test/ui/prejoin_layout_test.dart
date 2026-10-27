@@ -2,6 +2,7 @@
 // with and without devices, camera on/off, busy, teacher/student, permission issue, and the device sheet open.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_layout.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/prejoin_mic_meter_stub.dart' show micLevelFromBands;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -27,6 +28,7 @@ Widget _layout({
   PreJoinIssue? issue,
   String? title,
   String userName = 'أحمد حمدي مدكور',
+  double? micLevel,
 }) =>
     PreJoinLayout(
       title: title ?? 'Live session: Advanced Algorithms — week 7 (a long session name to wrap)',
@@ -35,6 +37,7 @@ Widget _layout({
       preview: preview,
       micOn: micOn,
       camOn: camOn,
+      micLevel: micLevel,
       onToggleMic: mics.isEmpty ? null : () {},
       onToggleCam: cams.isEmpty ? null : () {},
       mics: mics,
@@ -100,6 +103,50 @@ void main() {
         await t.tap(find.byKey(const ValueKey('prejoin.mic')));
       },
     );
+  });
+
+  testWidgets('mic level meter under the mic pill: quiet, speaking, clipping', (tester) async {
+    for (final level in [0.0, 0.5, 1.0]) {
+      await expectNoLayoutErrors(
+        tester,
+        () => _layout(camOn: false, micLevel: level),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('prejoin.mic.meter')), findsOneWidget);
+        },
+      );
+    }
+  });
+
+  testWidgets('mic level meter is hidden while the mic is off, and without a level', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => _layout(camOn: false, micOn: false, micLevel: 0.7),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('prejoin.mic.meter')), findsNothing);
+      },
+    );
+    await expectNoLayoutErrors(
+      tester,
+      () => _layout(camOn: false, micOn: true, micLevel: null),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('prejoin.mic.meter')), findsNothing);
+      },
+    );
+  });
+
+  group('micLevelFromBands (native visualizer frame → meter level)', () {
+    test('loudest band, clamped to 0–1', () {
+      expect(micLevelFromBands(const [0.1, 0.4, 0.25]), 0.4);
+      expect(micLevelFromBands(const [0.0, 0.0]), 0.0);
+      expect(micLevelFromBands(const [1.7, 0.2]), 1.0);
+      expect(micLevelFromBands(const [-0.3]), 0.0);
+    });
+
+    test('empty frame and non-numbers count as silence', () {
+      expect(micLevelFromBands(const []), 0.0);
+      expect(micLevelFromBands(const ['x', null, 0.3]), 0.3);
+      expect(micLevelFromBands([double.nan, 0.2]), 0.2);
+    });
   });
 
   testWidgets('preview card alone fits a narrow 16:9 box', (tester) async {

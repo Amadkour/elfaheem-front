@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'widgets/live_palette.dart';
@@ -150,7 +149,8 @@ class _PreJoinPageState extends State<PreJoinPage> {
   Map<String, dynamic>? _selectedVideoDevice;
   Map<String, dynamic>? _selectedAudioDevice;
 
-  /// Web only: live 0–1 microphone level of [_audioTrack] (null → no meter drawn).
+  /// Live 0–1 microphone level of [_audioTrack] (null → no meter drawn): an AudioContext analyser on the web,
+  /// LiveKit's native visualizer on Android / iOS (prejoin_mic_meter_*.dart).
   double? _micLevel;
   StreamSubscription<double>? _micLevelSub;
 
@@ -158,11 +158,11 @@ class _PreJoinPageState extends State<PreJoinPage> {
     unawaited(_micLevelSub?.cancel());
     _micLevelSub = null;
     final track = _audioTrack;
-    if (!kIsWeb || track == null) {
+    if (track == null) {
       if (_micLevel != null && mounted) setState(() => _micLevel = null);
       return;
     }
-    _micLevelSub = mic_meter.micLevelStream(track.mediaStream).listen((v) {
+    _micLevelSub = mic_meter.micLevelStream(track).listen((v) {
       if (!mounted || !_enableAudio) return;
       // Quantised to the meter's 8 segments: no rebuild while the level stays in the same segment.
       final q = (v * 8).round() / 8;

@@ -1024,7 +1024,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Player allows sensor rotation (portrait / landscape-left / landscape-right)
-  /// and sets up Picture-in-Picture (Android only).
+  /// and sets up Picture-in-Picture (Android only: package:floating has no iOS side — D-061; iOS never
+  /// sets _pipAvailable, so the Minimize button is not drawn there).
   void _initOrientationAndPip() {
     if (kIsWeb) return;
     SystemChrome.setPreferredOrientations(_allOrientations);

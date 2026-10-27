@@ -10,6 +10,9 @@ void showWebNotification(String? title, String? body) {
   // instead (see NotificationService._onForegroundMessage).
 }
 
+/// Web only: a browser `Notification` for a foreground push (see web_notification_web.dart). Never shown here.
+bool showBrowserNotification(String? title, String? body, Map<String, dynamic> data) => false;
+
 /// Web only: pushes relayed by the service worker (see web_notification_web.dart).
 void listenServiceWorkerMessages(void Function(Map<String, dynamic> data) onData) {
   // Intentionally empty — there is no service worker outside the browser.

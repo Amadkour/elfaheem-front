@@ -282,7 +282,7 @@ class NotificationService {
       // and the browser does NOT auto-display foreground pushes (only
       // background ones, via the service worker) — so we must trigger the
       // browser's native Notification popup ourselves here.
-      // showWebNotification(notification.title, notification.body);
+      if (showBrowserNotification(notification.title, notification.body, Map<String, dynamic>.from(message.data))) return;
 
       // Keep the in-app toast too, as a fallback for browsers where the
       // user hasn't granted Notification permission.
@@ -460,7 +460,7 @@ class NotificationService {
     required String body,
   }) async {
     if (kIsWeb) {
-      // showWebNotification(title, body);
+      showBrowserNotification(title, body, const <String, dynamic>{});
       return;
     }
     await _plugin.show(

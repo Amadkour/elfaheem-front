@@ -3,16 +3,18 @@
 // Web half of the pre-join microphone level meter: an AudioContext + AnalyserNode on the local audio track's
 // MediaStream, sampled ~15×/s into a 0–1 RMS level. The stream closes the AudioContext when the listener
 // cancels (track switched / page left). Fails safe: anything unexpected ends the stream with a 0.
+// (Android / iOS: prejoin_mic_meter_stub.dart, LiveKit's native visualizer.)
 library;
 
 import 'dart:async';
 import 'dart:js_interop';
 import 'dart:math' as math;
 
+import 'package:livekit_client/livekit_client.dart';
 import 'package:web/web.dart' as web;
 
-/// A 0–1 microphone level stream for the given flutter_webrtc `MediaStream` (its `jsStream` is the native one).
-Stream<double> micLevelStream(Object? mediaStream) {
+/// A 0–1 microphone level stream for [track] (its flutter_webrtc `mediaStream.jsStream` is the native one).
+Stream<double> micLevelStream(LocalAudioTrack? track) {
   late StreamController<double> ctrl;
   web.AudioContext? ctx;
   web.MediaStreamAudioSourceNode? source;
@@ -34,7 +36,7 @@ Stream<double> micLevelStream(Object? mediaStream) {
   }
 
   void start() {
-    final js = _nativeStream(mediaStream);
+    final js = _nativeStream(track?.mediaStream);
     if (js == null) {
       ctrl.add(0);
       return;
@@ -80,4 +82,15 @@ web.MediaStream? _nativeStream(Object? mediaStream) {
     if (js != null && (js as JSAny).isA<web.MediaStream>()) return js as web.MediaStream;
   } catch (_) {}
   return null;
+}
+
+/// The meter level for one native visualizer frame (unused on the web; keeps both halves' API identical).
+double micLevelFromBands(List<Object?> bands) {
+  var peak = 0.0;
+  for (final b in bands) {
+    final v = b is num ? b.toDouble() : 0.0;
+    if (v.isNaN) continue;
+    if (v > peak) peak = v;
+  }
+  return peak.clamp(0.0, 1.0);
 }
