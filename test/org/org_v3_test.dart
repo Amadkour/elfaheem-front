@@ -106,7 +106,40 @@ void main() {
 
     test('every key is always sent (PUT replaces the policy)', () {
       expect(JoinPolicyDraft().toBody().keys.toSet(),
-          {'method', 'approver', 'assistant_ids', 'roles', 'cohort', 'program_ids', 'levels', 'capacity', 'unverified', 'fields'});
+          {'method', 'methods', 'approver', 'assistant_ids', 'roles', 'cohort', 'program_ids', 'levels', 'capacity', 'unverified', 'fields'});
+    });
+
+    test('several join paths at once; method follows the strongest path', () {
+      final d = JoinPolicyDraft();
+      expect(d.closed, isTrue);
+      d.togglePath('code', true);
+      d.togglePath('request', true);
+      expect(d.toBody()['methods'], ['request', 'code']);
+      expect(d.toBody()['method'], 'approval');
+      expect(d.needsApprover, isTrue);
+      d.togglePath('request', false);
+      expect(d.toBody()['method'], 'code');
+      expect(d.needsApprover, isFalse);
+      d.togglePath('code', false);
+      expect(d.toBody()['method'], 'closed');
+    });
+
+    test('paths from the server: methods win, else derived from method', () {
+      expect(joinPathsOf({'method': 'code_req'}), {'code_req'});
+      expect(joinPathsOf({'method': 'approval', 'methods': ['request', 'code']}), {'request', 'code'});
+      expect(joinPathsOf({'method': 'closed'}), isEmpty);
+      final legacy = JoinPolicyDraft.fromJson({'method': 'auto'});
+      expect(legacy.paths, {'auto'});
+    });
+
+    test('a code is optional when another path is open, required when only code paths are', () {
+      final both = {'method': 'approval', 'methods': ['request', 'code'], 'code_required': false, 'needs_approval': false};
+      expect(unitAcceptsCode(both), isTrue);
+      expect(unitNeedsCode(both), isFalse);
+      final only = {'method': 'code', 'methods': ['code'], 'code_required': true, 'needs_approval': false};
+      expect(unitNeedsCode(only), isTrue);
+      expect(unitAcceptsCode({'method': 'auto', 'methods': ['auto'], 'code_required': false}), isFalse);
+      expect(joinPathsText({'method': 'closed'}), isNotEmpty);
     });
 
     test('local validation mirrors the server', () {
@@ -130,6 +163,24 @@ void main() {
       expect(unitNeedsCode({'method': 'code'}), isTrue);
       expect(unitNeedsCode({'method': 'auto', 'code_required': false}), isFalse);
       expect(unitNeedsCode({'method': 'approval'}), isFalse);
+    });
+
+    test('code_req needs a code AND an approver, and sends the approver fields', () {
+      expect(unitNeedsCode({'method': 'code_req'}), isTrue);
+      expect(unitNeedsApproval({'method': 'code_req'}), isTrue);
+      expect(unitNeedsApproval({'method': 'code'}), isFalse);
+      final d = JoinPolicyDraft(method: 'code_req', approver: 'assistants', assistantIds: {7, 3});
+      expect(d.needsApprover, isTrue);
+      final b = d.toBody();
+      expect(b['method'], 'code_req');
+      expect(b['approver'], 'assistants');
+      expect(b['assistant_ids'], [3, 7]);
+      expect(JoinPolicyDraft(method: 'code_req', approver: 'assistants').validate(), 'Pick at least one assistant');
+      expect(orgCodeText('request_code_required'), isNot('request_code_required'));
+    });
+
+    test('a refused logo link has its own text', () {
+      expect(orgCodeText('logo_url_not_allowed'), isNot('logo_url_not_allowed'));
     });
   });
 

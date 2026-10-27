@@ -99,10 +99,6 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   // to rebind is a safe no-op. Other platforms can leave this a no-op.
   void restartAudioTap() {}
 
-  static const _recChannel = MethodChannel(
-    'com.example.flutter_education_app/native_recorder',
-  );
-
   static const _hdAudioPublishOptions = AudioPublishOptions(
     encoding: AudioEncoding(maxBitrate: 128000),
     dtx: false,
@@ -220,6 +216,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         // (source: screenShareVideo) — mirrors what createScreenShareTrack()
         // would have used internally, without us calling it (which would
         // re-trigger MediaProjection).
+        // ignore: invalid_use_of_internal_member
         _elFaheemScreenTrack = LocalVideoTrack(
           TrackSource.screenShareVideo,
           stream,
@@ -335,6 +332,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           'audio': true,
         });
         final videoTrack = screenStream.getVideoTracks().first;
+        // ignore: invalid_use_of_internal_member
         _webScreenShareTrack = LocalVideoTrack(
           TrackSource.screenShareVideo,
           screenStream,
@@ -466,7 +464,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       _safeNegotiate(
             () => room.localParticipant
             ?.setScreenShareEnabled(false)
-            .catchError((_) {}) ??
+            .catchError((_) => null) ??
             Future.value(),
       ),
     );
@@ -508,7 +506,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         // the screen via WebRTC while the extension records it locally.
         unawaited(
           _safeNegotiate(
-                () => local.setScreenShareEnabled(true).catchError((_) {}),
+                () => local.setScreenShareEnabled(true).catchError((_) => null),
           ),
         );
         await Future.delayed(const Duration(milliseconds: 300));
@@ -611,7 +609,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       _safeNegotiate(
             () => room.localParticipant
             ?.setScreenShareEnabled(false)
-            .catchError((_) {}) ??
+            .catchError((_) => null) ??
             Future.value(),
       ),
     );

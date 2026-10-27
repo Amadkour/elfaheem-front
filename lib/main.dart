@@ -16,10 +16,11 @@ import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
-import 'package:flutter_education_app/url_strategy_stub.dart';
+import 'package:flutter_education_app/utils/widget/url_strategy.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/remote_config_service.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart' show AppScrollBehavior;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
@@ -41,10 +42,15 @@ import 'features/shared/attendance/attendance_offline_sync.dart';
 import 'features/shared/attendance/attendance_push.dart';
 import 'features/shared/attendance/attendance_store.dart';
 import 'features/shared/attendance/attendance_teacher_banner.dart';
+import 'features/shared/guest/guest_live_api.dart' show guestLiveTokenFromRoute, legacyHashRoute;
+import 'features/shared/guest/guest_live_page.dart';
 import 'features/shared/guest/guest_state.dart';
+import 'features/shared/rag/app_assistant.dart' show AppAssistantHost;
 import 'features/shared/notification/admin_message_dialogs.dart';
 import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
+import 'features/shared/course_profile/course_profile_screen.dart';
+import 'features/shared/calendar/calendar_screen.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
@@ -63,12 +69,25 @@ import 'firebase_options.dart';
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// Web: the route an old hash link (`/#/live/x`, `/#/dashboard`) pointed at, read once at start-up. With the
+/// path URL strategy a plain path is the platform's default route by itself; this covers the links that are
+/// still out there (shared guest links, bookmarks). Null on mobile and for clean URLs.
+String? _legacyHashRoute;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry point
 // ─────────────────────────────────────────────────────────────────────────────
 
 Future<void> main() async {
   configureUrlStrategy(); // web: usePathUrlStrategy(), mobile: no-op
+  if (kIsWeb) {
+    // Old `/#/route` links: keep them working and show the clean path in the address bar (no reload).
+    final base = Uri.base;
+    _legacyHashRoute = legacyHashRoute(base);
+    if (_legacyHashRoute != null) {
+      replaceBrowserUrl(base.removeFragment().resolve(_legacyHashRoute!.substring(1)).toString());
+    }
+  }
 
   if (kIsWeb) {
     WidgetsFlutterBinding.ensureInitialized();
@@ -117,6 +136,7 @@ Future<void> _bootstrap() async {
 Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
+  await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
 
   await _safe('language', () => readLanguage(), seconds: 8);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
@@ -431,11 +451,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
     }
     // Student + offline start-up: Dashboard (on its LAST tab) first, Downloads on top of it.
     final bool offlineStudentStart = offlineStart && auth.isStudent;
-    final String initialRoute = !auth.isAuthenticated
+    // Web uses the PATH url strategy: `/live/x`, `/c/12?ref=5`, `/dashboard` arrive as the platform's default
+    // route, which WidgetsApp prefers over `initialRoute` whenever it is not `/`. Only the old hash links
+    // (`/#/live/x`) need help: their route was read from the fragment in main() and the URL already cleaned.
+    final String initialRoute = _legacyHashRoute ??
+        (!auth.isAuthenticated
         ? '/login'
         : (offlineStudentStart
         ? '/dashboard'
-        : (offlineStart ? '/downloads' : auth.homeRoute));
+        : (offlineStart ? '/downloads' : auth.homeRoute)));
 
     final isDark = context.watch<ProfileProvider>().darkMode;
     // ONE app name everywhere: the name the super admin set on the dashboard ("About us" → AppIdentity,
@@ -462,6 +486,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           navigatorObservers: [topRouteObserver],
           title: appName,
           debugShowCheckedModeBanner: false,
+          scrollBehavior: const AppScrollBehavior(), // mouse / trackpad can drag every scrollable (web, desktop)
           theme: tc.materialTheme(dark: false),
           darkTheme: tc.materialTheme(dark: true),
           themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
@@ -493,6 +518,9 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           // laid out in the wrong direction.
           builder: (_, child) => Directionality(
             textDirection: Helpers.pageDirection,
+            // the floating app assistant: a bubble above every signed-in screen (rag/app_assistant.dart)
+            child: AppAssistantHost(
+            navigatorKey: navigatorKey,
             child: GuestBanner(
             child: ViewAsBanner(
               child: AttendanceTeacherBanner(
@@ -515,7 +543,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          )),
+          ))),
           supportedLocales: context
               .read<LangProvider>()
               .languages
@@ -527,6 +555,12 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
   }
 
   Route<dynamic>? _router(RouteSettings settings) {
+    // /live/<token> — a live session's public guest link (web deep link, app link, QR). No account needed:
+    // it resolves before login and in guest mode, on purpose outside _Guard.
+    final guestToken = guestLiveTokenFromRoute(settings.name);
+    if (guestToken != null) {
+      return _fade(GuestLivePage(token: guestToken), settings);
+    }
     final link = DeepLinkService.parse(settings.name); // /c/12?ref=5
     if (link != null) {
       if (!context.read<MyAuthProvider>().isAuthenticated) {
@@ -603,6 +637,20 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         );
       case '/notifications':
         return _fade(const _Guard(child: NotificationsScreen()), settings);
+      case '/course-profile': // arguments: course id (int) — one profile page for every role
+        final cid = settings.arguments;
+        if (cid is! int) return _fade(const _Guard(child: _RedirectHome()), settings);
+        return _fade(_Guard(child: CourseProfileScreen(courseId: cid)), settings);
+      case '/calendar': // arguments: a meeting id (int, notification tap) or {org_id?, dept_id?, meeting_id?}
+        final a = settings.arguments;
+        final m = a is Map ? a : const {};
+        return _fade(
+            _Guard(
+                child: CalendarScreen(
+                    orgId: m['org_id'] as int?,
+                    deptId: m['dept_id'] as int?,
+                    openMeetingId: a is int ? a : m['meeting_id'] as int?)),
+            settings);
       default:
         debugPrint(
           'Unknown route: ${settings.name} args=${settings.arguments}',

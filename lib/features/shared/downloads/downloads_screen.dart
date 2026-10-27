@@ -18,6 +18,8 @@ import '../../../core/offline/offline_strings.dart';
 import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import '../exam_engine/offline/offline_exam_screen.dart';
+import '../../admin/admin_common.dart' show t;
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -64,21 +66,30 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
+  SessionMaterialModel _asMaterial(OfflineItem it) => SessionMaterialModel(
+        id: it.materialId,
+        sessionId: it.sessionId,
+        name: it.title,
+        description: it.description,
+        type: SessionMaterialType.video,
+        order: 0,
+        createdAt: it.createdAt,
+        completed: false,
+      );
+
   void _open(OfflineItem it) {
     HapticFeedback.selectionClick();
-    final m = SessionMaterialModel(
-      id: it.materialId,
-      sessionId: it.sessionId,
-      name: it.title,
-      description: it.description,
-      type: SessionMaterialType.video,
-      order: 0,
-      createdAt: it.createdAt,
-      completed: false,
-    );
     // VideoPlayerScreen sees the local copy and plays it without any API call.
+    // The other downloads of the same session are the lecture list / "up next".
+    final same = _items.where((o) => o.sessionId == it.sessionId).toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => VideoPlayerScreen(material: m)),
+      MaterialPageRoute<void>(
+        builder: (_) => VideoPlayerScreen(
+          material: _asMaterial(it),
+          playlist: same.map(_asMaterial).toList(),
+        ),
+      ),
     );
   }
 
@@ -171,7 +182,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ButtonSegment(
                       value: 1,
                       icon: const Icon(Icons.how_to_reg_rounded, size: 18),
-                      label: Text(attT('att_tab_attendance'))),
+                      label: Text(attT('att_tab_attendance'), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  ButtonSegment(
+                      value: 2,
+                      icon: const Icon(Icons.offline_pin_rounded, size: 18),
+                      label: Text(t('الاختبارات', 'Exams'), maxLines: 1, overflow: TextOverflow.ellipsis)),
                 ],
                 selected: {_tab},
                 onSelectionChanged: (v) => setState(() => _tab = v.first),
@@ -179,7 +194,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ),
           ),
           Expanded(
-            child: _tab == 1
+            child: _tab == 2
+                ? const OfflineExamsList()
+                : _tab == 1
                 ? const OfflineAttendanceTab()
                 : _loading
             ? const Center(child: AppLoadingIndicator(size: 56))

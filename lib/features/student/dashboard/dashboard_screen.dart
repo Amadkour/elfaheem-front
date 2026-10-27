@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
@@ -62,23 +63,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final label = switch (id) {
       'profile' => 'my_profile',
       'my_courses' => 'my_courses',
-      _ => null,
+      _ => id, // any tab label ('my_schedule', 'analysis' …) — the home shortcuts use these
     };
     AppNavigator.requestedTab.value = null; // consumed
-    if (label == null || !mounted) return;
+    if (!mounted) return;
     final i = dashboardItems.indexWhere((e) => e.label == label);
     if (i >= 0) setState(() => _currentIndex = i); // i < 0 → that tab is switched off by the feature list
+  }
+
+  /// Badges (GET /me/attention): Home = my to-dos, Profile = complaint replies.
+  void _onAttention() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     AppNavigator.requestedTab.removeListener(_onTabRequested);
+    if (!GuestState.active) AttentionService.instance.removeListener(_onAttention);
     super.dispose();
   }
 
   @override
   void initState() {
     AppNavigator.requestedTab.addListener(_onTabRequested);
+    if (!GuestState.active) AttentionService.instance.addListener(_onAttention);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _onTabRequested(); // a request made BEFORE this screen existed (cold start from a dialog / push)
       // A guest has no account → no notifications request (it would 401).
@@ -155,6 +163,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final unread = context.watch<NotificationsProvider>().unreadCount;
+            final att = AttentionService.instance;
+            for (final it in dashboardItems) {
+              it.badge = switch (it.label) {
+                'home' => att.count(AttentionTabs.home),
+                'my_profile' => att.count(AttentionTabs.profile),
+                _ => 0,
+              };
+            }
             final w = constraints.maxWidth;
             if (w >= 900) {
               return WideShell(
@@ -615,8 +631,33 @@ class _WideTopBar extends StatelessWidget {
           const Spacer(),
           if (onRefresh != null) RefreshButton(onTap: onRefresh!),
           SizedBox(width: 5),
+          if (!GuestState.active) const CalendarIcon(),
           NotificationIcon(unreadCount: unread),
         ],
+      ),
+    );
+  }
+}
+
+/// Opens the personal overall calendar ('/calendar' with no org/dept = every source the user belongs to).
+class CalendarIcon extends StatelessWidget {
+  const CalendarIcon({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'my_calendar'.tr,
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).pushNamed('/calendar'),
+        child: Container(
+          padding: EdgeInsets.all(7),
+          margin: EdgeInsets.all(5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: context.colors.accent2,
+          ),
+          child: Icon(Icons.event_rounded, color: Colors.white, size: 20),
+        ),
       ),
     );
   }

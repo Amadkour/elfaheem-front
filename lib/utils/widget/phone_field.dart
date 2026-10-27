@@ -295,7 +295,7 @@ class _CountrySheet extends StatelessWidget {
           color: c.cardBg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: Column(
+        child: SingleChildScrollView(child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -327,7 +327,7 @@ class _CountrySheet extends StatelessWidget {
                 onTap: () => Navigator.pop(context, k),
               ),
           ],
-        ),
+        )),
       ),
     );
   }

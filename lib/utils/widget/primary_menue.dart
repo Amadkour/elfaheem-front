@@ -44,8 +44,8 @@ class MyPrimaryMenu extends StatelessWidget {
             options.length,
             (int i) => Column(
                   children: [
-                    DecoratedBox(
-                      decoration:  BoxDecoration(color: context.colors.background),
+                    Material( // not a coloured DecoratedBox: it hid the tile colour / ink (ListTile asserts)
+                      color: context.colors.background,
                       child: ListTile(
                         tileColor: context.colors.inputBg,
                         splashColor: Colors.transparent,

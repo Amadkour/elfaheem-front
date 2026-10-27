@@ -163,13 +163,16 @@ class EditableImage extends StatelessWidget {
 
 class _ImageSourceSheet extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.all(16),
+        // Material, not a coloured Container: the ListTiles paint their ink on it (Flutter reports
+        // "ListTile background color or ink splashes may be invisible" under a coloured box).
+        child: Material(
           color: context.colors.cardBg,
           borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
@@ -203,6 +206,8 @@ class _ImageSourceSheet extends StatelessWidget {
             ),
             const SizedBox(height: 16),
           ],
+        ),
+          ),
         ),
       );
 }

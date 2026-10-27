@@ -22,6 +22,7 @@ import '../../../core/offline/offline_strings.dart';
 import '../../../utils/widget/app_network_image.dart';
 import '../../../utils/widget/count_badge.dart';
 import '../../auth/auth_provider.dart';
+import '../../auth/mfa_entry.dart' show MfaSettingsEntry;
 import '../../parent/student_link_code_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import '../../../utils/widget/parent_component.dart';
@@ -30,6 +31,7 @@ import '../../teacher/certificates/certificate_requests_screen.dart';
 import '../../teacher/profile/payout/teacher_payouts_screen.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_screen.dart';
+import '../rag/rag_chat_screen.dart' show RagChatScreen;
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import 'change_language_screen.dart';
@@ -38,6 +40,7 @@ import 'compalints/complaint_provider.dart';
 import 'compalints/complaints_screen.dart';
 import 'course_instractor_profile.dart';
 import 'components/setting_title.dart';
+import 'privacy_export.dart' show DataExportPage, dataExportEntryLabel;
 import 'profile_provider.dart' show ProfileProvider;
 import 'update_account_widget.dart';
 import '../../../utils/helpers.dart';
@@ -288,6 +291,9 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // ── Security: two-step verification, for the roles the server allows (hidden otherwise) ──
+                  const MfaSettingsEntry(padding: EdgeInsets.symmetric(horizontal: 20)),
+
                   // ── Settings section ─────────────────────────────────────
                   ParentComponent(
                     featureKey: 'profile.settings',
@@ -390,6 +396,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           ParentComponent(
+                            featureKey: 'profile.app_assistant',
+                            child: SettingsTile(
+                              icon: Icons.question_answer_rounded,
+                              iconBg: c.primaryTint,
+                              iconColor: c.primary,
+                              label: 'app_assistant'.tr,
+                              onTap: () => _push(const RagChatScreen(app: true)),
+                            ),
+                          ),
+                          ParentComponent(
                             featureKey: 'profile.privacy',
                             child: SettingsTile(
                               icon: Icons.verified_user_rounded,
@@ -397,6 +413,16 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               iconColor: c.success,
                               label: 'privacy'.tr,
                               onTap: () => _push(TermsScreen()),
+                            ),
+                          ),
+                          ParentComponent(
+                            featureKey: 'profile.data_export',
+                            child: SettingsTile(
+                              icon: Icons.inventory_2_rounded,
+                              iconBg: c.primaryTint,
+                              iconColor: c.primary,
+                              label: dataExportEntryLabel(),
+                              onTap: () => _push(const DataExportPage()),
                             ),
                           ),
                           ParentComponent(

@@ -6,6 +6,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -276,8 +277,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                      child: AppHScroll(
                         child: DataTable(
                           columnSpacing: 10,
                           headingRowHeight: 40,

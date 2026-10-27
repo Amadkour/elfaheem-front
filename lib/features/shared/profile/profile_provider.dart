@@ -133,17 +133,6 @@ class ProfileProvider extends BaseProvider {
     }
   }
 
-  Future<bool> resendOtp(String email) async {
-    final result = await run(
-      () => _api.post(
-        '/api/v1/auth/resend-otp2',
-        body: {'gmail': email},
-        auth: false,
-      ),
-    );
-    return result != null;
-  }
-
   // ── Update profile ────────────────────────────────────────────────────────
   Future<UserModel?> updateProfile({
     String? name,
@@ -190,6 +179,12 @@ class ProfileProvider extends BaseProvider {
         ),
       );
       if (r != null && r is Map) {
+        // every other device is signed out; this one continues with the pair the server returns
+        final access = r['access_token'];
+        final refresh = r['refresh_token'];
+        if (access is String && refresh is String) {
+          await ApiClient().saveTokens(access: access, refresh: refresh);
+        }
         return r['message'] as String;
       }
       return null;
@@ -229,9 +224,11 @@ class ProfileProvider extends BaseProvider {
   Future<void> logout(BuildContext context, {String? fcmToken}) async {
     try {
       // final headers = fcmToken != null ? {'fcm_token': fcmToken} : null;
+      // this device's refresh token → only this session is revoked server-side
+      final refresh = await _api.refreshToken;
       await _api.post(
         '/api/v1/auth/logout',
-        body: {},
+        body: refresh == null ? {} : {'refresh_token': refresh},
         // headers: headers,
       );
     } catch (e) {

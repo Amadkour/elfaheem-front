@@ -7,6 +7,7 @@ import '../../../shared/passcode/passcode_screen.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
 import 'student_exam_api.dart';
+import '../../../shared/exam_engine/engine_exams_section.dart';
 import 'student_exam_detail_screen.dart';
 import 'student_exam_provider.dart';
 
@@ -158,7 +159,13 @@ class StudentCourseExamsWidget extends StatefulWidget {
 
 class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
+        // Exam Engine exams of the course (Phase 5, D-018); renders nothing while the engine is not deployed
+        EngineExamsSection(courseId: int.tryParse(widget.courseId)),
+        _legacy(context),
+      ]);
+
+  Widget _legacy(BuildContext context) {
     final c = context.colors;
     final prov = context.watch<StudentExamProvider>();
     final loading = prov.loadingCourseExamsFor(widget.courseId);

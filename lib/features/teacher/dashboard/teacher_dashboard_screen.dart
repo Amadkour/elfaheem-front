@@ -3,6 +3,7 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
@@ -11,7 +12,6 @@ import 'package:flutter_education_app/features/teacher/profile/switch_device_req
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
-import '../../../utils/widget/app_loading_indicator.dart';
 import '../analysis/analytics_hub_screen.dart';
 import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
@@ -35,15 +35,21 @@ class _State extends State<TeacherDashboardScreen> {
   // so the badge and the list always use the same instance.
   final _complaints = ComplaintProvider();
 
+  void _onAttention() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
     _complaints.dispose();
+    AttentionService.instance.removeListener(_onAttention);
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
+    AttentionService.instance.addListener(_onAttention);   // Home badge = my to-dos (GET /me/attention)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
@@ -127,8 +133,9 @@ class _State extends State<TeacherDashboardScreen> {
                 context.select<ComplaintProvider, int>((p) => p.count);
                 // Profile tab hosts both the device-switch requests and the help center.
                 for (final item in dashboardItems) {
-                  item.badge =
-                  item.label == 'my_profile' ? pending + complaints : 0;
+                  item.badge = item.label == 'my_profile'
+                      ? pending + complaints
+                      : (item.label == 'home' ? AttentionService.instance.count(AttentionTabs.home) : 0);
                 }
 
                 final w = constraints.maxWidth;
@@ -205,17 +212,15 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
       useWebCard: true,
 
       child: SafeArea(
-        child: _prov.isLoading
-            ? Center(
-          child: AppLoadingIndicator(),
-        )
-            : ScheduleTabBody(
+        // the body owns loading (skeleton) / error (retry) / empty — a refresh keeps the data on screen
+        child: ScheduleTabBody(
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,
           title: "time-table".tr,
           emptyMessage: 'no-time-table'.tr,
           getLastFetched: () => _prov.lastFetched,
+          getMeetings: () => _prov.meetings,
         ),
       ),
     );

@@ -21,6 +21,7 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
     show SettingsTile;
@@ -111,9 +112,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'developer',
   ].contains(context.read<MyAuthProvider>().currentUser?.role ?? '');
 
+  void _onAttention() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    AttentionService.instance.addListener(_onAttention);   // Overview badge = my to-dos (GET /me/attention)
 
     // ── tabs 0-3: same in every layout ─────────────────────────────────
     final overview = _AdminTab(
@@ -258,6 +264,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   void dispose() {
+    AttentionService.instance.removeListener(_onAttention);
     _tabs.dispose();
     _payouts.dispose();
     _complaints.dispose();
@@ -310,16 +317,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   (p) => p.count,
                 );
 
+                final todo = AttentionService.instance.count(AttentionTabs.home);
                 for (final item in _mobileItems) {
                   item.badge = item.label == _moreLabel
                       ? payouts + transfers + complaints
-                      : 0;
+                      : (item.label == 'admin_overview_2' ? todo : 0);
                 }
                 for (final item in _wideItems) {
                   if (item.label == _financeLabel) {
                     item.badge = payouts + transfers;
                   } else if (item.label == _supportLabel) {
                     item.badge = complaints;
+                  } else if (item.label == 'admin_overview_2') {
+                    item.badge = todo;
                   } else {
                     item.badge = 0;
                   }

@@ -947,7 +947,6 @@ class _DocumentsSection extends StatelessWidget {
   );
 
   Widget _featureContent(BuildContext context) {
-    final c = context.colors;
     final provider = context.watch<TeacherDocumentProvider>();
     final docs = provider.publicDocs;
 
@@ -1034,39 +1033,14 @@ class _DocumentCard extends StatelessWidget {
                     children: [
                       Text(doc.title, style: c.bodyBold.copyWith(fontSize: 13)),
                       const SizedBox(height: 4),
-                      Row(
+                      // the real review status: the teacher (and reviewing admins) also get pending / rejected
+                      // documents here; everyone else gets approved ones only
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: c.success.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.verified_rounded,
-                                  size: 11,
-                                  color: c.success,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'verified'.tr,
-                                  style: TextStyle(
-                                    fontFamily: 'bahji',
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: c.success,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
+                          DocStatusBadge(status: doc.status),
                           Text(
                             _fmtDate(doc.uploadedAt),
                             style: c.caption.copyWith(fontSize: 10),
@@ -1093,7 +1067,7 @@ class _DocumentCard extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
               child: _PdfChip(
                 fileName: doc.fileName ?? 'document.pdf',
-                fileUrl: doc.fileUrl ?? '',
+                fileUrl: doc.fileUrl,
               ),
             ),
         ],
@@ -1102,6 +1076,45 @@ class _DocumentCard extends StatelessWidget {
   }
 
   String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+}
+
+/// A teacher document's review status as a small pill: approved → "Verified", pending → "Pending review",
+/// rejected → "Rejected". Unknown values show as pending (never as verified).
+class DocStatusBadge extends StatelessWidget {
+  const DocStatusBadge({super.key, required this.status});
+  final String status;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final (IconData icon, Color color, String label) = switch (status) {
+      'approved' => (Icons.verified_rounded, c.success, 'verified'.tr),
+      'rejected' => (Icons.cancel_outlined, c.danger, 'doc_rejected'.tr),
+      _ => (Icons.hourglass_top_rounded, c.warning, 'doc_pending'.tr),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: 'bahji', fontSize: 10, fontWeight: FontWeight.w700, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Tappable full-screen image preview ───────────────────────────────────────
@@ -1366,116 +1379,6 @@ class _LoadingSkeletonState extends State<_LoadingSkeleton>
           ),
         );
       },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CONTACT CARD  (kept, still commented-out in layouts — unchanged from original)
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _ContactCard extends StatelessWidget {
-  final TeacherProfileData teacher;
-
-  const _ContactCard({required this.teacher});
-
-  @override
-  Widget build(BuildContext context) => ParentComponent(
-    featureKey: 'instructor.contact',
-    child: _featureContent(context),
-  );
-
-  Widget _featureContent(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: c.brMedium,
-        boxShadow: c.cardShadow,
-        border: Border.all(color: c.divider.withValues(alpha: 0.5)),
-      ),
-      child: Column(
-        children: [
-          _ContactRow(
-            icon: Icons.email_outlined,
-            label: 'email_label'.tr,
-            value: teacher.gmail,
-            color: AppTheme.primary,
-          ),
-          if (teacher.phone != null) ...[
-            Divider(height: 1, color: c.divider),
-            _ContactRow(
-              icon: Icons.phone_outlined,
-              label: 'phone_label'.tr,
-              value: teacher.phone!,
-              color: const Color(0xFF22C55E),
-            ),
-          ],
-          if (teacher.country != null) ...[
-            Divider(height: 1, color: c.divider),
-            _ContactRow(
-              icon: Icons.location_on_outlined,
-              label: 'country'.tr,
-              value: teacher.country!,
-              color: const Color(0xFFFF6B35),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _ContactRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-
-  const _ContactRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 15),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: c.caption.copyWith(fontSize: 10, letterSpacing: 0.5),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                value,
-                style: c.body.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }

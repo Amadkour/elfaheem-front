@@ -6,6 +6,9 @@ import 'package:flutter_education_app/features/admin/admin_platform_widgets.dart
 import 'package:flutter_education_app/features/org/org_announcements.dart';
 import 'package:flutter_education_app/features/org/org_levels.dart';
 import 'package:flutter_education_app/features/org/org_levels_pages.dart';
+import 'package:flutter_education_app/features/org/org_schedule_board.dart';
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
+import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,21 +55,99 @@ void main() {
     );
   });
 
-  testWidgets('timetable stepper, next-step banner and action bar', (tester) async {
-    final journey = TimetableJourney.of(periods: 6, rooms: 4, noTeacher: 2, slots: 40, result: const {}, hard: 3, active: false);
+  testWidgets('generation live panel', (tester) async {
     await expectNoLayoutErrors(
       tester,
       () => ListView(padding: const EdgeInsets.all(16), children: [
-        TimetableStepper(journey: journey, selected: TimetableStage.review, onSelect: (_) {}),
-        const SizedBox(height: 12),
+        GenerationLivePanel(run: const {
+          'status': 'running',
+          'progress': 50,
+          'summary': {'live': true, 'round': 3, 'rounds_max': 6, 'unplaced': 12, 'top': [{'reason': 'students_busy_elsewhere', 'n': 7}, {'reason': 'no_room_fits', 'n': 5}]},
+        }, onCancel: () {}),
+        // with the step log: every step, the clock, the attempt's budget bar, the patience hint
+        GenerationLivePanel(run: {
+          'status': 'running',
+          'progress': 40,
+          'summary': {
+            'live': true, 'round': 1, 'rounds_max': 6, 'unplaced': 2, 'placed': 18, 'required': 20, 'top': [{'reason': 'rooms_busy', 'n': 2}],
+            'stage': 'round', 'started_at': '2026-10-24T10:00:00', 'elapsed_s': 31, 'budget_s': 90,
+            'steps': [
+          {'id': 1, 'kind': 'prepare', 'text_ar': 'تم تحميل البيانات', 'text_en': 'Data loaded: 12 teaching load(s) · 4 room(s) · 6 period(s) × 5 day(s)', 'at': '2026-10-24T10:00:00', 'done': true, 'ms': 420},
+          {'id': 2, 'kind': 'round', 'round': 1, 'relax': false, 'limit_s': 8.0, 'text_ar': 'المحاولة 1 من 6', 'text_en': 'Attempt 1 of 6: solving with every rule enforced (strict) (up to 8 s)', 'at': '2026-10-24T10:00:01', 'done': true, 'ms': 8010},
+          {'id': 3, 'kind': 'round_end', 'round': 1, 'improved': true, 'text_ar': 'المحاولة 1: تحسّن', 'text_en': 'Attempt 1: better — 18 of 20 sessions, 2 left', 'at': '2026-10-24T10:00:09', 'done': true, 'ms': 0},
+          {'id': 4, 'kind': 'round', 'round': 2, 'relax': true, 'limit_s': 8.0, 'text_ar': 'المحاولة 2 من 6: البحث عن جدول مع السماح بتجاوز القواعد المرنة فقط (حتى 8 ث) · أفضل نتيجة حتى الآن 18 من 20', 'text_en': 'Attempt 2 of 6: solving bending only the rules marked Flexible (up to 8 s) · best so far 18 of 20', 'at': '2026-10-24T10:00:09', 'done': false, 'ms': null},
+        ],
+          },
+        }, onCancel: () {}),
+        GenerationLivePanel(run: const {'status': 'queued', 'progress': 0}),
+        GenerationLivePanel(run: {'status': 'failed', 'error': '$longEn $longAr'}),
+        // the veil over the grid: the compact panel in the middle of a dimmed board
+        SizedBox(
+          height: 260,
+          child: Stack(children: [
+            Container(color: Colors.grey.shade200),
+            GenerationVeil(run: {
+              'status': 'running',
+              'progress': 20,
+              'summary': {'live': true, 'round': 0, 'rounds_max': 6, 'unplaced': 0, 'stage': 'round', 'started_at': '2026-10-24T10:00:00', 'elapsed_s': 3, 'budget_s': 90, 'steps': [
+          {'id': 1, 'kind': 'prepare', 'text_ar': 'تم تحميل البيانات', 'text_en': 'Data loaded: 12 teaching load(s) · 4 room(s) · 6 period(s) × 5 day(s)', 'at': '2026-10-24T10:00:00', 'done': true, 'ms': 420},
+          {'id': 2, 'kind': 'round', 'round': 1, 'relax': false, 'limit_s': 8.0, 'text_ar': 'المحاولة 1 من 6', 'text_en': 'Attempt 1 of 6: solving with every rule enforced (strict) (up to 8 s)', 'at': '2026-10-24T10:00:01', 'done': true, 'ms': 8010},
+          {'id': 3, 'kind': 'round_end', 'round': 1, 'improved': true, 'text_ar': 'المحاولة 1: تحسّن', 'text_en': 'Attempt 1: better — 18 of 20 sessions, 2 left', 'at': '2026-10-24T10:00:09', 'done': true, 'ms': 0},
+          {'id': 4, 'kind': 'round', 'round': 2, 'relax': true, 'limit_s': 8.0, 'text_ar': 'المحاولة 2 من 6: البحث عن جدول مع السماح بتجاوز القواعد المرنة فقط (حتى 8 ث) · أفضل نتيجة حتى الآن 18 من 20', 'text_en': 'Attempt 2 of 6: solving bending only the rules marked Flexible (up to 8 s) · best so far 18 of 20', 'at': '2026-10-24T10:00:09', 'done': false, 'ms': null},
+        ]},
+            }, onCancel: () {}),
+          ]),
+        ),
+      ]),
+    );
+  });
+
+  testWidgets('timetable conflicts panel', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(padding: const EdgeInsets.all(16), children: [
+        ConflictsPanel(conflicts: const [], onTap: () {}),
+        ConflictsPanel(conflicts: [
+          for (final x in ['room_double_booked', 'staff_busy_elsewhere', 'preference_not_preferred', 'room_missing_capabilities'])
+            {'type': x, 'severity': x.startsWith('pref') ? 'warning' : 'error'},
+        ], onTap: () {}),
+      ]),
+    );
+  });
+
+  testWidgets('timetable board: sticky header and period column, seven days', (tester) async {
+    const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+    final periods = [for (var i = 0; i < 7; i++) {'id': i + 1, 'label': 'P${i + 1} $longEn', 'start_time': '0${i + 1}:00'}];
+    await expectNoLayoutErrors(
+      tester,
+      () => TimetableBoard(
+        days: days,
+        periods: periods,
+        dayLabel: (d) => '$d $longAr',
+        periodLabel: (p) => Text('${p['label']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+        rowSessions: (pid) => pid == 2 ? 3 : 1,
+        cell: (d, p, h) => SingleChildScrollView(
+          child: Column(children: [for (var i = 0; i < (asIntOr(p['id']) == 2 ? 3 : 1); i++) Text('$longEn $longAr', maxLines: 2, overflow: TextOverflow.ellipsis)]),
+        ),
+      ),
+    );
+  });
+
+  testWidgets('timetable next-step banner and filter bar', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => ListView(padding: const EdgeInsets.all(16), children: [
         NextStepBanner(title: '$longAr $longEn', body: '$longEn. $longAr', action: 'إصلاح التعارضات الآن', tone: 2, onAction: () {}),
         const SizedBox(height: 12),
-        StudioActionBar(stage: TimetableStage.review, actions: [
-          for (final s in TimetableStage.values) ...[
-            StudioAction(s, Icons.auto_awesome_rounded, 'توليد الجدول تلقائياً حتى يكتمل', () {}),
-            StudioAction(s, Icons.compare_arrows_rounded, 'Compare rules that may give way', () {}, busy: true),
-          ],
-        ]),
+        TimetableFilterBar(
+          filter: const GridFilter(GridFilterKind.teacher, '1'),
+          options: {
+            GridFilterKind.cohort: {'1|L1': '$longAr · L1'},
+            GridFilterKind.teacher: {'1': longEn},
+            GridFilterKind.room: {'2': longAr},
+          },
+          onChanged: (_) {},
+        ),
       ]),
     );
   });
@@ -186,3 +267,5 @@ final _reason = <String, dynamic>{
   ],
   'missing_course_ids': [2],
 };
+
+int asIntOr(Object? v) => v is int ? v : int.tryParse('$v') ?? 0;

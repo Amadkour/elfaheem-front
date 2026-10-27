@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/student/models.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../features/shared/attendance/attendance_offline_sync.dart';
 import '../features/shared/attendance/attendance_store.dart';
+import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_service.dart';
 
 class TopRouteObserver extends NavigatorObserver {
   Route<dynamic>? currentRoute;
@@ -27,6 +29,7 @@ class TopRouteObserver extends NavigatorObserver {
       _awaitingAutoRoute = false;
     }
     _refreshShortcut();
+    AttentionService.instance.onRouteChanged();   // badges: a new screen / back from one
   }
 
   @override
@@ -39,6 +42,7 @@ class TopRouteObserver extends NavigatorObserver {
     if (identical(route, _autoRoute)) _autoRoute = null;
     _leaveIfReady();
     _refreshShortcut();
+    AttentionService.instance.onRouteChanged();
   }
 
   @override
@@ -148,6 +152,7 @@ class TopRouteObserver extends NavigatorObserver {
     // 1) Whatever was stored while offline is settled now (idempotent re-send of attendance
     //    requests, refresh of the cached attendance windows).
     AttendanceOfflineSync.instance.onReconnect();
+    OfflineExamSync.instance.onReconnect();          // finished offline exam sittings + answers carried for classmates
 
     // 2) Close the Downloads page only if the APP opened it.
     _awaitingAutoRoute = false;
@@ -181,6 +186,10 @@ class TopRouteObserver extends NavigatorObserver {
   /// Drives OfflineShortcutOverlay.
   final ValueNotifier<bool> shortcutVisible = ValueNotifier<bool>(false);
 
+  /// The route on top, updated after each navigation (deferred like [shortcutVisible]); the floating app
+  /// assistant listens to it.
+  final ValueNotifier<Route<dynamic>?> topRoute = ValueNotifier<Route<dynamic>?>(null);
+
   bool _shortcutDismissed = false;
   bool _refreshQueued = false;
 
@@ -191,6 +200,7 @@ class TopRouteObserver extends NavigatorObserver {
     _refreshQueued = true;
     scheduleMicrotask(() {
       _refreshQueued = false;
+      topRoute.value = currentRoute;
       final v = _computeShortcut();
       if (shortcutVisible.value != v) shortcutVisible.value = v;
     });

@@ -22,7 +22,9 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
+import '../shared/calendar/calendar_meeting.dart' show showComplaintMeetingSheet;
 import 'org_common.dart';
+import 'org_reports/report_page.dart' show OrgComplaintReportPage;
 import 'org_providers.dart';
 import 'org_ui.dart';
 
@@ -766,11 +768,18 @@ class OrgComplaintsPage extends StatelessWidget {
           if (s.can('complaints', 'export', deptId))
             Align(
               alignment: AlignmentDirectional.centerEnd,
-              child: TextButton.icon(
-                onPressed: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
-                icon: const Icon(Icons.file_download_rounded, size: 18),
-                label: Text(t('تصدير التقرير', 'Export report'), style: const TextStyle(fontFamily: 'tajawal')),
-              ),
+              child: Wrap(spacing: 4, children: [
+                TextButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrgComplaintReportPage(deptId: deptId))),
+                  icon: const Icon(Icons.design_services_rounded, size: 18),
+                  label: Text(t('تقرير مصمَّم وإرسال', 'Designed report & send'), style: const TextStyle(fontFamily: 'tajawal')),
+                ),
+                TextButton.icon(
+                  onPressed: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
+                  icon: const Icon(Icons.file_download_rounded, size: 18),
+                  label: Text(t('تصدير سريع', 'Quick export'), style: const TextStyle(fontFamily: 'tajawal')),
+                ),
+              ]),
             ),
           Expanded(
             child: PagedList<OrgPaged>(
@@ -965,6 +974,8 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                             TextButton.icon(onPressed: () => openFileUrl('${a['url']}'), icon: const Icon(Icons.attach_file_rounded), label: Text('${a['name']}')),
                           const Divider(height: 22),
                           KeyValue(t('من', 'From'), '${asMap(d['user'])['name'] ?? ''}'),
+                          if (canAct && d['is_anonymous'] != true && d['status'] != 'closed')
+                            Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () async { if (await showComplaintMeetingSheet(context, orgId: s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load(); }, icon: const Icon(Icons.event_available_rounded), label: Text(t('تحويل إلى اجتماع', 'Turn into a meeting')))),
                           if (d['assigned_to'] != null) KeyValue(t('المسؤول', 'Handled by'), '${asMap(d['assigned_to'])['name']}'),
                           if (d['rating'] != null) KeyValue(t('التقييم', 'Rating'), '${'★' * asInt(d['rating'])} ${d['rating_note'] ?? ''}'),
                           if (canAct && asMapList(d['assignable']).isNotEmpty) ...[

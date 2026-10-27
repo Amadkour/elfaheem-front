@@ -1,12 +1,10 @@
-// Premium exports (grid, summary, Excel, Word, PDF), the generate-until-complete loop and the wizard's student count.
+// Premium exports (grid, summary, Excel, Word, PDF), the wizard's student count.
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/org/org_schedule_coverage.dart';
 import 'package:flutter_education_app/features/org/org_schedule_export.dart';
-import 'package:flutter_education_app/features/org/org_schedule_optimizer.dart';
 import 'package:flutter_education_app/features/org/org_schedule_planning.dart';
 import 'package:flutter_education_app/features/org/org_schedule_versions.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -145,73 +143,6 @@ void main() {
         File('$out/sample.xlsx').writeAsBytesSync(timetableXlsx(book('teachers')));
         File('$out/sample.docx').writeAsBytesSync(timetableDocx(book('teachers')));
       }
-    });
-  });
-
-  group('generate until complete', () {
-    test('coverage reads the report; double bookings are never broken and go to rearrange → member → time → room', () {
-      final s = CoverageState.of({
-        'unscheduled': [
-          {'course_id': 7, 'kind': 'lecture', 'missing': 2, 'reason': 'rooms_busy', 'blocking': {'rooms_busy': 5}},
-          {'course_id': 8, 'kind': 'lab', 'group_no': 2, 'missing': 1, 'reason': 'teacher_unavailable'},
-        ],
-        'stats': {'sessions_required': 10, 'sessions_placed': 7},
-      });
-      expect(s.missing, 3);
-      expect(s.covered, isFalse);
-      expect(s.rate, 0.7);
-      expect(s.rulesBroken, isFalse);
-      expect(s.unplaced.first.untouchable, isTrue);
-      expect(coverageLadder(s.unplaced.first), ['rearrange_all', 'add_member', 'add_time', 'add_room']);
-      expect(coverageLadder(s.unplaced.last).first, 'break_by_priority');
-      expect(CoverageState.of({'stats': {'sessions_required': 4, 'sessions_placed': 4}, 'relaxation_mode': relaxationModeAllButDoubleBooking}).covered, isTrue);
-    });
-
-    test('options: pending and valid only, rearranging first, then by sessions placed', () {
-      ScheduleSuggestion s(String id, String type, {bool? valid, String status = 'pending', int after = 3}) => ScheduleSuggestion.fromJson({
-            'suggestion_id': id,
-            'type': type,
-            'status': status,
-            'validation': {'valid': ?valid},
-            'impact': {'unscheduled_before': 3, 'unscheduled_after': after},
-          });
-      final out = coverageOptions([
-        s('room', 'add_room', after: 0),
-        s('bad', 'reschedule_session', valid: false),
-        s('done', 'add_day', status: 'applied'),
-        s('time', 'add_period', after: 1),
-        s('move', 'reschedule_session', after: 2),
-        s('staff', 'reassign_staff', after: 2),
-      ]);
-      expect(out.map((x) => x.id), ['move', 'staff', 'time', 'room']);
-    });
-
-    test('broken rules per tier; advice (hire a member, open a room) is shown apart, member before room', () {
-      final s = CoverageState.of({
-        'relaxation_mode': relaxationModeAllButDoubleBooking,
-        'broken_by_tier': {'teacher_prefs': 1, 'rooms': 2},
-        'stats': {'sessions_required': 3, 'sessions_placed': 3},
-      });
-      expect([s.rulesBroken, s.broken, s.covered], [true, 3, true]);
-      ScheduleSuggestion adv(String id, String type) =>
-          ScheduleSuggestion.fromJson({'suggestion_id': id, 'type': type, 'status': 'pending', 'applicable': false});
-      final items = [adv('room', 'add_room'), adv('hire', 'add_staff'), ScheduleSuggestion.fromJson({'suggestion_id': 'move', 'type': 'reschedule_session', 'status': 'pending'})];
-      expect(coverageAdvice(items).map((x) => x.id), ['hire', 'room']);
-      expect(coverageOptions(items).map((x) => x.id), ['move']);
-      expect(coverageStepOf('add_staff'), 'add_member');
-    });
-
-    test('when the advised member is needed, with period labels', () {
-      final cfg = {
-        'staff': {
-          'windows': [
-            {'day': 'sunday', 'period_ids': [1, 2]},
-            {'day': 'monday', 'period_ids': [9]},
-          ]
-        }
-      };
-      expect(staffWindowsText(cfg, periods), 'Sunday P1، P2 · Monday #9');
-      expect(staffWindowsText(const {}, periods), '');
     });
   });
 

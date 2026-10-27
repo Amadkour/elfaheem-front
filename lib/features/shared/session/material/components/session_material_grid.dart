@@ -5,6 +5,10 @@
 // teacher edit / delete dialogs.
 // ─────────────────────────────────────────────────────────────────────────────
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -12,6 +16,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import '../../../../../core/api_client.dart';
+import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText;
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
@@ -439,6 +445,15 @@ class SessionMaterialGrid extends StatelessWidget {
                                 ),
                               ),
                             if (!isRecording) ...[
+                              if (m.type == SessionMaterialType.video ||
+                                  m.type == SessionMaterialType.recorded)
+                                _CaptionsAction(
+                                  key: ValueKey('captions_action.${m.id}'),
+                                  material: m,
+                                  onUpload: () => _pickAndUploadCaptions(context, m),
+                                  onManage: (generate) =>
+                                      _showCaptionsDialog(context, m, onGenerate: generate),
+                                ),
                               _iconBtn(
                                 icon: CupertinoIcons.settings_solid,
                                 color: context.colors.textMedium,
@@ -563,6 +578,7 @@ class SessionMaterialGrid extends StatelessWidget {
             autoPlay: true,
             startFullScreen: false,
             material: m,
+            playlist: materials,
           ),
         ),
       );
@@ -655,6 +671,96 @@ class SessionMaterialGrid extends StatelessWidget {
         },
         confirmLabel: 'save'.tr,
         confirmColor: context.colors.primary,
+      ),
+    );
+  }
+
+  // ── Captions (.vtt) ───────────────────────────────────────────────────────
+
+  /// Pick a WebVTT file and attach it to a video / recording material.
+  Future<void> _pickAndUploadCaptions(
+      BuildContext context, SessionMaterialModel m) async {
+    final prov = context.read<TeacherCourseScreenProvider>();
+    final f = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['vtt'],
+    );
+    if (f == null) return;
+    if (!f.name.toLowerCase().endsWith('.vtt')) {
+      Helpers.showMessage('captions_pick_vtt'.tr, isError: true);
+      return;
+    }
+    Uint8List? bytes;
+    if (kIsWeb) {
+      try {
+        bytes = await f.readAsBytes();
+      } catch (_) {
+        bytes = null;
+      }
+      if (bytes == null) {
+        Helpers.showMessage('file_load_failed'.tr, isError: true);
+        return;
+      }
+    }
+    final ok = await prov.uploadCaptions(
+      session.id,
+      m.id,
+      fileName: f.name,
+      filePath: kIsWeb ? null : f.path,
+      fileBytes: bytes,
+    );
+    Helpers.showMessage(
+      ok ? 'captions_uploaded'.tr : (prov.errorMessage ?? 'generic_error'.tr),
+      isError: !ok,
+    );
+  }
+
+  /// Captions already attached: replace them (file or automatic) or remove them.
+  void _showCaptionsDialog(BuildContext context, SessionMaterialModel m, {VoidCallback? onGenerate}) {
+    showDialog(
+      context: context,
+      builder: (_) => RtlDialog(
+        title: 'captions_title'.tr,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('captions_attached'.tr, style: context.colors.body),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _pickAndUploadCaptions(context, m);
+              },
+              icon: const Icon(Icons.upload_file_rounded, size: 18),
+              label: Text('upload_captions'.tr),
+            ),
+            if (onGenerate != null)
+              TextButton.icon(
+                key: const ValueKey('captions.generate'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  onGenerate();
+                },
+                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
+                label: Text('captions_generate'.tr),
+              ),
+          ],
+        ),
+        onCancel: () => Navigator.pop(context),
+        onConfirm: () async {
+          Navigator.pop(context);
+          final prov = context.read<TeacherCourseScreenProvider>();
+          final ok = await prov.removeCaptions(session.id, m.id);
+          Helpers.showMessage(
+            ok
+                ? 'captions_removed'.tr
+                : (prov.errorMessage ?? 'generic_error'.tr),
+            isError: !ok,
+          );
+        },
+        confirmLabel: 'remove_captions'.tr,
+        confirmColor: context.colors.danger,
       ),
     );
   }
@@ -1095,6 +1201,223 @@ class _OfflineBadge extends StatelessWidget {
               : const SizedBox.shrink(),
         );
       },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Captions action (teacher): upload a .vtt, or let the server generate them
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// One CC button per video / recording. Its look follows the material's captions:
+//   • none              → outlined CC; tap → sheet: "Upload .vtt" · "Generate automatically"
+//   • queued/processing → small spinner (POST …/captions/auto answered 202); the list endpoint is polled every
+//                         8 s (up to ~5 min) until the job ends, because the provider only re-fetches a session's
+//                         materials when their count changes
+//   • failed            → CC crossed out in red; tap → same sheet with a "Try again" note
+//   • ready + url       → filled CC; tap → replace / generate / remove dialog
+// A 501 `auto_captions_unavailable` means this server has no speech-to-text: a toast says so.
+
+class _CaptionsAction extends StatefulWidget {
+  const _CaptionsAction({super.key, required this.material, required this.onUpload, required this.onManage});
+
+  final SessionMaterialModel material;
+  final VoidCallback onUpload;
+
+  /// Opens the "captions attached" dialog; receives the generate callback to offer there.
+  final ValueChanged<VoidCallback> onManage;
+
+  @override
+  State<_CaptionsAction> createState() => _CaptionsActionState();
+}
+
+class _CaptionsActionState extends State<_CaptionsAction> {
+  static const _pollEvery = Duration(seconds: 8);
+  static const _maxPolls = 40; // ≈ 5 minutes
+
+  String? _status;
+  String? _url;
+  bool _busy = false;
+  Timer? _poll;
+  int _polls = 0;
+
+  SessionMaterialModel get _m => widget.material;
+  bool get _pending => _status == 'queued' || _status == 'processing';
+  bool get _failed => _status == 'failed' && _url == null;
+
+  @override
+  void initState() {
+    super.initState();
+    _sync();
+    if (_pending) _startPolling();
+  }
+
+  @override
+  void didUpdateWidget(covariant _CaptionsAction old) {
+    super.didUpdateWidget(old);
+    if (old.material.captionsUrl != _m.captionsUrl || old.material.captionsStatus != _m.captionsStatus) {
+      _sync();
+      if (_pending) {
+        _startPolling();
+      } else {
+        _stopPolling();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _stopPolling();
+    super.dispose();
+  }
+
+  void _sync() {
+    _status = _m.captionsStatus;
+    _url = _m.captionsUrl;
+  }
+
+  // ── Polling ───────────────────────────────────────────────────────────────
+  void _startPolling() {
+    _poll?.cancel();
+    _polls = 0;
+    _poll = Timer.periodic(_pollEvery, (_) => _refresh());
+  }
+
+  void _stopPolling() {
+    _poll?.cancel();
+    _poll = null;
+  }
+
+  Future<void> _refresh() async {
+    if (++_polls > _maxPolls) {
+      _stopPolling();
+      return;
+    }
+    try {
+      final r = await ApiClient().get('/api/v1/sessions/${_m.sessionId}/materials');
+      if (!mounted || r is! List) return;
+      for (final e in r) {
+        if (e is Map && e['id'] == _m.id) {
+          final fresh = SessionMaterialModel.fromJson(Map<String, dynamic>.from(e));
+          setState(() {
+            _status = fresh.captionsStatus;
+            _url = fresh.captionsUrl;
+          });
+          if (!_pending) _stopPolling();
+          return;
+        }
+      }
+    } catch (_) {
+      // transient: the next tick tries again
+    }
+  }
+
+  // ── Generate ──────────────────────────────────────────────────────────────
+  Future<void> _generate() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final r = await ApiClient().post('/api/v1/sessions/${_m.sessionId}/materials/${_m.id}/captions/auto');
+      if (!mounted) return;
+      final status = (r is Map ? r['status']?.toString() : null) ?? 'queued';
+      setState(() => _status = status);
+      if (_pending) _startPolling();
+      Helpers.showMessage('captions_auto_queued'.tr);
+    } catch (e) {
+      final ex = ApiException.from(e);
+      final unavailable = ex.statusCode == 501 || ex.code == 'auto_captions_unavailable';
+      Helpers.showMessage(unavailable ? 'captions_auto_unavailable'.tr : ex.message, isError: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  // ── Sheet (no captions yet / failed) ──────────────────────────────────────
+  void _showOptions() {
+    final c = context.colors;
+    showAppSheet<void>(
+      context,
+      (sheetCtx) => Column(mainAxisSize: MainAxisSize.min, children: [
+        AppSheetHeader('captions_title'.tr),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (_failed)
+              AppBanner(
+                key: const ValueKey('captions.failed_note'),
+                icon: Icons.error_outline_rounded,
+                text: 'captions_status_failed'.tr,
+                color: c.danger,
+              )
+            else
+              Text('captions_none'.tr, style: appText(12.5, c: c.textMedium, h: 1.5)),
+            const SizedBox(height: 12),
+            ListTile(
+              key: const ValueKey('captions.upload'),
+              leading: Icon(Icons.upload_file_rounded, color: c.primary),
+              title: Text('upload_captions'.tr, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+              subtitle: Text('captions_pick_vtt'.tr, style: appText(12, c: c.textLight)),
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                widget.onUpload();
+              },
+            ),
+            ListTile(
+              key: const ValueKey('captions.generate'),
+              leading: Icon(Icons.auto_awesome_rounded, color: c.primary),
+              title: Text((_failed ? 'captions_retry' : 'captions_generate').tr,
+                  style: appText(14, w: FontWeight.w700, c: c.textDark)),
+              subtitle: Text('captions_auto_queued'.tr, style: appText(12, c: c.textLight)),
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                _generate();
+              },
+            ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    if (_busy || _pending) {
+      return Tooltip(
+        message: (_status == 'processing' ? 'captions_status_processing' : 'captions_status_queued').tr,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          child: SizedBox(
+            key: const ValueKey('captions.pending'),
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: c.primary),
+          ),
+        ),
+      );
+    }
+    final IconData icon;
+    final Color color;
+    final VoidCallback onTap;
+    if (_url != null) {
+      icon = Icons.closed_caption_rounded;
+      color = c.primary;
+      onTap = () => widget.onManage(_generate);
+    } else if (_failed) {
+      icon = Icons.closed_caption_disabled_rounded;
+      color = c.danger;
+      onTap = _showOptions;
+    } else {
+      icon = Icons.closed_caption_off_outlined;
+      color = c.textMedium;
+      onTap = _showOptions;
+    }
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Icon(icon, size: 23, color: color),
+      ),
     );
   }
 }

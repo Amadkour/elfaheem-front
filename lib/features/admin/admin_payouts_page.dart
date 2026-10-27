@@ -33,7 +33,6 @@ class AdminPayoutsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     return DefaultTabController(
       length: 3,
       child: BasePage(
@@ -474,6 +473,7 @@ class _ResolveDialogState extends State<_ResolveDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
+        scrollable: true,
         title: Text(
           'admin_resolve_unconfirmed_transfer'.tr,
           style: const TextStyle(fontFamily: 'tajawal'),

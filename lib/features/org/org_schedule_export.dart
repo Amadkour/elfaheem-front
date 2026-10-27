@@ -14,6 +14,7 @@
 // Everything is built from the sessions the caller passes (the live timetable or a stored copy); nothing is invented.
 library;
 
+import 'dart:convert' show utf8;
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
@@ -28,6 +29,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../admin/admin_common.dart';
 import 'org_providers.dart' show orgDays;
+import 'org_schedule_ical.dart';
 import 'org_schedule_versions.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
@@ -921,14 +923,16 @@ Future<void> showTimetableExport(BuildContext context,
     required String title,
     required String sourceLabel,
     List<String> days = const [],
-    TimetableMember? member}) =>
+    TimetableMember? member,
+    DateTime? from,
+    DateTime? to}) =>
     showAdminSheet<void>(
       context,
-      (_) => _ExportSheet(slots: slots, names: names, periods: periods, title: title, sourceLabel: sourceLabel, days: days, member: member),
+      (_) => _ExportSheet(slots: slots, names: names, periods: periods, title: title, sourceLabel: sourceLabel, days: days, member: member, from: from, to: to),
     );
 
 class _ExportSheet extends StatefulWidget {
-  const _ExportSheet({required this.slots, required this.names, required this.periods, required this.title, required this.sourceLabel, required this.days, this.member});
+  const _ExportSheet({required this.slots, required this.names, required this.periods, required this.title, required this.sourceLabel, required this.days, this.member, this.from, this.to});
   final List<Map<String, dynamic>> slots;
   final TimetableNames names;
   final List<Map<String, dynamic>> periods;
@@ -936,9 +940,14 @@ class _ExportSheet extends StatefulWidget {
   final List<String> days;
   final TimetableMember? member;
 
+  /// the term's first / last day: the iCalendar series runs between them
+  final DateTime? from, to;
+
   @override
   State<_ExportSheet> createState() => _ExportSheetState();
 }
+
+String _icsKind(Object? kind) => switch ('$kind') { 'lab' => t('عملي', 'Lab'), 'tutorial' || 'section' => t('سكشن', 'Section'), _ => t('محاضرة', 'Lecture') };
 
 class _ExportSheetState extends State<_ExportSheet> {
   late String scope = widget.member == null ? 'full' : 'member';
@@ -962,14 +971,23 @@ class _ExportSheetState extends State<_ExportSheet> {
     if (sheets.isEmpty) return toast(t('لا يوجد ما يُصدَّر لهذا الاختيار', 'Nothing to export for this choice'), error: true);
     setState(() => busy = true);
     try {
-      final book = ExportBook(title: widget.title, subtitle: widget.sourceLabel, sheets: sheets, names: widget.names, generatedAt: DateTime.now());
-      final bytes = await buildTimetableFile(book, format);
       final suffix = scope == 'member' ? exportMemberTitle(member!, widget.names) : exportScopeLabel(scope);
+      final Uint8List bytes;
+      if (format == 'ics') {
+        final slots = [for (final sh in sheets) ...sh.slots];
+        final seen = <String>{};
+        final unique = [for (final s in slots) if (seen.add('${s['id'] ?? '${s['course_id']}|${s['day']}|${s['period_id']}'}')) s];
+        bytes = Uint8List.fromList(utf8.encode(timetableIcs(unique, widget.names, widget.periods,
+            calendarName: '${widget.title} - $suffix', from: widget.from, to: widget.to, kindLabel: _icsKind)));
+      } else {
+        final book = ExportBook(title: widget.title, subtitle: widget.sourceLabel, sheets: sheets, names: widget.names, generatedAt: DateTime.now());
+        bytes = await buildTimetableFile(book, format);
+      }
       await FileSaver.instance.saveFile(
         name: '${widget.title} - $suffix'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_'),
         bytes: bytes,
         fileExtension: format,
-        mimeType: switch (format) { 'xlsx' => MimeType.microsoftExcel, 'docx' => MimeType.microsoftWord, _ => MimeType.pdf },
+        mimeType: switch (format) { 'xlsx' => MimeType.microsoftExcel, 'docx' => MimeType.microsoftWord, 'ics' => MimeType.text, _ => MimeType.pdf },
       );
       toast(t('حُفظ الملف', 'File saved'));
       if (mounted) Navigator.pop(context);
@@ -1027,21 +1045,28 @@ class _ExportSheetState extends State<_ExportSheet> {
       ],
       const SizedBox(height: 14),
       OrgSectionTitle(t('الصيغة', 'Format')),
-      SegmentedButton<String>(
-        segments: [
-          ButtonSegment(value: 'xlsx', icon: const Icon(Icons.grid_on_rounded), label: Text(t('إكسل', 'Excel'))),
-          ButtonSegment(value: 'docx', icon: const Icon(Icons.description_rounded), label: Text(t('وورد', 'Word'))),
-          ButtonSegment(value: 'pdf', icon: const Icon(Icons.picture_as_pdf_rounded), label: Text(t('PDF', 'PDF'))),
-        ],
-        selected: {format},
-        onSelectionChanged: (v) => setState(() => format = v.first),
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SegmentedButton<String>(
+          segments: [
+            ButtonSegment(value: 'xlsx', icon: const Icon(Icons.grid_on_rounded), label: Text(t('إكسل', 'Excel'))),
+            ButtonSegment(value: 'docx', icon: const Icon(Icons.description_rounded), label: Text(t('وورد', 'Word'))),
+            ButtonSegment(value: 'pdf', icon: const Icon(Icons.picture_as_pdf_rounded), label: Text(t('PDF', 'PDF'))),
+            ButtonSegment(value: 'ics', icon: const Icon(Icons.event_rounded), label: Text(t('تقويم', 'Calendar'))),
+          ],
+          selected: {format},
+          onSelectionChanged: (v) => setState(() => format = v.first),
+        ),
       ),
       const SizedBox(height: 10),
       Text(
         sheets.isEmpty
             ? t('لا يوجد ما يُصدَّر', 'Nothing to export')
-            : t('${sheets.length} ${sheets.length == 1 ? 'جدول' : 'جداول'}${sheets.length > 1 ? ' + صفحة نظرة عامة' : ''} · خلايا مدمجة للحصص الممتدة · لون لكل مقرر · ملخص تحت كل جدول',
-                '${sheets.length} timetable${sheets.length == 1 ? '' : 's'}${sheets.length > 1 ? ' + an overview page' : ''} · merged cells for long sessions · a colour per course · a summary under each'),
+            : format == 'ics'
+                ? t('ملف تقويم (.ics) يُستورد في Google / Apple / Outlook: حدث أسبوعي لكل حصة${widget.from != null ? ' من أول الفصل إلى آخره' : ' للأسابيع المقبلة'}',
+                    'A calendar file (.ics) for Google / Apple / Outlook: a weekly event per session${widget.from != null ? ' from the first to the last day of the term' : ' for the coming weeks'}')
+                : t('${sheets.length} ${sheets.length == 1 ? 'جدول' : 'جداول'}${sheets.length > 1 ? ' + صفحة نظرة عامة' : ''} · خلايا مدمجة للحصص الممتدة · لون لكل مقرر · ملخص تحت كل جدول',
+                    '${sheets.length} timetable${sheets.length == 1 ? '' : 's'}${sheets.length > 1 ? ' + an overview page' : ''} · merged cells for long sessions · a colour per course · a summary under each'),
         style: orgText(context, size: 12, color: c.textMedium),
       ),
       const SizedBox(height: 14),

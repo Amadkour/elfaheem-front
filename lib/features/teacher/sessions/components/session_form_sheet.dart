@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import '../../../../design/app_kit.dart' show AppSwitchTile;
 import '../../../../utils/helpers.dart';
 import '../../../../utils/widget/primary_button.dart';
 import '../../../student/models.dart';
@@ -84,6 +85,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
   final _orderCtrl = TextEditingController(text: '0');
   String _type = 'pre-recorded';
   String _track = 'lecture';   // lecture (teacher) · section (assistant)
+  bool _recordEnabled = true;  // live sessions: "Record this session" (server default on)
   DateTime? _scheduled;
 
   String? _nameError;
@@ -100,6 +102,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
       _descCtrl.text = s.description ?? '';
       _type = s.type ?? 'pre-recorded';
       _track = s.track;
+      _recordEnabled = s.recordEnabled;
       _scheduled = s.scheduledAt;
     }
   }
@@ -188,6 +191,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         durationMinutes: int.tryParse(_durCtrl.text),
         order: int.tryParse(_orderCtrl.text),
         track: _track,
+        recordEnabled: _type == 'live' ? _recordEnabled : null,
       );
       ok = r != null;
     } else {
@@ -201,6 +205,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
         durationMinutes: int.tryParse(_durCtrl.text) ?? 60,
         order: int.tryParse(_orderCtrl.text) ?? 0,
         track: _track,
+        recordEnabled: _type == 'live' ? _recordEnabled : null,
       );
       ok = r != null;
     }
@@ -318,6 +323,19 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
                           scheduled: _scheduled,
                           errorText: _dateError,
                           onTap: _pickDateTime,
+                        ),
+                        const SizedBox(height: 6),
+                        AppSwitchTile(
+                          title: 'record_session_title'.tr,
+                          subtitle: 'record_session_subtitle'.tr,
+                          icon: Icons.fiber_manual_record_rounded,
+                          value: _recordEnabled,
+                          dense: true,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          onChanged: (v) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _recordEnabled = v);
+                          },
                         ),
                       ],
                       const SizedBox(height: 14),

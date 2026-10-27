@@ -6,7 +6,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/org/org_dynamic_form.dart';
 import 'package:flutter_education_app/features/org/org_join_pages.dart';
 import 'package:flutter_education_app/features/org/org_timetable_parts.dart';
-import 'package:flutter_education_app/features/org/org_timetable_wizard.dart' show GenerationRunCard;
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Widget host(Widget child) {
@@ -94,14 +94,40 @@ void main() {
   });
 
   group('generation & results', () {
-    testWidgets('a running job can be cancelled; a finished one cannot', (tester) async {
-      await tester.pumpWidget(host(GenerationRunCard(run: const {'status': 'running', 'progress': 40}, onCancel: () {})));
-      expect(find.text('Generating'), findsOneWidget);
+    testWidgets('a running job shows its live counters and can be cancelled', (tester) async {
+      await tester.pumpWidget(host(GenerationLivePanel(run: const {
+        'status': 'running',
+        'progress': 40,
+        'summary': {'live': true, 'round': 2, 'rounds_max': 6, 'unplaced': 3, 'top': [{'reason': 'rooms_busy', 'n': 2}]},
+      }, onCancel: () {})));
+      expect(find.text('Attempt 2 of at most 6 · 3 session(s) unplaced'), findsOneWidget);
+      expect(find.textContaining('Every fitting room is taken'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
-      expect(find.byType(LinearProgressIndicator), findsOneWidget);
-      await tester.pumpWidget(host(const GenerationRunCard(run: {'status': 'succeeded', 'result_status': 'partial'})));
+      expect(find.textContaining('Elapsed'), findsOneWidget);
+      // with the step log: the current step is shown bold with a spinner, the done ones with their time
+      await tester.pumpWidget(host(GenerationLivePanel(run: const {
+        'status': 'running',
+        'progress': 40,
+        'summary': {
+          'live': true, 'round': 1, 'rounds_max': 6, 'unplaced': 2, 'placed': 18, 'required': 20, 'top': [],
+          'stage': 'round', 'started_at': '2026-10-24T10:00:00', 'elapsed_s': 31, 'budget_s': 90,
+          'steps': [
+            {'id': 1, 'kind': 'prepare', 'text_ar': 'تم تحميل البيانات', 'text_en': 'Data loaded', 'at': '2026-10-24T10:00:00', 'done': true, 'ms': 420},
+            {'id': 2, 'kind': 'round', 'round': 1, 'relax': false, 'limit_s': 8.0, 'text_ar': 'المحاولة 1', 'text_en': 'Attempt 1 of 6: strict', 'at': '2026-10-24T10:00:01', 'done': true, 'ms': 8010},
+            {'id': 3, 'kind': 'round', 'round': 2, 'relax': true, 'limit_s': 8.0, 'text_ar': 'المحاولة 2', 'text_en': 'Attempt 2 of 6: bending the flexible rules', 'at': '2026-10-24T10:00:09', 'done': false, 'ms': null},
+          ],
+        },
+      }, onCancel: () {})));
+      expect(find.text('Best so far: 18 of 20 sessions · attempt 1 of at most 6'), findsOneWidget);
+      expect(find.text('What is happening'), findsOneWidget);
+      expect(find.text('Attempt 1 of 6: strict · 0:08'), findsOneWidget);
+      expect(find.text('Attempt 2 of 6: bending the flexible rules'), findsOneWidget);
+      expect(find.textContaining('of up to 1:30'), findsOneWidget);
+      expect(find.textContaining('This step:'), findsOneWidget);
+      expect(find.textContaining('This attempt bends only the Flexible rules'), findsOneWidget); // 22 s into attempt 2
+      await tester.pumpWidget(host(const GenerationLivePanel(run: {'status': 'failed', 'error': 'no_periods'})));
       expect(find.text('Cancel'), findsNothing);
-      expect(find.text('Partial — some sessions not placed'), findsOneWidget);
+      expect(find.text('Generation failed — nothing changed'), findsOneWidget);
     });
 
     testWidgets('a partial result lists what is missing, why, and the suggestions', (tester) async {

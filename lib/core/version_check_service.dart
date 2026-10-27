@@ -82,6 +82,7 @@ class VersionCheckService {
       builder: (_) => WillPopScope(
         onWillPop: () async => !mustUpdate,
         child: AlertDialog(
+          scrollable: true,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),

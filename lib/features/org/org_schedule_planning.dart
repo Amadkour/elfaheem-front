@@ -22,7 +22,7 @@ import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_providers.dart';
-import 'org_timetable_parts.dart' show courseName;
+import 'org_timetable_parts.dart' show courseName, showLoadForm;
 import 'org_ui.dart';
 import 'org_v3.dart';
 
@@ -345,20 +345,25 @@ Future<void> openCoursePlans(BuildContext context, OrgScheduleProvider p, {bool 
           useWebCard: true,
           maxWith: 900,
           appBar: ScreenAppBar(title: t('الطلاب والمجموعات', 'Enrollment & groups')),
-          child: _CoursePlansPage(p: p, api: coursePlanApi(p), canEdit: canEdit),
+          child: TimetableCoursesView(p: p, canEdit: canEdit),
         )));
 
-class _CoursePlansPage extends StatefulWidget {
-  const _CoursePlansPage({required this.p, required this.api, required this.canEdit});
+/// The courses that enter the timetable (its scope; group sizes = min(course max group, room capacity), overflow goes
+/// to another group, never dropped): enrolment, lecture / lab groups, lab type, issues, and edit links (the plan of
+/// this timetable · the course requirements). Embedded in the studio's "Courses" view and in openCoursePlans.
+class TimetableCoursesView extends StatefulWidget {
+  const TimetableCoursesView({super.key, required this.p, required this.canEdit, this.api});
   final OrgScheduleProvider p;
-  final CoursePlanApi api;
+  final CoursePlanApi? api;
   final bool canEdit;
 
   @override
-  State<_CoursePlansPage> createState() => _CoursePlansPageState();
+  State<TimetableCoursesView> createState() => _CoursePlansPageState();
 }
 
-class _CoursePlansPageState extends State<_CoursePlansPage> {
+class _CoursePlansPageState extends State<TimetableCoursesView> {
+  late final CoursePlanApi api = widget.api ?? coursePlanApi(widget.p);
+
   CoursePlanList? data;
   String? error;
 
@@ -379,7 +384,7 @@ class _CoursePlansPageState extends State<_CoursePlansPage> {
   Future<void> _load() async {
     setState(() => error = null);
     try {
-      final r = await widget.api.list(sid);
+      final r = await api.list(sid);
       if (mounted) setState(() => data = r);
     } catch (e) {
       if (mounted) setState(() => error = orgErrorText(ApiException.from(e)));
@@ -456,6 +461,15 @@ class _CoursePlansPageState extends State<_CoursePlansPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text(courseName(l), style: orgText(context, w: FontWeight.w800))),
+          if (widget.canEdit)
+            IconButton(
+              tooltip: t('تعديل متطلبات المقرر', 'Edit the course requirements'),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.edit_note_rounded),
+              onPressed: () async {
+                if (await showLoadForm(context, widget.p, l) && mounted) setState(() {});
+              },
+            ),
           if (editable) const Icon(Icons.chevron_right_rounded),
         ]),
         const SizedBox(height: 4),
@@ -465,7 +479,7 @@ class _CoursePlansPageState extends State<_CoursePlansPage> {
                   ? t('${plan.expectedStudents} متوقع (${plan.enrolledStudents} مسجل)', '${plan.expectedStudents} expected (${plan.enrolledStudents} enrolled)')
                   : t('${plan.enrolledStudents} مسجل', '${plan.enrolledStudents} enrolled'),
               '${t('محاضرات', 'Lectures')}: ${sizes(r.lectureSizes)}',
-              if (r.labGroups > 0) '${t('سكاشن', 'Labs')}: ${sizes(r.labSizes)}',
+              if (r.labGroups > 0) '${t('سكاشن', 'Labs')}: ${sizes(r.labSizes)} (${roomKindLabel('${l['lab_room_kind'] ?? 'lab'}')})',
               t('${r.weeklyPeriods} فترة/أسبوع', '${r.weeklyPeriods} periods/week'),
             ].join(' · '),
             style: orgText(context, size: 12, color: c.textMedium)),
@@ -484,7 +498,7 @@ class _CoursePlansPageState extends State<_CoursePlansPage> {
   }
 
   Future<void> _edit(Map<String, dynamic> l) async {
-    final saved = await showCoursePlanSheet(context, widget.p, widget.api, sid, l, _plan(asInt(l['course_id'])));
+    final saved = await showCoursePlanSheet(context, widget.p, api, sid, l, _plan(asInt(l['course_id'])));
     if (saved != null && mounted) setState(() => data = CoursePlanList({...data!.items, saved.courseId: saved}, mock: data!.mock));
   }
 }

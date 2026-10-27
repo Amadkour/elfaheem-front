@@ -98,11 +98,15 @@ dependencies:
   network_info_plus: ^8.2.1
   pdf: ^3.13.1
   archive: ^4.5.2
+  image: ^4.12.0
+  screen_brightness: ^2.1.11
+  volume_controller: ^3.7.1
 dependency_overrides:
   flutter_webrtc:
     git:
       url: https://github.com/Amadkour/flutter-webrtc.git
-      ref: main
+      # pinned to the commit the app is built and tested with (was `main`, which moves under every build)
+      ref: 163469226e1d261a6461f1b7244c1d0ff0cec770
   flutter_lints: ^6.0.0
 
   flutter_test:
@@ -196,6 +200,12 @@ flutter:
     - family: CertMarkaziBold
       fonts:
         - asset: assets/fonts/cert/MarkaziText-Bold.ttf
+    # exam papers (exam_paper.dart): full Arabic presentation forms, which package:pdf needs (Cairo / Tajawal lack some)
+    - family: PaperPlex
+      fonts:
+        - asset: assets/fonts/plex/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/plex/IBMPlexSansArabic-Bold.ttf
+          weight: 700
     - family: bahji
       fonts:
         - asset: assets/fonts/Bahij_TheSansArabic-Bold.ttf

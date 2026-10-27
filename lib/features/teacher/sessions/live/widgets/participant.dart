@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'dart:async';
+import 'dart:developer' show log;
 import 'no_video.dart';
 import 'participant_info.dart';
 import 'participant_stats.dart';
@@ -96,7 +97,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
     _listener = widget.participant.createListener();
     _listener?.on<TranscriptionEvent>((e) {
       for (var seg in e.segments) {
-        print('Transcription: ${seg.text} ${seg.isFinal}');
+        log('Transcription: ${seg.text} ${seg.isFinal}');
       }
     });
 
@@ -160,9 +161,15 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
             children: [
               ...extraWidgets(isScreenShare),
               ParticipantInfoWidget(
-                title: widget.participant.name.isNotEmpty
-                    ? '${widget.participant.name} (${widget.participant.identity})'
-                    : widget.participant.identity,
+                // A guest's identity is an opaque `guest:<random>`: show only the name they typed.
+                title: isGuestIdentity(widget.participant.identity)
+                    ? (widget.participant.name.isNotEmpty
+                        ? widget.participant.name
+                        : 'lr_guest'.tr)
+                    : widget.participant.name.isNotEmpty
+                        ? '${widget.participant.name} (${widget.participant.identity})'
+                        : widget.participant.identity,
+                isGuest: isGuestIdentity(widget.participant.identity),
                 audioAvailable: audioPublication?.muted == false &&
                     audioPublication?.subscribed == true,
                 connectionQuality: widget.participant.connectionQuality,

@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -86,7 +87,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
   }
 
   Future<void> _export() async {
-    final fmt = await showAdminSheet<String>(context, (ctx) => Padding(
+    final fmt = await showAdminSheet<String>(context, (ctx) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('تصدير بصيغة', 'Export as')),
@@ -390,8 +391,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                 clipBehavior: Clip.antiAlias,
                 child: _rows.isEmpty
                     ? Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(t('لا سجلات', 'No records'), style: orgText(context, color: c.textMedium))))
-                    : SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
+                    : AppHScroll(
                         child: DataTable(
                           headingRowColor: WidgetStatePropertyAll(c.inputBg),
                           columns: [for (final col in cols) DataColumn(label: Text(t('${col['ar']}', '${col['en']}'), style: orgText(context, w: FontWeight.w800)))],

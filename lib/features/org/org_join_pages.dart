@@ -345,15 +345,27 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
           title: t('طريقة الانضمام', 'How people join'),
           icon: Icons.login_rounded,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(t('اختر طريقة أو أكثر — الإضافة اليدوية من تبويب الأعضاء متاحة دائماً.',
+                    'Pick one or more ways — manual add from the Members tab always works.'),
+                style: orgText(context, size: 12, color: c.textMedium)),
+            const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 6, children: [
-              for (final e in joinMethodLabels().entries)
-                ChoiceChip(label: Text(e.value), selected: d.method == e.key, onSelected: (_) => setState(() => d.method = e.key)),
+              for (final e in joinPathLabels().entries)
+                FilterChip(label: Text(e.value), selected: d.paths.contains(e.key), onSelected: (on) => setState(() => d.togglePath(e.key, on))),
             ]),
             const SizedBox(height: 8),
-            Text(joinMethodHelp(d.method), style: orgText(context, size: 12, color: c.textMedium)),
+            if (d.closed)
+              Text(joinMethodHelp('closed'), style: orgText(context, size: 12, color: c.textMedium))
+            else
+              for (final k in joinPathLabels().keys)
+                if (d.paths.contains(k))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text('• ${joinPathHelp(k)}', style: orgText(context, size: 12, color: c.textMedium)),
+                  ),
           ]),
         ),
-        if (d.method != 'closed') ...[
+        if (!d.closed) ...[
           const SizedBox(height: 12),
           Section(
             title: t('من يستطيع الانضمام', 'Who can join'),
@@ -398,7 +410,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
               Field(controller: _capacity, label: t('الحد الأقصى للأعضاء (اختياري)', 'Maximum members (optional)'), keyboard: TextInputType.number, ltr: true),
             ]),
           ),
-          if (d.method == 'approval') ...[
+          if (d.needsApprover) ...[
             const SizedBox(height: 12),
             Section(
               title: t('من يعتمد الطلبات', 'Who approves'),
@@ -830,6 +842,11 @@ class JoinRequestCard extends StatelessWidget {
             ),
             StatusChip(requestStatusLabels()[status] ?? status, statusColor(context, status)),
           ]),
+          if (row['code_verified'] == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: OrgPill(t('✓ الكود صحيح', '✓ Code verified'), color: c.success),
+            ),
           if (verify && pending)
             Padding(
               padding: const EdgeInsets.only(top: 8),
@@ -895,6 +912,17 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
     });
   }
 
+  Future<void> _addManually() async {
+    final already = {for (final r in _rows ?? const <Map<String, dynamic>>[]) asInt(asMap(r['user'])['id'])};
+    final ids = await showAdminSheet<Set<int>>(context, (_) => _ManualAddSheet(exclude: already));
+    if (ids == null || ids.isEmpty || !mounted) return;
+    final r = await orgCall(() => context.read<OrgSession>().api.post(_url, body: {'user_ids': ids.toList()}));
+    if (!mounted || !r.ok) return;
+    final added = (r.map['added'] as List? ?? const []).length, skipped = (r.map['skipped'] as List? ?? const []).length;
+    toast(skipped == 0 ? t('أُضيف $added', '$added added') : t('أُضيف $added · تُخطّي $skipped (ليس عضواً / موجود / مكتمل)', '$added added · $skipped skipped (not a member / already in / full)'));
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -905,11 +933,24 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
       onRetry: _load,
       child: rows == null
           ? const SizedBox.shrink()
-          : rows.isEmpty
+          : rows.isEmpty && !widget.canRemove
               ? OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet'))
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
+                    if (widget.canRemove)
+                      Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: FilledButton.icon(
+                            onPressed: _addManually,
+                            icon: const Icon(Icons.person_add_alt_1_rounded),
+                            label: Text(t('إضافة يدوية', 'Add manually')),
+                          ),
+                        ),
+                      ),
+                    if (rows.isEmpty) OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet')),
                     for (final r in rows)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 6),
@@ -944,6 +985,106 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
                       ),
                   ]),
                 ),
+    );
+  }
+}
+
+/// Picks organization members (any member type) to add to a unit by hand. Pops the chosen user ids.
+class _ManualAddSheet extends StatefulWidget {
+  const _ManualAddSheet({required this.exclude});
+  final Set<int> exclude;
+
+  @override
+  State<_ManualAddSheet> createState() => _ManualAddSheetState();
+}
+
+class _ManualAddSheetState extends State<_ManualAddSheet> {
+  final _q = TextEditingController();
+  final _picked = <int>{};
+  List<Map<String, dynamic>>? _items;
+  bool _failed = false;
+  int _seq = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _search());
+  }
+
+  @override
+  void dispose() {
+    _q.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final s = context.read<OrgSession>(), seq = ++_seq;
+    final r = await orgCall(
+        () => s.api.get('${s.base}/members', queryParams: {'size': 50, if (_q.text.trim().isNotEmpty) 'search': _q.text.trim()}),
+        quiet: true);
+    if (!mounted || seq != _seq) return;
+    setState(() {
+      _items = r.ok ? asMapList(r.map['items']) : _items;
+      _failed = !r.ok && _items == null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final items = [for (final m in _items ?? const <Map<String, dynamic>>[]) if (!widget.exclude.contains(asInt(asMap(m['user'])['id']))) m];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(t('إضافة أعضاء يدوياً', 'Add members manually'), style: orgText(context, size: 16, w: FontWeight.w800)),
+        const SizedBox(height: 4),
+        Text(t('أي عضو في المؤسسة: طلاب، مدرسون، معيدون، إداريون.', 'Any organization member: students, teachers, assistants, staff.'),
+            style: orgText(context, size: 12, color: c.textMedium)),
+        const SizedBox(height: 10),
+        TextField(
+          controller: _q,
+          onChanged: (_) => _search(),
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search_rounded),
+            hintText: t('ابحث بالاسم أو البريد أو الكود', 'Search by name, e-mail or code'),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+            isDense: true,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Flexible(
+          child: OrgAsync(
+            loading: _items == null && !_failed,
+            failed: _failed,
+            onRetry: _search,
+            child: items.isEmpty
+                ? OrgEmpty(icon: Icons.person_search_rounded, title: t('لا نتائج', 'No results'))
+                : ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: items.length,
+                    itemBuilder: (_, i) {
+                      final u = asMap(items[i]['user']), id = asInt(u['id']);
+                      return CheckboxListTile(
+                        value: _picked.contains(id),
+                        onChanged: (on) => setState(() => on == true ? _picked.add(id) : _picked.remove(id)),
+                        secondary: AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
+                        title: Text('${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Text(memberRoleLabels()['${items[i]['role']}'] ?? '${items[i]['role'] ?? ''}',
+                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        controlAffinity: ListTileControlAffinity.trailing,
+                        contentPadding: EdgeInsets.zero,
+                      );
+                    },
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        PrimaryButton(
+          isLoading: false,
+          label: t('إضافة (${_picked.length})', 'Add (${_picked.length})'),
+          onPressed: _picked.isEmpty ? null : () => Navigator.pop(context, {..._picked}),
+        ),
+      ]),
     );
   }
 }
@@ -1005,7 +1146,7 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
     String? err;
     await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
           final c = ctx.colors;
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               SheetHeader(t('لدي كود انضمام', 'I have a join code')),
@@ -1046,7 +1187,9 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
                   final joined = r.map['joined'] == true;
                   toast(joined
                       ? t('انضممت إلى ${orgNameOf(asMap(r.map['unit']))} 🎉', 'You joined ${orgNameOf(asMap(r.map['unit']))} 🎉')
-                      : t('أُرسل طلبك وهو قيد المراجعة', 'Your request was sent and is being reviewed'));
+                      : r.map['code_verified'] == true
+                          ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
+                          : t('أُرسل طلبك وهو قيد المراجعة', 'Your request was sent and is being reviewed'));
                   _load();
                 },
               ),
@@ -1072,7 +1215,7 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
           color: my == 'member' ? c.success : (u['full'] == true ? c.textLight : c.primary),
           title: orgNameOf(u),
           subtitle: [
-            joinMethodLabels()['${pol['method']}'] ?? '',
+            joinPathsText(pol),
             if (my == 'member') t('أنت عضو ✓', 'You are a member ✓'),
             if (my == 'pending') t('طلبك قيد المراجعة', 'Your request is pending'),
             if (u['full'] == true && my == null) t('اكتمل العدد', 'Full'),
@@ -1222,7 +1365,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
     final r = await orgCall(
         () => OrgApi.i.api.post('$_base/join', body: {
               'answers': _answers.collect(_fields),
-              if (unitNeedsCode(_policy)) 'code': _code.text.trim(),
+              if (unitAcceptsCode(_policy) && _code.text.trim().isNotEmpty) 'code': _code.text.trim(),
             }),
         quiet: true);
     if (!mounted) return;
@@ -1262,7 +1405,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(orgNameOf(u), style: orgText(context, size: 16, w: FontWeight.w800)),
-                  Text('${unitKindLabel('${u['unit_type']}')} · ${joinMethodLabels()[method] ?? method}', style: orgText(context, size: 12.5, color: c.textMedium)),
+                  Text('${unitKindLabel('${u['unit_type']}')} · ${joinPathsText(pol)}', style: orgText(context, size: 12.5, color: c.textMedium)),
                 ]),
               ),
             ]),
@@ -1281,10 +1424,15 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                 context,
                 Icons.info_outline_rounded,
                 c.primary,
-                switch (method) {
+                joinPathsOf(pol).length > 1
+                    ? t('يمكنك الانضمام بأي طريقة متاحة: ${joinPathsText(pol)}. أدخل الكود إن كان لديك.',
+                        'You can join any available way: ${joinPathsText(pol)}. Enter the code if you have one.')
+                    : switch (method) {
                   'auto' => t('إذا انطبقت عليك الشروط تنضم مباشرة بعد تحقق الخادم.', 'If you meet the conditions you join right away, after the server checks.'),
                   'approval' => t('يُرسل طلبك للمسؤول ليقبله أو يرفضه، وتصلك النتيجة.', 'Your request goes to the person in charge, who accepts or rejects it — you\'ll be told.'),
                   'code' => t('تحتاج كود الانضمام الذي أعطته لك الإدارة.', 'You need the join code the department gave you.'),
+                  'code_req' => t('تحتاج كود الانضمام وموافقة المسؤول معاً: الكود الصحيح يرسل طلبك، ثم يقرر المسؤول.',
+                      'You need the join code AND an approval: a valid code sends your request, then the person in charge decides.'),
                   _ => '',
                 }),
             if (_fields.isNotEmpty) ...[
@@ -1304,7 +1452,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                   onUpload: () => orgPickAndUpload('$_pub/uploads'),
                 ),
             ],
-            if (unitNeedsCode(pol)) ...[
+            if (unitAcceptsCode(pol)) ...[
               const SizedBox(height: 6),
               TextField(
                 controller: _code,
@@ -1312,7 +1460,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
                 textDirection: TextDirection.ltr,
                 onChanged: (_) => setState(() => _codeError = null),
                 decoration: InputDecoration(
-                  labelText: t('كود الانضمام', 'Join code'),
+                  labelText: unitNeedsCode(pol) ? t('كود الانضمام', 'Join code') : t('كود الانضمام (اختياري)', 'Join code (optional)'),
                   errorText: _codeError,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
@@ -1331,7 +1479,7 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
             const SizedBox(height: 8),
             PrimaryButton(
               isLoading: _busy,
-              label: method == 'approval' ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
+              label: unitNeedsApproval(pol) ? t('إرسال الطلب', 'Send request') : t('انضمام', 'Join'),
               onPressed: _busy || _check?['status'] == 'ineligible' ? null : _join,
             ),
           ],
@@ -1361,7 +1509,12 @@ class _OrgUnitJoinScreenState extends State<OrgUnitJoinScreen> {
     return Column(children: [
       IconBadge(joined ? Icons.celebration_rounded : Icons.hourglass_top_rounded, joined ? c.success : c.warning, size: 64),
       const SizedBox(height: 12),
-      Text(joined ? t('تم الانضمام 🎉', 'You\'re in 🎉') : t('أُرسل طلبك', 'Your request was sent'),
+      Text(
+          joined
+              ? t('تم الانضمام 🎉', 'You\'re in 🎉')
+              : r['code_verified'] == true
+                  ? t('تم التحقق من الكود — طلبك بانتظار الموافقة', 'Code verified — request submitted, awaiting approval')
+                  : t('أُرسل طلبك', 'Your request was sent'),
           style: orgText(context, size: 18, w: FontWeight.w800), textAlign: TextAlign.center),
       const SizedBox(height: 6),
       Text(

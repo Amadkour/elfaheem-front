@@ -10,6 +10,8 @@ import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
+import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
+import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
 import 'view_as_state.dart';
@@ -32,7 +34,8 @@ class AppNavigator {
     ));
   }
 
-  /// module: profile | course | notifications | my_courses | subscription
+  /// module: profile | course | course_profile | notifications | my_courses | subscription | org_exams | calendar |
+  /// org_reports
   static Future<void> openModule(String? module, {int? targetId}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
@@ -47,14 +50,29 @@ class AppNavigator {
           await nav.pushNamed('/notifications'); // "course" button without a course id: do not do nothing
         }
         return;
+      case 'course_profile': // announcement · "attendance is open" · archive decision → the course profile
+        if (targetId != null) {
+          await nav.push(MaterialPageRoute(
+              settings: RouteSettings(name: '/course-profile', arguments: targetId),
+              builder: (_) => CourseProfileScreen(courseId: targetId)));
+        } else {
+          await nav.pushNamed('/notifications');
+        }
+        return;
       case 'notifications':
         await nav.pushNamed('/notifications');
         return;
       case 'subscription':
         await nav.pushNamed('/subscription');
         return;
+      case 'calendar': // meeting invitation / answer → the calendar on that meeting
+        await nav.pushNamed('/calendar', arguments: targetId);
+        return;
       case 'org_exams': // "exam timetable published" → My exams (the organization is already open)
         await nav.push(MaterialPageRoute(builder: (_) => const MyExamsScreen()));
+        return;
+      case 'org_reports': // a report sent to me → Received reports
+        await nav.push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()));
         return;
       case 'profile':
         await nav.pushNamed('/profile');
@@ -80,15 +98,17 @@ class AppNavigator {
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
       final orgId = int.tryParse('${r['org_id'] ?? ''}');
       if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
-      await openModule(module, targetId: courseId);
+      await openModule(module, targetId: courseId ?? int.tryParse('${r['target_id'] ?? ''}'));
     } catch (_) {/* tapping must never crash */}
   }
 
   /// FCM payload (tap or foreground). Uses explicit fields when present, else course_id.
   static Future<void> openFromPush(Map<String, dynamic> data) async {
     if (ViewAsState.active) return;
-    final module = data['module']?.toString();
-    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? ''}');
+    // course-profile notifications carry {type: course_profile, id: <course id>} (services/organization notify_users)
+    final profile = data['type'] == 'course_profile';
+    final module = data['module']?.toString() ?? (profile ? 'course_profile' : null);
+    final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile ? data['id'] : null) ?? ''}');
     final orgId = int.tryParse('${data['org_id'] ?? ''}');
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) return openModule(module, targetId: target);

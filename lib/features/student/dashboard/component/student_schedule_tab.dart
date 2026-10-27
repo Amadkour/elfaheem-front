@@ -5,7 +5,6 @@ import '../../../../config/app_config.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../teacher/schedules/schedules_provider.dart';
 import '../../../teacher/schedules/schedules_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 class StudentScheduleTab extends StatefulWidget {
   const StudentScheduleTab({super.key});
 
@@ -39,14 +38,16 @@ class StudentScheduleTabState extends State<StudentScheduleTab>
     super.build(context);
     return BasePage(
         useWebCard: true,
+        // the body owns loading (skeleton) / error (retry) / empty — a refresh keeps the data on screen
         child: SafeArea(
-            child:_prov.isLoading? Center(child:AppLoadingIndicator(),): ScheduleTabBody(
+            child: ScheduleTabBody(
           provider: _prov,
           getData: () => _prov.data,
           onRefresh: _prov.fetch,
           title: 'my_schedule'.tr,
           emptyMessage: 'empty_calender'.tr,
           getLastFetched: () => _prov.lastFetched,
+          getMeetings: () => _prov.meetings,
         )));
   }
 }

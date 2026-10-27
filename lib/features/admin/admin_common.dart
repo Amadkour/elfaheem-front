@@ -169,6 +169,9 @@ Future<bool> confirm(
     builder: (ctx) => Directionality(
       textDirection: dir,
       child: AlertDialog(
+        // long messages / big text scale / 320 px: scroll inside the dialog instead of overflowing
+        scrollable: true,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         icon: ServiceIcon(
           icon: danger ? Icons.warning_amber_rounded : Icons.help_outline_rounded,
@@ -257,6 +260,8 @@ class _AskTextDialogState extends State<_AskTextDialog> {
     return Directionality(
       textDirection: dir,
       child: AlertDialog(
+        scrollable: true,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(widget.title,
             style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
@@ -295,18 +300,27 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
     isScrollControlled: true,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
+    elevation: 0,
     builder: (ctx) => Directionality(
       textDirection: dir,
       child: Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-        child: Container(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        // The height left ABOVE the keyboard (not the screen height): with the keyboard open a
+        // `size.height * 0.92` box was taller than the space and the sheet overflowed.
+        child: LayoutBuilder(builder: (ctx, box) => ConstrainedBox(
           constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.92),
-          decoration: BoxDecoration(
-            color: ctx.colors.cardBg,
-            borderRadius:
-            const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+              maxHeight: box.maxHeight.isFinite
+                  ? box.maxHeight * (MediaQuery.viewInsetsOf(ctx).bottom > 0 ? 1 : 0.92)
+                  : MediaQuery.sizeOf(ctx).height * 0.92),
+          // A Material (not a coloured Container): ListTiles inside paint their tileColor / ink on
+          // the nearest Material. A coloured box in between hid them and made Flutter report
+          // "ListTile background color or ink splashes may be invisible" for every tappable row.
+          child: Material(
+          color: ctx.colors.cardBg,
+          surfaceTintColor: Colors.transparent,
+          clipBehavior: Clip.antiAlias,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             // grab handle
             Container(
@@ -319,9 +333,18 @@ Future<T?> showAdminSheet<T>(BuildContext context, WidgetBuilder builder) {
               ),
             ),
             // bottom safe area: content never sits under the home indicator / gesture bar
-            Flexible(child: SafeArea(top: false, child: builder(ctx))),
+            // The sheet is already lifted above the keyboard, so the content sees no view insets
+            // (content that padded itself by viewInsets again got squeezed twice and overflowed).
+            Flexible(
+              child: MediaQuery.removeViewInsets(
+                context: ctx,
+                removeBottom: true,
+                child: SafeArea(top: false, child: Builder(builder: builder)),
+              ),
+            ),
           ]),
-        ),
+          ),
+        )),
       ),
     ),
   );

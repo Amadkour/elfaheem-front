@@ -1,10 +1,9 @@
 // lib/features/org/org_member_dashboard.dart
 //
 // The MEMBER DASHBOARD (point 2) — what any organization member (student · teacher · assistant · staff of any role)
-// sees in "Organization mode", plus the mode switcher itself.
+// sees in "Organization mode".
 //
-//   AppModeSwitcher          "Individual ↔ <organization>" segmented switch (home header); hidden unless the person
-//                            has a live organization AND AppConfig.orgsEnabled. Badge = what waits in organizations.
+//   (the Personal ↔ organization switch itself is ContextSwitcher, lib/design/context_switcher.dart)
 //   OrgMemberHome            the dashboard body for the selected organization (embeddable in a home scroll view):
 //                            hero + org picker · counters · what needs me (inbox: to do / news / done) · approvals
 //                            waiting for my decision · the departments I manage and what I may do there · quick
@@ -20,10 +19,13 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t, asInt, asMap, asMapList;
@@ -34,10 +36,13 @@ import 'org_courses_page.dart' show OrgCoursesPage;
 import 'org_join_pages.dart' show OrgJoinInboxPage;
 import 'org_member_pages.dart' show OrgCoursesScreen, OrgTimetableScreen;
 import 'org_my_exams.dart' show openMyExams;
+import 'org_member_today.dart' show OrgTodayAgenda;
 import 'org_member_space.dart' show OrgMemberSpace;
 import 'org_people_page.dart' show OrgPeoplePage;
 import 'org_providers.dart' show OrgSession;
 import 'org_schedule_pages.dart' show OrgSchedulePage;
+import 'org_reports/report_page.dart' show OrgReceivedReportsPage;
+import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, openRecord, openRegistration, openTeaching;
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 
@@ -89,7 +94,7 @@ Future<void> _openManaged(BuildContext context, int orgId, String title, Widget 
   }
   s.select(orgId);
   await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title), child: page)));
+      builder: (_) => BasePage(useWebCard: true, maxWith: 1100, appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]), child: page)));
   AppModeController.instance
     ..applyOrgContext() // the management pages applied OrgSession's organization — back to the member's one
     ..refresh();
@@ -136,37 +141,12 @@ Future<void> openOrgApproval(BuildContext context, int orgId, String what) async
   }
 }
 
-/// Organization picker (bottom sheet) — every live organization with what waits there.
-Future<void> showMemberOrgPicker(BuildContext context) async {
-  final ctl = AppModeController.instance;
-  await showAppSheet<void>(context, (ctx) {
-    final c = ctx.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader(t('اختر المؤسسة', 'Choose an organization')),
-        for (final e in ctl.liveEntries)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: AppActionCard(
-              icon: orgTypeIcons[_orgOf(e)['type']] ?? Icons.domain_rounded,
-              color: orgColor(ctx, _orgOf(e)),
-              title: orgNameOf(_orgOf(e)),
-              subtitle: _rolesLine(e),
-              badge: AppModeController.pendingOf(e),
-              trailing: asInt(_orgOf(e)['id']) == ctl.currentOrgId ? Icon(Icons.check_circle_rounded, color: c.success) : null,
-              onTap: () {
-                Navigator.pop(ctx);
-                ctl.setMode(AppMode.organization, orgId: asInt(_orgOf(e)['id']));
-              },
-            ),
-          ),
-      ]),
-    );
-  });
-}
+/// Organization picker — the one context sheet (Personal is offered only where a personal space exists).
+Future<void> showMemberOrgPicker(BuildContext context, {bool allowPersonal = true}) =>
+    showContextSwitcherSheet(context, allowPersonal: allowPersonal);
 
-String _rolesLine(Map<String, dynamic> e) {
+/// "Student · Teacher · Organization admin" — what this person is in one organization (overview entry).
+String orgRolesLine(Map<String, dynamic> e) {
   final labels = memberRoleLabels();
   final roles = [for (final r in (e['roles'] as List? ?? const [])) labels['$r'] ?? '$r'];
   final manage = asMap(e['manage']);
@@ -174,117 +154,6 @@ String _rolesLine(Map<String, dynamic> e) {
   final depts = asMapList(manage['departments']).where((d) => d['via'] == 'dept').length;
   if (manage['is_admin'] != true && depts > 0) roles.add(t('تدير $depts إدارة', 'Manages $depts department(s)'));
   return roles.isEmpty ? t('عضو', 'Member') : roles.join(' · ');
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  The switch
-// ═════════════════════════════════════════════════════════════════════════════
-
-/// "Individual ↔ Organization" — instant, remembered, hidden when there is nothing to switch to.
-class AppModeSwitcher extends StatefulWidget {
-  const AppModeSwitcher({super.key, this.padding = const EdgeInsets.fromLTRB(16, 4, 16, 14)});
-  final EdgeInsetsGeometry padding;
-
-  @override
-  State<AppModeSwitcher> createState() => _AppModeSwitcherState();
-}
-
-class _AppModeSwitcherState extends State<AppModeSwitcher> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final uid = context.read<MyAuthProvider>().currentUser?.id;
-      AppModeController.instance.bindUser(uid);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ctl = AppModeController.instance;
-    return ListenableBuilder(
-      listenable: ctl,
-      builder: (context, _) {
-        if (!ctl.available) return const SizedBox.shrink();
-        final c = context.colors;
-        final org = _orgOf(ctl.current);
-        final many = ctl.liveEntries.length > 1;
-        Widget seg({required bool on, required IconData icon, required String label, required VoidCallback onTap, int badge = 0, bool more = false}) {
-          return Expanded(
-            child: Semantics(
-              button: true,
-              selected: on,
-              label: label,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: onTap,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 240),
-                  curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
-                  decoration: BoxDecoration(
-                    gradient: on ? LinearGradient(colors: [c.primary, c.primaryDark]) : null,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: on ? [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))] : null,
-                  ),
-                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(icon, size: 18, color: on ? Colors.white : c.textMedium),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: appText(13.5, w: FontWeight.w800, c: on ? Colors.white : c.textMedium)),
-                    ),
-                    if (more) Icon(Icons.expand_more_rounded, size: 18, color: on ? Colors.white : c.textMedium),
-                    if (badge > 0) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(color: on ? Colors.white.withValues(alpha: 0.25) : c.danger, borderRadius: BorderRadius.circular(10)),
-                        child: Text(badge > 99 ? '99+' : '$badge', style: appText(11, w: FontWeight.w800, c: Colors.white)),
-                      ),
-                    ],
-                  ]),
-                ),
-              ),
-            ),
-          );
-        }
-
-        return Padding(
-          padding: widget.padding,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 640),
-              child: Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                    color: c.cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: c.divider), boxShadow: c.cardShadow),
-                child: Row(children: [
-                  seg(
-                    on: !ctl.isOrg,
-                    icon: Icons.person_rounded,
-                    label: t('حسابي الشخصي', 'Individual'),
-                    onTap: () => ctl.setMode(AppMode.individual),
-                  ),
-                  seg(
-                    on: ctl.isOrg,
-                    icon: Icons.account_balance_rounded,
-                    label: org.isEmpty ? t('مؤسستي', 'Organization') : orgNameOf(org),
-                    more: many,
-                    badge: ctl.isOrg ? 0 : ctl.pendingTotal,
-                    onTap: () => ctl.isOrg && many ? showMemberOrgPicker(context) : ctl.setMode(AppMode.organization),
-                  ),
-                ]),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -362,12 +231,26 @@ class _OrgBody extends StatelessWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)))),
         AppPill(icon: Icons.calendar_month_rounded, label: t('جدولي', 'My timetable'),
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen()))),
+        AppPill(icon: Icons.event_rounded, label: t('التقويم', 'Calendar'), onTap: () => Navigator.of(context).pushNamed('/calendar')),
+        AppPill(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
         AppPill(icon: Icons.event_note_rounded, label: t('امتحاناتي', 'My exams'), onTap: () => openMyExams(context, orgId: orgId)),
         AppPill(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => _space(context, org, 2)),
         AppPill(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => _space(context, org, 3)),
         AppPill(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => _space(context, org, 1)),
         AppPill(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => _space(context, org, 4)),
         if (roles.contains('student')) AppPill(icon: Icons.route_rounded, label: t('مساري', 'My path'), onTap: () => _space(context, org, 5)),
+        if (roles.contains('student')) ...[
+          AppPill(icon: Icons.how_to_reg_rounded, label: t('تسجيل المقررات', 'Course registration'), onTap: () => openRegistration(context, orgId)),
+          AppPill(icon: Icons.history_edu_rounded, label: t('سجلي الأكاديمي', 'My academic record'), onTap: () => openRecord(context, orgId)),
+          AppPill(icon: Icons.calendar_view_week_rounded, label: t('أسبوعي الدراسي', 'My week'), onTap: () => openMyWeek(context, orgId)),
+        ],
+        if (roles.contains('teacher') || roles.contains('teacher_assistant')) ...[
+          AppPill(icon: Icons.grading_rounded, label: t('رصد الدرجات', 'Grade entry'), onTap: () => openTeaching(context, orgId)),
+          AppPill(icon: Icons.event_available_rounded, label: t('موافقات الجدول', 'Timetable consents'), onTap: () => openConsents(context, orgId)),
+        ],
+        if (roles.contains('teacher'))
+          AppPill(icon: Icons.support_rounded, label: t('الإرشاد الأكاديمي', 'Advising'), onTap: () => openAdvising(context, orgId)),
         AppPill(icon: Icons.group_add_rounded, label: t('انضمام لقسم', 'Join a department'), onTap: () => _space(context, org, 6)),
       ],
       if (manage != null) ...[
@@ -394,7 +277,7 @@ class _OrgBody extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       OrgHero(
         org: org,
-        subtitle: _rolesLine(entry),
+        subtitle: orgRolesLine(entry),
         trailing: showPicker
             ? IconButton(
                 tooltip: t('تبديل المؤسسة', 'Switch organization'),
@@ -414,6 +297,12 @@ class _OrgBody extends StatelessWidget {
         ),
       AppGrid(minTile: 140, padding: const EdgeInsets.symmetric(horizontal: 16), children: stats),
       const SizedBox(height: 18),
+
+      // ── today (weekly sessions minus exam-paused days, plus today's extra sessions)
+      if (isMember) ...[
+        OrgTodayAgenda(key: ValueKey('today-$orgId'), orgId: orgId),
+        const SizedBox(height: 18),
+      ],
 
       // ── what needs me (to do · news · done of THIS organization)
       AppSectionTitle(t('ما ينتظرك', 'What needs you'),
@@ -605,15 +494,20 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
       appBar: ScreenAppBar(
         title: t('مساحتي في المؤسسة', 'My organization'),
         actions: [
-          ListenableBuilder(
-            listenable: ctl,
-            builder: (context, _) => ctl.liveEntries.length > 1
-                ? IconButton(
-                    tooltip: t('تبديل المؤسسة', 'Switch organization'),
-                    onPressed: () => showMemberOrgPicker(context),
-                    icon: const Icon(Icons.swap_horiz_rounded))
-                : const SizedBox.shrink(),
-          ),
+          // Personal included: leaving replaces this root page with the personal dashboard (leaveToPersonal)
+          ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 190),
+              child: const Center(child: ContextSwitcher(compact: true))),
+          const ContextExitButton(),
+          const SizedBox(width: 4),
+          if (ctl.currentOrgId != null)
+            ParentComponent(
+              featureKey: 'rag.assistant',
+              child: IconButton(
+                  tooltip: t('مساعد المستندات', 'Documents assistant'),
+                  onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagChatScreen(orgId: ctl.currentOrgId))),
+                  icon: const Icon(Icons.auto_stories_outlined)),
+            ),
           if (AppConfig.orgsEnabled)
             IconButton(
                 tooltip: t('صندوق الوارد', 'Inbox'),

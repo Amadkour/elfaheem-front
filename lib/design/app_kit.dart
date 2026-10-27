@@ -21,6 +21,8 @@
 //   any time / date  → AppTime.time / date / dateTime (UTC instant) · AppTime.clock("HH:MM") (12h/24h + timezone)
 //   sheet / confirm  → showAppSheet / appConfirm       status        → AppBadgePill
 //   table export     → showAppExportSheet(context, AppTableExport(...))  (Excel · Word · PDF + column picker)
+//   wide table/grid  → AppHScroll(child: …)  (draggable scrollbar · mouse drag · shift+wheel)
+//   "needs attention"→ AttentionBadge(tabKey: AttentionTabs.x, child: …) (count + deep links, GET /me/attention)
 library;
 
 import 'package:flutter/material.dart';
@@ -31,6 +33,9 @@ import '../features/org/org_ui.dart' as org;
 import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
 export 'app_switch.dart';
+export 'attention_badge.dart';
+export '../core/attention/attention_service.dart' show AttentionService, AttentionTabs, AttentionItem;
+export 'app_hscroll.dart';
 export 'app_table_export.dart' show showAppExportSheet, exportAppTable, AppTableExport, AppExportColumn, AppColType, AppColAlign, AppTotal, AppExportFormat, AppStatusTone;
 export '../core/app_time.dart';
 export '../features/org/org_ui.dart'
@@ -85,7 +90,8 @@ void appToast(String message, {bool error = false}) => admin.toast(message, erro
 typedef AppSheetHeader = admin.SheetHeader;
 
 // ── New: list skeleton (premium loading for any list / feed / grid page) ───
-/// The calm shape of a list while it loads — the page does not jump when data arrives.
+/// The calm shape of a list while it loads — the page does not jump when data arrives. Shrink-wrapped, so it also
+/// works inside another scroll view (a chat's ListView) where the height is unbounded.
 class AppListSkeleton extends StatelessWidget {
   const AppListSkeleton({super.key, this.items = 6, this.withAvatar = true, this.padding});
   final int items;
@@ -97,6 +103,7 @@ class AppListSkeleton extends StatelessWidget {
     final c = context.colors;
     return dl.DlShimmer(
       child: ListView.separated(
+        shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         padding: padding ?? const EdgeInsets.fromLTRB(16, 14, 16, 0),
         itemCount: items,

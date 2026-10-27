@@ -12,10 +12,13 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/primary_button.dart';
-import '../../admin/admin_common.dart' hide PrimaryButton;
+import '../../admin/admin_common.dart';
 import 'schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, AppTime;
+import '../../../core/base_provider.dart';
+import '../../shared/calendar/calendar_models.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -27,6 +30,8 @@ class ScheduleTabBody extends StatefulWidget {
   final DateTime?          Function()        getLastFetched;
   final String title;
   final String emptyMessage;
+  /// Upcoming meetings shown under the day's sessions (empty or failed → the section is hidden).
+  final List<CalEvent> Function()? getMeetings;
 
   const ScheduleTabBody({
     super.key,
@@ -34,6 +39,7 @@ class ScheduleTabBody extends StatefulWidget {
     required this.getData,
     required this.onRefresh,
     required this.getLastFetched,
+    this.getMeetings,
     this.title       = 'time-table',
     this.emptyMessage ='no-time-table',
   });
@@ -71,6 +77,12 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
   @override
   void initState() {
     super.initState();
+    // Nothing loaded and nothing in flight (e.g. the provider was never asked) → load now, so the skeleton
+    // always ends in data, the empty state or an error.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final p = widget.provider;
+      if (mounted && widget.getData() == null && !(p is BaseProvider && (p.isLoading || p.hasError))) widget.onRefresh();
+    });
     // Lightweight tick — just for the countdown display, not network calls.
     // No setState here anymore: only the two ValueNotifiers above update,
     // so listeners (ScheduleSessionCard, the next-lesson banner) redraw
@@ -118,7 +130,22 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
         _syncOngoing(data);
 
         if (data == null) {
-          return _LoadingState(onRefresh: _doRefresh);
+          // loading → skeleton; failed → error + retry (never an endless spinner: the load has a hard timeout)
+          final p = widget.provider;
+          if (p is BaseProvider && p.hasError) {
+            return Center(
+              child: SingleChildScrollView(
+                child: AppEmpty(
+                  icon: Icons.cloud_off_rounded,
+                  title: 'schedule_load_failed'.tr,
+                  message: p.errorMessage == 'schedule_load_failed'.tr ? null : p.errorMessage,
+                  actionLabel: 'retry'.tr,
+                  onAction: _doRefresh,
+                ),
+              ),
+            );
+          }
+          return const AppListSkeleton(items: 5, withAvatar: false);
         }
 
         final activeDays = data.activeDays;
@@ -129,6 +156,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
         final shownSlots  = dayHasSlots
             ? data.slotsForDay(_selectedDay!)
             : <ScheduleSession>[];
+        final meetings = widget.getMeetings?.call() ?? const <CalEvent>[];
 
         return RefreshIndicator(
           color: context.colors.primary,
@@ -182,10 +210,81 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                         ),
                   ),
                 ),
+
+              // ── Upcoming meetings (GET /me/calendar) ──────────
+              if (meetings.isNotEmpty)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                  sliver: SliverList.list(children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text('upcoming_meetings'.tr, style: context.colors.h3),
+                    ),
+                    for (final m in meetings.take(8)) _MeetingTile(meeting: m),
+                  ]),
+                ),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+// ── Meeting tile ──────────────────────────────────────────────────────────────
+
+class _MeetingTile extends StatelessWidget {
+  final CalEvent meeting;
+
+  const _MeetingTile({required this.meeting});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final m = meeting;
+    final statusColor = calStatusColor(c, m.myStatus);
+    final where = m.mode == 'online' ? 'meeting_online'.tr :(m.location ?? '');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          // '/calendar' with a meeting id opens the calendar on that meeting
+          onTap: () => Navigator.of(context).pushNamed('/calendar', arguments: m.meetingId),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(m.mode == 'online' ? Icons.videocam_rounded : Icons.groups_rounded, color: c.primary, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(m.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h3),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${AppTime.date(m.start, pattern: 'EEE d MMM')} · ${AppTime.time(m.start)}${where.isEmpty ? '' : ' · $where'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: c.caption,
+                  ),
+                ]),
+              ),
+              if (calStatusLabel(m.myStatus).isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: calStatusLabel(m.myStatus),
+                  child: Icon(calStatusIcon(m.myStatus), color: statusColor, size: 20),
+                ),
+              ],
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -569,8 +668,14 @@ class _WeekStrip extends StatelessWidget {
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      // a full day name ("الأربعاء") in a 56px chip: shrink instead of wrapping past the 72px strip
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
                         slotDayShort(day),
+                        maxLines: 1,
                         style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 13,
@@ -583,7 +688,7 @@ class _WeekStrip extends StatelessWidget {
                               ? context.colors.textDark
                               : context.colors.textLight,
                         ),
-                      ),
+                      ))),
                       const SizedBox(height: 5),
                       // Dot indicator
                       if (isActive && count > 0)
@@ -670,36 +775,6 @@ class _EmptyDay extends StatelessWidget {
         ],
       ]),
     ),
-  );
-}
-
-class _LoadingState extends StatelessWidget {
-  final Future<void> Function() onRefresh;
-  const _LoadingState({required this.onRefresh});
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      AppLoadingIndicator(),
-      const SizedBox(height: 16),
-      Text('loading-schedule'.tr,
-          style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 13,
-              color: context.colors.textMedium)),
-      const SizedBox(height: 20),
-      GestureDetector(
-        onTap: onRefresh,
-        child: Text('retry'.tr,
-            style: TextStyle(
-                fontFamily: 'bahji',
-                fontSize: 13,
-                color: context.colors.primary,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline,
-                decorationColor: context.colors.primary)),
-      ),
-    ]),
   );
 }
 

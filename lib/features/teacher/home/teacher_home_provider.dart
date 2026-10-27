@@ -51,6 +51,11 @@ class TeacherHomeProvider extends BaseProvider {
 
   List<ScheduleSession> get schedule => List.unmodifiable(_schedule);
 
+  Map<String, int> _pending = const {};
+
+  /// attendance_missing · materials_missing · grading · enrollment_requests (GET /teacher/dashboard `pending`).
+  Map<String, int> get pending => _pending;
+
   // ─────────────────────────────────────────────────────────────────────────
   // Bootstrap
   // ─────────────────────────────────────────────────────────────────────────
@@ -73,6 +78,7 @@ class TeacherHomeProvider extends BaseProvider {
       _stats = data.stats;
       _homeCourses = data.courses;
       _schedule = data.schedule;
+      _pending = data.pending;
       notifyListeners();
     }
   }

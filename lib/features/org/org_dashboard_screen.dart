@@ -21,7 +21,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/app_mode.dart' show AppModeController;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton, leaveToPersonal;
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBanner, AppCard, AppHeroStat, AppListSkeleton, AppPill, AppSectionTitle, AppSwitch, AppTime, appText, AppChoiceChip;
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -31,12 +33,14 @@ import 'package:flutter_education_app/features/shared/profile/components/setting
 import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart' show SettingsTile;
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show ProfileHeader;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart' show WideShell, RailShell, MobileShell;
 import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart' show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
+import 'org_registrar_staff.dart' show OrgRegistrarPage;
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart' show DataCenterPage;
 
@@ -57,6 +61,7 @@ import 'org_people_page.dart';
 import 'org_providers.dart';
 import 'org_schedule_pages.dart';
 import 'org_sections_page.dart';
+import 'org_feedback_risk.dart';
 import 'org_v3.dart' show orgCall, orgParseUtc, orgUtc;
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
@@ -143,16 +148,38 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    AttentionService.instance.addListener(_onAttention);
+    AttentionService.instance.orgTabRequest.addListener(_onOrgTab);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<OrgSession>().load();
+      if (mounted) context.read<OrgSession>().load().then((_) => _onOrgTab());
     });
   }
 
   @override
   void dispose() {
+    AttentionService.instance.removeListener(_onAttention);
+    AttentionService.instance.orgTabRequest.removeListener(_onOrgTab);
+    AttentionService.instance.focusOrg(null);
     _tabs.dispose();
     _dash.dispose();
     super.dispose();
+  }
+
+  void _onAttention() {
+    if (mounted) setState(() {});
+  }
+
+  /// A deep link (attention item, badge list) asked for a section: switch org if needed, then jump.
+  void _onOrgTab() {
+    final r = AttentionService.instance.orgTabRequest.value;
+    if (r == null || !mounted) return;
+    final s = context.read<OrgSession>();
+    if (!s.loaded) return;                                      // retried after load()
+    AttentionService.instance.orgTabRequest.value = null;       // consumed
+    if (s.currentId != r.orgId && s.items.any((o) => asInt(o['id']) == r.orgId)) s.select(r.orgId);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _tabs.go(r.section, sub: r.sub);
+    });
   }
 
   /// Sections follow MY rights. [compact] = phone bottom bar: Services folds into "More".
@@ -211,6 +238,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
       return const BasePage(useWebCard: true, maxWith: 760, child: OrgStatusScreen());
     }
     _dash.ensure(session);
+    AttentionService.instance.focusOrg(session.currentId);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<_OrgTabs>.value(value: _tabs),
@@ -235,7 +263,7 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
               final items = [for (final e in entries) e.$2];
               // navigation badges = what waits in each section (only what I may act on)
               for (final e in entries) {
-                e.$2.badge = switch (e.$1) {
+                final own = switch (e.$1) {
                   'people' => dash.count('org_join_requests') + dash.count('unit_join_requests') + dash.count('expiring_memberships'),
                   'academics' => dash.count('program_choices'),
                   'timetable' => dash.count('schedule_unplaced') > 0 ? 1 : 0,
@@ -243,6 +271,16 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
                   'settings' when !isWide && !isRail => dash.count('pending_forms') + dash.count('open_complaints'),
                   _ => 0,
                 };
+                // GET /me/attention adds decisions + auto-create suggestions (Academics) and stays fresh (polling)
+                final att = AttentionService.instance;
+                final oid = session.currentId;
+                final live = switch (e.$1) {
+                  'settings' when !isWide && !isRail =>
+                    att.count(AttentionTabs.orgServices, orgId: oid) + att.count(AttentionTabs.orgSettings, orgId: oid),
+                  final k when AttentionTabs.orgSection.containsKey(k) => att.count(AttentionTabs.orgSection[k]!, orgId: oid),
+                  _ => 0,
+                };
+                e.$2.badge = live > own ? live : own;
               }
               final current = tabs.currentTab.clamp(0, items.length - 1);
               void onTap(int i) => tabs.onChangeTab(i);
@@ -278,6 +316,8 @@ List<_Sub> _academicSubs(OrgSession s, String role) => [
       if (s.canAny('courses')) ('courses', t('المقررات', 'Courses'), Icons.menu_book_rounded, const OrgCoursesPage()),
       if (s.can('academic'))
         ('structure', t('الهيكل الأكاديمي', 'Academic structure'), Icons.account_tree_rounded, const OrgAcademicPage()),
+      if (s.can('academic'))
+        ('registrar', t('التسجيل والدرجات', 'Registrar'), Icons.how_to_reg_rounded, const OrgRegistrarPage()),
       if (role == 'teacher_assistant') ('sections', t('سكاشني', 'My sections'), Icons.science_rounded, const OrgSectionsPage()),
     ];
 
@@ -289,6 +329,11 @@ List<_Sub> _serviceSubs(OrgSession s) => [
       if (s.canAny('materials')) ('materials', t('المكتبة', 'Library'), Icons.folder_copy_rounded, const OrgMaterialsPage()),
       if (s.canAny('complaints') || s.canAny('forms'))
         ('datacenter', t('مركز البيانات', 'Data Center'), Icons.insights_rounded, DataCenterPage(orgId: s.currentId, embedded: true)),
+      // Phase 8: exam risk dashboard + feedback-store settings (the server re-checks the role)
+      if (s.currentId != null && (s.isOrgAdmin || s.can('exams', 'view')))
+        ('exam_risk', t('مخاطر الامتحانات', 'Exam risk'), Icons.policy_rounded, OrgExamRiskPage(orgId: s.currentId!)),
+      if (s.currentId != null && s.isOrgAdmin)
+        ('exam_feedback', t('ملاحظات الامتحانات', 'Exam feedback'), Icons.rate_review_rounded, OrgFeedbackSettingsPage(orgId: s.currentId!)),
     ];
 
 /// Page frame + live reload when the organization changes.
@@ -303,7 +348,7 @@ class _OrgTab extends StatelessWidget {
     return BasePage(
       useWebCard: true,
       maxWith: 1200,
-      appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false),
+      appBar: title == 'org' ? null : ScreenAppBar(title: title, showBack: false, actions: const [ContextExitButton()]),
       child: s.currentId == null
           ? OrgEmpty(icon: Icons.domain_rounded, title: t('اختر مؤسسة', 'Choose an organization'))
           : ValueListenableBuilder<int>(
@@ -552,6 +597,9 @@ class _OrgHero extends StatelessWidget {
         }),
         const SizedBox(height: 14),
         Wrap(spacing: 8, runSpacing: 8, children: [
+          // the way back to the personal space is always one visible tap (Item 6)
+          glassButton(Icons.logout_rounded, 'ctx_personal'.tr, () => leaveToPersonal(context)),
+          glassButton(Icons.event_rounded, t('التقويم', 'Calendar'), () => Navigator.of(context).pushNamed('/calendar', arguments: {'org_id': s.currentId})),
           if (s.items.length > 1 || s.canCreateRoot)
             glassButton(Icons.swap_horiz_rounded, t('تبديل المؤسسة', 'Switch'), () => showOrgSwitcher(context)),
           if (s.isOrgAdmin) glassButton(Icons.vpn_key_rounded, t('كود الانضمام', 'Join code'), () => showJoinCode(context)),
@@ -605,7 +653,10 @@ class _AttentionQueue extends StatelessWidget {
   final Map<String, dynamic> d;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) =>
+      ListenableBuilder(listenable: AttentionService.instance, builder: (context, _) => _queue(context));
+
+  Widget _queue(BuildContext context) {
     final c = context.colors;
     final s = context.read<OrgSession>();
     final tabs = context.read<_OrgTabs>();
@@ -673,6 +724,24 @@ class _AttentionQueue extends StatelessWidget {
       };
       if (spec == null) continue;
       items.add(_AttentionCard(icon: spec.$1, color: col, title: spec.$2, subtitle: spec.$3, action: spec.$4, onTap: spec.$5));
+    }
+    // auto-create drafts and open decisions (GET /me/attention): what the server prepared for my approval
+    final acad = AttentionService.instance.items(AttentionTabs.orgAcademics, orgId: s.currentId);
+    final drafts = acad.where((x) => x.isSuggestion).length;
+    final decisions = acad.where((x) => x.kind == 'decision').fold<int>(0, (n, x) => n + x.count);
+    if (drafts > 0) {
+      items.add(_AttentionCard(icon: Icons.auto_fix_high_rounded, color: c.primary,
+          title: t('$drafts اقتراح جاهز للاعتماد', '$drafts drafts ready for approval'),
+          subtitle: t('أنشأها النظام تلقائياً (مثل الفصول الناقصة) — اعتمد أو عدّل أو ارفض', 'Created automatically (e.g. missing terms) — approve, edit or reject'),
+          action: t('مراجعة', 'Review'), onTap: () {
+            if (!tabs.go('academics', sub: 'structure')) open(t('الهيكل الأكاديمي', 'Academic structure'), const OrgAcademicPage());
+          }));
+    }
+    if (decisions > 0) {
+      items.add(_AttentionCard(icon: Icons.gavel_rounded, color: c.warning,
+          title: t('$decisions قرار ينتظرك', '$decisions decisions waiting'),
+          subtitle: t('حالات لم يحسمها النظام وحده', 'Cases the system did not settle alone'),
+          action: t('فتح', 'Open'), onTap: () => tabs.go('academics', sub: 'registrar')));
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       _Title(t('يحتاج انتباهك', 'Needs your attention'),
@@ -979,6 +1048,8 @@ class _OrgAccountPage extends StatelessWidget {
           SettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
         ],
         const SizedBox(height: 20),
+        // two-step verification of the signed-in org admin / staff member (shown when the server allows it)
+        const MfaSettingsEntry(),
         SettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
           tile(Icons.translate_rounded, AdminPalette.violet.last, 'change_language'.tr,
               () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeLanguageScreen()))),

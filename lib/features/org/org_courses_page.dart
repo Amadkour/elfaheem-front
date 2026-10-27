@@ -14,6 +14,7 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'org_academic_pages.dart' show CourseArchiveScreen;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
+import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
 
 /// Active members of one role (up to 200) — used by the pickers.
 Future<List<Map<String, dynamic>>> orgPeople(OrgSession s, String role, {String? search}) async {
@@ -142,6 +143,10 @@ class _CourseTile extends StatelessWidget {
           ),
           PopupMenuButton<String>(
             onSelected: (v) async {
+              if (v == 'profile') {
+                await openCourseProfile(context, asInt(row['id']));
+                return;
+              }
               if (v == 'edit' && await showOrgCourseForm(context, edit: row) != null) p.refresh();
               if (v == 'archive' && context.mounted) {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => CourseArchiveScreen(
@@ -160,6 +165,7 @@ class _CourseTile extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
+              PopupMenuItem(value: 'profile', child: Text(t('ملف المقرر', 'Course profile'))),
               if (s.can('courses', 'update')) PopupMenuItem(value: 'edit', child: Text(t('تعديل', 'Edit'))),
               if (s.can('courses', 'update')) PopupMenuItem(value: 'code', child: Text(t('كود المقرر', 'Course code'))),
               PopupMenuItem(value: 'archive', child: Text(t('الفصول والأرشيف', 'Terms & archive'))),

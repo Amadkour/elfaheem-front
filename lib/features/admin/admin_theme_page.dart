@@ -488,6 +488,7 @@ class _EditorState extends State<_Editor> {
       builder: (ctx) => Directionality(
         textDirection: dir,
         child: AlertDialog(
+          scrollable: true,
           title: Text(
             'admin_pick_a_colour'.tr,
             style: const TextStyle(fontFamily: 'tajawal'),

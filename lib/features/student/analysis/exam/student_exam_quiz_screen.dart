@@ -7,7 +7,6 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import '../../../../config/app_config.dart';
 import '../../../shared/models/exam_model.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_result_screen.dart';

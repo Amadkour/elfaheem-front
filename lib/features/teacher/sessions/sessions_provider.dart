@@ -204,6 +204,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
     int durationMinutes = 60,
     int order = 0,
     String track = 'lecture',
+    bool? recordEnabled,
   }) async {
     _submitLoading = true;
     notifyListeners();
@@ -219,6 +220,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'duration_minutes': durationMinutes,
       'order': order,
       'track': track,
+      'record_enabled': ?recordEnabled,
       },
       ),
       makLoading: false,
@@ -256,6 +258,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         int? durationMinutes,
         int? order,
         String? track,
+        bool? recordEnabled,
       }) async {
     _submitLoading = true;
     notifyListeners();
@@ -270,6 +273,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
       'duration_minutes': ?durationMinutes,
       'order': ?order,
       'track': ?track,
+      'record_enabled': ?recordEnabled,
       },
       ),
       makLoading: false,
@@ -626,6 +630,54 @@ class TeacherCourseScreenProvider extends BaseProvider {
     return false;
   }
 
+  /// Attach a WebVTT captions file to a video / recording material
+  /// (`POST …/materials/{id}/captions`, replaces the previous one).
+  Future<bool> uploadCaptions(
+      int sessionId,
+      int materialId, {
+        required String fileName,
+        String? filePath,
+        Uint8List? fileBytes,
+      }) async {
+    final r = await run(
+          () => _api.postMultipart(
+        '/api/v1/sessions/$sessionId/materials/$materialId/captions',
+        fields: const {},
+        fileField: 'file',
+        fileName: fileName,
+        filePath: filePath,
+        fileBytes: fileBytes,
+      ),
+      makLoading: false,
+    );
+    if (r is Map<String, dynamic>) {
+      final url = r['captions_url'] as String?;
+      _materials[sessionId] = (_materials[sessionId] ?? [])
+          .map((m) => m.id == materialId ? m.copyWith(captionsUrl: url) : m)
+          .toList();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
+  /// `DELETE …/materials/{id}/captions` (idempotent on the server).
+  Future<bool> removeCaptions(int sessionId, int materialId) async {
+    await run(
+          () => _api.delete(
+          '/api/v1/sessions/$sessionId/materials/$materialId/captions'),
+      makLoading: false,
+    );
+    if (state == ProviderState.success) {
+      _materials[sessionId] = (_materials[sessionId] ?? [])
+          .map((m) => m.id == materialId ? m.copyWith(clearCaptions: true) : m)
+          .toList();
+      notifyListeners();
+      return true;
+    }
+    return false;
+  }
+
   Future<bool> deleteMaterial(int sessionId, int materialId) async {
     await run(
           () => _api.delete('/api/v1/sessions/$sessionId/materials/$materialId'),
@@ -645,19 +697,30 @@ class TeacherCourseScreenProvider extends BaseProvider {
   int joinSessionId = -1;
   int startSessionId = -1;
 
+  /// The session's own recording switch (`record_enabled`), true when unknown.
+  bool recordEnabledFor(int sessionId) {
+    for (final s in _sessions) {
+      if (s.id == sessionId) return s.recordEnabled;
+    }
+    return true;
+  }
+
   Future<LiveResponseModel?> startLive(
       int sessionId, {
-        bool enableRecording = true,
+        bool? enableRecording,
         int durationHours = 24,
       }) async {
     startSessionId = sessionId;
     notifyListeners();
+    // The session's switch decides; the server refuses to record a session
+    // whose switch is off anyway, and answers `recording_enabled` either way.
+    final record = enableRecording ?? recordEnabledFor(sessionId);
     final result = await run(
           () => _api.post(
         '/api/v1/live-sessions/start',
         queryParams: {
           'session_id': sessionId,
-          'enable_recording': enableRecording,
+          'enable_recording': record,
           'duration_hours': durationHours,
         },
       ),
@@ -669,6 +732,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         sessionId: sessionId,
         url: result['ws_url'] as String? ?? '',
         token: result['token'] as String? ?? '',
+        recordingEnabled: result['recording_enabled'] as bool? ?? record,
       );
       _updateSessionLiveState(sessionId, isLive: true, roomUrl: live.url);
       return live;
@@ -839,6 +903,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         sessionId: sessionId,
         url: result['ws_url'] as String? ?? '',
         token: result['token'] as String? ?? '',
+        recordingEnabled: result['recording_enabled'] as bool? ?? true,
       );
     }
     return null;

@@ -940,16 +940,13 @@ class _FilePickerZone extends StatelessWidget {
 class _DashedRRectPainter extends CustomPainter {
   final Color color;
   final double radius;
-  final double strokeWidth;
-  final double dashLength;
-  final double gapLength;
+  final double strokeWidth = 1.4;
+  final double dashLength = 6;
+  final double gapLength = 5;
 
   _DashedRRectPainter({
     required this.color,
     required this.radius,
-    this.strokeWidth = 1.4,
-    this.dashLength = 6,
-    this.gapLength = 5,
   });
 
   @override

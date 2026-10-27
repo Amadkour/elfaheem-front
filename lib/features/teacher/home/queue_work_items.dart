@@ -45,6 +45,7 @@ import 'package:flutter_education_app/features/teacher/sessions/model/live_respo
 import 'package:provider/provider.dart';
 
 import '../../../config/theme/theme_config_provider.dart';
+import '../sessions/components/guest_link_sheet.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
@@ -55,7 +56,7 @@ import '../sessions/sessions_screen.dart';
 ({DateTime start, DateTime end}) _sessionDateTimes(ScheduleSession session) {
   final parts = session.startTime.split(':');
   final eParts = session.endTime.split(':');
-  final base = session.scheduledDate ?? DateTime.now();
+  final base = session.scheduledDate;
 
   final start = DateTime.utc(
     base.year,
@@ -107,7 +108,6 @@ class _ScheduleQueueListState extends State<ScheduleQueueList> {
     _ticker = Timer.periodic(const Duration(seconds: 10), (_) => _onTick());
     _startPolling();
   }
-  Timer? _pollTimer;
 
   void _startPolling() {
     // _pollTimer?.cancel();
@@ -380,7 +380,7 @@ class ScheduleSessionCard extends StatelessWidget {
                                   child: _CourseInfo(
                                     session: session,
                                     accent: accent,
-                                    isOngoing: isOngoing??false,
+                                    isOngoing: isOngoing,
                                   ),
                                 ),
                               ],
@@ -406,7 +406,7 @@ class ScheduleSessionCard extends StatelessWidget {
                     isOngoing: isOngoing,
                     untilStart: untilStart,
                     untilEnd: untilEnd,
-                    totalMinutes: session.durationMinutes ?? -1,
+                    totalMinutes: session.durationMinutes,
                   ),
               ],
             ),
@@ -638,10 +638,18 @@ class _InlineStartButton extends StatelessWidget {
     );
   }
 
+  /// Long-press → the session's public guest link (the tile is too small for a second button).
+  void _openGuestLink(BuildContext context) {
+    final id = session.sessionId;
+    if (id == null || AppConfig.disableList.contains(kGuestLinkFeatureKey)) return;
+    showGuestLinkSheet(context, sessionId: id, sessionName: session.courseName);
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () => _handleTap(context),
+      onLongPress: () => _openGuestLink(context),
       child: Container(
         decoration: BoxDecoration(gradient: _gradient),
         child: Column(

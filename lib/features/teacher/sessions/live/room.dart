@@ -17,7 +17,13 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
 import 'widgets/controls.dart';
+import 'widgets/live_chat.dart';
+import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
+import 'widgets/live_hands.dart';
+import 'widgets/live_reactions.dart';
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/room_recorder.dart';
@@ -166,12 +172,6 @@ class QuizQuestion {
 // ─────────────────────────────────────────────────────────────────────────────
 // HD audio helpers  (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
-const _hdAudioPublishOptions = AudioPublishOptions(
-  encoding: AudioEncoding(maxBitrate: 128000),
-  dtx: false,
-  red: true,
-);
-
 const _hdAudioCaptureOptions = AudioCaptureOptions(
   noiseSuppression: true,
   echoCancellation: true,
@@ -203,6 +203,9 @@ Future<void> _enableHdAudio(LocalParticipant local) async {
 
 // RecState + ClientRecorder → room_recorder.dart
 
+/// Which panel sits in the side column (wide) / bottom sheet (phones).
+enum _SidePanel { hands, chat }
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RoomPage
 // ─────────────────────────────────────────────────────────────────────────────
@@ -223,6 +226,18 @@ class RoomPage extends StatefulWidget {
   // session list); falls back to a generic label if omitted.
   final String? sessionName;
 
+  /// False when the session creator switched recording off for this session:
+  /// the teacher's device never records and no recording UI is shown.
+  final bool recordingEnabled;
+
+  /// A visitor from a public guest link: no account and no token, so every
+  /// authenticated call (leave / attendance, participants, quizzes…) is skipped —
+  /// a 401 would otherwise send the guest to the login screen.
+  final bool isGuest;
+
+  /// False → listen-only: no microphone / camera controls at all.
+  final bool canPublish;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -236,6 +251,9 @@ class RoomPage extends StatefulWidget {
         this.enableAudio = true,
         this.enableVideo = true,
         this.sessionName,
+        this.recordingEnabled = true,
+        this.isGuest = false,
+        this.canPublish = true,
       });
 
   @override
@@ -250,6 +268,202 @@ class _RoomPageState extends State<RoomPage>
   @override ClientRecorder? get recorder => _recorder;
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
+
+  // Live emoji reactions (everyone): published lossy on topic 'reaction', shown by LiveReactionsOverlay.
+  late final LiveReactionsController _reactions = LiveReactionsController(
+    onSend: (bytes) async => widget.room.localParticipant
+        ?.publishData(bytes, reliable: false, topic: kLiveReactionTopic),
+  );
+  String get _myReactionName {
+    final p = widget.room.localParticipant;
+    return (p?.name.isNotEmpty ?? false) ? p!.name : (p?.identity ?? '');
+  }
+  String get _myIdentity => widget.room.localParticipant?.identity ?? '';
+
+  // Hand-raise queue (reliable data on topic 'hand'; see live_hands.dart).
+  late final LiveHandsController _hands = LiveHandsController(
+    localIdentity: () => _myIdentity,
+    onSend: (bytes) async => widget.room.localParticipant
+        ?.publishData(bytes, reliable: true, topic: kLiveHandTopic),
+  );
+  int _handsSeen = 0;
+  void _onHandsChanged() {
+    final n = _hands.count;
+    // Teacher: a short notice when a new hand goes up while the queue is closed.
+    if (widget.isTeacher && n > _handsSeen && _side != _SidePanel.hands && _hands.hands.isNotEmpty) {
+      _showSnack('✋ ${_hands.hands.last.name}');
+    }
+    _handsSeen = n;
+    if (mounted) setState(() {});
+  }
+
+  // In-room chat (reliable data on topic 'chat'; see live_chat.dart).
+  late final LiveChatController _chat = LiveChatController(
+    localIdentity: () => _myIdentity,
+    onSend: (bytes) async => widget.room.localParticipant
+        ?.publishData(bytes, reliable: true, topic: kLiveChatTopic),
+  );
+
+  // Hands / chat live in a side column on wide screens and a dark bottom sheet on phones.
+  _SidePanel? _side;
+  static const double _sidePanelBreakpoint = 900;
+  static const double _sidePanelWidth = 320;
+  bool get _wideForSidePanel => mounted && MediaQuery.sizeOf(context).width >= _sidePanelBreakpoint;
+
+  void _togglePanel(_SidePanel which) {
+    if (_wideForSidePanel) {
+      setState(() => _side = _side == which ? null : which);
+      return;
+    }
+    _showLiveSheet(_buildSidePanel(which, inSheet: true));
+  }
+
+  void _openHands() => _togglePanel(_SidePanel.hands);
+  void _openChat() => _togglePanel(_SidePanel.chat);
+
+  Future<void> _showLiveSheet(Widget child) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: LayoutBuilder(builder: (ctx, box) {
+          final h = (box.maxHeight.isFinite ? box.maxHeight : MediaQuery.sizeOf(ctx).height) *
+              (MediaQuery.viewInsetsOf(ctx).bottom > 0 ? 1 : 0.85);
+          return Directionality(
+            textDirection: dir,
+            child: SizedBox(
+              height: h,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _surfaceHi,
+                    border: Border(top: BorderSide(color: _glassBdr)),
+                  ),
+                  child: Column(children: [
+                    Container(
+                      width: 42,
+                      height: 5,
+                      margin: const EdgeInsets.only(top: 10, bottom: 2),
+                      decoration: BoxDecoration(color: _glassBdr, borderRadius: BorderRadius.circular(3)),
+                    ),
+                    Expanded(child: child),
+                  ]),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildSidePanel(_SidePanel which, {bool inSheet = false}) {
+    final VoidCallback close = inSheet
+        ? () => Navigator.of(context, rootNavigator: false).maybePop()
+        : () => setState(() => _side = null);
+    switch (which) {
+      case _SidePanel.hands:
+        return ValueListenableBuilder<String?>(
+          valueListenable: _guestBusy,
+          builder: (_, busy, _) => LiveHandsPanel(
+            key: const ValueKey('live_room.hands_panel'),
+            controller: _hands,
+            isTeacher: widget.isTeacher,
+            onClose: close,
+            busyIdentity: busy,
+            onLower: widget.isTeacher ? _hands.lower : null,
+            onAllowSpeak: widget.isTeacher && !widget.isGuest
+                ? (id) => _guestAllowSpeak(id, true)
+                : null,
+          ),
+        );
+      case _SidePanel.chat:
+        return LiveChatPanel(
+          key: const ValueKey('live_room.chat_panel'),
+          controller: _chat,
+          senderName: _myReactionName,
+          canClear: widget.isTeacher,
+          onClose: close,
+        );
+    }
+  }
+
+  // ── Guest moderation (teacher only; never from a guest's own device) ─────
+  /// Identity whose call is in flight ('*' = mute all). A notifier so the hands panel inside a bottom sheet
+  /// (a separate route, not rebuilt by this State) can show its spinner too.
+  final ValueNotifier<String?> _guestBusy = ValueNotifier<String?>(null);
+  void _setGuestBusy(String? v) {
+    _guestBusy.value = v;
+    if (mounted) setState(() {});
+  }
+
+  String _guestErrorText(Object e) {
+    final ex = ApiException.from(e);
+    final detail = ApiException.asMap(ex.body)?['detail'];
+    final code = ex.code ?? (detail is Map ? detail['code'] : detail)?.toString();
+    switch (code) {
+      case 'guest_not_found':
+        return 'lr_guest_not_found'.tr;
+      case 'live_not_started':
+        return 'lr_live_not_started'.tr;
+    }
+    return ex.message;
+  }
+
+  Future<bool> _guestCall(String identity, String path, {Map<String, dynamic>? body, String? okMsg}) async {
+    if (!widget.isTeacher || widget.isGuest || _guestBusy.value != null) return false;
+    _setGuestBusy(identity);
+    try {
+      await widget.apiClient.post(
+        '/api/v1/live-sessions/${widget.sessionId}/guests/${Uri.encodeComponent(identity)}/$path',
+        body: body,
+      );
+      if (okMsg != null) _showSnack(okMsg);
+      return true;
+    } catch (e) {
+      showAppNotice(_guestErrorText(e), error: true);
+      return false;
+    } finally {
+      _setGuestBusy(null);
+    }
+  }
+
+  Future<void> _guestMute(String identity) => _guestCall(identity, 'mute', okMsg: 'lr_guest_muted'.tr);
+
+  Future<void> _guestAllowSpeak(String identity, bool allow) async {
+    final ok = await _guestCall(identity, 'allow-speak',
+        body: {'allow': allow}, okMsg: (allow ? 'lr_speak_allowed' : 'lr_speak_blocked').tr);
+    if (ok && allow) _hands.lower(identity); // they got what they asked for
+  }
+
+  Future<void> _guestKick(String identity, String name) async {
+    final yes = await appConfirm(context,
+        message: trp('lr_remove_guest_confirm', {'name': name}),
+        danger: true,
+        confirmLabel: 'lr_remove_guest'.tr);
+    if (!yes || !mounted) return;
+    final ok = await _guestCall(identity, 'kick', okMsg: 'lr_guest_removed'.tr);
+    if (ok) _hands.drop(identity);
+  }
+
+  Future<void> _guestsMuteAll() async {
+    if (!widget.isTeacher || widget.isGuest || _guestBusy.value != null) return;
+    _setGuestBusy('*');
+    try {
+      final r = await widget.apiClient.post('/api/v1/live-sessions/${widget.sessionId}/guests/mute-all');
+      final n = r is Map ? (r['muted'] ?? 0) : 0;
+      _showSnack(trp('lr_guests_muted_n', {'n': '$n'}));
+    } catch (e) {
+      showAppNotice(_guestErrorText(e), error: true);
+    } finally {
+      _setGuestBusy(null);
+    }
+  }
 
   // Called by RoomScreenShareMixin when iOS broadcast starts/stops.
   @override
@@ -395,7 +609,6 @@ class _RoomPageState extends State<RoomPage>
   // paused, stopped when recording ends. Displayed in the REC badge.
   Timer? _recClockTimer;
   int _recElapsedSeconds = 0;
-  DateTime? _recClockStart; // wall-clock when the current run started
 
   // ── Total session clock ────────────────────────────────────────────────
   // Separate from the recording clock above: starts once when the room
@@ -416,6 +629,71 @@ class _RoomPageState extends State<RoomPage>
   }
 
   String get _sessionElapsedLabel => _formatElapsed(_sessionElapsedSeconds);
+
+  // Controls bar: auto-hides on phones after 4 s without interaction, a tap on the video brings it back;
+  // keyboard shortcuts (M / V / S / R / E) drive ControlsWidget through this key.
+  final _controlsKey = GlobalKey<ControlsWidgetState>();
+  final _shortcutsFocus = FocusNode(debugLabel: 'live_room_shortcuts');
+  bool _controlsVisible = true;
+  Timer? _controlsHideTimer;
+  static const _controlsHideAfter = Duration(seconds: 4);
+
+  bool get _controlsAutoHide =>
+      mounted && MediaQuery.sizeOf(context).width < kLiveControlsMobileBreakpoint && !_reactions.pickerOpen;
+
+  void _pokeControls() {
+    _controlsHideTimer?.cancel();
+    if (!_controlsVisible) setState(() => _controlsVisible = true);
+    if (!_controlsAutoHide) return;
+    _controlsHideTimer = Timer(_controlsHideAfter, () {
+      if (mounted && _controlsAutoHide && _controlsVisible) setState(() => _controlsVisible = false);
+    });
+  }
+
+  void _toggleControlsVisibility() {
+    if (_controlsVisible && _controlsAutoHide) {
+      _controlsHideTimer?.cancel();
+      setState(() => _controlsVisible = false);
+    } else {
+      _pokeControls();
+    }
+  }
+
+  KeyEventResult _onRoomKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+    if (HardwareKeyboard.instance.isControlPressed ||
+        HardwareKeyboard.instance.isMetaPressed ||
+        HardwareKeyboard.instance.isAltPressed) {
+      return KeyEventResult.ignored;
+    }
+    // Typing in a text field (chat, quiz …) must never trigger a shortcut.
+    final focused = FocusManager.instance.primaryFocus?.context;
+    if (focused != null && focused.findAncestorStateOfType<EditableTextState>() != null) {
+      return KeyEventResult.ignored;
+    }
+    final controls = _controlsKey.currentState;
+    final k = e.logicalKey;
+    if (k == LogicalKeyboardKey.keyM) {
+      controls?.toggleMic();
+    } else if (k == LogicalKeyboardKey.keyV) {
+      controls?.toggleCamera();
+    } else if (k == LogicalKeyboardKey.keyS) {
+      if (!widget.isTeacher) return KeyEventResult.ignored;
+      controls?.toggleShare();
+    } else if (k == LogicalKeyboardKey.keyR) {
+      _reactions.togglePicker();
+    } else if (k == LogicalKeyboardKey.keyH) {
+      controls?.toggleHand();
+    } else if (k == LogicalKeyboardKey.keyC) {
+      controls?.openChat();
+    } else if (k == LogicalKeyboardKey.keyE || k == LogicalKeyboardKey.end) {
+      controls?.requestEnd();
+    } else {
+      return KeyEventResult.ignored;
+    }
+    _pokeControls();
+    return KeyEventResult.handled;
+  }
 
   // Participant panel
   bool _showParticipants = false;
@@ -491,6 +769,7 @@ class _RoomPageState extends State<RoomPage>
   @override
   void initState() {
     super.initState();
+    AppAssistant.hide(); // full screen: no floating assistant bubble
     _setUpListeners();
     // A class can last hours: never let the phone sleep (it pauses camera / mic on many devices).
     WakelockPlus.enable().catchError((_) {});
@@ -528,6 +807,7 @@ class _RoomPageState extends State<RoomPage>
       curve: const Interval(0.15, 1.0, curve: Curves.easeOutCubic),
     );
     _entryAnim.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _pokeControls());
 
     _panelAnim = AnimationController(
       vsync: this,
@@ -549,14 +829,17 @@ class _RoomPageState extends State<RoomPage>
 
     _serverRecording = widget.room.isRecording;
     widget.room.addListener(_onRoomDidUpdate);
+    _hands.addListener(_onHandsChanged);
     _sortParticipants();
 
     if (lkPlatformIs(PlatformType.android)) {
-      unawaited(Hardware.instance.setSpeakerphoneOn(true));
+      // Same call Hardware.setSpeakerphoneOn(true) forwarded to before it was deprecated.
+      unawaited(AudioManager.instance.setSpeakerOutputPreferred(true));
     }
 
-    _fetchEnrolledStudents();
-    if (!widget.isTeacher) _startQuizPolling();
+    // Guests have no token: the roster and the quiz feed need an account.
+    if (!widget.isGuest) _fetchEnrolledStudents();
+    if (!widget.isTeacher && !widget.isGuest) _startQuizPolling();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // ── Step 1: request runtime permissions ───────────────────────────────
@@ -569,11 +852,13 @@ class _RoomPageState extends State<RoomPage>
 
       // ── Step 2: enable HD audio ────────────────────────────────────────────
       final local = widget.room.localParticipant;
-      if (local != null) await _enableHdAudio(local);
+      // Listen-only guests never publish: skipping this keeps their mic off (the server token would refuse anyway).
+      if (local != null && widget.canPublish) await _enableHdAudio(local);
 
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
       if (widget.isTeacher &&
+          widget.recordingEnabled &&
           widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
@@ -592,7 +877,6 @@ class _RoomPageState extends State<RoomPage>
 
   void _ensureRecClockRunning() {
     if (_recClockTimer != null) return; // already ticking
-    _recClockStart = DateTime.now();
     _recClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) { _recClockTimer?.cancel(); _recClockTimer = null; return; }
       setState(() => _recElapsedSeconds++);
@@ -605,7 +889,6 @@ class _RoomPageState extends State<RoomPage>
     if (!pause) {
       // Full stop — reset counter so next recording starts from 0.
       _recElapsedSeconds = 0;
-      _recClockStart = null;
     }
     // When paused we keep _recElapsedSeconds so it resumes from where it left off.
   }
@@ -654,10 +937,16 @@ class _RoomPageState extends State<RoomPage>
   @override
   void dispose() {
     widget.room.removeListener(_onRoomDidUpdate);
+    _reactions.dispose();
+    _hands.removeListener(_onHandsChanged);
+    _hands.dispose();
+    _chat.dispose();
+    _guestBusy.dispose();
     WakelockPlus.disable().catchError((_) {});
     _netBanner?.close();
-    if (!widget.isTeacher) {
+    if (!widget.isTeacher && !widget.isGuest) {
       // Check-out time: without this every student's attendance showed "stayed 0 min" (check-out = join time).
+      // (A guest has no attendance record and no token: nothing to send.)
       widget.apiClient
           .post('/api/v1/live-sessions/${widget.sessionId}/leave')
           .then((_) {}, onError: (_) {});
@@ -669,6 +958,8 @@ class _RoomPageState extends State<RoomPage>
     _entryAnim.dispose();
     _panelAnim.dispose();
     _quizAnim.dispose();
+    _controlsHideTimer?.cancel();
+    _shortcutsFocus.dispose();
     _quizPollTimer?.cancel();
     _quizTimer?.cancel();
     _recClockTimer?.cancel();
@@ -683,6 +974,7 @@ class _RoomPageState extends State<RoomPage>
       _stopLiveKitAudioTap();
       unawaited(_drainAndDispose(rec));
     }
+    AppAssistant.release();
     super.dispose();
   }
 
@@ -826,7 +1118,7 @@ class _RoomPageState extends State<RoomPage>
   // Enrolled students
   // ─────────────────────────────────────────────────────────────────────────
   Future<void> _fetchEnrolledStudents() async {
-    if (_loadingStudents) return;
+    if (_loadingStudents || widget.isGuest) return;
     if (mounted) setState(() => _loadingStudents = true);
     try {
       final resp = await widget.apiClient.get(
@@ -1052,25 +1344,6 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
-  /// Whoever currently has isSpeaking==true, preferring the loudest
-  /// (highest audioLevel) if more than one. Falls back to the teacher
-  /// (local participant) when nobody is actively speaking, since the
-  /// teacher is the default presenter. Used by _PremiumWaitingPlaceholder's
-  /// live call site — its value flows into the recording "for free" since
-  /// the recording now screenshots that exact widget on every capture tick.
-  String _activeSpeakerName() {
-    final local = widget.room.localParticipant;
-    final all = <Participant>[
-      ?local,
-      ...widget.room.remoteParticipants.values,
-    ];
-    final speaking = all.where((p) => p.isSpeaking).toList()
-      ..sort((a, b) => b.audioLevel.compareTo(a.audioLevel));
-    final speaker = speaking.firstOrNull ?? local;
-    final name = speaker?.name ?? '';
-    return name.isNotEmpty ? name : (speaker?.identity ?? '');
-  }
-
   // ── Listeners ──────────────────────────────────────────────────────────────
   void _setUpListeners() => _listener
     ..on<RoomConnectedEvent>((_) async {
@@ -1080,7 +1353,7 @@ class _RoomPageState extends State<RoomPage>
       // already running (no race with LiveKit track setup).
       log("----------------------111");
       _startSessionClock(); // everyone — total session time, not gated on isTeacher
-      if (widget.isTeacher) await _startRecorderOnce();
+      if (widget.isTeacher && widget.recordingEnabled) await _startRecorderOnce();
     })
     ..on<RoomDisconnectedEvent>((event) async {
       log('Room disconnected: reason => ${event.reason}');
@@ -1112,6 +1385,9 @@ class _RoomPageState extends State<RoomPage>
       _maybeSyncLiveScreenCapture();
       _maybeRefreshWebPlaceholder();
     })
+    // A raised hand leaves with its owner; a late joiner gets my raised hand re-announced.
+    ..on<ParticipantDisconnectedEvent>((e) => _hands.drop(e.participant.identity))
+    ..on<ParticipantConnectedEvent>((_) => _hands.reannounceLocal())
     ..on<RoomRecordingStatusChanged>((event) {
       if (mounted) setState(() => _serverRecording = event.activeRecording);
       unawaited(
@@ -1173,6 +1449,18 @@ class _RoomPageState extends State<RoomPage>
       _sortParticipants();
     })
     ..on<DataReceivedEvent>((event) {
+      final p = event.participant;
+      final senderName = (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity;
+      if (event.topic == kLiveReactionTopic) {
+        _reactions.receive(event.data, fallbackName: senderName);
+        return;
+      }
+      // Hands and chat: matched by topic, and by payload type for senders that set no topic.
+      if (event.topic == kLiveHandTopic || event.topic == kLiveChatTopic || event.topic == null) {
+        if (_hands.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
+        if (_chat.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
+        if (event.topic != null) return;
+      }
       String decoded = 'Failed to decode';
       try {
         decoded = utf8.decode(event.data);
@@ -1368,11 +1656,6 @@ class _RoomPageState extends State<RoomPage>
 
   bool _hasVideoTrack(TrackPublication pub) => pub.track is VideoTrack;
 
-  VideoTrack? _getVideoTrack(TrackPublication pub) {
-    final t = pub.track;
-    return t is VideoTrack ? t : null;
-  }
-
   void _sortParticipants() {
     final userMedia = <ParticipantTrack>[];
     final screenTracks = <ParticipantTrack>[];
@@ -1479,21 +1762,6 @@ class _RoomPageState extends State<RoomPage>
     showAppNotice(msg);
   }
 
-  Future<bool?> _showConfirmDialog({
-    required String title,
-    required String message,
-    required String confirmLabel,
-    bool isDanger = false,
-  }) => showDialog<bool>(
-    context: context,
-    builder: (ctx) => _StyledDialog(
-      title: title,
-      message: message,
-      confirmLabel: confirmLabel,
-      isDanger: isDanger,
-    ),
-  );
-
   Future<void> _toggleParticipantPanel() async {
     if (_showParticipants) {
       _panelAnim.reverse().then((_) {
@@ -1505,12 +1773,6 @@ class _RoomPageState extends State<RoomPage>
       await _fetchEnrolledStudents();
     }
   }
-
-  bool _isStudentOnline(EnrolledStudent s) => widget
-      .room
-      .remoteParticipants
-      .values
-      .any((p) => p.identity == s.id.toString() || p.name == s.name);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Build
@@ -1534,7 +1796,11 @@ class _RoomPageState extends State<RoomPage>
         // recording indicator, thumbnail strip, PiP, the main video/
         // waiting card, AND the controls bar — instead of just the video
         // stage. See _captureAndSendLiveScreen.
-        body: RepaintBoundary(
+        body: Focus(
+          focusNode: _shortcutsFocus,
+          autofocus: true,
+          onKeyEvent: _onRoomKey,
+          child: RepaintBoundary(
           key: _liveScreenCaptureKey,
           child: Stack(
             fit: StackFit.expand,
@@ -1548,8 +1814,11 @@ class _RoomPageState extends State<RoomPage>
                 ),
               ),
 
-              // Main content
+              // Main content (+ the hands / chat side column on wide screens)
               SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
                 child: FadeTransition(
                   opacity: _entryFade,
                   child: Column(
@@ -1559,11 +1828,15 @@ class _RoomPageState extends State<RoomPage>
                           builder: (ctx, constraints) => Stack(
                             fit: StackFit.expand,
                             children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.all(
-                                  Radius.circular(20),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: _toggleControlsVisibility,
+                                child: ClipRRect(
+                                  borderRadius: const BorderRadius.all(
+                                    Radius.circular(20),
+                                  ),
+                                  child: _buildMainVideo(),
                                 ),
-                                child: _buildMainVideo(),
                               ),
 
                               // Thumbnail strip
@@ -1586,6 +1859,7 @@ class _RoomPageState extends State<RoomPage>
                                         itemBuilder: (_, i) => _ThumbnailCard(
                                           track: participantTracks[i + 1],
                                           resolveScreenTrack: _resolveScreenTrack,
+                                          handUp: _hands.isUp(participantTracks[i + 1].participant.identity),
                                         ),
                                       ),
                                     ),
@@ -1619,6 +1893,12 @@ class _RoomPageState extends State<RoomPage>
                                 ),
                               ),
 
+                              // Live reactions (bubbles + picker)
+                              LiveReactionsOverlay(
+                                controller: _reactions,
+                                senderName: _myReactionName,
+                              ),
+
                               // Quiz overlay
                               if (_quizVisible && _activeQuiz != null)
                                 _buildQuizOverlay(),
@@ -1627,17 +1907,36 @@ class _RoomPageState extends State<RoomPage>
                         ),
                       ),
 
-                      // Controls bar
+                      // Controls bar (collapses on phones after 4 s idle; tap the video to bring it back)
                       if(widget.room.localParticipant!=null)
                         SlideTransition(
                           position: Tween<Offset>(
                             begin: const Offset(0, 1),
                             end: Offset.zero,
                           ).animate(_entrySlide),
-                          child: _buildControlsBar(),
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                            alignment: Alignment.topCenter,
+                            child: _controlsVisible
+                                ? _buildControlsBar()
+                                : const SizedBox(width: double.infinity, height: 0),
+                          ),
                         ),
                     ],
                   ),
+                ),
+                    ),
+                    if (_side != null && _wideForSidePanel)
+                      Container(
+                        key: const ValueKey('live_room.side_panel'),
+                        width: _sidePanelWidth,
+                        decoration: BoxDecoration(
+                          border: BorderDirectional(start: BorderSide(color: _glassBdr)),
+                        ),
+                        child: _buildSidePanel(_side!),
+                      ),
+                  ],
                 ),
               ),
 
@@ -1714,6 +2013,7 @@ class _RoomPageState extends State<RoomPage>
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -1729,6 +2029,17 @@ class _RoomPageState extends State<RoomPage>
   //   • Main view: first participant track (teacher camera or screen share).
   //   • PiP corner: student's own camera (if enabled).
   Widget _buildMainVideo() {
+    final (video, shown) = _mainVideo();
+    if (shown == null || !_hands.isUp(shown.identity)) return video;
+    // The ✋ badge of whoever fills the main view (bottom-start: the thumbnail strip owns the top edge).
+    return Stack(fit: StackFit.expand, children: [
+      video,
+      const PositionedDirectional(bottom: 14, start: 14, child: LiveHandBadge()),
+    ]);
+  }
+
+  /// The main view and the participant it shows (null for the waiting placeholder).
+  (Widget, Participant?) _mainVideo() {
     final local = widget.room.localParticipant;
 
     if (_pipSwapped && widget.isTeacher) {
@@ -1741,10 +2052,13 @@ class _RoomPageState extends State<RoomPage>
       if (localEntry != null) {
         final cameraTrack = _resolveCameraTrack(localEntry.participant);
         if (cameraTrack != null) {
-          return VideoTrackRenderer(
-            cameraTrack,
-            renderMode: VideoRenderMode.texture,
-            fit: VideoViewFit.contain,
+          return (
+            VideoTrackRenderer(
+              cameraTrack,
+              renderMode: VideoRenderMode.texture,
+              fit: VideoViewFit.contain,
+            ),
+            local,
           );
         }
       }
@@ -1773,10 +2087,13 @@ class _RoomPageState extends State<RoomPage>
       if (!_pipSwapped && isCamOn) {
         final cameraTrack = local != null ? _resolveCameraTrack(local) : null;
         if (cameraTrack != null) {
-          return VideoTrackRenderer(
-            cameraTrack,
-            renderMode: VideoRenderMode.texture,
-            fit: VideoViewFit.cover,
+          return (
+            VideoTrackRenderer(
+              cameraTrack,
+              renderMode: VideoRenderMode.texture,
+              fit: VideoViewFit.cover,
+            ),
+            local,
           );
         }
       }
@@ -1785,33 +2102,39 @@ class _RoomPageState extends State<RoomPage>
       // display: no screen share, no other participant's video, and no
       // (or not-yet-ready) local camera.
       final teacherName = local?.name ?? local?.identity ?? 'Teacher';
-      return _PremiumWaitingPlaceholder(
-        teacherName: teacherName,
-        isMicOn: isMicOn,
-        isCamOn: isCamOn,
-        auroraAnim: _auroraAnim,
-        room: widget.room,
-        sessionTitle: widget.sessionName,
-        enrolledStudents: _enrolledStudents,
-        // Shown live too now (not just in the recording) — since the
-        // recording is a direct screenshot of this exact widget, true
-        // parity means whatever appears in the recording appears live,
-        // and vice versa. A small corner logo live is a reasonable,
-        // unobtrusive touch; revert to the default (false) if you'd
-        // rather keep it recording-only.
-        showLogo: true,
+      return (
+        _PremiumWaitingPlaceholder(
+          teacherName: teacherName,
+          isMicOn: isMicOn,
+          isCamOn: isCamOn,
+          auroraAnim: _auroraAnim,
+          room: widget.room,
+          sessionTitle: widget.sessionName,
+          enrolledStudents: _enrolledStudents,
+          // Shown live too now (not just in the recording) — since the
+          // recording is a direct screenshot of this exact widget, true
+          // parity means whatever appears in the recording appears live,
+          // and vice versa. A small corner logo live is a reasonable,
+          // unobtrusive touch; revert to the default (false) if you'd
+          // rather keep it recording-only.
+          showLogo: true,
+        ),
+        null,
       );
     }
 
     final main = mainTracks.first;
     if (main.type == ParticipantTrackType.kScreenShare) {
-      return _PremiumScreenShareView(
-        participant: main.participant,
-        resolveScreenTrack: _resolveScreenTrack,
-        auroraAnim: _auroraAnim,
+      return (
+        _PremiumScreenShareView(
+          participant: main.participant,
+          resolveScreenTrack: _resolveScreenTrack,
+          auroraAnim: _auroraAnim,
+        ),
+        main.participant,
       );
     }
-    return ParticipantWidget.widgetFor(main, showStatsLayer: false);
+    return (ParticipantWidget.widgetFor(main, showStatsLayer: false), main.participant);
   }
 
   // ── PiP ────────────────────────────────────────────────────────────────────
@@ -1930,6 +2253,10 @@ class _RoomPageState extends State<RoomPage>
                       color: _cyan.withValues(alpha: 0.4),
                     ),
                   ),
+
+                // My own raised hand, so I can see it is still up
+                if (!_pipSwapped && _hands.localUp)
+                  const Positioned(top: 4, left: 4, child: LiveHandBadge(compact: true)),
 
                 // Swap icon — always visible so intent is clear
                 Positioned(
@@ -2261,29 +2588,19 @@ class _RoomPageState extends State<RoomPage>
 
   // ── Controls bar ──────────────────────────────────────────────────────────
   Widget _buildControlsBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-      padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 10),
-      decoration: BoxDecoration(
-        color: _surfaceHi.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _glassBdr, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-          BoxShadow(color: _cyan.withValues(alpha: 0.05), blurRadius: 20),
-        ],
-      ),
-      child:
-      ControlsWidget(
+    // The bar paints its own glass shell (mobile pill / wide grouped bar) — see LiveControlBar.
+    return ListenableBuilder(
+        listenable: Listenable.merge([_reactions, _hands, _chat]),
+        builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
+        key: _controlsKey,
+        recordingEnabled: widget.recordingEnabled,
+        onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
         isTeacher: widget.isTeacher,
+        canPublish: widget.canPublish,
         onToggleScreenShare: toggleScreenShare,
         // ── NEW: pause / resume ──────────────────────────────────
         // Null when the action is not available (wrong state, or
@@ -2302,6 +2619,18 @@ class _RoomPageState extends State<RoomPage>
             ? _resumeRecording
             : null,
         recorderState: widget.isTeacher ? _recorder?.state : null,
+        onToggleReactions: _reactions.togglePicker,
+        reactionsOpen: _reactions.pickerOpen,
+        // Hands: students and guests raise; the teacher gets the queue chip.
+        onToggleHand: widget.isTeacher ? null : () => _hands.toggleLocal(name: _myReactionName),
+        handUp: _hands.localUp,
+        onOpenHands: widget.isTeacher ? _openHands : null,
+        handsCount: _hands.count,
+        handsOpen: _side == _SidePanel.hands,
+        // Chat: everyone (data only, so guests too).
+        onOpenChat: _openChat,
+        chatUnread: _chat.unread,
+        chatOpen: _side == _SidePanel.chat || _chat.isOpen,
       ),
     );
   }
@@ -2311,6 +2640,9 @@ class _RoomPageState extends State<RoomPage>
     final liveIdentities = widget.room.remoteParticipants.values
         .map((p) => p.identity)
         .toSet();
+    final guests = widget.room.remoteParticipants.values
+        .where((p) => isGuestIdentity(p.identity))
+        .toList();
 
     return Positioned.fill(
       child: GestureDetector(
@@ -2365,6 +2697,23 @@ class _RoomPageState extends State<RoomPage>
                             color: _cyan,
                           ),
                         ),
+                      // Teacher: one tap mutes every guest (guests never see moderation).
+                      if (widget.isTeacher && !widget.isGuest && guests.isNotEmpty)
+                        _guestBusy.value == '*'
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: _textMid)),
+                              )
+                            : IconButton(
+                                key: const ValueKey('live_room.mute_all_guests'),
+                                tooltip: 'lr_mute_all_guests'.tr,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: _guestBusy.value == null ? _guestsMuteAll : null,
+                                icon: Icon(Icons.mic_off_rounded, size: 18, color: LivePalette.warning),
+                              ),
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: _toggleParticipantPanel,
@@ -2443,6 +2792,22 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
 
+                // Guests (public link): not enrolled, known only from the room itself.
+                if (guests.isNotEmpty)
+                  for (final g in guests)
+                    _ParticipantRow(
+                      name: g.name.isNotEmpty ? g.name : g.identity.substring(6),
+                      isOnline: true,
+                      isTeacher: false,
+                      isGuest: true,
+                      isAttended: false,
+                      micOn: g.isMicrophoneEnabled(),
+                      camOn: g.isCameraEnabled(),
+                      joinDate: g.joinedAt,
+                      handUp: _hands.isUp(g.identity),
+                      trailing: widget.isTeacher && !widget.isGuest ? _guestMenu(g) : null,
+                    ),
+
                 // Student list
                 Expanded(
                   child: _enrolledStudents.isEmpty
@@ -2490,6 +2855,7 @@ class _RoomPageState extends State<RoomPage>
                         leaveDate: s.leaveDate,
                         micOn: rp?.isMicrophoneEnabled() ?? false,
                         camOn: rp?.isCameraEnabled() ?? false,
+                        handUp: rp != null && _hands.isUp(rp.identity),
                       );
                     },
                   ),
@@ -2501,6 +2867,64 @@ class _RoomPageState extends State<RoomPage>
       ),
     );
   }
+
+  /// ⋮ menu of a guest row: Mute · Allow / Block speaking · Remove (teacher only).
+  Widget _guestMenu(RemoteParticipant g) {
+    final id = g.identity;
+    final name = g.name.isNotEmpty ? g.name : id.substring(kGuestIdentityPrefix.length);
+    if (_guestBusy.value == id) {
+      return const SizedBox(
+          width: 32, height: 32, child: Center(child: SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: _textMid))));
+    }
+    final canSpeak = g.permissions.canPublish;
+    return PopupMenuButton<String>(
+      key: ValueKey('live_room.guest_menu.$id'),
+      tooltip: 'more'.tr,
+      enabled: _guestBusy.value == null,
+      color: _surfaceHi,
+      padding: EdgeInsets.zero,
+      iconSize: 18,
+      icon: const Icon(Icons.more_vert_rounded, color: _textMid),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: _glassBdr)),
+      onSelected: (v) {
+        switch (v) {
+          case 'mute':
+            unawaited(_guestMute(id));
+          case 'speak':
+            unawaited(_guestAllowSpeak(id, !canSpeak));
+          case 'kick':
+            unawaited(_guestKick(id, name));
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'mute',
+          enabled: g.isMicrophoneEnabled(),
+          child: _menuRow(Icons.mic_off_rounded, 'lr_mute_guest'.tr),
+        ),
+        PopupMenuItem(
+          value: 'speak',
+          child: _menuRow(canSpeak ? Icons.voice_over_off_rounded : Icons.record_voice_over_rounded,
+              (canSpeak ? 'lr_block_speak' : 'lr_allow_speak').tr),
+        ),
+        PopupMenuItem(
+          value: 'kick',
+          child: _menuRow(Icons.person_remove_rounded, 'lr_remove_guest'.tr, color: _rose),
+        ),
+      ],
+    );
+  }
+
+  static Widget _menuRow(IconData icon, String label, {Color? color}) => Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 18, color: color ?? _textMid),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w600, color: color ?? _textHigh)),
+        ),
+      ]);
 
   // ── Quiz overlay ──────────────────────────────────────────────────────────
   Widget _buildQuizOverlay() {
@@ -3001,16 +3425,26 @@ class _ParticipantRow extends StatelessWidget {
     required this.camOn,
     this.joinDate,
     this.leaveDate,
+    this.isGuest = false,
+    this.handUp = false,
+    this.trailing,
   });
 
   final String name;
   final bool isOnline;
   final bool isTeacher;
+
+  /// Joined through a public guest link (no enrolment, no attendance).
+  final bool isGuest;
   final bool isAttended;
   final bool micOn;
   final bool camOn;
   final DateTime? joinDate;
   final DateTime? leaveDate;
+  /// ✋ in the queue right now.
+  final bool handUp;
+  /// Teacher's ⋮ moderation menu (guests only).
+  final Widget? trailing;
 
   String _fmtDuration(DateTime? from, DateTime? to) {
     if (from == null) return '';
@@ -3103,7 +3537,13 @@ class _ParticipantRow extends StatelessWidget {
                   children: [
                     if (isTeacher)
                       _MiniTag(label: 'teacher'.tr, color: _cyan)
-                    else ...[
+                    else if (isGuest) ...[
+                      _MiniTag(label: 'lr_guest'.tr, color: LivePalette.warning),
+                      if (isOnline) ...[
+                        const SizedBox(width: 4),
+                        _MiniTag(label: 'lr_online'.tr, color: _emerald),
+                      ],
+                    ] else ...[
                       _MiniTag(
                         label: isAttended ? 'lr_attended'.tr : 'lr_absent'.tr,
                         color: isAttended ? _emerald : _rose,
@@ -3135,7 +3575,11 @@ class _ParticipantRow extends StatelessWidget {
             ),
           ),
 
-          // Mic / cam
+          // Hand · mic / cam · menu
+          if (handUp) ...[
+            const LiveHandBadge(compact: true),
+            const SizedBox(width: 6),
+          ],
           if (isOnline && !isTeacher) ...[
             Icon(
               micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
@@ -3148,6 +3592,10 @@ class _ParticipantRow extends StatelessWidget {
               size: 14,
               color: camOn ? Colors.white54 : _rose.withValues(alpha: 0.7),
             ),
+          ],
+          if (trailing != null) ...[
+            const SizedBox(width: 2),
+            trailing!,
           ],
         ],
       ),
@@ -3187,10 +3635,11 @@ class _MiniTag extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ThumbnailCard extends StatelessWidget {
-  const _ThumbnailCard({required this.track, required this.resolveScreenTrack});
+  const _ThumbnailCard({required this.track, required this.resolveScreenTrack, this.handUp = false});
 
   final ParticipantTrack track;
   final VideoTrack? Function(Participant) resolveScreenTrack;
+  final bool handUp;
 
   @override
   Widget build(BuildContext context) {
@@ -3242,6 +3691,8 @@ class _ThumbnailCard extends StatelessWidget {
               )
             else
               ParticipantWidget.widgetFor(track, showStatsLayer: false),
+            if (handUp)
+              const Positioned(top: 5, left: 5, child: LiveHandBadge(compact: true)),
             Positioned(
               bottom: 0,
               left: 0,
@@ -4545,95 +4996,6 @@ class _ProfileInfoRow extends StatelessWidget {
 }
 
 
-class _AVChip extends StatelessWidget {
-  const _AVChip({
-    required this.icon,
-    required this.label,
-    required this.active,
-    required this.activeColor,
-    required this.inactiveColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool active;
-  final Color activeColor;
-  final Color inactiveColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = active ? activeColor : inactiveColor;
-    return Container(
-      padding:
-      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-        border:
-        Border.all(color: color.withValues(alpha: 0.4), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Old _WaitingPlaceholder kept as fallback ──────────────────────────────────
-class _WaitingPlaceholder extends StatelessWidget {
-  const _WaitingPlaceholder();
-
-  String get message => 'lr_waiting_participants'.tr;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    color: _bg,
-    alignment: Alignment.center,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 80,
-          height: 80,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: _glass10,
-            border: Border.all(color: _glassBdr, width: 1),
-          ),
-          child: Icon(
-            Icons.videocam_rounded,
-            size: 34,
-            color: _cyan.withValues(alpha: 0.35),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          message,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            color: _textLow,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class _GlassBadge extends StatelessWidget {
   const _GlassBadge({required this.icon, required this.label, this.color});
 
@@ -4673,58 +5035,6 @@ class _GlassBadge extends StatelessWidget {
         ),
       ],
     ),
-  );
-}
-
-class _StyledDialog extends StatelessWidget {
-  const _StyledDialog({
-    required this.title,
-    required this.message,
-    required this.confirmLabel,
-    this.isDanger = false,
-  });
-
-  final String title, message, confirmLabel;
-  final bool isDanger;
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: _surfaceHi,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(20),
-      side: BorderSide(color: _glassBdr, width: 1),
-    ),
-    title: Text(
-      title,
-      style: const TextStyle(color: _textHigh, fontWeight: FontWeight.w700),
-    ),
-    content: Text(
-      message,
-      style: TextStyle(
-        fontFamily: 'tajawal',
-        color: _textMid.withValues(alpha: 0.8),
-      ),
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context, false),
-        child: Text(
-          'Cancel',
-          style: TextStyle(fontFamily: 'tajawal', color: _textLow),
-        ),
-      ),
-      TextButton(
-        onPressed: () => Navigator.pop(context, true),
-        child: Text(
-          confirmLabel,
-          style: TextStyle(
-            fontFamily: 'tajawal',
-            color: isDanger ? _recRed : _cyan,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    ],
   );
 }
 

@@ -167,6 +167,7 @@ class OfflineVideoService {
     required String title,
     required MaterialVariant variant,
     String? description,
+    String? captionsUrl,
     Duration validFor = _defaultValidity,
   }) async {
     if (kIsWeb) throw UnsupportedError('Offline downloads need Android/iOS');
@@ -220,6 +221,19 @@ class OfflineVideoService {
       if (await out.exists()) await out.delete();
       await part.rename(out.path);
 
+      // Captions are small plain text; a failed fetch never fails the download.
+      var hasCaptions = false;
+      if (captionsUrl != null && captionsUrl.isNotEmpty) {
+        try {
+          final req = await client.getUrl(Uri.parse(captionsUrl));
+          final res = await req.close();
+          if (res.statusCode == 200) {
+            await File('${dir.path}/$id.vtt').writeAsString(await utf8.decoder.bind(res).join());
+            hasCaptions = true;
+          }
+        } catch (_) {}
+      }
+
       await _storage.write(key: _keyName(id), value: base64Encode(key));
       final index = await _loadIndex();
       index[id] = {
@@ -228,6 +242,7 @@ class OfflineVideoService {
         'title': title,
         'description': description,
         'tier': variant.tier.name,
+        'captions': hasCaptions,
         'size': got,
         'createdAt': DateTime.now().millisecondsSinceEpoch,
         'expiresAt': DateTime.now().add(validFor).millisecondsSinceEpoch,
@@ -244,6 +259,17 @@ class OfflineVideoService {
     } finally {
       client?.close(force: true);
       _clearProgress(id);
+    }
+  }
+
+  /// WebVTT text saved with the download, or null when the material had none.
+  Future<String?> localCaptions(int sessionId, int materialId) async {
+    if (kIsWeb) return null;
+    try {
+      final f = File('${(await _dir()).path}/${idOf(sessionId, materialId)}.vtt');
+      return await f.exists() ? await f.readAsString() : null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -328,6 +354,8 @@ class OfflineVideoService {
     try {
       final f = File('${(await _dir()).path}/$id.enc');
       if (await f.exists()) await f.delete();
+      final vtt = File('${(await _dir()).path}/$id.vtt');
+      if (await vtt.exists()) await vtt.delete();
     } catch (_) {}
     try {
       await _storage.delete(key: _keyName(id));

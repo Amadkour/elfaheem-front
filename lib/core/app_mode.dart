@@ -99,6 +99,19 @@ class AppModeController extends ChangeNotifier {
   static String orgStaffHome({required bool loaded, required bool managesNothing, bool? cached}) =>
       (loaded ? managesNothing : cached == true) ? '/org_member' : '/org_dashboard';
 
+  /// Storage key of "this person last chose their personal space" (read synchronously by the cold-start routing).
+  static String personalHomeKey(int userId) => 'app_mode_personal.$userId';
+
+  /// Personal dashboard route — where "leave the organization" lands when the first screen was an org page.
+  static const String personalRoute = '/dashboard';
+
+  /// Cold-start home of an org-admin / org-staff login: the personal space when they left their organization last
+  /// time ([personalHomeKey]), else [orgHome].
+  static String orgRoleHome(String orgHome, {bool? personal}) => personal == true ? personalRoute : orgHome;
+
+  /// The organization pages that are app roots (role homes). Leaving the organization from one of them replaces it.
+  static bool isOrgRoute(String? name) => name == '/org_dashboard' || name == '/org_member';
+
   /// What waits in one organization (to do + approvals).
   static int pendingOf(Map<String, dynamic> entry) =>
       (_id(_map(entry['todo'])['total']) ?? 0) + (_id(_map(entry['approvals'])['total']) ?? 0);
@@ -166,6 +179,7 @@ class AppModeController extends ChangeNotifier {
       final p = await SharedPreferences.getInstance();
       await p.setString(_modeKey, m.name);
       if (_orgId != null) await p.setInt(_orgKey, _orgId!);
+      if (_userId != null) await p.setBool(personalHomeKey(_userId!), m == AppMode.individual);
     } catch (_) {}
   }
 
@@ -201,10 +215,13 @@ class AppModeController extends ChangeNotifier {
 
   /// Re-applies the organization shown in Organization mode (after a page opened another organization's context,
   /// e.g. returning from the management dashboard).
+  ///
+  /// In Individual mode it CLEARS the context: before, it only re-applied an organization, so after leaving the
+  /// management dashboard / a department the personal space kept that organization's timezone and feature offs.
   void applyOrgContext() {
     final want = isOrg ? currentOrgId : null;
     _appliedOrg = want;
-    if (want != null) applyContext(want);
+    applyContext(want);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

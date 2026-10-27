@@ -1,97 +1,24 @@
-// Timetable workstream: break alternatives ranking (≤ 3), the guided journey, the coverage ladder for staffing gaps,
+// Timetable workstream: the single Generate action (rules, outcome, live run), the guided journey,
 // exam windows / agenda, and every timetable time going through AppTime (12h by default, 24h when configured).
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
-import 'package:flutter_education_app/features/org/org_schedule_coverage.dart';
 import 'package:flutter_education_app/features/org/org_schedule_exams.dart';
+import 'package:flutter_education_app/features/org/org_schedule_generate.dart';
+import 'package:flutter_education_app/features/org/org_schedule_grid.dart';
+import 'package:flutter_education_app/features/org/org_schedule_groups.dart';
 import 'package:flutter_education_app/features/org/org_schedule_export.dart';
 import 'package:flutter_education_app/features/org/org_schedule_hub.dart';
-import 'package:flutter_education_app/features/org/org_schedule_relaxation.dart';
 import 'package:flutter_education_app/features/org/org_schedule_versions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> b(String rule, String tier, String block, {int? user, int course = 1}) =>
     {'rule': rule, 'tier': tier, 'block_id': block, 'course_id': course, 'kind': 'lecture', 'group_no': null, 'user_id': ?user};
 
-BreakAlternative alt(int id, String? rule, List<Map<String, dynamic>> broken, {int placed = 5, int required = 5, int rank = 0}) => BreakAlternative(
-      revisionId: id,
-      rule: rule,
-      rank: rank,
-      slots: const [],
-      result: {
-        'broken': broken,
-        'stats': {'sessions_required': required, 'sessions_placed': placed},
-      },
-    );
-
 void main() {
   setUp(() {
     AppConfig.lang = 'en';
     AppTime.configureOrg(null, null);
     AppTime.configurePlatform(timeFormat: '12h');
-  });
-
-  group('break alternatives', () {
-    final student = alt(1, 'students_clash', [b('students_clash', 'student_prefs', 'B1')]);
-    final teacher = alt(2, 'teacher_unavailable', [b('teacher_unavailable', 'teacher_prefs', 'B1', user: 7)]);
-    final rooms2 = alt(3, 'room_capacity', [b('room_capacity', 'rooms', 'B1'), b('room_capacity', 'rooms', 'B2', course: 2)]);
-    final rooms1 = alt(4, 'room_kind', [b('room_kind', 'rooms', 'B1')]);
-    final short = alt(5, 'x', const [], placed: 4);
-
-    test('least disruptive first, at most 3, only rank 1 is recommended', () {
-      final r = rankBreakAlternatives([teacher, rooms2, student, rooms1, short]);
-      expect(r.map((a) => a.rule), ['students_clash', 'room_kind', 'room_capacity']);
-      expect(r.map((a) => a.rank), [1, 2, 3]);
-      expect(r.map((a) => a.recommended), [true, false, false]);
-      expect(r.length, maxBreakAlternatives);
-    });
-
-    test('a version leaving sessions unplaced always ranks after complete ones', () {
-      final r = rankBreakAlternatives([short, teacher], cap: 5);
-      expect(r.first.rule, 'teacher_unavailable');
-      expect(r.last.unplaced, 1);
-    });
-
-    test('the relaxation priority decides which tier is protected', () {
-      final protectStudents = RelaxationPolicy(['rooms', 'add_capacity', 'assistant_prefs', 'other_soft', 'teacher_prefs', 'student_prefs']);
-      final r = rankBreakAlternatives([student, rooms1, rooms2], policy: protectStudents);
-      expect(r.map((a) => a.rule), ['room_kind', 'room_capacity', 'students_clash']);
-    });
-
-    test('ties: fewer sessions, then fewer people affected', () {
-      final one = alt(1, 'a', [b('teacher_unavailable', 'teacher_prefs', 'B1', user: 7)]);
-      final noPerson = alt(2, 'b', [b('teacher_unavailable', 'teacher_prefs', 'B1')]);
-      expect(rankBreakAlternatives([one, noPerson]).first.revisionId, 2);
-      expect(one.sessionsAffected, 1);
-      expect(one.peopleAffected, 1);
-    });
-
-    test('health: placed share minus rule penalties, clamped', () {
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const []), 100);
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const ['student_prefs']), 98);
-      expect(versionHealthScore(required: 10, placed: 10, brokenTiers: const ['teacher_prefs']), 96); // most protected
-      expect(versionHealthScore(required: 10, placed: 5, brokenTiers: List.filled(40, 'teacher_prefs')), 0);
-      expect(versionHealthScore(required: 0, placed: 0, brokenTiers: const []), 100);
-    });
-
-    test('reads the server revision (summary.break_alternative + summary.result)', () {
-      final a = BreakAlternative.fromRevision({
-        'id': 9,
-        'items': [
-          {'course_id': 1, 'day': 'sunday', 'period_id': 1}
-        ],
-        'summary': {
-          'break_alternative': {'rule': 'room_kind', 'rank': 2, 'recommended': false},
-          'result': {
-            'broken': [b('room_kind', 'rooms', 'B1')],
-            'broken_by_tier': {'rooms': 1},
-            'stats': {'sessions_required': 3, 'sessions_placed': 3}
-          },
-        },
-      });
-      expect([a.revisionId, a.rule, a.rank, a.slots.length, a.byTier['rooms'], a.unplaced], [9, 'room_kind', 2, 1, 1, 0]);
-      expect(breakRuleLabel('room_kind'), isNot('room_kind'));
-    });
   });
 
   group('journey', () {
@@ -112,33 +39,162 @@ void main() {
     test('generate → complete → fix → publish → share', () {
       expect(j().next, NextAction.generate);
       expect(j(running: true).next, NextAction.wait);
-      expect(j(slots: 8, result: res(10, 8)).next, NextAction.completeCoverage);
+      expect(j(slots: 8, result: res(10, 8)).next, NextAction.reviewResult);
       expect(j(slots: 10, result: res(10, 10), hard: 2).next, NextAction.fixClashes);
       expect(j(slots: 10, result: res(10, 10)).next, NextAction.publish);
-      expect(j(slots: 10, result: res(10, 10, broken: [b('room_kind', 'rooms', 'B1')])).next, NextAction.compareRules);
+      expect(j(slots: 10, result: res(10, 10, broken: [{...b('room_kind', 'rooms', 'B1'), 'decision': null}])).next, NextAction.reviewResult);
+      expect(j(slots: 10, result: res(10, 10, broken: [{...b('room_kind', 'rooms', 'B1'), 'decision': 'accepted'}])).next, NextAction.publish);
       final pub = j(slots: 10, result: res(10, 10), active: true);
       expect([pub.next, pub.current, pub.done.length], [NextAction.share, TimetableStage.publish, 4]);
     });
 
     test('every next step has words in both languages', () {
       for (final a in NextAction.values) {
-        final (title, body, _) = nextStepText(a, unplaced: 3, hard: 1, broken: 2, noTeacher: 1);
+        final (title, body, _) = nextStepText(a, unplaced: 3, hard: 1, pending: 2, noTeacher: 1);
         expect(title, isNotEmpty);
         expect(body, isNotEmpty);
       }
     });
   });
 
-  group('generation loop', () {
-    test('a course without (eligible) staff is never offered time / room / rule breaking', () {
-      for (final r in staffingReasons) {
-        final u = UnplacedSession.fromJson({'course_id': 1, 'missing': 1, 'type': r});
-        expect(u.needsStaff, isTrue);
-        expect(coverageLadder(u), ['assign_staff']);
-        expect(unplacedReasonText(r), isNot('No free time'));
-      }
-      expect(coverageLadder(const UnplacedSession(courseId: 1, kind: 'lecture', missing: 1, reason: 'teacher_busy')).first, 'rearrange_all');
+  group('single generate', () {
+    test('fixed rules are never sent; soft rules default to flexible, availability rules to locked; break order', () {
+      final f = rulesFlexible(const {});
+      expect(f, {
+        'compact': true, 'preferred': true, 'soft_availability': true, 'extra_times': true, 'larger_hall': true,
+        'rooms_and_times': false, 'assistant_availability': false, 'instructor_availability': false,
+      });
+      expect(rulesFlexible(const {'rules': {'instructor_availability': 'flexible', 'larger_hall': 'locked'}})['instructor_availability'], isTrue);
+      expect(generationRules.where((r) => r.fixed).map((r) => r.key), ['room_double', 'person_double', 'lab_only', 'capacity']);
+      expect(generationRules.where((r) => r.fixed && r.unlockable), isEmpty);
+      // the order rules give way (schedule_jobs.BREAK_ORDER); last resorts are suggestions only, never switchable
+      expect(breakOrder.map((r) => r.key).take(5), ['compact', 'preferred', 'soft_availability', 'extra_times', 'larger_hall']);
+      expect(generationRules.where((r) => r.suggestionOnly && r.unlockable), isEmpty);
     });
+
+    test('conflict digest: hard / soft counts and the top three types', () {
+      final d = ConflictDigest.of([
+        {'type': 'room_double_booked', 'severity': 'error'},
+        {'type': 'room_double_booked', 'severity': 'error'},
+        {'type': 'preference_avoided', 'severity': 'warning'},
+        {'type': 'teacher_overloaded', 'severity': 'warning'},
+        {'type': 'students_clash', 'severity': 'error'},
+      ]);
+      expect([d.hard, d.soft, d.total], [3, 2, 5]);
+      expect(d.top.first, ('room_double_booked', 2));
+      expect(d.top.length, 3);
+      expect(conflictTypeText('room_double_booked'), isNot(contains('_')));
+    });
+
+    test('outcome: missing sessions and pending proposals only (old results have no decision)', () {
+      final o = GenerationOutcome.of({
+        'stats': {'sessions_required': 5, 'sessions_placed': 3},
+        'unscheduled': [{'course_id': 1, 'missing': 2, 'reason': 'rooms_busy'}],
+        'broken': [{...b('room_kind', 'rooms', 'B1'), 'decision': null}, {...b('room_kind', 'rooms', 'B2'), 'decision': 'accepted'}, b('teacher_unavailable', 'teacher_prefs', 'B3')],
+        'complete': {'stopped': 'no_progress'},
+      });
+      expect([o.missing, o.pending.length, o.stopped], [2, 1, 'no_progress']);
+    });
+
+    test('the step log: what happens now, done steps with their time, the headline, the patience hints', () {
+      final l = LiveRun.of({'status': 'running', 'summary': {
+        'live': true, 'round': 1, 'rounds_max': 6, 'unplaced': 2, 'placed': 18, 'required': 20, 'top': [],
+        'stage': 'round', 'started_at': '2026-10-24T10:00:00', 'elapsed_s': 31, 'budget_s': 90,
+        'steps': [
+          {'id': 1, 'kind': 'prepare', 'text_ar': 'تم تحميل البيانات', 'text_en': 'Data loaded: 12 teaching load(s) · 4 room(s) · 6 period(s) × 5 day(s)', 'at': '2026-10-24T10:00:00', 'done': true, 'ms': 420},
+          {'id': 2, 'kind': 'round', 'round': 1, 'relax': false, 'limit_s': 8.0, 'text_ar': 'المحاولة 1 من 6', 'text_en': 'Attempt 1 of 6: solving with every rule enforced (strict) (up to 8 s)', 'at': '2026-10-24T10:00:01', 'done': true, 'ms': 8010},
+          {'id': 3, 'kind': 'round_end', 'round': 1, 'improved': true, 'text_ar': 'المحاولة 1: تحسّن', 'text_en': 'Attempt 1: better — 18 of 20 sessions, 2 left', 'at': '2026-10-24T10:00:09', 'done': true, 'ms': 0},
+          {'id': 4, 'kind': 'round', 'round': 2, 'relax': true, 'limit_s': 8.0, 'text_ar': 'المحاولة 2 من 6: البحث عن جدول مع السماح بتجاوز القواعد المرنة فقط (حتى 8 ث) · أفضل نتيجة حتى الآن 18 من 20', 'text_en': 'Attempt 2 of 6: solving bending only the rules marked Flexible (up to 8 s) · best so far 18 of 20', 'at': '2026-10-24T10:00:09', 'done': false, 'ms': null},
+        ],
+      }})!;
+      expect([l.stage, l.elapsedS, l.budgetS, l.steps.length, l.done.length], ['round', 31, 90, 4, 3]);
+      expect(l.startedAt, DateTime(2026, 10, 24, 10));
+      final cur = l.current!;
+      expect([cur.kind, cur.round, cur.relax, cur.limitS, cur.done, cur.ms], ['round', 2, true, 8.0, false, null]);
+      expect(cur.at, DateTime(2026, 10, 24, 10, 0, 9));
+      expect(cur.text, startsWith('Attempt 2 of 6: solving bending only'));
+      expect(cur.isAttempt, isTrue);
+      expect(l.done[1].ms, 8010);
+      expect(l.done[2].improved, isTrue);
+      expect(liveHeadline({'status': 'running'}, l), 'Best so far: 18 of 20 sessions · attempt 1 of at most 6');
+      // before the first attempt ends: the headline is the current step, not "attempt 0"
+      final early = LiveRun.of({'summary': {'live': true, 'round': 0, 'unplaced': 0, 'stage': 'prepare', 'steps': [
+        {'id': 1, 'kind': 'prepare', 'text_ar': 'جارٍ تحميل…', 'text_en': 'Loading courses, rooms, periods and preferences…', 'done': false},
+      ]}})!;
+      expect(early.hasBest, isFalse);
+      expect(liveHeadline({'status': 'running'}, early), 'Loading courses, rooms, periods and preferences…');
+      expect(liveHeadline({'status': 'queued'}, null), 'Queued — generation starts in a moment');
+      expect(liveHeadline({'status': 'running'}, null), 'Generating…');
+      expect(liveHeadline({'status': 'failed'}, null), 'Generation failed — nothing changed');
+      // an older server: counters only, no steps
+      final old = LiveRun.of({'summary': {'live': true, 'round': 2, 'rounds_max': 6, 'unplaced': 3}})!;
+      expect([old.steps, old.current, old.stage], [isEmpty, isNull, isNull]);
+      expect(liveHeadline({'status': 'running'}, old), 'Attempt 2 of at most 6 · 3 session(s) unplaced');
+      // patience: silent at first, then why it takes time, then that the server stops it by itself
+      expect(patienceText(const Duration(seconds: 5)), isNull);
+      expect(patienceText(const Duration(seconds: 10)), startsWith('Still working'));
+      expect(patienceText(const Duration(seconds: 30)), startsWith('This attempt is taking longer'));
+      expect(patienceText(const Duration(seconds: 30), relax: true), startsWith('This attempt bends only the Flexible rules'));
+      expect(patienceText(const Duration(seconds: 60)), startsWith('The attempt is near its time limit'));
+      expect([liveClock(const Duration(seconds: 42)), liveClock(const Duration(seconds: 65)), liveClock(const Duration(seconds: 3725))], ['0:42', '1:05', '1:02:05']);
+      AppConfig.lang = 'ar';
+      expect(cur.text, startsWith('المحاولة 2 من 6'));
+      expect(patienceText(const Duration(seconds: 10)), startsWith('ما زال العمل جارياً'));
+      AppConfig.lang = 'en';
+    });
+
+    test('live counters only from a live summary; every reason has a cause and a fix', () {
+      expect(LiveRun.of({'summary': {'status': 'feasible'}}), isNull);
+      final l = LiveRun.of({'summary': {'live': true, 'round': 2, 'unplaced': 4, 'top': [{'reason': 'rooms_busy', 'n': 3}]}})!;
+      expect([l.round, l.roundsMax, l.unplaced, l.top.first.$1], [2, 6, 4, 'rooms_busy']);
+      for (final r in [...staffingReasons, 'rooms_busy', 'teacher_busy', 'no_room_fits', 'proposal_rejected']) {
+        expect(unplacedReasonText(r), isNot('No free time'));
+        expect(unplacedFixText(r), isNotEmpty);
+      }
+    });
+  });
+
+  group('studio grid', () {
+    final a = {'id': 1, 'course_id': 7, 'day': 'sunday', 'period_id': 1, 'teacher_id': 5, 'assistant_id': null, 'room_id': 2, 'kind': 'lecture', 'group_no': 1};
+    final b = {'id': 2, 'course_id': 7, 'day': 'sunday', 'period_id': 2, 'teacher_id': 6, 'assistant_id': 9, 'room_id': 3, 'kind': 'lab', 'group_no': 2};
+    final c = {'id': 3, 'course_id': 8, 'day': 'monday', 'period_id': 1, 'teacher_id': 5, 'room_id': 2, 'kind': 'lecture', 'group_no': null};
+
+    test('one filter at a time: instructor, TA, room, group, program/level, student', () {
+      List<int> ids(GridFilter f, {List<Map<String, dynamic>> sg = const []}) =>
+          [for (final x in [a, b, c]) if (f.keeps(x, cohorts: {7: {'1|L2'}}, studentGroups: sg)) x['id'] as int];
+      expect(ids(GridFilter.none), [1, 2, 3]);
+      expect(ids(const GridFilter(GridFilterKind.teacher)), [1, 2, 3], reason: 'no value chosen yet keeps everything');
+      expect(ids(const GridFilter(GridFilterKind.teacher, '5')), [1, 3]);
+      expect(ids(const GridFilter(GridFilterKind.assistant, '9')), [2]);
+      expect(ids(const GridFilter(GridFilterKind.room, '2')), [1, 3]);
+      expect(ids(const GridFilter(GridFilterKind.group, 'lab|2')), [2]);
+      expect(ids(const GridFilter(GridFilterKind.cohort, '1|L2')), [1, 2]);
+      expect(ids(const GridFilter(GridFilterKind.student, '42'), sg: [{'course_id': 7, 'lecture_group': 1, 'lab_group': 3}, {'course_id': 8}]), [1, 3]);
+    });
+
+    test('index by cell; a conflict marks every period it covers, or the whole day when it has none', () {
+      final idx = indexSlots([a, b, c]);
+      expect(idx[('sunday', 1)]!.single['id'], 1);
+      expect(idx[('monday', 2)], isNull);
+      final cells = conflictCells([
+        {'day': 'sunday', 'period_ids': [1, 2]},
+        {'day': 'monday'},
+      ], [1, 2, 3]);
+      expect(cells, {('sunday', 1), ('sunday', 2), ('monday', 1), ('monday', 2), ('monday', 3)});
+    });
+  });
+
+  test('group roster: one row per student, labelled by group', () {
+    final rows = rosterRows({
+      'groups': [
+        {'kind': 'lecture', 'group_no': 1, 'students': [{'student': {'name': 'Amy'}, 'student_code': 'S1'}]},
+        {'kind': 'lab', 'group_no': 2, 'students': [{'student': {'name': 'Bob'}}]},
+      ]
+    });
+    expect(rows, [
+      {'group': 'Theory 1', 'name': 'Amy', 'code': 'S1'},
+      {'group': 'Lab 2', 'name': 'Bob', 'code': ''},
+    ]);
   });
 
   group('exams', () {

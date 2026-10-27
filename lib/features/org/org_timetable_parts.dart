@@ -5,7 +5,7 @@
 //   showRoomForm          a room / lab / office (full replacement on save)
 //   showFacilityTypes     the organization's own facility types
 //   showOfficeMembers     who sits in an office
-//   showLoadForm          one course's needs: lecture & lab sessions, staff, room type, capabilities
+//   showLoadForm          one course's needs: lecture & lab sessions, staff, room type, capabilities, group sizes
 //   showStaffCandidates   eligible teachers / assistants for a course (ranked by the server) with "why not"
 //   showStaffPrefs        hard unavailability vs soft prefer / avoid + preferred courses
 //   ScheduleResultView    the solver's verdict: status · unscheduled sessions · relaxed preferences · suggestions
@@ -15,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
+import 'package:flutter_education_app/design/app_hscroll.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -242,6 +243,7 @@ Future<void> showFacilityTypes(BuildContext context, OrgScheduleProvider p) asyn
             context: ctx,
             builder: (d) => AlertDialog(
               title: Text(i == null ? t('نوع جديد', 'New type') : t('تعديل النوع', 'Edit type')),
+              scrollable: true,
               content: Column(mainAxisSize: MainAxisSize.min, children: [
                 Field(controller: key, label: t('المفتاح (حروف إنجليزية صغيرة)', 'Key (lowercase letters)'), ltr: true, enabled: i == null),
                 Field(controller: ar, label: t('الاسم بالعربية', 'Arabic label')),
@@ -441,7 +443,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
   String brush = 'unavailable';
   bool busy = false;
   String? err;
-  final days = scheduleDays.take(6).toList();
+  final days = scheduleDays.toList();
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Color col(String? m) => switch (m) { 'unavailable' => c.danger, 'prefer' => c.success, 'avoid' => c.warning, _ => c.inputBg };
@@ -469,8 +471,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                 ),
             ]),
             const SizedBox(height: 8),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
+            AppHScroll(
               child: Table(defaultColumnWidth: const FixedColumnWidth(62), children: [
                 TableRow(children: [
                   const SizedBox(),
@@ -566,6 +567,11 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
   final labCaps = <String>{...((l['lab_required_capabilities'] as List?) ?? const []).map((e) => '$e')};
   final allCaps = {for (final r in p.rooms) ...((r['capabilities'] as List?) ?? const []).map((x) => '$x')};
   final cid = asInt(l['course_id']);
+  bool practical = l['practical_based'] == true;
+  String num(dynamic v) => v == null ? '' : '$v';
+  final expected = TextEditingController(text: num(asMap(l['course'])['expected_enrollment']));
+  final lecMax = TextEditingController(text: num(l['lecture_max_group'])), labMax = TextEditingController(text: num(l['lab_max_group']));
+  int? parsed(TextEditingController x) => int.tryParse(x.text.trim());
   final people = {for (final m in p.staff) asInt(asMap(m['user'])['id']): '${asMap(m['user'])['name']}'};
   bool busy = false, saved = false;
   String? err;
@@ -613,6 +619,18 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
             ),
             const SizedBox(height: 8),
             _CapabilityPicker(label: t('إمكانات مطلوبة للمحاضرة', 'Capabilities the lecture needs'), value: caps, suggestions: allCaps, onChanged: () => set(() {})),
+            // ── sizes: group size = the smaller of the course maximum and the room capacity ──
+            Row(children: [
+              Expanded(child: Field(controller: expected, label: t('العدد المتوقع للطلاب', 'Expected enrolment'), keyboard: TextInputType.number, ltr: true)),
+              const SizedBox(width: 8),
+              Expanded(child: Field(controller: lecMax, label: t('أقصى حجم لمجموعة النظري', 'Max theory group'), keyboard: TextInputType.number, ltr: true)),
+            ]),
+            OrgSwitchRow(
+              title: t('مقرر عملي أساساً', 'Practical-based course'),
+              subtitle: t('يُدرّس الجزء الأساسي في المعامل فقط', 'Its main part is taught in labs only'),
+              value: practical,
+              onChanged: (v) => set(() => practical = v),
+            ),
             const SizedBox(height: 12),
             // ── lab ──
             Container(
@@ -628,6 +646,12 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[
                   stepper(t('فترات السكشن الواحد', 'Periods per lab'), labSpan, 1, 6, (v) => labSpan = v),
+                  Field(
+                      controller: labMax,
+                      label: t('أقصى حجم لمجموعة المعمل (فارغ = الافتراضي ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})',
+                          'Max lab group (empty = default ${asInt(asMap(p.schedule?['settings'])['lab_group_default'], 25)})'),
+                      keyboard: TextInputType.number,
+                      ltr: true),
                   ChoiceRow<String>(
                     label: t('مكان السكشن', 'Lab room'),
                     options: {for (final k in roomKinds) k: roomKindLabel(k)},
@@ -704,6 +728,10 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                           'lab_room_kind': labRoom,
                           'required_capabilities': caps.toList(),
                           'lab_required_capabilities': labSessions > 0 ? labCaps.toList() : <String>[],
+                          'lecture_max_group': parsed(lecMax),
+                          'lab_max_group': labSessions > 0 ? parsed(labMax) : null,
+                          'practical_based': practical,
+                          'expected_enrollment': parsed(expected),
                         }),
                     quiet: true);
                 if (!ctx.mounted) return;

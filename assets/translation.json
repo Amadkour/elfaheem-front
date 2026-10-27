@@ -1,4 +1,16 @@
 {
+  "my_calendar": {
+    "en": "My calendar",
+    "ar": "تقويمي"
+  },
+  "upcoming_meetings": {
+    "en": "Upcoming meetings",
+    "ar": "الاجتماعات القادمة"
+  },
+  "meeting_online": {
+    "en": "Online",
+    "ar": "عن بُعد"
+  },
   "inbox_title": {
     "en": "Inbox",
     "ar": "صندوق الوارد"
@@ -1370,6 +1382,10 @@
   "help_center": {
     "en": "Help Center",
     "ar": "مركز المساعدة"
+  },
+  "app_assistant": {
+    "en": "Ask about the app",
+    "ar": "اسأل عن التطبيق"
   },
   "log-out": {
     "en": "Logout",
@@ -15376,5 +15392,769 @@
   "tx_column_locked": {
     "en": "Always exported",
     "ar": "يُصدَّر دائمًا"
+  },
+  "ctx_personal": {
+    "en": "Personal",
+    "ar": "حسابي الشخصي"
+  },
+  "ctx_current": {
+    "en": "Current space",
+    "ar": "المساحة الحالية"
+  },
+  "ctx_in_org": {
+    "en": "You're in",
+    "ar": "أنت الآن في"
+  },
+  "ctx_personal_space": {
+    "en": "Your space",
+    "ar": "مساحتك"
+  },
+  "ctx_exit": {
+    "en": "Back to your personal space",
+    "ar": "العودة إلى حسابك الشخصي"
+  },
+  "ctx_switch_title": {
+    "en": "Switch space",
+    "ar": "تبديل المساحة"
+  },
+  "ctx_personal_hint": {
+    "en": "Your own courses and sessions",
+    "ar": "كورساتك وجلساتك الخاصة"
+  },
+  "ctx_organizations": {
+    "en": "Your organizations",
+    "ar": "مؤسساتك"
+  },
+  "home_greet_morning": {
+    "en": "Good morning",
+    "ar": "صباح الخير"
+  },
+  "home_greet_afternoon": {
+    "en": "Good afternoon",
+    "ar": "طاب يومك"
+  },
+  "home_greet_evening": {
+    "en": "Good evening",
+    "ar": "مساء الخير"
+  },
+  "home_live": {
+    "en": "Live now",
+    "ar": "مباشر الآن"
+  },
+  "home_next": {
+    "en": "Next up",
+    "ar": "التالي"
+  },
+  "home_until": {
+    "en": "Until",
+    "ar": "حتى"
+  },
+  "home_todo": {
+    "en": "To do",
+    "ar": "مطلوب منك"
+  },
+  "home_todo_clear": {
+    "en": "You're all caught up",
+    "ar": "لا شيء ينتظرك"
+  },
+  "home_todo_hint": {
+    "en": "Forms, requests and replies waiting",
+    "ar": "نماذج وطلبات وردود بانتظارك"
+  },
+  "home_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "home_today_sessions": {
+    "en": "Today's sessions",
+    "ar": "جلسات اليوم"
+  },
+  "home_full_timetable": {
+    "en": "Full timetable",
+    "ar": "الجدول كاملاً"
+  },
+  "home_no_classes_today": {
+    "en": "No classes today",
+    "ar": "لا محاضرات اليوم"
+  },
+  "home_no_classes_hint": {
+    "en": "Plan ahead: your whole week is in the timetable",
+    "ar": "خطط مسبقاً: أسبوعك كله في الجدول"
+  },
+  "home_extra_session": {
+    "en": "Extra",
+    "ar": "إضافية"
+  },
+  "home_lab": {
+    "en": "Lab",
+    "ar": "سكشن"
+  },
+  "home_capacity": {
+    "en": "Up to {n} students",
+    "ar": "حتى {n} طالب"
+  },
+  "home_needs_you": {
+    "en": "Needs you",
+    "ar": "يحتاج انتباهك"
+  },
+  "home_t_attendance": {
+    "en": "Attendance not taken",
+    "ar": "حضور لم يُسجَّل"
+  },
+  "home_t_attendance_hint": {
+    "en": "Past sessions with no attendance",
+    "ar": "جلسات سابقة بلا حضور"
+  },
+  "home_t_grading": {
+    "en": "Waiting for grades",
+    "ar": "بانتظار التصحيح"
+  },
+  "home_t_grading_hint": {
+    "en": "Submissions not graded yet",
+    "ar": "تسليمات لم تُصحَّح بعد"
+  },
+  "home_t_material": {
+    "en": "Material missing",
+    "ar": "مواد ناقصة"
+  },
+  "home_t_material_hint": {
+    "en": "Past sessions with no material",
+    "ar": "جلسات سابقة بلا مواد"
+  },
+  "home_t_requests": {
+    "en": "Enrollment requests",
+    "ar": "طلبات الالتحاق"
+  },
+  "home_t_requests_hint": {
+    "en": "Students waiting for approval",
+    "ar": "طلاب بانتظار الموافقة"
+  },
+  "home_no_sessions_today": {
+    "en": "No sessions today",
+    "ar": "لا جلسات اليوم"
+  },
+  "home_no_sessions_today_hint": {
+    "en": "A good day to prepare material or add a session",
+    "ar": "يوم مناسب لتجهيز المواد أو إضافة جلسة"
+  },
+  "home_t_no_courses": {
+    "en": "Create your first course",
+    "ar": "أنشئ كورسك الأول"
+  },
+  "home_t_no_courses_hint": {
+    "en": "Your courses and their students appear here",
+    "ar": "ستظهر هنا كورساتك وطلابها"
+  },
+  "home_t_free_day": {
+    "en": "No sessions on your calendar today",
+    "ar": "لا جلسات في يومك اليوم"
+  },
+  "home_t_day_done": {
+    "en": "All of today's sessions are done",
+    "ar": "انتهت جلسات اليوم كلها"
+  },
+  "home_t_sessions_today": {
+    "en": "sessions today",
+    "ar": "جلسات اليوم"
+  },
+  "home_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "home_rating": {
+    "en": "Rating",
+    "ar": "التقييم"
+  },
+  "home_s_start_learning": {
+    "en": "Start learning",
+    "ar": "ابدأ التعلم"
+  },
+  "home_s_start_learning_hint": {
+    "en": "Pick your first course",
+    "ar": "اختر كورسك الأول"
+  },
+  "home_s_continue": {
+    "en": "Continue learning",
+    "ar": "تابع التعلم"
+  },
+  "home_s_free_today": {
+    "en": "Your day is free",
+    "ar": "يومك متاح"
+  },
+  "home_s_free_hint": {
+    "en": "Use it to catch up on recorded sessions",
+    "ar": "استغله لمتابعة الجلسات المسجلة"
+  },
+  "home_org_waiting": {
+    "en": "Waiting in your organizations",
+    "ar": "بانتظارك في مؤسساتك"
+  },
+  "home_org_waiting_hint": {
+    "en": "Open the organization to see it",
+    "ar": "افتح المؤسسة لتراه"
+  },
+  "home_downloads": {
+    "en": "Downloads",
+    "ar": "التنزيلات"
+  },
+  "home_starts_in": {
+    "en": "Starts in {t}",
+    "ar": "تبدأ بعد {t}"
+  },
+  "home_ends_in": {
+    "en": "Ends in {t}",
+    "ar": "تنتهي بعد {t}"
+  },
+  "home_min": {
+    "en": "{n} min",
+    "ar": "{n} د"
+  },
+  "home_h_min": {
+    "en": "{h} h {m} min",
+    "ar": "{h} س {m} د"
+  },
+  "home_s_no_courses": {
+    "en": "No courses yet",
+    "ar": "لا كورسات بعد"
+  },
+  "home_s_no_courses_hint": {
+    "en": "Enroll in a course and it shows up here",
+    "ar": "اشترك في كورس وسيظهر هنا"
+  },
+  "home_s_browse": {
+    "en": "Browse courses",
+    "ar": "تصفح الكورسات"
+  },
+  "home_admin_sub": {
+    "en": "Here is the platform today",
+    "ar": "هذه حال المنصة اليوم"
+  },
+  "home_admin_pulse": {
+    "en": "Platform pulse",
+    "ar": "نبض المنصة"
+  },
+  "home_admin_waiting": {
+    "en": "items wait for your decision",
+    "ar": "عناصر بانتظار قرارك"
+  },
+  "home_admin_clear": {
+    "en": "Nothing waits for your decision",
+    "ar": "لا شيء بانتظار قرارك"
+  },
+  "home_admin_numbers": {
+    "en": "Platform numbers",
+    "ar": "أرقام المنصة"
+  },
+  "home_admin_more": {
+    "en": "More",
+    "ar": "المزيد"
+  },
+  "schedule_load_failed": {
+    "en": "Couldn't load your schedule. Check your connection and try again.",
+    "ar": "تعذّر تحميل جدولك. تحقّق من الاتصال وحاول مرة أخرى."
+  },
+  "lr_react": {
+    "en": "React",
+    "ar": "تفاعل"
+  },
+  "lr_reactions": {
+    "en": "Reactions",
+    "ar": "التفاعلات"
+  },
+  "lr_close": {
+    "en": "Close",
+    "ar": "إغلاق"
+  },
+  "lr_go_back": {
+    "en": "Back",
+    "ar": "رجوع"
+  },
+  "lr_devices": {
+    "en": "Devices",
+    "ar": "الأجهزة"
+  },
+  "lr_preview": {
+    "en": "Preview",
+    "ar": "معاينة"
+  },
+  "lr_joining": {
+    "en": "Joining…",
+    "ar": "جارٍ الانضمام…"
+  },
+  "lr_may_be_recorded": {
+    "en": "This session may be recorded",
+    "ar": "قد يتم تسجيل هذه الحصة"
+  },
+  "lr_no_mic_found": {
+    "en": "No microphone found",
+    "ar": "لم يتم العثور على ميكروفون"
+  },
+  "lr_no_camera_found": {
+    "en": "No camera found",
+    "ar": "لم يتم العثور على كاميرا"
+  },
+  "lr_no_devices_msg": {
+    "en": "No camera or microphone was found. Connect a device and try again.",
+    "ar": "لم يتم العثور على كاميرا أو ميكروفون. وصّل جهازًا ثم أعد المحاولة."
+  },
+  "lr_permission_denied_msg": {
+    "en": "Camera and microphone access was denied. Allow it in your device settings and try again.",
+    "ar": "تم رفض الوصول إلى الكاميرا والميكروفون. اسمح بذلك من إعدادات الجهاز ثم أعد المحاولة."
+  },
+  "lr_more_controls": {
+    "en": "More controls",
+    "ar": "المزيد من عناصر التحكم"
+  },
+  "lr_rec": {
+    "en": "REC",
+    "ar": "تسجيل"
+  },
+  "lr_rec_paused_chip": {
+    "en": "PAUSED",
+    "ar": "متوقف"
+  },
+  "record_session_title": {
+    "en": "Record this session",
+    "ar": "تسجيل هذه الجلسة"
+  },
+  "record_session_subtitle": {
+    "en": "Off: no recording is made for students to watch later.",
+    "ar": "عند الإيقاف لا يُحفظ تسجيل ليشاهده الطلاب لاحقًا."
+  },
+  "captions_title": {
+    "en": "Captions",
+    "ar": "الترجمة النصية"
+  },
+  "captions_attached": {
+    "en": "This video has a captions file (.vtt).",
+    "ar": "لهذا الفيديو ملف ترجمة نصية (.vtt)."
+  },
+  "upload_captions": {
+    "en": "Upload captions (.vtt)",
+    "ar": "رفع ترجمة (.vtt)"
+  },
+  "remove_captions": {
+    "en": "Remove captions",
+    "ar": "إزالة الترجمة"
+  },
+  "captions_uploaded": {
+    "en": "Captions uploaded",
+    "ar": "تم رفع الترجمة"
+  },
+  "captions_removed": {
+    "en": "Captions removed",
+    "ar": "تمت إزالة الترجمة"
+  },
+  "captions_pick_vtt": {
+    "en": "Choose a WebVTT (.vtt) file",
+    "ar": "اختر ملف ترجمة بصيغة WebVTT (.vtt)"
+  },
+  "lr_guest": {
+    "en": "Guest",
+    "ar": "ضيف"
+  },
+  "lr_listen_only_msg": {
+    "en": "You join as a listener: no microphone or camera in this session.",
+    "ar": "ستنضم كمستمع فقط: لا ميكروفون ولا كاميرا في هذه الجلسة."
+  },
+  "guest_link_title": {
+    "en": "Guest link",
+    "ar": "رابط الضيوف"
+  },
+  "guest_link_intro": {
+    "en": "Anyone with this link can join the live session by typing a name — no account needed. You can limit the number of guests and choose whether they may speak.",
+    "ar": "أي شخص لديه هذا الرابط يمكنه الانضمام للبث بكتابة اسمه فقط دون حساب. يمكنك تحديد عدد الضيوف واختيار ما إذا كان يمكنهم التحدث."
+  },
+  "guest_link_can_publish": {
+    "en": "Guests can use mic & camera",
+    "ar": "يمكن للضيوف استخدام الميكروفون والكاميرا"
+  },
+  "guest_link_can_publish_sub": {
+    "en": "Off: guests only watch and listen (and react).",
+    "ar": "عند الإيقاف: يشاهد الضيوف ويستمعون فقط (مع التفاعلات)."
+  },
+  "guest_link_max": {
+    "en": "Maximum guests (optional)",
+    "ar": "الحد الأقصى للضيوف (اختياري)"
+  },
+  "guest_link_max_hint": {
+    "en": "Leave empty for no limit",
+    "ar": "اتركه فارغًا بدون حد"
+  },
+  "guest_link_create": {
+    "en": "Create link",
+    "ar": "إنشاء الرابط"
+  },
+  "guest_link_copy": {
+    "en": "Copy",
+    "ar": "نسخ"
+  },
+  "guest_link_copied": {
+    "en": "Link copied",
+    "ar": "تم نسخ الرابط"
+  },
+  "guest_link_share": {
+    "en": "Share",
+    "ar": "مشاركة"
+  },
+  "guest_link_qr": {
+    "en": "QR code",
+    "ar": "رمز QR"
+  },
+  "guest_link_new": {
+    "en": "New link",
+    "ar": "رابط جديد"
+  },
+  "guest_link_revoke": {
+    "en": "Revoke",
+    "ar": "إلغاء الرابط"
+  },
+  "guest_link_rotate_confirm": {
+    "en": "Create a new link? The current link stops working immediately and guests who have it cannot join with it.",
+    "ar": "إنشاء رابط جديد؟ سيتوقف الرابط الحالي فورًا ولن يتمكن من لديه الرابط القديم من الانضمام."
+  },
+  "guest_link_revoke_confirm": {
+    "en": "Revoke the guest link? Nobody can join with it any more.",
+    "ar": "إلغاء رابط الضيوف؟ لن يتمكن أحد من الانضمام به بعد الآن."
+  },
+  "guest_link_rotated": {
+    "en": "New link created",
+    "ar": "تم إنشاء رابط جديد"
+  },
+  "guest_link_saved": {
+    "en": "Guest link saved",
+    "ar": "تم حفظ رابط الضيوف"
+  },
+  "guest_link_revoked": {
+    "en": "Guest link revoked",
+    "ar": "تم إلغاء رابط الضيوف"
+  },
+  "guest_link_joined": {
+    "en": "Guests joined",
+    "ar": "الضيوف المنضمون"
+  },
+  "guest_link_created": {
+    "en": "Created",
+    "ar": "أُنشئ"
+  },
+  "guest_link_mode_publish": {
+    "en": "Mic & camera allowed",
+    "ar": "الميكروفون والكاميرا مسموحان"
+  },
+  "guest_link_mode_listen": {
+    "en": "Listen only",
+    "ar": "استماع فقط"
+  },
+  "guest_live_title": {
+    "en": "Join as a guest",
+    "ar": "الانضمام كضيف"
+  },
+  "guest_live_subtitle": {
+    "en": "You were invited to a live session. Type your name and join.",
+    "ar": "تمت دعوتك إلى بث مباشر. اكتب اسمك وانضم."
+  },
+  "guest_live_badge_live": {
+    "en": "LIVE",
+    "ar": "مباشر الآن"
+  },
+  "guest_live_badge_waiting": {
+    "en": "Not started yet",
+    "ar": "لم يبدأ بعد"
+  },
+  "guest_live_waiting_msg": {
+    "en": "The session has not started yet. This page checks again every few seconds and the Join button turns on by itself.",
+    "ar": "لم يبدأ البث بعد. تتحقق هذه الصفحة تلقائيًا كل بضع ثوانٍ وسيُفعَّل زر الانضمام من تلقاء نفسه."
+  },
+  "guest_live_name": {
+    "en": "Your name",
+    "ar": "اسمك"
+  },
+  "guest_live_name_hint": {
+    "en": "Shown to the teacher and the other participants",
+    "ar": "يظهر للمعلم وبقية المشاركين"
+  },
+  "guest_live_name_required": {
+    "en": "Please type your name first",
+    "ar": "من فضلك اكتب اسمك أولًا"
+  },
+  "guest_live_join_when_live": {
+    "en": "Waiting for the session to start…",
+    "ar": "في انتظار بدء البث…"
+  },
+  "guest_live_err_invalid": {
+    "en": "This link is not valid any more.",
+    "ar": "هذا الرابط لم يعد صالحًا."
+  },
+  "guest_live_err_missing": {
+    "en": "This session has no guest link yet.",
+    "ar": "لا يوجد رابط ضيوف لهذه الجلسة بعد."
+  },
+  "guest_live_err_not_started": {
+    "en": "The session has not started yet.",
+    "ar": "لم يبدأ البث بعد."
+  },
+  "guest_live_err_ended": {
+    "en": "The session has ended.",
+    "ar": "انتهى البث."
+  },
+  "guest_live_err_limit": {
+    "en": "The session is full: the guest limit has been reached.",
+    "ar": "الجلسة ممتلئة: تم الوصول إلى الحد الأقصى للضيوف."
+  },
+  "guest_live_err_disabled": {
+    "en": "Guests are not allowed in this session.",
+    "ar": "الضيوف غير مسموح بهم في هذه الجلسة."
+  },
+  "lr_raise_hand": {
+    "en": "Raise hand",
+    "ar": "رفع اليد"
+  },
+  "lr_lower_hand": {
+    "en": "Lower hand",
+    "ar": "إنزال اليد"
+  },
+  "lr_hand_raised": {
+    "en": "Hand raised",
+    "ar": "يد مرفوعة"
+  },
+  "lr_hands": {
+    "en": "Hands",
+    "ar": "الأيدي"
+  },
+  "lr_raised_hands_n": {
+    "en": "Raised hands ({n})",
+    "ar": "الأيدي المرفوعة ({n})"
+  },
+  "lr_no_hands": {
+    "en": "No raised hands right now.",
+    "ar": "لا توجد أيدٍ مرفوعة الآن."
+  },
+  "lr_just_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "lr_allow_speak": {
+    "en": "Allow to speak",
+    "ar": "السماح بالتحدث"
+  },
+  "lr_block_speak": {
+    "en": "Block speaking",
+    "ar": "منع التحدث"
+  },
+  "lr_speak_allowed": {
+    "en": "The guest may speak now.",
+    "ar": "يمكن للضيف التحدث الآن."
+  },
+  "lr_speak_blocked": {
+    "en": "The guest can no longer speak.",
+    "ar": "لم يعد بإمكان الضيف التحدث."
+  },
+  "lr_mute_guest": {
+    "en": "Mute",
+    "ar": "كتم الصوت"
+  },
+  "lr_guest_muted": {
+    "en": "Guest muted.",
+    "ar": "تم كتم صوت الضيف."
+  },
+  "lr_remove_guest": {
+    "en": "Remove from session",
+    "ar": "إزالة من الجلسة"
+  },
+  "lr_remove_guest_confirm": {
+    "en": "Remove {name} from the session? They can rejoin only with a valid guest link.",
+    "ar": "إزالة {name} من الجلسة؟ لن يتمكن من العودة إلا برابط ضيف صالح."
+  },
+  "lr_guest_removed": {
+    "en": "Guest removed.",
+    "ar": "تمت إزالة الضيف."
+  },
+  "lr_mute_all_guests": {
+    "en": "Mute all guests",
+    "ar": "كتم كل الضيوف"
+  },
+  "lr_guests_muted_n": {
+    "en": "{n} guest(s) muted.",
+    "ar": "تم كتم {n} من الضيوف."
+  },
+  "lr_guest_not_found": {
+    "en": "This guest is no longer in the session.",
+    "ar": "هذا الضيف لم يعد في الجلسة."
+  },
+  "lr_live_not_started": {
+    "en": "The session has not started yet.",
+    "ar": "لم تبدأ الجلسة بعد."
+  },
+  "lr_chat": {
+    "en": "Chat",
+    "ar": "الدردشة"
+  },
+  "lr_clear_chat": {
+    "en": "Clear chat",
+    "ar": "مسح الدردشة"
+  },
+  "lr_chat_empty": {
+    "en": "No messages yet. Say hello!",
+    "ar": "لا توجد رسائل بعد. ابدأ بالتحية!"
+  },
+  "lr_chat_hint": {
+    "en": "Type a message…",
+    "ar": "اكتب رسالة…"
+  },
+  "lr_chat_slow_down": {
+    "en": "Too fast — wait a moment before sending again.",
+    "ar": "أسرع من اللازم — انتظر لحظة قبل الإرسال مرة أخرى."
+  },
+  "lr_send": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "lr_mic_level": {
+    "en": "Microphone level",
+    "ar": "مستوى الميكروفون"
+  },
+  "guest_live_err_pin": {
+    "en": "Wrong PIN. Check it with the host and try again.",
+    "ar": "رمز PIN غير صحيح. تأكد منه مع المحاضر وحاول مرة أخرى."
+  },
+  "guest_live_pin_required": {
+    "en": "This link needs a PIN.",
+    "ar": "هذا الرابط يحتاج إلى رمز PIN."
+  },
+  "guest_live_err_rate_limited": {
+    "en": "Too many attempts. Please try again in a minute.",
+    "ar": "محاولات كثيرة. يرجى المحاولة مرة أخرى بعد دقيقة."
+  },
+  "guest_live_rate_limited_in": {
+    "en": "Too many attempts. You can try again in {s} s.",
+    "ar": "محاولات كثيرة. يمكنك المحاولة مرة أخرى بعد {s} ث."
+  },
+  "guest_live_wait_s": {
+    "en": "Try again in {s} s",
+    "ar": "حاول مرة أخرى بعد {s} ث"
+  },
+  "guest_live_pin": {
+    "en": "PIN",
+    "ar": "رمز PIN"
+  },
+  "guest_live_pin_hint": {
+    "en": "4–8 digits from the host",
+    "ar": "4–8 أرقام من المحاضر"
+  },
+  "guest_live_pin_protected": {
+    "en": "Protected with a PIN",
+    "ar": "محمي برمز PIN"
+  },
+  "guest_live_consent": {
+    "en": "I understand this session may be recorded",
+    "ar": "أفهم أن هذه الجلسة قد يتم تسجيلها"
+  },
+  "guest_live_consent_required": {
+    "en": "Please confirm that you understand the session may be recorded.",
+    "ar": "يرجى تأكيد أنك تفهم أن الجلسة قد يتم تسجيلها."
+  },
+  "guest_link_pin": {
+    "en": "PIN (optional)",
+    "ar": "رمز PIN (اختياري)"
+  },
+  "guest_link_pin_change": {
+    "en": "New PIN (leave empty to keep the current one)",
+    "ar": "رمز PIN جديد (اتركه فارغًا للإبقاء على الحالي)"
+  },
+  "guest_link_pin_hint": {
+    "en": "4–8 digits",
+    "ar": "4–8 أرقام"
+  },
+  "guest_link_pin_sub": {
+    "en": "Guests must type this PIN before joining.",
+    "ar": "يجب على الضيوف إدخال هذا الرمز قبل الانضمام."
+  },
+  "guest_link_pin_invalid": {
+    "en": "The PIN must be 4 to 8 digits.",
+    "ar": "يجب أن يتكون رمز PIN من 4 إلى 8 أرقام."
+  },
+  "guest_link_pin_set": {
+    "en": "PIN required",
+    "ar": "يتطلب رمز PIN"
+  },
+  "guest_link_pin_remove": {
+    "en": "Remove PIN",
+    "ar": "إزالة رمز PIN"
+  },
+  "guest_link_pin_remove_confirm": {
+    "en": "Remove the PIN? Anyone with the link will be able to join without it.",
+    "ar": "إزالة رمز PIN؟ سيتمكن أي شخص لديه الرابط من الانضمام بدونه."
+  },
+  "guest_link_pin_removed": {
+    "en": "PIN removed",
+    "ar": "تمت إزالة رمز PIN"
+  },
+  "guest_link_joins": {
+    "en": "Guests joined",
+    "ar": "الضيوف المنضمون"
+  },
+  "guest_link_joins_empty": {
+    "en": "No guest has joined through this link yet.",
+    "ar": "لم ينضم أي ضيف عبر هذا الرابط بعد."
+  },
+  "captions_generate": {
+    "en": "Generate automatically",
+    "ar": "إنشاء تلقائي"
+  },
+  "captions_auto_unavailable": {
+    "en": "Automatic captions are not available on this server.",
+    "ar": "الترجمة التلقائية غير متاحة على هذا الخادم."
+  },
+  "captions_auto_queued": {
+    "en": "Captions are being generated. This can take a few minutes.",
+    "ar": "يجري إنشاء الترجمة. قد يستغرق ذلك بضع دقائق."
+  },
+  "captions_status_queued": {
+    "en": "Captions queued",
+    "ar": "الترجمة في قائمة الانتظار"
+  },
+  "captions_status_processing": {
+    "en": "Generating captions…",
+    "ar": "جارٍ إنشاء الترجمة…"
+  },
+  "captions_status_failed": {
+    "en": "Automatic captions failed. Try again or upload a .vtt file.",
+    "ar": "فشل إنشاء الترجمة التلقائية. حاول مرة أخرى أو ارفع ملف ‎.vtt."
+  },
+  "captions_retry": {
+    "en": "Try again",
+    "ar": "حاول مرة أخرى"
+  },
+  "captions_none": {
+    "en": "No captions yet. Upload a WebVTT (.vtt) file or let the server generate them.",
+    "ar": "لا توجد ترجمة بعد. ارفع ملف WebVTT ‏(.vtt) أو دع الخادم ينشئها."
+  },
+  "guest_live_err_blocked": {
+    "en": "You were removed from this session by the teacher.",
+    "ar": "تمت إزالتك من هذه الجلسة بواسطة المعلّم."
+  },
+  "ctx_join_new": {
+    "en": "Join another organization",
+    "ar": "الانضمام إلى مؤسسة أخرى"
+  },
+  "ctx_join_new_hint": {
+    "en": "Search, enter a code or scan a QR",
+    "ar": "ابحث أو أدخل رمزاً أو امسح رمز QR"
+  },
+  "ctx_no_orgs": {
+    "en": "You are not a member of any organization yet.",
+    "ar": "لست عضواً في أي مؤسسة بعد."
+  },
+  "ctx_org_pending": {
+    "en": "Under review",
+    "ar": "قيد المراجعة"
+  },
+  "ctx_org_suspended": {
+    "en": "Suspended",
+    "ar": "موقوفة"
+  },
+  "ctx_org_rejected": {
+    "en": "Rejected",
+    "ar": "مرفوضة"
   }
 }

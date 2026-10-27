@@ -1,0 +1,75 @@
+/// Bilingual text for the server's coded errors outside the organization screens (those have `orgErrorText`).
+///
+/// The backend answers `{detail: {code, message, ...}}`; `message` is Arabic. Every code the auth / account
+/// endpoints can send gets an Arabic and an English sentence here, with the extra numbers the server attaches
+/// (`retry_after_minutes`, `retry_after_seconds`, `attempts_left`). Unknown codes fall back to the server message.
+library;
+
+import '../config/app_config.dart';
+import 'api_client.dart';
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+/// `detail` of a coded error body, or an empty map.
+Map<String, dynamic> apiErrorDetail(ApiException e) {
+  final d = ApiException.asMap(e.body)?['detail'];
+  return d is Map ? d.map((k, v) => MapEntry('$k', v)) : const <String, dynamic>{};
+}
+
+/// How long the client should wait after a 429, when the server said so.
+Duration? apiRetryAfter(ApiException e) {
+  final d = apiErrorDetail(e);
+  final s = int.tryParse('${d['retry_after_seconds'] ?? ''}');
+  if (s != null && s > 0) return Duration(seconds: s);
+  final m = int.tryParse('${d['retry_after_minutes'] ?? ''}');
+  if (m != null && m > 0) return Duration(minutes: m);
+  return null;
+}
+
+String _wait(Duration? d) {
+  if (d == null) return '';
+  if (d.inMinutes >= 1) return ' (${_t('${d.inMinutes} دقيقة', '${d.inMinutes} min')})';
+  return ' (${_t('${d.inSeconds} ثانية', '${d.inSeconds} s')})';
+}
+
+/// A short sentence in the user's language for any [ApiException]; the server's own text when the code is unknown.
+String apiErrorText(ApiException e) {
+  final d = apiErrorDetail(e);
+  switch (e.code) {
+    case 'server_busy':                                    // 503 from the Exam Engine / RAG in-flight cap (D-038)
+      return _t(ApiMessages.serverBusyAr, ApiMessages.serverBusyEn);
+    case 'too_many_attempts':
+      return _t('محاولات كثيرة — حاول مرة أخرى لاحقاً', 'Too many attempts — try again later') + _wait(apiRetryAfter(e));
+    case 'otp_cooldown':
+      return _t('تم إرسال رمز للتو — انتظر قليلاً قبل طلب رمز جديد', 'A code was just sent — wait a little before asking for another') +
+          _wait(apiRetryAfter(e));
+    case 'otp_invalid':
+      final left = int.tryParse('${d['attempts_left'] ?? ''}');
+      final base = _t('رمز التحقق غير صحيح', 'The verification code is wrong');
+      return left == null ? base : '$base ${_t('(متبقٍ $left)', '($left left)')}';
+    case 'otp_expired':
+      return _t('انتهت صلاحية الرمز — اطلب رمزاً جديداً', 'The code expired — ask for a new one');
+    case 'otp_locked':
+      return _t('تجاوزت عدد المحاولات — اطلب رمزاً جديداً', 'Too many wrong codes — ask for a new one');
+    case 'refresh_invalid':
+    case 'refresh_expired':
+    case 'refresh_reuse':
+      return _t('انتهت الجلسة — سجّل الدخول مرة أخرى', 'Your session ended — please sign in again');
+    case 'self_action':
+      return _t('لا يمكنك تنفيذ هذا الإجراء على نفسك', 'You can\'t do this to your own record');
+    case 'escalation':
+      return _t('لا يمكنك منح أو سحب صلاحيات لا تملكها', 'You can\'t grant or remove rights you don\'t hold yourself');
+    case 'org_forbidden':
+      return _t('لا تملك صلاحية الوصول لهذه المؤسسة', 'You don\'t have access to this organization');
+    case 'orgs_disabled':
+      return _t('المؤسسات متوقفة حالياً على المنصة', 'Organizations are switched off on the platform right now');
+    case 'LOGIN_EMAIL_ONLY':
+      return _t('سجّل الدخول بالبريد الإلكتروني', 'Please sign in with your e-mail');
+    case 'LOGIN_PHONE_ONLY':
+      return _t('سجّل الدخول برقم الهاتف', 'Please sign in with your phone number');
+  }
+  if (e.type == ApiErrorType.rateLimited) {
+    return _t('طلبات كثيرة — انتظر قليلاً ثم حاول مجدداً', 'Too many requests — wait a moment and try again') + _wait(apiRetryAfter(e));
+  }
+  return e.message;
+}

@@ -35,7 +35,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:label="NextBrain"
-        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:allowBackup="false">
 
         <meta-data
@@ -79,6 +79,10 @@
                 <data
                     android:host="nextbrain.site"
                     android:pathPrefix="/c/"
+                    android:scheme="https" />
+                <data
+                    android:host="nextbrain.site"
+                    android:pathPrefix="/live/"
                     android:scheme="https" />
             </intent-filter>
             <meta-data

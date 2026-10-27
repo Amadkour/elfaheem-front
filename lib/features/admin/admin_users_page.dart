@@ -21,6 +21,8 @@ import 'admin_table_export.dart' show adminUsersExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'admin_view_as_page.dart' show startViewAs;
+import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
+import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 
 class AdminUsersPage extends StatelessWidget {
@@ -358,7 +360,6 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
     final p = context.read<AdminUsersProvider>();
 
     if (loading) {
@@ -456,6 +457,22 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                                 role: u.role,
                               );
                             },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    // super admin: a user who lost both the phone and the recovery codes (the server answers
+                    // mfa_not_enabled when there is nothing to remove)
+                    if (isSuperNow(context) && context.read<MyAuthProvider>().currentUser?.id != u.id) ...[
+                      Row(
+                        children: [
+                          OutlineButton(
+                            key: const ValueKey('admin.user_mfa_reset'),
+                            label: mfaResetLabel(),
+                            color: context.colors.textMedium,
+                            icon: Icons.phonelink_erase_rounded,
+                            onPressed: () => confirmResetUserMfa(context, userId: u.id, name: u.name),
                           ),
                         ],
                       ),
@@ -804,6 +821,7 @@ Future<void> _grantDialog(
       builder: (ctx, setS) => Directionality(
         textDirection: dir,
         child: AlertDialog(
+          scrollable: true,
           title: Text(
             'admin_grant_subscription'.tr,
             style: const TextStyle(fontFamily: 'tajawal'),

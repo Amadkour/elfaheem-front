@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import '../org/org_common.dart' show openFileUrl, orgTypeIcons, orgTypeLabels;
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
+import '../shared/rag/rag_quota_admin.dart' show showRagQuotaAdminSheet;
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
@@ -131,6 +132,7 @@ Future<void> _openReview(BuildContext context, int id) async {
   final d = await OrgApi.i.getMap('$_base/$id');
   if (d == null || !context.mounted) return;
   bool trustChildren = asMap(d['settings'])['child_approval'] == 'parent';
+  bool sharingOn = asMap(asMap(d['settings'])['sharing'])['enabled'] != false;
   bool busy = false;
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
@@ -203,6 +205,17 @@ Future<void> _openReview(BuildContext context, int id) async {
                   }
                 },
               ),
+            if (d['parent_id'] == null && status == 'approved')
+              OrgSwitchRow(
+                key: const ValueKey('org.sharing'),
+                title: t('مشاركة البيانات مع المؤسسات الأخرى', 'Data sharing with other organizations'),
+                subtitle: t('إيقافها يمنع هذه المؤسسة من عرض أي مشاركة أو التحقق من خريجيها', 'Off: this organization cannot offer shares or answer graduate verification'),
+                value: sharingOn,
+                onChanged: (v) async {
+                  set(() => sharingOn = v);
+                  await OrgApi.i.put('$_base/$id/sharing', {'enabled': v}, t('تم', 'Done'));
+                },
+              ),
             const SizedBox(height: 8),
             if (status == 'pending') ...[
               PrimaryButton(isLoading: busy, background: c.success, label: t('اعتماد المؤسسة', 'Approve'),
@@ -236,6 +249,18 @@ Future<void> _openReview(BuildContext context, int id) async {
               icon: const Icon(Icons.payments_rounded),
               label: Text(t('رسوم العضوية', 'Membership fees'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
             ),
+            // the assistant library's per-organization quota: the Super Admin's override (PUT /rag/orgs/{id}/quota)
+            if (isSuperNow(ctx)) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                key: const ValueKey('org.rag_quota'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                onPressed: () => showRagQuotaAdminSheet(ctx, orgId: asInt(d['id']), orgName: orgNameOf(d)),
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: Text(t('حصة مكتبة المساعد', 'Assistant library quota'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              ),
+            ],
           ]),
         );
       }));
@@ -432,6 +457,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                     final go = await showDialog<bool>(
                       context: ctx,
                       builder: (dc) => AlertDialog(
+                        scrollable: true,
                         title: Text(t('كلمة مرور جديدة', 'New password')),
                         content: Column(mainAxisSize: MainAxisSize.min, children: [
                           AppPasswordField(controller: pwd, label: t('اكتبها أو اتركها فارغة لتوليد واحدة قوية', 'Type it, or leave empty to generate a strong one'),

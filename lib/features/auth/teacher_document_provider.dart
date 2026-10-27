@@ -2,6 +2,7 @@
 // features/auth/teacher_documents/teacher_document_provider.dart
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'teacher_onboarding_token.dart';
 import 'dart:developer';
 import 'dart:typed_data';
 
@@ -61,16 +62,9 @@ class TeacherDocumentProvider extends BaseProvider {
   bool isFinalized = false;
 
   // ── Load teacher's own overview ──────────────────────────────────────────
-  // NOTE: this is a GET with no body — the backend identifies the teacher
-  // from the auth token, not from an email field. `email` is kept as a
-  // parameter only so existing call sites (which pass it) don't need to
-  // change; it is intentionally unused in the request itself.
-  //
-  // The previous version of this method POSTed {'email': email} to
-  // '/api/v1/auth/teacher-documents', but that path is the *create document*
-  // endpoint (POST expects a JSON body with file_url, required_document_type_id
-  // or custom_title). Posting just {'email': ...} there would 422 every time
-  // and never actually return the overview — this GET is the fix.
+  // POST /teacher-documents/overview {email}. The server identifies the teacher from the onboarding token
+  // (`X-Onboarding-Token`, during registration) or the access token (a logged-in teacher); `email` must be that
+  // same account (403 onboarding_user_mismatch otherwise). Not POST /teacher-documents: that one creates a document.
   Future<void> loadOverview(String email) async {
     isLoadingOverview = true;
     notifyListeners();
@@ -79,6 +73,7 @@ class TeacherDocumentProvider extends BaseProvider {
       final res = await _api.post(
         '/api/v1/auth/teacher-documents/overview',
         body: {'email': email},
+        headers: TeacherOnboardingToken.headers,
       );
       if (res != null && res is Map) {
         _overview = TeacherDocumentsOverview.fromJson(
@@ -141,6 +136,7 @@ class TeacherDocumentProvider extends BaseProvider {
         fileName: fileName,
         filePath: filePath,
         fileBytes: fileBytes,
+        headers: TeacherOnboardingToken.headers,
       );
       if (uploadRes == null || uploadRes is! Map) return false;
 
@@ -155,6 +151,7 @@ class TeacherDocumentProvider extends BaseProvider {
       'required_document_type_id': ?requiredTypeId,
       'custom_title': ?customTitle,
       },
+        headers: TeacherOnboardingToken.headers,
       );
       if (res == null) return false;
 
@@ -304,7 +301,7 @@ class TeacherDocumentProvider extends BaseProvider {
   // ── Delete ────────────────────────────────────────────────────────────────
   Future<bool> deleteDocument(int documentId, {required String email}) async {
     try {
-      await _api.delete('/api/v1/auth/teacher-documents/$documentId');
+      await _api.delete('/api/v1/auth/teacher-documents/$documentId', headers: TeacherOnboardingToken.headers);
       await loadOverview(email);
       return true;
     } catch (e) {
@@ -328,12 +325,14 @@ class TeacherDocumentProvider extends BaseProvider {
       final res = await _api.post(
         '/api/v1/auth/teacher-documents/finalize',
         body: {'email': email},
+        headers: TeacherOnboardingToken.headers,
       );
       if (res != null && res is Map) {
         _overview = TeacherDocumentsOverview.fromJson(
           res as Map<String, dynamic>,
         );
         isFinalized = true;
+        TeacherOnboardingToken.clear(); // onboarding is over: the token has no further use
         return true;
       }
       return false;

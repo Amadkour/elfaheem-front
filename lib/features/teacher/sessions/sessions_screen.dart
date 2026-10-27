@@ -62,6 +62,8 @@ import '../home/teacher_models.dart';
 import '../../student/models.dart' show CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
 import 'components/course_details_section.dart';
+import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner;
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
@@ -221,6 +223,22 @@ class _TeacherSessionsView extends StatelessWidget {
                 child: DataLabEntryCard(
                   courseId: provider.course.id,
                   courseTitle: provider.course.titleEn ?? '',
+                ),
+              ),
+              // course profile: attendance per session · team grants · certificate rules · archive
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  child: AppBanner(
+                    icon: Icons.dashboard_customize_rounded,
+                    text: AppConfig.lang == 'ar'
+                        ? 'ملف المقرر: الحضور، فريق التدريس، الشهادات والأرشيف'
+                        : 'Course profile: attendance, teaching team, certificates and archive',
+                    action: TextButton(
+                      onPressed: () => openCourseProfile(context, provider.course.id),
+                      child: Text(AppConfig.lang == 'ar' ? 'فتح' : 'Open'),
+                    ),
+                  ),
                 ),
               ),
 

@@ -19,6 +19,9 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin/admin_common.dart';
+import '../shared/exam_engine/exam_authoring.dart' show ExamAuthoringApi;
+import '../shared/exam_engine/exam_quick.dart' show examsBySlot;
+import '../shared/exam_engine/exam_quick_screen.dart' show showSlotExamSheet;
 import 'org_my_exams.dart' show examPauseText;
 import 'org_providers.dart';
 import 'org_schedule_copies.dart' show timetableNamesOf;
@@ -90,6 +93,7 @@ String examConflictText(String type) => switch (type) {
       'students_clash' => t('امتحانان لطلاب مشتركين في الوقت نفسه', 'Two exams at once for the same students'),
       'room_double_booked' => t('مكان عليه امتحانان في الوقت نفسه', 'A room holds two exams at once'),
       'room_too_small' => t('الأماكن لا تكفي عدد الطلاب', 'The rooms can\'t seat all students'),
+      'practical_exam_room' => t('امتحان عملي في غير معمله', 'A practical exam outside its lab'),
       'invigilator_double_booked' => t('مراقب في امتحانين في الوقت نفسه', 'An invigilator in two exams at once'),
       'invigilator_unavailable' => t('مراقب في وقت غير متاح له', 'An invigilator at a time they are unavailable'),
       'missing_invigilator' => t('مراقب واحد على الأقل لكل مكان', 'At least one invigilator per room'),
@@ -536,6 +540,7 @@ class _ExamPageState extends State<_ExamPage> {
           error = null;
         });
       }
+      if (_made.isEmpty) _loadMade();
     } catch (x) {
       if (mounted) setState(() => error = _err(x));
     }
@@ -554,6 +559,36 @@ class _ExamPageState extends State<_ExamPage> {
       if (ex.code == 'stale_version') await _load();
     }
     if (mounted) setState(() => busy = false);
+  }
+
+  /// Engine exams made from this timetable's slots (settings.schedule_slot_id); empty when the engine is not routed.
+  Map<int, Map<String, dynamic>> _made = {};
+
+  Future<void> _loadMade() async {
+    final r = await ExamAuthoringApi().exams(orgId: widget.p.session.currentId);
+    if (mounted && r.ok) setState(() => _made = examsBySlot(asMapList(r.map['items'])));
+  }
+
+  /// Tapping an exam: create it now (or not), open the one already made, or change its time.
+  Future<void> _slot(Map<String, dynamic> x, {required bool editable}) async {
+    DateTime? at(String? hhmm) {
+      final d = DateTime.tryParse('${x['date']}');
+      final p = (hhmm ?? '').split(':');
+      if (d == null || p.length < 2) return null;
+      return AppTime.fromZone(DateTime(d.year, d.month, d.day, int.tryParse(p[0]) ?? 0, int.tryParse(p[1]) ?? 0));
+    }
+
+    final created = await showSlotExamSheet(context,
+        courseName: timetableNamesOf(widget.p).course(x['course_id']),
+        courseId: asInt(x['course_id']),
+        orgId: widget.p.session.currentId,
+        slotId: asInt(x['id']),
+        kind: '${e?['kind'] ?? 'final'}',
+        startsAt: at('${x['start_time']}'),
+        endsAt: at('${x['end_time']}'),
+        exam: _made[asInt(x['id'])],
+        onChangeTime: editable ? () => _move(x) : null);
+    if (created) _loadMade();
   }
 
   Future<void> _move(Map<String, dynamic> x) async {
@@ -795,7 +830,7 @@ class _ExamPageState extends State<_ExamPage> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: AppCard(
-                onTap: editable ? () => _move(x) : null,
+                onTap: () => _slot(x, editable: editable),
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Container(
                     width: 92,
@@ -813,6 +848,9 @@ class _ExamPageState extends State<_ExamPage> {
                       const SizedBox(height: 4),
                       Wrap(spacing: 6, runSpacing: 4, children: [
                         AppBadgePill(t('${x['students']} طالب', '${x['students']} students'), icon: Icons.people_alt_rounded, color: c.purple),
+                        _made.containsKey(asInt(x['id']))
+                            ? AppBadgePill(t('الاختبار جاهز', 'Exam created'), icon: Icons.task_alt_rounded, color: c.success)
+                            : AppBadgePill(t('لم يُنشأ الاختبار', 'Exam not created'), icon: Icons.edit_note_rounded, color: c.textLight),
                         for (final r in (x['room_ids'] as List? ?? const [])) AppBadgePill(names.room(r), icon: Icons.meeting_room_rounded),
                         for (final u in (x['invigilator_ids'] as List? ?? const [])) AppBadgePill(names.person(u), icon: Icons.visibility_rounded, color: c.accent2),
                       ]),

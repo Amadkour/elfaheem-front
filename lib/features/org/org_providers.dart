@@ -341,12 +341,12 @@ class OrgScheduleProvider extends AdminBase {
 
   /// Starts a background generation and follows it until it ends. A run already in progress is followed instead.
   /// [persistSettings] false: [settings] apply to this run only (stored with its revision, not on the timetable).
-  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true}) async {
+  Future<OrgCall> startGeneration({Map<String, dynamic>? settings, bool keepLocked = true, int seed = 7, bool persistSettings = true, bool complete = false}) async {
     final id = schedule!['id'];
     final r = await orgCall(
         () => api.post('$base/schedules/$id/generate',
             queryParams: {'background': true},
-            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false}),
+            body: {'settings': ?settings, 'keep_locked': keepLocked, 'seed': seed, if (!persistSettings) 'persist_settings': false, if (complete) 'complete': true}),
         quiet: true);
     final run = r.ok ? asMap(r.map['run']) : (r.code == 'generation_running' ? asMap(r.detail['run']) : const <String, dynamic>{});
     if (run.isNotEmpty) {
@@ -359,10 +359,20 @@ class OrgScheduleProvider extends AdminBase {
 
   void _follow(int scheduleId, int runId) {
     _poll?.cancel();
+    var misses = 0;
+    final until = DateTime.now().add(const Duration(minutes: 4)); // the server's budget is 90 s; never follow forever
     _poll = Timer.periodic(const Duration(seconds: 2), (tm) async {
       final r = await orgCall(() => api.get('$base/schedules/$scheduleId/runs/$runId'), quiet: true);
       if (_disposed) return tm.cancel();
-      if (!r.ok) return;           // transient: keep following (the server releases stale runs itself)
+      final lost = !r.ok && (++misses >= 5 || r.endpointMissing || r.error?.statusCode == 404);
+      if (lost || (r.ok && runIsOpen(r.map) && DateTime.now().isAfter(until))) {
+        tm.cancel();
+        genRun = {...?genRun, 'status': 'failed', 'error': t('انقطعت متابعة التوليد — أعد فتح الجدول', 'Lost track of the generation — reopen the timetable')};
+        notifyListeners();
+        return;
+      }
+      if (!r.ok) return;           // transient: keep following a few more times
+      misses = 0;
       genRun = r.map;
       notifyListeners();
       if (!runIsOpen(genRun)) {
@@ -371,6 +381,34 @@ class OrgScheduleProvider extends AdminBase {
         await loadSetup();
       }
     });
+  }
+
+  /// Saves settings.rules ({key: locked|flexible}) on the timetable. PUT replaces the whole timetable, so every field
+  /// is sent as stored (course_ids null = every course stays null).
+  Future<OrgCall> saveRules(Map<String, String> rules) async {
+    final s = schedule!;
+    final id = asInt(s['id']);
+    final body = {
+      ...ScheduleDraft.fromJson(s).toBody(),
+      'course_ids': s['course_ids'],
+      'settings': {...asMap(s['settings']), 'rules': rules},
+      'expected_version': ?s['version'],
+    };
+    final r = await orgCall(() => api.put('$base/schedules/$id', body: body), ok: t('حُفظت القواعد', 'Rules saved'), quiet: true);
+    if (r.ok) await open(id);
+    return r;
+  }
+
+  /// Accept (keep) or reject (remove) the sessions of generated blocks that broke a flexible rule.
+  Future<OrgCall> decideProposals(List<String> blockIds, {required bool accept}) async {
+    final id = schedule!['id'];
+    final r = await orgCall(() => api.post('$base/schedules/$id/proposals/decide',
+        body: {'block_ids': blockIds, 'accept': accept, 'expected_version': ?schedule!['version']}));
+    if (r.ok) {
+      _apply(r.map);
+      await validate();
+    }
+    return r;
   }
 
   Future<OrgCall> cancelGeneration() async {
@@ -415,16 +453,27 @@ class OrgScheduleProvider extends AdminBase {
       () => api.post('$base/schedules/${schedule!['id']}/revisions', body: {'label': (label ?? '').trim().isEmpty ? null : label!.trim()}),
       quiet: true);
 
+  /// Staff the timetable places in their unavailable time who have not agreed yet (409 staff_consent_pending):
+  /// {pending: [uid], declined: [uid], agreed: [uid]} — publishing again with [force] needs a reason.
+  Map<String, dynamic>? consentWait;
+
   /// Publishing: null when published; the server's hard conflicts when it refused (409 schedule_conflict).
-  Future<List<Map<String, dynamic>>?> publish() async {
+  Future<List<Map<String, dynamic>>?> publish({bool force = false, String? reason}) async {
     final id = schedule!['id'];
-    final r = await orgCall(() => api.post('$base/schedules/$id/activate'), ok: t('تم نشر الجدول للجميع', 'Timetable published'), quiet: true);
+    consentWait = null;
+    final r = await orgCall(
+        () => api.post('$base/schedules/$id/activate', queryParams: force ? {'force_consent': 'true', 'reason': reason ?? ''} : null),
+        ok: t('تم نشر الجدول للجميع', 'Timetable published'), quiet: true);
     if (r.ok) {
       _apply({...r.map, 'items': slots});
       await loadSetup();
       return null;
     }
     if (r.code == 'schedule_conflict') return asMapList(r.detail['conflicts']);
+    if (r.code == 'staff_consent_pending') {
+      consentWait = r.detail;
+      return const [];
+    }
     toast(orgErrorText(r.error!), error: true);
     return const [];
   }
@@ -522,17 +571,37 @@ class OrgScheduleProvider extends AdminBase {
     return r != null;
   }
 
+  /// GET …/validate `independent`: {hard, by_code, findings} from the clean-room validator (empty on old servers).
+  Map<String, dynamic> independent = const {};
+
   Future<void> validate() async {
     final id = schedule?['id'];
     if (id == null) return;
     final r = await run(() => api.get('$base/schedules/$id/validate'), makLoading: false);
     conflicts = r is Map ? asMapList(r['conflicts']) : [];
+    independent = r is Map ? asMap(r['independent']) : const {};
     notifyListeners();
   }
 
   /// Returns null when saved, or the list of hard conflicts when the server answered 409.
   Future<List<Map<String, dynamic>>?> editSlot(int slotId, Map<String, dynamic> patch, {bool force = false}) =>
       _slotCall(() => api.put('$base/schedules/${schedule!['id']}/slots/$slotId', body: {...patch, if (force) 'force': true}));
+
+  /// Pin / unpin a session (a pinned one is never moved by the generator). True when saved.
+  Future<bool> setLocked(int slotId, bool locked) async => await editSlot(slotId, {'locked': locked}) == null;
+
+  /// Change who teaches a session with a scope (course · weekly · once). [dryRun] returns the before / after plan
+  /// (ReassignPlan) and writes nothing; otherwise the timetable is reloaded when the server applied it.
+  Future<OrgCall> reassignSlot(int slotId, Map<String, dynamic> body, {bool dryRun = false}) async {
+    final id = schedule?['id'];
+    if (id == null) return const OrgCall(null);
+    final r = await orgCall(
+        () => api.post('$base/schedules/$id/slots/$slotId/reassign',
+            body: {...body, if (!dryRun) 'expected_version': ?schedule?['version']}, queryParams: {if (dryRun) 'dry_run': true}),
+        quiet: true);
+    if (!dryRun && (r.ok || r.code == 'stale_version')) await open(asInt(id));
+    return r;
+  }
 
   /// Drag & drop: the slot shows in its new cell at once and goes back if the server refuses. Sends the version the
   /// user is looking at, so a timetable someone else just changed answers stale_version instead of being overwritten.
@@ -552,6 +621,20 @@ class OrgScheduleProvider extends AdminBase {
       notifyListeners();
     }
     return res;
+  }
+
+  /// Instant check of a session being added / edited (dry_run: nothing is written) → {valid, conflicts}.
+  Future<Map<String, dynamic>?> previewSlot(Map<String, dynamic> body, {int? slotId}) async {
+    final id = schedule?['id'];
+    if (id == null) return null;
+    try {
+      final r = slotId == null
+          ? await api.post('$base/schedules/$id/slots', body: body, queryParams: {'dry_run': true})
+          : await api.put('$base/schedules/$id/slots/$slotId', body: body, queryParams: {'dry_run': true});
+      return asMap(r);
+    } on ApiException {
+      return null;
+    }
   }
 
   /// strategy when it clashes: keep · replace · shift (small change) · regenerate (no conflicts left)
@@ -632,6 +715,12 @@ class OrgScheduleProvider extends AdminBase {
       toast(on ? t('تم نشر الجدول للجميع', 'Timetable published') : t('تم إيقاف النشر', 'Unpublished'));
       if (r is Map) _apply({...r, 'items': slots});
       await loadSetup();
+      if (!on) {
+        // back to a plain Draft: fresh slots / result / conflicts and no leftover run, so Create and Publish work again
+        genRun = null;
+        await open(asInt(id));
+        await resumeRunIfAny();
+      }
       return true;
     } on ApiException catch (e) {
       toast(e.message, error: true);
@@ -699,8 +788,11 @@ class OrgMembershipProvider extends AdminBase {
   }
 
   Future<void> loadTimetable({int? orgId}) async {
-    final r = await run(() => api.get('$orgBase/public/schedule/me', queryParams: {if (orgId != null) 'org_id': orgId}));
-    timetables = r is Map ? asMapList(r['items']) : [];
+    // hard timeout: the page ends in data, empty or an error with retry — never an endless spinner
+    final r = await run(() => api
+        .get('$orgBase/public/schedule/me', queryParams: {if (orgId != null) 'org_id': orgId})
+        .timeout(const Duration(seconds: 20)));
+    if (!hasError) timetables = r is Map ? asMapList(r['items']) : [];
     notifyListeners();
   }
 }

@@ -312,8 +312,6 @@ class _PasswordCard extends StatelessWidget {
   final Future<void> Function() onSubmit;
   final Future<void> Function() onSubmitForget;
   final bool fromProfile;
-  final String? email;
-  final String? code;
 
   const _PasswordCard({
     required this.p,
@@ -339,7 +337,7 @@ class _PasswordCard extends StatelessWidget {
     this.busy = false,
     required this.onSubmit,
     this.fromProfile = true,
-    required this.onSubmitForget, this.email, this.code,
+    required this.onSubmitForget,
   }) ;
 
   @override

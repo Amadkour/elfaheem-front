@@ -111,6 +111,39 @@ Map<String, String> _codeTexts() => {
       'role_mismatch': t('هذا البريد لحساب بدور مختلف', 'This e-mail belongs to an account with a different role'),
       'last_admin': t('لا يمكن إنهاء عضوية آخر مدير للمؤسسة', 'The last organization admin can\'t be removed'),
       'self': t('لا يمكنك إنهاء عضويتك بنفسك', 'You can\'t end your own membership'),
+      'self_action': t('لا يمكنك تنفيذ هذا الإجراء على نفسك', 'You can\'t do this to your own record'),
+      'escalation': t('لا يمكنك منح أو سحب صلاحيات لا تملكها', 'You can\'t grant or remove rights you don\'t hold yourself'),
+      'inherited_role': t('هذا الدور معرّف في المؤسسة الأم — عدّله من هناك', 'This role is defined by the parent organization — edit it there'),
+      // sharing with other organizations (org_sharing_pages.dart)
+      'sharing_disabled': t('مشاركة البيانات بين المؤسسات متوقفة', 'Cross-organization sharing is switched off'),
+      'sharing_root_only': t('تُدار الشراكات ومفاتيح API من حساب المؤسسة الرئيسية', 'Partnerships and API keys are managed from the main organization account'),
+      'grant_revoked': t('أنهت المؤسسة المانحة هذا الوصول — اطلب الوصول من جديد لتقرر هي', 'The sharing organization ended this access — request it again so they can decide'),
+      'too_many_keys': t('بلغت الحد الأقصى للمفاتيح النشطة — ألغِ مفتاحاً أولاً', 'Maximum number of active keys reached — revoke one first'),
+      'bad_resource_type': t('نوع العنصر غير معروف', 'Unknown resource type'),
+      'code_generation_failed': t('تعذر توليد كود — حاول مرة أخرى', 'Could not generate a code — try again'),
+      'share_not_found': t('المشاركة غير موجودة أو غير نشطة', 'This share does not exist or is not active'),
+      'share_public': t('هذه المشاركة عامة — لا تحتاج طلباً', 'This share is public — no request needed'),
+      'invite_only': t('هذه المشاركة بكود دعوة فقط', 'This share is invite-only'),
+      'grant_exists': t('يوجد طلب أو وصول بالفعل', 'There is already a request or an access'),
+      'share_full': t('بلغت المشاركة الحد الأقصى للمؤسسات', 'This share reached its maximum organizations'),
+      'own_share': t('هذه مشاركة مؤسستك', 'This is your own organization\'s share'),
+      'share_expired': t('انتهت صلاحية المشاركة', 'This share has expired'),
+      'share_revoked': t('أُلغيت المشاركة', 'This share was revoked'),
+      'share_not_yet_valid': t('المشاركة لم تبدأ بعد', 'This share has not started yet'),
+      'no_access': t('مؤسستك لا تملك وصولاً إلى هذه المشاركة', 'Your organization has no access to this share'),
+      'use_verify': t('استخدم تبويب التحقق لهذه المشاركة', 'Use the Verify tab for this share'),
+      'resource_not_found': t('العنصر غير موجود في مؤسستك', 'This item is not in your organization'),
+      'resource_required': t('اختر العنصر الذي تريد مشاركته', 'Choose what to share'),
+      'bad_methods': t('اختر طريقة وصول صحيحة واحدة على الأقل', 'Choose at least one valid access method'),
+      'no_invite_method': t('هذه المشاركة لا تستخدم كود دعوة', 'This share has no invite code'),
+      'too_many_rows': t('عدد المعرّفات أكبر من المسموح (2000)', 'Too many identifiers (max 2000)'),
+      'no_queries': t('أدخل معرّفاً واحداً على الأقل', 'Enter at least one identifier'),
+      'bad_file': t('تعذر قراءة الملف', 'The file could not be read'),
+      'file_too_large': t('الملف أكبر من 2 ميجابايت', 'The file is larger than 2 MB'),
+      'bad_api_key': t('مفتاح API غير صحيح أو منتهٍ', 'Invalid or expired API key'),
+      'scope_missing': t('هذا المفتاح لا يملك صلاحية التحقق', 'This key cannot verify'),
+      'key_not_found': t('المفتاح غير موجود', 'Key not found'),
+      'bad_scopes': t('نطاق غير معروف', 'Unknown scope'),
       'bad_window': t('تاريخ البداية يجب أن يسبق تاريخ الانتهاء', 'The start must be before the end'),
       'expiry_in_past': t('تاريخ الانتهاء في الماضي', 'The expiry date is in the past'),
       'expired_window': t('انتهت مدة العضوية — مدّدها أولاً', 'The membership period is over — extend it first'),
@@ -159,6 +192,8 @@ Map<String, String> _codeTexts() => {
       'code_exhausted': t('استُنفد عدد استخدامات الكود', 'The code has no uses left'),
       'code_other_unit': t('هذا الكود لوحدة أخرى', 'This code belongs to another unit'),
       'code_required': t('الانضمام لهذه الوحدة بكود فقط', 'This unit is joined with a code only'),
+      'request_code_required': t('أدخل كود الانضمام الصحيح لإرسال طلبك — يلزم الكود وموافقة الإدارة معاً',
+          'Enter a valid join code to send your request — both a code and an approval are needed'),
       'not_eligible': t('لا تنطبق عليك شروط الانضمام', 'You don\'t meet the joining conditions'),
       'already_pending': t('لديك طلب قيد المراجعة بالفعل', 'You already have a pending request'),
       'already_in_program': t('أنت مسجّل في قسم علمي آخر', 'You are already in another academic department'),
@@ -199,11 +234,30 @@ Map<String, String> _codeTexts() => {
       'lab_needs_assistant': t('السكشن يحتاج معيداً (أو اسمح للمدرس بتدريسه من الإعدادات)', 'The lab needs an assistant (or allow teachers to teach labs in settings)'),
       // schedules
       'bad_dates': t('تاريخ البداية يجب أن يسبق النهاية', 'The start date must be before the end'),
+      'term_exists': t('هذا الفصل موجود بالفعل لهذا العام', 'This term already exists for the year'),
+      'term_overlap': t('يتداخل مع فصل موجود', 'Overlaps an existing term'),
+      'bad_draft': t('المسودة غير صالحة', 'The draft is not valid'),
+      'periods_exist': t('للمؤسسة فترات بالفعل', 'The organization already has periods'),
       'outside_term': t('التواريخ خارج حدود الفصل الدراسي', 'The dates are outside the term'),
       'bad_days': t('أيام غير صحيحة', 'Invalid days'),
       'schedule_published': t('الجدول منشور — أوقف النشر أولاً للتعديل', 'The timetable is published — unpublish it to edit'),
       'published': t('تعديل الجدول المنشور يحتاج صلاحية الاعتماد', 'Editing a published timetable needs approval rights'),
       'generation_running': t('يوجد توليد جارٍ لهذا الجدول', 'A generation is already running for this timetable'),
+      'rule_locked': t('هذه قاعدة ثابتة ولا تُخفَّف', 'This is a fixed rule and is never relaxed'),
+      'proposals_pending': t('اقبل أو ارفض كل قاعدة مكسورة مقترحة قبل النشر', 'Accept or reject every proposed rule break before publishing'),
+      'proposal_not_found': t('الاقتراح لم يعد موجوداً — أعد التحميل', 'The proposal no longer exists — reload'),
+      'finding_not_found': t('التوصية لم تعد قائمة — حُدّث فحص البيانات', 'The recommendation no longer applies — the data check was refreshed'),
+      'not_automatic': t('هذه التوصية تُنفَّذ يدوياً', 'This recommendation is applied by hand'),
+      'action_not_found': t('هذا الحل لم يعد متاحاً — حُدّثت القائمة', 'That fix is no longer available — the list was refreshed'),
+      'reason_required': t('اكتب سبب التجاوز', 'Write the reason for the override'),
+      'bad_action': t('الحل لا يحدد الحصة', 'The fix does not name a session'),
+      'reassign_not_better': t('النسخة بعد التغيير أسوأ من الحالية', 'The version after the change ranks worse than the current one'),
+      'slot_not_found': t('الحصة غير موجودة', 'The session was not found'),
+      'date_required': t('حدّد تاريخ الحصة', 'Pick the session date'),
+      'bad_date': t('التاريخ لا يقع في يوم هذه الحصة', "That date is not on this session's weekday"),
+      'not_published': t('الجدول غير منشور بعد', 'The timetable is not published yet'),
+      'not_enrolled': t('لست مسجلاً في هذا المقرر', 'You are not enrolled in this course'),
+      'occurrence_not_found': t('التغيير غير موجود', 'The change was not found'),
       'stale_version': t('عدّل مستخدم آخر هذا الجدول — حمّلنا أحدث نسخة، أعد المحاولة', 'Someone else changed this timetable — the latest version is loaded, try again'),
       // suggestions & horizon (docs/backend/scheduling-spec.md)
       'suggestion_stale': t('تغيّر الجدول منذ هذا الاقتراح — حدّثنا الاقتراحات، راجعها مجدداً', 'The timetable changed since this suggestion — suggestions were refreshed, review them again'),
@@ -231,6 +285,8 @@ Map<String, String> _codeTexts() => {
       'not_running': t('التوليد انتهى بالفعل', 'The generation already finished'),
       'schedule_conflict': t('توجد تعارضات تمنع الحفظ', 'There are clashes that block this'),
       'cannot_shift': t('لا يوجد وقت فارغ قريب لنقل الحصص المتعارضة', 'No nearby free time to move the clashing sessions'),
+      // organization / department profile
+      'logo_url_not_allowed': t('ارفع الشعار من التطبيق أو استخدم رابط https عاماً', 'Upload the logo in the app or use a public https link'),
     };
 
 /// The text of one server code (local checks reuse the server's wording).
@@ -239,6 +295,10 @@ String orgCodeText(String code) => _codeTexts()[code] ?? code;
 /// A short, translated sentence for any [ApiException] the org API can raise.
 String orgErrorText(ApiException e) {
   final c = e.code;
+  if (c == 'generation_blocked') {        // schedule_auto.preconditions: the exact reasons, in the user's language
+    final rs = asMapList(asMap(ApiException.asMap(e.body)?['detail'])['reasons']);
+    if (rs.isNotEmpty) return rs.map((r) => t('${r['text_ar']}', '${r['text_en']}')).join(' · ');
+  }
   if (c != null) {
     final txt = _codeTexts()[c];
     if (txt != null) {
@@ -334,6 +394,7 @@ Map<String, String> joinMethodLabels() => {
       'auto': t('قبول تلقائي', 'Automatic'),
       'approval': t('بموافقة', 'With approval'),
       'code': t('بكود دعوة', 'Invitation code'),
+      'code_req': t('كود + طلب وموافقة', 'Code + request'),
     };
 
 String joinMethodHelp(String m) => switch (m) {
@@ -342,8 +403,52 @@ String joinMethodHelp(String m) => switch (m) {
       'approval' => t('يصل الطلب للمعتمد المحدد بالأسفل ليقبله أو يرفضه.', 'The request goes to the approver below, who accepts or rejects it.'),
       'code' => t('ينضم من لديه كود صالح وتنطبق عليه الشروط. أدِر الأكواد من تبويب "الأكواد".',
           'People with a valid code who meet the conditions join. Manage codes in the "Codes" tab.'),
+      'code_req' => t('يلزم كود صالح وطلب معاً: الكود يرسل الطلب فقط، ثم يقبله المعتمد أو يرفضه.',
+          'A valid code AND a request: the code only sends the request, then the approver accepts or rejects it.'),
       _ => t('لا أحد يستطيع طلب الانضمام الآن.', 'Nobody can ask to join right now.'),
     };
+
+/// The join paths a unit can offer at once (multi-select). `manual` add by staff always works and is not a path.
+Map<String, String> joinPathLabels() => {
+      'auto': t('انضمام تلقائي', 'Automatic join'),
+      'request': t('طلب وموافقة', 'Request + approval'),
+      'code': t('كود / QR / رابط', 'Code / QR / link'),
+      'code_req': t('كود + طلب وموافقة', 'Code + request + approval'),
+    };
+
+String joinPathHelp(String p) => switch (p) {
+      'auto' => joinMethodHelp('auto'),
+      'request' => joinMethodHelp('approval'),
+      'code' => t('ينضم مباشرة من لديه كود صالح (أو امسح رمز QR / افتح الرابط) وتنطبق عليه الشروط.',
+          'People with a valid code (or who scan the QR / open the link) and meet the conditions join directly.'),
+      'code_req' => joinMethodHelp('code_req'),
+      _ => '',
+    };
+
+const _pathOfMethod = {'auto': 'auto', 'approval': 'request', 'code': 'code', 'code_req': 'code_req'};
+
+/// The paths of a policy JSON: `methods` when the server sends it, else derived from the single `method`.
+Set<String> joinPathsOf(Map<String, dynamic> p) {
+  final m = (p['methods'] as List?)?.map((e) => '$e').where(joinPathLabels().containsKey).toSet();
+  if (m != null && m.isNotEmpty) return m;
+  final one = _pathOfMethod['${p['method']}'];
+  return one == null ? <String>{} : {one};
+}
+
+/// The legacy single method that best describes a set of paths (auto > request > code > code_req).
+String primaryJoinMethod(Set<String> paths) {
+  for (final e in const [('auto', 'auto'), ('request', 'approval'), ('code', 'code'), ('code_req', 'code_req')]) {
+    if (paths.contains(e.$1)) return e.$2;
+  }
+  return 'closed';
+}
+
+/// Short member-facing description of every path a unit offers ("Automatic join · Code / QR / link").
+String joinPathsText(Map<String, dynamic> p) {
+  final paths = joinPathsOf(p);
+  if (paths.isEmpty) return joinMethodLabels()['closed']!;
+  return [for (final k in joinPathLabels().keys) if (paths.contains(k)) joinPathLabels()[k]!].join(' · ');
+}
 
 Map<String, String> joinRoleLabels() => {
       'student': t('الطلاب', 'Students'),
@@ -459,6 +564,7 @@ String conflictTypeText(String? type) =>
 class JoinPolicyDraft {
   JoinPolicyDraft({
     this.method = 'closed',
+    Set<String>? paths,
     this.approver = 'manager',
     Set<int>? assistantIds,
     Set<String>? roles,
@@ -472,7 +578,16 @@ class JoinPolicyDraft {
         roles = roles ?? <String>{'student'},
         programIds = programIds ?? <int>{},
         levels = levels ?? <String>{},
-        fields = fields ?? <Map<String, dynamic>>[];
+        fields = fields ?? <Map<String, dynamic>>[],
+        paths = paths ?? {if (_pathOfMethod[method] != null) _pathOfMethod[method]!};
+
+  /// The join paths (multi-select). `method` follows them (the strongest path) for older servers.
+  final Set<String> paths;
+
+  void togglePath(String p, bool on) {
+    on ? paths.add(p) : paths.remove(p);
+    method = primaryJoinMethod(paths);
+  }
 
   String method, approver, cohort, unverified;
   final Set<int> assistantIds, programIds;
@@ -483,6 +598,7 @@ class JoinPolicyDraft {
   /// `policy` of GET /join-policy (`{method:"closed", configured:false}` when never configured).
   factory JoinPolicyDraft.fromJson(Map<String, dynamic> p) => JoinPolicyDraft(
         method: '${p['method'] ?? 'closed'}',
+        paths: joinPathsOf(p),
         approver: '${p['approver'] ?? 'manager'}',
         assistantIds: {...((p['assistant_ids'] as List?) ?? const []).map((e) => asInt(e))},
         roles: p['roles'] is List ? {...(p['roles'] as List).map((e) => '$e')} : null,
@@ -494,7 +610,10 @@ class JoinPolicyDraft {
         fields: [for (final f in asMapList(p['fields'])) Map<String, dynamic>.from(f)],
       );
 
-  bool get needsApprover => method == 'approval';
+  /// `approval` and `code_req` (a valid code AND an approval) both need an approver.
+  bool get needsApprover => paths.contains('request') || paths.contains('code_req');
+
+  bool get closed => paths.isEmpty;
 
   /// Audience narrowing by cohort / level only makes sense for students.
   bool get targetsStudents => roles.contains('student');
@@ -502,7 +621,8 @@ class JoinPolicyDraft {
   /// The PUT body. The PUT replaces the whole policy, so every field is sent; settings that don't apply to the
   /// chosen method are sent with their neutral defaults instead of stale values.
   Map<String, dynamic> toBody() => {
-        'method': method,
+        'method': primaryJoinMethod(paths),
+        'methods': [for (final k in joinPathLabels().keys) if (paths.contains(k)) k],
         'approver': needsApprover ? approver : 'manager',
         'assistant_ids': needsApprover && approver == 'assistants' ? (assistantIds.toList()..sort()) : <int>[],
         'roles': roles.toList(),
@@ -540,8 +660,18 @@ class JoinPolicyDraft {
   }
 }
 
-/// The code a member must type: only when the method is `code` (or the server says one is required).
-bool unitNeedsCode(Map<String, dynamic> policy) => policy['code_required'] == true || policy['method'] == 'code';
+/// The code a member must type: when the method is `code` or `code_req` (or the server says one is required).
+bool unitNeedsCode(Map<String, dynamic> policy) => policy.containsKey('code_required')
+    ? policy['code_required'] == true
+    : policy['method'] == 'code' || policy['method'] == 'code_req';
+
+/// A code field is shown whenever a code path is open, even when another path makes it optional.
+bool unitAcceptsCode(Map<String, dynamic> policy) => unitNeedsCode(policy) || joinPathsOf(policy).any((p) => p.startsWith('code'));
+
+/// `code_req`: the code only submits the request — an approver still decides.
+bool unitNeedsApproval(Map<String, dynamic> policy) => policy.containsKey('needs_approval')
+    ? policy['needs_approval'] == true
+    : policy['method'] == 'approval' || policy['method'] == 'code_req';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Schedule draft

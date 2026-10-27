@@ -12,7 +12,6 @@
 library;
 
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
@@ -25,6 +24,7 @@ import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
+import 'mfa_verify_screen.dart';
 import 'auth_widgets.dart';
 import 'verified_screen.dart';
 
@@ -186,6 +186,10 @@ Future<void> continueWithGoogle(
         } else {
           nav.pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
         }
+        break;
+
+      case GoogleAuthResult.mfa:
+        await openMfaStep(nav, auth);
         break;
 
       case GoogleAuthResult.needsVerification:
