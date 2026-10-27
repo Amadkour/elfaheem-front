@@ -3,22 +3,20 @@
 // ONE list of every admin service (icon, colour, label, description, badge,
 // target page). It feeds two UIs:
 //   • the web / rail sidebar: each group is a sidebar tab → AdminServicesHub
-//   • the phone "More" tab:   each group is a SettingsGroup of SettingsTiles
+//   • the phone "More" tab:   each group is an AppSettingsGroup of AppSettingsTiles (searchable)
 //
 // So an icon / label / page is changed in exactly one place.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaints_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
-    show SettingsTile;
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart'
     show Breakpoints;
-import 'package:flutter_education_app/utils/widget/count_badge.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
@@ -415,22 +413,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
   ];
 }
 
-// ── phone: SettingsTile version of a service ─────────────────────────────────
-Widget adminServiceTile(AdminService s) {
-  Widget tile = Builder(
-    builder: (context) => SettingsTile(
+// ── phone: settings-row version of a service (the description doubles as search text) ──
+Widget adminServiceTile(AdminService s) => AppSettingsTile(
       icon: s.icon,
-      iconBg: s.colors.last.withAlpha(38),
-      iconColor: s.colors.last,
+      color: s.colors.last,
       label: s.labelText,
+      subtitle: s.descText,
+      badge: s.badge,
+      featureKey: s.featureKey,
       onTap: s.onTap,
-    ),
-  );
-  if (s.badge != null) tile = TileCountOverlay(count: s.badge!, child: tile);
-  if (s.featureKey != null)
-    tile = ParentComponent(featureKey: s.featureKey!, child: tile);
-  return tile;
-}
+    );
 
 // ── web: hub page (one sidebar tab = one group) ──────────────────────────────
 class AdminServicesHub extends StatelessWidget {

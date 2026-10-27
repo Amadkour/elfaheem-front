@@ -10,7 +10,7 @@
 //    Support tab carries the complaints badge.
 //
 //  • Phone → 5 tabs: Overview · Students · Courses · Teachers · More
-//    "More" lists the same services as SettingsTiles.
+//    "More" lists the same services as searchable AppSettingsTiles (app_settings.dart).
 //
 // Tabs 0-3 are identical in both layouts, so AdminOverviewPage.onOpenTab keeps
 // working whichever layout is showing.
@@ -20,18 +20,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
-    show SettingsTile;
+import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart'
-    show ProfileHeader;
 import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart'
-    show WideShell, RailShell, MobileShell;
-import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart'
-    show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/refresh_button.dart';
@@ -43,7 +37,6 @@ import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
-import '../shared/profile/components/setting_group.dart';
 import 'admin_common.dart';
 import 'admin_courses_page.dart';
 import 'admin_overview_page.dart';
@@ -112,14 +105,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'developer',
   ].contains(context.read<MyAuthProvider>().currentUser?.role ?? '');
 
-  void _onAttention() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void initState() {
     super.initState();
-    AttentionService.instance.addListener(_onAttention);   // Overview badge = my to-dos (GET /me/attention)
 
     // ── tabs 0-3: same in every layout ─────────────────────────────────
     final overview = _AdminTab(
@@ -147,13 +135,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       child: AdminUsersPage(role: 'teacher', embedded: true),
     );
 
+    // Badges (GET /me/attention, drawn at the leaf): Overview = my to-dos, Finance = transfers to review,
+    // Support = complaints with news; pending payouts are not in the feed and stay a provider count (badge).
     DashboardItem data(
       IconData o,
       IconData a,
       String label,
       int i,
       Widget page,
-    ) => DashboardItem(o, a, label, () => _refreshTab(i), page);
+    ) => DashboardItem(o, a, label, () => _refreshTab(i), page,
+        attentionKeys: i == 0 ? const [AttentionTabs.home] : const []);
 
     final head = [
       data(
@@ -198,6 +189,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           titleKey: _moreLabel,
           child: _MorePage(showServices: true),
         ),
+        attentionKeys: const [AttentionTabs.adminFinance, AttentionTabs.adminSupport],
       ),
     ];
 
@@ -213,6 +205,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             onRefresh: _refreshBadges,
             child: AdminServicesHub(groupId: groupId, onRefresh: _refreshBadges),
           ),
+          attentionKeys: switch (groupId) {
+            'finance' => const [AttentionTabs.adminFinance],
+            'support' => const [AttentionTabs.adminSupport],
+            _ => const [],
+          },
         );
 
     _wideItems = [
@@ -264,7 +261,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   void dispose() {
-    AttentionService.instance.removeListener(_onAttention);
     _tabs.dispose();
     _payouts.dispose();
     _complaints.dispose();
@@ -307,38 +303,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             textDirection: pageDirection,
             child: LayoutBuilder(
               builder: (context, constraints) {
-                // select: rebuild only when the NUMBER changes.
+                // select: rebuild only when the NUMBER changes (the attention counts are drawn at the leaf).
                 final payouts = context
                     .select<AdminPendingPayoutsProvider, int>((p) => p.count);
-                final transfers = context.select<TeacherTransfersProvider, int>(
-                  (p) => p.total,
-                );
-                final complaints = context.select<ComplaintProvider, int>(
-                  (p) => p.count,
-                );
-
-                final todo = AttentionService.instance.count(AttentionTabs.home);
                 for (final item in _mobileItems) {
-                  item.badge = item.label == _moreLabel
-                      ? payouts + transfers + complaints
-                      : (item.label == 'admin_overview_2' ? todo : 0);
+                  item.badge = item.label == _moreLabel ? payouts : 0;
                 }
                 for (final item in _wideItems) {
-                  if (item.label == _financeLabel) {
-                    item.badge = payouts + transfers;
-                  } else if (item.label == _supportLabel) {
-                    item.badge = complaints;
-                  } else if (item.label == 'admin_overview_2') {
-                    item.badge = todo;
-                  } else {
-                    item.badge = 0;
-                  }
+                  item.badge = item.label == _financeLabel ? payouts : 0;
                 }
 
                 final w = constraints.maxWidth;
-                final isWide = w >= Breakpoints.desktop;
-                final isRail = w >= Breakpoints.mobile;
-                final items = (isWide || isRail) ? _wideItems : _mobileItems;
+                final items = w >= Breakpoints.mobile ? _wideItems : _mobileItems;
 
                 // The two layouts have different tab counts → never point past the end.
                 final current = tabs.currentTab.clamp(0, items.length - 1);
@@ -347,27 +323,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   if (mounted) tabs.onChangeTab(i);
                 }
 
-                if (isWide) {
-                  return WideShell(
-                    currentIndex: current,
-                    onTap: onTap,
-                    dashboardItems: items,
-                    unreadCount: 0,
-                  );
-                }
-                if (isRail) {
-                  return RailShell(
-                    currentIndex: current,
-                    onTap: onTap,
-                    dashboardItems: items,
-                    unreadCount: 0,
-                  );
-                }
-                return MobileShell(
-                  currentIndex: current,
-                  onTap: onTap,
-                  dashboardItems: items,
-                );
+                return AppShell(width: w, currentIndex: current, onTap: onTap, items: items);
               },
             ),
           ),
@@ -458,11 +414,6 @@ class _MorePageState extends State<_MorePage> {
     });
   }
 
-  Widget _padded(Widget child, {EdgeInsets? padding}) => Padding(
-    padding: padding ?? const EdgeInsets.symmetric(horizontal: 20),
-    child: child,
-  );
-
   @override
   Widget build(BuildContext context) {
     context.watch<LangProvider>();
@@ -472,103 +423,80 @@ class _MorePageState extends State<_MorePage> {
         ? adminServiceGroups(context)
         : const <AdminServiceGroup>[];
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-            child: Column(
-              children: [
-                const SizedBox(height: 24),
-                _padded(ProfileHeader(provider: p)),
-                const SizedBox(height: 28),
-
-                // ── Service groups (phone only) ──────────────────────────
-                for (final g in groups) ...[
-                  _padded(
-                    SettingsGroup(
-                      title: g.titleKey.tr,
-                      icon: g.icon,
-                      children: [
-                        for (final s in g.visibleServices) adminServiceTile(s),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                ],
-
-                // ── Settings ─────────────────────────────────────────────
-                _padded(
-                  SettingsGroup(
-                    title: 'settings'.tr,
-                    icon: Icons.settings_rounded,
-                    children: [
-                      const CalendarEntryTile(),
-                      SettingsTile(
-                        icon: Icons.manage_accounts_rounded,
-                        iconBg: AdminPalette.indigo.last.withAlpha(38),
-                        iconColor: AdminPalette.indigo.last,
-                        label: 'admin_my_account'.tr,
-                        onTap: () => _push(const AdminProfilePage()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.translate_rounded,
-                        iconBg: AdminPalette.violet.last.withAlpha(38),
-                        iconColor: AdminPalette.violet.last,
-                        label: 'change_language'.tr,
-                        onTap: () => _push(const ChangeLanguageScreen()),
-                      ),
-                      SettingsTile(
-                        icon: Icons.dark_mode_rounded,
-                        iconBg: c.darkIconBg,
-                        iconColor: c.textDark,
-                        label: 'dark_mode'.tr,
-                        trailing: AppSwitch(
-                          value: p.darkMode,
-                          onChanged: (b) async {
-                            await p.changeMode(b);
-                          },
-                          semanticLabel: 'dark_mode'.tr,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-
-                // ── Logout ───────────────────────────────────────────────
-                _padded(
-                  SettingsGroup(
-                    title: 'exit'.tr,
-                    icon: Icons.exit_to_app_rounded,
-                    itemBackground: c.danger.withAlpha(30),
-                    children: [
-                      SettingsTile(
-                        key: const ValueKey('profile.logout'),
-                        icon: Icons.logout_rounded,
-                        iconBg: c.dangerTint,
-                        iconColor: c.danger,
-                        label: 'logout'.tr,
-                        onTap: () async {
-                          final ok = await Helpers.confirmDialog(context);
-                          if (ok == true && context.mounted) {
-                            await context.read<ProfileProvider>().logout(
-                              context,
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                ),
-              ],
-            ),
-          ),
-        ),
+    // AppSettingsPage: grouped cards, and a search field once the services push the page past 8 tiles.
+    return AppSettingsPage(
+      header: AppSettingsHeader(
+        name: p.name,
+        role: p.role,
+        email: p.email,
+        imageUrl: p.imageUrl,
+        heroTag: 'profile-user-${p.id}',
       ),
+      groups: [
+        // ── Service groups (phone only) ──────────────────────────────────
+        for (final g in groups)
+          AppSettingsGroup(
+            title: g.titleKey.tr,
+            subtitle: g.subtitleKey.tr,
+            icon: g.icon,
+            children: [for (final s in g.visibleServices) adminServiceTile(s)],
+          ),
+
+        // ── Settings ─────────────────────────────────────────────────────
+        AppSettingsGroup(
+          title: 'settings'.tr,
+          icon: Icons.settings_rounded,
+          children: [
+            const CalendarEntryTile(),
+            AppSettingsTile(
+              icon: Icons.manage_accounts_rounded,
+              color: AdminPalette.indigo.last,
+              label: 'admin_my_account'.tr,
+              onTap: () => _push(const AdminProfilePage()),
+            ),
+            AppSettingsTile(
+              icon: Icons.translate_rounded,
+              color: AdminPalette.violet.last,
+              label: 'change_language'.tr,
+              onTap: () => _push(const ChangeLanguageScreen()),
+            ),
+            AppSettingsTile(
+              icon: Icons.dark_mode_rounded,
+              color: c.textDark,
+              label: 'dark_mode'.tr,
+              trailing: AppSwitch(
+                value: p.darkMode,
+                onChanged: (b) async {
+                  await p.changeMode(b);
+                },
+                semanticLabel: 'dark_mode'.tr,
+              ),
+            ),
+          ],
+        ),
+
+        // ── Logout ───────────────────────────────────────────────────────
+        AppSettingsGroup(
+          title: 'exit'.tr,
+          icon: Icons.exit_to_app_rounded,
+          danger: true,
+          children: [
+            AppSettingsTile(
+              key: const ValueKey('profile.logout'),
+              featureKey: 'profile.logout',
+              icon: Icons.logout_rounded,
+              color: c.danger,
+              label: 'logout'.tr,
+              onTap: () async {
+                final ok = await Helpers.confirmDialog(context);
+                if (ok == true && context.mounted) {
+                  await context.read<ProfileProvider>().logout(context);
+                }
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

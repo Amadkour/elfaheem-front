@@ -597,15 +597,15 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 18),
+          Icon(icon, color: context.colors.onHero, size: 18),
           const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               value,
               maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
                 fontFamily: 'bahji',
@@ -621,7 +621,7 @@ class _StatCard extends StatelessWidget {
               label,
               maxLines: 1,
               style: TextStyle(
-                color: Colors.white,
+                color: context.colors.onHero,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
                 overflow: TextOverflow.ellipsis,

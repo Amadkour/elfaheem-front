@@ -34,8 +34,7 @@ import 'package:flutter_education_app/features/shared/profile/components/setting
 import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show ProfileHeader;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart' show WideShell, RailShell, MobileShell;
-import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart' show DashboardItem;
+import 'package:flutter_education_app/design/app_shell.dart' show AppShell, DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
@@ -153,7 +152,6 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    AttentionService.instance.addListener(_onAttention);
     AttentionService.instance.orgTabRequest.addListener(_onOrgTab);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<OrgSession>().load().then((_) => _onOrgTab());
@@ -162,16 +160,11 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
 
   @override
   void dispose() {
-    AttentionService.instance.removeListener(_onAttention);
     AttentionService.instance.orgTabRequest.removeListener(_onOrgTab);
     AttentionService.instance.focusOrg(null);
     _tabs.dispose();
     _dash.dispose();
     super.dispose();
-  }
-
-  void _onAttention() {
-    if (mounted) setState(() {});
   }
 
   /// A deep link (attention item, badge list) asked for a section: switch org if needed, then jump.
@@ -188,29 +181,38 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
   }
 
   /// Sections follow MY rights. [compact] = phone bottom bar: Services folds into "More".
+  /// Navigation badges = what waits in each section, from GET /me/attention (join requests, department choices,
+  /// decisions, unplaced sessions, forms, complaints, governance …), drawn at the leaf of the shell.
   List<(String, DashboardItem)> _items(OrgSession s, {required bool compact}) {
     final staffRole = '${s.current?['my_role'] ?? ''}';
     final people = _peopleSubs(s);
     final academics = _academicSubs(s, staffRole);
     final services = _serviceSubs(s);
     final settingsTitle = compact ? t('المزيد', 'More') : t('الإعدادات', 'Settings');
+    final oid = s.currentId;
     return [
       ('home', DashboardItem(Icons.dashboard_outlined, Icons.dashboard_rounded, t('الرئيسية', 'Home'), null,
           const _OrgTab(title: 'org', child: _OrgHomePage()))),
       if (people.isNotEmpty)
         ('people', DashboardItem(Icons.groups_outlined, Icons.groups_rounded, t('الأعضاء', 'People'), null,
-            _OrgTab(title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)))),
+            _OrgTab(title: t('الأعضاء والإدارات', 'People & departments'), child: _SectionHub(id: 'people', subs: people)),
+            attentionKeys: const [AttentionTabs.orgPeople], attentionOrgId: oid)),
       if (academics.isNotEmpty)
         ('academics', DashboardItem(Icons.school_outlined, Icons.school_rounded, t('الأكاديمي', 'Academics'), null,
-            _OrgTab(title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)))),
+            _OrgTab(title: t('الشؤون الأكاديمية', 'Academics'), child: _SectionHub(id: 'academics', subs: academics)),
+            attentionKeys: const [AttentionTabs.orgAcademics], attentionOrgId: oid)),
       if (s.can('schedule'))
         ('timetable', DashboardItem(Icons.calendar_month_outlined, Icons.calendar_month_rounded, t('الجدول', 'Timetable'), null,
-            _OrgTab(title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()))),
+            _OrgTab(title: t('الجدول الدراسي', 'Timetable'), child: const OrgSchedulePage()),
+            attentionKeys: const [AttentionTabs.orgTimetable], attentionOrgId: oid)),
       if (!compact && services.isNotEmpty)
         ('services', DashboardItem(Icons.forum_outlined, Icons.forum_rounded, t('الخدمات', 'Services'), null,
-            _OrgTab(title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)))),
+            _OrgTab(title: t('التواصل والخدمات', 'Communication & services'), child: _SectionHub(id: 'services', subs: services)),
+            attentionKeys: const [AttentionTabs.orgServices], attentionOrgId: oid)),
       ('settings', DashboardItem(Icons.tune_outlined, Icons.tune_rounded, settingsTitle, null,
-          _OrgTab(title: settingsTitle, child: _OrgAccountPage(services: compact ? services : const [])))),
+          _OrgTab(title: settingsTitle, child: _OrgAccountPage(services: compact ? services : const [])),
+          attentionKeys: compact ? const [AttentionTabs.orgServices, AttentionTabs.orgSettings] : const [AttentionTabs.orgSettings],
+          attentionOrgId: oid)),
     ];
   }
 
@@ -251,7 +253,6 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
       ],
       builder: (context, _) {
         final tabs = context.watch<_OrgTabs>();
-        final dash = context.watch<_OrgDash>();
         return PopScope(
           canPop: tabs.currentTab == 0,
           onPopInvokedWithResult: (didPop, _) {
@@ -261,41 +262,11 @@ class _OrgDashboardScreenState extends State<OrgDashboardScreen> {
             textDirection: dir,
             child: LayoutBuilder(builder: (context, constraints) {
               final w = constraints.maxWidth;
-              final isWide = w >= Breakpoints.desktop;
-              final isRail = w >= Breakpoints.mobile;
-              final entries = _items(session, compact: !isWide && !isRail);
+              final entries = _items(session, compact: Breakpoints.shellFor(w) == AppShellKind.mobile);
               tabs.keys = [for (final e in entries) e.$1];
               final items = [for (final e in entries) e.$2];
-              // navigation badges = what waits in each section (only what I may act on)
-              for (final e in entries) {
-                final own = switch (e.$1) {
-                  'people' => dash.count('org_join_requests') + dash.count('unit_join_requests') + dash.count('expiring_memberships'),
-                  'academics' => dash.count('program_choices'),
-                  'timetable' => dash.count('schedule_unplaced') > 0 ? 1 : 0,
-                  'services' => dash.count('pending_forms') + dash.count('open_complaints'),
-                  'settings' when !isWide && !isRail => dash.count('pending_forms') + dash.count('open_complaints'),
-                  _ => 0,
-                };
-                // GET /me/attention adds decisions + auto-create suggestions (Academics) and stays fresh (polling)
-                final att = AttentionService.instance;
-                final oid = session.currentId;
-                final live = switch (e.$1) {
-                  'settings' when !isWide && !isRail =>
-                    att.count(AttentionTabs.orgServices, orgId: oid) + att.count(AttentionTabs.orgSettings, orgId: oid),
-                  final k when AttentionTabs.orgSection.containsKey(k) => att.count(AttentionTabs.orgSection[k]!, orgId: oid),
-                  _ => 0,
-                };
-                e.$2.badge = live > own ? live : own;
-              }
               final current = tabs.currentTab.clamp(0, items.length - 1);
-              void onTap(int i) => tabs.onChangeTab(i);
-              if (isWide) {
-                return WideShell(currentIndex: current, onTap: onTap, dashboardItems: items, unreadCount: 0);
-              }
-              if (isRail) {
-                return RailShell(currentIndex: current, onTap: onTap, dashboardItems: items, unreadCount: 0);
-              }
-              return MobileShell(currentIndex: current, onTap: onTap, dashboardItems: items);
+              return AppShell(width: w, currentIndex: current, onTap: tabs.onChangeTab, items: items);
             }),
           ),
         );
@@ -543,7 +514,7 @@ class _OrgHero extends StatelessWidget {
       AppHeroStat(icon: Icons.how_to_reg_rounded, value: v('active_enrollments'), label: t('تسجيلات نشطة', 'Enrollments')),
     ];
     Widget glassButton(IconData icon, String label, VoidCallback onTap) => Material(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: c.heroGlass,
           borderRadius: BorderRadius.circular(14),
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
@@ -551,9 +522,9 @@ class _OrgHero extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(icon, size: 16, color: Colors.white),
+                Icon(icon, size: 16, color: c.onHero),
                 const SizedBox(width: 6),
-                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w700, c: Colors.white))),
+                Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w700, c: c.onHero))),
               ]),
             ),
           ),
@@ -566,7 +537,7 @@ class _OrgHero extends StatelessWidget {
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [base, Color.alphaBlend(Colors.black.withValues(alpha: 0.30), base)],
+          colors: [base, c.heroEnd(base)],
         ),
         boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 20, offset: const Offset(0, 8))],
       ),
@@ -575,17 +546,17 @@ class _OrgHero extends StatelessWidget {
           Container(
             width: 56,
             height: 56,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(18)),
             clipBehavior: Clip.antiAlias,
             child: logo.isNotEmpty
                 ? Image.network(logo, fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: Colors.white, size: 28))
-                : Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: Colors.white, size: 28),
+                    errorBuilder: (_, _, _) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: c.onHero, size: 28))
+                : Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: c.onHero, size: 28),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: Colors.white)),
+              Text(s.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: c.onHero)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 _HeroTag(Icons.verified_rounded, s.approved ? t('مفعّلة', 'Active') : statusLabel(s.status)),
@@ -629,19 +600,22 @@ class _HeroTag extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: c.heroGlass,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: c.heroGlassBorder),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: Colors.white),
+          Icon(icon, size: 13, color: c.onHero),
           const SizedBox(width: 4),
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: Colors.white))),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w700, c: c.onHero))),
         ]),
       );
+  }
 }
 
 /// Section title with the page's side gutter.

@@ -1,7 +1,7 @@
 // lib/features/parent/parent_dashboard_screen.dart
 //
 // The Parent shell — same structure as the admin / teacher dashboards (DashboardItem tabs rendered by
-// WideShell / RailShell / MobileShell):
+// AppShell, lib/design/app_shell.dart):
 //   Children · Reports · Link (badge = pending requests) · More (account, language, dark mode, logout)
 //
 // Register the route in main.dart (and send role == 'parent' here after login):
@@ -10,17 +10,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart'
-    show SettingsTile;
+import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_screen.dart' show ProfileHeader;
-import 'package:flutter_education_app/features/student/courses/details/components/app_responsive.dart';
-import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart'
-    show WideShell, RailShell, MobileShell;
-import 'package:flutter_education_app/features/teacher/dashboard/teacher_dashboard_screen.dart'
-    show DashboardItem;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -35,7 +29,6 @@ import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
 import '../shared/profile/compalints/complaints_screen.dart';
-import '../shared/profile/components/setting_group.dart';
 import '../shared/profile/update_account_widget.dart';
 import 'parent_alerts_page.dart';
 import 'parent_children_page.dart';
@@ -76,10 +69,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     _alerts.load(silent: true);
   }
 
-  void _onAttention() {
-    if (mounted) setState(() {});
-  }
-
   /// Deep links (attention items): 'parent_alerts' → Alerts tab, 'parent_link' → Link tab.
   void _onTabRequested() {
     final i = switch (AppNavigator.requestedTab.value) {
@@ -95,7 +84,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    AttentionService.instance.addListener(_onAttention);   // Children tab badge = my to-dos (GET /me/attention)
     AppNavigator.requestedTab.addListener(_onTabRequested);
     _items = [
       DashboardItem(
@@ -108,6 +96,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           epoch: _epochs[0],
           child: ParentChildrenPage(onOpenLinkTab: () => _tabs.onChangeTab(3)),
         ),
+        attentionKeys: const [AttentionTabs.home],   // badges: GET /me/attention, drawn at the leaf
       ),
       DashboardItem(
         Icons.insights_outlined,
@@ -122,6 +111,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         'pl_tab_alerts',
         () => _refresh(2),
         _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs[2], child: const ParentAlertsPage()),
+        attentionKeys: const [AttentionTabs.parentAlerts],
       ),
       DashboardItem(
         Icons.link_outlined,
@@ -129,6 +119,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         'pl_tab_link',
         () => _refresh(3),
         _ParentTab(titleKey: 'pl_tab_link', epoch: _epochs[3], child: const ParentLinkPage()),
+        attentionKeys: const [AttentionTabs.parentLink],
       ),
       DashboardItem(
         Icons.grid_view_outlined,
@@ -136,19 +127,19 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         'pl_tab_more',
         null,
         const _ParentTab(titleKey: 'pl_tab_more', child: _ParentMorePage()),
+        attentionKeys: const [AttentionTabs.profile],
       ),
     ];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isParent) {
         _link.loadAll();
-        _alerts.load(silent: true); // drives the badge on the Alerts tab
+        _alerts.load(silent: true);
       }
     });
   }
 
   @override
   void dispose() {
-    AttentionService.instance.removeListener(_onAttention);
     AppNavigator.requestedTab.removeListener(_onTabRequested);
     _tabs.dispose();
     _link.dispose();
@@ -172,18 +163,6 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
       ],
       builder: (context, _) {
         final tabs = context.watch<ParentTabProvider>();
-        final pending = context.select<ParentLinkProvider, int>((p) => p.pendingCount);
-        final unreadAlerts = context.select<ParentAlertsProvider, int>((p) => p.unread);
-        for (final it in _items) {
-          final att = AttentionService.instance;
-          it.badge = switch (it.label) {
-            'pl_tab_link' => pending > 0 ? pending : att.count(AttentionTabs.parentLink),
-            'pl_tab_alerts' => unreadAlerts > 0 ? unreadAlerts : att.count(AttentionTabs.parentAlerts),
-            'pl_tab_children' => att.count(AttentionTabs.home),
-            'pl_tab_more' => att.count(AttentionTabs.profile),
-            _ => 0,
-          };
-        }
         return PopScope(
           canPop: tabs.currentTab == 0,
           onPopInvokedWithResult: (didPop, _) {
@@ -192,20 +171,11 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           child: Directionality(
             textDirection: plIsAr ? TextDirection.rtl : TextDirection.ltr,
             child: LayoutBuilder(builder: (context, constraints) {
-              final w = constraints.maxWidth;
               void onTap(int i) {
                 if (mounted) tabs.onChangeTab(i);
               }
 
-              if (w >= Breakpoints.desktop) {
-                return WideShell(
-                    currentIndex: tabs.currentTab, onTap: onTap, dashboardItems: _items, unreadCount: 0);
-              }
-              if (w >= Breakpoints.mobile) {
-                return RailShell(
-                    currentIndex: tabs.currentTab, onTap: onTap, dashboardItems: _items, unreadCount: 0);
-              }
-              return MobileShell(currentIndex: tabs.currentTab, onTap: onTap, dashboardItems: _items);
+              return AppShell(width: constraints.maxWidth, currentIndex: tabs.currentTab, onTap: onTap, items: _items);
             }),
           ),
         );
@@ -258,108 +228,89 @@ class _ParentMorePageState extends State<_ParentMorePage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = context.watch<ProfileProvider>();
-    return SafeArea(
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: Breakpoints.contentMax),
-            child: Column(children: [
-              const SizedBox(height: 24),
-              Padding(padding: const EdgeInsets.symmetric(horizontal: 20), child: ProfileHeader(provider: p)),
-              const SizedBox(height: 28),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SettingsGroup(
-                  title: 'account'.tr,
-                  icon: Icons.account_circle_rounded,
-                  children: [
-                    SettingsTile(
-                      icon: Icons.manage_accounts_rounded,
-                      iconBg: c.primaryTint,
-                      iconColor: c.primary,
-                      label: 'update_account'.tr,
-                      onTap: () async {
-                        await _push(const EditAccountScreen(isTeacher: false));
-                        if (mounted) {
-                          context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
-                        }
-                      },
-                    ),
-                    SettingsTile(
-                      icon: Icons.lock_reset_rounded,
-                      iconBg: c.accentTint,
-                      iconColor: c.accent,
-                      label: 'change_password'.tr,
-                      onTap: () => _push(const ChangePasswordScreen()),
-                    ),
-                    const CalendarEntryTile(),
-                  ],
-                ),
+    return AppSettingsPage(
+      header: AppSettingsHeader(
+        name: p.name,
+        role: p.role,
+        email: p.email,
+        imageUrl: p.imageUrl,
+        heroTag: 'profile-user-${p.id}',
+      ),
+      groups: [
+        AppSettingsGroup(
+          title: 'account'.tr,
+          icon: Icons.account_circle_rounded,
+          children: [
+            AppSettingsTile(
+              icon: Icons.manage_accounts_rounded,
+              color: c.primary,
+              label: 'update_account'.tr,
+              onTap: () async {
+                await _push(const EditAccountScreen(isTeacher: false));
+                if (mounted) {
+                  context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
+                }
+              },
+            ),
+            AppSettingsTile(
+              icon: Icons.lock_reset_rounded,
+              color: c.accent2,
+              label: 'change_password'.tr,
+              onTap: () => _push(const ChangePasswordScreen()),
+            ),
+            const CalendarEntryTile(),
+          ],
+        ),
+        AppSettingsGroup(
+          title: 'settings'.tr,
+          icon: Icons.settings_rounded,
+          children: [
+            AppSettingsTile(
+              icon: Icons.language_rounded,
+              color: c.primaryLight,
+              label: 'change_language'.tr,
+              onTap: () => _push(const ChangeLanguageScreen()),
+            ),
+            AppSettingsTile(
+              icon: Icons.dark_mode_rounded,
+              color: c.textDark,
+              label: 'dark_mode'.tr,
+              trailing: AppSwitch(
+                value: p.darkMode,
+                onChanged: (b) async => await p.changeMode(b),
+                semanticLabel: 'dark_mode'.tr,
               ),
-              const SizedBox(height: 20),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SettingsGroup(
-                  title: 'settings'.tr,
-                  icon: Icons.settings_rounded,
-                  children: [
-                    SettingsTile(
-                      icon: Icons.language_rounded,
-                      iconBg: c.purpleTint,
-                      iconColor: context.colors.primaryLight,
-                      label: 'change_language'.tr,
-                      onTap: () => _push(const ChangeLanguageScreen()),
-                    ),
-                    SettingsTile(
-                      icon: Icons.dark_mode_rounded,
-                      iconBg: c.darkIconBg,
-                      iconColor: c.textDark,
-                      label: 'dark_mode'.tr,
-                      trailing: AppSwitch(
-                        value: p.darkMode,
-                        onChanged: (b) async => await p.changeMode(b),
-                        semanticLabel: 'dark_mode'.tr,
-                      ),
-                    ),
-                    SettingsTile(
-                      icon: Icons.support_agent_rounded,
-                      iconBg: c.primaryTint,
-                      iconColor: c.primary,
-                      label: 'help_center'.tr,
-                      onTap: () => _push(ChangeNotifierProvider(
-                          create: (_) => ComplaintProvider(), child: const ComplaintsScreen())),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 28),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                child: SettingsGroup(
-                  title: 'exit'.tr,
-                  icon: Icons.exit_to_app_rounded,
-                  itemBackground: c.danger.withAlpha(30),
-                  children: [
-                    SettingsTile(
-                      icon: Icons.logout_rounded,
-                      iconBg: c.dangerTint,
-                      iconColor: c.danger,
-                      label: 'logout'.tr,
-                      onTap: () async {
-                        final ok = await Helpers.confirmDialog(context);
-                        if (ok == true && context.mounted) {
-                          await context.read<ProfileProvider>().logout(context);
-                        }
-                      },
-                    ),
-                    SettingsTile(
-                      icon: Icons.delete_forever_rounded,
-                      iconBg: c.dangerTint,
-                      iconColor: c.danger,
-                      label: 'delete_account_title'.tr,
-                      onTap: () async {
+            ),
+            AppSettingsTile(
+              icon: Icons.support_agent_rounded,
+              color: c.primary,
+              label: 'help_center'.tr,
+              onTap: () => _push(ChangeNotifierProvider(
+                  create: (_) => ComplaintProvider(), child: const ComplaintsScreen())),
+            ),
+          ],
+        ),
+        AppSettingsGroup(
+          title: 'exit'.tr,
+          icon: Icons.exit_to_app_rounded,
+          danger: true,
+          children: [
+            AppSettingsTile(
+              icon: Icons.logout_rounded,
+              color: c.danger,
+              label: 'logout'.tr,
+              onTap: () async {
+                final ok = await Helpers.confirmDialog(context);
+                if (ok == true && context.mounted) {
+                  await context.read<ProfileProvider>().logout(context);
+                }
+              },
+            ),
+            AppSettingsTile(
+              icon: Icons.delete_forever_rounded,
+              color: c.danger,
+              label: 'delete_account_title'.tr,
+              onTap: () async {
                         final ok = await Helpers.confirmDialog(context,
                             title: 'are_you_sure_to_delete_account'.tr, confirm: 'delete'.tr);
                         if (ok != true || !context.mounted) return;
@@ -372,15 +323,11 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                           return;
                         }
                         Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ]),
-          ),
+              },
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 }

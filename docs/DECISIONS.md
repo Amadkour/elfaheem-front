@@ -413,3 +413,48 @@ once; a landscape phone (≥ 700 logical px) gets the rail, a short-and-wide win
 **Rejected.** Keeping two desktop widths (900 for some roles, 1000 for others); a rail shell gated on `kIsWeb`.
 **Consequences.** A new shell or a two-column layout reads `Breakpoints` (or `context.isMobile` /
 `isTablet` / `isDesktop`), never a literal; `test/ui/app_responsive_test.dart` pins the mapping.
+
+## D-062 — One navigation shell for every role, badges drawn at the leaf · 2026-10-28 · accepted
+
+**Context.** The three shells (`WideShell` / `RailShell` / `MobileShell`) lived in the student dashboard file and
+`DashboardItem` in the teacher's; parent, admin and organization imported them from there. They held 22 hard-coded
+`Colors.white` / `Colors.black` (sidebar text, icons, dividers, shadows), and every dashboard registered an
+`AttentionService` listener that `setState`-ed the whole shell — all five tab pages — on each attention tick (every
+60 s, on resume, on route change), beside two or three badge providers (payouts, transfers, complaints, link
+requests, alerts) that duplicated keys the attention feed already carries (`admin.finance`, `admin.support`,
+`parent.link`, `parent.alerts`, `org.*`).
+**Decision.** `lib/design/app_shell.dart` holds the shells, `DashboardItem` and `AppShell(width:)` (picks with
+`Breakpoints.shellFor`, D-061). A tab's count is `badge` (what the feed lacks: the teacher's device-switch requests,
+the admin's pending payouts) plus the live count of its `attentionKeys`, resolved by `ShellBadge` — a
+`ListenableBuilder` at the LEAF (sidebar pill, rail / bottom-bar `Badge`) — so an attention tick repaints a badge and
+nothing else; an item without keys never listens (guests, tests). Colours come from the new on-hero roles
+(`onHero`, `onHeroFaint`, `heroGlass`, `heroDivider`, `heroEnd`, `heroTint` in `ThemeConfigProvider`, derived from
+the server palette, overridable by `on_hero` / `hero_shade` in the theme response). The student / teacher files
+re-export the moved names, so the home headers' imports still resolve.
+**Rejected.** `AttentionBadge` on every tab (one key per badge, and it ignores the item's own count); keeping the
+`max(own, live)` merge of the org dashboard (the feed carries every section key, so the dashboard call no longer
+feeds badges); a `kIsWeb` rail.
+**Consequences.** A new role dashboard is `AppShell(width:, currentIndex:, onTap:, items:)` and a list of
+`DashboardItem`s with `attentionKeys`; a new badge source goes into the server's attention feed, not into a
+provider in the shell. `test/ui/app_shell_layout_test.dart` pins the three shells, the width choice and that a feed
+tick does not rebuild the shell.
+
+## D-063 — Charts are hand-drawn CustomPaint primitives, not a chart package · 2026-10-28 · accepted
+
+**Context.** No dashboard had a chart or a trend (Track B analysis, shared problem 5). A chart package (`fl_chart`,
+`syncfusion_flutter_charts`, …) brings its own colour system, its own text styles, its own RTL and dark-mode
+behaviour, and a dependency that `pubspec.lock` must follow (the `excel` lesson in CLAUDE.md).
+**Decision.** `lib/design/app_charts.dart` — `AppSparkline`, `AppBarChart`, `AppDonut`, `AppTrendTile`, `AppLegend`
+— is pure `CustomPaint` (about 600 lines) following the dataviz method: thin marks (bars ≤ 24 px, 4 px rounded
+caps square at the baseline, 2 px lines, ≥ 8 px end markers with a surface ring, 2 px surface gaps between
+touching bars and donut parts), hairline grid, compact ticks, text in text tokens never the series colour, a
+legend for ≥ 2 series, tap / hover reveals a group's values, and a semantics label that carries the values. The
+palette is derived from the theme — primary · accent2 · a teal from the primary hue (−60°) · purple · a rose from
+the primary hue (+90°), each snapped into the mode's OKLab lightness band — and was validated with the method's
+script on the default theme (light #FFFFFF, dark #1E2342: every check passes; the contrast warning is relieved by
+the value labels and the semantics). Status colours (success / warning / danger) are never series colours.
+**Rejected.** A chart package (see above); SVG assets; a web-only (`package:web`) chart.
+**Consequences.** A dashboard draws a trend with `AppTrendTile(label:, value:, delta:, spark:)` and a breakdown with
+`AppDonut`; a server aggregate that gains a time series feeds `spark` directly. A sixth series folds into "other"
+(textLight) — facet or fold rather than invent a hue. Line / area charts over time with axes are not built yet;
+add them here, not from a package.

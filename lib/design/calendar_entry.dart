@@ -2,7 +2,7 @@
 // to), the same for every role (Track C.1):
 //
 //   CalendarEntryIcon   the small tinted icon for a home header / app bar (HomeHeader.actions, ScreenAppBar.actions)
-//   CalendarEntryTile   the "Calendar" row of a More / profile list (SettingsGroup children)
+//   CalendarEntryTile   the "Calendar" row of a More / profile list (AppSettingsGroup / SettingsGroup children)
 //
 // Both hide behind the kill switch `calendar.entry`. Layout test: test/ui/app_refresh_layout_test.dart.
 library;
@@ -11,8 +11,8 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
-import '../features/shared/profile/components/setting_title.dart';
 import '../utils/widget/parent_component.dart';
+import 'app_settings.dart';
 
 const calendarEntryFeatureKey = 'calendar.entry';
 
@@ -39,7 +39,7 @@ class CalendarEntryIcon extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 color: context.colors.accent2,
               ),
-              child: const Icon(Icons.event_rounded, color: Colors.white, size: 20),
+              child: Icon(Icons.event_rounded, color: context.colors.onHero, size: 20),
             ),
           ),
         ),
@@ -48,21 +48,18 @@ class CalendarEntryIcon extends StatelessWidget {
   }
 }
 
-class CalendarEntryTile extends StatelessWidget {
+class CalendarEntryTile extends StatelessWidget implements AppSettingsSearchable {
   const CalendarEntryTile({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return ParentComponent(
-      featureKey: calendarEntryFeatureKey,
-      child: SettingsTile(
+  String get searchText => 'my_calendar'.tr;
+
+  @override
+  Widget build(BuildContext context) => AppSettingsTile(
+        featureKey: calendarEntryFeatureKey,
         icon: Icons.event_rounded,
-        iconBg: c.tealTint,
-        iconColor: c.accent2,
+        color: context.colors.accent2,
         label: 'my_calendar'.tr,
         onTap: () => openMyCalendar(context),
-      ),
-    );
-  }
+      );
 }

@@ -25,6 +25,12 @@
 //   pull-to-refresh  → AppRefresh(onRefresh: provider.load, child: ListView(…)) + AppRefreshAction(onRefresh: …)
 //                      in the app bar for mouse users (app_refresh.dart) — never a RefreshIndicator by hand
 //   "needs attention"→ AttentionBadge(tabKey: AttentionTabs.x, child: …) (count + deep links, GET /me/attention)
+//   role dashboard   → AppShell(width:, currentIndex:, onTap:, items: [DashboardItem(…, attentionKeys:)]) — the one
+//                      sidebar / rail / bottom-bar shell, badges resolved at the leaf (app_shell.dart, D-062)
+//   chart / trend    → AppTrendTile(label:, value:, delta:, spark:) · AppBarChart(series:, labels:) · AppDonut(parts:)
+//                      · AppSparkline(values) · AppLegend — pure CustomPaint, theme palette (app_charts.dart, D-063)
+//   More / settings  → AppSettingsPage(header: AppSettingsHeader(…), groups: [AppSettingsGroup(children: [AppSettingsTile(…)])])
+//                      (search past 8 tiles, kill-switch per tile; app_settings.dart)
 //   keyboard (web)   → nothing to do: Enter walks a form and presses its primary button, Ctrl+Enter submits a
 //                      multi-line field, Esc leaves it, Ctrl+K / "/" jumps to the search box (app_keyboard.dart).
 //                      EnterSubmits(onSubmit: …) / EnterSubmits.none decide it by hand for the fields inside.
@@ -39,6 +45,9 @@ import '../features/teacher/data_lab/data_lab_widgets.dart' as dl;
 
 export 'app_switch.dart';
 export 'app_refresh.dart';
+export 'app_shell.dart';
+export 'app_charts.dart';
+export 'app_settings.dart';
 export 'app_keyboard.dart' show EnterSubmits;
 export 'attention_badge.dart';
 export '../core/attention/attention_service.dart' show AttentionService, AttentionTabs, AttentionItem;

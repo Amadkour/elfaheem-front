@@ -370,7 +370,7 @@ class _UnitHero extends StatelessWidget {
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [col, Color.alphaBlend(Colors.black.withValues(alpha: 0.28), col)],
+          colors: [col, c.heroEnd(col, 0.28)],
         ),
         boxShadow: [BoxShadow(color: col.withValues(alpha: 0.28), blurRadius: 18, offset: const Offset(0, 8))],
       ),
@@ -378,16 +378,16 @@ class _UnitHero extends StatelessWidget {
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(18)),
+            decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(18)),
             child: isDept
                 ? DeptLogo(d: {...u, 'color': u['color'] ?? seed?['color']}, size: 50)
-                : const SizedBox(width: 50, height: 50, child: Icon(Icons.school_rounded, color: Colors.white, size: 28)),
+                : SizedBox(width: 50, height: 50, child: Icon(Icons.school_rounded, color: c.onHero, size: 28)),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(orgNameOf(u), maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: appText(19, w: FontWeight.w800, c: Colors.white)),
+                  style: appText(19, w: FontWeight.w800, c: c.onHero)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 _GlassTag(isDept ? Icons.apartment_rounded : Icons.school_rounded,
@@ -405,7 +405,7 @@ class _UnitHero extends StatelessWidget {
             AdminAvatar(name: '${mgr['name'] ?? ''}', url: mgr['image_url'] as String?, size: 28),
             const SizedBox(width: 8),
           ] else ...[
-            const Icon(Icons.person_off_rounded, color: Colors.white70, size: 18),
+            Icon(Icons.person_off_rounded, color: c.onHeroMuted, size: 18),
             const SizedBox(width: 6),
           ],
           Expanded(
@@ -415,7 +415,7 @@ class _UnitHero extends StatelessWidget {
                   : (isDept ? t('الرئيس: ${mgr['name']}', 'Head: ${mgr['name']}') : t('المدير: ${mgr['name']}', 'Manager: ${mgr['name']}')),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: appText(12.5, w: FontWeight.w600, c: Colors.white.withValues(alpha: 0.92)),
+              style: appText(12.5, w: FontWeight.w600, c: c.onHero.withValues(alpha: 0.92)),
             ),
           ),
         ]),
@@ -443,22 +443,25 @@ class _GlassTag extends StatelessWidget {
   final String label;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: c.heroGlass,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: c.heroGlassBorder),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: Colors.white),
+          Icon(icon, size: 13, color: c.onHero),
           const SizedBox(width: 4),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: appText(11, w: FontWeight.w700, c: Colors.white)),
+                style: appText(11, w: FontWeight.w700, c: c.onHero)),
           ),
         ]),
       );
+  }
 }
 
 class _QuickActions extends StatelessWidget {
@@ -496,7 +499,7 @@ class _TabLabel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
           decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
           child: Text(badge > 99 ? '99+' : '$badge',
-              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
+              style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
         ),
       ],
     ]);

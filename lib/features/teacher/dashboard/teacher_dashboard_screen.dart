@@ -2,8 +2,8 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_responsive.dart';
-import 'package:flutter_education_app/core/attention/attention_service.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
@@ -13,13 +13,15 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../analysis/analytics_hub_screen.dart';
-import '../../student/dashboard/dashboard_screen.dart';
 import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
 import '../home/teacher_home_provider.dart';
 import '../schedules/schedules_provider.dart';
 import '../schedules/schedules_screen.dart';
+
+// DashboardItem lives in the design layer (D-062); re-exported for the files that still import it from here.
+export 'package:flutter_education_app/design/app_shell.dart' show DashboardItem;
 
 class TeacherDashboardScreen extends StatefulWidget {
   const TeacherDashboardScreen({super.key});
@@ -35,21 +37,15 @@ class _State extends State<TeacherDashboardScreen> {
   // so the badge and the list always use the same instance.
   final _complaints = ComplaintProvider();
 
-  void _onAttention() {
-    if (mounted) setState(() {});
-  }
-
   @override
   void dispose() {
     _complaints.dispose();
-    AttentionService.instance.removeListener(_onAttention);
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    AttentionService.instance.addListener(_onAttention);   // Home badge = my to-dos (GET /me/attention)
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final devices = context.read<TeacherDeviceRequestsProvider>();
       await Future.wait([
@@ -67,6 +63,7 @@ class _State extends State<TeacherDashboardScreen> {
         'home',
         provider.init,
         const TeacherHomeScreen(),
+        attentionKeys: const [AttentionTabs.home],   // my to-dos (GET /me/attention)
       ),
       DashboardItem(
         CupertinoIcons.book,
@@ -95,6 +92,7 @@ class _State extends State<TeacherDashboardScreen> {
         'my_profile',
         null,
         const ProfileScreen(),
+        attentionKeys: const [AttentionTabs.profile],   // complaint replies; + device-switch requests (badge)
       ),
     ]);
     dashboardItems.removeWhere((e)=>Helpers.AppConfig.disableList.contains('teacher_tab_${e.label}'));
@@ -129,42 +127,19 @@ class _State extends State<TeacherDashboardScreen> {
                 context.select<TeacherDeviceRequestsProvider, int>(
                       (p) => p.items.length,
                 );
-                final complaints =
-                context.select<ComplaintProvider, int>((p) => p.count);
-                // Profile tab hosts both the device-switch requests and the help center.
+                // Profile tab hosts the device-switch requests (not in the attention feed) and the help center
+                // (complaint replies: AttentionTabs.profile, drawn at the leaf).
                 for (final item in dashboardItems) {
-                  item.badge = item.label == 'my_profile'
-                      ? pending + complaints
-                      : (item.label == 'home' ? AttentionService.instance.count(AttentionTabs.home) : 0);
+                  item.badge = item.label == 'my_profile' ? pending : 0;
                 }
-
-                final w = constraints.maxWidth;
-                if (w >= Breakpoints.desktop) {
-                  return WideShell(
-                    currentIndex: provider.currentTab,
-                    onTap: (i) {
-                      if (mounted) provider.onChangeTab(i);
-                    },
-                    dashboardItems: dashboardItems,
-                    unreadCount: unread,
-                  );
-                }
-                if (w >= Breakpoints.mobile) {
-                  return RailShell(
-                    currentIndex: provider.currentTab,
-                    onTap: (i) {
-                      if (mounted) provider.onChangeTab(i);
-                    },
-                    dashboardItems: dashboardItems,
-                    unreadCount: unread,
-                  );
-                }
-                return MobileShell(
+                return AppShell(
+                  width: constraints.maxWidth,
                   currentIndex: provider.currentTab,
                   onTap: (i) {
                     if (mounted) provider.onChangeTab(i);
                   },
-                  dashboardItems: dashboardItems,
+                  items: dashboardItems,
+                  unreadCount: unread,
                 );
               },
             ),
@@ -225,23 +200,4 @@ class _TeacherScheduleTabState extends State<TeacherScheduleTab>
       ),
     );
   }
-}
-
-class DashboardItem {
-  final IconData icon, selectedIcon;
-  final String label;
-  final Future<void> Function()? onRefresh;
-  final Widget screen;
-
-  /// Number shown on the tab icon (0 = hidden). Set by the dashboard.
-  int badge;
-
-  DashboardItem(
-      this.icon,
-      this.selectedIcon,
-      this.label,
-      this.onRefresh,
-      this.screen, {
-        this.badge = 0,
-      });
 }

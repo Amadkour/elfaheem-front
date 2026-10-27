@@ -86,6 +86,12 @@ class ThemeConfigModel {
   final List<Color> gradientPurple;
   final List<Color> gradientTeal;
 
+  // ── On-hero roles (optional: derived from the palette when the server sends none) ──
+  /// Ink over a gradient hero / the sidebar / the primary top bar (`on_hero`).
+  final Color? onHero;
+  /// The dark tone a hero gradient fades into (`hero_shade`).
+  final Color? heroShade;
+
   // ── Meta ─────────────────────────────────────────────────────────────────
   final String platform;
   final bool isActive;
@@ -145,6 +151,8 @@ class ThemeConfigModel {
     required this.gradientDanger,
     required this.gradientPurple,
     required this.gradientTeal,
+    this.onHero,
+    this.heroShade,
     required this.platform,
     required this.isActive,
     this.updatedAt, required this.surfaceCard,
@@ -159,6 +167,8 @@ class ThemeConfigModel {
     if (h.length == 8) return Color(int.parse(h, radix: 16));
     throw FormatException('Invalid hex colour: $hex');
   }
+
+  static Color? _opt(dynamic hex) => hex is String && hex.isNotEmpty ? _c(hex) : null;
 
   static List<Color> _cl(dynamic list) =>
       (list as List).map((e) => _c(e as String)).toList();
@@ -245,6 +255,10 @@ class ThemeConfigModel {
       gradientPurple: _cl(j['gradient_purple']),
       gradientTeal: _cl(j['gradient_teal']),
 
+      // On-hero roles (optional)
+      onHero: _opt(j['on_hero']),
+      heroShade: _opt(j['hero_shade']),
+
       // Meta
       platform: j['platform'] as String,
       isActive: j['is_active'] as bool,
@@ -309,6 +323,8 @@ class ThemeConfigModel {
     'gradient_danger': _hexList(gradientDanger),
     'gradient_purple': _hexList(gradientPurple),
     'gradient_teal': _hexList(gradientTeal),
+    if (onHero != null) 'on_hero': _hex(onHero!),
+    if (heroShade != null) 'hero_shade': _hex(heroShade!),
     'platform': platform,
     'is_active': isActive,
     'updated_at': updatedAt,

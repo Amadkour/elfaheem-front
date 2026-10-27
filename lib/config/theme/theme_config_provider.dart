@@ -292,6 +292,41 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       : textDark.withValues(alpha: 0.08);
 
   // ══════════════════════════════════════════════════════════════════════
+  // ON-HERO ROLES — ink and glass over a gradient hero, the sidebar and the
+  // primary top bar. The same in both modes (a hero keeps its brand gradient
+  // in dark mode). Derived from the server palette unless it sends `on_hero`
+  // / `hero_shade`: the ink is the light card surface, the shade the darkest
+  // charcoal. Never Colors.white / Colors.black on a hero — these.
+  // ══════════════════════════════════════════════════════════════════════
+
+  /// Text and icons over a hero / the sidebar / the primary top bar.
+  Color get onHero => _model?.onHero ?? _model?.surfaceCard ?? AppTheme.surfaceCard;
+
+  /// Secondary text over a hero (the old `Colors.white70`).
+  Color get onHeroMuted => onHero.withValues(alpha: 0.72);
+
+  /// Unselected icons / labels over the sidebar (the old `white.withValues(alpha: .42)`).
+  Color get onHeroFaint => onHero.withValues(alpha: 0.45);
+
+  /// A glass chip / button / logo well over a hero.
+  Color get heroGlass => onHero.withValues(alpha: 0.16);
+
+  /// The hairline of a glass chip.
+  Color get heroGlassBorder => onHero.withValues(alpha: 0.24);
+
+  /// A hairline divider over the sidebar.
+  Color get heroDivider => onHero.withValues(alpha: 0.08);
+
+  /// The dark tone a hero gradient fades into — use [heroEnd].
+  Color get heroShade => _model?.heroShade ?? _model?.charcoalDark ?? AppTheme.charcoalDark;
+
+  /// The darker end of a hero gradient built on [base] (the old `alphaBlend(black @ .3, base)`).
+  Color heroEnd(Color base, [double amount = 0.30]) => Color.alphaBlend(heroShade.withValues(alpha: amount), base);
+
+  /// The lighter start of a gradient built on [base] (the old `lerp(base, white, .28)`).
+  Color heroTint(Color base, [double amount = 0.28]) => Color.lerp(base, onHero, amount)!;
+
+  // ══════════════════════════════════════════════════════════════════════
   // RADII  (not server-configurable — pure design tokens)
   // ══════════════════════════════════════════════════════════════════════
 

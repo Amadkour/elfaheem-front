@@ -84,7 +84,7 @@ class _View extends StatelessWidget {
                 ServiceIcon(
                   icon: icon,
                   size: 38,
-                  colors: [Color.lerp(color, Colors.white, 0.28)!, color],
+                  colors: [c.heroTint(color), color],
                 ),
                 const Spacer(),
                 Icon(
@@ -244,9 +244,9 @@ class _View extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.workspace_premium_rounded,
-                    color: Colors.white,
+                    color: c.onHero,
                     size: 30,
                   ),
                   const SizedBox(width: 12),
@@ -258,9 +258,9 @@ class _View extends StatelessWidget {
                           o.subscriptionRequired
                               ? 'admin_subscription_required'.tr
                               : 'admin_the_app_is_free'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'tajawal',
-                            color: Colors.white,
+                            color: c.onHero,
                             fontWeight: FontWeight.w800,
                             fontSize: 16,
                           ),
@@ -268,18 +268,18 @@ class _View extends StatelessWidget {
                         Text(
                           '${o.i('active_subscriptions')} ${'admin_active_subscribers'.tr}'
                           '${o.i('pending_subscriptions') > 0 ? ' • ${o.i('pending_subscriptions')} ${'admin_pending_2'.tr}' : ''}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'tajawal',
-                            color: Colors.white70,
+                            color: c.onHeroMuted,
                             fontSize: 12.5,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
+                  Icon(
                     Icons.arrow_outward_rounded,
-                    color: Colors.white70,
+                    color: c.onHeroMuted,
                     size: 18,
                   ),
                 ],
