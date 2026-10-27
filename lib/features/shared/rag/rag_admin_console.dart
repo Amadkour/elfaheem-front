@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -27,6 +28,7 @@ import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_library_screen.dart' show RagLibraryScreen;
+import 'rag_qa_admin.dart';
 
 // ── models ───────────────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -174,6 +176,7 @@ class RagOverview {
     this.days = 30, this.asked = 0, this.answered = 0, this.found = 0, this.failed = 0, this.pending = 0, this.rated = 0, this.helpful = 0,
     this.askers = 0, this.p50, this.p90, this.byDay = const [], this.contexts = const {}, this.generators = const {}, this.notFound = const [],
     this.unhelpful = const [], this.documents = const [], this.queueWaiting = 0, this.drafts = 0, this.draftQuestions = 0, this.draftsLlm = 0,
+    this.qaPairs = 0, this.qaEnabled = 0, this.qaDirect = 0, this.qaExample = 0,
   });
   final int days, asked, answered, found, failed, pending, rated, helpful, askers;
   final int? p50, p90;
@@ -182,6 +185,9 @@ class RagOverview {
   final Map<String, int> generators;
   final int queueWaiting, drafts, draftQuestions, draftsLlm;
 
+  /// Curated Q&A (Track E.2): pairs, enabled pairs, direct hits and example uses in the window.
+  final int qaPairs, qaEnabled, qaDirect, qaExample;
+
   factory RagOverview.fromJson(Map<String, dynamic> j) {
     final tot = asMap(j['totals']);
     final lat = asMap(j['latency_ms']);
@@ -189,7 +195,9 @@ class RagOverview {
     final gens = asMap(j['generators']);
     final q = asMap(j['queue']);
     final ed = asMap(j['exam_drafts']);
+    final qa = asMap(j['qa']);
     return RagOverview(
+      qaPairs: asInt(qa['pairs']), qaEnabled: asInt(qa['enabled']), qaDirect: asInt(qa['direct']), qaExample: asInt(qa['example']),
       days: asInt(j['days'], 30),
       asked: asInt(tot['asked']), answered: asInt(tot['answered']), found: asInt(tot['found']), failed: asInt(tot['failed']),
       pending: asInt(tot['pending']), rated: asInt(tot['rated']), helpful: asInt(tot['helpful']), askers: asInt(tot['askers']),
@@ -297,8 +305,9 @@ String ragAdminCodeText(String? code, String fallback) => switch (code) {
 // ── the page ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagAdminConsole extends StatefulWidget {
-  const RagAdminConsole({super.key, this.api});
+  const RagAdminConsole({super.key, this.api, this.qaApi});
   final RagAdminApi? api;
+  final QaApi? qaApi;
 
   @override
   State<RagAdminConsole> createState() => _RagAdminConsoleState();
@@ -306,7 +315,10 @@ class RagAdminConsole extends StatefulWidget {
 
 class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProviderStateMixin {
   late final RagAdminApi _api = widget.api ?? RagAdminApi();
-  late final TabController _tabs = TabController(length: 4, vsync: this);
+  late final QaApi _qa = widget.qaApi ?? QaApi();
+  // the Q&A tab and the "promote" actions (kill switch rag.qa_admin; the whole tree rebuilds when the list changes)
+  final bool _qaOn = !AppConfig.disableList.contains('rag.qa_admin');
+  late final TabController _tabs = TabController(length: _qaOn ? 5 : 4, vsync: this);
   RagOverview? _overview;
   RagAdminSettings? _settings;
   String? _error;
@@ -362,6 +374,18 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
     }
   }
 
+  /// "Promote to Q&A": the server drafts a pair from the asked question; the sheet edits and saves it.
+  Future<void> _promote(int queryId) async {
+    final r = await _qa.fromQuery(queryId);
+    if (!mounted) return;
+    if (!r.ok) {
+      return appToast(r.unavailable ? t('الإجابات المعتمدة تحتاج تحديث الخادم', 'Curated Q&A needs a server update') : qaCodeText(r.code, r.message), error: true);
+    }
+    final draft = qaDraftFromQuery(r.map);
+    final saved = await showAppSheet<QaPair>(context, (_) => QaPairSheet(draft: draft.pair, api: _qa));
+    if (saved != null) appToast(t('أُضيفت الإجابة المعتمدة', 'Q&A pair added'));
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -382,6 +406,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
             Tab(text: t('الإعدادات', 'Settings')),
             Tab(text: t('تجربة', 'Playground')),
             Tab(text: t('الأسئلة', 'Questions')),
+            if (_qaOn) Tab(text: t('الإجابات المعتمدة', 'Q&A')),
           ]),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
@@ -392,6 +417,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
                 : RagOverviewView(
                     overview: _overview!,
                     settings: _settings,
+                    onPromote: _qaOn ? _promote : null,
                     onDays: (d) {
                       setState(() => _days = d);
                       _load();
@@ -401,6 +427,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
                 : SingleChildScrollView(padding: const EdgeInsets.all(16), child: RagPlatformSettingsForm(settings: _settings!, onSave: _save, onTest: _test)),
             RagPlaygroundTab(api: _api),
             RagQuestionsTab(api: _api),
+            if (_qaOn) RagQaAdminBody(scope: 'app', api: _qa),
           ]),
         ),
       ]),
@@ -411,10 +438,13 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
 // ── overview ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagOverviewView extends StatelessWidget {
-  const RagOverviewView({super.key, required this.overview, this.settings, this.onDays});
+  const RagOverviewView({super.key, required this.overview, this.settings, this.onDays, this.onPromote});
   final RagOverview overview;
   final RagAdminSettings? settings;
   final ValueChanged<int>? onDays;
+
+  /// "Promote to Q&A" on a not-found / unhelpful row (its `query_id`); null hides the action.
+  final ValueChanged<int>? onPromote;
 
   @override
   Widget build(BuildContext context) {
@@ -449,6 +479,8 @@ class RagOverviewView extends StatelessWidget {
         AppStatTile(icon: Icons.error_outline_rounded, label: t('فشلت', 'Failed'), value: o.failed, color: o.failed > 0 ? c.danger : null),
         AppStatTile(icon: Icons.description_outlined, label: t('مستندات جاهزة', 'Ready documents'), value: o.readyDocuments),
         AppStatTile(icon: Icons.quiz_outlined, label: t('أسئلة امتحانات مولّدة', 'Exam questions generated'), value: o.draftQuestions),
+        if (o.qaPairs > 0 || o.qaDirect > 0)
+          AppStatTile(icon: Icons.verified_rounded, label: t('إجابات معتمدة مباشرة', 'Direct Q&A answers'), value: o.qaDirect, color: c.success),
       ]),
       const SizedBox(height: 16),
       AppSectionTitle(t('أين يُسأل', 'Where questions come from')),
@@ -482,6 +514,12 @@ class RagOverviewView extends StatelessWidget {
                 leading: CircleAvatar(radius: 14, backgroundColor: c.warning.withValues(alpha: .15), child: Text('${asInt(nf['count'])}', style: appText(12, w: FontWeight.w800, c: c.warning))),
                 title: Text(asStr(nf['question']), maxLines: 2, overflow: TextOverflow.ellipsis),
                 subtitle: Text(asStr(nf['context']) == 'docs' ? t('مؤسسة ${nf['org_id'] ?? ''}', 'Organization ${nf['org_id'] ?? ''}') : t('مساعد التطبيق', 'App assistant')),
+                trailing: onPromote == null || asInt(nf['query_id']) <= 0
+                    ? null
+                    : IconButton(
+                        tooltip: t('اعتمد إجابة لهذا السؤال', 'Promote to Q&A'),
+                        icon: Icon(Icons.playlist_add_check_circle_outlined, color: c.primary),
+                        onPressed: () => onPromote!(asInt(nf['query_id']))),
               ),
           ]),
         ),
@@ -496,6 +534,14 @@ class RagOverviewView extends StatelessWidget {
               Text(asStr(u['question']), style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
               Text(asStr(u['answer']), maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
               if (asStr(u['comment']).isNotEmpty) Text('«${asStr(u['comment'])}»', style: appText(12, c: c.danger)),
+              if (onPromote != null && asInt(u['query_id']) > 0)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                      onPressed: () => onPromote!(asInt(u['query_id'])),
+                      icon: const Icon(Icons.playlist_add_check_circle_outlined, size: 18),
+                      label: Text(t('اعتمد إجابة', 'Promote to Q&A'))),
+                ),
               const Divider(height: 16),
             ],
           ]),

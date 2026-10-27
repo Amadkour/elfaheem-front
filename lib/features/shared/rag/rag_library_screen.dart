@@ -18,6 +18,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, asStr, shortDateTime, t;
 import '../../admin/admin_money_p8.dart' show draftErrorText, p8SaveBytes;
@@ -25,6 +26,7 @@ import '../exam_engine/exam_engine_api.dart' show EngineResult;
 import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
+import 'rag_qa_admin.dart' show RagQaAdminPage;
 
 Color ragStatusColor(BuildContext context, String s) {
   final c = context.colors;
@@ -165,6 +167,16 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
       appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مستندات التطبيق', 'App documents') : t('مكتبة المستندات', 'Documents library')), actions: [
         if (widget.app && lib?.manager == true)
           IconButton(tooltip: t('تحديث من صفحات التطبيق', 'Update from the app\'s pages'), icon: const Icon(Icons.sync_rounded), onPressed: _syncApp),
+        // curated Q&A (Track E.2): the app's pairs for platform admins, the organization's for its library managers
+        if (lib?.manager == true && (widget.app || (widget.orgId != null && widget.courseId == null)))
+          ParentComponent(
+            featureKey: 'rag.qa_admin',
+            child: IconButton(
+                tooltip: t('الإجابات المعتمدة', 'Curated Q&A'),
+                icon: const Icon(Icons.verified_outlined),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => RagQaAdminPage(scope: widget.app ? 'app' : 'org', orgId: widget.app ? null : widget.orgId)))),
+          ),
         if (widget.orgId != null)
           IconButton(
               tooltip: t('الإجابات غير المفيدة', 'Unhelpful answers'),

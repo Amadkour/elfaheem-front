@@ -42,3 +42,7 @@ Backend `../back/rag_service` (+ `mlkit/`), client `lib/features/shared/rag/`. S
 ## Baseline diagnosis (E.1, 2026-10-28)
 
 71 questions over the real corpus: retrieval@5 96 %, 0 leaks, not-found 100 %, injection 100 %. Answer correctness 52 % (extractive) / 59 % (qwen3-0.6b). Losses: the not-found gate (threshold 7.31 + runner-up margin, calibrated on the synthetic bench) rejects 17 / 10 right answers because ar/en twins of one section split the margin and short terms / about sections score low; the 0.6B light writer fails 17 / 48 calls and answers from the wrong sentence in 10; no small-talk path without the model. Latency on the laptop 3 s / 22 s p50. Full tables in `../back/bench/rag/answer_eval/results/`.
+
+## Status (E.2, 2026-10-28)
+
+Curated Q&A shipped in the app: `lib/features/shared/rag/rag_qa_admin.dart` (`QaPair` / `QaApi` / `qaCodeText`, `RagQaAdminPage` for `scope: app | org`, `QaPairSheet`), the console's Q&A tab + "Promote to Q&A" on the overview's not-found / unhelpful rows, the Q&A entry in the library screen; kill switch `rag.qa_admin`; tests `test/org/rag_qa_test.dart`, `test/ui/rag_qa_layout_test.dart`.
