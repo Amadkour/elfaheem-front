@@ -37,11 +37,25 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data,
   });
 
-  const title = payload.notification?.title || "ElFaheem";
-  const body = payload.notification?.body || "";
+  // Every open tab gets the data (a hidden tab has no onMessage and no live stream):
+  // notification_service.dart listens for this message and feeds it to LiveEvents.
+  const data = payload.data || {};
+  self.clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clients) => {
+      for (const client of clients) client.postMessage({ source: "fcm", data });
+    })
+    .catch((e) => console.log("[FCM][background] postMessage failed", e));
+
+  // A data-only push (silent event) shows nothing.
+  if (!payload.notification) return;
+
+  const title = payload.notification.title || "ElFaheem";
+  const body = payload.notification.body || "";
 
   self.registration.showNotification(title, {
     body,
     icon: "/icons/Icon-192.png", // adjust path if your web icons live elsewhere
+    data,
   });
 });

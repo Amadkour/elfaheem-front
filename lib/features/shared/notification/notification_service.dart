@@ -10,6 +10,7 @@ import 'package:timezone/data/latest.dart' as tz;
 
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart';
+import '../../../core/live/live_events_client.dart';
 import '../../../main.dart';
 import '../../../utils/live_events.dart';
 import '../../../utils/top_route_observer.dart';
@@ -24,8 +25,8 @@ import '../attendance/attendance_push.dart';
 // TODO: adjust this path if CourseDetailProvider actually lives elsewhere.
 import 'package:flutter_education_app/features/student/courses/details/course_detail_provider.dart';
 
-// import 'web_notification_stub.dart'
-// if (dart.library.js_interop) 'web_notification_web.dart';
+import 'web_notification_stub.dart'
+    if (dart.library.js_interop) 'web_notification_web.dart';
 
 // ── Background handler — MUST be top-level function ──────────────────────────
 // Only registered on mobile (see init()), but must stay top-level.
@@ -170,6 +171,8 @@ class NotificationService {
 
     // onMessage fires on all platforms — handler is web-safe (see below)
     FirebaseMessaging.onMessage.listen(_onForegroundMessage);
+    // Web: a push the service worker got while this tab was hidden is relayed as a window message.
+    if (kIsWeb) listenServiceWorkerMessages(_onServiceWorkerData);
 
     // onMessageOpenedApp fires on mobile only; safe to register on web
     // (it simply never fires), but harmless.
@@ -252,46 +255,9 @@ class NotificationService {
           'data=${message.data}',
     );
 
-    final data = message.data;
-    // Silent push: the admin changed the disable list → reload it, show nothing.
-    if (data['type'] == 'disable_list_updated') {
-      print('[FCM] disable_list_updated received → refreshing');
-      _refreshDisableList();
-
-      return;
-    }
-    // Silent push: attendance opened / closed (student button) or a web session asks this phone
-    // for the classroom location (teacher). Shows nothing.
-    final attType = data['type'] as String?;
-    if (attType == 'attendance_opened' ||
-        attType == 'attendance_closed' ||
-        attType == 'attendance_location_request') {
-      AttendancePush.instance.handle(Map<String, dynamic>.from(data));
-      return;
-    }
-    // Silent push: the admin changed the theme -> re-fetch it, repaint live, show nothing.
-    if (data['type'] == 'theme_updated') {
-      final target = data['platform'] as String?;
-      if (target == null || target == _deviceType()) {
-        print('[FCM] theme_updated received -> refreshing theme');
-        _refreshTheme();
-      }
-      return;
-    }
-    // Silent push: someone asks to join a live room the user hosts → the room's lobby refreshes at once
-    // (live-rooms-spec §4). Shows nothing; the visible `live_lobby` notification is a separate push.
-    if (data['type'] == LiveLobbyEvents.pushType) {
-      LiveLobbyEvents.notify(Map<String, dynamic>.from(data));
-      return;
-    }
-    // Silent push: a complaint / manual transfer / payment / payout changed → every open list
-    // (and the dashboard badges) reloads by itself. Shows nothing.
+    final data = Map<String, dynamic>.from(message.data);
+    if (_handleSilent(data, visible: message.notification != null)) return;
     final liveType = data['type'] as String?;
-    if (liveType != null && LiveEvents.silentTypes.contains(liveType)) {
-      print('[FCM] $liveType received -> live refresh');
-      LiveEvents.instance.emit(liveType, Map<String, dynamic>.from(data));
-      return;
-    }
     // The visible "new complaint / new transfer" notification also nudges the lists, then is
     // shown normally below.
     final nudged = LiveEvents.fromNotificationType(liveType);
@@ -338,6 +304,65 @@ class NotificationService {
         message.data,
       ), // lets a tap on the local notification open the right screen
     );
+  }
+
+  /// The silent (data-only) pushes, handled and never shown: the admin's disable list / theme, attendance
+  /// nudges, a lobby join request, and the real-time events (Track D: `event` + `event_id` + fields, the same
+  /// frames the SSE stream carries — LiveEventsClient drops a duplicate, LiveEvents delivers the rest). True when
+  /// [data] was one of them; a push that also carries a visible notification ([visible]) is handled AND shown.
+  bool _handleSilent(Map<String, dynamic> data, {bool visible = false}) {
+    final type = data['type'] as String?;
+    // Silent push: the admin changed the disable list → reload it, show nothing.
+    if (type == 'disable_list_updated') {
+      print('[FCM] disable_list_updated received → refreshing');
+      _refreshDisableList();
+      return true;
+    }
+    // Silent push: attendance opened / closed (student button) or a web session asks this phone
+    // for the classroom location (teacher). Shows nothing.
+    if (type == 'attendance_opened' ||
+        type == 'attendance_closed' ||
+        type == 'attendance_location_request') {
+      AttendancePush.instance.handle(data);
+      return true;
+    }
+    // Silent push: the admin changed the theme -> re-fetch it, repaint live, show nothing.
+    if (type == 'theme_updated') {
+      final target = data['platform'] as String?;
+      if (target == null || target == _deviceType()) {
+        print('[FCM] theme_updated received -> refreshing theme');
+        _refreshTheme();
+      }
+      return true;
+    }
+    // Silent push: someone asks to join a live room the user hosts → the room's lobby refreshes at once
+    // (live-rooms-spec §4). Shows nothing; the visible `live_lobby` notification is a separate push.
+    if (type == LiveLobbyEvents.pushType) {
+      LiveLobbyEvents.notify(data);
+      return true;
+    }
+    // Real-time event (attention_changed, job_updated, lobby_updated, *_updated, …): same dedupe and bus as
+    // the SSE stream, so a screen gets it once whichever channel was faster.
+    final event = data['event'] as String?;
+    if (event != null && event.isNotEmpty) {
+      debugPrint('[FCM] event $event received -> live bus');
+      LiveEventsClient.instance.ingest(event, data['event_id']?.toString(), data);
+      return !visible;
+    }
+    // Older server: a complaint / manual transfer / payment / payout changed, sent as `type` → every open list
+    // (and the dashboard badges) reloads by itself. Shows nothing.
+    if (type != null && LiveEvents.silentTypes.contains(type)) {
+      print('[FCM] $type received -> live refresh');
+      LiveEventsClient.instance.ingest(type, data['event_id']?.toString(), data);
+      return true;
+    }
+    return false;
+  }
+
+  /// web/firebase-messaging-sw.js relays a push it received while this tab was hidden (no onMessage then).
+  void _onServiceWorkerData(Map<String, dynamic> data) {
+    debugPrint('[FCM][sw] data=$data');
+    _handleSilent(data);
   }
 
   // ── Live session push → refresh CourseDetailScreen if it's on screen ───────

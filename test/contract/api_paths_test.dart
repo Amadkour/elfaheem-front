@@ -22,6 +22,8 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
+  // the SSE stream itself (GET /api/v1/me/events) is opened with package:http, outside this scan
+  'POST /api/v1/me/events/ticket': 'added in Track D, snapshot regenerates after the backend lands',
 };
 
 void main() {

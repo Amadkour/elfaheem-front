@@ -17,6 +17,7 @@
 //   primitives). Requires `web: ^1.1.0` in pubspec.yaml.
 
 import 'dart:js_interop';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:web/web.dart' as web;
 
 void showWebNotification(String? title, String? body) {
@@ -52,5 +53,29 @@ void _display(String title, String body) {
     );
   } catch (e) {
     print('[FCM][web] Failed to display browser notification: $e');
+  }
+}
+
+/// A push that reached web/firebase-messaging-sw.js while this tab was hidden (FCM's onMessage fires only in
+/// the focused tab) arrives here as `{source: "fcm", data: {...}}`; [onData] gets the push's data map.
+void listenServiceWorkerMessages(void Function(Map<String, dynamic> data) onData) {
+  try {
+    final container = web.window.navigator.serviceWorker;
+    container.addEventListener(
+      'message',
+      ((web.MessageEvent event) {
+        try {
+          final raw = event.data?.dartify();
+          if (raw is! Map || '${raw['source']}' != 'fcm') return;
+          final data = raw['data'];
+          if (data is! Map) return;
+          onData({for (final e in data.entries) '${e.key}': e.value});
+        } catch (e) {
+          debugPrint('[FCM][web] service worker message ignored: $e');
+        }
+      }).toJS,
+    );
+  } catch (e) {
+    debugPrint('[FCM][web] service worker messages unavailable: $e');
   }
 }

@@ -8,10 +8,11 @@
 //   AttentionService.instance.items(AttentionTabs.home)                    → items with deep links
 //   AttentionService.instance.refresh()                                     → reload now
 //
-// Refreshes: every 60 s while the app is in front, on app resume, on route push/return
-// (TopRouteObserver → onRouteChanged, throttled), and on live events (silent FCM pushes).
-// Listen with ListenableBuilder(listenable: AttentionService.instance, …) (or AttentionBadge); polling runs only
-// while something listens.
+// Refreshes: on the live event `attention_changed` (the SSE stream / a silent push, LiveEventsClient) and the
+// `*_updated` events, every 60 s as a fallback (5 min while the stream is connected), on app resume and on
+// route push/return (TopRouteObserver → onRouteChanged, throttled).
+// Listen with ListenableBuilder(listenable: AttentionService.instance, …) (or AttentionBadge); polling (and the
+// live stream it binds) runs only while something listens.
 library;
 
 import 'dart:async';
@@ -21,6 +22,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../utils/live_events.dart';
 import '../api_client.dart';
+import '../live/live_events_client.dart';
 
 /// Stable tab keys (same list as the server's TABS). Add new ones on both sides.
 class AttentionTabs {
@@ -98,8 +100,11 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     super.addListener(listener);
     if (_timer != null) return;
     WidgetsBinding.instance.addObserver(this);
-    _timer = Timer.periodic(pollEvery, (_) => refresh(quiet: true));
-    _live = LiveEvents.instance.listen(LiveEvents.silentTypes, (_) => refresh(quiet: true));
+    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => refresh(quiet: true));
+    final stream = LiveEventsClient.instance;
+    stream.connected.addListener(_onStreamChanged);
+    stream.bind();
+    _startTimer();
     refresh(quiet: true);
   }
 
@@ -114,11 +119,28 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     _timer = null;
     _live?.cancel();
     _live = null;
+    final stream = LiveEventsClient.instance;
+    stream.connected.removeListener(_onStreamChanged);
+    stream.release();
     WidgetsBinding.instance.removeObserver(this);
+  }
+
+  /// The poll is the fallback: slow while the live stream is connected, 60 s when it is not.
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(LiveEventsClient.instance.connected.value ? pollEveryLive : pollEvery, (_) => refresh(quiet: true));
+  }
+
+  void _onStreamChanged() {
+    if (_timer == null) return;
+    _startTimer();
+    // a reconnect may have missed events (beyond the replay window): catch up once
+    if (LiveEventsClient.instance.connected.value) refresh(quiet: true);
   }
 
   static final AttentionService instance = AttentionService._();
   static const pollEvery = Duration(seconds: 60);
+  static const pollEveryLive = Duration(minutes: 5);
   static const _minGap = Duration(seconds: 15);
 
   Timer? _timer;
@@ -183,6 +205,8 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
       }
       return;
     }
+    // a token is here (just logged in, or the stream halted on an old one): let the stream reopen
+    LiveEventsClient.instance.poke();
     final focus = _focusOrg;
     try {
       final res = await Future.wait([
