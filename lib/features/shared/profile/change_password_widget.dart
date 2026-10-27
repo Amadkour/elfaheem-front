@@ -73,7 +73,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   String get _new  => _newCtrl.text.trim();
   String get _conf => _confCtrl.text.trim();
 
-  bool get _reqMinLength  => _new.length >= 6;
+  bool get _reqMinLength  => _new.length >= 8;
   bool get _reqUppercase  => _new.contains(RegExp(r'[A-Z]'));
   bool get _reqDigit      => _new.contains(RegExp(r'[0-9]'));
   bool get _reqDifferent  => _new.isNotEmpty && _new != _old;

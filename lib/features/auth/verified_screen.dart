@@ -38,7 +38,9 @@ import 'auth_widgets.dart';
 import 'verify_way.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
-enum OtpFlowEnum { registration, forget, changePassword }
+/// [phoneChange]: a signed-in person verifies the number they just set on the profile (registration-style
+/// endpoints, channel "phone" only); on success the screen pops back instead of going to login.
+enum OtpFlowEnum { registration, forget, changePassword, phoneChange }
 
 class OtpVerificationScreen extends StatefulWidget {
   final String? phoneNumber;
@@ -115,7 +117,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   bool? _telegramInstalled; // null = not checked yet
 
   // ── helpers ──────────────────────────────────────────────────────────────
-  bool get _isReg => widget.flow == OtpFlowEnum.registration;
+  bool get _isReg =>
+      widget.flow == OtpFlowEnum.registration || widget.flow == OtpFlowEnum.phoneChange;
 
   MyAuthProvider get _auth => context.read<MyAuthProvider>();
 
@@ -538,6 +541,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   /// A channel was verified (by code or by link). More channels pending (the admin requires
   /// E-mail AND phone) -> move on to the next one; otherwise leave the screen.
   void _afterVerified(MyAuthProvider auth) {
+    if (widget.flow == OtpFlowEnum.phoneChange) {
+      auth.getMe(); // the profile now says phone_verified
+      _snack('phone_verified_done'.tr);
+      Navigator.of(context).pop();
+      return;
+    }
     if (_isReg && auth.pendingChannels.isNotEmpty) {
       setState(() {
         _pending = List.of(auth.pendingChannels);

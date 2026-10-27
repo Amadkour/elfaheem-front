@@ -370,7 +370,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 10),
                   PasswordReq(
                     met: _reqMinLength,
-                    label: '٦ أحرف على الأقل',
+                    label: '٨ أحرف على الأقل',
                     c: c,
                   ),
                   PasswordReq(
@@ -449,7 +449,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   // ── Password helpers ──────────────────────────────────────────────────────
-  bool get _reqMinLength => _passwordController.text.length >= 6;
+  bool get _reqMinLength => _passwordController.text.length >= 8;
 
   bool get _reqUppercase => _passwordController.text.contains(RegExp(r'[A-Z]'));
 

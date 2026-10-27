@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/base_provider.dart';
+import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:http/http.dart' hide MultipartFile;
 import '../../../config/storage_service.dart';
 import '../../auth/auth_provider.dart';
@@ -140,10 +141,16 @@ class ProfileProvider extends BaseProvider {
     String? dob,
     String? bio,
     String? country,
+    String? password,
+    String? mfaCode,
   }) async {
     _setLoading(true);
     try {
       final body = <String, dynamic>{};
+      // A phone change is re-authenticated (400 REAUTH_REQUIRED without it; 409 PHONE_TAKEN; the server
+      // resets phone_verified, so the caller runs the OTP step afterwards).
+      if (password != null) body['password'] = password;
+      if (mfaCode != null && mfaCode.isNotEmpty) body['mfa_code'] = mfaCode;
       if (name != null && name.isNotEmpty) body['name'] = name;
       if (phone != null && phone.isNotEmpty) body['phone'] = phone;
       if (dob != null && dob.isNotEmpty) body['dob'] = dob;
@@ -222,21 +229,11 @@ class ProfileProvider extends BaseProvider {
   /// Pass [fcmToken] if you want to remove only this device's push token;
   /// omit it to remove all devices (full logout).
   Future<void> logout(BuildContext context, {String? fcmToken}) async {
-    try {
-      // final headers = fcmToken != null ? {'fcm_token': fcmToken} : null;
-      // this device's refresh token → only this session is revoked server-side
-      final refresh = await _api.refreshToken;
-      await _api.post(
-        '/api/v1/auth/logout',
-        body: refresh == null ? {} : {'refresh_token': refresh},
-        // headers: headers,
-      );
-    } catch (e) {
-      // Even if the server call fails, proceed with local logout
-      log('logout server call failed: $e');
-    }
+    // this device's refresh token → only this session is revoked server-side (shared with MyAuthProvider.logout)
+    await _api.signOutServer();
 
     await _api.clearTokens();
+    LiveEventsClient.instance.sessionChanged();
     _reset();
 
     if (context.mounted) {
@@ -259,16 +256,21 @@ class ProfileProvider extends BaseProvider {
   /// permanently deleted server-side. Returns the ISO-8601 `delete_after`
   /// date string, or null on failure.
   ///
-  /// The caller should show a confirmation dialog BEFORE calling this.
-  Future<String?> deleteAccount(BuildContext context) async {
+  /// The caller should show a confirmation dialog BEFORE calling this, and ask for the current
+  /// [password] (+ [mfaCode] for two-step accounts): the server re-authenticates the deletion (S9).
+  Future<String?> deleteAccount(BuildContext context, {required String password, String? mfaCode}) async {
     _setLoading(true);
     try {
-      final r = await run(() => _api.delete('/api/v1/auth/me'));
+      final r = await run(() => _api.delete('/api/v1/auth/me', body: {
+        'password': password,
+        if (mfaCode != null && mfaCode.isNotEmpty) 'mfa_code': mfaCode,
+      }));
       if (r != null && r is Map) {
         final deleteAfter = r['delete_after'] as String?;
 
         // Clear local tokens and state exactly like logout
         await _api.clearTokens();
+        LiveEventsClient.instance.sessionChanged();
         _reset();
 
         if (context.mounted) {

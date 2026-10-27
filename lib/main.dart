@@ -412,7 +412,25 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       } catch (e) {
         debugPrint('[versionCheck] $e');
       }
+
+      await _refreshMe();
     });
+  }
+
+  /// `GET /auth/me` once per start (S14): the cached user may be stale (role changed, flags). A changed role
+  /// moves the person to that role's home. Skipped offline (an offline start keeps the cache), signed out,
+  /// and in view-as (the reply would be the viewed user).
+  Future<void> _refreshMe() async {
+    if (!mounted) return;
+    final auth = context.read<MyAuthProvider>();
+    if (!auth.isAuthenticated || !AppConnectivity.instance.isOnline || ViewAsState.active) return;
+    final before = auth.currentUser?.role;
+    await _safe('me', auth.getMe, seconds: 8);
+    if (!mounted || !auth.isAuthenticated) return;
+    final after = auth.currentUser?.role;
+    if (after != null && after != before) {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(auth.homeRoute, (_) => false);
+    }
   }
 
   @override

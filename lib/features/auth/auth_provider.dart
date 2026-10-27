@@ -954,6 +954,7 @@ class MyAuthProvider extends BaseProvider {
     try {
       await NotificationService.instance.unregisterFromBackend(_api);
     } catch (_) {}
+    await _api.signOutServer(); // revoke the refresh family (S15); never blocks on a network failure
     await _storage.clearAll(); // wipes tokens + user JSON
     try {                       // unsent exam answers kept for crash recovery never outlive the session (shared devices)
       final p = await SharedPreferences.getInstance();

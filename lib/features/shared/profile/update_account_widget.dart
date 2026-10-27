@@ -17,6 +17,8 @@ import 'package:flutter_education_app/utils/widget/text_field.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/auth_widgets.dart';
+import '../../auth/reauth_sheet.dart';
+import '../../auth/verified_screen.dart';
 import '../../auth/teacher_document_model.dart';
 import '../../auth/teacher_document_provider.dart';
 import '../../student/courses/details/components/app_responsive.dart';
@@ -141,17 +143,34 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           _dobCtrl.text != _p.dob ||
           _bioCtrl.text != _p.bio;
 
+      UserModel? verifyPhoneFor; // a changed number is verified again right after the save (S1)
       if (fieldsChanged) {
+        // A new phone number needs the current password (the server resets its verification and asks for
+        // an OTP again, S1 / S9); the sheet is skipped when the number did not change.
+        final newPhone = _phoneCtrl.text.trim();
+        final phoneChanged = newPhone.isNotEmpty && newPhone != _p.phone.trim();
+        Reauth? re;
+        if (phoneChanged) {
+          re = await askReauth(context);
+          if (re == null || !mounted) return;
+        }
         final user = await _p.updateProfile(
           name: _nameCtrl.text.trim(),
-          phone: _phoneCtrl.text.trim(),
+          phone: newPhone,
           dob: _dobCtrl.text.trim(),
           bio: _bioCtrl.text.trim(),
+          password: re?.password,
+          mfaCode: re?.mfaCode,
         );
-        if (user != null && mounted) {
+        if (user == null) {
+          if (mounted) _showSnack(_p.errorMessage ?? 'generic_error'.tr, context.colors.danger);
+          return;
+        }
+        if (mounted) {
           await context.read<MyAuthProvider>().saveUserLocally(user);
           _p.initData(context.read<MyAuthProvider>().currentUser);
         }
+        if (phoneChanged) verifyPhoneFor = user;
       }
 
       // 3. Update teacher-only registration fields (if changed)
@@ -166,6 +185,20 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       }
 
       if (mounted) {
+        final u = verifyPhoneFor;
+        if (u != null) {
+          _showSnack('phone_change_verify'.tr, context.colors.success);
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (_) => OtpVerificationScreen(
+              email: u.gmail,
+              role: u.role,
+              phoneNumber: u.phone,
+              channels: const ['phone'],
+              flow: OtpFlowEnum.phoneChange,
+            ),
+          ));
+          return;
+        }
         _showSnack('changes_saved'.tr, context.colors.success);
         Navigator.of(context).pop();
       }

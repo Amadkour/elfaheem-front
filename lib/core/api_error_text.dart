@@ -63,6 +63,12 @@ String apiErrorText(ApiException e) {
       return _t('لا تملك صلاحية الوصول لهذه المؤسسة', 'You don\'t have access to this organization');
     case 'orgs_disabled':
       return _t('المؤسسات متوقفة حالياً على المنصة', 'Organizations are switched off on the platform right now');
+    case 'WEAK_PASSWORD':
+      return _t('كلمة المرور ضعيفة — 8 أحرف على الأقل', 'The password is too weak — at least 8 characters');
+    case 'PHONE_TAKEN':
+      return _t('رقم الهاتف مستخدم بحساب آخر', 'This phone number is already used by another account');
+    case 'REAUTH_REQUIRED':
+      return _t('أدخل كلمة المرور الحالية للمتابعة', 'Enter your current password to continue');
     case 'LOGIN_EMAIL_ONLY':
       return _t('سجّل الدخول بالبريد الإلكتروني', 'Please sign in with your e-mail');
     case 'LOGIN_PHONE_ONLY':

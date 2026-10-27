@@ -1159,8 +1159,8 @@ class ApiClient {
     } on DioException catch (e) {
       final s = e.response?.statusCode;
 
-      // Server said the refresh token is no good → real logout.
-      if (s != null && s >= 400 && s < 500) return _RefreshResult.rejected;
+      // Server said the refresh token is no good → real logout (a 429 is the throttle, not a verdict).
+      if (refreshStatusRejects(s)) return _RefreshResult.rejected;
 
       // Offline / timeout / 5xx → don't log the user out.
       return _RefreshResult.failed;
@@ -1440,6 +1440,7 @@ class ApiClient {
 
   Future<dynamic> delete(
       String path, {
+        dynamic body,
         Map<String, dynamic>? queryParams,
         bool auth = true,
         CancelToken? cancelToken,
@@ -1448,6 +1449,7 @@ class ApiClient {
       _execute(
             () => _dio.delete(
           path,
+          data: body,
           queryParameters: queryParams,
           cancelToken: cancelToken,
           options: _jsonOpts(auth: auth, method: 'DELETE', headers: headers),
@@ -1608,6 +1610,20 @@ class ApiClient {
 
   Future<String?> get refreshToken => _storage.refreshToken;
 
+  /// `POST /auth/logout` with this device's refresh token, so the server revokes the session family (S15).
+  /// Offline / timeout / any error: logged and swallowed — signing out locally never waits on the server.
+  Future<void> signOutServer() async {
+    try {
+      final refresh = await _storage.refreshToken;
+      await post(
+        '/api/v1/auth/logout',
+        body: refresh == null ? const <String, dynamic>{} : {'refresh_token': refresh},
+      ).timeout(const Duration(seconds: 5));
+    } catch (e) {
+      log('logout: server call failed: $e', name: 'API');
+    }
+  }
+
   /// Synchronous session flag (see TokenStorage.hasSession); `primeSession()` loads it at start-up.
   bool get hasSession => _storage.hasSession;
 
@@ -1646,5 +1662,11 @@ class ApiClient {
     _ => 'application/octet-stream',
   };
 }
+
+/// Whether a failed `POST /auth/refresh` with this HTTP status means the refresh token is dead (sign the
+/// person out) rather than a passing failure (keep the session, try again later): any 4xx except 429, the
+/// server's rate limit (S16 — one busy NAT must not sign everyone out).
+bool refreshStatusRejects(int? status) =>
+    status != null && status >= 400 && status < 500 && status != 429;
 
 enum _RefreshResult { ok, rejected, failed }

@@ -30,6 +30,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../design/app_switch.dart';
 import '../../utils/helpers.dart';
+import '../auth/reauth_sheet.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
@@ -360,12 +361,16 @@ class _ParentMorePageState extends State<_ParentMorePage> {
                       onTap: () async {
                         final ok = await Helpers.confirmDialog(context,
                             title: 'are_you_sure_to_delete_account'.tr, confirm: 'delete'.tr);
-                        if (ok == true && context.mounted) {
-                          Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
-                          await Future.delayed(const Duration(seconds: 5));
-                          if (!context.mounted) return;
-                          await context.read<ProfileProvider>().deleteAccount(context);
+                        if (ok != true || !context.mounted) return;
+                        final re = await askReauth(context); // current password (+ two-step code), S9
+                        if (re == null || !context.mounted) return;
+                        final p = context.read<ProfileProvider>();
+                        final after = await p.deleteAccount(context, password: re.password, mfaCode: re.mfaCode);
+                        if (after == null) {
+                          Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
+                          return;
                         }
+                        Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
                       },
                     ),
                   ],

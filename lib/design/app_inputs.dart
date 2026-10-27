@@ -136,7 +136,7 @@ class AppPasswordField extends StatefulWidget {
     this.label,
     this.showStrength = false,
     this.mustMatch,
-    this.minLength = 6,
+    this.minLength = 8,
     this.required = true,
     this.enabled = true,
     this.onChanged,
