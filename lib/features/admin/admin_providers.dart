@@ -20,6 +20,7 @@ import 'package:flutter_education_app/core/base_provider.dart';
 
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
+import 'admin_home_data.dart';
 import 'admin_models.dart';
 
 const _base = '/api/v1/admin';
@@ -208,14 +209,41 @@ abstract class AdminPagedProvider extends AdminBase implements AdminQueryHost {
 // ═════════════════════════════════════════════════════════════════════════════
 
 class AdminOverviewProvider extends AdminBase {
-  Overview? data;
-  String? error;
+  /// Starts with the last payload (kept in memory across re-creations: the shell's refresh button re-creates the
+  /// Overview page), so the home redraws at once and the reload happens behind it.
+  AdminOverviewProvider() {
+    data = _last;
+    home = _lastHome;
+  }
 
-  Future<void> load() async {
-    final r = await run(() => api.get('$_base/overview'));
+  static Overview? _last;
+  static AdminHomeData? _lastHome;
+
+  Overview? data;
+
+  /// `data` as the home's pure model (AdminHomeData.fromOverview), parsed once per payload.
+  AdminHomeData? home;
+  String? error;
+  DateTime? _loadedAt;
+  Future<void>? _running;
+
+  /// Loads GET /admin/overview. [quiet]: keep the current numbers on screen (no skeleton) and skip the call when
+  /// one finished less than 5 s ago (resume · attention_changed · silent pushes may fire together).
+  Future<void> load({bool quiet = false}) {
+    if (quiet && _loadedAt != null && DateTime.now().difference(_loadedAt!) < const Duration(seconds: 5)) {
+      return _running ?? Future.value();
+    }
+    return _running ??= _load(quiet: quiet).whenComplete(() => _running = null);
+  }
+
+  Future<void> _load({required bool quiet}) async {
+    final r = await run(() => api.get('$_base/overview'), makLoading: !quiet && data == null);
     if (r is Map) {
-      data = Overview(Map<String, dynamic>.from(r));
+      final map = Map<String, dynamic>.from(r);
+      data = _last = Overview(map);
+      home = _lastHome = AdminHomeData.fromOverview(map);
       error = null;
+      _loadedAt = DateTime.now();
     } else {
       error = errorMessage ?? 'admin_could_not_load_data'.tr;
     }
