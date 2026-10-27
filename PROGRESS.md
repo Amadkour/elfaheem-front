@@ -18,7 +18,7 @@ recorded below) · `blocked (why)`.
 | 0.1 | Safety net: branch `feature/platform-polish` in both repos | done |
 | 0.2 | Analysis phase, no code changes → §1 findings, §2 parity matrix, §3 baselines | done (2026-10-28) |
 | 0.3 | Track A1 security and auth fixes | done (verified by tests; see owner actions) |
-| 0.4 | Track D real-time + push, remove polling | in progress (D.1 back + D.2 app agents running alongside A1) |
+| 0.4 | Track D real-time + push, remove polling | done (verified; 3 backend emits pending) |
 | 0.5 | Track C feature parity | in progress (C.1–C.3 and C.4 agents) |
 | 0.6 | Track B design system + dashboards + screen polish (A2) | todo |
 | 0.7 | Track E RAG overhaul (parallel with 0.4–0.6) | in progress (E.1 eval baseline agent running) |
@@ -73,7 +73,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | `flutter analyze` warnings / errors / infos | 0 / 0 / 245 | | `flutter analyze --no-fatal-infos --fatal-warnings` (2026-10-28, HEAD 74cfdc7) |
 | App test suites | 925 passed, 0 failed; contract: 1129 calls, 0 unknown, 72 unresolved | | `flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/` |
 | Backend static gate | 8 ruff errors (pre-existing) | | `ruff check .` in `../back` |
-| Polling call sites / intervals | 7 new-data polls (attention 60 s, lobby 15/4 s, guest 10 s, quiz 30 s, exam tab 5 min, attendance 5 s) + 12 job-progress polls (1–8 s); 0 SSE/WS | | `docs/polish/realtime-inventory.md` |
+| Polling call sites / intervals | 7 new-data polls (attention 60 s, lobby 15/4 s, guest 10 s, quiz 30 s, exam tab 5 min, attendance 5 s) + 12 job-progress polls (1–8 s); 0 SSE/WS | SSE stream + silent FCM; attention 5 min, lobby 60/16 s, quiz 0 (LiveKit + event, 5 min fallback), exam tab 0, attendance 30 s; job polls 10–30 s fallbacks only while the stream is down | `docs/polish/realtime-inventory.md` |
 | RAG eval (hit rate, correctness, hallucination, latency, memory) | pending | | §5 eval set |
 | Dashboard requests on open | pending | | count of API calls per dashboard open |
 
@@ -101,7 +101,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | C.4 | Parity | Mic meter on mobile; PiP on iOS (or record as by-nature with reason); web foreground push notification | todo | | | |
 | D.1 | Real-time (back) | `helpers/live_bus.py` + `services/live_events.py` (`emit` = silent FCM with `event_id` + Redis pub/sub, 100-event replay, catalogue at the top of the file) + `routers/live_events_router.py` (`GET /api/v1/me/events` SSE, heartbeat 25 s, lifetime 3000 s, `?t=` ticket); exam / rag `publish_live`; hooks in 14 services; stream excluded from envelope / rate-limit / subscription guards; nginx location | verified | back b24dca2; front 82ee4a8 (snapshot) | `tests/org_v2/e2e_live_events.py` 34 checks on local Redis + 16 regression scripts pass | `.env.example`: `LIVE_EVENTS_HEARTBEAT_SECONDS=25`, `LIVE_EVENTS_MAX_SECONDS=3000` (add once the auth agent releases the file). Skipped hooks: expiring memberships (date-driven), RAG mid-answer stages, document `processing`, `live_join_request` expiry |
 | D.2 | Real-time (app) | `lib/core/live/live_events_client.dart` (SSE over `package:http`, token × foreground × binds, backoff 1→30 s, `Last-Event-ID`, 90 s stall watchdog, 401 → ticket, dedupe 200 ids); FCM data pushes go through the same `ingest`; `AttentionService` listens to `attention_changed` + `*_updated`, polls 5 min while connected; service worker relays data pushes to the page | verified | 9820998 | `test/org/live_events_client_test.dart` 29 passed; analyze 0/0 | optional: `LiveEventsClient.instance.sessionChanged()` in `MyAuthProvider.completeSession` for an instant reconnect at login |
-| D.3 | Real-time (app) | Replace the 7 new-data polls and 12 job-progress polls with event listeners + slow fallback (`lib/core/live/event_wait.dart`); quiz start over LiveKit topic `quiz` | in progress (agent) | | | |
+| D.3 | Real-time (app) | `lib/core/live/event_wait.dart` (`EventOrPoll`, `JobWatch`, `pollInterval` 4× while connected); every job-progress poll listens to `job_updated{kind,id}`; lobby / waiting page on `lobby_updated` / `join_decided`; quiz start over LiveKit topic `quiz` (`widgets/live_quiz.dart`) + server `quiz_started`; exam tab fetch on open / resume; attendance roster on `attendance_roster_updated` + 30 s fallback; payment wait ends on `payments_updated` | verified | 714d6e1 | `test/org/` 610 passed (event_wait 10, live_quiz, lobby controller), 44 ui tests; analyze 0/0 | backend emits `attendance_roster_updated`, `quiz_started`, `exam_analytics` — agent running |
 | D.4 | Real-time | Tests: backend e2e for emit + SSE replay; app unit tests for the client (dedupe, reconnect) | verified | with D.1 / D.2 | `e2e_live_events.py`, `live_events_client_test.dart` | |
 | E.1 | RAG | Eval first: `bench/rag/run_answer_eval.py` + real-corpus question set (ar/en, failed questions, out of scope); record BEFORE numbers in §3 | todo | | | parallel, start here |
 | E.2 | RAG | Curated Q&A layer (`rag.qa_pairs`, embeddings, thresholds, direct answer / examples), admin CRUD + "promote to Q&A" | todo | | | |
