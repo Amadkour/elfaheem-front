@@ -99,6 +99,12 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   bool _everOpened = false; // the chat stays mounted after the first open (an answer being prepared is kept)
   final _panelOverlay = GlobalKey<OverlayState>();
 
+  // Chat sessions (Track E.5): the current conversation per scope key (`app_assistant_<org id>`) while the host is
+  // alive — a scope that was never opened resumes its latest chat; null = the person started a new chat there.
+  final _conversation = <String, int?>{};
+  final _chats = <String, GlobalKey<RagChatViewState>>{};
+  bool _sessions = false; // the server has chat sessions: New chat / Chats in the header
+
   @override
   Widget build(BuildContext context) {
     final signedIn = context.select<MyAuthProvider, bool>((a) => a.isAuthenticated);
@@ -168,11 +174,33 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
                 child: Overlay(key: _panelOverlay, initialEntries: [
                   OverlayEntry(
                     maintainState: true,
-                    builder: (context) => Column(children: [
-                      AppAssistantHeader(onClose: _close, onExpand: () => _expand(org), orgName: org?.$2),
+                    builder: (context) {
                       // a new key per organization: the history is that organization's
-                      Expanded(child: RagChatView(key: ValueKey('app_assistant_${org?.$1}'), app: true, orgId: org?.$1, compact: true, contextLabel: org?.$2)),
-                    ]),
+                      final scope = 'app_assistant_${org?.$1}';
+                      final chat = _chats.putIfAbsent(scope, GlobalKey<RagChatViewState>.new);
+                      return Column(children: [
+                        AppAssistantHeader(
+                            onClose: _close,
+                            onExpand: () => _expand(org),
+                            orgName: org?.$2,
+                            onNewChat: _sessions ? () => chat.currentState?.newChat() : null,
+                            onChats: _sessions ? () => chat.currentState?.showSessions() : null),
+                        Expanded(
+                            child: RagChatView(
+                                key: chat,
+                                app: true,
+                                orgId: org?.$1,
+                                compact: true,
+                                contextLabel: org?.$2,
+                                initialConversationId: _conversation[scope],
+                                resumeLatest: !_conversation.containsKey(scope),
+                                onConversationChanged: (id) => _conversation[scope] = id,
+                                onSessionsSupported: (s) {
+                                  if (s != _sessions && mounted) setState(() => _sessions = s);
+                                },
+                                onNavigate: _close)),
+                      ]);
+                    },
                   ),
                 ]),
               ),
@@ -188,11 +216,17 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
     AppAssistant.open.value = false;
   }
 
-  /// Full screen: the same chat as a page (the history comes back from the server).
+  /// Full screen: the same chat as a page, on the pop-up's current conversation (its messages come back from the
+  /// server).
   void _expand((int, String)? org) {
     _close();
+    final scope = 'app_assistant_${org?.$1}';
     widget.navigatorKey.currentState?.push(MaterialPageRoute(
-        builder: (_) => RagChatScreen(app: true, orgId: org?.$1, title: org == null ? null : t('مساعد التطبيق · ${org.$2}', 'App assistant · ${org.$2}'))));
+        builder: (_) => RagChatScreen(
+            app: true,
+            orgId: org?.$1,
+            conversationId: _chats[scope]?.currentState?.conversationId ?? _conversation[scope],
+            title: org == null ? null : t('مساعد التطبيق · ${org.$2}', 'App assistant · ${org.$2}'))));
   }
 }
 
@@ -221,11 +255,13 @@ class _Bubble extends StatelessWidget {
   }
 }
 
-/// The pop-up's header: the assistant's name, the organization it follows (when one is open), expand and close.
+/// The pop-up's header: the assistant's name, the organization it follows (when one is open), New chat and Chats
+/// (chat sessions, when the server has them), expand and close.
 class AppAssistantHeader extends StatelessWidget {
-  const AppAssistantHeader({super.key, required this.onClose, required this.onExpand, this.orgName});
+  const AppAssistantHeader({super.key, required this.onClose, required this.onExpand, this.orgName, this.onNewChat, this.onChats});
   final VoidCallback onClose, onExpand;
   final String? orgName;
+  final VoidCallback? onNewChat, onChats;
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +281,11 @@ class AppAssistantHeader extends StatelessWidget {
               if (sub != null) Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .85), fontSize: 11.5)),
             ]),
           ),
-          IconButton(tooltip: t('ملء الشاشة', 'Full screen'), onPressed: onExpand, icon: const Icon(Icons.open_in_full_rounded, color: Colors.white, size: 20)),
+          if (onNewChat != null)
+            IconButton(tooltip: 'rag_new_chat'.tr, visualDensity: VisualDensity.compact, onPressed: onNewChat, icon: const Icon(Icons.add_comment_outlined, color: Colors.white, size: 20)),
+          if (onChats != null)
+            IconButton(tooltip: 'rag_chats'.tr, visualDensity: VisualDensity.compact, onPressed: onChats, icon: const Icon(Icons.history_rounded, color: Colors.white, size: 20)),
+          IconButton(tooltip: t('ملء الشاشة', 'Full screen'), visualDensity: VisualDensity.compact, onPressed: onExpand, icon: const Icon(Icons.open_in_full_rounded, color: Colors.white, size: 20)),
           IconButton(tooltip: t('إغلاق', 'Close'), onPressed: onClose, icon: const Icon(Icons.close_rounded, color: Colors.white)),
         ]),
       ),

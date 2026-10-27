@@ -6,25 +6,40 @@
 // page, the floating app assistant (app_assistant.dart) in its pop-up. The presentational parts — [RagAnswerCard],
 // [RagAnswerBody], [RagStageTrail], [RagStarterPrompts] — take plain values and run under the layout harness; the
 // view owns the API calls and the polling.
+//
+// Chat sessions (Track E.5): the view asks `GET /conversations` first. On a server that has them it keeps the
+// current conversation ([RagChatViewState.newChat] starts a clean one, created lazily on the first question;
+// [showSessions] lists them — a bottom sheet on phones, a side panel from [Breakpoints.desktop]; reopening loads
+// that conversation's messages oldest first, "Load earlier" pages back with `has_more`); on an older server
+// (a bare 404 / 405) it keeps the flat history as before. The client sends only `conversation_id`.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'rag_chat.dart';
+import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
 import 'rag_library_screen.dart';
 
+export 'rag_chat_sessions.dart';
+
 class RagChatScreen extends StatefulWidget {
-  const RagChatScreen({super.key, this.orgId, this.courseId, this.app = false, this.title});
+  const RagChatScreen({super.key, this.orgId, this.courseId, this.app = false, this.title, this.conversationId});
   final int? orgId;
   final int? courseId;
   final bool app;
   final String? title;
+
+  /// The conversation to open (the pop-up's current one when it expands); null = the latest.
+  final int? conversationId;
 
   @override
   State<RagChatScreen> createState() => _RagChatScreenState();
@@ -33,6 +48,7 @@ class RagChatScreen extends StatefulWidget {
 class _RagChatScreenState extends State<RagChatScreen> {
   final _chat = GlobalKey<RagChatViewState>();
   bool _manager = false; // library managers get the Library action (from the documents list: manager: true)
+  bool _sessions = false; // the server has chat sessions: New chat + Chats actions
 
   @override
   Widget build(BuildContext context) {
@@ -40,6 +56,8 @@ class _RagChatScreenState extends State<RagChatScreen> {
       key: const ValueKey('rag.assistant'),
       appBar: ScreenAppBar(title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
           actions: [
+            if (_sessions) IconButton(tooltip: 'rag_new_chat'.tr, icon: const Icon(Icons.add_comment_outlined), onPressed: () => _chat.currentState?.newChat()),
+            if (_sessions) IconButton(tooltip: 'rag_chats'.tr, icon: const Icon(Icons.history_rounded), onPressed: () => _chat.currentState?.showSessions()),
             if (_manager)
               IconButton(
                   tooltip: t('مكتبة المستندات', 'Documents library'),
@@ -54,6 +72,10 @@ class _RagChatScreenState extends State<RagChatScreen> {
           orgId: widget.orgId,
           courseId: widget.courseId,
           app: widget.app,
+          initialConversationId: widget.conversationId,
+          onSessionsSupported: (s) {
+            if (s != _sessions) setState(() => _sessions = s);
+          },
           onManager: (m) {
             if (m != _manager) setState(() => _manager = m);
           }),
@@ -64,7 +86,21 @@ class _RagChatScreenState extends State<RagChatScreen> {
 /// The conversation: the caller's earlier questions with their answers, then the question box. Fills the height it
 /// is given (it must be bounded: an Expanded, a page body, a sized pop-up).
 class RagChatView extends StatefulWidget {
-  const RagChatView({super.key, this.orgId, this.courseId, this.app = false, this.onManager, this.compact = false, this.api, this.contextLabel});
+  const RagChatView({
+    super.key,
+    this.orgId,
+    this.courseId,
+    this.app = false,
+    this.onManager,
+    this.compact = false,
+    this.api,
+    this.contextLabel,
+    this.initialConversationId,
+    this.resumeLatest = true,
+    this.onConversationChanged,
+    this.onSessionsSupported,
+    this.onNavigate,
+  });
   final int? orgId;
   final int? courseId;
   final bool app;
@@ -78,6 +114,19 @@ class RagChatView extends StatefulWidget {
 
   /// Shown in the banner: where the assistant reads from (the organization's name inside an organization).
   final String? contextLabel;
+
+  /// The conversation to open first (Track E.5); when null, the latest one if [resumeLatest], else a new chat.
+  final int? initialConversationId;
+  final bool resumeLatest;
+
+  /// The current conversation changed (null = a new chat not created yet): the floating host remembers it.
+  final ValueChanged<int?>? onConversationChanged;
+
+  /// Whether the server has chat sessions (after the first call): the page shows New chat / Chats then.
+  final ValueChanged<bool>? onSessionsSupported;
+
+  /// Called before a citation's deep link opens a page (the pop-up closes).
+  final VoidCallback? onNavigate;
 
   @override
   State<RagChatView> createState() => RagChatViewState();
@@ -93,14 +142,210 @@ class RagChatViewState extends State<RagChatView> {
   bool _sending = false;
   String? _error;
 
+  // chat sessions (Track E.5)
+  bool? _sessions; // null = not asked yet · true = the server has conversations · false = older server (flat history)
+  final List<RagConversation> _convs = [];
+  int? _retentionDays;
+  RagConversation? _current; // null = a new chat, created on the first question
+  bool _hasMore = false, _loadingMore = false, _convsLoading = false;
+  bool _panel = true; // the side panel on a wide view (the Chats action toggles it)
+
   RagContext get _ctx => ragContextOf(app: widget.app, orgId: widget.orgId);
+
+  /// The open conversation's id (null = a new chat).
+  int? get conversationId => _current?.id;
 
   @override
   void initState() {
     super.initState();
-    _history();
+    _boot();
     _loadStarters();
     if (widget.onManager != null) _checkManager();
+  }
+
+  /// Chat sessions when the server has them (then the first conversation to show), else the flat history.
+  Future<void> _boot() async {
+    final r = await _api.conversations(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
+    if (!mounted) return;
+    if (!ragSessionsSupported(r)) {
+      _sessions = false;
+      widget.onSessionsSupported?.call(false);
+      await _history();
+      return;
+    }
+    _sessions = true;
+    widget.onSessionsSupported?.call(true);
+    if (!r.ok) {
+      setState(() {
+        _loading = false;
+        _error = ragOrgBlocked(r.code) ? ragChatResultText(r) : ragCodeText(r.code, r.message);
+      });
+      return;
+    }
+    _convs..clear()..addAll(RagApi.conversationItems(r));
+    _retentionDays = RagApi.retentionDays(r);
+    RagConversation? open;
+    final want = widget.initialConversationId;
+    if (want != null) open = _convs.where((c) => c.id == want).firstOrNull;
+    if (open == null && want == null && widget.resumeLatest) open = _convs.firstOrNull;
+    if (open != null) {
+      await openConversation(open);
+    } else {
+      setState(() => _loading = false);
+      widget.onConversationChanged?.call(null);
+    }
+  }
+
+  Future<void> _loadConversations() async {
+    if (_sessions != true) return;
+    setState(() => _convsLoading = true);
+    final r = await _api.conversations(orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
+    if (!mounted) return;
+    setState(() {
+      _convsLoading = false;
+      if (r.ok) {
+        _convs..clear()..addAll(RagApi.conversationItems(r));
+        _retentionDays = RagApi.retentionDays(r) ?? _retentionDays;
+      }
+    });
+  }
+
+  /// A clean conversation: nothing shown, no memory; it is created on the server with the first question.
+  void newChat() {
+    if (_sessions != true) return;
+    setState(() {
+      _current = null;
+      _items.clear();
+      _error = null;
+      _hasMore = false;
+      _loading = false;
+    });
+    widget.onConversationChanged?.call(null);
+  }
+
+  /// Reopens [c]: its messages oldest first (the first page; "Load earlier" pages back).
+  Future<void> openConversation(RagConversation c) async {
+    setState(() {
+      _current = c;
+      _items.clear();
+      _error = null;
+      _hasMore = false;
+      _loading = true;
+    });
+    widget.onConversationChanged?.call(c.id);
+    final r = await _api.messages(c.id);
+    if (!mounted || _current?.id != c.id) return;
+    setState(() {
+      _loading = false;
+      if (r.ok) {
+        _items..clear()..addAll(RagApi.items(r));
+        _hasMore = RagApi.hasMore(r);
+      } else if (r.code == 'conversation_not_found' || r.code == 'not_owner') {
+        _convs.removeWhere((x) => x.id == c.id);
+        _current = null;
+        _error = ragCodeText(r.code, r.message);
+      } else {
+        _error = ragChatResultText(r);
+      }
+    });
+    if (_current == null) widget.onConversationChanged?.call(null);
+    _toEnd();
+  }
+
+  Future<void> _loadEarlier() async {
+    final c = _current;
+    if (c == null || _loadingMore || _items.isEmpty) return;
+    setState(() => _loadingMore = true);
+    final r = await _api.messages(c.id, before: _items.first.id);
+    if (!mounted || _current?.id != c.id) return;
+    setState(() {
+      _loadingMore = false;
+      if (r.ok) {
+        final older = RagApi.items(r).where((a) => !_items.any((x) => x.id == a.id)).toList();
+        _items.insertAll(0, older);
+        _hasMore = RagApi.hasMore(r);
+      }
+    });
+  }
+
+  /// The conversations list: a bottom sheet on a phone, the side panel toggled on a wide view.
+  Future<void> showSessions() async {
+    if (_sessions != true) return;
+    final wide = _wide(context);
+    if (wide) {
+      setState(() => _panel = !_panel);
+      if (_panel) await _loadConversations();
+      return;
+    }
+    await _loadConversations();
+    if (!mounted) return;
+    await showAppSheet<void>(context, (ctx) => RagSessionsPanel(
+          items: _convs,
+          currentId: _current?.id,
+          retentionDays: _retentionDays,
+          loading: _convsLoading,
+          onNew: () {
+            Navigator.of(ctx).pop();
+            newChat();
+          },
+          onOpen: (c) {
+            Navigator.of(ctx).pop();
+            if (c.id != _current?.id) openConversation(c);
+          },
+          onRename: (c) {
+            Navigator.of(ctx).pop();
+            _rename(c);
+          },
+          onDelete: (c) {
+            Navigator.of(ctx).pop();
+            _delete(c);
+          },
+        ));
+  }
+
+  bool _wide(BuildContext context) => !widget.compact && MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
+
+  Future<void> _rename(RagConversation c) async {
+    final title = await RagRenameDialog.show(context, c.displayTitle);
+    if (title == null || !mounted || title == c.title) return;
+    final r = await _api.renameConversation(c.id, title);
+    if (!mounted) return;
+    if (!r.ok) {
+      appToast(ragCodeText(r.code, r.message), error: true);
+      return;
+    }
+    setState(() {
+      final renamed = c.copyWith(title: title);
+      final i = _convs.indexWhere((x) => x.id == c.id);
+      if (i >= 0) _convs[i] = renamed;
+      if (_current?.id == c.id) _current = renamed;
+    });
+    appToast('rag_chat_saved'.tr);
+  }
+
+  Future<void> _delete(RagConversation c) async {
+    if (!await appConfirm(context, message: 'rag_chat_delete_confirm'.tr, danger: true, confirmLabel: 'rag_chat_delete'.tr)) return;
+    if (!mounted) return;
+    final r = await _api.deleteConversation(c.id);
+    if (!mounted) return;
+    if (!r.ok && r.code != 'conversation_not_found') {
+      appToast(ragCodeText(r.code, r.message), error: true);
+      return;
+    }
+    setState(() => _convs.removeWhere((x) => x.id == c.id));
+    if (_current?.id == c.id) newChat();
+    appToast('rag_chat_deleted'.tr);
+  }
+
+  /// The side list reflects the open conversation's new question.
+  void _touchCurrent() {
+    final c = _current;
+    if (c == null) return;
+    final i = _convs.indexWhere((x) => x.id == c.id);
+    final touched = c.copyWith(turns: c.turns + 1, lastAt: DateTime.now().toUtc());
+    if (i >= 0) _convs.removeAt(i);
+    _convs.insert(0, touched);
+    _current = touched;
   }
 
   Future<void> _loadStarters() async {
@@ -117,9 +362,15 @@ class RagChatViewState extends State<RagChatView> {
     super.dispose();
   }
 
-  /// Reloads the history (the page's Refresh action).
+  /// Reloads the history (the page's Refresh action): the open conversation, else the flat history.
   void refresh() {
     setState(() => _error = null);
+    if (_sessions == true) {
+      _loadConversations();
+      final c = _current;
+      if (c != null) openConversation(c);
+      return;
+    }
     _history();
   }
 
@@ -150,7 +401,27 @@ class RagChatViewState extends State<RagChatView> {
     final q = text.trim();
     if (q.isEmpty || _sending) return;
     setState(() { _sending = true; _error = null; });
-    final r = await _api.ask(q, orgId: widget.orgId, courseId: widget.courseId, app: widget.app);
+    // a new chat is created on the server with its first question (its title from that question)
+    if (_sessions == true && _current == null) {
+      final c = await _api.createConversation(orgId: widget.orgId, courseId: widget.courseId, app: widget.app, title: conversationTitleFrom(q));
+      if (!mounted) return;
+      if (c.ok) {
+        final conv = RagConversation.fromJson(c.map);
+        setState(() {
+          _current = conv;
+          _convs.insert(0, conv);
+        });
+        widget.onConversationChanged?.call(conv.id);
+      } else if (c.unavailable) {
+        _sessions = false; // the routes went away (a rollback): back to the flat history
+        widget.onSessionsSupported?.call(false);
+      } else {
+        setState(() { _sending = false; _error = ragChatResultText(c); });
+        return;
+      }
+    }
+    final conversation = _current;
+    final r = await _api.ask(q, orgId: widget.orgId, courseId: widget.courseId, app: widget.app, conversationId: conversation?.id);
     if (!mounted) return;
     if (!r.ok) {
       setState(() { _sending = false; _error = ragChatResultText(r); });
@@ -158,7 +429,11 @@ class RagChatViewState extends State<RagChatView> {
     }
     _input.clear();
     final pending = RagAnswer.fromJson(r.map);
-    setState(() => _items.add(pending));
+    if (_current?.id != conversation?.id) return; // the person moved to another chat meanwhile
+    setState(() {
+      _items.add(pending);
+      _touchCurrent();
+    });
     _toEnd();
     final done = await _api.waitFor(pending.id, onUpdate: (a) {
       if (!mounted) return;
@@ -178,8 +453,15 @@ class RagChatViewState extends State<RagChatView> {
     _toEnd();
   }
 
+  /// Thumbs up sends at once; thumbs down first offers a comment (the sheet; Skip or dismiss = none).
   Future<void> _rate(RagAnswer a, bool helpful) async {
-    final r = await _api.rate(a.id, helpful: helpful);
+    String? comment;
+    if (!helpful) {
+      final c = await showAppSheet<String>(context, (_) => const RagRatingCommentSheet());
+      if (!mounted) return;
+      comment = c == null || c.trim().isEmpty ? null : c.trim();
+    }
+    final r = await _api.rate(a.id, helpful: helpful, comment: comment);
     if (!mounted || !r.ok) return;
     setState(() {
       final i = _items.indexWhere((x) => x.id == a.id);
@@ -189,21 +471,72 @@ class RagChatViewState extends State<RagChatView> {
 
   @override
   Widget build(BuildContext context) {
+    final chat = _chat(context);
+    if (_sessions != true || !_panel || !_wide(context)) return chat;
+    final c = context.colors;
+    // a wide window: the conversations beside the chat
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      SizedBox(
+        width: 300,
+        child: DecoratedBox(
+          decoration: BoxDecoration(border: BorderDirectional(end: BorderSide(color: c.divider))),
+          child: RagSessionsPanel(
+              items: _convs,
+              currentId: _current?.id,
+              retentionDays: _retentionDays,
+              loading: _convsLoading,
+              onNew: newChat,
+              onOpen: (x) {
+                if (x.id != _current?.id) openConversation(x);
+              },
+              onRename: _rename,
+              onDelete: _delete,
+              onClose: () => setState(() => _panel = false)),
+        ),
+      ),
+      Expanded(child: chat),
+    ]);
+  }
+
+  Widget _chat(BuildContext context) {
     final c = context.colors;
     final side = widget.compact ? 12.0 : 16.0;
     final last = _items.isEmpty ? null : _items.last;
+    final retention = _sessions == true && !_loading && _items.isEmpty ? retentionText(_retentionDays, AppConfig.lang) : '';
     return Column(children: [
       Expanded(
         child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
           AppBanner(icon: Icons.menu_book_rounded, color: c.primary, text: _scopeText()),
           const SizedBox(height: 10),
           if (_loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
-          if (!_loading && _items.isEmpty && _error == null) RagStarterPrompts(context_: _ctx, prompts: _starters, onPick: send, compact: widget.compact),
+          if (!_loading && _items.isEmpty && _error == null)
+            RagStarterPrompts(
+                context_: _ctx,
+                prompts: _starters,
+                onPick: send,
+                compact: widget.compact,
+                onNewChat: _sessions == true && _current != null ? newChat : null,
+                onChats: _sessions == true && _convs.isNotEmpty ? showSessions : null),
+          if (retention.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            AppBanner(icon: Icons.auto_delete_outlined, color: c.textMedium, text: retention),
+          ],
+          if (_hasMore)
+            Align(
+              alignment: Alignment.center,
+              child: TextButton.icon(
+                  onPressed: _loadingMore ? null : _loadEarlier,
+                  icon: _loadingMore
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.expand_less_rounded, size: 18),
+                  label: Text('rag_load_earlier'.tr)),
+            ),
           for (final a in _items)
             RagAnswerCard(
                 answer: a,
                 onRate: a.smallTalk ? null : (helpful) => _rate(a, helpful),
-                onFollowUp: identical(a, last) && !_sending ? send : null),
+                onFollowUp: identical(a, last) && !_sending ? send : null,
+                onNavigate: widget.onNavigate),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
         ]),
       ),
@@ -246,19 +579,27 @@ class RagChatViewState extends State<RagChatView> {
   }
 }
 
-/// The empty chat: what the assistant can do, as questions to tap.
+/// The empty chat: what the assistant can do, as questions to tap; with chat sessions, New chat (when an empty
+/// conversation is open) and Chats (when there are earlier ones).
 class RagStarterPrompts extends StatelessWidget {
-  const RagStarterPrompts({super.key, required this.context_, required this.onPick, this.prompts, this.compact = false});
+  const RagStarterPrompts({super.key, required this.context_, required this.onPick, this.prompts, this.compact = false, this.onNewChat, this.onChats});
   final RagContext context_;
   final ValueChanged<String> onPick;
   /// The server's questions (built from the library's headings); null or empty = [ragStarterPrompts].
   final List<String>? prompts;
   final bool compact;
+  final VoidCallback? onNewChat;
+  final VoidCallback? onChats;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (onNewChat != null || onChats != null)
+        Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: [
+          if (onNewChat != null) OutlinedButton.icon(onPressed: onNewChat, icon: const Icon(Icons.add_comment_outlined, size: 18), label: Text('rag_new_chat'.tr)),
+          if (onChats != null) TextButton.icon(onPressed: onChats, icon: const Icon(Icons.history_rounded, size: 18), label: Text('rag_chats'.tr)),
+        ]),
       Padding(
         padding: EdgeInsets.symmetric(vertical: compact ? 12 : 24),
         child: Column(children: [
@@ -326,7 +667,7 @@ class _StageDot extends StatelessWidget {
 
 /// A question and its answer: the answer's blocks with their `[n]` markers, the follow-ups, then the sources it quotes.
 class RagAnswerCard extends StatelessWidget {
-  const RagAnswerCard({super.key, required this.answer, this.onRate, this.onFollowUp});
+  const RagAnswerCard({super.key, required this.answer, this.onRate, this.onFollowUp, this.onNavigate});
   final RagAnswer answer;
 
   /// helpful? (null = no rating offered)
@@ -334,6 +675,9 @@ class RagAnswerCard extends StatelessWidget {
 
   /// Tapping a suggested question sends it (null = the chips are not shown).
   final ValueChanged<String>? onFollowUp;
+
+  /// Called before a curated source's deep link opens its page (the pop-up closes).
+  final VoidCallback? onNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -371,7 +715,7 @@ class RagAnswerCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         Text(t('المصادر', 'Sources'), style: theme.labelMedium?.copyWith(color: c.textMedium)),
                         const SizedBox(height: 4),
-                        for (final ci in answer.citations) _Source(citation: ci),
+                        for (final ci in answer.citations) _Source(citation: ci, onNavigate: onNavigate),
                       ],
                       if (answer.followUps.isNotEmpty && onFollowUp != null) ...[
                         const SizedBox(height: 10),
@@ -454,13 +798,15 @@ class RagAnswerBody extends StatelessWidget {
 }
 
 class _Source extends StatelessWidget {
-  const _Source({required this.citation});
+  const _Source({required this.citation, this.onNavigate});
   final RagCitation citation;
+  final VoidCallback? onNavigate;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final theme = Theme.of(context).textTheme;
+    final module = citation.isQa ? ragDeepLinkModule(citation.deepLink) : null;
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
@@ -471,10 +817,25 @@ class _Source extends StatelessWidget {
           label: t('المصدر ${citation.n}', 'Source ${citation.n}'),
           excludeSemantics: true,
           child: CircleAvatar(radius: 12, backgroundColor: c.primary.withValues(alpha: 0.12),
-              child: Text('${citation.n}', style: TextStyle(fontSize: 11, color: c.primary, fontWeight: FontWeight.w700))),
+              child: citation.isQa
+                  ? Icon(Icons.question_answer_outlined, size: 13, color: c.primary)
+                  : Text('${citation.n}', style: TextStyle(fontSize: 11, color: c.primary, fontWeight: FontWeight.w700))),
         ),
         title: Text(citation.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.bodySmall),
-        children: [Align(alignment: AlignmentDirectional.centerStart, child: Text('«${citation.quote}»', style: theme.bodySmall?.copyWith(color: c.textMedium)))],
+        children: [
+          Align(alignment: AlignmentDirectional.centerStart, child: Text('«${citation.quote}»', style: theme.bodySmall?.copyWith(color: c.textMedium))),
+          if (module != null)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                  onPressed: () {
+                    onNavigate?.call();
+                    AppNavigator.openModule(module);
+                  },
+                  icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                  label: Text('rag_open_link'.tr)),
+            ),
+        ],
       ),
     );
   }

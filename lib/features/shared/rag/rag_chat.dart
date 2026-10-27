@@ -6,16 +6,29 @@
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
 // [answerBlocks] (paragraphs, bullet and numbered lists, **bold** runs), [ragStageText], [ragStarterPrompts],
 // [ragCodeText], [ragChatResultText], [ragOrgBlocked].
+//
+// Chat sessions (Track E.5): a conversation groups the asker's questions, `/api/v1/rag/conversations`:
+//   GET    ?app=&org_id=&course_id=&limit=&before=   {items: [{id, title, scope{app, org_id, course_id}, created_at,
+//                                                     last_at, turns}], retention_days}   newest first
+//   POST   {app, org_id?, course_id?, title?}        the conversation   ·   PATCH /{id} {title}   ·   DELETE /{id}
+//   GET    /{id}/messages?limit=&before=             {items: [query rows, oldest first], has_more}
+//   POST   /ask {…, conversation_id}                 the answer row carries `conversation_id` (an older server
+//                                                     ignores the field and has no conversations routes: a bare 404 /
+//                                                     405 = [EngineResult.unavailable], the flat history stays)
+// The client only ever sends `conversation_id`: the server bounds the memory it gives the model. Codes: 404
+// `conversation_not_found`, 403 `not_owner`. Pure: [RagConversation], [conversationTitleFrom], [retentionText],
+// [ragRelativeTime], [ragDeepLinkModule], [ragSessionsSupported].
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 
-import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t;
+import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t, trp;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_library.dart' show ragOrgStatusText;
 
 class RagCitation {
-  RagCitation(this.n, this.documentId, this.title, this.section, this.pageFrom, this.pageTo, this.quote);
+  RagCitation(this.n, this.documentId, this.title, this.section, this.pageFrom, this.pageTo, this.quote, [this.kind = '', this.deepLink]);
   final int n;
   final int documentId;
   final String title;
@@ -24,10 +37,20 @@ class RagCitation {
   final int? pageTo;
   final String quote;
 
+  /// `` (a document chunk) or `qa` (a curated Q&A pair, Track E.2: no document, the pair's question as the title).
+  final String kind;
+
+  /// A curated pair's deep link (a feature key or a route starting with `/`), opened through AppNavigator.
+  final String? deepLink;
+
   factory RagCitation.fromJson(Map<String, dynamic> j) => RagCitation(asInt(j['n']), asInt(j['document_id']),
-      '${j['title'] ?? ''}', '${j['section'] ?? ''}', _page(j['page_from']), _page(j['page_to']), '${j['quote'] ?? ''}');
+      '${j['title'] ?? ''}', '${j['section'] ?? ''}', _page(j['page_from']), _page(j['page_to']), '${j['quote'] ?? ''}',
+      asStr(j['kind']), _blank(j['deep_link']));
 
   static int? _page(Object? v) => v == null ? null : asInt(v);
+  static String? _blank(Object? v) => v == null || '$v'.trim().isEmpty ? null : '$v'.trim();
+
+  bool get isQa => kind == 'qa';
 
   /// "Student regulation › Article 5 · p. 3" (pages only when the document has them).
   String get label {
@@ -40,7 +63,7 @@ class RagCitation {
 
 class RagAnswer {
   RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error,
-      [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId]);
+      [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId, this.conversationId]);
   final int id;
   final String state;
   final String question;
@@ -63,6 +86,9 @@ class RagAnswer {
   final bool app;
   final int? orgId;
 
+  /// The chat session this question belongs to (Track E.5); null on an older server or a question asked before.
+  final int? conversationId;
+
   bool get done => state == 'done' || state == 'failed';
 
   /// Written by the model (as opposed to quoted straight from the documents).
@@ -84,7 +110,8 @@ class RagAnswer {
       j['stage']?.toString(),
       asStr(j['generator']),
       j['app'] == true,
-      j['org_id'] == null ? null : asInt(j['org_id']));
+      j['org_id'] == null ? null : asInt(j['org_id']),
+      j['conversation_id'] == null ? null : asInt(j['conversation_id']));
 
   RagCitation? citation(int n) {
     for (final c in citations) {
@@ -190,11 +217,110 @@ String ragStageText(String? stage) => switch (stage) {
       'retrieve' => t('أبحث في المستندات…', 'Searching the documents…'),
       'write' => t('أكتب الإجابة…', 'Writing the answer…'),
       'verify' => t('أراجع الإجابة مع المصادر…', 'Checking the answer against the sources…'),
+      'qa' => 'rag_stage_qa'.tr,
       _ => t('أبحث في المستندات…', 'Searching the documents…'),
     };
 
 /// The steps shown as a progress trail while an answer is prepared, in order.
 const ragStages = ['plan', 'retrieve', 'write', 'verify'];
+
+// ── chat sessions (Track E.5) ─────────────────────────────────────────────────────────────────────────────────────
+
+/// A translation.json text in [lang] (not the UI language: the caller chooses), the key itself when not loaded.
+String ragTr(String key, String lang) {
+  final e = translation[key];
+  return e is Map ? '${e[lang] ?? e['en'] ?? key}' : key;
+}
+
+/// One chat session of the asker, as `GET /conversations` lists it.
+class RagConversation {
+  const RagConversation({required this.id, required this.title, this.app = false, this.orgId, this.courseId, this.createdAt, this.lastAt, this.turns = 0});
+  final int id;
+  final String title;
+  final bool app;
+  final int? orgId;
+  final int? courseId;
+  final DateTime? createdAt;
+
+  /// The last question's time (the list is ordered by it, newest first).
+  final DateTime? lastAt;
+  final int turns;
+
+  factory RagConversation.fromJson(Map<String, dynamic> j) {
+    final scope = asMap(j['scope']);
+    return RagConversation(
+      id: asInt(j['id']),
+      title: asStr(j['title']).trim(),
+      app: (scope['app'] ?? j['app']) == true,
+      orgId: _optInt(scope['org_id'] ?? j['org_id']),
+      courseId: _optInt(scope['course_id'] ?? j['course_id']),
+      createdAt: ragParseUtc(j['created_at']),
+      lastAt: ragParseUtc(j['last_at']) ?? ragParseUtc(j['created_at']),
+      turns: asInt(j['turns']),
+    );
+  }
+
+  static int? _optInt(Object? v) => v == null ? null : asInt(v);
+
+  /// The title to show: the server's, else "New chat".
+  String get displayTitle => title.isEmpty ? 'rag_new_chat'.tr : title;
+
+  RagConversation copyWith({String? title, DateTime? lastAt, int? turns}) =>
+      RagConversation(id: id, title: title ?? this.title, app: app, orgId: orgId, courseId: courseId, createdAt: createdAt, lastAt: lastAt ?? this.lastAt, turns: turns ?? this.turns);
+}
+
+/// The server's ISO time (naive UTC or with a `Z`) → a UTC instant; null when absent or unreadable.
+DateTime? ragParseUtc(Object? v) {
+  if (v == null) return null;
+  final s = '$v'.trim();
+  if (s.isEmpty) return null;
+  final d = DateTime.tryParse(s.endsWith('Z') || s.contains('+') ? s : '${s}Z');
+  return d?.toUtc();
+}
+
+/// The title a new conversation gets from its first question: one line, whitespace collapsed, at most [max]
+/// characters (cut at a word when one is near, with an ellipsis); "New chat" (ar / en) for an empty question.
+String conversationTitleFrom(String firstQuestion, {int max = 40, String? lang}) {
+  final q = firstQuestion.replaceAll(RegExp(r'\s+'), ' ').trim();
+  if (q.isEmpty) return ragTr('rag_new_chat', lang ?? AppConfig.lang);
+  if (q.length <= max) return q;
+  var cut = q.substring(0, max - 1);
+  final space = cut.lastIndexOf(' ');
+  if (space >= max ~/ 2) cut = cut.substring(0, space);
+  return '${cut.trimRight()}…';
+}
+
+/// "Chats are deleted automatically after N days" in [lang]; empty when the server keeps them (null / 0).
+String retentionText(int? days, String lang) {
+  if (days == null || days <= 0) return '';
+  return ragTr('rag_retention', lang).replaceAll('{n}', '$days');
+}
+
+/// "Just now" · "5 min ago" · "3 h ago" · "Yesterday" · "4 days ago" · the date (older than a week), in the UI
+/// language. [now] is for tests.
+String ragRelativeTime(DateTime? at, {DateTime? now}) {
+  if (at == null) return '';
+  final d = (now ?? DateTime.now().toUtc()).difference(at.toUtc());
+  if (d.inMinutes < 1) return 'rag_time_now'.tr;
+  if (d.inHours < 1) return trp('rag_time_min', {'n': d.inMinutes});
+  if (d.inHours < 24) return trp('rag_time_hours', {'n': d.inHours});
+  if (d.inDays < 2) return 'rag_time_yesterday'.tr;
+  if (d.inDays < 7) return trp('rag_time_days', {'n': d.inDays});
+  return AppTime.date(at.toUtc());
+}
+
+/// A curated pair's deep link as [AppNavigator.openModule] takes it: `/downloads` → `downloads`, a feature key
+/// unchanged; null when there is nothing to open.
+String? ragDeepLinkModule(String? link) {
+  final s = (link ?? '').trim();
+  if (s.isEmpty) return null;
+  final m = s.startsWith('/') ? s.substring(1) : s;
+  return m.isEmpty ? null : m;
+}
+
+/// Whether the server has the conversations routes: the list call succeeded, or failed with a coded error (the
+/// routes exist). A bare 404 / 405 ([EngineResult.unavailable]) is an older server: the flat history stays.
+bool ragSessionsSupported(EngineResult r) => r.ok || !r.unavailable;
 
 /// Where the chat is: the app assistant alone (`app`), the app assistant inside an organization (`org`), or an
 /// organization / course documents chat (`docs`).
@@ -245,6 +371,9 @@ String ragCodeText(String? code, String fallback) => switch (code) {
       'not_in_course' => t('لست مسجلاً في هذا المقرر', 'You are not in this course'),
       'authz_unavailable' => t('تعذر التحقق من الصلاحيات — حاول بعد قليل', 'Could not check your access — try again shortly'),
       'app_context_only' => t('مساعد التطبيق لا يتبع مقرراً', 'The app assistant does not follow a course'),
+      // chat sessions (Track E.5)
+      'conversation_not_found' => 'rag_chat_not_found'.tr,
+      'not_owner' => 'rag_chat_not_owner'.tr,
       // The organization's status (Phase 10, the core's codes): the assistant follows the organization.
       'orgs_disabled' => t('المساعد غير متاح: خدمة المؤسسات متوقفة حالياً على المنصة',
           'The assistant is unavailable: organizations are switched off on this platform right now'),
@@ -267,9 +396,35 @@ class RagApi {
   static const base = '/api/v1/rag';
 
   /// [app]: the app assistant (the platform's own documents); with [orgId] too, the organization's library as well
-  /// (the app assistant opened inside an organization). Never with a course.
-  Future<EngineResult> ask(String question, {int? orgId, int? courseId, bool app = false}) => engineCall(
-      () => _api.post('$base/ask', body: {'question': question, 'org_id': ?orgId, 'course_id': ?courseId, if (app) 'app': true}));
+  /// (the app assistant opened inside an organization). Never with a course. [conversationId] (Track E.5) puts the
+  /// question in that chat session — the only memory the client sends; an older server ignores it.
+  Future<EngineResult> ask(String question, {int? orgId, int? courseId, bool app = false, int? conversationId}) => engineCall(() =>
+      _api.post('$base/ask', body: {'question': question, 'org_id': ?orgId, 'course_id': ?courseId, if (app) 'app': true, 'conversation_id': ?conversationId}));
+
+  // ── chat sessions (Track E.5) ──
+
+  /// The asker's conversations of one scope, newest first; [before] (a conversation id) pages further back.
+  Future<EngineResult> conversations({int? orgId, int? courseId, bool app = false, int limit = 30, int? before}) =>
+      engineCall(() => _api.get('$base/conversations', queryParams: {'app': app, 'org_id': ?orgId, 'course_id': ?courseId, 'limit': limit, 'before': ?before}));
+
+  Future<EngineResult> createConversation({int? orgId, int? courseId, bool app = false, String? title}) => engineCall(() =>
+      _api.post('$base/conversations', body: {'app': app, 'org_id': ?orgId, 'course_id': ?courseId, if (title != null && title.trim().isNotEmpty) 'title': title.trim()}));
+
+  Future<EngineResult> renameConversation(int id, String title) => engineCall(() => _api.patch('$base/conversations/$id', body: {'title': title.trim()}));
+
+  Future<EngineResult> deleteConversation(int id) => engineCall(() => _api.delete('$base/conversations/$id'));
+
+  /// A conversation's questions with their answers, oldest first; [before] (a query id) pages further back.
+  Future<EngineResult> messages(int id, {int limit = 30, int? before}) =>
+      engineCall(() => _api.get('$base/conversations/$id/messages', queryParams: {'limit': limit, 'before': ?before}));
+
+  static List<RagConversation> conversationItems(EngineResult r) => asMapList(asMap(r.map)['items']).map(RagConversation.fromJson).toList();
+
+  /// `retention_days` of the conversations list (null when the server did not say).
+  static int? retentionDays(EngineResult r) => r.map['retention_days'] == null ? null : asInt(r.map['retention_days']);
+
+  /// `has_more` of a messages page.
+  static bool hasMore(EngineResult r) => r.map['has_more'] == true;
 
   Future<EngineResult> query(int id) => engineCall(() => _api.get('$base/queries/$id'));
 

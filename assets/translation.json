@@ -16212,5 +16212,129 @@
   "phone_verified_done": {
     "en": "Phone number verified",
     "ar": "تم التحقق من رقم الهاتف"
+  },
+  "settings_search": {
+    "en": "Search settings",
+    "ar": "ابحث في الإعدادات"
+  },
+  "settings_no_match": {
+    "en": "Nothing matches your search",
+    "ar": "لا شيء يطابق بحثك"
+  },
+  "chart_no_data": {
+    "en": "No data yet",
+    "ar": "لا توجد بيانات بعد"
+  },
+  "chart_vs_previous": {
+    "en": "vs previous period",
+    "ar": "مقارنةً بالفترة السابقة"
+  },
+  "clear": {
+    "en": "Clear",
+    "ar": "مسح"
+  },
+  "rag_new_chat": {
+    "en": "New chat",
+    "ar": "محادثة جديدة"
+  },
+  "rag_chats": {
+    "en": "Chats",
+    "ar": "المحادثات"
+  },
+  "rag_chats_empty": {
+    "en": "No chats yet — ask your first question",
+    "ar": "لا محادثات بعد — اطرح سؤالك الأول"
+  },
+  "rag_chat_rename": {
+    "en": "Rename",
+    "ar": "إعادة التسمية"
+  },
+  "rag_chat_title": {
+    "en": "Chat title",
+    "ar": "عنوان المحادثة"
+  },
+  "rag_chat_delete": {
+    "en": "Delete",
+    "ar": "حذف"
+  },
+  "rag_chat_delete_confirm": {
+    "en": "Delete this chat? Its questions and answers will be removed.",
+    "ar": "حذف هذه المحادثة؟ ستُحذف أسئلتها وإجاباتها."
+  },
+  "rag_retention": {
+    "en": "Chats are deleted automatically after {n} days",
+    "ar": "تُحذف المحادثات تلقائياً بعد {n} يوماً"
+  },
+  "rag_turns": {
+    "en": "{n} turns",
+    "ar": "{n} جولات"
+  },
+  "rag_load_earlier": {
+    "en": "Load earlier messages",
+    "ar": "عرض الرسائل الأقدم"
+  },
+  "rag_feedback_title": {
+    "en": "What went wrong?",
+    "ar": "ما الذي لم يعجبك؟"
+  },
+  "rag_feedback_hint": {
+    "en": "Optional — tell us what was missing or wrong",
+    "ar": "اختياري — أخبرنا ما كان ناقصاً أو خاطئاً"
+  },
+  "rag_feedback_send": {
+    "en": "Send",
+    "ar": "إرسال"
+  },
+  "rag_feedback_skip": {
+    "en": "Skip",
+    "ar": "تخطٍّ"
+  },
+  "rag_open_link": {
+    "en": "Open",
+    "ar": "فتح"
+  },
+  "rag_stage_qa": {
+    "en": "Answered from the curated Q&A",
+    "ar": "أُجيب من الأسئلة والأجوبة المعتمدة"
+  },
+  "rag_time_now": {
+    "en": "Just now",
+    "ar": "الآن"
+  },
+  "rag_time_min": {
+    "en": "{n} min ago",
+    "ar": "منذ {n} د"
+  },
+  "rag_time_hours": {
+    "en": "{n} h ago",
+    "ar": "منذ {n} س"
+  },
+  "rag_time_yesterday": {
+    "en": "Yesterday",
+    "ar": "أمس"
+  },
+  "rag_time_days": {
+    "en": "{n} days ago",
+    "ar": "منذ {n} أيام"
+  },
+  "rag_chat_current": {
+    "en": "Current",
+    "ar": "الحالية"
+  },
+  "rag_chat_saved": {
+    "en": "Saved",
+    "ar": "تم الحفظ"
+  },
+  "rag_chat_deleted": {
+    "en": "Chat deleted",
+    "ar": "حُذفت المحادثة"
+  },
+  "rag_chat_not_found": {
+    "en": "This chat no longer exists",
+    "ar": "هذه المحادثة لم تعد موجودة"
+  },
+  "rag_chat_not_owner": {
+    "en": "This chat is not yours",
+    "ar": "هذه المحادثة ليست لك"
   }
 }
