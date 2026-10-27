@@ -150,7 +150,7 @@ class ProfileProvider extends BaseProvider {
       // A phone change is re-authenticated (400 REAUTH_REQUIRED without it; 409 PHONE_TAKEN; the server
       // resets phone_verified, so the caller runs the OTP step afterwards).
       if (password != null) body['password'] = password;
-      if (mfaCode != null && mfaCode.isNotEmpty) body['mfa_code'] = mfaCode;
+      if (mfaCode != null && mfaCode.isNotEmpty) body['code'] = mfaCode;
       if (name != null && name.isNotEmpty) body['name'] = name;
       if (phone != null && phone.isNotEmpty) body['phone'] = phone;
       if (dob != null && dob.isNotEmpty) body['dob'] = dob;
@@ -263,7 +263,7 @@ class ProfileProvider extends BaseProvider {
     try {
       final r = await run(() => _api.delete('/api/v1/auth/me', body: {
         'password': password,
-        if (mfaCode != null && mfaCode.isNotEmpty) 'mfa_code': mfaCode,
+        if (mfaCode != null && mfaCode.isNotEmpty) 'code': mfaCode,
       }));
       if (r != null && r is Map) {
         final deleteAfter = r['delete_after'] as String?;
