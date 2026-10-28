@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["MVHKS8482X.com.softkour.alfaheem"],
+        "appID": "MVHKS8482X.com.softkour.alfaheem",
+        "components": [
+          { "/": "/c/*", "comment": "course share links" },
+          { "/": "/@*", "comment": "profile links (D-074)" },
+          { "/": "/live/*", "comment": "live guest links" }
+        ],
+        "paths": ["/c/*", "/@*", "/live/*"]
+      }
+    ]
+  }
+}
