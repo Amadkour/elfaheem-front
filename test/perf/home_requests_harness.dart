@@ -29,14 +29,16 @@ import '../support/fake_api.dart';
 typedef HomeBudget = ({int open, int duplicates, int depth, int refresh, int refreshDepth});
 
 // 2026-10-28, after the student / teacher fixes (PROGRESS.md §3). Before them: student 21 · 4 duplicates · depth 2
-// · refresh 4 (depth 2); teacher refresh depth 2. Most of the student / instructor / admin / org-admin count is the
-// shell's other tabs: IndexedStack builds every tab at once and each tab loads in initState.
+// · refresh 4 (depth 2); teacher refresh depth 2. Then lazy shell tabs (AppShell's LazyTabStack, D-077: a tab is
+// built on its first visit, so the other tabs load nothing on open): student 17 → 11, teacher 15 → 11, super admin
+// 10 → 7, org admin 15 → 4 on open; refresh unchanged. The super admin's refresh is 4 since the home's RAG card
+// (monitoring alerts + summary, 4f69dfe) joined the overview and the payouts count.
 const homeBudgets = <String, HomeBudget>{
-  'student': (open: 17, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
-  'teacher': (open: 15, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
-  'super-admin': (open: 9, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
+  'student': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
+  'teacher': (open: 11, duplicates: 0, depth: 1, refresh: 3, refreshDepth: 1),
+  'super-admin': (open: 7, duplicates: 0, depth: 1, refresh: 4, refreshDepth: 1),
   'parent': (open: 3, duplicates: 0, depth: 1, refresh: 1, refreshDepth: 1),
-  'org-admin': (open: 15, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
+  'org-admin': (open: 4, duplicates: 0, depth: 2, refresh: 1, refreshDepth: 1),
   'org-member': (open: 3, duplicates: 0, depth: 2, refresh: 2, refreshDepth: 1),
 };
 

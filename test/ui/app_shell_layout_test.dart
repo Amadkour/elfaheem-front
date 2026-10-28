@@ -1,6 +1,7 @@
 // The role shells (lib/design/app_shell.dart): WideShell · RailShell · MobileShell at 320x640 and 1400x900,
 // Arabic + English, textScaler 1.3; AppShell picks by width; a tab's count = badge + the attention feed, drawn at
-// the leaf (the feed's tick repaints the badge without rebuilding the shell).
+// the leaf (the feed's tick repaints the badge without rebuilding the shell); tabs are built on their first visit
+// and kept afterwards (LazyTabStack, D-077), and an unbuilt tab still shows its count.
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
@@ -95,4 +96,66 @@ void main() {
     expect(find.text('7'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+
+  testWidgets('lazy tabs: only the open tab is built; a visited tab keeps its state; badges need no build',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    final created = <String>[];
+    var index = 0;
+    late StateSetter set;
+    DashboardItem tab(String label, {int badge = 0}) => DashboardItem(Icons.circle_outlined, Icons.circle, label, null,
+        _Probe(name: label, created: created), badge: badge);
+    final tabs = [tab('home'), tab('my_courses', badge: 2), tab('analysis')];
+    Widget shell(double w) => host(StatefulBuilder(builder: (context, s) {
+          set = s;
+          return AppShell(width: w, currentIndex: index, onTap: (i) => s(() => index = i), items: tabs);
+        }));
+
+    for (final w in const [320.0, 1400.0]) {
+      created.clear();
+      index = 0;
+      tester.view.physicalSize = Size(w, 900);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pumpWidget(layoutHost(shell(w), scaffold: false));
+      await tester.pump();
+      expect(created, ['home'], reason: '$w: only the open tab is built');
+      expect(find.text('2'), findsOneWidget, reason: '$w: the unbuilt tab shows its badge');
+
+      await tester.tap(find.text('my_courses'.tr).first); // onTap
+      await tester.pump();
+      expect(created, ['home', 'my_courses']);
+      set(() => index = 2); // a deep link changing currentIndex
+      await tester.pump();
+      set(() => index = 0);
+      await tester.pump();
+      set(() => index = 1);
+      await tester.pump();
+      expect(created, ['home', 'my_courses', 'analysis'], reason: '$w: a visited tab is kept, never re-created');
+      expect(find.text('my_courses #1', skipOffstage: false), findsOneWidget);
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+}
+
+class _Probe extends StatefulWidget {
+  const _Probe({required this.name, required this.created});
+
+  final String name;
+  final List<String> created;
+
+  @override
+  State<_Probe> createState() => _ProbeState();
+}
+
+class _ProbeState extends State<_Probe> {
+  @override
+  void initState() {
+    super.initState();
+    widget.created.add(widget.name);
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      Text('${widget.name} #${widget.created.where((n) => n == widget.name).length}');
 }

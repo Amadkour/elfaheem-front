@@ -6,8 +6,11 @@
 //         WideShell    sidebar + top bar            (>= Breakpoints.desktop)
 //         RailShell    NavigationRail + top bar     (>= Breakpoints.mobile)
 //         MobileShell  bottom bar                   (phones)
-//       The three are public too, for a dashboard that picks one by hand. Every shell keeps the tabs in an
-//       IndexedStack, so a tab keeps its state.
+//       The three are public too, for a dashboard that picks one by hand. Every shell keeps the tabs in a
+//       [LazyTabStack] (D-077): a tab is built the first time it is shown (the open tab at once, the others on
+//       their first visit, so a home's other tabs load nothing until visited) and then kept in an IndexedStack,
+//       so it keeps its state. A tab switch from a deep link / onTap just changes currentIndex. Badges never
+//       need a tab built: they come from DashboardItem.badge + attentionKeys, drawn by ShellBadge.
 //   DashboardItem(icon, selectedIcon, label, onRefresh, screen, {badge, attentionKeys, attentionOrgId})
 //       one tab. `label` is a translation key (or an already translated text — a missing key falls back to
 //       itself). The count on the tab = `badge` (what the attention feed does not carry, set by the dashboard)
@@ -101,6 +104,37 @@ class ShellBadge extends StatelessWidget {
 }
 
 String _badgeText(int n) => n > 99 ? '99+' : '$n';
+
+/// The tab bodies of a shell: an IndexedStack whose children stay placeholders until their tab is first shown
+/// (D-077). A visited tab is remembered by its label, so it stays built when tabs before it come or go (an older
+/// server, a permission change); its state lives as long as the shell does.
+class LazyTabStack extends StatefulWidget {
+  const LazyTabStack({super.key, required this.index, required this.items});
+
+  final int index;
+  final List<DashboardItem> items;
+
+  @override
+  State<LazyTabStack> createState() => _LazyTabStackState();
+}
+
+class _LazyTabStackState extends State<LazyTabStack> {
+  final Set<String> _visited = {};
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    if (items.isEmpty) return const SizedBox.shrink();
+    final current = widget.index.clamp(0, items.length - 1);
+    _visited.add(items[current].label);
+    return IndexedStack(
+      index: current,
+      children: [
+        for (final item in items) _visited.contains(item.label) ? item.screen : const SizedBox.shrink(),
+      ],
+    );
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — picks the shell for a width
@@ -253,12 +287,7 @@ class WideShell extends StatelessWidget {
                   unread: unreadCount,
                   onRefresh: dashboardItems[current].onRefresh,
                 ),
-                Expanded(
-                  child: IndexedStack(
-                    index: current,
-                    children: dashboardItems.map((e) => e.screen).toList(),
-                  ),
-                ),
+                Expanded(child: LazyTabStack(index: current, items: dashboardItems)),
               ],
             ),
           ),
@@ -608,12 +637,7 @@ class RailShell extends StatelessWidget {
                   unread: unreadCount,
                   onRefresh: dashboardItems[current].onRefresh,
                 ),
-                Expanded(
-                  child: IndexedStack(
-                    index: current,
-                    children: dashboardItems.map((e) => e.screen).toList(),
-                  ),
-                ),
+                Expanded(child: LazyTabStack(index: current, items: dashboardItems)),
               ],
             ),
           ),
@@ -661,10 +685,7 @@ class MobileShell extends StatelessWidget {
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
     return BasePage(
       bottomNavigationBar: _BottomNav(onSelect: onTap, index: current, dashboardItems: dashboardItems),
-      child: IndexedStack(
-        index: current,
-        children: dashboardItems.map((e) => e.screen).toList(),
-      ),
+      child: LazyTabStack(index: current, items: dashboardItems),
     );
   }
 }
