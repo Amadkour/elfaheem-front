@@ -671,3 +671,17 @@ folded into at most 10 bars (`usernameTrend`); everything from `app_charts.dart`
 bound and says who signed in when — a per-day counter answers the question); adding a method column to
 `login_history` (it keeps only the latest login per user); writing events inside the user's transaction (a logging
 error would roll the change back).
+
+## D-077 — Lazy shell tabs: a role dashboard builds a tab on its first visit and keeps it · 2026-10-28 · accepted
+
+**Decision.** `AppShell` (D-062) draws its tabs through `LazyTabStack` (`lib/design/app_shell.dart`): an
+`IndexedStack` that builds the open tab at once and every other tab only the first time it is shown, then keeps it
+mounted (state and scroll position survive switching back). There is no preload option: no role needs one. A tab's
+count still comes from `ShellBadge` at the leaf (its `badge` + the live attention keys), never from the tab's own
+widget, so an unbuilt tab still shows its badge. Opening a home used to build every tab and fire every tab's loads:
+requests on open went student 17 -> 11, teacher 15 -> 11, super admin 10 -> 7, org admin 15 -> 4 (parent and
+member 3, unchanged). The budgets in `test/perf/home_requests_<role>_test.dart` were lowered to the new numbers, so
+a regression fails CI.
+**Rejected.** Building every tab at open (the old `IndexedStack`: one home's open cost every tab's requests);
+rebuilding a tab on every visit (loses its state and re-fetches); a per-tab preload flag (no role uses it, and it
+would quietly bring the cost back).
