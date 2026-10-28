@@ -70,15 +70,15 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 
 | Measure | Before | After | How measured |
 |---|---|---|---|
-| `flutter analyze` warnings / errors / infos | 0 / 0 / 245 | | `flutter analyze --no-fatal-infos --fatal-warnings` (2026-10-28, HEAD 74cfdc7) |
-| App test suites | 925 passed, 0 failed; contract: 1129 calls, 0 unknown, 72 unresolved | | `flutter test test/org/ test/export/ test/ui/ test/auth/ test/contract/` |
-| Backend static gate | 8 ruff errors (pre-existing) | | `ruff check .` in `../back` |
+| `flutter analyze` warnings / errors / infos | 0 / 0 / 245 | 0 / 0 / 248 (HEAD 04e6a0e, clean worktree)
+| App test suites | 925 passed, 0 failed; contract: 1129 calls, 0 unknown, 72 unresolved | **1399 passed, 0 failed, 1 skipped** (soak, env-gated): org 747 · export 34 · ui 485 · auth 97 · contract 36; contract: 1172 calls, 0 unknown, 74 unresolved, 1 known-missing; `flutter build web --release` OK
+| Backend static gate | 8 ruff errors (pre-existing) | ruff 8 (the same pre-existing 8) · lint-imports: 2 BROKEN pre-existing (`schedule_autopilot` -> router, user commit aaeccff) · bandit 1 pre-existing (B324 `org_schedule_router.py:1064`) · mypy 18 pre-existing (the job's 21 fixed, 14b8f5d) · SQLite CI loop 157/158 (`ladder_stress` timeout, pre-existing) · PG: core migrate + down/up, 22 RAG scripts incl. tenant_leak 1430/1430
 | Polling call sites / intervals | 7 new-data polls (attention 60 s, lobby 15/4 s, guest 10 s, quiz 30 s, exam tab 5 min, attendance 5 s) + 12 job-progress polls (1–8 s); 0 SSE/WS | SSE stream + silent FCM; attention 5 min, lobby 60/16 s, quiz 0 (LiveKit + event, 5 min fallback), exam tab 0, attendance 30 s; job polls 10–30 s fallbacks only while the stream is down | `docs/polish/realtime-inventory.md` |
-| RAG eval, 71 q (`bench/rag/answer_eval`, laptop, shared CPU) — extractive | correct 52% (28/54) · found 65% · retrieval@5 96% · not-found 100% · small talk 0% · injection 100% · halluc 0 · leaks 0 · p50/p95 3.0/4.8 s · RSS 1.9 GB | | `run_answer_eval.py --generator none` |
+| RAG eval, 71 q (`bench/rag/answer_eval`, laptop, shared CPU) — extractive | correct 52% (28/54) · found 65% · retrieval@5 96% · not-found 100% · small talk 0% · injection 100% · halluc 0 · leaks 0 · p50/p95 3.0/4.8 s · RSS 1.9 GB | E.6 rerun: extractive correct **81.5 %** · found 85.2 % · not-found / injection 100 % · leaks 0 · p50/p95 2.7/4.0 s; served pipeline (D-066 extractive first + 1.7B fallback) simulated **85 %**
 | RAG eval AFTER E.3 — extractive | correct **82 %** (44/54, was 52 %) · found 83 % · retrieval@5 96 % · not-found 100 % · small talk **100 %** (was 0 %) · injection 100 % · halluc 0 · leaks 0 · p50/p95 2.6/4.2 s | | `results/20261027-232904-none.json` |
 | RAG eval AFTER E.3 — qwen3-0.6b | correct 59 % (32/54; generation misses 13) · found 83 % · small talk 100 % · halluc 0 · leaks 0 · p50/p95 15.8/38.8 s (was 22/44) | | `results/20261027-235030-qwen3-0.6b.json` |
-| RAG eval — qwen3-0.6b INT4 light | correct 59% (32/54) · found 78% · retrieval@5 96% · not-found 100% · small talk 100% · injection 100% · halluc 0 · leaks 0 · p50/p95 22/44 s · RSS 4.2 GB · 17/48 writer calls failed · ar 52% / en 64% | | `run_answer_eval.py --generator onnx --model qwen3-0.6b` (25 min) |
-| Dashboard requests on open | pending | | count of API calls per dashboard open |
+| RAG eval — qwen3-0.6b INT4 light | correct 59% (32/54) · found 78% · retrieval@5 96% · not-found 100% · small talk 100% · injection 100% · halluc 0 · leaks 0 · p50/p95 22/44 s · RSS 4.2 GB · 17/48 writer calls failed · ar 52% / en 64% | served writer is now Qwen3-1.7B INT4 ONNX, only for gate-refused questions (~1 in 4): 72.2 % alone, TTFT 36.6 s, 6.4 tok/s, p50 48.1 s on the laptop (2 threads, quiet)
+| Dashboard requests on open | pending | not counted per open; structure: super admin ONE `GET /admin/overview` (~75 queries + `expire_due` on read -> aggregates, money totals cached 60 s), parent N+1 sequential chain -> one `/parent/overview`, student / member `/me/home` aggregate, attention shared; see B.0-B.5
 
 ## 4. Task board
 
@@ -91,7 +91,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | A1.5 | Auth | S11 `check_password_policy` ≥ 8 + 34 common passwords → 400 `WEAK_PASSWORD`; app rule ≥ 8 | verified | back 2dc8225, front e33a3c5 | same | |
 | A1.6 | Auth (app) | S14 `getMe()` after bootstrap; S15 server logout on every path; S16 429 on refresh transient; S8 CSP on hosting (D-060); re-auth sheet for delete / phone change; phone change re-verifies by OTP; password ≥ 8; codes `WEAK_PASSWORD` / `PHONE_TAKEN` / `REAUTH_REQUIRED` mapped | verified | e33a3c5 | `flutter test test/auth/ test/contract/` 65 passed; analyze 0/0 | layout test for `reauth_sheet.dart` pending; check the CSP in the browser console after the first web deploy |
 | A1.7 | Auth | `tests/org_v2/e2e_auth_hardening.py` (10 checks); app `refresh_429_test.dart`, `password_rule_test.dart`, `reauth_sheet_layout_test.dart` | verified | | | phone-change → OTP step end-to-end on a running stack not yet exercised (unit-level only) |
-| A2 | Frontend | Screen-by-screen audit and polish on web / Android / iOS | todo | | | after B |
+| A2 | Frontend | Screen-by-screen audit and polish on web / Android / iOS | verified (done as B.6 + R4 visual QA) | see B.6 | see B.6 / R4 | |
 | B.0 | Dashboards (back) | `GET /admin/overview` + organizations / series[30] / alerts / realtime, `expire_due` off the read path, money cached 60 s; org dashboard + members / pending_total / series; NEW `GET /me/home` (today, upcoming, attention, inbox preview, unread, courses_progress or teacher block + earnings, org_overview); NEW `GET /parent/overview` | verified | back 6e03e7f, front f45a7b9 (snapshot) | `tests/org_v2/e2e_dashboards_aggregates.py` 27 checks + 8 regression scripts | RAG worker alerts stay in the RAG console; drop `CACHE_KEY_MONEY` on manual-transfer approval if live money is wanted |
 | B.1 | Design | `lib/design/app_shell.dart` (AppShell for all five roles, `DashboardItem.attentionKeys`, `ShellBadge` leaf — no shell `setState`), hero tokens `onHero` / `heroGlass` / … derived from the server palette (`theme_config_provider.dart`), `app_charts.dart` (sparkline, bars, donut, trend tile, legend; OKLab-snapped palette validated with the dataviz checker), `app_settings.dart` (grouped, searchable past 8 tiles; admin + parent More ported); dashboard hero files 0 hard-coded colors (lib/features total 1284 → 1233) | verified | e317d5f (D-062, D-063) | `test/ui/ test/org/ test/contract/` 940 passed; analyze 0/0 | sidebar 240 → 220; org timetable badge = feed item count |
 | B.2 | Dashboards | Super Admin home: pulse trend tiles from `series`, alerts + pending queue drawn once, charts row, health, hub shortcuts; one cached call refreshed on open / resume / pull / events | verified | 27a1290 | `admin_overview_test.dart` 12, `admin_home_layout_test.dart` | tile delta = last 15 d vs previous 15 d (series has 30 rows) |
@@ -135,7 +135,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 
 ## 5. Key decisions and owner actions
 
-**Owner decision (found 2026-10-28):** `lib/features/teacher/home/teacher_models.dart:402` adds 700 to every course's `students_count` in the teacher's own view (from commit 5f43494 "private courses"). Looks like a leftover test value; not changed because it may be deliberate.
+**Owner decision (found 2026-10-28):** `lib/features/teacher/home/teacher_models.dart:402` adds 700 to every course's `students_count` in the teacher's own view (from commit 5f43494 "private courses"). Looks like a leftover test value. **Resolved 2026-10-28** (owner: "apply all points"): removed together with the student model's +700 and the rating +200 / +4 (FIX.2, bf74b09).
 
 **Owner actions before the next backend deploy (from A1.3, D-060 in `../back/docs/DECISIONS.md`):**
 - `.env.production` has no `OTP_PROVIDER`: set `OTP_PROVIDER=twilio | whatsapp_cloud | none` (with credentials) or the API refuses to start.
@@ -154,7 +154,93 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 
 ## 6. Final report
 
-_written at the end._
+Written 2026-10-28 at the end of the job. Branch `feature/platform-polish` in both repos; nothing pushed (the owner pushes).
+
+### What changed (by track)
+
+- **A — Auth / security.**
+  - **Audit fixes:** S1–S17, the residual R1–R11, and an independent adversarial review. They cover phone-change / OTP hardening, re-owning of never-verified sign-ups (an account takeover, now closed), the password policy, rate limits, the re-auth sheet for sensitive changes, MFA for admins by default, the onboarding token and CSP.
+  - **Start-up refusals:** the API refuses to start with unsafe defaults (`OTP_PROVIDER`, `SECRET_KEY`, `RLS_APP_ROLE`).
+  - **OPS.1:** `scripts/ops/check_env.py` runs in the deploy path and reports names only, never values. Secrets can also be read from files (`NAME_FILE`).
+  - **FIX.1:** the six exam-flag settings are restored; review flags had answered 403 for everyone.
+- **B — Dashboards + design system.**
+  - **Shared kits:** `AppShell` for every role, a chart kit, a settings kit and responsive breakpoints.
+  - **New homes:** super admin, org admin, teacher, student / member and parent (Today).
+  - **Polish:** about 400 files (colours, spacing, overflow), and the bold font now actually renders.
+  - **FIX.3:** muted and secondary text meet WCAG AA, with a guard on admin-set colours (migration 0020).
+- **C — Parity.** Calendar entry for every role, pull-to-refresh plus a web refresh action, one breakpoint set, and a mic meter on mobile.
+- **D — Real-time.**
+  - **Push:** SSE `GET /api/v1/me/events` plus silent FCM from one emitter, with Redis pub/sub and replay.
+  - **App:** `LiveEventsClient`, `EventOrPoll` and `JobWatch`.
+  - **Polling cut to fallbacks:** attention 60 s → 5 min, quiz and exam tab 0, lobby 15 s → 60 s.
+  - **Stress test:** run against a killable proxy.
+- **E — RAG.**
+  - **Pipeline:** curated Q&A (direct answers and examples), an answer cache, real BM25 on Postgres with Arabic normalisation, a data-driven router, conversations (New chat, history, 90-day retention), monitoring and injection guards.
+  - **Security:** an RLS fix for personal-course rows, an answer eval (71 questions) and a tenant-leak suite.
+  - **E.6:** the CPU benchmark led to **D-066: extractive first, and Qwen3-1.7B ONNX writes only what the extractive gate refuses**.
+  - **E.8:** answers stream as drafts. A draft shows only after its quote is verified, and is withdrawn if the checks reject the reply.
+- **F — Learning from feedback.**
+  - **Capture:** votes with reasons, implicit signals, and exam accept / edit / reject.
+  - **Review:** a suggestions inbox and a gated model registry with rollback.
+  - **Retraining:** a reranker retraining pipeline.
+  - **F.4:** an offline LoRA pipeline for the writer and the exam generator, with its own gates and a sha-verified loader (`ae11eb2`).
+- **Other fixes.** Live-room durations (UTC), room notices above sheets, fake counts / ratings removed, and the features guide updated (6 new entries, 15 updated).
+
+### Measurements (before -> after)
+
+| Measure | Before | After |
+|---|---|---|
+| Analyzer warnings / errors | 0 / 0 | 0 / 0 (infos 245 -> 248) |
+| App tests | 925 passed | **1399 passed**, 0 failed, 1 env-gated skip |
+| Contract | 1129 calls, 0 unknown | 1172 calls, 0 unknown |
+| Backend ruff | 8 | 8 (same) |
+| Backend CI SQLite loop | — | 157 / 158 (pre-existing `ladder_stress` timeout) |
+| Tenant-leak suite | — (did not exist) | SQLite 1015 / 1015, PG 1430 / 1430, 0 leaks |
+| RAG answer correctness (71 q) | 52 % extractive / 59 % 0.6B | 81.5 % extractive; served pipeline ~85 % (simulated) |
+| RAG small talk | 0 % | 100 % |
+| Typical answer time | 15–30 s (0.6B on every question) | ~3 s for ~3 in 4 questions; drafts stream for the rest |
+| Polling | 7 new-data polls + 12 job polls, 0 push | push first; polls only as fallbacks |
+| Muted text contrast | 2.9–3.9 : 1 | 4.5–6.2 : 1 (AA) |
+
+### Owner actions before / at the next deploy
+
+1. **Server env file.** Add `OTP_PROVIDER=none` (or a real provider) to `.env.production` on the server; it is done locally only. Then run `python3 scripts/ops/check_env.py .env.production` and fix what it lists. Expect it to report the `MOYASAR_APPLE_PAY_MERCHANT_ID` placeholder, because Apple Pay is on.
+2. **Secrets pasted into chat on 2026-10-28.** Rotate:
+   - the Telegram bot token (BotFather `/revoke`);
+   - `TELEGRAM_WEBHOOK_SECRET` and `WHATSAPP_VERIFY_TOKEN`;
+   - the `nb_exam_app` / `nb_rag_app` passwords.
+
+   Keep `MFA_ENC_KEY` / `EVIDENCE_ENC_KEY`: rotating them needs re-encryption.
+3. **Migrations.**
+   - Core up to head. 0020 is this job's; 0021 onward are other sessions' work, and 0023–0025 were still uncommitted at QA time.
+   - RAG `rag_0007` → `rag_0013` BEFORE restarting the RAG services, then `scripts/rag/reindex_text.py` once.
+4. **Models.** Fetch the production set with the 1.7B writer (`fetch_models.py`, 2448 MB). `RAG_ASK_MEM_LIMIT` is now 4500m. Then re-measure on the server with `bench/rag/gen_bench/run_gen_bench.py speed`.
+5. **nginx and Redis.** Add the `/api/v1/me/events` location (example in `deploy/nginx/nextbrain.conf.example`), and make sure Redis is up.
+6. **After the deploy.**
+   - Press "Update from the app's pages" on the App documents screen so the assistant picks up the features guide.
+   - Check the browser console for CSP blocks.
+   - Expect admins to get the MFA enrolment step at their next login.
+7. **Local machine.** Windows sees only 4 of the i5-12400F's 12 threads. Untick msconfig → Boot → Advanced options → "Number of processors", or check the BIOS.
+
+### Assumptions
+
+- Production is CPU-only (12 vCPU / 47 GB). Laptop timings are relative; a server re-measure is owed.
+- Review flags default to ON, as first shipped. Switching off `calendar.entry` also hides the calendar from the assistant.
+- A LoRA writer is served only when the promoted writer and examgen rows share an artifact, because the ask worker loads one model.
+- `.env.production` was never read; the checks were written from the code and from fixtures.
+
+### Risks / still owed
+
+- Gates that were already red before this job:
+  - lint-imports: 2 broken contracts (`schedule_autopilot` → router);
+  - bandit: B324 at `org_schedule_router.py:1064`;
+  - mypy: 18 errors;
+  - `ladder_stress`: over the 300 s CI limit.
+- D-066 chose the 1.7B over the 0.6B on only 8 gate-refused questions; grow that sample from real traffic.
+- Streaming: time to first draft on the real models is not measured yet (expected after 60–110 output tokens).
+- LoRA: no real 0.6B / 1.7B training yet (it needs at least 300 real examples); the time figures are estimates.
+- The peer sessions' uncommitted work (homes, course space, the AppFonts codemod, migrations 0023–0025) was not part of this QA.
+- When the local Redis (`edu_redis`) is running, the SQLite e2e scripts write short-lived cache keys into it.
 
 ## 7. Resume note
 
