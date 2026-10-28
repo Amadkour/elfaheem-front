@@ -41,6 +41,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_api.dart';
 import 'admin_home_layout_test.dart' as admin;
+import 'layout_harness.dart';
 import 'member_home_layout_test.dart' as member;
 import 'org_home_layout_test.dart' as org;
 import 'parent_home_layout_test.dart' as parent;
@@ -372,6 +373,11 @@ void main() {
     testWidgets('verify the code', (tester) async {
       await expectA11y(tester, 'verify', () => const OtpVerificationScreen(email: 'someone@example.com', role: 'student'),
           wrap: withProviders);
+    });
+
+    testWidgets('verify the code: the widened code row never overflows (320 x 640 .. 1400 x 900, text 1.3)', (tester) async {
+      await expectNoLayoutErrors(
+          tester, () => withProviders(const OtpVerificationScreen(email: 'someone@example.com', role: 'student')));
     });
 
     testWidgets('re-auth sheet', (tester) async {

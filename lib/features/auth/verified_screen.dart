@@ -793,25 +793,36 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         label: 'enter_verification_code'.tr,
         child: Directionality(
           textDirection: TextDirection.ltr,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: Row(
-                children: List.generate(otpLength, _buildSingleBox),
-              ),
-            ),
+          // On a phone the row reaches 12 px into the card's side padding and the gaps shrink before the boxes do, so
+          // every field keeps a 48 px tap target inside its border (Android guideline; test/ui/a11y_guidelines_test.dart).
+          child: LayoutBuilder(
+            builder: (context, outer) {
+              final width = math.min(380.0, outer.maxWidth + 24);
+              final slot = width / otpLength;
+              final gap = ((slot - 52) / 2).clamp(1.0, 4.0);
+              return SizedBox(
+                height: 58,                                // = the boxes' height (AuthOtpBox height: 58 below)
+                child: OverflowBox(
+                  minWidth: width,
+                  maxWidth: width,
+                  child: Row(
+                    children: List.generate(otpLength, (i) => _buildSingleBox(i, gap)),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSingleBox(int index) {
+  Widget _buildSingleBox(int index, double gap) {
     final c = context.colors;
     final digit = AuthOtpBox.digitStyle(context);
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: gap),
         child: ListenableBuilder(
           listenable: Listenable.merge([
             _focusNodes[index],
