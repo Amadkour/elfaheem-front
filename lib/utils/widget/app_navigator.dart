@@ -27,6 +27,7 @@ import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyF
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
 import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
+import '../../features/shared/rag/rag_admin_links.dart' show openRagAdminModule;
 
 class AppNavigator {
   AppNavigator._();
@@ -59,13 +60,17 @@ class AppNavigator {
   /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4) |
   /// points (top-up approved / rejected → the wallet) | live_plan (plan bought / free time over → the wallet with
   /// the live-meeting plan sheet open, live-rooms-spec §8 – §9; also live_plan_expiring · live_plan_renewed ·
-  /// live_plan_renew_failed, Part 3 §15)
+  /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
+  /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
     if (nav == null || ctx == null || !ctx.mounted) return;
     // Not logged in (or an admin is only LOOKING at a user's app): never navigate on that user's behalf.
     if (!ctx.read<MyAuthProvider>().isAuthenticated || ViewAsState.active) return;
+    // The assistant's notices to platform admins (rag_learning · rag_alerts): their own pages, else the list.
+    if (await openRagAdminModule(nav, module, role: ctx.read<MyAuthProvider>().currentUser?.role)) return;
+    if (!ctx.mounted) return;
     switch (module) {
       case 'course':
         if (targetId != null) {
