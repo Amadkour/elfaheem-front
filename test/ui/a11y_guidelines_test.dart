@@ -76,12 +76,6 @@ final _blocked = <(String, String, bool Function(String label), String)>[
             'ink is 1.3–2:1 on its tint'),
   ('rag', 'tap target', (l) => [...ragStarterPrompts(RagContext.app), ...chatReasons.map(chatReasonLabel)].contains(l),
       'lib/features/teacher/data_lab/data_lab_widgets.dart (dirty): AppChoiceChip (DlChoiceChip) is 38 px high'),
-  ('rag', 'text contrast', (l) => _any(l, ['Chats', 'المحادثات', 'New chat', 'محادثة جديدة', 'Skip', 'تخطٍّ']),
-      'lib/config/theme/theme_config_provider.dart (dirty): the Text/OutlinedButton themes draw the raw primary on the '
-          'dark surface (2:1)'),
-  ('parent', 'text contrast', (l) => _any(l, ['Link another child', 'ربط ابن آخر']),
-      'lib/config/theme/theme_config_provider.dart (dirty): the Text/OutlinedButton themes draw the raw primary on the '
-          'dark surface (2:1)'),
 ];
 
 /// The app's real theme (light or dark) and locale (main.dart: `appLocale`, core/app_locale.dart) around [child],

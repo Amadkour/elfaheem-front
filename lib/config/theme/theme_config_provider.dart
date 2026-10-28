@@ -34,6 +34,7 @@ import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_contrast.dart';
 
 // v2: drops palettes cached before the new default theme, so offline users
 // get the new default instead of the old cached one.
@@ -572,6 +573,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final muted = m == null ? Colors.grey : (dark ? m.darkTextMuted : m.textMedium);
     final faint = m == null ? Colors.grey : (dark ? m.darkTextLight : m.textLight);
     final ink = m?.charcoal ?? const Color(0xFF1F2430);
+    // The primary as TEXT on the page / card / sheet surfaces (text and outlined buttons): the raw indigo is about
+    // 2:1 on the dark surfaces, so its lightness is moved until it reaches WCAG AA (4.5:1) on all of them, hue
+    // kept. A primary that already passes (the light theme) is unchanged. Fills and borders keep the raw primary.
+    final pText = ensureContrast(p, [bg, card, surface]);
 
     TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
         TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c);
@@ -624,7 +629,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: p,
+          foregroundColor: pText,
           side: BorderSide(color: p.withValues(alpha: 0.45), width: 1.3),
           shape: r14,
           minimumSize: const Size(64, 48),
@@ -632,7 +637,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: p, shape: r14, textStyle: ts(13.5, FontWeight.w700)),
+        style: TextButton.styleFrom(foregroundColor: pText, shape: r14, textStyle: ts(13.5, FontWeight.w700)),
       ),
       iconButtonTheme: IconButtonThemeData(style: IconButton.styleFrom(foregroundColor: text)),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
