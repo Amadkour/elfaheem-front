@@ -73,6 +73,7 @@ IconData adminAlertIcon(String key) => switch (key) {
       'transfers_pending' => Icons.pending_actions_rounded,
       'orgs_pending_approval' => Icons.domain_verification_rounded,
       'otp_provider_unconfigured' => Icons.sms_failed_outlined,
+      _ when key.startsWith('rag.') => Icons.smart_toy_outlined,
       _ => Icons.notification_important_outlined,
     };
 
@@ -87,6 +88,7 @@ String adminJobKindKey(String kind) => switch (kind) {
 
 /// The one-line hint under an alert card (null when there is nothing to add).
 String? adminAlertHint(AdminAlert a) {
+  if (a.hint != null) return a.hint;
   if (a.key == 'otp_provider_unconfigured') return 'admin_alert_otp_hint'.tr;
   if (a.key == 'payouts_overdue' && a.days != null) {
     return 'admin_alert_older_than_days'.tr.replaceAll('{n}', '${a.days}');
@@ -311,9 +313,9 @@ class _NeedsYou extends StatelessWidget {
       for (final a in data.alerts)
         HomeActionCard(
           icon: adminAlertIcon(a.key),
-          title: adminAlertTitleKey(a.key).tr,
+          title: a.title ?? adminAlertTitleKey(a.key).tr,
           subtitle: adminAlertHint(a),
-          count: a.key == 'otp_provider_unconfigured' ? null : a.count,
+          count: a.key == 'otp_provider_unconfigured' || a.isRag ? null : a.count,
           tone: tone(a),
           attentionKey: a.key == 'transfers_pending' ? AttentionTabs.adminFinance : null,
           onTap: actions.openAlert == null ? null : () => actions.openAlert!(a),

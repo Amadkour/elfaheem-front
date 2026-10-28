@@ -5,7 +5,8 @@
 //                                      `alerts`, `realtime`) is simply absent — `hasOrganizations` / `hasSeries` /
 //                                      `hasAlerts` / `hasRealtime` tell the body which tiles to hide.
 //   AdminDayPoint                      one row of `series` (30 UTC days, oldest first).
-//   AdminAlert                         one row of `alerts[]` (key, severity, count, deep link, extras).
+//   AdminAlert                         one row of `alerts[]` (key, severity, count, deep link, extras); `withAlerts`
+//                                      adds the RAG service's open alerts (rag_alerts.dart ragAdminAlert, `rag.*`).
 //   halfDelta(values)                  the trend figure of a 30-day series: the last 15 days vs the 15 before, in
 //                                      percent (null when the first half is 0 — nothing to compare against).
 //   AdminAssistantHealth               the "AI assistant" card (Track E.7) from the RAG service's
@@ -107,6 +108,8 @@ class AdminAlert {
     this.deepLink = '',
     this.byKind = const {},
     this.days,
+    this.title,
+    this.hint,
   });
 
   factory AdminAlert.fromJson(Map<String, dynamic> j) => AdminAlert(
@@ -130,6 +133,13 @@ class AdminAlert {
 
   /// `payouts_overdue`: the age that makes a payout overdue.
   final int? days;
+
+  /// A title / hint the alert carries itself (the RAG service's alerts, `rag.*`), drawn as they are; null = the
+  /// app's own text for [key].
+  final String? title, hint;
+
+  /// An alert of the assistant (rag_alerts.dart `ragAdminAlert`): one row per open alert, no count.
+  bool get isRag => key.startsWith('rag.');
 
   bool get isDanger => severity == 'danger';
   bool get isWarning => severity == 'warning';
@@ -254,6 +264,34 @@ class AdminHomeData {
   bool get hasActivity => series.any((p) => p.signups > 0 || p.enrollments > 0 || p.revenueTotal > 0);
 
   // ── alerts ───────────────────────────────────────────────────────────────
+  /// The same home with [extra] alerts after the core's (the RAG service's open alerts, a second call: the core
+  /// cannot read them). Nothing to add → this object.
+  AdminHomeData withAlerts(List<AdminAlert> extra) {
+    if (extra.isEmpty) return this;
+    return AdminHomeData(
+      students: students,
+      teachers: teachers,
+      courses: courses,
+      publishedCourses: publishedCourses,
+      activeEnrollments: activeEnrollments,
+      pendingTransfers: pendingTransfers,
+      pendingSubscriptions: pendingSubscriptions,
+      activeSubscriptions: activeSubscriptions,
+      subscriptionRequired: subscriptionRequired,
+      incomeByCurrency: incomeByCurrency,
+      collectedByCurrency: collectedByCurrency,
+      orgTotal: orgTotal,
+      orgActive: orgActive,
+      orgPendingApproval: orgPendingApproval,
+      orgByType: orgByType,
+      series: series,
+      hasAlerts: hasAlerts,
+      alerts: [...alerts, ...extra],
+      hasRealtime: hasRealtime,
+      eventsLast24h: eventsLast24h,
+    );
+  }
+
   AdminAlert? alert(String key) {
     for (final a in alerts) {
       if (a.key == key) return a;

@@ -7,7 +7,9 @@
 // payments (LiveEvents). The body is AdminHomeBody (admin_home_body.dart), presentational over AdminHomeData
 // (admin_home_data.dart); this file only wires the callbacks (tabs, pages, alert deep links). Beside the overview it
 // asks the RAG service for the assistant's health (GET /api/v1/rag/admin/monitoring/summary, Track E.7) — the core
-// cannot import the RAG service; an older server (bare 404) or `rag.assistant` off leaves the card out.
+// cannot import the RAG service; an older server (bare 404) or `rag.assistant` off leaves the card out. The
+// assistant's open monitoring alerts (GET /api/v1/rag/admin/alerts?state=open) join "Needs you" the same way; a tap
+// opens the console's Alerts tab.
 library;
 
 import 'dart:async';
@@ -23,6 +25,7 @@ import 'package:provider/provider.dart';
 import '../auth/auth_provider.dart';
 import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminApi, RagAdminConsole;
+import '../shared/rag/rag_alerts.dart' show RagAlertsApi, RagAlertsData, ragAdminAlert;
 import 'admin_common.dart';
 import 'admin_features_page.dart';
 import 'admin_home_body.dart';
@@ -66,8 +69,27 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
   /// The RAG service answered a bare 404: an older server, never asked again on this page.
   bool _assistantMissing = false;
 
+  /// The assistant's open monitoring alerts (GET /api/v1/rag/admin/alerts?state=open), merged into "Needs you".
+  List<AdminAlert> _ragAlerts = const [];
+  bool _ragAlertsMissing = false;
+
+  Future<void> _loadRagAlerts() async {
+    if (_ragAlertsMissing || AppConfig.disableList.contains('rag.assistant')) return;
+    final r = await RagAlertsApi().list(state: 'open');
+    if (!mounted) return;
+    if (r.ok) {
+      setState(() => _ragAlerts = [for (final a in RagAlertsData.fromJson(r.map).open) ragAdminAlert(a)]);
+    } else if (r.unavailable) {
+      setState(() {
+        _ragAlertsMissing = true;
+        _ragAlerts = const [];
+      });
+    } // any other failure keeps the last ones
+  }
+
   Future<void> _loadAssistant() async {
     if (_assistantMissing || AppConfig.disableList.contains('rag.assistant')) return;
+    _loadRagAlerts();
     final r = await RagAdminApi().monitoringSummary();
     if (!mounted) return;
     if (r.ok) {
@@ -143,6 +165,8 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
         _open(const TeacherTransfersScreen());
       case 'orgs_pending_approval':
         _open(const AdminOrganizationsPage());
+      case _ when a.isRag:
+        _open(const RagAdminConsole(initialTab: RagAdminConsole.alertsTab));
       default:
         _showInfoSheet(adminAlertTitleKey(a.key).tr, adminAlertHint(a) ?? '${a.count}');
     }
@@ -209,7 +233,7 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     return AppRefresh(
       onRefresh: _refresh,
       child: AdminHomeBody(
-        data: home,
+        data: home.withAlerts(_ragAlerts),
         name: name,
         pendingPayouts: pendingPayouts,
         notice: p.error == null ? null : 'admin_home_stale'.tr,
