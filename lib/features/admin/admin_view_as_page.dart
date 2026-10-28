@@ -13,11 +13,11 @@ import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
 /// (this page, the student/teacher lists, the user detail sheet).
@@ -210,13 +210,13 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
 
     Widget list;
     if (_loading) {
-      list = const Center(child: AppLoadingIndicator());
+      list = const AppListSkeleton();
     } else if (_error != null) {
       list = ErrorRetry(message: _error!, onRetry: _load);
     } else if (_items.isEmpty) {
       list = EmptyState('admin_nothing_here_yet'.tr);
     } else {
-      list = RefreshIndicator(
+      list = AppRefresh(
         onRefresh: _load,
         child: ListView.builder(
           controller: _scroll,
@@ -285,7 +285,7 @@ class _AdminViewAsPageState extends State<AdminViewAsPage> {
                     prefixIcon: const Icon(Icons.search_rounded),
                     hintText: 'admin_search_by_name_or_e_mail'.tr,
                     border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
+                    suffixIcon: IconButton(tooltip: t('بحث', 'Search'), 
                       icon: const Icon(Icons.arrow_forward_rounded),
                       onPressed: _load,
                     ),
@@ -446,7 +446,7 @@ class ViewAsBanner extends StatelessWidget {
             Directionality(
               textDirection: pageDirection,
               child: Material(
-                color: const Color(0xFFB45309),
+                color: context.colors.warning,
                 child: SafeArea(
                   bottom: false,
                   child: Padding(
@@ -456,9 +456,9 @@ class ViewAsBanner extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.visibility_rounded,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
@@ -467,8 +467,8 @@ class ViewAsBanner extends StatelessWidget {
                             '${'admin_view_only'.tr}: ${s.name}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: context.colors.onHero,
                               fontWeight: FontWeight.w700,
                               fontFamily: 'tajawal',
                               decoration: TextDecoration.none,
@@ -479,8 +479,8 @@ class ViewAsBanner extends StatelessWidget {
                         const SizedBox(width: 8),
                         FilledButton.icon(
                           style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFFB45309),
+                            backgroundColor: context.colors.onHero,
+                            foregroundColor: context.colors.warning,
                             visualDensity: VisualDensity.compact,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),

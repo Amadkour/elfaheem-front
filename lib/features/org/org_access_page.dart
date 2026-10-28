@@ -10,7 +10,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +19,8 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 /// The catalog is the same for the whole app session: fetch once.
 Map<String, dynamic>? _catalogCache;
@@ -101,8 +102,8 @@ class _RolesTabState extends State<_RolesTab> {
               heroTag: 'role_new',
               backgroundColor: c.primary,
               onPressed: () => _open(),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: Text(t('دور جديد', 'New role'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+              icon: Icon(Icons.add_rounded, color: c.onHero),
+              label: Text(t('دور جديد', 'New role'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
             )
           : null,
       body: OrgAsync(
@@ -205,7 +206,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
       maxWith: 820,
       appBar: ScreenAppBar(title: widget.role == null ? t('دور جديد', 'New role') : t('الدور وصلاحياته', 'Role & rights'), actions: [
         if (widget.role != null && !system && s.can('roles', 'delete') && _editable)
-          IconButton(
+          IconButton(tooltip: t('حذف', 'Delete'), 
             icon: Icon(Icons.delete_outline_rounded, color: c.danger),
             onPressed: () async {
               if (!await confirm(context, message: t('حذف الدور؟ يفقده كل من يحمله.', 'Delete the role? Everyone holding it loses it.'), danger: true)) return;
@@ -214,7 +215,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
               }
             },
           ),
-      ]),
+       const ContextExitButton()]),
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         if (!_editable)
           Padding(
@@ -250,7 +251,7 @@ class _OrgRoleEditorState extends State<OrgRoleEditor> {
           title: t('ماذا يستطيع حامل الدور أن يفعل؟', 'What can people with this role do?'),
           icon: Icons.tune_rounded,
           child: _catalog == null
-              ? const Padding(padding: EdgeInsets.all(20), child: Center(child: AppLoadingIndicator(size: 48)))
+              ? const AppListSkeleton(items: 3)
               : OrgPermissionMatrix(
                   catalog: _catalog!,
                   value: _perms,
@@ -472,14 +473,14 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
     return BasePage(
       useWebCard: true,
       maxWith: 860,
-      appBar: ScreenAppBar(title: d == null ? t('الصلاحيات', 'Access') : '${asMap(d['user'])['name']}'),
+      appBar: ScreenAppBar(title: d == null ? t('الصلاحيات', 'Access') : '${asMap(d['user'])['name']}', actions: const [ContextExitButton()]),
       child: OrgAsync(
         loading: d == null && !_failed,
         failed: _failed,
         onRetry: _load,
         child: d == null
             ? const SizedBox.shrink()
-            : RefreshIndicator(
+            : AppRefresh(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
                   Section(
@@ -525,7 +526,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                                     ].join('   '),
                                     style: orgText(context, size: 12, color: c.textMedium)),
                                 trailing: canEdit && g['inherited'] != true
-                                    ? IconButton(
+                                    ? IconButton(tooltip: t('حذف', 'Delete'), 
                                         icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                                         onPressed: () async {
                                           if (await OrgApi.i.del('$_base/access/grants/${g['id']}', t('تم', 'Done')) != null) _load();
@@ -591,7 +592,7 @@ class OrgActivityPage extends StatelessWidget {
                 heroTag: 'audit_x',
                 backgroundColor: context.colors.primary,
                 onPressed: () => downloadExcel(context, 'audit/export'),
-                child: const Icon(Icons.file_download_rounded, color: Colors.white),
+                child: Icon(Icons.file_download_rounded, color: context.colors.onHero),
               )
             : null,
         body: PagedList<OrgPaged>(

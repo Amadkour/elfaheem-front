@@ -18,7 +18,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'admin_common.dart' show t;
 
 class AdminParentRequestsPage extends StatelessWidget {
   const AdminParentRequestsPage({super.key});
@@ -120,12 +121,12 @@ maxWith: 1100,
         ),
         Expanded(
           child: p.isLoading && p.items.isEmpty
-              ? const Center(child: AppLoadingIndicator(size: 56))
+              ? const AppListSkeleton()
               : p.hasError && p.items.isEmpty
                   ? PlError(p.errorMessage ?? '', onRetry: p.loadRequests)
                   : p.items.isEmpty
                       ? PlEmpty('pl_no_requests'.tr)
-                      : RefreshIndicator(
+                      : AppRefresh(
                           onRefresh: p.loadRequests,
                           child: ListView.builder(
                             controller: _scroll,
@@ -134,7 +135,7 @@ maxWith: 1100,
                             itemBuilder: (_, i) {
                               if (i >= p.items.length) {
                                 return const Padding(
-                                    padding: EdgeInsets.all(16), child: const Center(child: AppLoadingIndicator(size: 56)));
+                                    padding: EdgeInsets.all(16), child: const AppListSkeleton());
                               }
                               final r = p.items[i];
                               return PlCard(
@@ -234,7 +235,7 @@ class _DetailState extends State<_Detail> {
                     padding: const EdgeInsets.all(32), child: Text('pl_file_load_failed'.tr))),
           ),
           PositionedDirectional(
-              top: 4, end: 4, child: IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx))),
+              top: 4, end: 4, child: IconButton(tooltip: t('إغلاق', 'Close'), icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx))),
         ]),
       ),
     );
@@ -265,12 +266,12 @@ class _DetailState extends State<_Detail> {
     return BasePage(
       appBar: ScreenAppBar(title: 'pl_request_details'.tr),
       child: d == null
-          ? const Center(child: AppLoadingIndicator(size: 56))
+          ? const AppListSkeleton()
           : ListView(padding: const EdgeInsets.all(16), children: [
               Row(children: [
                 PlStatusChip('${d['status']}'),
                 const SizedBox(width: 10),
-                Text('${'pl_mode_${d['mode']}'.tr} · ${plDateTime(d['created_at'])}', style: c.caption),
+                Flexible(child: Text('${'pl_mode_${d['mode']}'.tr} · ${plDateTime(d['created_at'])}', style: c.caption)),
               ]),
               const SizedBox(height: 12),
               _person('pl_parent'.tr, d['parent'] as Map? ?? {}),

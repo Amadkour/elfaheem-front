@@ -25,6 +25,7 @@ import '../org/org_providers.dart' show OrgApi;
 import '../org/org_ui.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 class DataCenterPage extends StatefulWidget {
   const DataCenterPage({super.key, this.orgId, this.embedded = false});
@@ -141,8 +142,8 @@ class _DataCenterPageState extends State<DataCenterPage> {
             if (ctx.mounted) set(() => busy = false);
           }
           if (preview == null && !busy) WidgetsBinding.instance.addPostFrameCallback((_) => refresh());
-          final colors = {'#0F7B5F': c.primary, '#7C3AED': c.purple, '#C98A3E': c.accent2, '#2563EB': const Color(0xFF2563EB),
-            '#DC2626': c.danger, '#1F2430': const Color(0xFF1F2430)};
+          final colors = {'#0F7B5F': c.primary, '#7C3AED': c.purple, '#C98A3E': c.accent2, '#2563EB': hexColor('#2563EB', c.charcoal),
+            '#DC2626': c.danger, '#1F2430': hexColor('#1F2430', c.textDark)};
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -154,8 +155,8 @@ class _DataCenterPageState extends State<DataCenterPage> {
                 decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
                 child: Stack(children: [
                   if (preview != null) Positioned.fill(child: Padding(padding: const EdgeInsets.all(8), child: Image.memory(preview!, fit: BoxFit.contain))),
-                  if (busy) const Center(child: CircularProgressIndicator()),
-                  PositionedDirectional(top: 6, end: 6, child: IconButton.filledTonal(onPressed: refresh, icon: const Icon(Icons.refresh_rounded))),
+                  if (busy) const AppListSkeleton(),
+                  PositionedDirectional(top: 6, end: 6, child: IconButton.filledTonal(tooltip: t('تحديث', 'Refresh'), onPressed: refresh, icon: const Icon(Icons.refresh_rounded))),
                 ]),
               ),
               const SizedBox(height: 12),
@@ -174,7 +175,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                   icon: Icon(logo == null ? Icons.add_photo_alternate_rounded : Icons.check_circle_rounded),
                   label: Text(logo == null ? t('شعار التقرير', 'Report logo') : t('تغيير الشعار', 'Change logo')),
                 )),
-                if (logo != null) IconButton(onPressed: () { set(() => logo = null); refresh(); }, icon: const Icon(Icons.close_rounded)),
+                if (logo != null) IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () { set(() => logo = null); refresh(); }, icon: const Icon(Icons.close_rounded)),
               ]),
               const SizedBox(height: 10),
               Text(t('اللون', 'Colour'), style: orgText(ctx, size: 12.5, w: FontWeight.w700, color: c.textMedium)),
@@ -333,8 +334,8 @@ class _DataCenterPageState extends State<DataCenterPage> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: LinearGradient(colors: [c.primary, c.primaryDark])),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(t('الإجمالي', 'Total'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white70)),
-                    Text('${d['total']}', style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+                    Text(t('الإجمالي', 'Total'), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted)),
+                    Text('${d['total']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 32, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 10),
                     // 30-day activity
                     SizedBox(
@@ -347,14 +348,14 @@ class _DataCenterPageState extends State<DataCenterPage> {
                               child: Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 1),
                                 height: 4 + 50 * asInt(x['count']) / maxDay,
-                                decoration: BoxDecoration(color: Colors.white.withValues(alpha: asInt(x['count']) > 0 ? 0.9 : 0.25),
+                                decoration: BoxDecoration(color: c.onHero.withValues(alpha: asInt(x['count']) > 0 ? 0.9 : 0.25),
                                     borderRadius: BorderRadius.circular(3)),
                               ),
                             ),
                           ),
                       ]),
                     ),
-                    Text(t('آخر 30 يوماً', 'Last 30 days'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white70, fontSize: 11.5)),
+                    Text(t('آخر 30 يوماً', 'Last 30 days'), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted, fontSize: 11.5)),
                   ]),
                 );
                 final bars = Container(
@@ -417,7 +418,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                   }, child: Text(t('تحميل المزيد', 'Load more'))),
                 ),
             ] else if (_loading)
-              const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
+              const AppListSkeleton(items: 3),
           ]);
     if (widget.embedded) return body;
     return BasePage(useWebCard: true, maxWith: 1200, appBar: ScreenAppBar(title: t('مركز البيانات', 'Data Center')), child: body);
@@ -497,12 +498,12 @@ class _AdminRequirementsPageState extends State<AdminRequirementsPage> {
         IconButton(onPressed: () => _edit(), icon: const Icon(Icons.add_rounded), tooltip: t('مطلب جديد', 'New requirement')),
       ]),
       child: _items == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const AppListSkeleton()
           : _items!.isEmpty
               ? OrgEmpty(icon: Icons.fact_check_rounded, title: t('اطلب من مستخدميك الموافقة أو الاطلاع', 'Ask your users to agree or read'),
                   message: t('مثل شروط استخدام جديدة — تظهر لهم في "مطلوب منك" حتى يتعاملوا معها.', 'e.g. new terms — they appear in "Needs your action" until handled.'),
                   actionLabel: t('مطلب جديد', 'New requirement'), onAction: () => _edit())
-              : ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
+              : AppRefresh(onRefresh: _load, child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
                   for (final it in _items!)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
@@ -519,7 +520,7 @@ class _AdminRequirementsPageState extends State<AdminRequirementsPage> {
                               OrgPill('v${it['version']}'),
                             ]),
                           ])),
-                          IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
+                          IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
                             if (await confirm(context, message: t('حذف المطلب؟', 'Delete?'), danger: true)) {
                               await OrgApi.i.del('$_url/${it['id']}');
                               _load();
@@ -528,7 +529,7 @@ class _AdminRequirementsPageState extends State<AdminRequirementsPage> {
                         ]),
                       ),
                     ),
-                ]),
+                ])),
     );
   }
 }

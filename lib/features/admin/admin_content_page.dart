@@ -29,8 +29,8 @@ import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -93,10 +93,10 @@ IconData contactIcon(String? type) => kContactTypes[type] ?? Icons.link_rounded;
 class _Pal {
   _Pal(ThemeConfigProvider c)
       : primary = [c.primaryLight, c.primary],
-        gold = [Color.lerp(c.accent2, Colors.white, 0.25)!, c.accent2],
-        green = [Color.lerp(c.success, Colors.white, 0.25)!, c.success],
-        purple = [Color.lerp(c.purple, Colors.white, 0.25)!, c.purple],
-        warm = [Color.lerp(c.warning, Colors.white, 0.25)!, c.warning];
+        gold = [c.heroTint(c.accent2, 0.25), c.accent2],
+        green = [c.heroTint(c.success, 0.25), c.success],
+        purple = [c.heroTint(c.purple, 0.25), c.purple],
+        warm = [c.heroTint(c.warning, 0.25), c.warning];
 
   final List<Color> primary, gold, green, purple, warm;
 
@@ -525,7 +525,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           child: Opacity(
             opacity: active ? 1 : 0.62,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 6, 10),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 6, 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   leading,
@@ -772,9 +772,9 @@ class _AdminContentPageState extends State<AdminContentPage> {
                     Row(children: [
                       Icon(Icons.flag_rounded, size: 16, color: c.primary),
                       const SizedBox(width: 6),
-                      Text('content_mission'.tr,
+                      Flexible(child: Text('content_mission'.tr,
                           style: adminText(context,
-                              size: 12, weight: FontWeight.w800, color: c.primary)),
+                              size: 12, weight: FontWeight.w800, color: c.primary))),
                     ]),
                     const SizedBox(height: 6),
                     Text(mission,
@@ -843,11 +843,11 @@ class _AdminContentPageState extends State<AdminContentPage> {
             child: Text(_loc(s, 'value'),
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
-                style: const TextStyle(
+                style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+                    color: c.onHero)),
           ),
           title: _loc(s, 'label'),
           subtitle: _other(s, 'label'),
@@ -879,7 +879,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             ),
             child: emoji.isNotEmpty
                 ? Text(emoji, style: const TextStyle(fontSize: 24))
-                : const Icon(Icons.person_rounded, color: Colors.white),
+                : Icon(Icons.person_rounded, color: c.onHero),
           );
           return _row(
             kind: 'team',
@@ -1033,11 +1033,11 @@ class _AdminContentPageState extends State<AdminContentPage> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: AppLoadingIndicator(size: 56));
+      body = const AppListSkeleton();
     } else if (_error != null) {
       body = ErrorRetry(message: _error!, onRetry: _load);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: () => _load(silent: true),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
@@ -1372,11 +1372,11 @@ class _EntityFormState extends State<_EntityForm> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   child: Text('save'.tr,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 15.5,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white)),
+                          color: c.onHero)),
                 ),
               ),
             ]),

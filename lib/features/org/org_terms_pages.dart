@@ -16,6 +16,7 @@ import '../admin/admin_list.dart';
 import 'org_common.dart';
 import 'org_providers.dart';
 import 'org_ui.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 Map<String, String> _kinds() => {'text': t('نص', 'Text'), 'image': t('صورة', 'Image'), 'document': t('مستند', 'Document')};
 const _kindIcons = {'text': Icons.article_rounded, 'image': Icons.image_rounded, 'document': Icons.description_rounded};
@@ -155,7 +156,7 @@ class _OrgTermsAdminPageState extends State<OrgTermsAdminPage> {
                               ]),
                             ),
                             if (s.can('terms', 'delete'))
-                              IconButton(
+                              IconButton(tooltip: t('حذف', 'Delete'), 
                                 icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                                 onPressed: () async {
                                   if (await confirm(context, message: t('حذف البند؟', 'Delete this item?'), danger: true) &&
@@ -212,7 +213,7 @@ class _OrgTermsViewState extends State<OrgTermsView> {
           ? const SizedBox.shrink()
           : items.isEmpty
               ? OrgEmpty(icon: Icons.gavel_rounded, title: t('لا لوائح منشورة', 'No regulations published'))
-              : RefreshIndicator(
+              : AppRefresh(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
                     for (final it in items) TermCard(item: it, onAcked: _load),

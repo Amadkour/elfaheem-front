@@ -145,7 +145,7 @@ class _DecisionsTabState extends State<_DecisionsTab> with _Loads {
       final courses = asMap(m['courses']);
       final items = asMapList(m['items']);
       final counts = asMap(m['counts']);
-      return RefreshIndicator(
+      return AppRefresh(
         onRefresh: reload,
         child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
           Padding(
@@ -323,7 +323,7 @@ class _TermsTabState extends State<_TermsTab> with _Loads {
       for (final s in _sections ?? const <Map<String, dynamic>>[]) {
         byCourse.putIfAbsent(asInt(s['course_id']), () => []).add(s);
       }
-      return RefreshIndicator(
+      return AppRefresh(
         onRefresh: _loadTerm,
         child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
           SingleChildScrollView(
@@ -608,7 +608,7 @@ class _CourseSheetState extends State<_CourseSheet> {
                     onChanged: (v) => setState(() => _reqs[i]['min_grade'] = v),
                   ),
                 ),
-                IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _reqs.removeAt(i))),
+                IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _reqs.removeAt(i))),
               ]),
             ]),
           ),
@@ -838,7 +838,7 @@ class _ProgramSheetState extends State<_ProgramSheet> {
             child: Row(children: [
               Expanded(child: Text('${t('${_groups[i]['label_ar'] ?? ''}', '${_groups[i]['label_en'] ?? ''}')} (${_groups[i]['key']})', style: appText(13, w: FontWeight.w700))),
               Text('≥ ${asDouble(_groups[i]['min_credits']).toStringAsFixed(0)}', style: appText(13)),
-              IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _groups.removeAt(i))),
+              IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => _groups.removeAt(i))),
             ]),
           ),
         AppSectionTitle(t('الخطة الدراسية', 'Curriculum'), subtitle: t('اختر المقررات ومجموعتها ومستواها', 'Pick the courses, their group and level')),
@@ -1200,7 +1200,7 @@ class _GraduationTabState extends State<_GraduationTab> with _Loads {
     final c = context.colors;
     return frame((m) {
       final cands = asMapList(m['items']);
-      return RefreshIndicator(
+      return AppRefresh(
         onRefresh: reload,
         child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
           AppSectionTitle(t('مستوفو متطلبات التخرج', 'Meet graduation requirements'), subtitle: t('حسب التدقيق الآلي للخطة', 'By the automatic degree audit')),

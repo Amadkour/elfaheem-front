@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppTime;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -94,10 +94,10 @@ class _HomeTabsBarState extends State<HomeTabsBar> {
                   boxShadow: on ? [BoxShadow(color: c.primary.withValues(alpha: 0.28), blurRadius: 14, offset: const Offset(0, 6))] : null,
                 ),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(icon, size: 19, color: on ? Colors.white : c.textMedium),
+                  Icon(icon, size: 19, color: on ? c.onHero : c.textMedium),
                   const SizedBox(width: 8),
                   Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: on ? Colors.white : c.textMedium))),
+                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: on ? c.onHero : c.textMedium))),
                 ]),
               ),
             ),
@@ -206,7 +206,7 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
     _load();
   }
 
-  String _today() => const ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][DateTime.now().weekday - 1];
+  String _today() => const ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'][appToday().weekday - 1]; // the AppTime day (org timezone)
 
   @override
   Widget build(BuildContext context) {
@@ -225,10 +225,10 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
         if (examPauseOn(day, examPausesOf(s)) == null) ...asMapList(s['items']).where((x) => x['day'] == _today()),
     ]..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
     final pauses = {for (final s in _scheds) for (final p in examPausesOf(s)) asInt(p['exam_schedule_id']): p}.values.toList();
-    final todayStr = DateTime.now().toIso8601String().substring(0, 10);
+    final todayStr = day.toIso8601String().substring(0, 10); // the AppTime day, like the classes above
     final todayExtras = _extras.where((e) => e['date'] == todayStr).toList();
     final upcoming = _extras.where((e) => '${e['date']}'.compareTo(todayStr) > 0).take(3).toList();
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
@@ -242,13 +242,13 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   gradient: LinearGradient(begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd,
-                      colors: [orgColor(context, org), Color.lerp(orgColor(context, org), Colors.black, 0.35)!]),
+                      colors: [orgColor(context, org), c.heroEnd(orgColor(context, org), 0.35)]),
                 ),
                 child: Row(children: [
                   Container(
                     width: 54,
                     height: 54,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                    decoration: BoxDecoration(color: c.onHero, borderRadius: BorderRadius.circular(16)),
                     clipBehavior: Clip.antiAlias,
                     child: '${org['logo_url'] ?? ''}'.isEmpty
                         ? Icon(orgTypeIcons[org['type']] ?? Icons.account_balance_rounded, color: orgColor(context, org))
@@ -257,19 +257,19 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
                   ),
                   const SizedBox(width: 14),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(orgNameOf(org), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800)),
-                    Text(orgTypeLabels()[org['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', color: Colors.white.withValues(alpha: 0.85))),
+                    Text(orgNameOf(org), style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 18, fontWeight: FontWeight.w800)),
+                    Text(orgTypeLabels()[org['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', color: c.onHero.withValues(alpha: 0.85))),
                   ])),
                   if (orgs.length > 1)
                     PopupMenuButton<int>(
-                      icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+                      icon: Icon(Icons.swap_horiz_rounded, color: c.onHero),
                       onSelected: (v) {
                         _orgId = v;
                         _load();
                       },
                       itemBuilder: (_) => [for (final o in orgs) PopupMenuItem(value: asInt(o['id']), child: Text(orgNameOf(o)))],
                     ),
-                  IconButton(onPressed: () => _openSpace(), icon: const Icon(Icons.open_in_new_rounded, color: Colors.white),
+                  IconButton(onPressed: () => _openSpace(), icon: Icon(Icons.open_in_new_rounded, color: c.onHero),
                       tooltip: t('مساحة المؤسسة', 'Organization space')),
                 ]),
               ),

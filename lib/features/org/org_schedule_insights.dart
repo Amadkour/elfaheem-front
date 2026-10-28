@@ -420,7 +420,7 @@ class _RankedActionsState extends State<RankedActions> {
       height: 26,
       alignment: Alignment.center,
       decoration: BoxDecoration(color: top ? c.success : c.inputBg, shape: BoxShape.circle),
-      child: Text('#${a.rank}', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? Colors.white : c.textMedium)),
+      child: Text('#${a.rank}', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? c.onHero : c.textMedium)),
     );
   }
 

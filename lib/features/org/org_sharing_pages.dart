@@ -18,7 +18,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
-import '../admin/admin_common.dart' show asInt, asMap, asMapList, t;
+import '../admin/admin_common.dart' show asInt, asMap, asMapList, ErrorRetry, t;
 import 'org_providers.dart';
 import 'org_sharing.dart';
 import 'org_ui.dart';
@@ -338,6 +338,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   Map<String, dynamic>? _overview;
   List<Map<String, dynamic>>? _requests, _incoming, _discover, _keys;
   bool _missing = false;
+  String? _error; // the overview could not be loaded
   String _q = '';
 
   OrgSession get _s => context.read<OrgSession>();
@@ -375,11 +376,16 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
     final r = await orgCall(() => ApiClient().get(_base), quiet: true);
     if (!mounted) return;
     if (!r.ok) {
-      setState(() => _missing = r.endpointMissing);
-      if (!r.endpointMissing) appToast(orgErrorText(r.error!), error: true);
+      setState(() {
+        _missing = r.endpointMissing;
+        _error = r.endpointMissing ? null : orgErrorText(r.error!);
+      });
       return;
     }
-    setState(() => _overview = r.map);
+    setState(() {
+      _overview = r.map;
+      _error = null;
+    });
     _loadRequests();
     _loadIncoming();
     _loadDiscover();
@@ -415,7 +421,11 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
       ]);
     }
     final ov = _overview;
-    if (ov == null) return const AppListSkeleton(items: 4, withAvatar: false);
+    if (ov == null) {
+      return _error != null
+          ? ErrorRetry(message: _error!, onRetry: _loadAll)
+          : const AppListSkeleton(items: 4, withAvatar: false);
+    }
     final shares = asMapList(ov['shares']);
     final active = shares.fold<int>(0, (n, s) => n + asInt(s['grants']));
     final enabled = ov['enabled'] == true && ov['platform_enabled'] == true;
@@ -647,7 +657,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
   Widget _requestsTab() {
     final rows = _requests;
     if (rows == null) return const AppListSkeleton(items: 3, withAvatar: false);
-    return ListView(padding: const EdgeInsets.all(16), children: [
+    return AppRefresh(onRefresh: _loadRequests, child: ListView(padding: const EdgeInsets.all(16), children: [
       if (rows.isEmpty) AppEmpty(icon: Icons.inbox_rounded, title: t('لا توجد طلبات', 'No requests'), message: t('عندما تطلب مؤسسة الوصول إلى إحدى مشاركاتكم يظهر طلبها هنا.', 'When an organization asks for one of your shares, it shows up here.')),
       for (final g in rows)
         Padding(
@@ -670,7 +680,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
             ],
           ]),
         ),
-    ]);
+    ]));
   }
 
   Future<void> _decide(Map<String, dynamic> g, bool approve) async {

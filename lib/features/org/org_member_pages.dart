@@ -12,9 +12,8 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/course/course_access.dart' show openCourse;
 import 'package:flutter_education_app/features/student/models.dart' show CourseModel;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
 import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart';
@@ -56,15 +55,15 @@ class OrgHomeEntry extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(22),
-              gradient: LinearGradient(begin: AlignmentDirectional.centerStart, end: AlignmentDirectional.centerEnd, colors: [base.withValues(alpha: 0.95), Color.alphaBlend(Colors.black.withValues(alpha: 0.25), base)]),
+              gradient: LinearGradient(begin: AlignmentDirectional.centerStart, end: AlignmentDirectional.centerEnd, colors: [base.withValues(alpha: 0.95), c.heroEnd(base, 0.25)]),
               boxShadow: [BoxShadow(color: base.withValues(alpha: 0.25), blurRadius: 14, offset: const Offset(0, 6))],
             ),
             child: Row(children: [
               Container(
                 width: 46,
                 height: 46,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
-                child: Icon(first == null ? Icons.add_business_rounded : (orgTypeIcons[first['type']] ?? Icons.domain_rounded), color: Colors.white),
+                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(14)),
+                child: Icon(first == null ? Icons.add_business_rounded : (orgTypeIcons[first['type']] ?? Icons.domain_rounded), color: c.onHero),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -73,17 +72,17 @@ class OrgHomeEntry extends StatelessWidget {
                     first == null ? t('انضم إلى جامعتك أو كليتك', 'Join your university or faculty') : OrgSession.nameOf(first),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: 'bahji', fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                    style: TextStyle(fontFamily: 'bahji', fontSize: 16, fontWeight: FontWeight.w800, color: c.onHero),
                   ),
                   Text(
                     first == null
                         ? (pending > 0 ? t('طلبك قيد المراجعة', 'Your request is being reviewed') : t('اطّلع على كورسات مؤسستك واشترك بها', "See your institution's courses and subscribe"))
                         : t('${active.length} مؤسسة · الكورسات والجدول', '${active.length} organization(s) · courses & timetable'),
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: 0.88)),
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88)),
                   ),
                 ]),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+              Icon(Icons.chevron_right_rounded, color: c.onHero),
             ]),
           ),
         );
@@ -118,11 +117,11 @@ class _MembershipView extends StatelessWidget {
         heroTag: 'org_join',
         backgroundColor: c.primary,
         onPressed: () => openOrgJoin(context, onDone: p.loadMine),   // org_access_joining.dart: code · browse · my requests
-        icon: const Icon(Icons.add_business_rounded, color: Colors.white),
-        label: Text(t('انضمام لمؤسسة', 'Join an organization'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        icon: Icon(Icons.add_business_rounded, color: c.onHero),
+        label: Text(t('انضمام لمؤسسة', 'Join an organization'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
       ),
       child: !p.loaded
-          ? const Center(child: AppLoadingIndicator(size: 64))
+          ? const AppListSkeleton()
           : p.mine.isEmpty
               ? OrgEmpty(icon: Icons.domain_rounded, title: t('لم تنضم لأي مؤسسة بعد', "You haven't joined an organization yet"))
               : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
@@ -249,7 +248,7 @@ class _CoursesBody extends StatelessWidget {
           subtitle: t('كورسات مؤسستك', 'Your institution’s courses'),
           trailing: IconButton(
             tooltip: t('جدولي', 'My timetable'),
-            icon: const Icon(Icons.calendar_month_rounded, color: Colors.white),
+            icon: Icon(Icons.calendar_month_rounded, color: c.onHero),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: asInt(org['id'])))),
           ),
         ),
@@ -258,7 +257,7 @@ class _CoursesBody extends StatelessWidget {
           child: SearchBox(hint: t('ابحث عن كورس', 'Search a course'), onChanged: (q) => p.loadCourses(asInt(org['id']), search: q)),
         ),
         if (p.isLoading && p.courses.isEmpty)
-          const Padding(padding: EdgeInsets.all(40), child: Center(child: AppLoadingIndicator(size: 56)))
+          const AppListSkeleton(items: 3)
         else if (p.courses.isEmpty)
           SizedBox(height: 240, child: OrgEmpty(icon: Icons.menu_book_rounded, title: t('لا توجد كورسات منشورة بعد', 'No published courses yet')))
         else
@@ -341,7 +340,7 @@ class _TimetableView extends StatelessWidget {
         ),
       );
     } else if (p.timetables.isEmpty) {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: reload,
         child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
           const SizedBox(height: 40),
@@ -353,7 +352,7 @@ class _TimetableView extends StatelessWidget {
         ]),
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: reload,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -405,7 +404,7 @@ class _TimetableView extends StatelessWidget {
         heading(t('قادم خلال أسبوعين', 'Coming up (next 2 weeks)')),
         for (final e in extras)
           _SlotRow(
-            top: '${e['start_time'] ?? ''}',
+            top: AppTime.clock('${e['start_time'] ?? ''}'),
             bottom: '${e['date'] ?? ''}',
             title: '${e['title'] ?? e['course'] ?? ''}',
             subtitle: [if (e['course'] != null && e['title'] != null) '${e['course']}', if (e['room'] != null) '${e['room']}'].join(' · '),
@@ -432,8 +431,8 @@ class _TimetableView extends StatelessWidget {
         heading(labels[day] ?? day),
         for (final x in items)
           _SlotRow(
-            top: '${x['start_time'] ?? ''}',
-            bottom: '${x['end_time'] ?? ''}',
+            top: AppTime.clock('${x['start_time'] ?? ''}'),
+            bottom: AppTime.clock('${x['end_time'] ?? ''}'),
             title: '${x['course'] ?? ''}',
             subtitle: [
               if (_isLab(x)) t('عملي', 'Lab'),

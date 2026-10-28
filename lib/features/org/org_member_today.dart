@@ -118,7 +118,7 @@ class _OrgTodayAgendaState extends State<OrgTodayAgenda> {
     void openWeek() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen()));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeSectionTitle('home_today'.tr,
-          count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsets.fromLTRB(16, 0, 8, 10)),
+          count: rows.length, actionLabel: 'home_full_timetable'.tr, onAction: openWeek, padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 10)),
       if (pauses.isNotEmpty)
         Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), child: examPauseBanner(context, pauses, padding: EdgeInsets.zero)),
       for (final x in upcoming)

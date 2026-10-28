@@ -23,12 +23,12 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/base_provider.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/primary_button.dart';
 import '../student/enrollment/enrollment_models.dart' show asJsonMap;
 import 'admin_common.dart';
 import 'admin_money_p8.dart' show AdminMoneyPage;
 import 'admin_premium_widgets.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminFeeRatesProvider extends BaseProvider {
   AdminFeeRatesProvider({ApiClient? api}) : api = api ?? ApiClient();
@@ -165,7 +165,7 @@ class AdminFeeRatesSection extends StatelessWidget {
       ),
       const SizedBox(height: 8),
       if (!p.loaded && p.isLoading)
-        const Padding(padding: EdgeInsets.all(20), child: Center(child: AppLoadingIndicator()))
+        const AppListSkeleton(items: 3)
       else if (!p.loaded)
         ErrorRetry(message: p.errorMessage ?? 'admin_could_not_load'.tr, onRetry: p.load)
       else ...[

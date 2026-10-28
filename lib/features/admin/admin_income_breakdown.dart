@@ -14,6 +14,7 @@ import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
     showAdminSheet(context, (_) => const _BreakdownSheet());
@@ -70,7 +71,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (loading) {
-      return const SizedBox(height: 260, child: Center(child: AppLoadingIndicator()));
+      return const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false));
     }
     if (data == null) {
       return SizedBox(height: 260, child: ErrorRetry(message: error ?? 'admin_could_not_load_data'.tr, onRetry: _load));

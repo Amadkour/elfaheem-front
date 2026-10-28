@@ -304,7 +304,7 @@ class _GovMyVotesPageState extends State<GovMyVotesPage> {
     } else {
       final groups = groupMyVotes(rows);
       final pending = rows.where((e) => (_votes[e.agenda.id] ?? e.agenda.myVote) == null).length;
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
           AppHero(

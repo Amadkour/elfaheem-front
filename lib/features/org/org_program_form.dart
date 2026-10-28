@@ -343,7 +343,7 @@ class _Section extends StatelessWidget {
         Row(children: [
           Icon(icon, size: 18, color: c.primary),
           const SizedBox(width: 8),
-          Text(title, style: orgText(context, w: FontWeight.w800)),
+          Flexible(child: Text(title, style: orgText(context, w: FontWeight.w800))),
         ]),
         const SizedBox(height: 10),
         ...children,

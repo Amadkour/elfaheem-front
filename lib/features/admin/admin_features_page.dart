@@ -187,7 +187,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     }
     final counts = asMap(_data!['counts']);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: CustomScrollView(slivers: [
         SliverPadding(
@@ -282,7 +282,7 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 10),
         onTap: () => _openDetail(f),
         child: Row(children: [
           Expanded(

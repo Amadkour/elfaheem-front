@@ -18,6 +18,8 @@ import '../../../utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../student/enrollment/enrollment_models.dart';
 import 'teacher_transfers_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import '../admin_common.dart' show t;
 
 class TeacherTransfersScreen extends StatefulWidget {
   const TeacherTransfersScreen({super.key});
@@ -60,8 +62,8 @@ class _TransfersView extends StatelessWidget {
         maxWith: 1100,
         appBar: ScreenAppBar(title: 'transfer_requests_title'.tr),
         child: !p.hasLoaded && !failedFirstLoad
-            ? const Center(child: AppLoadingIndicator(showLogo: false))
-            : RefreshIndicator(
+            ? const AppListSkeleton()
+            : AppRefresh(
                 onRefresh: p.load,
                 child: failedFirstLoad
                     ? RequestStateView(
@@ -187,7 +189,7 @@ class _TransferCard extends StatelessWidget {
             Positioned(
               top: 6,
               right: 6,
-              child: IconButton(
+              child: IconButton(tooltip: t('إغلاق', 'Close'), 
                 onPressed: () => Navigator.pop(ctx),
                 icon: const Icon(Icons.close_rounded, color: Colors.white),
                 style: IconButton.styleFrom(backgroundColor: Colors.black54),
@@ -441,25 +443,25 @@ class _ProofImage extends StatelessWidget {
                   horizontal: 12,
                   vertical: 10,
                 ),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [Color(0xB3000000), Color(0x00000000)],
+                    colors: [c.heroShade.withValues(alpha: 0.7), c.heroShade.withValues(alpha: 0)],
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.zoom_out_map_rounded,
-                      color: Colors.white,
+                      color: c.onHero,
                       size: 16,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'receipt_tap_to_zoom'.tr,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: c.onHero,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),

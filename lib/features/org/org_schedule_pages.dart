@@ -11,10 +11,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppField, AppPrimaryButton, AppSectionTitle, showAppSheet;
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppField, AppListSkeleton, AppPrimaryButton, AppSectionTitle, showAppSheet;
 import 'package:flutter_education_app/design/app_refresh.dart';
 
 import '../admin/admin_common.dart';
@@ -46,6 +45,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -65,7 +65,7 @@ class _ScheduleView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<OrgScheduleProvider>();
     final c = context.colors;
-    if (!p.loaded) return const Center(child: AppLoadingIndicator(size: 64));
+    if (!p.loaded) return const AppListSkeleton();
     return DefaultTabController(
       length: 3,
       child: Column(
@@ -77,7 +77,7 @@ class _ScheduleView extends StatelessWidget {
               dividerColor: Colors.transparent,
               indicatorSize: TabBarIndicatorSize.tab,
               indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
-              labelColor: Colors.white,
+              labelColor: c.onHero,
               unselectedLabelColor: c.textMedium,
               labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13),
               tabs: [
@@ -113,7 +113,7 @@ class _SetupTab extends StatelessWidget {
           title: t('الفترات الدراسية', 'Periods'),
           icon: Icons.schedule_rounded,
           trailing: s.can('schedule', 'insert')
-              ? IconButton(
+              ? IconButton(tooltip: t('إضافة فترة', 'Add a period'), 
                   onPressed: () => showPeriodForm(context, p, null),
                   icon: Icon(Icons.add_circle_rounded, color: c.primary),
                 )
@@ -144,9 +144,9 @@ class _SetupTab extends StatelessWidget {
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showPeriodForm(context, p, x)),
+                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showPeriodForm(context, p, x)),
                             if (s.can('schedule', 'delete'))
-                              IconButton(
+                              IconButton(tooltip: t('حذف', 'Delete'), 
                                 icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger),
                                 onPressed: () async {
                                   if (await confirm(context, message: t('حذف الفترة؟', 'Delete this period?'), danger: true)) p.deletePeriod(asInt(x['id']));
@@ -167,7 +167,7 @@ class _SetupTab extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(tooltip: t('أنواع الأماكن', 'Facility types'), onPressed: () => showFacilityTypes(context, p), icon: const Icon(Icons.category_rounded)),
-                    IconButton(
+                    IconButton(tooltip: t('إضافة قاعة', 'Add a room'), 
                       onPressed: () => showRoomForm(context, p, null),
                       icon: Icon(Icons.add_circle_rounded, color: c.primary),
                     ),
@@ -216,9 +216,9 @@ class _SetupTab extends StatelessWidget {
                                 icon: const Icon(Icons.event_available_rounded, size: 20),
                                 onPressed: () => showAvailabilitySheet(context, p, 'room', asInt(r['id']), '${t('أوقات إتاحة', 'Available periods of')} ${r['name']}'),
                               ),
-                            if (s.can('schedule', 'update')) IconButton(icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showRoomForm(context, p, r)),
+                            if (s.can('schedule', 'update')) IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded, size: 20), onPressed: () => showRoomForm(context, p, r)),
                             if (s.can('schedule', 'delete'))
-                              IconButton(
+                              IconButton(tooltip: t('حذف', 'Delete'), 
                                 icon: Icon(Icons.delete_outline_rounded, size: 20, color: c.danger),
                                 onPressed: () => deleteRoom(context, p, r),
                               ),
@@ -345,7 +345,7 @@ class _PlanningTab extends StatelessWidget {
                   child: BasePage(
                     useWebCard: true,
                     maxWith: 900,
-                    appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests')),
+                    appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests'), actions: const [ContextExitButton()]),
                     child: const OrgAvailabilityRequestsPage(),
                   ),
                 ),
@@ -559,7 +559,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                                 height: 38,
                                 margin: const EdgeInsets.all(3),
                                 decoration: BoxDecoration(color: sel.contains('$d|${per['id']}') ? c.primary : c.inputBg, borderRadius: BorderRadius.circular(10)),
-                                child: sel.contains('$d|${per['id']}') ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
+                                child: sel.contains('$d|${per['id']}') ? Icon(Icons.check_rounded, color: c.onHero, size: 18) : null,
                               ),
                             ),
                         ],
@@ -757,7 +757,7 @@ class _TimetablesTab extends StatelessWidget {
                                 onPressed: () => _wizard(context, p, id: asInt(x['id'])),
                               ),
                             if (s.can('schedule', 'delete') && x['status'] != 'active')
-                              IconButton(
+                              IconButton(tooltip: t('حذف', 'Delete'), 
                                 icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                                 onPressed: () async {
                                   if (await confirm(context, message: t('حذف الجدول؟', 'Delete this timetable?'), danger: true)) p.deleteSchedule(asInt(x['id']));
@@ -777,10 +777,10 @@ class _TimetablesTab extends StatelessWidget {
               heroTag: 'org_add_schedule',
               backgroundColor: c.primary,
               onPressed: () => _wizard(context, p),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              icon: Icon(Icons.add_rounded, color: c.onHero),
               label: Text(
                 t('جدول جديد', 'New timetable'),
-                style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+                style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
               ),
             ),
           ),
@@ -1019,7 +1019,7 @@ class _StudioState extends State<_Studio> {
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: Row(
             children: [
-              IconButton(onPressed: p.closeSchedule, icon: const Icon(Icons.arrow_back_rounded)),
+              IconButton(tooltip: t('رجوع', 'Back'), onPressed: p.closeSchedule, icon: const Icon(Icons.arrow_back_rounded)),
               Expanded(
                 child: Text('${sch['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: c.h2.copyWith(fontSize: 16)),
               ),
@@ -1481,7 +1481,7 @@ class _Cell extends StatelessWidget {
           courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: Colors.white),
+          style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: c.onHero),
         ),
       ),
     );
@@ -1917,7 +1917,7 @@ Future<void> _extrasSheet(BuildContext context, OrgScheduleProvider p, Map<int, 
                             ],
                           ),
                         ),
-                        IconButton(
+                        IconButton(tooltip: t('إلغاء هذه الفترة', 'Cancel this period'), 
                           icon: Icon(Icons.event_busy_rounded, color: c.danger),
                           onPressed: () async {
                             if (await confirm(ctx, message: t('إلغاء هذه الفترة وإبلاغ الطلاب؟', 'Cancel it and tell the students?'), danger: true)) {

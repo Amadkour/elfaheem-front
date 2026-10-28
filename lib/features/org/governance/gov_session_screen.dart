@@ -216,11 +216,11 @@ class _VoteChip extends StatelessWidget {
             border: Border.all(color: selected ? color : c.divider),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: selected ? Colors.white : (dim ? c.textLight : color)),
+            Icon(icon, size: 16, color: selected ? c.onHero : (dim ? c.textLight : color)),
             const SizedBox(width: 6),
             Flexible(
               child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: orgText(context, size: 12.5, w: FontWeight.w700, color: selected ? Colors.white : (dim ? c.textLight : c.textDark))),
+                  style: orgText(context, size: 12.5, w: FontWeight.w700, color: selected ? c.onHero : (dim ? c.textLight : c.textDark))),
             ),
           ]),
         ),
@@ -1109,7 +1109,7 @@ class _GovSessionScreenState extends State<GovSessionScreen> {
     } else {
       final agenda = _reordered ?? s.agenda;
       final reorderable = s.can['manage'] && s.status == 'draft' && agenda.length > 1;
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
           SessionHeader(session: s, now: _now),

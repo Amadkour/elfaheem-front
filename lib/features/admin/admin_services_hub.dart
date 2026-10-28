@@ -582,11 +582,11 @@ class ServiceCard extends StatelessWidget {
                     child: Text(
                       count > 99 ? '99+' : '$count',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: c.onHero,
                       ),
                     ),
                   )

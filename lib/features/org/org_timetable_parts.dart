@@ -90,7 +90,7 @@ class _CapabilityPickerState extends State<_CapabilityPicker> {
             decoration: InputDecoration(hintText: t('مثلاً projector أو computers', 'e.g. projector or computers'), isDense: true),
           ),
         ),
-        IconButton(onPressed: _add, icon: const Icon(Icons.add_rounded)),
+        IconButton(tooltip: t('إضافة', 'Add'), onPressed: _add, icon: const Icon(Icons.add_rounded)),
       ]),
     ]);
   }
@@ -157,7 +157,7 @@ Future<bool> showRoomForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                   label: Text(image.text.trim().isEmpty ? t('صورة المكان', 'Facility photo') : t('تغيير الصورة', 'Change photo')),
                 ),
               ),
-              if (image.text.trim().isNotEmpty) IconButton(onPressed: () => set(image.clear), icon: Icon(Icons.close_rounded, color: c.textLight)),
+              if (image.text.trim().isNotEmpty) IconButton(tooltip: t('مسح', 'Clear'), onPressed: () => set(image.clear), icon: Icon(Icons.close_rounded, color: c.textLight)),
             ]),
             const SizedBox(height: 10),
             _CapabilityPicker(label: t('الإمكانات (أجهزة، معدات…)', 'Capabilities (equipment…)'), value: caps, suggestions: allCaps, onChanged: () => set(() {})),
@@ -277,7 +277,7 @@ Future<void> showFacilityTypes(BuildContext context, OrgScheduleProvider p) asyn
                 title: Text(t('${items[i]['label_ar'] ?? items[i]['key']}', '${items[i]['label_en'] ?? items[i]['key']}')),
                 subtitle: Text('${items[i]['key']}', textDirection: TextDirection.ltr),
                 onTap: () => edit(i),
-                trailing: IconButton(onPressed: () => set(() => items.removeAt(i)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
+                trailing: IconButton(tooltip: t('حذف', 'Delete'), onPressed: () => set(() => items.removeAt(i)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
               ),
             TextButton.icon(onPressed: () => edit(), icon: const Icon(Icons.add_rounded), label: Text(t('نوع جديد', 'New type'))),
             if (err != null) _errorBox(ctx, err!),
@@ -498,7 +498,7 @@ Future<void> showStaffPrefs(BuildContext context, OrgScheduleProvider p, int use
                               color: mode[k] == null ? c.inputBg : col(mode[k]).withValues(alpha: locked ? 0.45 : 0.9),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: locked ? const Icon(Icons.lock_rounded, size: 14, color: Colors.white) : null,
+                            child: locked ? Icon(Icons.lock_rounded, size: 14, color: c.onHero) : null,
                           ),
                         );
                       }),
@@ -580,9 +580,9 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
         final c = ctx.colors;
         Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
               Expanded(child: Text(label, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
-              IconButton(onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
+              IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
               Text('$v', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              IconButton(onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
+              IconButton(tooltip: t('زيادة', 'Increase'), onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
             ]);
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
@@ -641,7 +641,7 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 Row(children: [
                   Icon(Icons.science_rounded, color: c.purple, size: 20),
                   const SizedBox(width: 6),
-                  Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark))),
                 ]),
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[

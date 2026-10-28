@@ -5,7 +5,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
@@ -14,6 +13,7 @@ import '../../utils/widget/base_page.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminDevicesPage extends StatelessWidget {
   const AdminDevicesPage({super.key});
@@ -73,7 +73,7 @@ class _ViewState extends State<_View> {
 
     Widget body;
     if (s.values.isEmpty && s.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (s.values.isEmpty) {
       body = ErrorRetry(
         message: s.error ?? 'admin_could_not_load_data'.tr,

@@ -34,6 +34,7 @@ import 'org_schedule_versions.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_table_export.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Model (pure)
@@ -1035,7 +1036,7 @@ class _ExportSheetState extends State<_ExportSheet> {
         if (ofKind.isEmpty)
           Text(t('لا أحد من هذا النوع في الجدول', 'Nobody of this kind in the timetable'), style: orgText(context, size: 12, color: c.textMedium))
         else
-          DropdownButtonFormField<String>(
+          AppDropdown<String>(
             initialValue: ofKind.any((m) => m.key == member?.key) ? member!.key : ofKind.first.key,
             isExpanded: true,
             decoration: InputDecoration(labelText: memberKindLabel(memberKind), isDense: true),

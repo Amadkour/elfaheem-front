@@ -1,6 +1,7 @@
 // Pure logic of the ranked ways out: pre-flight actions, conflict remedies, the reassign before / after plan and the
 // members' one-date changes.
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/org/org_member_changes.dart';
 import 'package:flutter_education_app/features/org/org_schedule_insights.dart';
 import 'package:flutter_education_app/features/org/org_schedule_reassign.dart';
@@ -75,7 +76,12 @@ void main() {
       expect(r.items.length, 2);
       expect(r.hard.single.type, 'room_too_small');
       expect(r.items.first.text, 'The location is too small');
-      expect(r.items.first.when, 'P1 (08:00–09:30)');
+      // the period's clock range follows the platform 12h / 24h choice (AppTime), like every displayed time
+      AppTime.configurePlatform(timeFormat: '12h');
+      expect(r.items.first.when, 'P1 (8:00 – 9:30 AM)');
+      AppTime.configurePlatform(timeFormat: '24h');
+      expect(r.items.first.when, 'P1 (08:00 – 09:30)');
+      AppTime.configurePlatform(timeFormat: '12h');
       expect(r.items.first.courseIds, [1]);
       expect(r.items.first.slotIds, [4]);
       expect(r.items.first.best!.toJson(), {'id': 'change_room', 'kind': 'change_room', 'slot_id': 4, 'room_id': 9});

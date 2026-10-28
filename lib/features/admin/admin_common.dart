@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
 
@@ -98,12 +99,12 @@ void toast(String message, {bool error = false}) {
           backgroundColor: (error ? AdminPalette.rose : AdminPalette.green).last,
           content: Row(children: [
             Icon(error ? Icons.error_rounded : Icons.check_circle_rounded,
-                color: Colors.white, size: 20),
+                color: AdminPalette.ink, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(message,
-                  style: const TextStyle(
-                      fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontFamily: 'tajawal', color: AdminPalette.ink, fontWeight: FontWeight.w600)),
             ),
           ]),
         ),
@@ -123,22 +124,25 @@ String money(num v, [String? currency]) {
   return currency == null || currency.isEmpty ? s : '$s $currency';
 }
 
+/// "2026-10-28". A UTC instant ("…Z" / an offset) is shown on the platform / organization's calendar (AppTime);
+/// a naive string (a picked local date, a calendar day) is shown as it is, never shifted.
 String shortDate(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   final d = DateTime.tryParse(iso);
   if (d == null) return '—';
-  final l = d.isUtc ? d.toLocal() : d;
+  final l = d.isUtc ? AppTime.toZone(d) : d;
   String two(int n) => n.toString().padLeft(2, '0');
   return '${l.year}-${two(l.month)}-${two(l.day)}';
 }
 
+/// "2026-10-28 2:05 PM" — the AppTime zone and its 12h / 24h choice.
 String shortDateTime(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
   final d = DateTime.tryParse(iso);
   if (d == null) return '—';
-  final l = d.isUtc ? d.toLocal() : d;
+  final l = d.isUtc ? AppTime.toZone(d) : d;
   String two(int n) => n.toString().padLeft(2, '0');
-  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${AppTime.clockMinutes(l.hour * 60 + l.minute)}';
 }
 
 // ── tolerant JSON readers ────────────────────────────────────────────────────
@@ -202,8 +206,8 @@ Future<bool> confirm(
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel ?? 'confirm'.tr,
-                style: const TextStyle(
-                    fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w800)),
+                style: TextStyle(
+                    fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -363,7 +367,7 @@ class SheetHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 8),
       child: Row(children: [
         Expanded(
           child: Text(title,
@@ -374,7 +378,7 @@ class SheetHeader extends StatelessWidget {
                   color: c.textDark)),
         ),
         ?trailing,
-        IconButton(
+        IconButton(tooltip: t('إغلاق', 'Close'), 
             style: IconButton.styleFrom(backgroundColor: c.inputBg),
             onPressed: () => Navigator.pop(context),
             icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
@@ -537,8 +541,9 @@ class ErrorRetry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // scrolls when the space is short (a fixed-height slot, a phone in landscape, a large text scale)
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(32),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Container(
@@ -671,7 +676,7 @@ class ChoiceRow<T> extends StatelessWidget {
                   style: TextStyle(
                       fontFamily: 'tajawal',
                       fontWeight: FontWeight.w700,
-                      color: e.key == value ? Colors.white : c.textDark)),
+                      color: e.key == value ? c.onHero : c.textDark)),
               selected: e.key == value,
               showCheckmark: false,
               selectedColor: c.primary,
@@ -734,7 +739,7 @@ class _SearchBoxState extends State<SearchBox> {
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _ctrl.text.isEmpty
             ? null
-            : IconButton(
+            : IconButton(tooltip: t('مسح', 'Clear'), 
                 icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: () {
                   _ctrl.clear();

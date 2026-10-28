@@ -12,6 +12,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../design/app_switch.dart';
@@ -37,9 +38,12 @@ class AdminPalette {
 
   static void attach(BuildContext context) => _t = context.colors;
 
+  /// Ink over the palette's gradients (the theme's on-hero role; the default card surface before attach()).
+  static Color get ink => _t?.onHero ?? AppTheme.surfaceCard;
+
   /// base → soft light version of itself (friendlier than a flat colour).
   static List<Color> soft(Color base, [double amount = 0.22]) => [
-    Color.lerp(base, Colors.white, amount)!,
+    Color.lerp(base, ink, amount)!,
     base,
   ];
 
@@ -48,29 +52,29 @@ class AdminPalette {
 
   // Fallbacks = the built-in default theme, used only before attach().
   static List<Color> get blue =>
-      _of(_t?.successGradient.colors.map((e)=>e.withAlpha(150)).toList(), const Color(0xFF2F3E9E));
+      _of(_t?.successGradient.colors.map((e)=>e.withAlpha(150)).toList(), AppTheme.primary);
 
   static List<Color> get violet =>
-      _of(_t?.goldCharcoalGradient.colors, const Color(0xFF7C5CFF));
+      _of(_t?.goldCharcoalGradient.colors, AppTheme.purple);
 
   static List<Color> get green =>
-      _of(_t?.successGradient.colors, const Color(0xFF2FB67C));
+      _of(_t?.successGradient.colors, AppTheme.success);
 
   static List<Color> get rose =>
-      _of(_t?.dangerGradient.colors, const Color(0xFFF0435F));
+      _of(_t?.dangerGradient.colors, AppTheme.danger);
 
   static List<Color> get teal =>
-      _of([_t!.accent2, _t!.primary], const Color(0xFFC9A227));
+      _of(_t == null ? null : [_t!.accent2, _t!.primary], AppTheme.accent2);
 
-  static List<Color> get orange => soft(_t?.warning ?? const Color(0xFFF2A93B));
+  static List<Color> get orange => soft(_t?.warning ?? AppTheme.warning);
 
   static List<Color> get indigo => [
-    _t?.primaryLight ?? const Color(0xFF5C6BD6),
-    _t?.primary ?? const Color(0xFF2F3E9E),
+    _t?.primaryLight ?? AppTheme.primaryLight,
+    _t?.primary ?? AppTheme.primary,
   ];
 
   static List<Color> get slate =>
-      soft(_t?.charcoalLight ?? const Color(0xFF4B4F6B), 0.18);
+      soft(_t?.charcoalLight ?? AppTheme.charcoalLight, 0.18);
 
   static List<List<Color>> get all => [
     blue,
@@ -131,7 +135,7 @@ class ServiceIcon extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(icon, color: Colors.white, size: size * 0.52),
+      child: Icon(icon, color: context.colors.onHero, size: size * 0.52),
     );
   }
 }
@@ -158,7 +162,7 @@ class PremiumHero extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: alpha),
+      color: AdminPalette.ink.withValues(alpha: alpha),
     ),
   );
 
@@ -202,10 +206,10 @@ class PremiumHero extends StatelessWidget {
                         width: 54,
                         height: 54,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.20),
+                          color: context.colors.onHero.withValues(alpha: 0.20),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: Icon(icon, color: Colors.white, size: 29),
+                        child: Icon(icon, color: context.colors.onHero, size: 29),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -214,11 +218,11 @@ class PremiumHero extends StatelessWidget {
                           children: [
                             Text(
                               title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'tajawal',
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                                color: context.colors.onHero,
                               ),
                             ),
                             if (subtitle != null) ...[
@@ -229,7 +233,7 @@ class PremiumHero extends StatelessWidget {
                                   fontFamily: 'tajawal',
                                   fontSize: 12.5,
                                   height: 1.4,
-                                  color: Colors.white.withValues(alpha: 0.88),
+                                  color: context.colors.onHero.withValues(alpha: 0.88),
                                 ),
                               ),
                             ],
@@ -260,23 +264,27 @@ class HeroPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.20),
+        color: context.colors.onHero.withValues(alpha: 0.20),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: Colors.white),
+            Icon(icon, size: 14, color: context.colors.onHero),
             const SizedBox(width: 5),
           ],
-          Text(
-            label,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: context.colors.onHero,
+              ),
             ),
           ),
         ],
@@ -569,26 +577,30 @@ class PremiumSaveBar extends StatelessWidget {
                     ),
                   ),
                   child: loading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 22,
                           height: 22,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.4,
-                            color: Colors.white,
+                            color: c.onHero,
                           ),
                         )
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(icon, size: 20, color: Colors.white),
+                            Icon(icon, size: 20, color: c.onHero),
                             const SizedBox(width: 8),
-                            Text(
-                              label,
-                              style: const TextStyle(
-                                fontFamily: 'tajawal',
-                                fontSize: 15.5,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white,
+                            Flexible(
+                              child: Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontFamily: 'tajawal',
+                                  fontSize: 15.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: c.onHero,
+                                ),
                               ),
                             ),
                           ],

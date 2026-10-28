@@ -338,7 +338,7 @@ class _GovFormAssignmentsViewState extends State<GovFormAssignmentsView> {
     if (_rows == null) return AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
     final pending = _rows!['pending'] ?? const [];
     final due = pending.map((a) => a.dueAt).whereType<DateTime>().firstOrNull;
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: GovAssignmentsBody(
         submitted: _rows!['submitted'] ?? const [],

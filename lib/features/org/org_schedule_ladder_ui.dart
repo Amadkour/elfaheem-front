@@ -705,7 +705,7 @@ class _DecisionDialogState extends State<_DecisionDialog> {
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text(t('التوليد يسألك', 'The generation asks you'), style: orgText(context, size: 15, w: FontWeight.w800, color: c.textDark))),
-              IconButton(onPressed: _busy ? null : _close, icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
+              IconButton(tooltip: t('إزالة', 'Remove'), onPressed: _busy ? null : _close, icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20)),
             ]),
             LadderDecisionCard(decision: widget.decision, busy: _busy, onChoose: _choose),
           ]),
@@ -1072,10 +1072,10 @@ class _LadderOverlaySheet extends StatelessWidget {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Container(width: 42, height: 5, margin: const EdgeInsets.only(top: 10), decoration: BoxDecoration(color: c.divider, borderRadius: BorderRadius.circular(3))),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 12, 4),
+                  padding: const EdgeInsetsDirectional.fromSTEB(20, 12, 12, 4),
                   child: Row(children: [
                     Expanded(child: Text(open ? t('جارٍ توليد الجدول', 'Generating the timetable') : t('انتهى التوليد', 'Generation finished'), style: orgText(context, size: 17, w: FontWeight.w800, color: c.textDark))),
-                    IconButton(
+                    IconButton(tooltip: t('إغلاق', 'Close'), 
                       style: IconButton.styleFrom(backgroundColor: c.inputBg),
                       onPressed: open ? null : () => Navigator.pop(context),
                       icon: Icon(Icons.close_rounded, color: c.textMedium, size: 20),

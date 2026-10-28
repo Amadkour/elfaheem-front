@@ -25,6 +25,7 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_fee_rates.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Small helpers
@@ -76,7 +77,7 @@ BoxDecoration _cardDecoration(BuildContext context, {Color? border}) {
     borderRadius: BorderRadius.circular(22),
     border: Border.all(color: border ?? c.divider),
     boxShadow: [
-      BoxShadow(color: Colors.black.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, 6)),
+      BoxShadow(color: c.heroShade.withValues(alpha: .045), blurRadius: 16, offset: const Offset(0, 6)),
     ],
   );
 }
@@ -138,7 +139,7 @@ class _ViewState extends State<_View> {
 
     Widget body;
     if (s.values.isEmpty && s.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (s.values.isEmpty) {
       body = ErrorRetry(message: s.error ?? 'admin_could_not_load_data'.tr, onRetry: s.load);
     } else {
@@ -228,7 +229,7 @@ class _Hero extends StatelessWidget {
           child: Container(
             width: 150,
             height: 150,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .08)),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: c.onHero.withValues(alpha: .08)),
           ),
         ),
         PositionedDirectional(
@@ -237,7 +238,7 @@ class _Hero extends StatelessWidget {
           child: Container(
             width: 120,
             height: 120,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: .06)),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: c.onHero.withValues(alpha: .06)),
           ),
         ),
         Padding(
@@ -248,21 +249,21 @@ class _Hero extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .2),
+                  color: c.onHero.withValues(alpha: .2),
                   borderRadius: BorderRadius.circular(15),
                 ),
-                child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 26),
+                child: Icon(Icons.account_balance_wallet_rounded, color: c.onHero, size: 26),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('admin_payments'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 20, color: Colors.white)),
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 20, color: c.onHero)),
                   const SizedBox(height: 2),
                   Text('admin_payments_hero_hint'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: .85))),
+                          fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: .85))),
                 ]),
               ),
             ]),
@@ -288,26 +289,26 @@ class _StatTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .16),
+      color: context.colors.onHero.withValues(alpha: .16),
       borderRadius: BorderRadius.circular(16),
     ),
     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Icon(s.icon, size: 14, color: Colors.white.withValues(alpha: .9)),
+        Icon(s.icon, size: 14, color: context.colors.onHero.withValues(alpha: .9)),
         const SizedBox(width: 5),
         Expanded(
           child: Text(s.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.white.withValues(alpha: .85))),
+              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.onHero.withValues(alpha: .85))),
         ),
       ]),
       const SizedBox(height: 6),
       Text(s.value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-              fontFamily: 'tajawal', fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+          style: TextStyle(
+              fontFamily: 'tajawal', fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero)),
     ]),
   );
 }
@@ -340,7 +341,7 @@ class _Segments extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 8),
                   child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(items[i].$1, size: 18, color: i == index ? Colors.white : c.textLight),
+                    Icon(items[i].$1, size: 18, color: i == index ? c.onHero : c.textLight),
                     const SizedBox(width: 7),
                     Flexible(
                       child: Text(items[i].$2,
@@ -350,7 +351,7 @@ class _Segments extends StatelessWidget {
                               fontFamily: 'tajawal',
                               fontWeight: FontWeight.w800,
                               fontSize: 13.5,
-                              color: i == index ? Colors.white : c.textLight)),
+                              color: i == index ? c.onHero : c.textLight)),
                     ),
                   ]),
                 ),
@@ -426,7 +427,7 @@ class _MethodsTab extends StatelessWidget {
           subtitle: _t('فعّل الطريقة أو اضغط على البطاقة لتعديل كل تفاصيلها.',
               'Switch a method on/off, or tap a card to edit all its details.')),
       if (pm.items.isEmpty && pm.isLoading)
-        const Padding(padding: EdgeInsets.all(24), child: Center(child: AppLoadingIndicator()))
+        const AppListSkeleton(items: 3)
       else if (pm.items.isEmpty)
         ErrorRetry(message: pm.error ?? 'admin_could_not_load'.tr, onRetry: pm.load)
       else
@@ -592,7 +593,7 @@ class _MethodCardState extends State<_MethodCard> {
           InkWell(
             onTap: () => setState(() => _open = !_open),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 10, 14),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 10, 14),
               child: Row(children: [
                 Container(
                   width: 48,

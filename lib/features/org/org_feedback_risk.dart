@@ -173,7 +173,7 @@ class _OrgExamRiskPageState extends State<OrgExamRiskPage> {
           ? const AppListSkeleton()
           : _items == null
               ? AppEmpty(icon: Icons.error_outline_rounded, title: _error ?? '', actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-              : RiskList(items: _items!),
+              : AppRefresh(onRefresh: _load, child: RiskList(items: _items!)),
     );
   }
 }

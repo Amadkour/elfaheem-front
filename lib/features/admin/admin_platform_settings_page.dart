@@ -156,7 +156,7 @@ class _AdminPlatformSettingsPageState extends State<AdminPlatformSettingsPage> {
     final free = _amountValue <= 0;
 
     return Stack(children: [
-      RefreshIndicator(
+      AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 110), children: [
           AppHero(
@@ -469,7 +469,7 @@ class _AdminOrgFeePaymentsPageState extends State<AdminOrgFeePaymentsPage> {
                   ? AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Try again'), onAction: _load)
                   : _items!.isEmpty
                   ? AppEmpty(icon: Icons.inbox_rounded, title: t('لا شيء هنا', 'Nothing here'))
-                  : RefreshIndicator(
+                  : AppRefresh(
                       onRefresh: _load,
                       child: ListView.separated(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),

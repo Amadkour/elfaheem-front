@@ -39,7 +39,7 @@ class OrgPeoplePage extends StatelessWidget {
             dividerColor: Colors.transparent,
             indicatorSize: TabBarIndicatorSize.tab,
             indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
-            labelColor: Colors.white,
+            labelColor: c.onHero,
             unselectedLabelColor: c.textMedium,
             labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
             tabs: [for (final x in tabs) Tab(text: x.$2, height: 40)],
@@ -128,8 +128,8 @@ class _MembersView extends StatelessWidget {
                   roles: kind == 'students' ? const ['student'] : kind == 'teachers' ? const ['teacher'] : const ['teacher_assistant', 'admin_assistant', 'org_admin']);
               if (r != null) p.refresh();
             },
-            icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
-            label: Text(t('إضافة', 'Add'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+            icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
+            label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
           ),
         ),
     ]);
@@ -178,19 +178,14 @@ class _MemberTile extends StatelessWidget {
     final ended = eff == 'expired' || eff == 'suspended';
     final id = asInt(row['id']);
     final depts = asMapList(row['departments']);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-      child: RowCard(
-        accent: pending ? c.warning : (ended ? c.danger : null),
-        child: Row(children: [
-          AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-              Text('${u['email']}', maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, runSpacing: 4, children: [
+    return OrgMemberRowView(
+      name: '${u['name']}',
+      email: '${u['email']}',
+      imageUrl: u['image_url'] as String?,
+      accent: pending ? c.warning : (ended ? c.danger : null),
+      period: pending ? null : membershipPeriodText(row),
+      periodEnded: ended,
+      chips: [
                 StatusChip(_roleLabel(role), c.primary),
                 if (eff != 'active') StatusChip(membershipStatusLabels()[eff] ?? eff, statusColor(context, eff == 'scheduled' ? 'pending' : eff)),
                 if ((row['student_code'] ?? '').toString().isNotEmpty) InfoChip(Icons.tag_rounded, '${row['student_code']}', c.textMedium),
@@ -198,17 +193,11 @@ class _MemberTile extends StatelessWidget {
                 if (row['cohort'] != null) InfoChip(Icons.group_rounded, memberCohortLabels()['${row['cohort']}'] ?? '${row['cohort']}', c.textMedium),
                 for (final d in depts) InfoChip(Icons.apartment_rounded, '${d['title'] ?? ''}${d['is_head'] == true ? ' ★' : ''}'.trim().isEmpty ? '#${d['dept_id']}' : '${d['title'] ?? ''}${d['is_head'] == true ? ' ★' : ''}', c.textMedium),
                 if (u['is_active'] == false) StatusChip(t('معطّل', 'Disabled'), c.danger),
-              ]),
-              if (!pending)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(membershipPeriodText(row), style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: ended ? c.danger : c.textLight)),
-                ),
-            ]),
-          ),
+      ],
+      trailing: [
           if (pending && s.can('requests', 'update')) ...[
-            IconButton(onPressed: () => p.decide(id, true), icon: Icon(Icons.check_circle_rounded, color: c.success)),
-            IconButton(onPressed: () => p.decide(id, false), icon: Icon(Icons.cancel_rounded, color: c.danger)),
+            IconButton(tooltip: t('موافقة', 'Approve'), onPressed: () => p.decide(id, true), icon: Icon(Icons.check_circle_rounded, color: c.success)),
+            IconButton(tooltip: t('رفض', 'Reject'), onPressed: () => p.decide(id, false), icon: Icon(Icons.cancel_rounded, color: c.danger)),
           ] else
             PopupMenuButton<String>(
               onSelected: (v) async {
@@ -247,6 +236,62 @@ class _MemberTile extends StatelessWidget {
                 if (s.can(module, 'delete')) PopupMenuItem(value: 'remove', child: Text(t('إزالة من المؤسسة', 'Remove'), style: TextStyle(color: c.danger))),
               ],
             ),
+      ],
+    );
+  }
+}
+
+/// One member row over plain values: avatar, name, e-mail (always LTR), the chips, the membership period and the
+/// actions at the end. The layout harness pumps it (test/ui/polish_org_admin_layout_test.dart).
+class OrgMemberRowView extends StatelessWidget {
+  const OrgMemberRowView({
+    super.key,
+    required this.name,
+    required this.email,
+    this.imageUrl,
+    this.accent,
+    this.chips = const [],
+    this.period,
+    this.periodEnded = false,
+    this.trailing = const [],
+  });
+
+  final String name, email;
+  final String? imageUrl;
+  final Color? accent;
+  final List<Widget> chips;
+
+  /// "Member since … · ends …"; null hides the line (a pending request has no period yet).
+  final String? period;
+  final bool periodEnded;
+  final List<Widget> trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: RowCard(
+        accent: accent,
+        child: Row(children: [
+          AdminAvatar(name: name, url: imageUrl),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+              if (chips.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Wrap(spacing: 6, runSpacing: 4, children: chips),
+              ],
+              if (period != null && period!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(period!, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: periodEnded ? c.danger : c.textLight)),
+                ),
+            ]),
+          ),
+          ...trailing,
         ]),
       ),
     );

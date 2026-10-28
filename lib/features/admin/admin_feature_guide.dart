@@ -207,7 +207,7 @@ class _AdminFeatureGuidePageState extends State<AdminFeatureGuidePage> {
     }
     final counts = asMap(_data!['counts']);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: CustomScrollView(slivers: [
         SliverPadding(

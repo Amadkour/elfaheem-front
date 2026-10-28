@@ -22,8 +22,8 @@ import '../../config/app_config.dart';
 import '../parent/parent_link_providers.dart';
 import '../parent/parent_widgets.dart';
 import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'admin_common.dart' show t;
 
 class AdminParentLinkSettingsPage extends StatelessWidget {
   const AdminParentLinkSettingsPage({super.key});
@@ -238,7 +238,7 @@ class _FormState extends State<_Form> {
             final r = await _editItem(item: items[i], isDoc: isDoc);
             if (r != null) setState(() => items[i] = r);
           },
-          trailing: IconButton(
+          trailing: IconButton(tooltip: t('حذف', 'Delete'), 
               icon: Icon(Icons.delete_outline_rounded, color: c.danger),
               onPressed: () => setState(() => items.removeAt(i))),
         ),
@@ -284,7 +284,7 @@ class _FormState extends State<_Form> {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'pl_settings_title'.tr),
       child: !_ready
-          ? (p.hasError ? PlError(p.errorMessage ?? '', onRetry: _load) : const Center(child: AppLoadingIndicator(size: 56)))
+          ? (p.hasError ? PlError(p.errorMessage ?? '', onRetry: _load) : const AppListSkeleton())
           : ListView(padding: const EdgeInsets.all(16), children: [
               PremiumHero(
                 icon: Icons.family_restroom_rounded,

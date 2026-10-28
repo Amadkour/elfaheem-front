@@ -442,7 +442,7 @@ class _OrgLevelsTabState extends State<OrgLevelsTab> with AutomaticKeepAliveClie
       ]);
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ReorderableListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),

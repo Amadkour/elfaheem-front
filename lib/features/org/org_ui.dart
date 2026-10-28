@@ -15,7 +15,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
@@ -23,6 +22,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'dart:typed_data';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Colours, icons, labels
@@ -145,7 +145,7 @@ class OrgSectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Padding(
-      padding: padding ?? const EdgeInsets.fromLTRB(16, 18, 10, 8),
+      padding: padding ?? const EdgeInsetsDirectional.fromSTEB(16, 18, 10, 8),
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -276,7 +276,7 @@ class OrgActionCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
                     child: Text(badge > 99 ? '99+' : '$badge',
-                        style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                        style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
                   ),
                 ),
             ]),
@@ -289,7 +289,8 @@ class OrgActionCard extends StatelessWidget {
                       style: orgText(context, size: 12, color: c.textMedium)),
               ]),
             ),
-            trailing ?? Icon(Icons.chevron_right_rounded, color: c.textLight),
+            if (trailing != null) ConstrainedBox(constraints: const BoxConstraints(maxWidth: 150), child: trailing) // a long pill ellipsizes
+            else Icon(Icons.chevron_right_rounded, color: c.textLight),
           ]),
         ),
       ),
@@ -394,7 +395,7 @@ class OrgAsync extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Padding(padding: EdgeInsets.all(40), child: Center(child: AppLoadingIndicator(size: 56)));
+    if (loading) return const AppListSkeleton(items: 3);
     if (failed) {
       return SizedBox(height: 280, child: ErrorRetry(message: t('تعذّر التحميل، تحقق من الاتصال', 'Could not load — check your connection'), onRetry: onRetry));
     }
@@ -506,7 +507,7 @@ class OrgPermissionMatrix extends StatelessWidget {
               final full = all.every(cur.contains);
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.fromLTRB(12, 8, 8, 10),
+                padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 8, 10),
                 decoration: BoxDecoration(
                   color: cur.isEmpty ? c.inputBg : col.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(16),

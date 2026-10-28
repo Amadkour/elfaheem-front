@@ -151,7 +151,7 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
                             width: i == _page ? 16 : 6,
                             height: 6,
                             decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: i == _page ? 0.95 : 0.5), borderRadius: BorderRadius.circular(4)),
+                                color: context.colors.onHero.withValues(alpha: i == _page ? 0.95 : 0.5), borderRadius: BorderRadius.circular(4)),
                           ),
                       ]),
                     ),
@@ -182,16 +182,16 @@ class AdCard extends StatelessWidget {
     final mine = asInt(ad['my_reaction']);
     Widget glass(Widget child) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.28), borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18))),
+          decoration: BoxDecoration(color: c.heroShade.withValues(alpha: 0.28), borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: c.onHero.withValues(alpha: 0.18))),
           child: child,
         );
     Widget react(IconData on, IconData off, int v, int n) => InkWell(
           borderRadius: BorderRadius.circular(20),
           onTap: onReact == null ? null : () => onReact!(v),
           child: glass(Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(mine == v ? on : off, size: 15, color: Colors.white),
-            if (n > 0) ...[const SizedBox(width: 4), Text('$n', style: const TextStyle(color: Colors.white, fontSize: 11.5))],
+            Icon(mine == v ? on : off, size: 15, color: c.onHero),
+            if (n > 0) ...[const SizedBox(width: 4), Text('$n', style: TextStyle(color: c.onHero, fontSize: 11.5))],
           ])),
         );
     return Material(
@@ -207,19 +207,20 @@ class AdCard extends StatelessWidget {
           else
             DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
                 begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd, colors: [c.primary, c.primaryDark]))),
-          const DecoratedBox(
+          DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter,
-                  colors: [Color(0x33000000), Colors.transparent, Color(0xC0000000)], stops: [0, 0.35, 1]),
+                  colors: [c.heroShade.withValues(alpha: 0.2), c.heroShade.withValues(alpha: 0), c.heroShade.withValues(alpha: 0.75)],
+                  stops: const [0, 0.35, 1]),
             ),
           ),
           if (isVideo)
             Center(
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.25), shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.6))),
-                child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 34),
+                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.25), shape: BoxShape.circle,
+                    border: Border.all(color: c.onHero.withValues(alpha: 0.6))),
+                child: Icon(Icons.play_arrow_rounded, color: c.onHero, size: 34),
               ),
             ),
           PositionedDirectional(
@@ -236,7 +237,7 @@ class AdCard extends StatelessWidget {
           PositionedDirectional(
             top: 12,
             end: 12,
-            child: glass(Text(t('إعلان', 'Ad'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: Colors.white))),
+            child: glass(Text(t('إعلان', 'Ad'), style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: c.onHero))),
           ),
           PositionedDirectional(
             start: 18,
@@ -244,17 +245,17 @@ class AdCard extends StatelessWidget {
             bottom: 16,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text('${ad['title']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
               if ('${ad['body'] ?? ''}'.isNotEmpty)
                 Text('${ad['body']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: 0.9))),
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.9))),
               if (hasTarget) ...[
                 const SizedBox(height: 6),
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(isVideo && '${ad['target_type']}' == 'none' ? t('شاهد الآن', 'Watch now') : t('اكتشف', 'Discover'),
-                      style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w800, color: c.onHero)),
                   const SizedBox(width: 4),
-                  const Icon(Icons.arrow_forward_rounded, size: 15, color: Colors.white),
+                  Icon(Icons.arrow_forward_rounded, size: 15, color: c.onHero),
                 ]),
               ],
             ]),
@@ -482,15 +483,15 @@ class AdminAdsPage extends StatelessWidget {
                     },
                     actions: [
                       if (a['status'] == 'pending') ...[
-                        IconButton(icon: Icon(Icons.check_circle_rounded, color: context.colors.success), onPressed: () async {
+                        IconButton(tooltip: t('موافقة', 'Approve'), icon: Icon(Icons.check_circle_rounded, color: context.colors.success), onPressed: () async {
                           if (await OrgApi.i.post('/api/v1/admin/ads/${a['id']}/approve', {'paid': true}, t('تمت الموافقة', 'Approved')) != null) p.refresh();
                         }),
-                        IconButton(icon: Icon(Icons.cancel_rounded, color: context.colors.danger), onPressed: () async {
+                        IconButton(tooltip: t('رفض', 'Reject'), icon: Icon(Icons.cancel_rounded, color: context.colors.danger), onPressed: () async {
                           final note = await askText(context, title: t('سبب الرفض', 'Reason'), multiline: true);
                           if (note != null && await OrgApi.i.post('/api/v1/admin/ads/${a['id']}/reject', {'note': note}, t('تم', 'Done')) != null) p.refresh();
                         }),
                       ],
-                      IconButton(icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger), onPressed: () async {
+                      IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: context.colors.danger), onPressed: () async {
                         if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
                             await OrgApi.i.del('/api/v1/admin/ads/${a['id']}', t('تم الحذف', 'Deleted')) != null) p.refresh();
                       }),
@@ -606,7 +607,7 @@ class _TeacherAdsPageState extends State<TeacherAdsPage> {
                           if (await showAdEditor(context, base: '/api/v1/teacher/ads', edit: a, teacher: true)) _load();
                         },
                         actions: [
-                          IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
+                          IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
                             if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
                                 await OrgApi.i.del('/api/v1/teacher/ads/${a['id']}', t('تم الحذف', 'Deleted')) != null) _load();
                           }),

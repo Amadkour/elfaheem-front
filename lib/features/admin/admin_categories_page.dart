@@ -62,9 +62,9 @@ class _View extends StatelessWidget {
         key: const ValueKey("categories_float"),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        icon: Icon(Icons.add_rounded, color: c.onHero),
         label: Text('admin_add_category'.tr,
-            style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+            style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
       ),
       child: Column(children: [
         AdminFilterBar(

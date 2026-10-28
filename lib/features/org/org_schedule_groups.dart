@@ -20,6 +20,7 @@ import 'org_providers.dart';
 import 'org_timetable_parts.dart' show courseName;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 String groupLabel(Map<String, dynamic> g) =>
     '${g['kind'] == 'lab' ? t('معمل', 'Lab') : t('نظري', 'Theory')} ${g['group_no']}';
@@ -39,7 +40,7 @@ Future<void> openStudentGroups(BuildContext context, OrgScheduleProvider p) {
   }
   return Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => BasePage(
-            appBar: ScreenAppBar(title: t('مجموعات الطلاب', 'Student groups')),
+            appBar: ScreenAppBar(title: t('مجموعات الطلاب', 'Student groups'), actions: const [ContextExitButton()]),
             child: _GroupsPage(p: p, termId: asInt(term)),
           )));
 }

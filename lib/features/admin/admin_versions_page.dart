@@ -58,10 +58,10 @@ class _View extends StatelessWidget {
         key: const ValueKey('admin_versions.publish'),
         backgroundColor: c.primary,
         onPressed: () => _form(context, p),
-        icon: const Icon(Icons.rocket_launch_rounded, color: Colors.white),
+        icon: Icon(Icons.rocket_launch_rounded, color: c.onHero),
         label: Text(
           'admin_publish_version'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
         ),
       ),
       child: AdminSimpleList(

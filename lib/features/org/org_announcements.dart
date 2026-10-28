@@ -36,6 +36,7 @@ import 'org_member_space.dart' show OrgFormFillScreen, OrgMemberSpace;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgParseUtc, orgUtc;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 const _pub = '$orgBase/public';
 
@@ -400,7 +401,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
       ]);
     }
     final canMore = _page < _pages && (widget.limit == null || items!.length < widget.limit!);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -495,7 +496,7 @@ class _CountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(20)),
-      child: Text(n > 99 ? '99+' : '$n', style: appText(11, w: FontWeight.w800, c: Colors.white)),
+      child: Text(n > 99 ? '99+' : '$n', style: appText(11, w: FontWeight.w800, c: c.onHero)),
     );
   }
 }
@@ -636,7 +637,7 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(20)),
-                        child: Text(t('جديد', 'New'), style: appText(10.5, w: FontWeight.w800, c: Colors.white)),
+                        child: Text(t('جديد', 'New'), style: appText(10.5, w: FontWeight.w800, c: c.onHero)),
                       ),
                       const SizedBox(width: 6),
                     ],
@@ -720,7 +721,7 @@ class _ActionsBar extends StatelessWidget {
             onPressed: onCta,
             style: FilledButton.styleFrom(
               backgroundColor: c.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: c.onHero,
               visualDensity: VisualDensity.compact,
               padding: EdgeInsets.symmetric(horizontal: dense ? 10 : 14, vertical: dense ? 6 : 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -905,9 +906,9 @@ class _AnnList extends StatelessWidget {
               heroTag: 'ann_new',
               backgroundColor: c.primary,
               onPressed: () => showAnnouncementEditor(context, deptId: deptId, onSaved: p.refresh),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              icon: Icon(Icons.add_rounded, color: c.onHero),
               label: Text(t('إعلان جديد', 'New announcement'),
-                  style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
             )
           : null,
       body: PagedList<OrgPaged>(
@@ -1131,7 +1132,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
                       borderRadius: BorderRadius.circular(10),
                       child: Image.network(orgFileUrl(image), width: 52, height: 40, fit: BoxFit.cover,
                           errorBuilder: (_, _, _) => const SizedBox.shrink())),
-                  IconButton(onPressed: () => set(() => image = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
+                  IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => set(() => image = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
                 ]),
             ]),
             const SizedBox(height: 14),
@@ -1487,7 +1488,7 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
       maxWith: 980,
       appBar: ScreenAppBar(title: t('تفاعل الإعلان', 'Announcement insights'), actions: [
         IconButton(tooltip: t('تحديث', 'Refresh'), onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
-      ]),
+       const ContextExitButton()]),
       child: _d == null
           ? (_failed
               ? AppEmpty(
@@ -1496,7 +1497,7 @@ class _AnalyticsState extends State<OrgAnnouncementAnalyticsScreen> {
                   actionLabel: t('إعادة المحاولة', 'Try again'),
                   onAction: _load)
               : const AppListSkeleton(items: 5, withAvatar: false))
-          : RefreshIndicator(onRefresh: _load, child: _body(context, title, _d!)),
+          : AppRefresh(onRefresh: _load, child: _body(context, title, _d!)),
     );
   }
 
@@ -1645,12 +1646,12 @@ class _FunnelBar extends StatelessWidget {
               child: Text(label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: appText(13, w: FontWeight.w800, c: ratio > 0.35 ? Colors.white : c.textDark)),
+                  style: appText(13, w: FontWeight.w800, c: ratio > 0.35 ? c.onHero : c.textDark)),
             ),
-            Text('$count', style: appText(14, w: FontWeight.w900, c: ratio > 0.92 ? Colors.white : c.textDark)),
+            Text('$count', style: appText(14, w: FontWeight.w900, c: ratio > 0.92 ? c.onHero : c.textDark)),
             const SizedBox(width: 6),
             Text('${(ratio * 100).toStringAsFixed(0)}%',
-                style: appText(11.5, w: FontWeight.w700, c: ratio > 0.92 ? Colors.white70 : c.textLight)),
+                style: appText(11.5, w: FontWeight.w700, c: ratio > 0.92 ? c.onHeroMuted : c.textLight)),
           ]),
         ),
       ]);

@@ -19,6 +19,7 @@ import 'org_ui.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'org_timetable_time.dart';
 import 'org_v3.dart' show orgParseUtc;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 Map<String, String> _days() => {
       'saturday': t('السبت', 'Sat'), 'sunday': t('الأحد', 'Sun'), 'monday': t('الاثنين', 'Mon'), 'tuesday': t('الثلاثاء', 'Tue'),
@@ -192,7 +193,7 @@ class AvailabilityRequestScreen extends StatefulWidget {
 class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
   Map<String, dynamic>? _r;
   final _picked = <String>{};
-  bool _busy = false, _done = false;
+  bool _busy = false, _done = false, _failed = false;
 
   String _k(String day, int pid) => '$day|$pid';
 
@@ -203,6 +204,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
   }
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     try {
       final r = await ApiClient().get('$orgBase/public/me/availability-requests');
       final it = asMapList((r as Map)['items']).where((x) => asInt(x['id']) == widget.requestId).toList();
@@ -218,7 +220,9 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
           _picked.add(_k('${c['day']}', asInt(c['period_id'])));
         }
       });
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) setState(() => _failed = true); // never trap the person on an endless skeleton
+    }
   }
 
   Future<void> _submit() async {
@@ -246,12 +250,12 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
     final maxC = r?['max_cells'] == null ? null : asInt(r?['max_cells']);
     final ok = _picked.length >= minC && (maxC == null || _picked.length <= maxC);
     return PopScope(
-      canPop: _done,                                 // frozen until submitted
+      canPop: _done || (_failed && _r == null),      // frozen until submitted (unless it could not load)
       child: Scaffold(
         backgroundColor: c.background,
         body: SafeArea(
           child: r == null
-              ? const Center(child: CircularProgressIndicator())
+              ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الطلب، تحقق من الاتصال', 'Could not load the request — check your connection'), onRetry: _load) : const AppListSkeleton())
               : Column(children: [
                   Container(
                     width: double.infinity,
@@ -262,11 +266,11 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                       gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(orgNameOf(asMap(r['organization'])), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white70, fontSize: 12.5)),
+                      Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted, fontSize: 12.5)),
                       const SizedBox(height: 4),
-                      Text('${r['title']}', style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 19, fontWeight: FontWeight.w800)),
+                      Text('${r['title']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
                       if ('${r['message'] ?? ''}'.isNotEmpty)
-                        Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: const TextStyle(fontFamily: 'tajawal', color: Colors.white))),
+                        Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero))),
                       const SizedBox(height: 10),
                       Wrap(spacing: 8, runSpacing: 6, children: [
                         _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
@@ -308,7 +312,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                                           borderRadius: BorderRadius.circular(10),
                                           border: Border.all(color: c.divider),
                                         ),
-                                        child: _picked.contains(_k('$d', asInt(p['id']))) ? const Icon(Icons.check_rounded, color: Colors.white, size: 18) : null,
+                                        child: _picked.contains(_k('$d', asInt(p['id']))) ? Icon(Icons.check_rounded, color: c.onHero, size: 18) : null,
                                       ),
                                     ),
                                   )),
@@ -335,11 +339,11 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
 
   Widget _chip(IconData i, String text) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(i, size: 14, color: Colors.white),
+          Icon(i, size: 14, color: context.colors.onHero),
           const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 12)),
+          Flexible(child: Text(text, style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 12))),
         ]),
       );
 }

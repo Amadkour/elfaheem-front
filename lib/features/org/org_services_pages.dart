@@ -30,6 +30,8 @@ import 'org_ui.dart';
 import 'governance/gov_api.dart' show GovApi;
 import 'governance/gov_forms_assign.dart' show GovFormAssignmentsView, showGovFormAssignSheet;
 import 'governance/gov_wiring.dart' show govEnabled;
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 
 /// Shared FAB style.
@@ -39,8 +41,8 @@ Widget _fab(BuildContext context, String tag, String label, IconData icon, VoidC
     heroTag: tag,
     backgroundColor: c.primary,
     onPressed: onTap,
-    icon: Icon(icon, color: Colors.white),
-    label: Text(label, style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+    icon: Icon(icon, color: c.onHero),
+    label: Text(label, style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
   );
 }
 
@@ -220,8 +222,8 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (final e in fieldTypes().entries)
                   ChoiceChip(
-                    avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? Colors.white : c.textMedium),
-                    label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? Colors.white : c.textDark)),
+                    avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
+                    label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? c.onHero : c.textDark)),
                     selected: f['type'] == e.key,
                     selectedColor: c.primary,
                     showCheckmark: false,
@@ -302,7 +304,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 800,
-      appBar: ScreenAppBar(title: widget.edit == null ? t('نموذج جديد', 'New form') : t('تعديل النموذج', 'Edit form')),
+      appBar: ScreenAppBar(title: widget.edit == null ? t('نموذج جديد', 'New form') : t('تعديل النموذج', 'Edit form'), actions: const [ContextExitButton()]),
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         Section(
           title: t('عن النموذج', 'About the form'),
@@ -357,7 +359,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                               '${fieldTypes()[_fields[i]['type']] ?? ''}${_fields[i]['required'] == true ? ' · ${t('إجباري', 'required')}' : ''}',
                               style: orgText(context, size: 12, color: c.textMedium)),
                           onTap: () => _editField(i),
-                          trailing: IconButton(
+                          trailing: IconButton(tooltip: t('حذف', 'Delete'), 
                               onPressed: () => setState(() => _fields.removeAt(i)),
                               icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
                         ),
@@ -413,10 +415,10 @@ class OrgFormResponsesScreen extends StatelessWidget {
                       builder: (_) => BasePage(
                           useWebCard: true,
                           maxWith: 900,
-                          appBar: ScreenAppBar(title: t('المكلّفون بالنموذج', 'Form assignments')),
+                          appBar: ScreenAppBar(title: t('المكلّفون بالنموذج', 'Form assignments'), actions: const [ContextExitButton()]),
                           child: GovFormAssignmentsView(asInt(form['id']), orgId: s.currentId)))),
                   icon: const Icon(Icons.checklist_rounded)),
-          ]),
+           const ContextExitButton()]),
           child: Column(children: [
             const SizedBox(height: 8),
             FilterChips<String>(
@@ -964,7 +966,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
               if (d['assigned_to'] != null) PopupMenuItem(value: 'unassign', child: Text(t('إلغاء الإسناد', 'Unassign'))),
             ],
           ),
-      ]),
+       const ContextExitButton()]),
       child: OrgAsync(
         loading: d == null && !_failed,
         failed: _failed,
@@ -973,7 +975,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
             ? const SizedBox.shrink()
             : Column(children: [
                 Expanded(
-                  child: RefreshIndicator(
+                  child: AppRefresh(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
                       Section(
@@ -1052,12 +1054,12 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        IconButton.filled(
+                        IconButton.filled(tooltip: t('إرسال', 'Send'), 
                           style: IconButton.styleFrom(backgroundColor: _internal ? c.warning : c.primary),
                           onPressed: _sending ? null : _send,
                           icon: _sending
-                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.send_rounded, color: Colors.white),
+                              ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
+                              : Icon(Icons.send_rounded, color: c.onHero),
                         ),
                       ]),
                     ]),
@@ -1104,13 +1106,13 @@ class ComplaintBubble extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisSize: MainAxisSize.min, children: [
             if (internal) ...[Icon(Icons.lock_rounded, size: 13, color: c.warning), const SizedBox(width: 4)],
-            Text(
+            Flexible(child: Text(
                 internal
                     ? t('ملاحظة داخلية', 'Internal note')
                     : fromStaff
                         ? (staffView ? '${sender['name'] ?? ''}' : t('فريق الإدارة', 'Department team'))
                         : (sender.isEmpty ? t('صاحب الشكوى', 'The person') : '${sender['name']}'),
-                style: orgText(context, size: 11.5, w: FontWeight.w800, color: internal ? c.warning : c.textMedium)),
+                style: orgText(context, size: 11.5, w: FontWeight.w800, color: internal ? c.warning : c.textMedium))),
           ]),
           const SizedBox(height: 3),
           Text('${m['body']}', style: orgText(context)),

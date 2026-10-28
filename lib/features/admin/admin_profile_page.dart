@@ -21,12 +21,12 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/editable_image.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class _ProfileApi {
   static const me = '/api/v1/admin/me';
@@ -209,7 +209,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
 
     Widget body;
     if (_loading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (_failed) {
       body = ErrorRetry(message: 'admin_could_not_load_data'.tr, onRetry: _load);
     } else {
@@ -282,9 +282,9 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
           // White ring around the picture.
           Container(
             padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
+              color: c.onHero,
             ),
             child: EditableImage(
               onChange: (f) async {
@@ -303,11 +303,11 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             name.isEmpty ? '—' : name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 21,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: c.onHero,
             ),
           ),
           const SizedBox(height: 4),
@@ -318,16 +318,16 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: c.onHero.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.18),
+              color: c.onHero.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+              border: Border.all(color: c.onHero.withValues(alpha: 0.35)),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -337,18 +337,18 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                       ? Icons.verified_user_rounded
                       : Icons.admin_panel_settings_rounded,
                   size: 15,
-                  color: Colors.white,
+                  color: c.onHero,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   isSuperRole
                       ? 'admin_role_super_admin'.tr
                       : 'admin_role_admin'.tr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: c.onHero,
                   ),
                 ),
               ],
@@ -360,7 +360,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 11.5,
-              color: Colors.white.withValues(alpha: 0.7),
+              color: c.onHero.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -448,7 +448,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
         color: c.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: c.heroShade.withValues(alpha: 0.06),
             blurRadius: 14,
             offset: const Offset(0, -4),
           ),
@@ -517,7 +517,7 @@ class _SectionCard extends StatelessWidget {
                 child: Icon(icon, size: 18, color: c.primary),
               ),
               const SizedBox(width: 10),
-              Text(title, style: c.h3),
+              Flexible(child: Text(title, style: c.h3)),
             ],
           ),
           const SizedBox(height: 16),

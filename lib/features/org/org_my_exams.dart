@@ -239,7 +239,7 @@ class _MyExamsViewState extends State<_MyExamsView> {
     final c = context.colors;
     final list = exams;
     if (list == null && error == null) return const AppListSkeleton(items: 5);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ValueListenableBuilder<int>(
         valueListenable: AppTime.version,

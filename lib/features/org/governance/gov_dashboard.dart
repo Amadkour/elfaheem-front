@@ -176,7 +176,7 @@ class _GovDashboardCardState extends State<GovDashboardCard> {
           Icon(Icons.account_tree_rounded, size: 18, color: c.primary),
           const SizedBox(width: 8),
           Expanded(child: Text(widget.title ?? t('الطلبات والمعاملات', 'Requests & workflow'), style: appText(14.5, w: FontWeight.w800, c: c.textDark))),
-          IconButton(visualDensity: VisualDensity.compact, onPressed: _load, icon: Icon(Icons.refresh_rounded, size: 18, color: c.textLight)),
+          IconButton(tooltip: t('تحديث', 'Refresh'), visualDensity: VisualDensity.compact, onPressed: _load, icon: Icon(Icons.refresh_rounded, size: 18, color: c.textLight)),
         ]),
         const SizedBox(height: 10),
         body,

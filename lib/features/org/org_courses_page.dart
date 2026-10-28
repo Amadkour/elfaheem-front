@@ -101,8 +101,8 @@ class _CoursesView extends StatelessWidget {
             onPressed: () async {
               if (await showOrgCourseForm(context) != null) p.refresh();
             },
-            icon: const Icon(Icons.add_rounded, color: Colors.white),
-            label: Text(t('كورس جديد', 'New course'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+            icon: Icon(Icons.add_rounded, color: c.onHero),
+            label: Text(t('كورس جديد', 'New course'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
           ),
         ),
     ]);

@@ -28,6 +28,7 @@ import '../org_ui.dart';
 import '../org_v3.dart';
 import 'report_model.dart';
 import 'report_render.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 // The page preview is the printed sheet: paper and ink are document colours, not theme colours.
 const _paper = Color(0xFFFFFFFF), _ink = Color(0xFF1F2933);
@@ -161,7 +162,7 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
     final c = context.colors;
     final steps = [t('العناصر', 'Items'), t('التصميم', 'Design'), t('الإخراج', 'Output')];
     return BasePage(
-      appBar: ScreenAppBar(title: t('تقرير الشكاوى والطلبات', 'Complaints & requests report')),
+      appBar: ScreenAppBar(title: t('تقرير الشكاوى والطلبات', 'Complaints & requests report'), actions: const [ContextExitButton()]),
       child: Column(children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
@@ -291,7 +292,7 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
     final c = context.colors;
     final active = _items.active;
     final removed = _items.removedItems;
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 24), children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
@@ -1106,7 +1107,7 @@ class ReportItemTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: AppCard(
-        padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 6, 12),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
             width: 4,
@@ -1389,14 +1390,14 @@ class _OrgReceivedReportsPageState extends State<OrgReceivedReportsPage> {
     final c = context.colors;
     final items = _items;
     return BasePage(
-      appBar: ScreenAppBar(title: t('تقارير وصلتني', 'Received reports')),
+      appBar: ScreenAppBar(title: t('تقارير وصلتني', 'Received reports'), actions: const [ContextExitButton()]),
       child: _error != null && items == null
           ? AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), message: _error, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
           : items == null
               ? const AppListSkeleton(items: 5, padding: EdgeInsets.all(16))
               : items.isEmpty
                   ? AppEmpty(icon: Icons.description_outlined, title: t('لا تقارير بعد', 'No reports yet'), message: t('التقارير المرسلة إليك تظهر هنا.', 'Reports sent to you appear here.'))
-                  : RefreshIndicator(
+                  : AppRefresh(
                       onRefresh: _load,
                       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
                         for (final r in items)

@@ -11,13 +11,13 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/paged_progress.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 import 'admin_table_export.dart' show AppExportPill, exportPagedList;
 import '../../design/app_table_export.dart' show AppTableExport;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paged list (same pagination progress as the user lists)
@@ -102,11 +102,11 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
 
     Widget body;
     if (!p.loaded && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.error != null && p.rows.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.refresh);
     } else if (p.rows.isEmpty) {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.refresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -120,7 +120,7 @@ class _PagedListState<P extends AdminPagedProvider> extends State<PagedList<P>> 
       );
     } else {
       _fillViewport(p);
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.refresh,
         child: ListView.builder(
           controller: _scroll,
@@ -198,11 +198,11 @@ class AdminSimpleList extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget body;
     if (isEmpty && loading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (isEmpty && error != null) {
       body = ErrorRetry(message: error!, onRetry: onRefresh);
     } else if (isEmpty) {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -212,7 +212,7 @@ class AdminSimpleList extends StatelessWidget {
         ),
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: onRefresh,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -442,7 +442,7 @@ class FilterChips<T> extends StatelessWidget {
                     fontFamily: 'tajawal',
                     fontSize: 12.5,
                     fontWeight: e.key == value ? FontWeight.w800 : FontWeight.w600,
-                    color: e.key == value ? Colors.white : c.textDark,
+                    color: e.key == value ? c.onHero : c.textDark,
                   ),
                 ),
                 selected: e.key == value,

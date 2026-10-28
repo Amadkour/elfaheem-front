@@ -159,13 +159,13 @@ class OrgHero extends StatelessWidget {
     final logo = (org['logo_url'] ?? '').toString();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      padding: const EdgeInsets.fromLTRB(16, 16, 12, 16),
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 12, 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         gradient: LinearGradient(
           begin: AlignmentDirectional.topStart,
           end: AlignmentDirectional.bottomEnd,
-          colors: [base, Color.alphaBlend(Colors.black.withValues(alpha: 0.28), base)],
+          colors: [base, context.colors.heroEnd(base, 0.28)],
         ),
         boxShadow: [BoxShadow(color: base.withValues(alpha: 0.30), blurRadius: 18, offset: const Offset(0, 8))],
       ),
@@ -173,11 +173,11 @@ class OrgHero extends StatelessWidget {
         Container(
           width: 54,
           height: 54,
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
           clipBehavior: Clip.antiAlias,
           child: logo.isNotEmpty
-              ? Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => _fallbackIcon())
-              : _fallbackIcon(),
+              ? Image.network(logo, fit: BoxFit.cover, errorBuilder: (_, _, _) => _fallbackIcon(context))
+              : _fallbackIcon(context),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -185,12 +185,12 @@ class OrgHero extends StatelessWidget {
             Text(OrgSession.nameOf(org),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                style: TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: context.colors.onHero)),
             if (subtitle != null)
               Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(subtitle!,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: 0.86))),
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: context.colors.onHero.withValues(alpha: 0.86))),
               ),
           ]),
         ),
@@ -199,7 +199,7 @@ class OrgHero extends StatelessWidget {
     );
   }
 
-  Widget _fallbackIcon() => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: Colors.white, size: 28);
+  Widget _fallbackIcon(BuildContext context) => Icon(orgTypeIcons[org['type']] ?? Icons.domain_rounded, color: context.colors.onHero, size: 28);
 }
 
 

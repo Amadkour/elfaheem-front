@@ -670,7 +670,7 @@ class _FilterButton extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                 decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(10)),
-                child: Text('$count', style: appText(11, w: FontWeight.w800, c: Colors.white)),
+                child: Text('$count', style: appText(11, w: FontWeight.w800, c: c.onHero)),
               ),
             ],
           ]),
@@ -726,7 +726,7 @@ class _SearchFieldState extends State<_SearchField> {
         prefixIcon: const Icon(Icons.search_rounded),
         suffixIcon: _ctrl.text.isEmpty
             ? null
-            : IconButton(
+            : IconButton(tooltip: t('مسح', 'Clear'), 
                 icon: const Icon(Icons.close_rounded, size: 18),
                 onPressed: () {
                   _ctrl.clear();

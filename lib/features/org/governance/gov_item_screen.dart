@@ -204,8 +204,8 @@ class _DecisionBar extends StatelessWidget {
     Widget btn(String outcome, IconData icon, Color col, String label) => FilledButton.icon(
           style: FilledButton.styleFrom(backgroundColor: col, minimumSize: const Size.fromHeight(46), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
           onPressed: busy ? null : () => onDecide(outcome),
-          icon: Icon(icon, color: Colors.white, size: 20),
-          label: Text(label, style: appText(14, w: FontWeight.w800, c: Colors.white)),
+          icon: Icon(icon, color: c.onHero, size: 20),
+          label: Text(label, style: appText(14, w: FontWeight.w800, c: c.onHero)),
         );
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -526,12 +526,12 @@ class _GovCommentComposerState extends State<GovCommentComposer> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.filled(
+            IconButton.filled(tooltip: t('إرسال', 'Send'), 
               style: IconButton.styleFrom(backgroundColor: c.primary, minimumSize: const Size(46, 46)),
               onPressed: widget.busy ? null : _send,
               icon: widget.busy
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send_rounded, color: Colors.white),
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
+                  : Icon(Icons.send_rounded, color: c.onHero),
             ),
           ]),
         ]),
@@ -849,7 +849,7 @@ class _GovItemScreenState extends State<GovItemScreen> {
     } else {
       child = Column(children: [
         Expanded(
-          child: RefreshIndicator(
+          child: AppRefresh(
             onRefresh: _load,
             child: GovItemBody(
               item: it,

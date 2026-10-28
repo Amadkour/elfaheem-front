@@ -18,6 +18,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 class OrgStatusScreen extends StatefulWidget {
   const OrgStatusScreen({super.key});
@@ -77,7 +78,7 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
               height: 30,
               decoration: BoxDecoration(shape: BoxShape.circle, color: col.withValues(alpha: done || active || bad ? 1 : 0.3)),
               child: Icon(bad ? Icons.priority_high_rounded : done ? Icons.check_rounded : Icons.circle,
-                  color: Colors.white, size: done || bad ? 18 : 8),
+                  color: c.onHero, size: done || bad ? 18 : 8),
             ),
             Expanded(child: Container(height: 2, color: i == 2 ? Colors.transparent : col.withValues(alpha: 0.5))),
           ]),
@@ -87,7 +88,7 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _refresh,
       child: ListView(padding: const EdgeInsets.only(bottom: 40), children: [
         OrgHero(
@@ -97,7 +98,7 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
               ? IconButton(
                   tooltip: t('تبديل المؤسسة', 'Switch organization'),
                   onPressed: () => showOrgSwitcher(context),
-                  icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white))
+                  icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
               : null,
         ),
         Padding(

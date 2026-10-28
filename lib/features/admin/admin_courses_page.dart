@@ -10,7 +10,6 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
@@ -21,6 +20,7 @@ import 'admin_list.dart';
 import 'admin_table_export.dart' show adminCoursesExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminCoursesPage extends StatelessWidget {
   const AdminCoursesPage({super.key, this.embedded = false});
@@ -155,10 +155,10 @@ class _CoursesView extends StatelessWidget {
           key: ValueKey("courses_float"),
           backgroundColor: c.primary,
           onPressed: () => _openCourseForm(context, p),
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          icon: Icon(Icons.add_rounded, color: c.onHero),
           label: Text(
             'admin_add_course'.tr,
-            style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+            style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
           ),
         ),
         body: PagedList<AdminCoursesProvider>(
@@ -489,7 +489,7 @@ class _CourseDetailState extends State<_CourseDetail> {
     if (loading) {
       return const SizedBox(
         height: 260,
-        child: Center(child: AppLoadingIndicator()),
+        child: AppListSkeleton(items: 3),
       );
     }
     final co = course;
@@ -992,7 +992,7 @@ class _CourseFormState extends State<_CourseForm> {
           child: !ready
               ? const SizedBox(
             height: 200,
-            child: Center(child: AppLoadingIndicator()),
+            child: AppListSkeleton(items: 3),
           )
               : SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),

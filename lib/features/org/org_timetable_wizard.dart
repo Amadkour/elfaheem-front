@@ -34,6 +34,7 @@ import 'org_timetable_parts.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 class TimetableWizard extends StatefulWidget {
   const TimetableWizard({super.key, this.scheduleId});
@@ -257,7 +258,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       child: BasePage(
         useWebCard: true,
         maxWith: 1000,
-        appBar: ScreenAppBar(title: d?.id == null ? t('جدول جديد', 'New timetable') : (d!.name.isEmpty ? t('الجدول', 'Timetable') : d.name)),
+        appBar: ScreenAppBar(title: d?.id == null ? t('جدول جديد', 'New timetable') : (d!.name.isEmpty ? t('الجدول', 'Timetable') : d.name), actions: const [ContextExitButton()]),
         child: d == null
             ? OrgAsync(loading: !_failed, failed: _failed, onRetry: _load, child: const SizedBox.shrink())
             : Column(children: [
@@ -268,8 +269,8 @@ class _TimetableWizardState extends State<TimetableWizard> {
                       Padding(
                         padding: const EdgeInsetsDirectional.only(end: 6),
                         child: ChoiceChip(
-                          avatar: Icon(_steps[i].$2, size: 16, color: i == _step ? Colors.white : c.textMedium),
-                          label: Text('${i + 1}. ${_steps[i].$1}', style: TextStyle(fontFamily: 'tajawal', color: i == _step ? Colors.white : c.textDark)),
+                          avatar: Icon(_steps[i].$2, size: 16, color: i == _step ? c.onHero : c.textMedium),
+                          label: Text('${i + 1}. ${_steps[i].$1}', style: TextStyle(fontFamily: 'tajawal', color: i == _step ? c.onHero : c.textDark)),
                           selected: i == _step,
                           selectedColor: c.primary,
                           showCheckmark: false,
@@ -529,7 +530,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       trailing: s.can('schedule', 'insert')
           ? Row(mainAxisSize: MainAxisSize.min, children: [
               IconButton(tooltip: t('أنواع الأماكن', 'Facility types'), onPressed: () => showFacilityTypes(context, p), icon: const Icon(Icons.category_rounded)),
-              IconButton(onPressed: () => showRoomForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)),
+              IconButton(tooltip: t('إضافة قاعة', 'Add a room'), onPressed: () => showRoomForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)),
             ])
           : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -583,7 +584,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
       Section(
         title: t('الفترات اليومية (${p.periods.length})', 'Daily periods (${p.periods.length})'),
         icon: Icons.schedule_rounded,
-        trailing: s.can('schedule', 'insert') ? IconButton(onPressed: () => showPeriodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
+        trailing: s.can('schedule', 'insert') ? IconButton(tooltip: t('إضافة فترة', 'Add a period'), onPressed: () => showPeriodForm(context, p, null), icon: Icon(Icons.add_circle_rounded, color: c.primary)) : null,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           _hint(context, t('الفترات مشتركة بين كل جداول المؤسسة. يمكن تمييز فترات يتجنبها التوليد إن أمكن.', 'Periods are shared by every timetable. Mark the ones generation should avoid when it can.')),
           if (p.periods.isEmpty) Text(t('أضف فترات اليوم الدراسي', 'Add the teaching periods'), style: orgText(context, color: c.warning)),
@@ -756,7 +757,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                       child: BasePage(
                           useWebCard: true,
                           maxWith: 900,
-                          appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests')),
+                          appBar: ScreenAppBar(title: t('طلبات المواعيد المتاحة', 'Availability requests'), actions: const [ContextExitButton()]),
                           child: const OrgAvailabilityRequestsPage())))),
               icon: const Icon(Icons.send_rounded, size: 18),
               label: Text(t('اطلبها منهم', 'Ask them')),

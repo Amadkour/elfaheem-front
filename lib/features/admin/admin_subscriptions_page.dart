@@ -176,7 +176,7 @@ class _PlanRow extends StatelessWidget {
           onChanged: (v) => p.savePlan(plan.code, {'is_active': v}),
           semanticLabel: plan.name,
         ),
-        IconButton(icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
+        IconButton(tooltip: t('تعديل', 'Edit'), icon: const Icon(Icons.edit_rounded), onPressed: () => _editPlan(context, p, plan)),
       ]),
     );
   }
@@ -383,9 +383,9 @@ class _SubTile extends StatelessWidget {
             Expanded(
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(backgroundColor: c.success),
-                icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
                 label: Text('admin_approve'.tr,
-                    style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+                    style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
                 onPressed: () async {
                   final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);

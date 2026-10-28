@@ -3,17 +3,18 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -44,14 +45,14 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (p.items.isEmpty && p.isLoading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.items.isEmpty) {
       body = ErrorRetry(
         message: p.error ?? 'admin_could_not_load_data'.tr,
         onRetry: p.load,
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 90),
@@ -81,10 +82,10 @@ class _View extends StatelessWidget {
         key: ValueKey("theme_float"),
         backgroundColor: c.primary,
         onPressed: p.items.isEmpty ? null : () => _openEditor(context, p),
-        icon: const Icon(Icons.palette_rounded, color: Colors.white),
+        icon: Icon(Icons.palette_rounded, color: c.onHero),
         label: Text(
           'admin_custom_theme'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
         ),
       ),
       child: body,
@@ -103,7 +104,7 @@ class _ThemeCard extends StatelessWidget {
     final c = context.colors;
     final p = context.read<AdminThemesProvider>();
     final col = th.colors;
-    Color sw(String k) => _parseHex(col[k] ?? '') ?? Colors.grey;
+    Color sw(String k) => _parseHex(col[k] ?? '') ?? context.colors.textLight;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -155,11 +156,11 @@ class _ThemeCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: active ? c.textLight : c.primary,
                   ),
-                  icon: const Icon(Icons.check_rounded, color: Colors.white),
+                  icon: Icon(Icons.check_rounded, color: c.onHero),
                   label: Text(
                     active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: c.onHero,
                       fontFamily: 'tajawal',
                     ),
                   ),
@@ -185,7 +186,7 @@ class _ThemeCard extends StatelessWidget {
                 color: context.colors.primary,
               ),
               if (!th.isBuiltin && !active)
-                IconButton(
+                IconButton(tooltip: t('حذف', 'Delete'), 
                   icon: Icon(Icons.delete_outline_rounded, color: c.danger),
                   onPressed: () async {
                     final ok = await confirm(
@@ -251,7 +252,7 @@ class _Preview extends StatelessWidget {
               height: 5,
               width: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: context.colors.onHero,
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -342,7 +343,7 @@ class _EditorState extends State<_Editor> {
     super.dispose();
   }
 
-  Color col(String k) => _parseHex(_ctrls[k]!.text) ?? Colors.grey;
+  Color col(String k) => _parseHex(_ctrls[k]!.text) ?? context.colors.textLight;
 
   Future<void> _save() async {
     if (_ar.text.trim().isEmpty || _en.text.trim().isEmpty) {
@@ -393,7 +394,7 @@ class _EditorState extends State<_Editor> {
                   accent2: col('accent2_hex'),
                   background: col('background_hex'),
                   text: col('text_dark'),
-                  card: _parseHex(colors['surface_card'] ?? '') ?? Colors.white,
+                  card: _parseHex(colors['surface_card'] ?? '') ?? AppTheme.surfaceCard,
                 ),
                 const SizedBox(height: 14),
                 Field(controller: _ar, label: 'admin_arabic_name_2'.tr),
@@ -415,7 +416,7 @@ class _EditorState extends State<_Editor> {
                             decoration: BoxDecoration(
                               color: col(e.key),
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.black26),
+                              border: Border.all(color: context.colors.divider),
                             ),
                           ),
                         ),
@@ -506,7 +507,7 @@ class _EditorState extends State<_Editor> {
                     decoration: BoxDecoration(
                       color: c,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.black26),
+                      border: Border.all(color: context.colors.divider),
                     ),
                   ),
                 ),

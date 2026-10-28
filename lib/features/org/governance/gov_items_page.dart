@@ -489,7 +489,7 @@ class _GovItemsPageState extends State<GovItemsPage> {
         message: _filter.quick == 'to_me' ? t('لا شيء بانتظار قرارك الآن 🌿', 'Nothing is waiting for you right now 🌿') : null,
       );
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => _load(reset: true),
       child: ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 90),

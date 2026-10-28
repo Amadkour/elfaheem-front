@@ -62,7 +62,7 @@ class GovCouncilCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(10)),
-                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
+                child: Text(openVotes > 99 ? '99+' : '$openVotes', style: TextStyle(color: c.onHero, fontSize: 10.5, fontWeight: FontWeight.w800)),
               ),
             ),
         ]),
@@ -384,7 +384,7 @@ class _GovCouncilsPageState extends State<GovCouncilsPage> {
           : const AppListSkeleton(items: 4);
     } else {
       final waiting = _openVotes.values.fold(0, (a, b) => a + b);
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(bottom: 32), children: [
           AppHero(

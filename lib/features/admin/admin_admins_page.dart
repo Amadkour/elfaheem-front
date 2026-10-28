@@ -20,7 +20,6 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/paged_progress.dart';
 import '../../utils/widget/phone_field.dart';
@@ -33,6 +32,7 @@ import 'admin_view_as_page.dart' show startViewAs;
 import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -346,7 +346,7 @@ class _AdminsViewState extends State<_AdminsView> {
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.failed) {
       body = ErrorRetry(
         message: 'admin_could_not_load_data'.tr,
@@ -359,7 +359,7 @@ class _AdminsViewState extends State<_AdminsView> {
       );
     } else {
       _fillViewport(p);
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.refresh,
         child: ListView.builder(
           controller: _scroll,
@@ -389,10 +389,10 @@ class _AdminsViewState extends State<_AdminsView> {
         key: ValueKey("admins_float"),
         backgroundColor: c.primary,
         onPressed: () => _openAdminForm(context, p),
-        icon: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white),
+        icon: Icon(Icons.admin_panel_settings_rounded, color: c.onHero),
         label: Text(
           'admin_add_admin'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
         ),
       ),
       child: Column(

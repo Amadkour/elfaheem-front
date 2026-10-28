@@ -29,6 +29,7 @@ import 'org_announcements.dart' show OrgAnnouncementFeed;
 import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
 import 'org_platform_context.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 const _pub = '$orgBase/public';
 
@@ -158,7 +159,7 @@ mixin _Loader<T extends StatefulWidget> on State<T> {
         loading: items == null && !failed,
         failed: failed,
         onRetry: load,
-        child: items == null ? const SizedBox.shrink() : RefreshIndicator(onRefresh: load, child: builder(items!)),
+        child: items == null ? const SizedBox.shrink() : AppRefresh(onRefresh: load, child: builder(items!)),
       );
 }
 
@@ -525,8 +526,8 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
         onPressed: () async {
           if (await showComplaintComposer(context, widget.org)) load();
         },
-        icon: const Icon(Icons.edit_rounded, color: Colors.white),
-        label: Text(t('شكوى جديدة', 'New complaint'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        icon: Icon(Icons.edit_rounded, color: c.onHero),
+        label: Text(t('شكوى جديدة', 'New complaint'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
       ),
       body: body((all) {
         final list = all.where((x) => asInt(x['org_id']) == asInt(widget.org['id'])).toList();
@@ -614,6 +615,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
               for (var i = 1; i <= 5; i++)
                 IconButton(
                   iconSize: 36,
+                  tooltip: t('$i من 5', '$i of 5'),
                   onPressed: () => set(() => stars = i),
                   icon: Icon(i <= stars ? Icons.star_rounded : Icons.star_border_rounded, color: ctx.colors.warning),
                 ),
@@ -650,7 +652,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
             ? const SizedBox.shrink()
             : Column(children: [
                 Expanded(
-                  child: RefreshIndicator(
+                  child: AppRefresh(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 16), children: [
                       Section(
@@ -712,7 +714,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton.filled(
+                      IconButton.filled(tooltip: t('إرسال', 'Send'), 
                         style: IconButton.styleFrom(backgroundColor: c.primary),
                         onPressed: _sending
                             ? null
@@ -727,7 +729,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
                                   _load();
                                 }
                               },
-                        icon: const Icon(Icons.send_rounded, color: Colors.white),
+                        icon: Icon(Icons.send_rounded, color: c.onHero),
                       ),
                     ]),
                   ),

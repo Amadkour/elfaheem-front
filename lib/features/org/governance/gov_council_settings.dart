@@ -434,13 +434,13 @@ class _VoteRulePreviewState extends State<VoteRulePreview> {
     final c = context.colors;
     return Row(children: [
       Expanded(child: Text(label, style: orgText(context, size: 12.5, w: FontWeight.w700, color: color))),
-      IconButton(
+      IconButton(tooltip: t('تقليل', 'Decrease'), 
         visualDensity: VisualDensity.compact,
         onPressed: value > min ? () => set(value - 1) : null,
         icon: const Icon(Icons.remove_circle_outline_rounded, size: 20),
       ),
       SizedBox(width: 26, child: Text('$value', textAlign: TextAlign.center, style: orgText(context, size: 14, w: FontWeight.w800, color: c.textDark))),
-      IconButton(
+      IconButton(tooltip: t('زيادة', 'Increase'), 
         visualDensity: VisualDensity.compact,
         onPressed: max == null || value < max ? () => set(value + 1) : null,
         icon: const Icon(Icons.add_circle_outline_rounded, size: 20),

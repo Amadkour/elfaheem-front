@@ -209,7 +209,7 @@ class ReassignCompareSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(color: top ? c.success : c.inputBg, borderRadius: BorderRadius.circular(8)),
-            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? Colors.white : c.textMedium)),
+            child: Text(top ? t('#1 مقترح', '#1 recommended') : '#2', style: orgText(context, size: 11, w: FontWeight.w800, color: top ? c.onHero : c.textMedium)),
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(title, style: orgText(context, w: FontWeight.w800))),

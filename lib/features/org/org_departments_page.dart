@@ -25,8 +25,9 @@ import 'org_join_pages.dart' show OrgUnitJoinHub, canConfigureUnit;
 import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown;
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppRefresh;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 const _featureIcons = {
   'announcements': Icons.campaign_rounded,
@@ -128,9 +129,9 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
               onPressed: () async {
                 if (await showDepartmentWizard(context)) _load();
               },
-              icon: const Icon(Icons.add_business_rounded, color: Colors.white),
+              icon: Icon(Icons.add_business_rounded, color: c.onHero),
               label: Text(t('إدارة جديدة', 'New department'),
-                  style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
             )
           : null,
       body: OrgAsync(
@@ -150,7 +151,7 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
                       if (await showDepartmentWizard(context)) _load();
                     },
                   )
-                : RefreshIndicator(
+                : AppRefresh(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 100), children: [
                       OrgSectionTitle(t('الإدارات الخدمية', 'Service departments'),
@@ -386,9 +387,9 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 for (final p in presets)
                   ChoiceChip(
                     avatar: Icon(deptIcon(p['icon']), size: 16,
-                        color: preset == p['key'] ? Colors.white : hexColor(p['color'], c.primary)),
+                        color: preset == p['key'] ? c.onHero : hexColor(p['color'], c.primary)),
                     label: Text(t('${p['name_ar']}', '${p['name_en']}'),
-                        style: TextStyle(fontFamily: 'tajawal', color: preset == p['key'] ? Colors.white : c.textDark)),
+                        style: TextStyle(fontFamily: 'tajawal', color: preset == p['key'] ? c.onHero : c.textDark)),
                     selected: preset == p['key'],
                     selectedColor: hexColor(p['color'], c.primary),
                     showCheckmark: false,
@@ -443,7 +444,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                 ),
               ),
               if ((logo ?? '').isNotEmpty)
-                IconButton(onPressed: () => set(() => logo = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
+                IconButton(tooltip: t('إزالة', 'Remove'), onPressed: () => set(() => logo = null), icon: Icon(Icons.close_rounded, color: c.textLight)),
             ]),
             const SizedBox(height: 12),
             Text(t('أو أيقونة ولون', 'or an icon and colour'), style: orgText(ctx, size: 12.5, color: c.textLight)),
@@ -612,30 +613,30 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
               },
               icon: const Icon(Icons.edit_rounded),
             ),
-        ]),
+         const ContextExitButton()]),
         child: Column(children: [
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(colors: [col, Color.alphaBlend(Colors.black.withValues(alpha: 0.25), col)]),
+              gradient: LinearGradient(colors: [col, c.heroEnd(col, 0.25)]),
               boxShadow: [BoxShadow(color: col.withValues(alpha: 0.3), blurRadius: 16, offset: const Offset(0, 6))],
             ),
             child: Row(children: [
               Container(
                 width: 52,
                 height: 52,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
-                child: Icon(deptIcon(_d['icon']), color: Colors.white, size: 28),
+                decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(16)),
+                child: Icon(deptIcon(_d['icon']), color: c.onHero, size: 28),
               ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(orgNameOf(_d), style: const TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Text(orgNameOf(_d), style: TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
                   if ('${_d['description'] ?? ''}'.isNotEmpty)
                     Text('${_d['description']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: Colors.white.withValues(alpha: 0.88))),
+                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88))),
                 ]),
               ),
             ]),
@@ -815,8 +816,8 @@ class _TeamBodyState extends State<_TeamBody> {
               heroTag: 'team_add',
               backgroundColor: c.primary,
               onPressed: _add,
-              icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
-              label: Text(t('إضافة', 'Add'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+              icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
+              label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
             )
           : null,
       body: OrgAsync(

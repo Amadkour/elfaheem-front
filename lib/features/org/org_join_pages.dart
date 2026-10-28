@@ -31,6 +31,8 @@ import 'org_providers.dart';
 import 'org_services_pages.dart' show fieldTypes, fieldIcons;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 String unitKindLabel(String type) => type == 'program' ? t('قسم علمي', 'Academic department') : t('إدارة خدمية', 'Service department');
 
@@ -107,7 +109,7 @@ class OrgUnitJoinHub extends StatelessWidget {
       ]),
     );
     if (embedded) return body;
-    return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: '$title · ${t('الانضمام', 'Joining')}'), child: body);
+    return BasePage(useWebCard: true, maxWith: 900, appBar: ScreenAppBar(title: '$title · ${t('الانضمام', 'Joining')}', actions: const [ContextExitButton()]), child: body);
   }
 }
 
@@ -256,8 +258,8 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                 for (final e in fieldTypes().entries)
                   if (bind == null || e.key == 'select' || e.key == 'multiselect')
                     ChoiceChip(
-                      avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? Colors.white : c.textMedium),
-                      label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? Colors.white : c.textDark)),
+                      avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
+                      label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? c.onHero : c.textDark)),
                       selected: f['type'] == e.key,
                       selectedColor: c.primary,
                       showCheckmark: false,
@@ -483,7 +485,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                           if (d.fields[i]['bind'] != null) '🔗 ${bindLabels()[d.fields[i]['bind']]}',
                         ].join(' · '), style: orgText(context, size: 12, color: c.textMedium)),
                         onTap: () => _editField(i),
-                        trailing: IconButton(onPressed: () => setState(() => d.fields.removeAt(i)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
+                        trailing: IconButton(tooltip: t('حذف', 'Delete'), onPressed: () => setState(() => d.fields.removeAt(i)), icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
                       ),
                   ]),
           ),
@@ -676,8 +678,8 @@ class _CodesTabState extends State<_CodesTab> {
         heroTag: 'unit_code_new',
         backgroundColor: c.primary,
         onPressed: () => _edit(),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text(t('كود جديد', 'New code'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        icon: Icon(Icons.add_rounded, color: c.onHero),
+        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
       ),
       body: OrgAsync(
         loading: rows == null && !_failed,
@@ -685,7 +687,7 @@ class _CodesTabState extends State<_CodesTab> {
         onRetry: _load,
         child: rows == null
             ? const SizedBox.shrink()
-            : RefreshIndicator(
+            : AppRefresh(
                 onRefresh: _load,
                 child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), children: [
                   _banner(context, Icons.info_outline_rounded, c.primary,
@@ -935,7 +937,7 @@ class _UnitMembersTabState extends State<_UnitMembersTab> {
           ? const SizedBox.shrink()
           : rows.isEmpty && !widget.canRemove
               ? OrgEmpty(icon: Icons.groups_rounded, title: t('لا أعضاء بعد', 'No members yet'))
-              : RefreshIndicator(
+              : AppRefresh(
                   onRefresh: _load,
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
                     if (widget.canRemove)
@@ -1225,7 +1227,7 @@ class _OrgJoinUnitsTabState extends State<OrgJoinUnitsTab> {
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.only(top: 8, bottom: 40), children: [
         if (_error != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: _banner(context, Icons.error_outline_rounded, c.danger, _error!)),

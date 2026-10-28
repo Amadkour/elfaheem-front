@@ -27,6 +27,7 @@ import 'admin_table_export.dart' show adminWithdrawalsExport;
 import 'admin_models.dart';
 import 'receipt_viewer.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminPayoutsPage extends StatelessWidget {
   const AdminPayoutsPage({super.key});
@@ -260,16 +261,16 @@ class _RequestCard extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: c.success,
                       ),
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.check_rounded,
-                        color: Colors.white,
+                        color: c.onHero,
                       ),
                       label: Text(
                         w.automatic
                             ? 'admin_approve_send'.tr
                             : 'request_approve'.tr,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: c.onHero,
                           fontFamily: 'tajawal',
                         ),
                       ),
@@ -330,14 +331,14 @@ class _RequestCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.replay_rounded,
-                        color: Colors.white,
+                        color: c.onHero,
                       ),
                       label: Text(
                         'retry'.tr,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: c.onHero,
                           fontFamily: 'tajawal',
                         ),
                       ),
@@ -977,7 +978,7 @@ class _SettingsViewState extends State<_SettingsView> {
     final c = context.colors;
     if (p.data.isEmpty) {
       return p.isLoading
-          ? const Center(child: AppLoadingIndicator())
+          ? const AppListSkeleton()
           : ErrorRetry(
         message: p.error ?? 'admin_could_not_load'.tr,
         onRetry: p.load,

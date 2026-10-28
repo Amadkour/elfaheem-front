@@ -27,6 +27,8 @@ import 'org_table_export.dart' show showTimetableTableExport;
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 TimetableNames timetableNamesOf(OrgScheduleProvider p) => TimetableNames(
       courses: {for (final l in p.loads) asInt(l['course_id']): courseName(l)},
@@ -45,7 +47,7 @@ Future<void> openTimetableCopies(BuildContext context, OrgScheduleProvider p, {r
     builder: (_) => BasePage(
           useWebCard: true,
           maxWith: 1000,
-          appBar: ScreenAppBar(title: t('نسخ الجدول', 'Timetable copies')),
+          appBar: ScreenAppBar(title: t('نسخ الجدول', 'Timetable copies'), actions: const [ContextExitButton()]),
           child: _CopiesPage(p: p, canEdit: canEdit),
         )));
 
@@ -122,7 +124,7 @@ class _CopiesPageState extends State<_CopiesPage> {
     final c = context.colors;
     final sch = p.schedule ?? const {};
     final list = copies;
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () async {
         await p.open(sid);
         await _load();
@@ -160,7 +162,7 @@ class _CopiesPageState extends State<_CopiesPage> {
           Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(children: [Expanded(child: Text(error!, style: orgText(context, color: c.danger))), TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Retry')))])),
-        if (list == null && error == null) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
+        if (list == null && error == null) const AppListSkeleton(items: 3),
         if (list != null && list.isEmpty) Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(t('لا توجد نسخ بعد.', 'No copies yet.'), style: orgText(context, color: c.textMedium)))),
         for (final cp in list ?? const <TimetableCopy>[])
           Padding(
@@ -194,7 +196,7 @@ class _CopiesPageState extends State<_CopiesPage> {
       builder: (_) => BasePage(
             useWebCard: true,
             maxWith: 1000,
-            appBar: ScreenAppBar(title: cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label),
+            appBar: ScreenAppBar(title: cp.label.isEmpty ? '${t('نسخة', 'Copy')} #${cp.id}' : cp.label, actions: const [ContextExitButton()]),
             child: _CopyDetail(p: p, copy: cp, live: live, canEdit: widget.canEdit, onSaveNew: _save),
           )));
 }
@@ -265,7 +267,7 @@ class _CopyDetailState extends State<_CopyDetail> {
   Widget build(BuildContext context) {
     final c = context.colors;
     if (error != null) return OrgEmpty(icon: Icons.error_outline_rounded, title: t('تعذر فتح النسخة', 'Could not open the copy'), message: error);
-    if (!loaded) return const Center(child: CircularProgressIndicator());
+    if (!loaded) return const AppListSkeleton();
     final n = timetableNamesOf(p);
     final order = {for (final x in p.periods) asInt(x['id']): asInt(x['order'] ?? x['id'])};
     final liveVersion = p.schedule?['version'] == null ? null : asInt(p.schedule!['version']);
@@ -324,7 +326,7 @@ class _CopyDetailState extends State<_CopyDetail> {
         if (members.isEmpty)
           Text(t('لا يوجد ${memberKindLabel(kind)} في هذه النسخة.', 'No ${memberKindLabel(kind).toLowerCase()} in this copy.'), style: orgText(context, color: c.textMedium))
         else
-          DropdownButtonFormField<TimetableMember>(
+          AppDropdown<TimetableMember>(
             initialValue: m,
             isExpanded: true,
             decoration: InputDecoration(labelText: memberKindLabel(kind)),

@@ -240,7 +240,7 @@ class GovChipSelect extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
         if (icon != null) ...[Icon(icon, size: 15, color: c.textLight), const SizedBox(width: 6)],
-        Text(label, style: appText(12, c: c.textLight)),
+        Flexible(child: Text(label, style: appText(12, c: c.textLight))),
       ]),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
@@ -280,7 +280,7 @@ class GovDateField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: c.textLight),
-          suffixIcon: value == null ? null : IconButton(icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
+          suffixIcon: value == null ? null : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
           filled: true,
           fillColor: c.inputBg,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -463,7 +463,7 @@ class GovPersonField extends StatelessWidget {
           prefixIcon: Icon(Icons.person_search_rounded, color: c.textLight),
           suffixIcon: person == null || onClear == null
               ? Icon(Icons.unfold_more_rounded, color: c.textLight)
-              : IconButton(icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
+              : IconButton(tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight), onPressed: onClear),
           filled: true,
           fillColor: c.inputBg,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -500,7 +500,7 @@ Future<String?> askGovNote(BuildContext context, {required String title, String?
             }
             Navigator.pop(ctx, ctrl.text.trim());
           },
-          child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: appText(14, w: FontWeight.w800, c: Colors.white)),
+          child: Text(confirmLabel ?? t('تأكيد', 'Confirm'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
         ),
       ]),
     );

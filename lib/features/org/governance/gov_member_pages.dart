@@ -456,7 +456,7 @@ class _GovMyItemsPageState extends State<GovMyItemsPage> {
     if (_items.isEmpty) {
       return AppEmpty(icon: Icons.inbox_rounded, title: t('لا معاملات', 'No requests'), message: t('ما تقدّمه وما يُحال إليك يظهر هنا', 'What you submit and what is routed to you shows here'));
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => _load(reset: true),
       child: ListView.builder(
         padding: const EdgeInsets.only(top: 4, bottom: 40),
@@ -542,7 +542,7 @@ class _GovMyAssignmentsPageState extends State<GovMyAssignmentsPage> {
     } else if (_rows!.isEmpty) {
       body = AppEmpty(icon: Icons.assignment_turned_in_rounded, title: t('لا نماذج مطلوبة منك', 'No forms waiting for you'), message: t('كل ما طُلب منك إجابته مكتمل 🌿', 'Everything you were asked to answer is done 🌿'));
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
           for (final a in _rows!)

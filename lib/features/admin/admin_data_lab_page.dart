@@ -9,13 +9,13 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../teacher/data_lab/data_lab_api.dart';
 import '../teacher/data_lab/data_lab_models.dart';
 import '../teacher/data_lab/data_lab_widgets.dart';
-import 'admin_common.dart' show toast, ErrorRetry;
+import 'admin_common.dart' show toast, ErrorRetry, t;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 class AdminDataLabPage extends StatefulWidget {
   const AdminDataLabPage({super.key});
@@ -99,13 +99,13 @@ class _AdminDataLabPageState extends State<AdminDataLabPage> {
     final c = context.colors;
     Widget body;
     if (_loading) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (_error != null) {
       body = ErrorRetry(message: _error!, onRetry: _load);
     } else {
       final stats = dlMap(_s['stats']);
       final formats = ((_s['export_formats'] as List?) ?? const ['xlsx']).map((e) => '$e').toList();
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 60),
@@ -262,13 +262,13 @@ class _Stepper extends StatelessWidget {
     final c = context.colors;
     return Row(children: [
       Expanded(child: Text(label, style: dlText(13, w: FontWeight.w700, c: c.textDark))),
-      IconButton(
+      IconButton(tooltip: t('تقليل', 'Decrease'), 
         style: IconButton.styleFrom(backgroundColor: c.inputBg),
         onPressed: value - step < min ? null : () => onChanged(value - step),
         icon: const Icon(Icons.remove_rounded),
       ),
       SizedBox(width: 62, child: Text('$value', textAlign: TextAlign.center, style: dlText(15, w: FontWeight.w800, c: c.primary))),
-      IconButton(
+      IconButton(tooltip: t('زيادة', 'Increase'), 
         style: IconButton.styleFrom(backgroundColor: c.inputBg),
         onPressed: value + step > max ? null : () => onChanged(value + step),
         icon: const Icon(Icons.add_rounded),

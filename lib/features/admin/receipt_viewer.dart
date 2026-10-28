@@ -11,10 +11,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/widget/app_loading_indicator.dart';
 
-const _muted = Color(0xFF718096);
-const _line = Color(0xFFE6EBF2);
-const _surface = Color(0xFFF6F8FC);
-const _blue = Color(0xFF3157D5);
 
 Future<void> _launch(String url) async {
   var ok = false;
@@ -76,7 +72,7 @@ class _PdfDialog extends StatelessWidget {
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.20),
+                color: context.colors.heroShade.withValues(alpha: 0.20),
                 blurRadius: 36,
                 offset: const Offset(0, 18),
               ),
@@ -107,10 +103,10 @@ class _PdfDialog extends StatelessWidget {
                           const SizedBox(height: 3),
                           Text(
                             t('مستند PDF', 'PDF document'),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'tajawal',
                               fontSize: 12,
-                              color: _muted,
+                              color: context.colors.textMedium,
                             ),
                           ),
                         ],
@@ -131,9 +127,9 @@ class _PdfDialog extends StatelessWidget {
                     horizontal: 20,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3F1),
+                    color: context.colors.dangerTint,
                     borderRadius: BorderRadius.circular(22),
-                    border: Border.all(color: const Color(0xFFF8DAD5)),
+                    border: Border.all(color: context.colors.danger.withValues(alpha: 0.25)),
                   ),
                   child: Column(
                     children: [
@@ -141,21 +137,19 @@ class _PdfDialog extends StatelessWidget {
                         width: 76,
                         height: 76,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.colors.cardBg,
                           borderRadius: BorderRadius.circular(24),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(
-                                0xFFB83227,
-                              ).withValues(alpha: 0.10),
+                              color: context.colors.danger.withValues(alpha: 0.10),
                               blurRadius: 18,
                               offset: const Offset(0, 8),
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.picture_as_pdf_rounded,
-                          color: Color(0xFFC64235),
+                          color: context.colors.danger,
                           size: 38,
                         ),
                       ),
@@ -180,9 +174,9 @@ class _PdfDialog extends StatelessWidget {
                           'The document will open in a browser or external PDF viewer.',
                         ),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'tajawal',
-                          color: _muted,
+                          color: context.colors.textMedium,
                           height: 1.5,
                           fontSize: 13,
                         ),
@@ -198,7 +192,7 @@ class _PdfDialog extends StatelessWidget {
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _ink,
-                          side: const BorderSide(color: _line),
+                          side: BorderSide(color: context.colors.divider),
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -230,8 +224,8 @@ class _PdfDialog extends StatelessWidget {
                           ),
                         ),
                         style: FilledButton.styleFrom(
-                          backgroundColor: _blue,
-                          foregroundColor: Colors.white,
+                          backgroundColor: context.colors.primary,
+                          foregroundColor: context.colors.onHero,
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(15),
@@ -273,7 +267,7 @@ class _ImageDialog extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.24),
+                color: context.colors.heroShade.withValues(alpha: 0.24),
                 blurRadius: 38,
                 offset: const Offset(0, 18),
               ),
@@ -282,10 +276,10 @@ class _ImageDialog extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.fromLTRB(18, 14, 14, 14),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(bottom: BorderSide(color: _line)),
+                padding: const EdgeInsetsDirectional.fromSTEB(18, 14, 14, 14),
+                decoration: BoxDecoration(
+                  color: context.colors.onHero,
+                  border: Border(bottom: BorderSide(color: context.colors.divider)),
                 ),
                 child: Row(
                   children: [
@@ -313,9 +307,9 @@ class _ImageDialog extends StatelessWidget {
                               'اضغط أو كبّر الصورة للتحقق من التفاصيل',
                               'Zoom in to inspect receipt details',
                             ),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'tajawal',
-                              color: _muted,
+                              color: context.colors.textMedium,
                               fontSize: 12,
                             ),
                           ),
@@ -339,7 +333,7 @@ class _ImageDialog extends StatelessWidget {
               Expanded(
                 child: Container(
                   width: double.infinity,
-                  color: _surface,
+                  color: context.colors.background,
                   child: InteractiveViewer(
                     minScale: 0.8,
                     maxScale: 5,
@@ -362,9 +356,9 @@ class _ImageDialog extends StatelessWidget {
                             constraints: const BoxConstraints(maxWidth: 380),
                             padding: const EdgeInsets.all(26),
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.colors.onHero,
                               borderRadius: BorderRadius.circular(22),
-                              border: Border.all(color: _line),
+                              border: Border.all(color: context.colors.divider),
                             ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
@@ -393,9 +387,9 @@ class _ImageDialog extends StatelessWidget {
                                     'You can open the receipt directly in your browser.',
                                   ),
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'tajawal',
-                                    color: _muted,
+                                    color: context.colors.textMedium,
                                     height: 1.5,
                                     fontSize: 13,
                                   ),
@@ -415,8 +409,8 @@ class _ImageDialog extends StatelessWidget {
                                     ),
                                   ),
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: _blue,
-                                    foregroundColor: Colors.white,
+                                    backgroundColor: context.colors.primary,
+                                    foregroundColor: context.colors.onHero,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(14),
                                     ),
@@ -437,13 +431,13 @@ class _ImageDialog extends StatelessWidget {
               ),
               Container(
                 padding: const EdgeInsets.fromLTRB(18, 11, 18, 11),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  border: Border(top: BorderSide(color: _line)),
+                decoration: BoxDecoration(
+                  color: context.colors.onHero,
+                  border: Border(top: BorderSide(color: context.colors.divider)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.zoom_in_rounded, size: 17, color: _muted),
+                    Icon(Icons.zoom_in_rounded, size: 17, color: context.colors.textMedium),
                     const SizedBox(width: 7),
                     Expanded(
                       child: Text(
@@ -451,9 +445,9 @@ class _ImageDialog extends StatelessWidget {
                           'استخدم إصبعين أو عجلة الفأرة للتكبير',
                           'Pinch or use the mouse wheel to zoom',
                         ),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'tajawal',
-                          color: _muted,
+                          color: context.colors.textMedium,
                           fontSize: 12,
                         ),
                       ),
@@ -499,13 +493,13 @@ class _BrandMark extends StatelessWidget {
       borderRadius: BorderRadius.circular(compact ? 14 : 18),
       boxShadow: [
         BoxShadow(
-          color: _blue.withValues(alpha: 0.20),
+          color: context.colors.primary.withValues(alpha: 0.20),
           blurRadius: 14,
           offset: const Offset(0, 6),
         ),
       ],
     ),
-    child: Icon(icon, color: Colors.white, size: compact ? 21 : 26),
+    child: Icon(icon, color: context.colors.onHero, size: compact ? 21 : 26),
   );
 }
 
@@ -524,7 +518,7 @@ class _IconAction extends StatelessWidget {
   Widget build(BuildContext context) => Tooltip(
     message: tooltip,
     child: Material(
-      color: _surface,
+      color: context.colors.background,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,

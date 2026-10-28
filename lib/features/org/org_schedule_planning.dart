@@ -25,6 +25,8 @@ import 'org_providers.dart';
 import 'org_timetable_parts.dart' show courseName, showLoadForm;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 const bool kOrgSchedulingMocks = !kReleaseMode && bool.fromEnvironment('ORG_SCHEDULING_MOCKS');
 
@@ -344,7 +346,7 @@ Future<void> openCoursePlans(BuildContext context, OrgScheduleProvider p, {bool 
     builder: (_) => BasePage(
           useWebCard: true,
           maxWith: 900,
-          appBar: ScreenAppBar(title: t('الطلاب والمجموعات', 'Enrollment & groups')),
+          appBar: ScreenAppBar(title: t('الطلاب والمجموعات', 'Enrollment & groups'), actions: const [ContextExitButton()]),
           child: TimetableCoursesView(p: p, canEdit: canEdit),
         )));
 
@@ -396,14 +398,9 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (error != null) {
-      return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Text(error!, style: orgText(context, color: c.danger)),
-        TextButton(onPressed: _load, child: Text(t('إعادة المحاولة', 'Retry'))),
-      ]));
-    }
+    if (error != null) return ErrorRetry(message: error!, onRetry: _load);
     final d = data;
-    if (d == null) return const Center(child: CircularProgressIndicator());
+    if (d == null) return const AppListSkeleton();
     final results = {for (final l in loads) asInt(l['course_id']): planCourse(_plan(asInt(l['course_id'])), l, widget.p.rooms)};
     final students = loads.fold<int>(0, (s, l) => s + _plan(asInt(l['course_id'])).students);
     final groups = results.values.fold<int>(0, (s, r) => s + r.lectureGroups + r.labGroups);
@@ -411,7 +408,7 @@ class _CoursePlansPageState extends State<TimetableCoursesView> {
     final blocking = results.values.where((r) => r.hasErrors).length;
     final editable = widget.canEdit && !d.unsupported;
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         if (d.unsupported)
@@ -548,8 +545,8 @@ Future<CoursePlan?> showCoursePlanSheet(BuildContext context, OrgScheduleProvide
               Expanded(
                   child: Text(value == null ? '$label: $derived ${t('(تلقائي)', '(auto)')}' : '$label: $value',
                       style: orgText(ctx, w: FontWeight.w700))),
-              IconButton(onPressed: (value ?? derived) > 1 ? () => set(() => on((value ?? derived) - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
-              IconButton(onPressed: (value ?? derived) < 40 ? () => set(() => on((value ?? derived) + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
+              IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: (value ?? derived) > 1 ? () => set(() => on((value ?? derived) - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
+              IconButton(tooltip: t('زيادة', 'Increase'), onPressed: (value ?? derived) < 40 ? () => set(() => on((value ?? derived) + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
               if (value != null) TextButton(onPressed: () => set(() => on(null)), child: Text(t('تلقائي', 'Auto'))),
             ]);
         Widget staffPick(String kind, int no, int size) {

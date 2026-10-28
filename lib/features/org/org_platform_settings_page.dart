@@ -123,7 +123,7 @@ class _OrgPlatformSettingsPageState extends State<OrgPlatformSettingsPage> {
     }
     final off = _features!.where((f) => f['enabled'] != true).length;
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
         AppHero(

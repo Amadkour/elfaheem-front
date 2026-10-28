@@ -17,6 +17,7 @@ import 'org_providers.dart';
 import 'org_schedule_insights.dart' show ActionOption, RankedActions;
 import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 class RemedyItem {
   const RemedyItem({required this.key, required this.conflict, required this.actions});
@@ -41,7 +42,7 @@ class RemedyItem {
     final times = asMapList(conflict['times']);
     if (times.isEmpty) return '';
     final x = times.first;
-    return '${x['label'] ?? ''}${x['start_time'] != null ? ' (${x['start_time']}–${x['end_time']})' : ''}';
+    return '${x['label'] ?? ''}${x['start_time'] != null ? ' (${AppTime.clockRange('${x['start_time']}', '${x['end_time'] ?? ''}')})' : ''}';
   }
 
   factory RemedyItem.of(Map<String, dynamic> m) => RemedyItem(key: '${m['key'] ?? ''}', conflict: asMap(m['conflict']), actions: ActionOption.listOf(m['actions']));

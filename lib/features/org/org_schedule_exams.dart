@@ -31,6 +31,7 @@ import 'org_schedule_versions.dart';
 import 'org_timetable_time.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Pure
@@ -227,7 +228,7 @@ Future<void> openExamTimetables(BuildContext context, OrgScheduleProvider p, {bo
         builder: (_) => BasePage(
               useWebCard: true,
               maxWith: 1000,
-              appBar: ScreenAppBar(title: t('جداول الامتحانات', 'Exam timetables')),
+              appBar: ScreenAppBar(title: t('جداول الامتحانات', 'Exam timetables'), actions: const [ContextExitButton()]),
               child: _ExamListPage(p: p, api: examApi(p), canEdit: canEdit, canApprove: canApprove, canExport: canExport),
             )));
 
@@ -270,7 +271,7 @@ class _ExamListPageState extends State<_ExamListPage> {
         builder: (_) => BasePage(
               useWebCard: true,
               maxWith: 1100,
-              appBar: ScreenAppBar(title: t('جدول الامتحانات', 'Exam timetable')),
+              appBar: ScreenAppBar(title: t('جدول الامتحانات', 'Exam timetable'), actions: const [ContextExitButton()]),
               child: _ExamPage(p: widget.p, api: widget.api, id: id, canEdit: widget.canEdit, canApprove: widget.canApprove, canExport: widget.canExport),
             )));
     await _load();
@@ -699,7 +700,7 @@ class _ExamPageState extends State<_ExamPage> {
     final editable = widget.canEdit && !active && !busy;
     final term = widget.p.terms.where((x) => asInt(x['id']) == asInt(ex['term_id'])).firstOrNull;
     final byDate = examsByDate(items);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
         AppHero(

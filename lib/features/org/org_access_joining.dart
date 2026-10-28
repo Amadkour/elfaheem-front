@@ -29,6 +29,7 @@ import 'org_join_scan.dart' show joinScannerAvailable, openJoinScanner;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 const _pub = '$orgBase/public';
 
@@ -62,6 +63,7 @@ class OrgAccessJoiningPage extends StatefulWidget {
 
 class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
   Map<String, dynamic>? _settings;
+  String? _error; // why the join settings could not be loaded (the settings tab shows it with a retry)
 
   @override
   void initState() {
@@ -72,7 +74,11 @@ class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
   Future<void> _load() async {
     final s = context.read<OrgSession>();
     final r = await orgCall(() => s.api.get('${s.base}/join/settings'), quiet: true);
-    if (mounted && r.ok) setState(() => _settings = r.map);
+    if (!mounted) return;
+    setState(() {
+      if (r.ok) _settings = r.map;
+      _error = r.ok ? null : orgErrorText(r.error!);
+    });
   }
 
   @override
@@ -86,7 +92,7 @@ class _OrgAccessJoiningPageState extends State<OrgAccessJoiningPage> {
       (pending > 0 ? t('الطلبات · $pending', 'Requests · $pending') : t('الطلبات', 'Requests'), Icons.inbox_rounded,
           _RequestsInbox(onChanged: _load)),
       if (admin) (t('أكواد الانضمام', 'Join codes'), Icons.qr_code_2_rounded, _OrgCodesTab(settings: _settings, onChanged: _load)),
-      if (admin) (t('طريقة الانضمام', 'How people join'), Icons.tune_rounded, _JoinSettingsTab(settings: _settings, onSaved: _load)),
+      if (admin) (t('طريقة الانضمام', 'How people join'), Icons.tune_rounded, _JoinSettingsTab(settings: _settings, onSaved: _load, error: _error)),
     ];
     return DefaultTabController(
       length: tabs.length,
@@ -258,7 +264,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
                     builder: (_) => ChangeNotifierProvider.value(
                         value: s,
                         child: BasePage(useWebCard: true, maxWith: 1100,
-                            appBar: ScreenAppBar(title: t('الأدوار والصلاحيات', 'Roles & privileges')), child: const OrgAccessPage())))),
+                            appBar: ScreenAppBar(title: t('الأدوار والصلاحيات', 'Roles & privileges'), actions: const [ContextExitButton()]), child: const OrgAccessPage())))),
                 child: Text(t('منح الصلاحية', 'Give permission')),
               ),
               IconButton(
@@ -296,7 +302,7 @@ class _RequestsInboxState extends State<_RequestsInbox> with AutomaticKeepAliveC
           ]),
         ),
       Expanded(
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: _load,
           child: rows.isEmpty
               ? ListView(children: [
@@ -374,7 +380,7 @@ class _OrgRequestCard extends StatelessWidget {
     final c = context.colors;
     final u = asMap(row['user']);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 16, 4),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 4, 16, 4),
       child: AppCard(
         padding: const EdgeInsets.all(14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -667,10 +673,10 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
         heroTag: 'org_join_code_new',
         backgroundColor: c.primary,
         onPressed: () => _edit(),
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: Text(t('كود جديد', 'New code'), style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+        icon: Icon(Icons.add_rounded, color: c.onHero),
+        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
       ),
-      body: RefreshIndicator(
+      body: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 100), children: [
           if (closed)
@@ -770,9 +776,10 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
 // ── Settings ─────────────────────────────────────────────────────────────────
 
 class _JoinSettingsTab extends StatefulWidget {
-  const _JoinSettingsTab({required this.settings, required this.onSaved});
+  const _JoinSettingsTab({required this.settings, required this.onSaved, this.error});
   final Map<String, dynamic>? settings;
   final Future<void> Function() onSaved;
+  final String? error;
 
   @override
   State<_JoinSettingsTab> createState() => _JoinSettingsTabState();
@@ -813,7 +820,11 @@ class _JoinSettingsTabState extends State<_JoinSettingsTab> {
   Widget build(BuildContext context) {
     final c = context.colors;
     _sync();
-    if (_paused == null) return const AppListSkeleton(items: 3, withAvatar: false);
+    if (_paused == null) {
+      return widget.error != null
+          ? ErrorRetry(message: widget.error!, onRetry: widget.onSaved)
+          : const AppListSkeleton(items: 3, withAvatar: false);
+    }
     final summary = _paused!
         ? t('لا أحد ينضم الآن — لا طلبات ولا أكواد.', 'Nobody can join right now — no requests, no codes.')
         : _requests!
@@ -1105,7 +1116,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
       useWebCard: true,
       maxWith: 760,
       appBar: ScreenAppBar(title: t('انضمام', 'Join')),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: () async {
           await Future.wait([_loadStatus(), _search(_q.text)]);
         },

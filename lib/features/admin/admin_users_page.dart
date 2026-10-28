@@ -7,7 +7,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import '../../utils/widget/base_page.dart';
 import '../../utils/widget/outline_button.dart';
 import '../../utils/widget/phone_field.dart';
@@ -24,6 +23,7 @@ import 'admin_view_as_page.dart' show startViewAs;
 import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key, required this.role, this.embedded = false});
@@ -109,10 +109,10 @@ class _UsersView extends StatelessWidget {
       key: ValueKey("users_float"),
       backgroundColor: c.primary,
       onPressed: () => _openForm(context, p),
-      icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.white),
+      icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
       label: Text(
         isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
-        style: const TextStyle(fontFamily: 'tajawal', color: Colors.white),
+        style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
       ),
     );
 
@@ -365,7 +365,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
     if (loading) {
       return const SizedBox(
         height: 260,
-        child: Center(child: AppLoadingIndicator()),
+        child: AppListSkeleton(items: 3),
       );
     }
     if (d == null) {
@@ -740,7 +740,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           fontSize: 11.5,
                         ),
                       ),
-                      trailing: IconButton(
+                      trailing: IconButton(tooltip: t('حذف', 'Delete'), 
                         icon: Icon(
                           Icons.delete_outline_rounded,
                           color: c.danger,

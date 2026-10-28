@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 import '../auth/verify_way.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminAuthSettingsPage extends StatefulWidget {
   const AdminAuthSettingsPage({super.key});
@@ -198,7 +198,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
         style: TextStyle(
           fontFamily: 'tajawal',
           fontWeight: FontWeight.w700,
-          color: selected ? Colors.white : c.textDark,
+          color: selected ? c.onHero : c.textDark,
         ),
       ),
       selected: selected,
@@ -256,7 +256,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
           ? null
           : PremiumSaveBar(label: 'save'.tr, loading: _saving, onPressed: _save),
       child: _loading
-          ? const Center(child: AppLoadingIndicator(size: 56))
+          ? const AppListSkeleton()
           : Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
@@ -311,7 +311,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
                             selected: _default == 'auto',
                             avatar: Icon(Icons.auto_awesome_rounded,
                                 size: 16,
-                                color: _default == 'auto' ? Colors.white : c.textMedium),
+                                color: _default == 'auto' ? c.onHero : c.textMedium),
                             onTap: () => setState(() => _default = 'auto'),
                           ),
                           for (final w in selectedWays)
@@ -320,7 +320,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
                               selected: _default == w.name,
                               avatar: Icon(w.icon,
                                   size: 16,
-                                  color: _default == w.name ? Colors.white : w.brand),
+                                  color: _default == w.name ? c.onHero : w.brand),
                               onTap: () => setState(() => _default = w.name),
                             ),
                         ]),

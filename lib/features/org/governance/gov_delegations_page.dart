@@ -489,7 +489,7 @@ class _GovDelegationsPageState extends State<GovDelegationsPage> {
     } else if (_rows == null) {
       body = AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
           if (canManage)

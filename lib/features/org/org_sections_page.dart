@@ -12,6 +12,7 @@ import '../admin/admin_common.dart';
 import 'org_providers.dart' show OrgApi, orgBase;
 import 'org_ui.dart';
 import '../admin/admin_list.dart' show IconBadge;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 class OrgSectionsPage extends StatefulWidget {
   const OrgSectionsPage({super.key});
@@ -81,12 +82,12 @@ class _OrgSectionsPageState extends State<OrgSectionsPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final courses = _courses;
-    if (courses == null) return const Center(child: CircularProgressIndicator());
+    if (courses == null) return const AppListSkeleton();
     if (courses.isEmpty) {
       return OrgEmpty(icon: Icons.science_rounded, title: t('لا مقررات تعاون فيها بعد', 'No courses you assist yet'),
           message: t('يظهر هنا كل مقرر عيّنك فيه مكتب الجداول كمعيد.', 'Every course the timetable office assigns you to appears here.'));
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 40), children: [
         for (final co in courses)
@@ -117,7 +118,7 @@ class _OrgSectionsPageState extends State<OrgSectionsPage> {
                       '${s['duration_minutes'] ?? 0} ${t('د', 'min')}',
                     ].join(' · ')),
                     onTap: () => _edit(co, s),
-                    trailing: IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
+                    trailing: IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
                       if (await confirm(context, message: t('حذف السكشن؟', 'Delete this section?'), danger: true)) {
                         await OrgApi.i.del('/api/v1/sessions/${s['id']}', t('حُذف', 'Deleted'));
                         _load();

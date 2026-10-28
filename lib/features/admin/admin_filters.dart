@@ -19,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 const _font = 'tajawal';
 
@@ -142,14 +143,14 @@ class AdminFilterBar extends StatelessWidget {
               children: [
                 Icon(Icons.manage_search_rounded, size: 16, color: c.textLight),
                 const SizedBox(width: 6),
-                Text(
+                Flexible(child: Text(
                   'admin_results_count'.tr.replaceAll('{n}', '$total'),
                   style: TextStyle(
                     fontFamily: _font,
                     fontSize: 12,
                     color: c.textLight,
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -298,7 +299,7 @@ class _FilterButton extends StatelessWidget {
               children: [
                 Icon(
                   Icons.tune_rounded,
-                  color: active ? Colors.white : c.textMedium,
+                  color: active ? c.onHero : c.textMedium,
                 ),
                 if (active)
                   PositionedDirectional(
@@ -317,11 +318,11 @@ class _FilterButton extends StatelessWidget {
                       child: Text(
                         '$count',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: _font,
                           fontSize: 10.5,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: c.onHero,
                         ),
                       ),
                     ),
@@ -924,7 +925,7 @@ class _DateTile extends StatelessWidget {
               ),
             ),
             if (value != null)
-              IconButton(
+              IconButton(tooltip: t('مسح', 'Clear'), 
                 visualDensity: VisualDensity.compact,
                 icon: Icon(Icons.close_rounded, size: 16, color: c.textLight),
                 onPressed: onClear,
@@ -1091,7 +1092,7 @@ class _LookupTile extends StatelessWidget {
               ),
             ),
             if (value != null)
-              IconButton(
+              IconButton(tooltip: t('مسح', 'Clear'), 
                 visualDensity: VisualDensity.compact,
                 icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
                 onPressed: () => onChanged(null),
@@ -1181,7 +1182,7 @@ class _LookupPickerState extends State<_LookupPicker> {
         SizedBox(
           height: 340,
           child: _loading
-              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              ? const AppListSkeleton()
               : _failed
               ? Center(child: Text('admin_could_not_load_data'.tr))
               : _items.isEmpty

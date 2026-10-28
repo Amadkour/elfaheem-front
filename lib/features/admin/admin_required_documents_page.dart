@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 
 /// icon_name (stored in the DB) → icon. Use the same map in
 /// additional_register_screen so the teacher sees the icon the admin picked.
@@ -431,16 +431,16 @@ class _AdminRequiredDocumentsPageState
 
     Widget body;
     if (_loading) {
-      body = const Center(child: AppLoadingIndicator(size: 56));
+      body = const AppListSkeleton();
     } else if (_error != null) {
       body = ErrorRetry(message: _error!, onRetry: _load);
     } else if (_items.isEmpty) {
-      body = ListView(
+      body = AppRefresh(onRefresh: () => _load(), child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         children: [_header(), _empty()],
-      );
+      ));
     } else {
-      body = ReorderableListView.builder(
+      body = AppRefresh(onRefresh: () => _load(), child: ReorderableListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         header: _header(),
         buildDefaultDragHandles: false,
@@ -448,7 +448,7 @@ class _AdminRequiredDocumentsPageState
         itemCount: _items.length,
         onReorder: _reorder,
         itemBuilder: (_, i) => _card(i, _items[i]),
-      );
+      ));
     }
 
     return BasePage(
@@ -459,7 +459,7 @@ class _AdminRequiredDocumentsPageState
           : FloatingActionButton.extended(
               onPressed: () => _edit(),
               backgroundColor: context.colors.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: context.colors.onHero,
               icon: const Icon(Icons.add_rounded),
               label: Text(
                 'doc_add'.tr,
@@ -690,11 +690,11 @@ class _DocFormState extends State<_DocForm> {
                       ),
                       child: Text(
                         'save'.tr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 15.5,
                           fontWeight: FontWeight.w800,
-                          color: Colors.white,
+                          color: c.onHero,
                         ),
                       ),
                     ),

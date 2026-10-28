@@ -25,6 +25,8 @@ import 'org_program_form.dart' show orgAllCourses, showProgramForm;
 import 'org_v3.dart';
 import 'org_suggestions.dart' show OrgTermSuggestions;
 import '../shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 const _pub = '$orgBase/public';
 Map<String, String> termKinds() => {'term1': t('الفصل الأول', 'Term 1'), 'term2': t('الفصل الثاني', 'Term 2'), 'summer': t('الصيفي', 'Summer')};
@@ -75,7 +77,7 @@ class _OrgAcademicPageState extends State<OrgAcademicPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (_settings == null) return const Center(child: CircularProgressIndicator());
+    if (_settings == null) return const AppListSkeleton();
     final hasDepts = _settings!['has_departments'] == true;
     final tabs = <(String, IconData, Widget)>[
       (t('التقويم', 'Calendar'), Icons.calendar_month_rounded, _Calendar(terms: _terms, base: _a, onChanged: _load)),
@@ -374,7 +376,7 @@ class _SettingsTabState extends State<_SettingsTab> {
       Section(
         title: t('الفرق / المستويات الدراسية', 'Academic years / levels'),
         icon: Icons.stairs_rounded,
-        trailing: IconButton(onPressed: () => _editLevel(), icon: Icon(Icons.add_circle_rounded, color: c.primary)),
+        trailing: IconButton(tooltip: t('إضافة مستوى', 'Add a level'), onPressed: () => _editLevel(), icon: Icon(Icons.add_circle_rounded, color: c.primary)),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('تُستخدم في بيانات الطلاب الموثّقة وفي شروط الانضمام للأقسام. الكلية بلا مستويات ترث مستويات جامعتها.',
               'Used in students\' trusted records and in department joining rules. A faculty without levels inherits its university\'s.'),
@@ -388,7 +390,7 @@ class _SettingsTabState extends State<_SettingsTab> {
               leading: CircleAvatar(radius: 14, child: Text('${levels[i]['key']}', style: const TextStyle(fontSize: 11))),
               title: Text(t('${levels[i]['label_ar'] ?? ''}', '${levels[i]['label_en'] ?? ''}').trim().isEmpty ? '${levels[i]['key']}' : t('${levels[i]['label_ar']}', '${levels[i]['label_en']}')),
               onTap: () => _editLevel(i),
-              trailing: IconButton(icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => levels.removeAt(i))),
+              trailing: IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () => setState(() => levels.removeAt(i))),
             ),
         ]),
       ),
@@ -560,11 +562,11 @@ class _ArchiveRequests extends StatelessWidget {
                       style: orgText(context, size: 12, color: c.textMedium)),
                   if ('${row['reason'] ?? ''}'.isNotEmpty) Text('"${row['reason']}"', style: orgText(context, size: 12)),
                 ])),
-                IconButton(icon: Icon(Icons.check_circle_rounded, color: c.success), onPressed: () async {
+                IconButton(tooltip: t('موافقة', 'Approve'), icon: Icon(Icons.check_circle_rounded, color: c.success), onPressed: () async {
                   final d = await askText(context, title: t('عدد أيام الفتح', 'Open for how many days?'), hint: '7');
                   if (d != null && await OrgApi.i.post('$base/archive-requests/${row['id']}/approve', {'days': int.tryParse(d) ?? 7}, t('تم الفتح', 'Opened')) != null) p.refresh();
                 }),
-                IconButton(icon: Icon(Icons.cancel_rounded, color: c.danger), onPressed: () async {
+                IconButton(tooltip: t('رفض', 'Reject'), icon: Icon(Icons.cancel_rounded, color: c.danger), onPressed: () async {
                   final note = await askText(context, title: t('سبب الرفض', 'Reason'), multiline: true);
                   if (note != null && await OrgApi.i.post('$base/archive-requests/${row['id']}/reject', {'days': 1, 'note': note}, t('تم', 'Done')) != null) p.refresh();
                 }),
@@ -636,6 +638,7 @@ class CourseArchiveScreen extends StatefulWidget {
 
 class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
   Map<String, dynamic>? _d;
+  bool _failed = false; // the archive could not be loaded (getMap already toasted why)
   String get _a => '$orgBase/orgs/${widget.orgId}/academic';
 
   @override
@@ -645,8 +648,9 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
   }
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await OrgApi.i.getMap('$_a/courses/${widget.courseId}/archive');
-    if (mounted) setState(() => _d = r);
+    if (mounted) setState(() { _failed = r == null && _d == null; _d = r ?? _d; });
   }
 
   Future<void> _openRun() async {
@@ -718,9 +722,9 @@ class _CourseArchiveScreenState extends State<CourseArchiveScreen> {
     return BasePage(
       useWebCard: true,
       maxWith: 820,
-      appBar: ScreenAppBar(title: d == null ? t('أرشيف المقرر', 'Course archive') : _cname(course)),
+      appBar: ScreenAppBar(title: d == null ? t('أرشيف المقرر', 'Course archive') : _cname(course), actions: const [ContextExitButton()]),
       child: d == null
-          ? const Center(child: CircularProgressIndicator())
+          ? (_failed ? ErrorRetry(message: t('تعذّر تحميل الأرشيف', 'Could not load the archive'), onRetry: _load) : const AppListSkeleton())
           : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
               if (d['current'] != null)
                 OrgActionCard(icon: Icons.play_circle_rounded, color: c.success,
@@ -770,6 +774,7 @@ class MyAcademicPathPage extends StatefulWidget {
 
 class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
   Map<String, dynamic>? _p;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -780,10 +785,12 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
   int _loads = 0;   // pull-to-refresh also reloads the level card
 
   Future<void> _load() async {
+    if (_failed) setState(() => _failed = false);
     final r = await OrgApi.i.getMap('$_pub/${widget.orgId}/my-path');
     if (mounted) {
       setState(() {
-        _p = r;
+        _failed = r == null && _p == null;
+        _p = r ?? _p;
         _loads++;
       });
     }
@@ -853,7 +860,9 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final p = _p;
-    if (p == null) return const Center(child: CircularProgressIndicator());
+    if (p == null) {
+      return _failed ? ErrorRetry(message: t('تعذّر تحميل مسارك', 'Could not load your path'), onRetry: _load) : const AppListSkeleton();
+    }
     final hasDepts = p['has_departments'] == true;
     final stage = '${p['stage']}';
     final steps = [('general', t('طالب عام', 'General'), Icons.person_rounded),
@@ -862,7 +871,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
     final at = steps.indexWhere((s) => s.$1 == stage);
     final pct = asInt(p['percent']);
     final req = asMap(p['request']);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
         Container(
@@ -872,25 +881,25 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
             Row(children: [
               for (var i = 0; i < steps.length; i++) ...[
                 Expanded(child: Column(children: [
-                  CircleAvatar(radius: 20, backgroundColor: i <= at ? Colors.white : Colors.white24,
-                      child: Icon(steps[i].$3, color: i <= at ? c.primary : Colors.white70, size: 20)),
+                  CircleAvatar(radius: 20, backgroundColor: i <= at ? c.onHero : c.heroGlassBorder,
+                      child: Icon(steps[i].$3, color: i <= at ? c.primary : c.onHeroMuted, size: 20)),
                   const SizedBox(height: 6),
-                  Text(steps[i].$2, style: TextStyle(fontFamily: 'tajawal', color: i <= at ? Colors.white : Colors.white70,
+                  Text(steps[i].$2, style: TextStyle(fontFamily: 'tajawal', color: i <= at ? c.onHero : c.onHeroMuted,
                       fontWeight: i == at ? FontWeight.w800 : FontWeight.w500, fontSize: 12.5)),
                 ])),
-                if (i < steps.length - 1) Expanded(child: Container(height: 2, color: i < at ? Colors.white : Colors.white24)),
+                if (i < steps.length - 1) Expanded(child: Container(height: 2, color: i < at ? c.onHero : c.heroGlassBorder)),
               ],
             ]),
             const SizedBox(height: 16),
             if (p['program'] != null)
               Text('${asMap(p['program'])['code']} · ${t('${asMap(p['program'])['name_ar'] ?? asMap(p['program'])['name_en']}', '${asMap(p['program'])['name_en'] ?? asMap(p['program'])['name_ar']}')}',
-                  style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             ClipRRect(borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(value: pct / 100, minHeight: 8, backgroundColor: Colors.white24, color: c.accent2)),
+                child: LinearProgressIndicator(value: pct / 100, minHeight: 8, backgroundColor: c.heroGlassBorder, color: c.accent2)),
             const SizedBox(height: 6),
             Text(stage == 'graduated' ? t('مبروك التخرج 🎓', 'Congratulations, graduate 🎓') : t('أنجزت $pct% من متطلبات التخرج', '$pct% of graduation requirements done'),
-                style: const TextStyle(fontFamily: 'tajawal', color: Colors.white)),
+                style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
           ]),
         ),
         const SizedBox(height: 12),

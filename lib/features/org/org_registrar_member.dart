@@ -281,7 +281,7 @@ class _OrgRegistrationScreenState extends State<OrgRegistrationScreen> {
             ? AppEmpty(icon: Icons.event_busy_rounded, title: t('لا يوجد فصل دراسي مفتوح', 'No open term'))
             : Column(children: [
                 Expanded(
-                  child: RefreshIndicator(
+                  child: AppRefresh(
                     onRefresh: _load,
                     child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
                       AppHero(
@@ -997,7 +997,7 @@ class _OrgAdvisingScreenState extends State<OrgAdvisingScreen> {
         loading: _data == null && !_failed,
         failed: _failed,
         onRetry: _load,
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.only(bottom: 24), children: [
             AppSectionTitle(t('حالات تحتاج رأيك', 'Cases for you'), subtitle: '${cases.length}'),

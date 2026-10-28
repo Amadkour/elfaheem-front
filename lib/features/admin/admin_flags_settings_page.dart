@@ -9,12 +9,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../design/app_switch.dart';
 import '../../utils/widget/base_page.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class AdminFlagsSettingsPage extends StatelessWidget {
   const AdminFlagsSettingsPage({super.key});
@@ -92,7 +92,7 @@ class _ViewState extends State<_View> {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'admin_flags_title'.tr),
       child: p.isLoading && !_filled
-            ? const Center(child: AppLoadingIndicator())
+            ? const AppListSkeleton()
             : p.error != null && !_filled
             ? Center(
                 child: Column(
@@ -188,12 +188,12 @@ class _ViewState extends State<_View> {
                     child: ElevatedButton.icon(
                       onPressed: _saving ? null : () => _save(p),
                       icon: _saving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: c.onHero,
                               ),
                             )
                           : const Icon(Icons.save_rounded),
@@ -206,7 +206,7 @@ class _ViewState extends State<_View> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: c.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: c.onHero,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -248,14 +248,14 @@ class _Section extends StatelessWidget {
               children: [
                 Icon(icon, color: c.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
+                Flexible(child: Text(
                   title,
                   style: const TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
-                ),
+                )),
               ],
             ),
           ),
@@ -382,7 +382,7 @@ class _CounterButton extends StatelessWidget {
           child: Icon(
             icon,
             size: 20,
-            color: enabled ? Colors.white : context.colors.textLight,
+            color: enabled ? context.colors.onHero : context.colors.textLight,
           ),
         ),
       ),

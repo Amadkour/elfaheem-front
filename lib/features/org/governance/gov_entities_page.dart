@@ -335,7 +335,7 @@ class _GovEntitiesPageState extends State<GovEntitiesPage> {
     } else if (_rows == null) {
       body = AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 90), children: [
           if (canCreate)
@@ -612,7 +612,7 @@ class _CategoriesTabState extends State<_CategoriesTab> {
     final rows = _rows ?? const <Category>[];
     if (_rows == null && !_failed) return const AppListSkeleton(items: 4);
     if (_rows == null) return AppEmpty(icon: Icons.cloud_off_rounded, title: t('تعذّر التحميل', 'Could not load'), actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 40), children: [
         if (canEdit)

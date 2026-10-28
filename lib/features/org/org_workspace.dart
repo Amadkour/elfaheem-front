@@ -24,6 +24,7 @@ import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart' show DataCenterPage;
 import 'org_sections_page.dart';
+import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 
 class OrgWorkspace extends StatefulWidget {
   const OrgWorkspace({super.key});
@@ -53,7 +54,7 @@ class _OrgWorkspaceState extends State<OrgWorkspace> {
     }
     void open(String title, Widget child) => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
-            value: s, child: BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title), child: child))));
+            value: s, child: BasePage(useWebCard: true, maxWith: 1000, appBar: ScreenAppBar(title: title, actions: const [ContextExitButton()]), child: child))));
     // every area this person may manage or view (role + personal grants, org-wide or in a department)
     final areas = <(String, IconData, Color, String, Widget)>[
       if (s.canAny('announcements')) ('announcements', Icons.campaign_rounded, c.primary, t('الإعلانات والأخبار', 'News & announcements'), const OrgAnnouncementsPage()),

@@ -223,7 +223,7 @@ class _OrgTermSuggestionsState extends State<OrgTermSuggestions> {
                 (rec['blocked'] as List).map(_course).join(' · '),
         ]),
       _ => (Icons.schedule_rounded, t('فترات اليوم الدراسي', 'Periods of the day'),
-          [asMapList(p['periods']).map((x) => '${x['label']} ${x['start_time']}–${x['end_time']}').join(' · ')]),
+          [asMapList(p['periods']).map((x) => '${x['label']} ${AppTime.clockRange('${x['start_time']}', '${x['end_time']}')}').join(' · ')]),
     };
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),

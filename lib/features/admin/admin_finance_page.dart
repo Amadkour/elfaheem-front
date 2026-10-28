@@ -27,9 +27,12 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart'; // already used by complaint_attachement_widgets.dart
 
 import 'admin_common.dart';
+import 'admin_premium_widgets.dart' show AdminPalette;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'admin_finance_provider.dart';
 import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry
@@ -94,12 +97,13 @@ class _View extends StatelessWidget {
 // Labels / colours
 // ─────────────────────────────────────────────────────────────────────────────
 
-const _amber = Color(0xFFF59E0B);
-const _green = Color(0xFF10B981);
-const _red = Color(0xFFEF4444);
-const _blue = Color(0xFF3B82F6);
-const _violet = Color(0xFF8B5CF6);
-const _grey = Color(0xFF6B7280);
+// Status colours from the live theme (AdminPalette follows the super admin's palette).
+Color get _amber => AdminPalette.orange.last;
+Color get _green => AdminPalette.green.last;
+Color get _red => AdminPalette.rose.last;
+Color get _blue => AdminPalette.indigo.last;
+Color get _violet => AdminPalette.violet.last;
+Color get _grey => AdminPalette.slate.last;
 
 Color _statusColor(String s) => switch (s) {
   'pending' => _amber,
@@ -414,7 +418,7 @@ class _Tabs extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 17, color: selected ? Colors.white : c.textMedium),
+                Icon(icon, size: 17, color: selected ? c.onHero : c.textMedium),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
@@ -425,7 +429,7 @@ class _Tabs extends StatelessWidget {
                       fontFamily: 'tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: selected ? Colors.white : c.textMedium,
+                      color: selected ? c.onHero : c.textMedium,
                     ),
                   ),
                 ),
@@ -434,7 +438,7 @@ class _Tabs extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
-                      color: selected ? Colors.white : _red,
+                      color: selected ? c.onHero : _red,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -442,7 +446,7 @@ class _Tabs extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10.5,
                         fontWeight: FontWeight.w800,
-                        color: selected ? _red : Colors.white,
+                        color: selected ? _red : c.onHero,
                       ),
                     ),
                   ),
@@ -492,14 +496,14 @@ class _TabBody extends StatelessWidget {
 
     Widget content;
     if (l.loading && l.items.isEmpty) {
-      content = const Center(child: AppLoadingIndicator());
+      content = const AppListSkeleton();
     } else if (l.error != null && l.items.isEmpty) {
       content = ErrorRetry(
         message: t('تعذّر تحميل البيانات', 'Could not load the data'),
         onRetry: () => p.load(tab),
       );
     } else if (l.items.isEmpty) {
-      content = RefreshIndicator(
+      content = AppRefresh(
         onRefresh: () => p.load(tab),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -522,7 +526,7 @@ class _TabBody extends StatelessWidget {
           if (n.metrics.pixels >= n.metrics.maxScrollExtent - 300) p.loadMore(tab);
           return false;
         },
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: () => p.load(tab),
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -778,11 +782,11 @@ class _FilterBar extends StatelessWidget {
                         end: -2,
                         child: Container(
                           padding: const EdgeInsets.all(5),
-                          decoration: const BoxDecoration(color: _red, shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: _red, shape: BoxShape.circle),
                           child: Text(
                             '${f.activeCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: c.onHero,
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                             ),
@@ -919,7 +923,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 12.5,
-              color: selected ? Colors.white : c.textDark)),
+              color: selected ? c.onHero : c.textDark)),
       selected: selected,
       showCheckmark: false,
       selectedColor: color ?? c.primary,
@@ -1065,7 +1069,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     Navigator.pop(context);
                   },
                   child: Text(t('تطبيق', 'Apply'),
-                      style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+                      style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
                 ),
               ),
             ],
@@ -1297,9 +1301,9 @@ class _PaymentCardState extends State<_PaymentCard> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.approve,
-                    icon: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                    icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
                     label: Text(t('موافقة', 'Approve'),
-                        style: const TextStyle(color: Colors.white, fontFamily: 'tajawal')),
+                        style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
                     style: ElevatedButton.styleFrom(backgroundColor: _green),
                   ),
                 ),
@@ -1341,12 +1345,12 @@ class _PaymentCardState extends State<_PaymentCard> {
               padding: const EdgeInsets.only(top: 10),
               child: Row(
                 children: [
-                  Text(_open ? t('إخفاء التفاصيل', 'Hide details') : t('عرض التفاصيل', 'Show details'),
+                  Flexible(child: Text(_open ? t('إخفاء التفاصيل', 'Hide details') : t('عرض التفاصيل', 'Show details'),
                       style: TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
-                          color: c.primary)),
+                          color: c.primary))),
                   Icon(_open ? Icons.expand_less_rounded : Icons.expand_more_rounded,
                       size: 18, color: c.primary),
                 ],
@@ -1455,10 +1459,10 @@ class _ProofBlock extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: Colors.black54,
+                          color: c.heroShade.withValues(alpha: 0.54),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.zoom_in_rounded, size: 14, color: Colors.white),
+                        child: Icon(Icons.zoom_in_rounded, size: 14, color: c.onHero),
                       ),
                     ),
                   ],
@@ -1492,7 +1496,7 @@ class _ProofBlock extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(asStr(proof['rejection_reason']),
-                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 12, color: _red)),
+                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: _red)),
                   ),
               ],
             ),
