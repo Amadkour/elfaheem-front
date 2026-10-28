@@ -48,7 +48,11 @@ void main() {
       expect(learningReasonLabel('wrong'), 'Wrong');
       expect(learningReasonLabel('too_easy'), 'Too easy');
       expect(suggestionKinds, ['qa_pair', 'eval_item', 'threshold', 'router_rule', 'exam_exemplar', 'exam_rule']);
-      expect(modelKinds, ['reranker', 'thresholds', 'router_rules']);
+      expect(modelKinds, ['reranker', 'thresholds', 'router_rules', 'writer', 'examgen']);
+      expect(modelKindLabel('writer'), 'Answer writer (LoRA)');
+      expect(metricLabel('faithfulness'), 'Faithfulness');
+      expect(metricLowerIsBetter('latency_p95_s'), isTrue);
+      expect(metricLowerIsBetter('tok_s'), isFalse);
     });
   });
 

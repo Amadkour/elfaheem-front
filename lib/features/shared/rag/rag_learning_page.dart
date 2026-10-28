@@ -5,7 +5,7 @@
 //     questions' accept / edit / reject rates and why they were rejected.
 //   · Suggestions inbox, grouped by kind with their support and the questions behind them: Accept (a Q&A pair opens
 //     the Q&A sheet prefilled; the others confirm what accepting does) · Dismiss.
-//   · Model versions (platform admins): reranker / thresholds / router rules with their metrics; Promote confirms
+//   · Model versions (platform admins): reranker / thresholds / router rules / LoRA writer + question generator (D-070) with their metrics; Promote confirms
 //     with the metric deltas against the live version, Rollback returns to the previous one.
 //   · An organization's managers see their organization's suggestions and the opt-in "Help improve the shared
 //     assistant" (`learning.contribute`, off by default).

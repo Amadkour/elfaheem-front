@@ -99,12 +99,14 @@ String suggestionAcceptText(String kind) => switch (kind) {
       _ => t('يُعتمد هذا الاقتراح.', 'The suggestion is accepted.'),
     };
 
-const modelKinds = ['reranker', 'thresholds', 'router_rules'];
+const modelKinds = ['reranker', 'thresholds', 'router_rules', 'writer', 'examgen'];
 
 String modelKindLabel(String kind) => switch (kind) {
       'reranker' => t('مُعيد الترتيب', 'Reranker'),
       'thresholds' => t('عتبات البحث', 'Thresholds'),
       'router_rules' => t('قواعد التوجيه', 'Router rules'),
+      'writer' => t('كاتب الإجابات (LoRA)', 'Answer writer (LoRA)'),
+      'examgen' => t('مولّد الأسئلة (LoRA)', 'Question generator (LoRA)'),
       _ => kind,
     };
 
@@ -450,6 +452,15 @@ String metricLabel(String key) => switch (key) {
       'retrieval_at_5' || 'recall_at_5' => t('الاسترجاع @5', 'Retrieval @5'),
       'mrr' => 'MRR',
       'latency_ms' || 'p50_ms' => t('الزمن (م.ث)', 'Latency (ms)'),
+      'latency_p95_s' => t('زمن p95 (ث)', 'p95 latency (s)'),
+      'latency_p50_s' => t('زمن p50 (ث)', 'p50 latency (s)'),
+      'injection' => t('مقاومة حقن التعليمات', 'Injection resistance'),
+      'faithfulness' => t('الالتزام بالمصادر', 'Faithfulness'),
+      'citation_precision' => t('دقة الإحالات', 'Citation precision'),
+      'tok_s' => t('رمز/ثانية', 'Tokens/s'),
+      'checker_pass' => t('اجتياز المدقق', 'Checker pass'),
+      'accept_proxy' => t('القبول المتوقع', 'Expected acceptance'),
+      'language_ok' => t('اللغة الصحيحة', 'Right language'),
       _ => key.replaceAll('_', ' '),
     };
 
