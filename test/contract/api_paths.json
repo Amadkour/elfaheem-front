@@ -1241,6 +1241,7 @@
   "POST /api/v1/rag/qa",
   "POST /api/v1/rag/qa/from-query/{query_id:int}",
   "POST /api/v1/rag/qa/{qa_id:int}/toggle",
+  "POST /api/v1/rag/queries/{query_id:int}/delivery",
   "POST /api/v1/rag/queries/{query_id:int}/feedback",
   "PUT /api/v1/rag/admin/alerts/rules",
   "PUT /api/v1/rag/admin/settings",
