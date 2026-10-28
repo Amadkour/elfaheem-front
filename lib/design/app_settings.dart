@@ -137,7 +137,7 @@ class AppSettingsTile extends StatelessWidget implements AppSettingsSearchable {
           ] else if (onTap != null) ...[
             const SizedBox(width: 6),
             Icon(
-              Directionality.of(context) == TextDirection.rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+              Icons.chevron_right_rounded, // matchTextDirection: Flutter mirrors it in RTL
               color: c.textLight,
               size: 22,
             ),
