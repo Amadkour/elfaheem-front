@@ -194,6 +194,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
               hint: '••••••••',
               icon: Icons.lock_outline_rounded,
               suffix: IconButton(
+                tooltip: _hidden ? _t('إظهار كلمة المرور', 'Show password') : _t('إخفاء كلمة المرور', 'Hide password'),
                 onPressed: () => setState(() => _hidden = !_hidden),
                 icon: Icon(_hidden ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 19, color: c.textLight),
               )),
