@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/app_locale.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/core/providers.dart';
@@ -83,7 +84,8 @@ final _blocked = <(String, String, bool Function(String label), String)>[
           'dark surface (2:1)'),
 ];
 
-/// The app's real theme (light or dark) around [child], with the language's direction.
+/// The app's real theme (light or dark) and locale (main.dart: `appLocale`, core/app_locale.dart) around [child],
+/// with the language's direction.
 Widget a11yHost(Widget child, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
   final rtl = AppConfig.lang == 'ar';
@@ -94,6 +96,9 @@ Widget a11yHost(Widget child, {required bool dark}) {
       theme: theme.materialTheme(dark: false),
       darkTheme: theme.materialTheme(dark: true),
       themeMode: dark ? ThemeMode.dark : ThemeMode.light,
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       builder: (context, w) => Directionality(textDirection: rtl ? TextDirection.rtl : TextDirection.ltr, child: w!),
       home: Scaffold(body: child),
     ),
@@ -299,11 +304,11 @@ void main() {
     });
   });
 
-  // RTL reading order. The app's Localizations are English-only (main.dart: every supported locale is 'en') and
-  // only a Directionality in MaterialApp.builder turns pages RTL, so an ancestor semantics node keeps LTR and a
-  // screen reader reads every row left to right in Arabic: a section title's action ("See all") BEFORE the title.
-  // The fix belongs in main.dart's builder (dirty in another change): a Semantics(textDirection:) under its
-  // Directionality. The first test is the app as it is (skipped until that fix lands); the second proves the fix.
+  // RTL reading order. When the app's Localizations were English-only (every supported locale was 'en') and only a
+  // Directionality in MaterialApp.builder turned pages RTL, the root semantics node (Localizations') kept LTR and
+  // a screen reader read every row left to right in Arabic: a section title's action ("See all") BEFORE the title.
+  // main.dart now sets the MaterialApp locale to the app language (core/app_locale.dart, mirrored by [a11yHost]).
+  // The first test is the app as it is; the second shows that an explicit Semantics(textDirection:) also does it.
   Future<void> readingOrder(WidgetTester tester, {required bool fixed}) async {
     final handle = tester.ensureSemantics();
     addTearDown(() {
@@ -341,10 +346,9 @@ void main() {
   }
 
   testWidgets('reading order follows the language in the app as it is (a section title, then its action)',
-      (tester) => readingOrder(tester, fixed: false),
-      skip: true); // blocked: lib/main.dart (dirty) — see the comment above
+      (tester) => readingOrder(tester, fixed: false));
 
-  testWidgets('reading order: a Semantics(textDirection:) under the page direction fixes it', (tester) => readingOrder(tester, fixed: true));
+  testWidgets('reading order: a Semantics(textDirection:) under the page direction does it too', (tester) => readingOrder(tester, fixed: true));
 
   group('auth', () {
     late StorageService storage;

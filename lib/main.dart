@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/version_check_service.dart';
+import 'package:flutter_education_app/core/app_locale.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/forget_screen.dart';
 import 'package:flutter_education_app/features/student/dashboard/dashboard_screen.dart';
@@ -52,7 +53,6 @@ import 'features/shared/notification/notification_service.dart';
 import 'features/shared/notification/notifications_screen.dart';
 import 'features/shared/course_profile/course_profile_screen.dart';
 import 'features/shared/calendar/calendar_screen.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'features/shared/profile/change_password_widget.dart';
 import 'features/shared/profile/update_account_widget.dart';
 import 'features/shared/subscription/subscription_screen.dart';
@@ -517,6 +517,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         : (offlineStart ? '/downloads' : auth.homeRoute)));
 
     final isDark = context.watch<ProfileProvider>().darkMode;
+    // the framework's locale follows the app language (core/app_locale.dart): rebuild the MaterialApp on a switch
+    context.watch<LangProvider>();
     // ONE app name everywhere: the name the super admin set on the dashboard ("About us" → AppIdentity,
     // cached for offline/first frame); remote config is only the fallback before the very first fetch.
     final appName = AppIdentity.instance.name.isNotEmpty
@@ -560,11 +562,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
             }
             return [_router(RouteSettings(name: name))!];
           },
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
+          // Arabic or English as the person picked (core/app_locale.dart): the root semantics node reads Arabic
+          // rows right to left, and Material's own labels / pickers speak the app language.
+          locale: appLocale,
+          supportedLocales: appSupportedLocales,
+          localizationsDelegates: appLocalizationsDelegates,
           // ViewAsBanner shows the "View only: <name> · Back to admin" bar above EVERY screen while a
           // super-admin is in view-as mode (it renders nothing otherwise).
           // GuestBanner is the same idea for a guest ("Browsing as guest · Login").
@@ -606,11 +608,6 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
               ),
             ),
           ))))),
-          supportedLocales: context
-              .read<LangProvider>()
-              .languages
-              .map((_) => const Locale('en', ''))
-              .toList(),
         ),
       ),
     ));

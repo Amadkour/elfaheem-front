@@ -43,8 +43,8 @@ class AboutTermsProvider extends BaseProvider {
 
   // ── Language helper ───────────────────────────────────────────────────────
   /// The APP language ('ar' | 'en').
-  /// (Localizations.localeOf is NOT usable here: the MaterialApp only registers an English
-  /// locale, so it always answered 'en' whatever language the user picked in the app.)
+  /// (AppConfig.lang, the same value the MaterialApp locale follows (core/app_locale.dart). That locale used to be
+  /// English-only, which is why this never read Localizations.localeOf.)
   static String currentLang(BuildContext context) => AppConfig.lang == 'en' ? 'en' : 'ar';
 
   /// Language of the data currently held (empty = nothing loaded yet).
