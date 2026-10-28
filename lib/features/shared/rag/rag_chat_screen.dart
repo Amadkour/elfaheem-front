@@ -565,7 +565,7 @@ class RagChatViewState extends State<RagChatView> {
                 onRate: a.smallTalk ? null : (helpful) => _rate(a, helpful),
                 onFollowUp: identical(a, last) && !_sending ? send : null,
                 onNavigate: widget.onNavigate,
-                onCitationOpen: (ci) => _learn.signal(a.id, 'chat_citation_open', {'n': ci.n, 'document_id': ci.documentId, 'kind': ci.kind}),
+                onCitationOpen: (ci) => _learn.signal(a.id, 'chat_citation_open', {'n': ci.n, if (ci.documentId > 0) 'document_id': ci.documentId, 'kind': ci.kind}),
                 onDeepLink: (ci) => _learn.signal(a.id, 'chat_deeplink', {'link': ci.deepLink ?? ''}),
                 onSupport: a.smallTalk || a.found != false || AppConfig.disableList.contains('profile.help_center') ? null : () => _support(a)),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
