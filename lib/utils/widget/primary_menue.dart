@@ -69,7 +69,7 @@ class MyPrimaryMenu extends StatelessWidget {
                         ),
                         trailing:(initValue?['text']==options[i]['text'])?
                         Icon( CupertinoIcons.check_mark_circled_solid,color: context.colors.primary,):
-                        Icon( CupertinoIcons.circle,color: context.colors.secondText.withAlpha(100),),
+                        Icon( CupertinoIcons.circle,color: context.colors.secondText,),
                         onTap: () => onChange(i),
                       ),
                     ),

@@ -253,7 +253,10 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
 
   Color get purple => _model?.purple ?? AppTheme.purple;
 
-  Color get secondText => _model?.secondText ?? AppTheme.secondText;
+  /// Secondary copy (subtitles, hints, unselected labels): WCAG AA on this mode's surfaces.
+  Color get secondText => isDark
+      ? (_model?.darkSecondText ?? AppTheme.darkSecondText)
+      : (_model?.secondText ?? AppTheme.secondText);
 
   // ══════════════════════════════════════════════════════════════════════
   // CHARCOAL TONES  (same in both modes)

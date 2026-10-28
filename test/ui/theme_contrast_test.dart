@@ -105,6 +105,9 @@ void main() {
       expect(contrastRatio(_oldDarkTextLight, AppTheme.darkCard), lessThan(4.5)); // 3.20
       expect(passesContrast(_oldTextLight, _lightSurfaces), isFalse);
       expect(passesContrast(_oldDarkTextLight, _darkSurfaces), isFalse);
+      // the old single secondText (same value as the old textLight) failed in BOTH modes
+      expect(passesContrast(_oldTextLight, _lightSurfaces), isFalse);
+      expect(contrastRatio(_oldTextLight, AppTheme.darkInput), lessThan(4.5));
     });
   });
 
@@ -113,12 +116,15 @@ void main() {
       for (final s in _lightSurfaces) {
         expect(contrastRatio(AppTheme.textLight, s), greaterThanOrEqualTo(4.5), reason: 'textLight on ${_hex(s)}');
         expect(contrastRatio(AppTheme.textMedium, s), greaterThanOrEqualTo(4.5), reason: 'textMedium on ${_hex(s)}');
+        expect(contrastRatio(AppTheme.secondText, s), greaterThanOrEqualTo(4.5), reason: 'secondText on ${_hex(s)}');
       }
       for (final s in _darkSurfaces) {
         expect(contrastRatio(AppTheme.darkTextLight, s), greaterThanOrEqualTo(4.5),
             reason: 'darkTextLight on ${_hex(s)}');
         expect(contrastRatio(AppTheme.darkTextMuted, s), greaterThanOrEqualTo(4.5),
             reason: 'darkTextMuted on ${_hex(s)}');
+        expect(contrastRatio(AppTheme.darkSecondText, s), greaterThanOrEqualTo(4.5),
+            reason: 'darkSecondText on ${_hex(s)}');
       }
     });
 
@@ -175,6 +181,23 @@ void main() {
       expect(m.darkTextLight, AppTheme.darkTextLight);
       expect(m.textMedium, AppTheme.textMedium);
       expect(m.darkTextMuted, AppTheme.darkTextMuted);
+      expect(m.secondText, AppTheme.secondText);
+      // no `dark_second_text` from the server: dark mode follows the theme's dark_text_light
+      expect(m.darkSecondText, AppTheme.darkTextLight);
+    });
+
+    test('secondText: the stored old value is nudged per mode, an explicit dark value is honoured and guarded', () {
+      final m = ThemeConfigModel.fromJson(_payload({'second_text': '#8A8EA8'}));
+      expect(passesContrast(m.secondText, _lightSurfaces), isTrue);
+      expect(relativeLuminance(m.secondText), lessThan(relativeLuminance(_oldTextLight)));
+      expect(passesContrast(m.darkSecondText, _darkSurfaces), isTrue);
+
+      final ok = ThemeConfigModel.fromJson(_payload({'dark_second_text': '#B4B8D4'}));
+      expect(ok.darkSecondText, const Color(0xFFB4B8D4));
+      final bad = ThemeConfigModel.fromJson(_payload({'dark_second_text': '#3A3F66'}));
+      expect(passesContrast(bad.darkSecondText, _darkSurfaces), isTrue);
+      // the cache keeps the dark value
+      expect(ThemeConfigModel.fromJson(bad.toJson()).darkSecondText, bad.darkSecondText);
     });
 
     test('a stored old / admin-chosen low-contrast value is nudged until it passes', () {

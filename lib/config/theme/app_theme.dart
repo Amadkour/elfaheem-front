@@ -43,7 +43,8 @@ class AppTheme {
   static const Color success         = Color(0xFF2FB67C);
   static const Color danger          = Color(0xFFF0435F);
   static const Color warning         = Color(0xFFF2A93B);
-  static const Color secondText      = Color(0xFF8A8EA8);
+  static const Color secondText      = Color(0xFF696E8E);   // light mode; 4.5:1+ on every light surface (WCAG AA)
+  static const Color darkSecondText  = Color(0xFF8F93B2);   // dark mode; 4.5:1+ on every dark surface (WCAG AA)
   static const Color purple          = Color(0xFF7C5CFF);
 
   // ── Tints & shadow base colours ───────────────────────────────────────────

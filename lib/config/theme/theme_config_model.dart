@@ -32,7 +32,9 @@ class ThemeConfigModel {
   final Color danger;
   final Color warning;
   final Color purple;
-  final Color secondText;
+  final Color secondText; // light mode
+  /// Dark-mode [secondText]: `dark_second_text`, else the theme's `dark_text_light`.
+  final Color darkSecondText;
 
   // ── Light surfaces ───────────────────────────────────────────────────────
   final Color background;
@@ -116,6 +118,7 @@ class ThemeConfigModel {
     required this.warning,
     required this.purple,
     required this.secondText,
+    required this.darkSecondText,
     required this.background,
     required this.cardBg,
     required this.textFieldBackground,
@@ -215,7 +218,9 @@ class ThemeConfigModel {
       danger: _c(j['danger'] as String),
       warning: _c(j['warning'] as String),
       purple: _c(j['purple'] as String),
-      secondText: _c(j['second_text'] as String),
+      secondText: readableText(j, 'second_text', lightTextSurfaceKeys),
+      darkSecondText: readableText(j, j['dark_second_text'] is String ? 'dark_second_text' : 'dark_text_light',
+          darkTextSurfaceKeys),
 
       // Light surfaces
       background: _c(j['background'] as String),
@@ -299,6 +304,7 @@ class ThemeConfigModel {
     'warning': _hex(warning),
     'purple': _hex(purple),
     'second_text': _hex(secondText),
+    'dark_second_text': _hex(darkSecondText),
     'background': _hex(background),
     'surface_card': _hex(surfaceCard),
     'card_bg': _hex(cardBg),
