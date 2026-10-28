@@ -526,15 +526,18 @@ class RagChatViewState extends State<RagChatView> {
     ]);
   }
 
-  Widget _chat(BuildContext context) {
+  // the messages and the question box share one centred column of at most kRagChatMaxWidth (desktop)
+  Widget _chat(BuildContext context) => LayoutBuilder(
+      builder: (context, box) => _chatColumn(context, ragGutter(box.maxWidth, min: widget.compact ? 12.0 : 16.0)));
+
+  Widget _chatColumn(BuildContext context, double side) {
     final c = context.colors;
-    final side = widget.compact ? 12.0 : 16.0;
     final last = _items.isEmpty ? null : _items.last;
     final retention = _sessions == true && !_loading && _items.isEmpty ? retentionText(_retentionDays, AppConfig.lang) : '';
     return Column(children: [
       Expanded(
         child: ListView(controller: _scroll, padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
-          AppBanner(icon: Icons.menu_book_rounded, color: c.primary, text: _scopeText()),
+          AppBanner(icon: Icons.menu_book_rounded, color: appInk(context, c.primary), text: _scopeText()),
           const SizedBox(height: 10),
           if (_loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
           if (!_loading && _items.isEmpty && _error == null)
@@ -637,7 +640,7 @@ class RagStarterPrompts extends StatelessWidget {
           Container(
             width: 56, height: 56, alignment: Alignment.center,
             decoration: BoxDecoration(color: c.primary.withValues(alpha: .1), shape: BoxShape.circle),
-            child: Icon(Icons.auto_awesome_rounded, color: c.primary, size: 28),
+            child: Icon(Icons.auto_awesome_rounded, color: appInk(context, c.primary), size: 28),
           ),
           const SizedBox(height: 10),
           Text(t('كيف أساعدك اليوم؟', 'How can I help you today?'), textAlign: TextAlign.center, style: appText(16, w: FontWeight.w800, c: c.textDark)),
@@ -687,7 +690,7 @@ class _StageDot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = state == 0 ? c.textLight : (state == 1 ? c.primary : c.success);
+    final col = state == 0 ? c.textLight : appInk(context, state == 1 ? c.primary : c.success);
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(state == 2 ? Icons.check_circle_rounded : (state == 1 ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded), size: 14, color: col),
       const SizedBox(width: 3),
@@ -822,13 +825,14 @@ class RagAnswerBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final ink = appInk(context, c.primary); // the accent as text: readable on the dark card too
     final base = Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5);
     final blocks = answerBlocks(text);
     if (blocks.isEmpty) return Text(text, style: base);
     TextSpan spans(List<AnswerRun> runs) => TextSpan(children: [
           for (final r in runs)
             r.cite != null
-                ? TextSpan(text: r.text, style: TextStyle(color: c.primary, fontWeight: FontWeight.w700, fontSize: 12))
+                ? TextSpan(text: r.text, style: TextStyle(color: ink, fontWeight: FontWeight.w700, fontSize: 12))
                 : TextSpan(text: r.text, style: r.bold ? const TextStyle(fontWeight: FontWeight.w800) : null),
         ]);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -841,7 +845,7 @@ class RagAnswerBody extends StatelessWidget {
                   SizedBox(
                       width: 22,
                       child: Text(blocks[i].kind == AnswerBlockKind.bullet ? '•' : '${blocks[i].number}.',
-                          style: base?.copyWith(color: c.primary, fontWeight: FontWeight.w800))),
+                          style: base?.copyWith(color: ink, fontWeight: FontWeight.w800))),
                   Expanded(child: Text.rich(spans(blocks[i].runs), style: base)),
                 ]),
         ),
@@ -874,8 +878,8 @@ class _Source extends StatelessWidget {
           excludeSemantics: true,
           child: CircleAvatar(radius: 12, backgroundColor: c.primary.withValues(alpha: 0.12),
               child: citation.isQa
-                  ? Icon(Icons.question_answer_outlined, size: 13, color: c.primary)
-                  : Text('${citation.n}', style: TextStyle(fontSize: 11, color: c.primary, fontWeight: FontWeight.w700))),
+                  ? Icon(Icons.question_answer_outlined, size: 13, color: appInk(context, c.primary))
+                  : Text('${citation.n}', style: TextStyle(fontSize: 11, color: appInk(context, c.primary), fontWeight: FontWeight.w700))),
         ),
         title: Text(citation.label, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.bodySmall),
         children: [

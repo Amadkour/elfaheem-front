@@ -51,7 +51,7 @@ class RagSessionsPanel extends StatelessWidget {
         padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 6, 4),
         child: Row(children: [
           Expanded(child: Text('rag_chats'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark))),
-          IconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNew, icon: Icon(Icons.add_comment_outlined, color: c.primary)),
+          IconButton(tooltip: 'rag_new_chat'.tr, onPressed: onNew, icon: Icon(Icons.add_comment_outlined, color: appInk(context, c.primary))),
           if (onClose != null) IconButton(tooltip: MaterialLocalizations.of(context).closeButtonLabel, onPressed: onClose, icon: const Icon(Icons.close_rounded)),
         ]),
       ),
@@ -115,7 +115,7 @@ class RagSessionRow extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 8),
           child: Row(children: [
-            Icon(current ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded, size: 18, color: current ? c.primary : c.textLight),
+            Icon(current ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded, size: 18, color: current ? appInk(context, c.primary) : c.textLight),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

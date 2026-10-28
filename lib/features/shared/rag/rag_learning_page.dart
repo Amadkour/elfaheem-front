@@ -24,13 +24,36 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../exam_engine/exam_engine_api.dart' show EngineResult;
-import 'rag_chat.dart' show ragParseUtc;
+import 'rag_chat.dart' show kRagPageMaxWidth, ragGutter, ragParseUtc;
 import 'rag_learning.dart';
 import 'rag_qa_admin.dart' show QaApi, QaPair, QaPairSheet;
 
 String _pct(double? r) => r == null ? '—' : '${(r * 100).round()}%';
 
 // ── stats ────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/// A row of stat tiles / cards that FILLS the width: as many columns as fit at [minTile], never more than there
+/// are children (AppGrid caps at 6, so 4 tiles on a desktop stopped at two thirds of the width). [builder] gets
+/// the tile width, for content that lines up with the tiles below them.
+class RagTileGrid extends StatelessWidget {
+  const RagTileGrid({super.key, required this.children, this.minTile = 160, this.spacing = 12});
+  final List<Widget> children;
+  final double minTile, spacing;
+
+  /// Columns for [count] children in [width] (at least 1).
+  static int columns(double width, int count, double minTile) => (width / minTile).floor().clamp(1, count < 1 ? 1 : count);
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final cols = columns(box.maxWidth, children.length, minTile);
+      final w = (box.maxWidth - spacing * (cols - 1)) / cols;
+      return Wrap(spacing: spacing, runSpacing: spacing, children: [
+        for (final ch in children) SizedBox(width: w, child: ch),
+      ]);
+    });
+  }
+}
 
 class LearningStatsView extends StatelessWidget {
   const LearningStatsView({super.key, required this.stats});
@@ -41,14 +64,14 @@ class LearningStatsView extends StatelessWidget {
     final c = context.colors;
     final s = stats;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      AppGrid(minTile: 150, padding: EdgeInsets.zero, children: [
+      RagTileGrid(minTile: 150, children: [
         AppStatTile(icon: Icons.how_to_vote_rounded, label: t('التقييمات', 'Votes'), value: appCompactNumber(s.chatVotes)),
         AppStatTile(icon: Icons.thumb_up_alt_rounded, label: t('مفيدة', 'Helpful'), value: _pct(s.helpfulRate), color: c.success),
         AppStatTile(icon: Icons.replay_rounded, label: t('أُعيدت صياغتها', 'Rephrased'), value: _pct(s.rephraseRate), color: c.warning),
         AppStatTile(icon: Icons.inbox_rounded, label: t('اقتراحات مفتوحة', 'Open suggestions'), value: '${s.suggestionsOpen}'),
       ]),
       const SizedBox(height: 12),
-      AppGrid(minTile: 300, padding: EdgeInsets.zero, children: [
+      RagTileGrid(minTile: 300, children: [
         AppCard(
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Text(t('لماذا لم تُفد الإجابات', 'Why answers did not help'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
@@ -90,7 +113,7 @@ class _ShareRow extends StatelessWidget {
         const SizedBox(width: 8),
         SizedBox(width: 90, child: AppProgressBar(value: (rate ?? 0) * 100, color: color)),
         const SizedBox(width: 6),
-        SizedBox(width: 44, child: Text(_pct(rate), textAlign: TextAlign.end, style: appText(12, c: c.textMedium))),
+        SizedBox(width: 44, child: Align(alignment: AlignmentDirectional.centerEnd, child: Text(_pct(rate), textDirection: TextDirection.ltr, style: appText(12, c: c.textMedium)))),
       ]),
     );
   }
@@ -453,11 +476,14 @@ class _RagLearningBodyState extends State<RagLearningBody> {
     }
     return AppRefresh(
       onRefresh: _load,
-      child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
+      // a centred column of at most kRagPageMaxWidth (the console's tab is the full desktop width)
+      child: LayoutBuilder(builder: (context, box) {
+      final side = ragGutter(box.maxWidth, maxWidth: kRagPageMaxWidth);
+      return ListView(padding: EdgeInsets.fromLTRB(side, 12, side, 24), children: [
         if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
         AppBanner(
             icon: Icons.school_outlined,
-            color: c.primary,
+            color: appInk(context, c.primary),
             text: t('يتعلم المساعد من الاستخدام الحقيقي، لكن لا يُنشر شيء دون موافقتك.', 'The assistant learns from real use, but nothing goes live without your approval.')),
         if (!_platform && _contribute != null) ...[
           const SizedBox(height: 12),
@@ -485,7 +511,8 @@ class _RagLearningBodyState extends State<RagLearningBody> {
               subtitle: t('لا يُعتمد إصدار إلا إن لم يتراجع في بوابة التقييم', 'A version is promoted only if it does not regress on the evaluation gate')),
           LearningModelsView(models: _models, busy: _busyModels, onPromote: _promote, onRollback: _rollback),
         ],
-      ]),
+      ]);
+      }),
     );
   }
 }

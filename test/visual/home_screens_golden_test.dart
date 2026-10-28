@@ -1,7 +1,7 @@
 // VISUAL review renders (not a CI suite: CI lists its test folders and test/visual is not one of them).
 //
-// Every role's home body, the RAG chat beside its conversations panel and the RAG console's Health block, drawn
-// with the app's real fonts and theme at 390x844 (phone) and 1440x900 (desktop), Arabic and English, light and
+// Every role's home body, the RAG chat beside its conversations panel, the RAG console's Health block and its
+// Learning tab's stats, drawn with the app's real fonts and theme at 390x844 (phone) and 1440x900 (desktop), Arabic and English, light and
 // dark, into PNG files under test/visual/goldens/. A page taller than the window is drawn whole (the window
 // grows to the content), so one file shows the full screen.
 //
@@ -36,6 +36,8 @@ import 'package:flutter_education_app/features/parent/parent_overview_page.dart'
 import 'package:flutter_education_app/features/shared/rag/rag_admin_console.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_learning.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_learning_page.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
@@ -578,7 +580,10 @@ Widget _ragChat(Size size) {
   });
   return Builder(builder: (context) {
     final c = context.colors;
-    final chat = ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 16), children: [
+    // the chat column as RagChatView draws it: centred, at most kRagChatMaxWidth
+    final chat = LayoutBuilder(builder: (context, box) {
+      final side = ragGutter(box.maxWidth);
+      return ListView(padding: EdgeInsets.fromLTRB(side, 8, side, 16), children: [
       AppBanner(
           icon: Icons.menu_book_rounded,
           color: c.primary,
@@ -587,6 +592,7 @@ Widget _ragChat(Size size) {
       const SizedBox(height: 10),
       RagAnswerCard(answer: answer, onRate: (_) {}, onFollowUp: (_) {}),
     ]);
+    });
     final wide = size.width >= 1024;
     if (!wide) {
       // a phone: the chat; the conversations open as a sheet (drawn under it here)
@@ -611,6 +617,25 @@ Widget _ragChat(Size size) {
     ]);
   });
 }
+
+// RAG console Learning tab (stats), in the tab's centred column
+Widget _ragLearning() => LayoutBuilder(builder: (context, box) {
+      final side = ragGutter(box.maxWidth, maxWidth: kRagPageMaxWidth);
+      return SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(side, 16, side, 16),
+        child: LearningStatsView(
+            stats: LearningStats.fromJson({
+          'chat': {
+            'votes': 412,
+            'helpful_rate': 0.86,
+            'rephrase_rate': 0.07,
+            'reasons': {'wrong': 18, 'incomplete': 22, 'outdated': 6, 'not_relevant': 11},
+          },
+          'exam': {'items': 230, 'accept_rate': 0.64, 'edit_rate': 0.27, 'reject_rate': 0.09, 'reasons': {'off_topic': 8, 'wrong_answer': 9, 'too_easy': 4}},
+          'suggestions_open': 5,
+        })),
+      );
+    });
 
 // RAG console Health block
 Map<String, dynamic> _monitoring() => {
@@ -705,6 +730,10 @@ void main() {
 
   testWidgets('rag chat with sessions panel', (tester) async {
     await _renderAll(tester, 'rag_chat', _ragChat);
+  });
+
+  testWidgets('rag console learning stats', (tester) async {
+    await _renderAll(tester, 'rag_learning', (_) => _ragLearning());
   });
 
   testWidgets('rag console health block', (tester) async {

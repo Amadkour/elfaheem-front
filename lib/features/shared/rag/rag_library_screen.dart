@@ -287,7 +287,7 @@ class RagLibraryOverview extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppBanner(
           icon: Icons.smart_toy_rounded,
-          color: c.primary,
+          color: appInk(context, c.primary),
           text: t('يجيب مساعد التطبيق كل المستخدمين من هذه المستندات، ومن الشروط و«عن التطبيق» و«دليل ميزات التطبيق» (تُقرأ تلقائياً). عدّل الدليل لتحدد ما يشرحه المساعد عن كل ميزة ولمن.',
               'The app assistant answers every user from these documents and from the terms, About and "App features guide" pages (read automatically). Edit the guide to decide what it explains about each feature, and for whom.')),
       const SizedBox(height: 12),
@@ -369,7 +369,7 @@ class RagDocumentCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(Icons.description_outlined, color: c.primary),
+          Icon(Icons.description_outlined, color: appInk(context, c.primary)),
           const SizedBox(width: 10),
           Expanded(child: Text(doc.displayTitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14.5, w: FontWeight.w800, c: c.textDark))),
           const SizedBox(width: 8),
@@ -976,7 +976,7 @@ class RagBatchUploadForm extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(children: [
-            Icon(i < done ? Icons.check_circle_rounded : Icons.insert_drive_file_outlined, size: 20, color: i < done ? c.success : c.primary),
+            Icon(i < done ? Icons.check_circle_rounded : Icons.insert_drive_file_outlined, size: 20, color: appInk(context, i < done ? c.success : c.primary)),
             const SizedBox(width: 8),
             Expanded(child: Text(files[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, c: c.textDark))),
             const SizedBox(width: 6),
@@ -1032,7 +1032,7 @@ class RagConflictQuestion extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Icon(mode == m ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded, size: 20,
-                    color: mode == m ? c.primary : c.textLight),
+                    color: mode == m ? appInk(context, c.primary) : c.textLight),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

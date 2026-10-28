@@ -35,7 +35,7 @@ import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
 import 'rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
-import 'rag_learning_page.dart' show RagLearningBody;
+import 'rag_learning_page.dart' show RagLearningBody, RagTileGrid;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_library_screen.dart' show RagLibraryScreen;
 import 'rag_qa_admin.dart';
@@ -674,7 +674,7 @@ class RagOverviewView extends StatelessWidget {
                     ? null
                     : IconButton(
                         tooltip: t('اعتمد إجابة لهذا السؤال', 'Promote to Q&A'),
-                        icon: Icon(Icons.playlist_add_check_circle_outlined, color: c.primary),
+                        icon: Icon(Icons.playlist_add_check_circle_outlined, color: appInk(context, c.primary)),
                         onPressed: () => onPromote!(asInt(nf['query_id']))),
               ),
           ]),
@@ -719,9 +719,12 @@ class RagHealthBlock extends StatelessWidget {
     final palette = appChartPalette(context);
     final hint = t('مقارنة بالنصف الأول من الفترة', 'vs the first half of the period');
     final recent = m.recent(14);
+    return LayoutBuilder(builder: (context, box) {
+    // a wide window: the four tiles fill the row and the latency table takes the width of two of them
+    final wide = box.maxWidth >= 1100;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       AppSectionTitle(t('الصحة', 'Health'), subtitle: t('كيف أُجيب كل سؤال خلال آخر ${m.days} يوماً', 'How every question of the last ${m.days} days was answered')),
-      AppGrid(minTile: 160, padding: EdgeInsets.zero, children: [
+      RagTileGrid(minTile: 160, children: [
         AppTrendTile(
             label: t('الأسئلة', 'Questions'), value: appCompactNumber(m.questions), delta: m.questionsDelta, spark: m.questionsSpark,
             deltaHint: hint, icon: Icons.forum_rounded, color: palette[0]),
@@ -732,7 +735,7 @@ class RagHealthBlock extends StatelessWidget {
             label: t('من الذاكرة المؤقتة', 'Cache hits'), value: ragPctText(m.cacheHitRate), delta: m.cacheDelta, spark: m.cacheSpark,
             deltaHint: hint, icon: Icons.bolt_rounded, color: palette[2 % palette.length]),
         AppTrendTile(
-            label: t('إجابات معتمدة مباشرة', 'Direct Q&A'), value: ragPctText(m.qaDirectRate), delta: m.qaDirectDelta, spark: m.qaDirectSpark,
+            label: t('رد معتمد مباشر', 'Direct Q&A'), value: ragPctText(m.qaDirectRate), delta: m.qaDirectDelta, spark: m.qaDirectSpark,
             deltaHint: hint, icon: Icons.verified_rounded, color: palette[3 % palette.length]),
       ]),
       const SizedBox(height: 8),
@@ -760,7 +763,11 @@ class RagHealthBlock extends StatelessWidget {
         ]),
       ),
       const SizedBox(height: 12),
-      AppCard(
+      Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: wide ? box.maxWidth / 2 - 6 : double.infinity),
+          child: AppCard(
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(t('زمن الإجابة حسب المسار', 'Answer time by path'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
           const SizedBox(height: 8),
@@ -771,8 +778,11 @@ class RagHealthBlock extends StatelessWidget {
           const Divider(height: 12),
           RagLatencyRow(label: t('الكل', 'All'), questions: '${m.questions}', p50: ragMsText(m.p50), p95: ragMsText(m.p95), header: true),
         ]),
+          ),
+        ),
       ),
     ]);
+    });
   }
 }
 
@@ -793,7 +803,7 @@ class _RatePill extends StatelessWidget {
         border: Border.all(color: c.primary.withValues(alpha: 0.18)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 16, color: c.primary),
+        Icon(icon, size: 16, color: appInk(context, c.primary)),
         const SizedBox(width: 6),
         Text(value, style: appText(13, w: FontWeight.w800, c: c.textDark)),
         const SizedBox(width: 5),
@@ -803,7 +813,8 @@ class _RatePill extends StatelessWidget {
   }
 }
 
-/// One row of the latency table: a label that wraps, three right-aligned figures.
+/// One row of the latency table: a label that wraps, three figures at the row's end, each laid out left to right
+/// (a figure and its unit keep their order in Arabic).
 class RagLatencyRow extends StatelessWidget {
   const RagLatencyRow({super.key, required this.label, required this.questions, required this.p50, required this.p95, this.header = false});
   final String label, questions, p50, p95;
@@ -813,7 +824,11 @@ class RagLatencyRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final st = appText(12.5, w: header ? FontWeight.w800 : FontWeight.w500, c: header ? c.textDark : c.textMedium);
-    Widget cell(String v) => SizedBox(width: 58, child: Text(v, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis, style: st));
+    Widget cell(String v) => SizedBox(
+        width: 58,
+        child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: Text(v, textDirection: TextDirection.ltr, maxLines: 1, overflow: TextOverflow.ellipsis, style: st)));
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
@@ -989,7 +1004,7 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         _title(context, t('النموذج المحلي', 'Local model')),
         AppBanner(
             icon: Icons.memory_rounded,
-            color: c.primary,
+            color: appInk(context, c.primary),
             text: t('${s.llmModel} يعمل داخل الخادم بلا أي مزوّد خارجي. مع نموذج صغير يُكتب الجواب في نداء واحد، ويقوم الكود بالتخطيط والتحقق من الاستشهادات؛ لذلك لا تظهر خيارات الجهد هنا. المخطِّط والمراجع في الامتحانات يعملان ككود أيضاً.${s.llmTokensPerS == null ? '' : ' السرعة: ${s.llmTokensPerS!.toStringAsFixed(0)} رمز/ث.'}',
                 '${s.llmModel} runs inside the server with no external provider. With a small model the answer is written in one call and the code does the planning and the citation checks, so there are no effort knobs here. The exam planner and reviewer run as code too.${s.llmTokensPerS == null ? '' : ' Speed: ${s.llmTokensPerS!.toStringAsFixed(0)} tokens/s.'}')),
       ] else ...[
@@ -1061,7 +1076,7 @@ class _RagPlaygroundTabState extends State<RagPlaygroundTab> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      AppBanner(icon: Icons.science_outlined, color: c.primary, text: t('اسأل كما يسأل العضو وشاهد كل خطوة: الفهم، الاستعلامات، النتائج، الكتابة والمراجعة.', 'Ask as a member would and see every step: understanding, queries, hits, writing and verification.')),
+      AppBanner(icon: Icons.science_outlined, color: appInk(context, c.primary), text: t('اسأل كما يسأل العضو وشاهد كل خطوة: الفهم، الاستعلامات، النتائج، الكتابة والمراجعة.', 'Ask as a member would and see every step: understanding, queries, hits, writing and verification.')),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
         AppChoiceChip(label: t('مساعد التطبيق', 'App assistant'), selected: _app, onTap: () => setState(() => _app = true)),

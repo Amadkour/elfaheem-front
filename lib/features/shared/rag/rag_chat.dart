@@ -18,6 +18,8 @@
 // The client only ever sends `conversation_id`: the server bounds the memory it gives the model. Codes: 404
 // `conversation_not_found`, 403 `not_owner`. Pure: [RagConversation], [conversationTitleFrom], [retentionText],
 // [ragRelativeTime], [ragDeepLinkModule], [ragSessionsSupported].
+import 'dart:math' as math;
+
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -26,6 +28,16 @@ import 'package:flutter_education_app/core/live/event_wait.dart';
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t, trp;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_library.dart' show ragOrgStatusText;
+
+/// The widest the conversation's message column gets on a wide window (about 75 characters a line).
+const double kRagChatMaxWidth = 760;
+
+/// The widest a RAG admin list (Q&A pairs, the learning tab) gets on a wide window.
+const double kRagPageMaxWidth = 960;
+
+/// The side padding that keeps a column at most [maxWidth] wide and centred in [width], never under [min]
+/// (the list keeps the full width, so its scrollbar stays at the edge).
+double ragGutter(double width, {double maxWidth = kRagChatMaxWidth, double min = 16}) => math.max(min, (width - maxWidth) / 2);
 
 class RagCitation {
   RagCitation(this.n, this.documentId, this.title, this.section, this.pageFrom, this.pageTo, this.quote, [this.kind = '', this.deepLink]);

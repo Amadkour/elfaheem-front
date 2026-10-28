@@ -27,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asBool, asInt, asMap, asMapList, asStr, asStrOrNull, t;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
+import 'rag_chat.dart' show kRagPageMaxWidth, ragGutter;
 import 'rag_library.dart' show ragLibraryCodeText;
 
 // ── limits (the server's) ──────────────────────────────────────────────────────────────────────────────────────
@@ -485,7 +486,10 @@ class _RagQaAdminBodyState extends State<RagQaAdminBody> {
                 ? AppEmpty(icon: Icons.error_outline_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
                 : AppRefresh(
                     onRefresh: () => _load(silent: true),
-                    child: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 90), children: [
+                    // a centred column of at most kRagPageMaxWidth: long answers keep a readable line
+                    child: LayoutBuilder(builder: (context, box) {
+                    final side = ragGutter(box.maxWidth, maxWidth: kRagPageMaxWidth);
+                    return ListView(padding: EdgeInsets.fromLTRB(side, 10, side, 90), children: [
                       QaStatsHeader(scope: widget.scope, pairs: lib!.pairs, enabled: lib.enabledCount, direct: lib.direct, stale: lib.staleCount, embedder: lib.embedder),
                       const SizedBox(height: 12),
                       if (_error != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
@@ -510,7 +514,8 @@ class _RagQaAdminBodyState extends State<RagQaAdminBody> {
                                 onToggle: () => _toggle(p),
                                 onDelete: () => _delete(p)),
                           ),
-                    ]),
+                    ]);
+                    }),
                   ),
       ),
     ]);
