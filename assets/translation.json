@@ -16336,5 +16336,305 @@
   "rag_chat_not_owner": {
     "en": "This chat is not yours",
     "ar": "هذه المحادثة ليست لك"
+  },
+  "admin_home_users": {
+    "en": "Users",
+    "ar": "المستخدمون"
+  },
+  "admin_home_organizations": {
+    "en": "Organizations",
+    "ar": "المؤسسات"
+  },
+  "admin_home_revenue_30d": {
+    "en": "Revenue · 30 days",
+    "ar": "الإيرادات · 30 يومًا"
+  },
+  "admin_home_vs_prev_half": {
+    "en": "vs the 15 days before",
+    "ar": "مقارنةً بالـ15 يومًا السابقة"
+  },
+  "admin_home_signups_hint": {
+    "en": "signups vs the 15 days before",
+    "ar": "التسجيلات الجديدة مقارنةً بالـ15 يومًا السابقة"
+  },
+  "admin_home_enrollments_hint": {
+    "en": "enrollments vs the 15 days before",
+    "ar": "الالتحاقات مقارنةً بالـ15 يومًا السابقة"
+  },
+  "admin_home_org_approvals": {
+    "en": "Organizations awaiting approval",
+    "ar": "مؤسسات بانتظار الاعتماد"
+  },
+  "admin_home_all_clear": {
+    "en": "Nothing waits for you",
+    "ar": "لا شيء بانتظارك"
+  },
+  "admin_home_signups": {
+    "en": "Signups",
+    "ar": "تسجيلات جديدة"
+  },
+  "admin_home_enrollments": {
+    "en": "Enrollments",
+    "ar": "التحاقات"
+  },
+  "admin_home_activity_title": {
+    "en": "Signups vs enrollments · last 14 days",
+    "ar": "التسجيلات مقابل الالتحاقات · آخر 14 يومًا"
+  },
+  "admin_home_orgs_by_type": {
+    "en": "Organizations by type",
+    "ar": "المؤسسات حسب النوع"
+  },
+  "admin_home_revenue_by_currency": {
+    "en": "Revenue by currency · 30 days",
+    "ar": "الإيرادات حسب العملة · 30 يومًا"
+  },
+  "admin_home_no_activity": {
+    "en": "No activity yet",
+    "ar": "لا نشاط بعد"
+  },
+  "admin_home_no_activity_hint": {
+    "en": "Signups and enrollments of the last 30 days will show here",
+    "ar": "ستظهر هنا تسجيلات والتحاقات آخر 30 يومًا"
+  },
+  "admin_home_no_orgs": {
+    "en": "No organizations yet",
+    "ar": "لا مؤسسات بعد"
+  },
+  "admin_home_no_revenue": {
+    "en": "No sales in the last 30 days",
+    "ar": "لا مبيعات في آخر 30 يومًا"
+  },
+  "admin_home_health": {
+    "en": "Activity & health",
+    "ar": "النشاط والحالة"
+  },
+  "admin_home_events_24h": {
+    "en": "Live events · 24 h",
+    "ar": "أحداث مباشرة · 24 ساعة"
+  },
+  "admin_home_jobs_failed": {
+    "en": "Failed jobs · 24 h",
+    "ar": "مهام فشلت · 24 ساعة"
+  },
+  "admin_home_live_sessions_30d": {
+    "en": "Live sessions · 30 days",
+    "ar": "جلسات مباشرة · 30 يومًا"
+  },
+  "admin_home_complaints_30d": {
+    "en": "Complaints · 30 days",
+    "ar": "شكاوى · 30 يومًا"
+  },
+  "admin_home_hubs": {
+    "en": "Hubs",
+    "ar": "المراكز"
+  },
+  "admin_home_assistant": {
+    "en": "AI assistant",
+    "ar": "المساعد الذكي"
+  },
+  "admin_home_income": {
+    "en": "Income",
+    "ar": "الدخل"
+  },
+  "admin_home_stale": {
+    "en": "Showing the last numbers — the refresh failed",
+    "ar": "تعرض آخر الأرقام — فشل التحديث"
+  },
+  "admin_alert_jobs_failed_24h": {
+    "en": "Failed jobs (24 h)",
+    "ar": "مهام فشلت (24 ساعة)"
+  },
+  "admin_alert_payouts_overdue": {
+    "en": "Overdue payouts",
+    "ar": "مدفوعات متأخرة"
+  },
+  "admin_alert_teacher_documents_pending": {
+    "en": "Teacher documents to review",
+    "ar": "مستندات معلمين للمراجعة"
+  },
+  "admin_alert_otp_provider_unconfigured": {
+    "en": "OTP provider not configured",
+    "ar": "مزوّد رموز التحقق غير مُعدّ"
+  },
+  "admin_alert_otp_hint": {
+    "en": "Phone codes cannot be delivered: set OTP_PROVIDER on the server",
+    "ar": "لا يمكن إرسال رموز الهاتف: اضبط OTP_PROVIDER على الخادم"
+  },
+  "admin_alert_older_than_days": {
+    "en": "older than {n} days",
+    "ar": "أقدم من {n} أيام"
+  },
+  "admin_alert_jobs_hint": {
+    "en": "Background jobs that failed in the last 24 hours. The server log has the details.",
+    "ar": "مهام خلفية فشلت خلال آخر 24 ساعة. التفاصيل في سجل الخادم."
+  },
+  "admin_job_schedule_run": {
+    "en": "Timetable runs",
+    "ar": "تشغيلات الجدول"
+  },
+  "admin_job_registration": {
+    "en": "Registration",
+    "ar": "التسجيل الأكاديمي"
+  },
+  "admin_job_recording": {
+    "en": "Recordings",
+    "ar": "التسجيلات المرئية"
+  },
+  "admin_job_outbox": {
+    "en": "Outbox (e-mail / push)",
+    "ar": "صندوق الصادر (بريد / إشعارات)"
+  },
+  "home_t_earnings_month": {
+    "en": "Earnings this month",
+    "ar": "أرباح هذا الشهر"
+  },
+  "home_t_payout_pending": {
+    "en": "Payout pending",
+    "ar": "مستحقات قيد الصرف"
+  },
+  "home_t_payout_pending_hint": {
+    "en": "Waiting to be paid out",
+    "ar": "بانتظار التحويل"
+  },
+  "home_t_payout_none": {
+    "en": "Nothing waiting to be paid out",
+    "ar": "لا مستحقات بانتظار التحويل"
+  },
+  "home_t_enrollments_trend": {
+    "en": "Enrollments over the last days",
+    "ar": "الاشتراكات خلال الأيام الأخيرة"
+  },
+  "home_refresh_failed": {
+    "en": "Could not refresh — showing the last data",
+    "ar": "تعذّر التحديث — تُعرض آخر بيانات"
+  },
+  "pl_tab_today": {
+    "en": "Today",
+    "ar": "اليوم"
+  },
+  "pl_ov_today": {
+    "en": "Today for my children",
+    "ar": "يوم أبنائي"
+  },
+  "pl_ov_alerts_hint": {
+    "en": "Unread alerts about your children",
+    "ar": "تنبيهات غير مقروءة عن أبنائك"
+  },
+  "pl_ov_requests": {
+    "en": "Link requests",
+    "ar": "طلبات الربط"
+  },
+  "pl_ov_requests_hint": {
+    "en": "Pending link requests",
+    "ar": "طلبات ربط بانتظار الموافقة"
+  },
+  "pl_ov_children_hint": {
+    "en": "Linked to your account",
+    "ar": "مرتبطون بحسابك"
+  },
+  "pl_ov_requests_pending": {
+    "en": "{n} link request(s) pending",
+    "ar": "لديك {n} من طلبات الربط بانتظار الموافقة"
+  },
+  "pl_no_children_title": {
+    "en": "No children linked yet",
+    "ar": "لم يُربط أي ابن بعد"
+  },
+  "pl_no_children_hint": {
+    "en": "Link your child with the code they generate from their account",
+    "ar": "اربط ابنك بالرمز الذي يُنشئه من حسابه"
+  },
+  "pl_ov_courses_n": {
+    "en": "{n} courses",
+    "ar": "{n} دورات"
+  },
+  "pl_ov_sessions_n": {
+    "en": "{n} sessions today",
+    "ar": "{n} جلسات اليوم"
+  },
+  "pl_ov_attendance": {
+    "en": "Attendance {n}% · 30 days",
+    "ar": "الحضور {n}٪ · 30 يوماً"
+  },
+  "pl_ov_attendance_none": {
+    "en": "No attendance data yet",
+    "ar": "لا بيانات حضور بعد"
+  },
+  "pl_ov_alerts_n": {
+    "en": "{n} open alerts",
+    "ar": "{n} تنبيهات مفتوحة"
+  },
+  "pl_ov_alerts_none": {
+    "en": "No open alerts",
+    "ar": "لا تنبيهات مفتوحة"
+  },
+  "pl_ov_today_sessions": {
+    "en": "Today's sessions",
+    "ar": "جلسات اليوم"
+  },
+  "pl_ov_no_sessions": {
+    "en": "No sessions today",
+    "ar": "لا جلسات اليوم"
+  },
+  "pl_ov_latest_marks": {
+    "en": "Latest marks",
+    "ar": "آخر الدرجات"
+  },
+  "pl_ov_no_marks": {
+    "en": "No marks yet",
+    "ar": "لا درجات بعد"
+  },
+  "pl_ov_next_exam": {
+    "en": "Next exam",
+    "ar": "الامتحان القادم"
+  },
+  "pl_ov_no_exam": {
+    "en": "No exam scheduled soon",
+    "ar": "لا امتحان قريب"
+  },
+  "home_s_all_read": {
+    "en": "All read",
+    "ar": "لا جديد"
+  },
+  "home_s_unread_hint": {
+    "en": "Tap to read them",
+    "ar": "اضغط لقراءتها"
+  },
+  "home_this_week": {
+    "en": "This week",
+    "ar": "هذا الأسبوع"
+  },
+  "home_open_calendar": {
+    "en": "Calendar",
+    "ar": "التقويم"
+  },
+  "home_continue_learning": {
+    "en": "Continue learning",
+    "ar": "واصل التعلّم"
+  },
+  "home_next_on": {
+    "en": "Next: {t} · {d}",
+    "ar": "التالي: {t} · {d}"
+  },
+  "home_exam": {
+    "en": "Exam",
+    "ar": "امتحان"
+  },
+  "home_meeting": {
+    "en": "Meeting",
+    "ar": "اجتماع"
+  },
+  "home_online": {
+    "en": "Online",
+    "ar": "أونلاين"
+  },
+  "home_no_next_lecture": {
+    "en": "No lecture scheduled yet",
+    "ar": "لا محاضرة مجدولة بعد"
+  },
+  "home_next_lecture": {
+    "en": "Next: {n}",
+    "ar": "التالي: {n}"
   }
 }

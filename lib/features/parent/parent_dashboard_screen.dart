@@ -1,8 +1,12 @@
 // lib/features/parent/parent_dashboard_screen.dart
 //
 // The Parent shell — same structure as the admin / teacher dashboards (DashboardItem tabs rendered by
-// AppShell, lib/design/app_shell.dart):
-//   Children · Reports · Link (badge = pending requests) · More (account, language, dark mode, logout)
+// AppShell, lib/design/app_shell.dart), Track B.5:
+//   Today (GET /parent/overview, ONE call) · Children · Reports · Alerts · Link · More (AppSettingsPage groups)
+// Only the Today tab loads on the first paint; every other tab is built — and fetches — when it is first opened
+// (_LazyTab), and the Children / Link tabs start from the overview's config / requests / children
+// (ParentLinkProvider.seed) and refetch only on pull. An older server without /parent/overview hides the Today
+// tab (ParentOverviewProvider.unsupported). Badges: the attention feed, drawn at the leaf.
 //
 // Register the route in main.dart (and send role == 'parent' here after login):
 //   case '/parent_dashboard': → const ParentDashboardScreen()
@@ -11,6 +15,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
@@ -25,6 +30,7 @@ import '../../design/app_switch.dart';
 import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../auth/reauth_sheet.dart';
+import '../shared/notification/notifications_provider.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';
 import '../shared/profile/compalints/complaint_provider.dart';
@@ -34,6 +40,8 @@ import 'parent_alerts_page.dart';
 import 'parent_children_page.dart';
 import 'parent_link_providers.dart';
 import 'parent_link_screen.dart';
+import 'parent_overview.dart';
+import 'parent_overview_page.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 
@@ -58,93 +66,149 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   final _tabs = ParentTabProvider();
   final _link = ParentLinkProvider();
   final _alerts = ParentAlertsProvider();
-  final _epochs = List.generate(4, (_) => ValueNotifier<int>(0));
-  late final List<DashboardItem> _items;
+  final _overview = ParentOverviewProvider();
+  final _epochs = {for (final k in _allKeys) k: ValueNotifier<int>(0)};
+  late final Map<String, DashboardItem> _byKey;
+  ParentOverviewData? _seededFrom;
+
+  static const _allKeys = ['today', 'children', 'reports', 'alerts', 'link', 'more'];
 
   bool get _isParent => (context.read<MyAuthProvider>().currentUser?.role ?? '') == 'parent';
 
-  Future<void> _refresh(int i) async {
-    _epochs[i].value++;
-    _link.loadAll(); // fire-and-forget (the refresh button hides itself while the Future is pending)
-    _alerts.load(silent: true);
+  /// The tabs in order; the Today tab only while the server has /parent/overview.
+  List<String> get _keys => [for (final k in _allKeys) if (k != 'today' || !_overview.unsupported) k];
+
+  int _index(String key) => _keys.indexOf(key);
+
+  /// Opens a tab by key; the Alerts tab optionally filtered on one child (null clears the filter).
+  void _go(String key, {int? childId}) {
+    if (key == 'alerts' && childId != _alerts.childId) _alerts.setChild(childId);
+    final i = _index(key);
+    if (i >= 0) _tabs.onChangeTab(i);
+  }
+
+  Future<void> _refresh(String key) async {
+    switch (key) {
+      case 'today':
+        await _overview.load(silent: true);
+      case 'children':
+      case 'link':
+        _epochs[key]!.value++;
+        await _link.loadAll();
+      case 'alerts':
+        await _alerts.load(silent: true);
+      default:
+        _epochs[key]!.value++;
+    }
   }
 
   /// Deep links (attention items): 'parent_alerts' → Alerts tab, 'parent_link' → Link tab.
   void _onTabRequested() {
-    final i = switch (AppNavigator.requestedTab.value) {
-      'parent_alerts' => 2,
-      'parent_link' => 3,
-      _ => -1,
+    final key = switch (AppNavigator.requestedTab.value) {
+      'parent_alerts' => 'alerts',
+      'parent_link' => 'link',
+      _ => null,
     };
-    if (i < 0) return;
+    if (key == null) return;
     AppNavigator.requestedTab.value = null;
-    _tabs.onChangeTab(i);
+    _go(key);
   }
+
+  /// The overview arrived: the Children / Link tabs start from its config / requests / children.
+  void _onOverview() {
+    final d = _overview.data;
+    if (d == null || identical(d, _seededFrom)) return;
+    _seededFrom = d;
+    _link.seed(config: d.linkConfig, requests: d.requests, children: [for (final c in d.children) c.child]);
+  }
+
+  Widget _lazy(String key, Widget child) => _LazyTab(indexOf: () => _index(key), child: child);
 
   @override
   void initState() {
     super.initState();
     AppNavigator.requestedTab.addListener(_onTabRequested);
-    _items = [
-      DashboardItem(
+    _overview.addListener(_onOverview);
+    _byKey = {
+      'today': DashboardItem(
+        Icons.wb_sunny_outlined,
+        Icons.wb_sunny_rounded,
+        'pl_tab_today',
+        () => _refresh('today'),
+        _lazy(
+          'today',
+          BasePage(
+            child: ParentOverviewPage(
+              onOpenAlerts: (childId) => _go('alerts', childId: childId),
+              onOpenLink: () => _go('link'),
+              onOpenChildren: () => _go('children'),
+            ),
+          ),
+        ),
+        attentionKeys: const [AttentionTabs.home], // badges: GET /me/attention, drawn at the leaf
+      ),
+      'children': DashboardItem(
         Icons.family_restroom_outlined,
         Icons.family_restroom_rounded,
         'pl_tab_children',
-        () => _refresh(0),
-        _ParentTab(
-          titleKey: 'pl_tab_children',
-          epoch: _epochs[0],
-          child: ParentChildrenPage(onOpenLinkTab: () => _tabs.onChangeTab(3)),
+        () => _refresh('children'),
+        _lazy(
+          'children',
+          _ParentTab(
+            titleKey: 'pl_tab_children',
+            epoch: _epochs['children'],
+            child: ParentChildrenPage(onOpenLinkTab: () => _go('link')),
+          ),
         ),
-        attentionKeys: const [AttentionTabs.home],   // badges: GET /me/attention, drawn at the leaf
       ),
-      DashboardItem(
+      'reports': DashboardItem(
         Icons.insights_outlined,
         Icons.insights_rounded,
         'pl_tab_reports',
-        () => _refresh(1),
-        _ParentTab(titleKey: 'pl_tab_reports', epoch: _epochs[1], child: const ParentReportsPage()),
+        () => _refresh('reports'),
+        _lazy('reports', _ParentTab(titleKey: 'pl_tab_reports', epoch: _epochs['reports'], child: const ParentReportsPage())),
       ),
-      DashboardItem(
+      'alerts': DashboardItem(
         Icons.notifications_none_rounded,
         Icons.notifications_rounded,
         'pl_tab_alerts',
-        () => _refresh(2),
-        _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs[2], child: const ParentAlertsPage()),
+        () => _refresh('alerts'),
+        _lazy('alerts', _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs['alerts'], child: const ParentAlertsPage())),
         attentionKeys: const [AttentionTabs.parentAlerts],
       ),
-      DashboardItem(
+      'link': DashboardItem(
         Icons.link_outlined,
         Icons.link_rounded,
         'pl_tab_link',
-        () => _refresh(3),
-        _ParentTab(titleKey: 'pl_tab_link', epoch: _epochs[3], child: const ParentLinkPage()),
+        () => _refresh('link'),
+        _lazy('link', _ParentTab(titleKey: 'pl_tab_link', epoch: _epochs['link'], child: const ParentLinkPage())),
         attentionKeys: const [AttentionTabs.parentLink],
       ),
-      DashboardItem(
+      'more': DashboardItem(
         Icons.grid_view_outlined,
         Icons.grid_view_rounded,
         'pl_tab_more',
         null,
-        const _ParentTab(titleKey: 'pl_tab_more', child: _ParentMorePage()),
+        _lazy('more', const _ParentTab(titleKey: 'pl_tab_more', child: _ParentMorePage())),
         attentionKeys: const [AttentionTabs.profile],
       ),
-    ];
+    };
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _isParent) {
-        _link.loadAll();
-        _alerts.load(silent: true);
-      }
+      if (!mounted || !_isParent) return;
+      _overview.load(); // ONE call for the first paint; the other tabs load when opened
+      context.read<NotificationsProvider>().fetchNotifications(); // the header's unread count, one request
     });
   }
 
   @override
   void dispose() {
     AppNavigator.requestedTab.removeListener(_onTabRequested);
+    _overview.removeListener(_onOverview);
     _tabs.dispose();
     _link.dispose();
     _alerts.dispose();
-    for (final e in _epochs) {
+    _overview.dispose();
+    for (final e in _epochs.values) {
       e.dispose();
     }
     super.dispose();
@@ -153,18 +217,24 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isParent) {
-      return BasePage(child: PlEmpty('pl_parents_only'.tr, icon: Icons.lock_rounded));
+      return BasePage(child: AppEmpty(icon: Icons.lock_rounded, title: 'pl_parents_only'.tr));
     }
     return MultiProvider(
       providers: [
         ChangeNotifierProvider<ParentTabProvider>.value(value: _tabs),
         ChangeNotifierProvider<ParentLinkProvider>.value(value: _link),
         ChangeNotifierProvider<ParentAlertsProvider>.value(value: _alerts),
+        ChangeNotifierProvider<ParentOverviewProvider>.value(value: _overview),
       ],
       builder: (context, _) {
         final tabs = context.watch<ParentTabProvider>();
+        // the shell only rebuilds when the Today tab appears / disappears (older server), never on a load tick
+        context.select<ParentOverviewProvider, bool>((p) => p.unsupported);
+        final keys = _keys;
+        final items = [for (final k in keys) _byKey[k]!];
+        final current = tabs.currentTab.clamp(0, items.length - 1);
         return PopScope(
-          canPop: tabs.currentTab == 0,
+          canPop: current == 0,
           onPopInvokedWithResult: (didPop, _) {
             if (!didPop) tabs.onChangeTab(0);
           },
@@ -175,12 +245,35 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
                 if (mounted) tabs.onChangeTab(i);
               }
 
-              return AppShell(width: constraints.maxWidth, currentIndex: tabs.currentTab, onTap: onTap, items: _items);
+              return AppShell(width: constraints.maxWidth, currentIndex: current, onTap: onTap, items: items);
             }),
           ),
         );
       },
     );
+  }
+}
+
+/// A tab that is built (and so starts loading) the first time it is selected, and then kept by the shell's
+/// IndexedStack. [indexOf] is read at build time because the Today tab may disappear (older server).
+class _LazyTab extends StatefulWidget {
+  const _LazyTab({required this.indexOf, required this.child});
+
+  final int Function() indexOf;
+  final Widget child;
+
+  @override
+  State<_LazyTab> createState() => _LazyTabState();
+}
+
+class _LazyTabState extends State<_LazyTab> {
+  bool _built = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final current = context.watch<ParentTabProvider>().currentTab;
+    if (current == widget.indexOf()) _built = true;
+    return _built ? widget.child : const SizedBox.shrink();
   }
 }
 

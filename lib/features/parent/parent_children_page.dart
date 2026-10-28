@@ -14,6 +14,8 @@ import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 import '../shared/inbox/unified_inbox.dart' show InboxPreviewCard;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class ParentChildrenPage extends StatefulWidget {
   const ParentChildrenPage({super.key, required this.onOpenLinkTab});
@@ -29,7 +31,7 @@ class _ParentChildrenPageState extends State<ParentChildrenPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ParentLinkProvider>().loadAll();
+      if (mounted) context.read<ParentLinkProvider>().ensureLoaded();
     });
   }
 
@@ -55,19 +57,22 @@ class _ParentChildrenPageState extends State<ParentChildrenPage> {
     final unread = _unread(context);
 
     if (p.hasError && p.children.isEmpty) {
-      return PlError(p.errorMessage ?? '', onRetry: p.loadAll);
+      return ErrorRetry(message: p.errorMessage ?? '', onRetry: p.loadAll);
+    }
+    if (p.children.isEmpty && p.isLoading) {
+      return const AppListSkeleton(items: 3);
     }
     if (p.children.isEmpty) {
-      return AnEmpty(
+      return AppEmpty(
         icon: Icons.family_restroom_rounded,
-        title: p.isLoading ? 'pl_loading'.tr : 'pl_no_children'.tr,
-        action: p.isLoading
-            ? null
-            : FilledButton.icon(onPressed: widget.onOpenLinkTab, icon: const Icon(Icons.link_rounded), label: Text('pl_link_child'.tr)),
+        title: 'pl_no_children_title'.tr,
+        message: 'pl_no_children_hint'.tr,
+        actionLabel: 'pl_link_child'.tr,
+        onAction: widget.onOpenLinkTab,
       );
     }
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: p.loadAll,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),

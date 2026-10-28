@@ -7,16 +7,22 @@
 //   OrgCoursesProvider    paged organization courses                      — created locally by the page
 //   OrgScheduleProvider   periods · rooms · availability · loads · schedules · slots — created locally by the schedule tab
 //   OrgMembershipProvider teacher / student side: search · join · my organizations · org courses · my timetable
+//   OrgDashController     the org-admin home's one call (GET …/dashboard → OrgHomeData): cached per organization,
+//                         reloads on open / resume / pull / `attention_changed{org_id}` — created by the dashboard
 library;
 
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/utils/live_events.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_providers.dart';
+import 'org_dashboard_model.dart';
 import 'org_platform_context.dart';
 import 'org_schedule_ladder.dart';
 import 'org_v3.dart';
@@ -1014,3 +1020,154 @@ String roomKindLabel(String k) =>
       'other': t('أخرى', 'Other'),
     }[k] ??
     k;
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Org-admin dashboard: GET …/dashboard → OrgHomeData (D-062)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The org-admin home's one call. The last payload of every organization is kept, so switching back redraws at
+/// once while the fresh one loads; it reloads on open ([ensure]), resume, pull ([load]) and on the live event
+/// `attention_changed{org_id}`. [attentionEpoch] counts the changes of this organization's attention items in
+/// GET /me/attention: a caller that pushed a page (a department dashboard) compares it on return and reloads
+/// only when something changed — never after every visit.
+class OrgDashController extends ChangeNotifier with WidgetsBindingObserver {
+  OrgHomeData? data;
+  bool failed = false;
+  String? error;
+  int attentionEpoch = 0;
+
+  /// How long a resume / live event may be after the last load before it counts (the in-flight load is shared).
+  static const minGap = Duration(seconds: 10);
+
+  String? _key;
+  OrgSession? _session;
+  final Map<int, OrgHomeData> _cache = {};
+  Future<void>? _running;
+  DateTime? _last;
+  StreamSubscription<LiveEvent>? _live;
+  String _fingerprint = '';
+  bool _attached = false;
+
+  int count(String key) => data?.count(key) ?? 0;
+
+  /// Listen for resume and live events while the dashboard is on screen (the screen's initState / dispose).
+  void attach() {
+    if (_attached) return;
+    _attached = true;
+    WidgetsBinding.instance.addObserver(this);
+    _live = LiveEvents.instance.listen({LiveEvents.attentionChanged}, _onLiveEvent);
+    AttentionService.instance.addListener(_onFeed);
+  }
+
+  void detach() {
+    if (!_attached) return;
+    _attached = false;
+    WidgetsBinding.instance.removeObserver(this);
+    _live?.cancel();
+    _live = null;
+    AttentionService.instance.removeListener(_onFeed);
+  }
+
+  /// Called from the screen's build: a new organization (or epoch) starts a load; the cached payload shows meanwhile.
+  void ensure(OrgSession s) {
+    _session = s;
+    final k = '${s.currentId}-${s.epoch.value}';
+    if (k == _key || s.currentId == null) return;
+    _key = k;
+    data = _cache[s.currentId];
+    failed = false;
+    error = null;
+    _fingerprint = _feedFingerprint(s.currentId!);
+    WidgetsBinding.instance.addPostFrameCallback((_) => load(s));
+  }
+
+  Future<void> load([OrgSession? session]) {
+    final s = session ?? _session;
+    if (s == null || s.currentId == null) return Future.value();
+    _session = s;
+    return _running ??= _load(s).whenComplete(() => _running = null);
+  }
+
+  /// A quiet reload (resume, live event): skipped when the last one is recent.
+  Future<void> refreshQuiet() {
+    if (_last != null && DateTime.now().difference(_last!) < minGap) return Future.value();
+    return load();
+  }
+
+  Future<void> _load(OrgSession s) async {
+    final want = _key;
+    final id = s.currentId!;
+    _last = DateTime.now();
+    try {
+      final r = await ApiClient().get('${s.base}/dashboard');
+      if (want != _key) return;               // the organization changed meanwhile
+      final d = OrgHomeData.fromJson(r);
+      if (d != null) {
+        data = d;
+        _cache[id] = d;
+      }
+      failed = data == null;
+      error = null;
+    } catch (e) {
+      if (want != _key) return;
+      failed = data == null;
+      error = ApiException.from(e).message;
+    }
+    notifyListeners();
+  }
+
+  void _onLiveEvent(LiveEvent e) {
+    final id = _session?.currentId;
+    if (id == null) return;
+    if (e.orgId == null || e.orgId == id) refreshQuiet();
+  }
+
+  void _onFeed() {
+    final id = _session?.currentId;
+    if (id == null) return;
+    final f = _feedFingerprint(id);
+    if (f == _fingerprint) return;
+    _fingerprint = f;
+    attentionEpoch++;
+    final armed = _armedUntil;
+    if (armed != null) {
+      _armedUntil = null;
+      if (DateTime.now().isBefore(armed)) load();
+    }
+  }
+
+  DateTime? _armedUntil;
+
+  /// Back from a pushed page (a department dashboard): reload when the attention items changed since
+  /// [epochBefore]; otherwise the feed's own refresh (the route observer asks for one) decides within 30 s —
+  /// the home reloads only when THAT changes something, never after every visit.
+  void afterReturn(int epochBefore) {
+    if (attentionEpoch != epochBefore) {
+      load();
+      return;
+    }
+    _armedUntil = DateTime.now().add(const Duration(seconds: 30));
+  }
+
+  /// `tab/key/kind=count` of every item of this organization, in the feed's order.
+  static String _feedFingerprint(int orgId) {
+    final b = StringBuffer();
+    for (final tab in AttentionTabs.orgSection.values) {
+      for (final x in AttentionService.instance.items(tab, orgId: orgId)) {
+        b.write('${x.tab}/${x.key}/${x.kind}=${x.count};');
+      }
+    }
+    return b.toString();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) refreshQuiet();
+  }
+
+  @override
+  void dispose() {
+    detach();
+    super.dispose();
+  }
+}

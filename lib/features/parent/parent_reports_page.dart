@@ -23,7 +23,8 @@ import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
 import 'parent_report_widgets.dart';
 import 'parent_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 const _periods = ['daily', 'weekly', 'monthly'];
 
@@ -146,12 +147,12 @@ class _ReportsBodyState extends State<_ReportsBody> {
           ),
         Expanded(
           child: !p.loaded && p.isLoading
-              ? const Center(child: AppLoadingIndicator(size: 56))
+              ? const AppListSkeleton(items: 4)
               : !p.loaded && p.hasError
-              ? PlError(p.errorMessage ?? '', onRetry: p.reload)
+              ? ErrorRetry(message: p.errorMessage ?? '', onRetry: p.reload)
               : p.children.isEmpty
-              ? PlEmpty('pl_no_children'.tr, icon: Icons.family_restroom_rounded)
-              : RefreshIndicator(
+              ? AppEmpty(icon: Icons.family_restroom_rounded, title: 'pl_no_children'.tr)
+              : AppRefresh(
             onRefresh: p.reload,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),

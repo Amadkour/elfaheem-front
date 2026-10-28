@@ -1,27 +1,36 @@
 // lib/features/org/org_member_dashboard.dart
 //
-// The MEMBER DASHBOARD (point 2) — what any organization member (student · teacher · assistant · staff of any role)
-// sees in "Organization mode".
+// The MEMBER DASHBOARD (point 2, redesigned in Track B.4) — what any organization member (student · teacher ·
+// assistant · staff of any role) sees in "Organization mode".
 //
 //   (the Personal ↔ organization switch itself is ContextSwitcher, lib/design/context_switcher.dart)
-//   OrgMemberHome            the dashboard body for the selected organization (embeddable in a home scroll view):
-//                            hero + org picker · counters · what needs me (inbox: to do / news / done) · approvals
-//                            waiting for my decision · the departments I manage and what I may do there · quick
-//                            actions that follow my EFFECTIVE rights · the organization's news feed
+//   OrgMemberHome            the dashboard of the selected organization (embeddable in a home scroll view). Its data
+//                            is the `org_overview` block of GET /api/v1/me/home (MeHomeService — no second overview
+//                            call), today's events and the inbox preview of the SAME payload; AppModeController
+//                            keeps the selection and the older-server copy of the overview.
+//   OrgMemberHomeBody        the presentational body (plain values, layout-tested):
+//                            OrgHero → status banner → stat tiles (to do · due soon · awaiting you · news, once) →
+//                            today agenda → "What needs you" (inbox preview 5) → decisions (managers) → what I
+//                            manage → quick actions GROUPED (My studies · Requests & forms · Manage · Organization,
+//                            ≤ 6 pills each + a "More" sheet) → news (3)
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
 //   openOrgApproval          jump from an approval item to the page that decides it (rights checked server-side)
 //
-// Data: AppModeController (GET /api/v1/org/public/me/overview) + UnifiedInbox (GET /api/v1/me/inbox?org_id=).
+// Layout test: test/ui/member_home_layout_test.dart.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
+import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart';
+import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeAgendaItemOf, openHomeEvent;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -158,7 +167,174 @@ String orgRolesLine(Map<String, dynamic> e) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  The dashboard body
+//  Quick actions (grouped)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class OrgQuickAction {
+  const OrgQuickAction({required this.icon, required this.label, required this.onTap, this.color});
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+}
+
+class OrgQuickGroup {
+  const OrgQuickGroup(this.title, this.actions);
+  final String title;
+  final List<OrgQuickAction> actions;
+  bool get isEmpty => actions.isEmpty;
+}
+
+/// At most this many pills per group on the home; the rest sit behind "More".
+const orgQuickPillsMax = 6;
+
+/// govMemberPills builds widgets; this one only carries the action out of it.
+class _ActionCarrier extends StatelessWidget {
+  const _ActionCarrier(this.action);
+  final OrgQuickAction action;
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
+}
+
+/// The member's quick actions, grouped by what they are for (built from the overview entry's roles and rights).
+List<OrgQuickGroup> orgQuickGroups(BuildContext context, Map<String, dynamic> entry) {
+  final c = context.colors;
+  final org = _orgOf(entry);
+  final orgId = asInt(org['id']);
+  final manage = entry['manage'] == null ? null : asMap(entry['manage']);
+  final perms = asMap(manage?['permissions']);
+  final admin = manage?['is_admin'] == true;
+  final roles = [for (final r in (entry['roles'] as List? ?? const [])) '$r'];
+  final isMember = roles.isNotEmpty;
+  final student = roles.contains('student');
+  final teaching = roles.contains('teacher') || roles.contains('teacher_assistant');
+  bool can(String m, [String a = 'view']) => admin || _has(perms, m, a);
+  void space(int tab) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: org, initialTab: tab)));
+
+  return [
+    OrgQuickGroup(t('دراستي', 'My studies'), [
+      if (isMember) ...[
+        OrgQuickAction(icon: Icons.menu_book_rounded, label: t('المقررات', 'Courses'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)))),
+        OrgQuickAction(icon: Icons.calendar_month_rounded, label: t('جدولي', 'My timetable'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)))),
+        OrgQuickAction(icon: Icons.event_note_rounded, label: t('امتحاناتي', 'My exams'), onTap: () => openMyExams(context, orgId: orgId)),
+        OrgQuickAction(icon: Icons.event_rounded, label: t('التقويم', 'Calendar'), onTap: () => Navigator.of(context).pushNamed('/calendar', arguments: {'org_id': orgId})),
+        if (student) ...[
+          OrgQuickAction(icon: Icons.how_to_reg_rounded, label: t('تسجيل المقررات', 'Course registration'), onTap: () => openRegistration(context, orgId)),
+          OrgQuickAction(icon: Icons.history_edu_rounded, label: t('سجلي الأكاديمي', 'My academic record'), onTap: () => openRecord(context, orgId)),
+          OrgQuickAction(icon: Icons.calendar_view_week_rounded, label: t('أسبوعي الدراسي', 'My week'), onTap: () => openMyWeek(context, orgId)),
+          OrgQuickAction(icon: Icons.route_rounded, label: t('مساري', 'My path'), onTap: () => space(5)),
+        ],
+        if (teaching) ...[
+          OrgQuickAction(icon: Icons.grading_rounded, label: t('رصد الدرجات', 'Grade entry'), onTap: () => openTeaching(context, orgId)),
+          OrgQuickAction(icon: Icons.event_available_rounded, label: t('موافقات الجدول', 'Timetable consents'), onTap: () => openConsents(context, orgId)),
+        ],
+        if (roles.contains('teacher'))
+          OrgQuickAction(icon: Icons.support_rounded, label: t('الإرشاد الأكاديمي', 'Advising'), onTap: () => openAdvising(context, orgId)),
+      ],
+    ]),
+    OrgQuickGroup(t('الطلبات والنماذج', 'Requests & forms'), [
+      if (isMember) ...[
+        OrgQuickAction(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => space(2)),
+        // governance (D-057): submit to an entity · my items · my votes · forms I must answer
+        for (final w in govMemberPills(context, orgId,
+            ({required icon, required label, required onTap}) => _ActionCarrier(OrgQuickAction(icon: icon, label: label, onTap: onTap))))
+          if (w is _ActionCarrier) w.action,
+        OrgQuickAction(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => space(3)),
+        OrgQuickAction(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
+      ],
+    ]),
+    OrgQuickGroup(t('الإدارة', 'Manage'), [
+      if (manage != null) ...[
+        OrgQuickAction(icon: Icons.dashboard_customize_rounded, label: t('لوحة الإدارة', 'Management dashboard'), color: c.primaryDark,
+            onTap: () => openOrgManagement(context, orgId)),
+        if (can('students') || can('teachers') || can('staff') || can('requests'))
+          OrgQuickAction(icon: Icons.groups_rounded, label: t('الأعضاء', 'People'),
+              onTap: () => _openManaged(context, orgId, t('الأعضاء', 'People'), const OrgPeoplePage())),
+        if (can('courses'))
+          OrgQuickAction(icon: Icons.library_books_rounded, label: t('إدارة المقررات', 'Manage courses'),
+              onTap: () => _openManaged(context, orgId, t('المقررات', 'Courses'), const OrgCoursesPage())),
+        if (can('schedule'))
+          OrgQuickAction(icon: Icons.view_timeline_rounded, label: t('الجدول الدراسي', 'Timetable office'),
+              onTap: () => _openManaged(context, orgId, t('الجدول الدراسي', 'Timetable'), const OrgSchedulePage())),
+        if (can('announcements', 'insert'))
+          OrgQuickAction(icon: Icons.campaign_rounded, label: t('إعلانات المؤسسة', 'Org announcements'),
+              onTap: () => _openManaged(context, orgId, t('الإعلانات', 'Announcements'), const OrgAnnouncementsPage())),
+        if (can('roles'))
+          OrgQuickAction(icon: Icons.admin_panel_settings_rounded, label: t('الأدوار والصلاحيات', 'Roles & rights'),
+              onTap: () => _openManaged(context, orgId, t('الأدوار والصلاحيات', 'Roles & rights'), const OrgAccessPage())),
+      ],
+    ]),
+    OrgQuickGroup(t('المؤسسة', 'Organization'), [
+      if (isMember) ...[
+        OrgQuickAction(icon: Icons.campaign_rounded, label: t('الأخبار', 'News'), onTap: () => space(0)),
+        OrgQuickAction(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => space(1)),
+        OrgQuickAction(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => space(4)),
+        OrgQuickAction(icon: Icons.group_add_rounded, label: t('انضمام لقسم', 'Join a department'), onTap: () => space(6)),
+      ],
+    ]),
+  ].where((g) => !g.isEmpty).toList();
+}
+
+/// One group: title, up to [orgQuickPillsMax] pills, "More (+n)" opens a sheet with every action of the group.
+class OrgQuickGroupView extends StatelessWidget {
+  const OrgQuickGroupView({super.key, required this.group, this.max = orgQuickPillsMax});
+  final OrgQuickGroup group;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final shown = group.actions.take(max).toList();
+    final rest = group.actions.length - shown.length;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      HomeSectionTitle(group.title, padding: const EdgeInsets.fromLTRB(16, 0, 8, 8)),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final a in shown) AppPill(icon: a.icon, label: a.label, color: a.color, onTap: a.onTap),
+          if (rest > 0)
+            AppPill(
+              key: ValueKey('quick.more.${group.title}'),
+              icon: Icons.more_horiz_rounded,
+              label: '${t('المزيد', 'More')} +$rest',
+              color: c.textMedium,
+              onTap: () => _more(context),
+            ),
+        ]),
+      ),
+    ]);
+  }
+
+  Future<void> _more(BuildContext context) => showAppSheet<void>(context, (ctx) {
+        final c = ctx.colors;
+        return SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            AppSheetHeader(group.title),
+            for (final a in group.actions)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: AppActionCard(
+                  icon: a.icon,
+                  title: a.label,
+                  color: a.color ?? c.primary,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    a.onTap();
+                  },
+                ),
+              ),
+          ]),
+        );
+      });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  The dashboard (data → body)
 // ═════════════════════════════════════════════════════════════════════════════
 
 class OrgMemberHome extends StatelessWidget {
@@ -168,8 +344,9 @@ class OrgMemberHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ctl = AppModeController.instance;
+    final svc = MeHomeService.instance;
     return ListenableBuilder(
-      listenable: ctl,
+      listenable: Listenable.merge([ctl, svc]),
       builder: (context, _) {
         final entry = ctl.current;
         if (entry == null) {
@@ -181,22 +358,77 @@ class OrgMemberHome extends StatelessWidget {
           );
         }
         final orgId = asInt(_orgOf(entry)['id']);
+        // the same payload as the personal home: its overview entry (fresher than the controller's copy),
+        // today's events of this organization and its slice of the inbox preview
+        final me = svc.home;
+        final data = me?.orgEntry(orgId) ?? entry;
         return AnimatedSwitcher(
           duration: const Duration(milliseconds: 260),
           switchInCurve: Curves.easeOutCubic,
           transitionBuilder: (child, a) => FadeTransition(
               opacity: a, child: SlideTransition(position: Tween(begin: const Offset(0, 0.02), end: Offset.zero).animate(a), child: child)),
-          child: _OrgBody(key: ValueKey('org-$orgId'), entry: entry, showPicker: showPickerInHero && ctl.liveEntries.length > 1),
+          child: OrgMemberHomeBody(
+            key: ValueKey('org-$orgId'),
+            entry: data,
+            showPicker: showPickerInHero && ctl.liveEntries.length > 1,
+            today: me?.todayOf(orgId),
+            inbox: me?.inboxPreviewOf(orgId),
+            onPick: () => showMemberOrgPicker(context),
+            onOpenEvent: (e) => openHomeEvent(context, e, inOrg: true),
+            onOpenInboxItem: (x) async {
+              if (await openInboxItem(context, x)) {
+                svc.refresh();
+                ctl.refresh();
+              }
+            },
+            todayFallback: me == null ? OrgTodayAgenda(key: ValueKey('today-$orgId'), orgId: orgId) : null,
+            inboxFallback: me == null ? UnifiedInbox(key: ValueKey('inbox-$orgId'), orgId: orgId, shrinkWrap: true, limit: 5) : null,
+            news: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: OrgAnnouncementFeed(orgId: orgId, limit: 3, compact: true),
+            ),
+          ),
         );
       },
     );
   }
 }
 
-class _OrgBody extends StatelessWidget {
-  const _OrgBody({super.key, required this.entry, required this.showPicker});
+/// The member home, plain values in: the overview entry, today's events, the inbox preview rows.
+class OrgMemberHomeBody extends StatelessWidget {
+  const OrgMemberHomeBody({
+    super.key,
+    required this.entry,
+    this.showPicker = false,
+    this.today,
+    this.inbox,
+    this.now,
+    this.onPick,
+    this.onOpenEvent,
+    this.onOpenInboxItem,
+    this.todayFallback,
+    this.inboxFallback,
+    this.news,
+  });
+
+  /// `{organization, roles, manage, todo, approvals, news}` (one item of GET /org/public/me/overview).
   final Map<String, dynamic> entry;
   final bool showPicker;
+
+  /// Today's events of this organization (from /me/home); null = unknown → [todayFallback] (older server).
+  final List<CalEvent>? today;
+
+  /// The inbox preview rows of this organization (raw); null = unknown → [inboxFallback].
+  final List<Map<String, dynamic>>? inbox;
+
+  /// Fixed clock (tests); null = the device clock.
+  final DateTime? now;
+  final VoidCallback? onPick;
+  final ValueChanged<CalEvent>? onOpenEvent;
+  final ValueChanged<InboxItem>? onOpenInboxItem;
+
+  /// Network widgets (null in layout tests): the older today agenda, the embeddable inbox, the news feed.
+  final Widget? todayFallback, inboxFallback, news;
 
   @override
   Widget build(BuildContext context) {
@@ -206,13 +438,15 @@ class _OrgBody extends StatelessWidget {
     final todo = asMap(entry['todo']);
     final ap = asMap(entry['approvals']);
     final manage = entry['manage'] == null ? null : asMap(entry['manage']);
-    final perms = asMap(manage?['permissions']);
     final admin = manage?['is_admin'] == true;
     final roles = [for (final r in (entry['roles'] as List? ?? const [])) '$r'];
     final depts = asMapList(manage?['departments']);
     final subOrgs = asMapList(manage?['sub_orgs']);
     final isMember = roles.isNotEmpty;
-    bool can(String m, [String a = 'view']) => admin || _has(perms, m, a);
+    final nowUtc = now ?? DateTime.now().toUtc();
+    final wall = AppTime.toZone(nowUtc);
+    final nowMin = wall.hour * 60 + wall.minute;
+    final inboxRows = inbox?.map(InboxItem.new).toList();
 
     final soon = asInt(todo['due_soon']) + asInt(todo['overdue']);
     final stats = <Widget>[
@@ -223,59 +457,11 @@ class _OrgBody extends StatelessWidget {
       if (manage != null)
         AppStatTile(icon: Icons.fact_check_rounded, label: t('بانتظار قرارك', 'Awaiting you'), value: asInt(ap['total']),
             color: asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary),
-      AppStatTile(icon: Icons.campaign_rounded, label: t('أخبار جديدة', 'New news'), value: asInt(entry['news'])),
+      AppStatTile(icon: Icons.campaign_rounded, label: t('أخبار جديدة', 'New news'), value: asInt(entry['news']),
+          onTap: () => _space(context, org, 0)),
     ];
 
-    final quick = <Widget>[
-      if (isMember) ...[
-        AppPill(icon: Icons.menu_book_rounded, label: t('المقررات', 'Courses'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgCoursesScreen(org: org)))),
-        AppPill(icon: Icons.calendar_month_rounded, label: t('جدولي', 'My timetable'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgTimetableScreen()))),
-        AppPill(icon: Icons.event_rounded, label: t('التقويم', 'Calendar'), onTap: () => Navigator.of(context).pushNamed('/calendar')),
-        AppPill(icon: Icons.inbox_rounded, label: t('تقارير وصلتني', 'Received reports'),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgReceivedReportsPage()))),
-        AppPill(icon: Icons.event_note_rounded, label: t('امتحاناتي', 'My exams'), onTap: () => openMyExams(context, orgId: orgId)),
-        AppPill(icon: Icons.assignment_rounded, label: t('طلباتي', 'My requests'), onTap: () => _space(context, org, 2)),
-        // governance (D-057): submit to an entity · my items · my votes · forms I must answer
-        ...govMemberPills(context, orgId, ({required icon, required label, required onTap}) => AppPill(icon: icon, label: label, onTap: onTap)),
-        AppPill(icon: Icons.support_agent_rounded, label: t('شكوى أو استفسار', 'Complaint / question'), onTap: () => _space(context, org, 3)),
-        AppPill(icon: Icons.apartment_rounded, label: t('دليل الإدارات', 'Departments'), onTap: () => _space(context, org, 1)),
-        AppPill(icon: Icons.gavel_rounded, label: t('اللوائح', 'Regulations'), onTap: () => _space(context, org, 4)),
-        if (roles.contains('student')) AppPill(icon: Icons.route_rounded, label: t('مساري', 'My path'), onTap: () => _space(context, org, 5)),
-        if (roles.contains('student')) ...[
-          AppPill(icon: Icons.how_to_reg_rounded, label: t('تسجيل المقررات', 'Course registration'), onTap: () => openRegistration(context, orgId)),
-          AppPill(icon: Icons.history_edu_rounded, label: t('سجلي الأكاديمي', 'My academic record'), onTap: () => openRecord(context, orgId)),
-          AppPill(icon: Icons.calendar_view_week_rounded, label: t('أسبوعي الدراسي', 'My week'), onTap: () => openMyWeek(context, orgId)),
-        ],
-        if (roles.contains('teacher') || roles.contains('teacher_assistant')) ...[
-          AppPill(icon: Icons.grading_rounded, label: t('رصد الدرجات', 'Grade entry'), onTap: () => openTeaching(context, orgId)),
-          AppPill(icon: Icons.event_available_rounded, label: t('موافقات الجدول', 'Timetable consents'), onTap: () => openConsents(context, orgId)),
-        ],
-        if (roles.contains('teacher'))
-          AppPill(icon: Icons.support_rounded, label: t('الإرشاد الأكاديمي', 'Advising'), onTap: () => openAdvising(context, orgId)),
-        AppPill(icon: Icons.group_add_rounded, label: t('انضمام لقسم', 'Join a department'), onTap: () => _space(context, org, 6)),
-      ],
-      if (manage != null) ...[
-        if (can('students') || can('teachers') || can('staff') || can('requests'))
-          AppPill(icon: Icons.groups_rounded, label: t('الأعضاء', 'People'),
-              onTap: () => _openManaged(context, orgId, t('الأعضاء', 'People'), const OrgPeoplePage())),
-        if (can('courses'))
-          AppPill(icon: Icons.library_books_rounded, label: t('إدارة المقررات', 'Manage courses'),
-              onTap: () => _openManaged(context, orgId, t('المقررات', 'Courses'), const OrgCoursesPage())),
-        if (can('schedule'))
-          AppPill(icon: Icons.view_timeline_rounded, label: t('الجدول الدراسي', 'Timetable office'),
-              onTap: () => _openManaged(context, orgId, t('الجدول الدراسي', 'Timetable'), const OrgSchedulePage())),
-        if (can('announcements', 'insert'))
-          AppPill(icon: Icons.campaign_rounded, label: t('إعلانات المؤسسة', 'Org announcements'),
-              onTap: () => _openManaged(context, orgId, t('الإعلانات', 'Announcements'), const OrgAnnouncementsPage())),
-        if (can('roles'))
-          AppPill(icon: Icons.admin_panel_settings_rounded, label: t('الأدوار والصلاحيات', 'Roles & rights'),
-              onTap: () => _openManaged(context, orgId, t('الأدوار والصلاحيات', 'Roles & rights'), const OrgAccessPage())),
-        AppPill(icon: Icons.dashboard_customize_rounded, label: t('لوحة الإدارة', 'Management dashboard'), color: c.primaryDark,
-            onTap: () => openOrgManagement(context, orgId)),
-      ],
-    ];
+    void openTimetable() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)));
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       OrgHero(
@@ -284,8 +470,8 @@ class _OrgBody extends StatelessWidget {
         trailing: showPicker
             ? IconButton(
                 tooltip: t('تبديل المؤسسة', 'Switch organization'),
-                onPressed: () => showMemberOrgPicker(context),
-                icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white))
+                onPressed: onPick,
+                icon: Icon(Icons.swap_horiz_rounded, color: c.onHero))
             : null,
       ),
       if ('${org['status']}' != 'approved')
@@ -298,24 +484,55 @@ class _OrgBody extends StatelessWidget {
             action: TextButton(onPressed: () => openOrgManagement(context, orgId), child: Text(t('فتح', 'Open'))),
           ),
         ),
+
+      // ── the numbers, once
       AppGrid(minTile: 140, padding: const EdgeInsets.symmetric(horizontal: 16), children: stats),
       const SizedBox(height: 18),
 
-      // ── today (weekly sessions minus exam-paused days, plus today's extra sessions)
+      // ── today (the same events as the calendar: exam pauses and dated changes applied)
       if (isMember) ...[
-        OrgTodayAgenda(key: ValueKey('today-$orgId'), orgId: orgId),
+        if (today == null && todayFallback != null)
+          todayFallback!
+        else ...[
+          HomeSectionTitle('home_today'.tr,
+              count: today?.length ?? 0, actionLabel: 'home_full_timetable'.tr, onAction: openTimetable, padding: const EdgeInsets.fromLTRB(16, 0, 8, 10)),
+          HomeAgenda(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            nowMin: nowMin,
+            items: [for (final e in today ?? const <CalEvent>[]) homeAgendaItemOf(context, e, nowUtc, onTap: () => onOpenEvent?.call(e))],
+            emptyTitle: 'home_no_classes_today'.tr,
+            emptyMessage: 'home_no_classes_hint'.tr,
+            emptyActionLabel: 'home_full_timetable'.tr,
+            onEmptyAction: openTimetable,
+          ),
+        ],
         const SizedBox(height: 18),
       ],
 
-      // ── what needs me (to do · news · done of THIS organization)
-      AppSectionTitle(t('ما ينتظرك', 'What needs you'),
-          trailing: TextButton(
-              onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
-              child: Text(t('عرض الكل', 'See all')))),
-      UnifiedInbox(key: ValueKey('inbox-$orgId'), orgId: orgId, shrinkWrap: true, limit: 5),
-      const SizedBox(height: 8),
+      // ── what needs me (the 5 most urgent rows of THIS organization; the counts sit in the tiles above)
+      if (inboxRows == null && inboxFallback != null) ...[
+        AppSectionTitle(t('ما ينتظرك', 'What needs you'),
+            trailing: TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
+                child: Text(t('عرض الكل', 'See all')))),
+        inboxFallback!,
+        const SizedBox(height: 8),
+      ] else if (inboxRows != null && inboxRows.isNotEmpty) ...[
+        AppSectionTitle(t('ما ينتظرك', 'What needs you'),
+            trailing: TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
+                child: Text(t('عرض الكل', 'See all')))),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(children: [
+            for (final x in inboxRows)
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: InboxCard(item: x, onTap: () => onOpenInboxItem?.call(x))),
+          ]),
+        ),
+        const SizedBox(height: 8),
+      ],
 
-      // ── approvals
+      // ── decisions (managers)
       if (manage != null && asInt(ap['total']) > 0) ...[
         AppSectionTitle(t('بانتظار قرارك', 'Waiting for your decision')),
         Padding(
@@ -383,24 +600,17 @@ class _OrgBody extends StatelessWidget {
         const SizedBox(height: 8),
       ],
 
-      // ── quick actions (exactly what my rights allow)
-      if (quick.isNotEmpty) ...[
-        AppSectionTitle(t('اختصارات', 'Quick actions')),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Wrap(spacing: 8, runSpacing: 8, children: quick),
-        ),
+      // ── quick actions, grouped (exactly what my rights allow)
+      for (final g in orgQuickGroups(context, entry)) ...[
+        OrgQuickGroupView(group: g),
         const SizedBox(height: 18),
       ],
 
       // ── news
-      if (isMember) ...[
+      if (isMember && news != null) ...[
         AppSectionTitle(t('أخبار المؤسسة', 'News'),
             trailing: TextButton(onPressed: () => _space(context, org, 0), child: Text(t('كل الأخبار', 'All news')))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: OrgAnnouncementFeed(orgId: orgId, limit: 3, compact: true),
-        ),
+        news!,
       ],
       const SizedBox(height: 24),
     ]);
@@ -483,6 +693,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       final ctl = AppModeController.instance;
+      MeHomeService.instance.ensure();
       await ctl.bindUser(context.read<MyAuthProvider>().currentUser?.id);
       if (widget.orgId != null) ctl.openOrg(widget.orgId!);
     });
@@ -520,8 +731,8 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
       ),
       child: AppRefresh(
         onRefresh: () {
-          orgTodayEpoch.value++; // today's agenda reloads too
-          return ctl.refresh();
+          orgTodayEpoch.value++; // the older today agenda reloads too
+          return Future.wait<void>([MeHomeService.instance.refresh(), ctl.refresh()]);
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),

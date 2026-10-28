@@ -1,17 +1,29 @@
-// lib/features/student/home/home_screen.dart — the STUDENT home.
+// lib/features/student/home/home_screen.dart — the STUDENT home (Track B.4).
 //
-//   header      greeting · name · notifications · ContextSwitcher (Personal ↔ organizations, exit to personal) · search
-//   Personal:   hero = "next up": the next session's start time set big, live state and countdown
-//               needs you  continue learning · today · organizations waiting · downloads
-//               today      timeline of today's sessions
-//               shortcuts  courses · timetable · downloads · categories · analytics
-//               inbox · my courses · featured · organizations · other courses · categories · best teachers
-//   Organization: OrgMemberHome of the selected organization (today's classes respect exam pauses).
+//   header        greeting · name · calendar · notifications · ContextSwitcher (Personal ↔ organizations) · search
+//   Personal (StudentHomeBody, plain values from ONE call — GET /api/v1/me/home, MeHomeService):
+//     hero        "next up": today's next session / exam, its start time set big, live state and countdown
+//     needs you   to do (attention) · inbox to-dos · unread notifications · today · organizations waiting · my courses
+//                 — every count drawn ONCE on this screen
+//     today       timeline of today's events (sessions · timetable slots · exams · meetings, exam pauses applied)
+//     this week   the next 7 days, compact rows
+//     continue    courses_progress[]: thin progress bar, the next lecture, tap → the course
+//     inbox       the 5 most urgent inbox rows (no second count)
+//     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
+//                 never awaited for the first paint; each leaf listens on its own)
+//   Organization: OrgMemberHome of the selected organization (from the same payload's org_overview).
+//
+// Loading: one coordinated AppListSkeleton; failure: ErrorRetry (+ auto-retry when back online); an older server
+// without /me/home gets the same body from today's separate calls (MeHomeService's legacy composition).
+// No context.watch at the top: the header, the search box and the feeds listen at the leaves.
+// Layout test: test/ui/student_home_layout_test.dart.
 library;
+
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
-import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
@@ -20,8 +32,10 @@ import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
+import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCard, InboxItem, InboxScreen, openInboxItem;
+import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
@@ -30,15 +44,12 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/parent_component.dart';
+import '../../admin/admin_common.dart' show ErrorRetry;
 import '../../auth/auth_provider.dart';
 import '../../shared/category/categories_provider.dart';
 import '../../shared/category/categories_screen.dart';
 import '../../shared/course/course_access.dart';
 import '../../shared/guest/guest_state.dart';
-import '../../shared/notification/notifications_provider.dart';
-import '../../teacher/home/home_screen.dart' show teacherSessionUtc;
-import '../../teacher/home/teacher_models.dart' show ScheduleSession;
-import '../../teacher/schedules/schedules_provider.dart';
 import '../courses/list/courses_list_screen.dart';
 import '../dashboard/dashboard_screen.dart' show CalendarIcon, NotificationIcon, UserChipButton;
 import '../models.dart';
@@ -47,6 +58,32 @@ import 'component/home_section_header.dart';
 import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
 
+// ═════════════════════════════════════════════════════════════════════════════
+//  Data (plain values → the body is layout-tested without providers)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class StudentHomeData {
+  const StudentHomeData({this.home, this.loading = false, this.error, this.guest = false, this.orgWaiting = 0, this.now});
+
+  /// The home payload; null while loading / after a failure.
+  final MeHome? home;
+  final bool loading;
+
+  /// Safe-to-show text of the last failure (shown only when nothing is cached).
+  final String? error;
+  final bool guest;
+
+  /// What waits in the organizations (the switcher's badge) — a card when > 0.
+  final int orgWaiting;
+
+  /// A fixed clock (tests); null = the device clock, ticking every 30 s.
+  final DateTime? now;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Screen
+// ═════════════════════════════════════════════════════════════════════════════
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -54,128 +91,46 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-
-/// Shown when the dashboard could not be loaded (offline / server error): message + Retry
-/// button. It is scrollable, so pull-to-refresh works here too.
-class _LoadFailed extends StatelessWidget {
-  const _LoadFailed({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return LayoutBuilder(
-      builder: (context, box) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(
-          parent: BouncingScrollPhysics(),
-        ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: box.maxWidth,
-            minHeight: box.maxHeight,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 84,
-                  height: 84,
-                  decoration: BoxDecoration(
-                    color: c.primaryTint,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.wifi_off_rounded,
-                    size: 38,
-                    color: c.primary,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'no_network_banner'.tr,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 15,
-                    height: 1.5,
-                    color: c.textMedium,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                FilledButton.icon(
-                  onPressed: onRetry,
-                  style: FilledButton.styleFrom(backgroundColor: c.primary),
-                  icon: const Icon(Icons.refresh_rounded, size: 18),
-                  label: Text(
-                    'retry'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    AppConnectivity.instance.online.addListener(_onConnectivity);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!GuestState.active) context.read<StudentSchedulesProvider>().fetchOnce();
-      await context.read<HomeProvider>().init(context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // the day first (one call, cached); the marketing feeds load beside it and are never awaited
+      if (!GuestState.active) MeHomeService.instance.ensure();
+      context.read<HomeProvider>().init(context);
     });
   }
 
-  @override
-  void dispose() {
-    AppConnectivity.instance.online.removeListener(_onConnectivity);
-    super.dispose();
-  }
-
-  /// Back online → load the page again if the last load failed (or brought nothing).
-  /// AppConnectivity only says "online" after the server answered.
-  void _onConnectivity() {
-    if (!mounted || !AppConnectivity.instance.isOnline) return;
-    final p = context.read<HomeProvider>();
-    if (p.isLoading) return;
-    if (p.loadFailed || !p.hasData) p.init(context);
-  }
-
   Future<void> _refresh() async {
-    if (!GuestState.active) context.read<StudentSchedulesProvider>().fetch();
-    AppModeController.instance.refresh();
-    orgTodayEpoch.value++; // the organization's today agenda (Organization mode)
-    await context.read<HomeProvider>().init(context);
+    orgTodayEpoch.value++; // hosts of the older org agenda still listen
+    await Future.wait<void>([
+      if (!GuestState.active) MeHomeService.instance.refresh(),
+      if (!GuestState.active) AppModeController.instance.refresh(),
+      context.read<HomeProvider>().init(context),
+    ]);
   }
+
+  void _tab(String id) => AppNavigator.requestedTab.value = id;
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<HomeProvider>();
-    final sched = context.watch<StudentSchedulesProvider>();
-    final user = context.watch<MyAuthProvider>().currentUser;
-    final unread = context.watch<NotificationsProvider>().unreadCount;
     final guest = GuestState.active;
 
     final header = ParentComponent(
       key: const ValueKey('student_home.top_bar'),
       child: HomeEntrance(
         index: 0,
-        child: HomeHeader(
-          name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
-          leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-          actions: [if (!guest) const CalendarIcon(), if (!guest) NotificationIcon(unreadCount: unread)],
-          contextSwitcher: guest ? null : const ContextSwitcher(),
+        child: Selector<MyAuthProvider, UserModel?>(
+          selector: (_, p) => p.currentUser,
+          builder: (context, user, _) => HomeHeader(
+            name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
+            leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+            // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
+            actions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+            contextSwitcher: guest ? null : const ContextSwitcher(),
+          ),
         ),
       ),
     );
@@ -184,46 +139,61 @@ class _HomeScreenState extends State<HomeScreen> {
       key: const ValueKey('student_home'),
       useWebCard: true,
       child: SafeArea(
-        child: RefreshIndicator(
-          color: context.colors.primary,
+        child: AppRefresh(
           onRefresh: _refresh,
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1000),
-              child: ListenableBuilder(
-                listenable: Listenable.merge([homeTabs, AppModeController.instance]),
-                builder: (context, _) => CustomScrollView(
-                  physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                  slivers: [
-                    SliverToBoxAdapter(child: header),
-                    SliverToBoxAdapter(
-                      child: ParentComponent(
-                        key: const ValueKey('student_home.search'),
-                        child: SearchBarIcon(courses: provider.otherCourses),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+                slivers: [
+                  SliverToBoxAdapter(child: header),
+                  SliverToBoxAdapter(
+                    child: ParentComponent(
+                      key: const ValueKey('student_home.search'),
+                      child: Selector<HomeProvider, List<CourseModel>>(
+                        selector: (_, p) => p.otherCourses,
+                        builder: (_, courses, _) => SearchBarIcon(courses: courses),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    if (AppModeController.instance.isOrg)
-                      const SliverToBoxAdapter(child: OrgMemberHome(showPickerInHero: false))
-                    else if (provider.isLoading)
-                      const SliverToBoxAdapter(child: SizedBox(height: 520, child: AppListSkeleton(items: 6)))
-                    else if (provider.loadFailed && !provider.hasData)
-                      SliverFillRemaining(hasScrollBody: false, child: _LoadFailed(onRetry: () => provider.init(context)))
-                    else
-                      SliverToBoxAdapter(
-                        child: StudentHomeBody(
-                          guest: guest,
-                          myCourses: provider.myCourses,
-                          scheduleLoading: sched.isLoading && sched.data == null,
-                          today: sched.todaySlots,
-                          next: sched.nextSlot,
-                          onOpenCourse: (c) => openCourse(context, c, provider.api),
-                          onTab: (id) => AppNavigator.requestedTab.value = id,
-                          feeds: _Feeds(provider: provider),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  SliverToBoxAdapter(
+                    child: ListenableBuilder(
+                      listenable: Listenable.merge([homeTabs, AppModeController.instance]),
+                      builder: (context, _) => AppModeController.instance.isOrg
+                          ? const OrgMemberHome(showPickerInHero: false)
+                          : ListenableBuilder(
+                              listenable: MeHomeService.instance,
+                              builder: (context, _) {
+                                final svc = MeHomeService.instance;
+                                final ctl = AppModeController.instance;
+                                return StudentHomeBody(
+                                  data: StudentHomeData(
+                                    home: svc.home,
+                                    loading: svc.loading && svc.home == null,
+                                    error: svc.failed ? svc.error!.message : null,
+                                    guest: guest,
+                                    orgWaiting: contextSwitchVisible(ctl) ? ctl.pendingTotal : 0,
+                                  ),
+                                  onTab: _tab,
+                                  onRetry: svc.refresh,
+                                  onOpenCourse: (id) => AppNavigator.openCourse(id),
+                                  onOpenEvent: (e) => openHomeEvent(context, e),
+                                  onOpenInbox: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen())),
+                                  onOpenInboxItem: (x) async {
+                                    if (await openInboxItem(context, x)) svc.refresh();
+                                  },
+                                  onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
+                                  onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
+                                  onOpenOrgs: () => showContextSwitcherSheet(context),
+                                  feeds: const _Feeds(),
+                                );
+                              },
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -233,233 +203,287 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// The Personal side of the student home (no providers inside → layout-tested on its own).
+// ═════════════════════════════════════════════════════════════════════════════
+//  Body
+// ═════════════════════════════════════════════════════════════════════════════
+
+/// The Personal side of the student home: plain values in, callbacks out (no providers inside).
 class StudentHomeBody extends StatelessWidget {
   const StudentHomeBody({
     super.key,
-    required this.guest,
-    required this.myCourses,
-    required this.scheduleLoading,
-    required this.today,
-    required this.next,
-    required this.onOpenCourse,
+    required this.data,
     required this.onTab,
+    this.onRetry,
+    this.onOpenCourse,
+    this.onOpenEvent,
+    this.onOpenInbox,
+    this.onOpenInboxItem,
+    this.onOpenNotifications,
+    this.onOpenTodo,
+    this.onOpenOrgs,
     this.feeds,
   });
 
-  final bool guest;
-  final List<CourseModel> myCourses;
-  final bool scheduleLoading;
-  final List<ScheduleSession> today;
-  final ScheduleSession? next;
-  final ValueChanged<CourseModel> onOpenCourse;
+  final StudentHomeData data;
 
   /// Dashboard tab by label: 'my_courses' · 'my_schedule' · 'analysis'.
   final ValueChanged<String> onTab;
+  final VoidCallback? onRetry;
+  final ValueChanged<int>? onOpenCourse;
+  final ValueChanged<CalEvent>? onOpenEvent;
+  final VoidCallback? onOpenInbox;
+  final ValueChanged<InboxItem>? onOpenInboxItem;
+  final VoidCallback? onOpenNotifications, onOpenTodo, onOpenOrgs;
 
-  /// Inbox, course rows, ads, organizations … (network widgets) — null in layout tests.
+  /// Ads, organizations, other courses … (network widgets) — null in layout tests.
   final Widget? feeds;
 
   @override
   Widget build(BuildContext context) {
+    if (data.guest) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        const HomeEntrance(index: 1, child: ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())),
+        const SizedBox(height: 24),
+        ?feeds,
+      ]);
+    }
+    final home = data.home;
+    if (home == null) {
+      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (data.error != null && !data.loading)
+          ErrorRetry(message: data.error!, onRetry: onRetry ?? () {})
+        else
+          const AppListSkeleton(items: 6, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)),
+        const SizedBox(height: 24),
+        ?feeds,
+      ]);
+    }
+    return _HomeClock(
+      fixed: data.now,
+      builder: (context, now) => _Sections(home: home, now: now, body: this),
+    );
+  }
+}
+
+/// Rebuilds every 30 s so the countdown and the "done" states stay true; a fixed clock never ticks (tests).
+class _HomeClock extends StatefulWidget {
+  const _HomeClock({required this.fixed, required this.builder});
+  final DateTime? fixed;
+  final Widget Function(BuildContext context, DateTime nowUtc) builder;
+
+  @override
+  State<_HomeClock> createState() => _HomeClockState();
+}
+
+class _HomeClockState extends State<_HomeClock> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.fixed == null) _timer = Timer.periodic(const Duration(seconds: 30), (_) => setState(() {}));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, widget.fixed ?? DateTime.now().toUtc());
+}
+
+class _Sections extends StatelessWidget {
+  const _Sections({required this.home, required this.now, required this.body});
+  final MeHome home;
+  final DateTime now;
+  final StudentHomeBody body;
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
-    final ctl = AppModeController.instance;
-    final sorted = [...today]..sort((a, b) => a.startMin.compareTo(b.startMin));
-    final items = [
-      for (final s in sorted)
-        HomeAgendaItem(
-          start: AppTime.time(teacherSessionUtc(s, s.startTime)),
-          end: AppTime.time(teacherSessionUtc(s, s.endTime)),
-          startMin: _wall(teacherSessionUtc(s, s.startTime)),
-          endMin: _wall(teacherSessionUtc(s, s.endTime)),
-          live: s.isOngoing || s.isLive,
-          title: s.courseName,
-          onTap: () => onTab('my_schedule'),
-        ),
-    ];
-    final first = myCourses.firstOrNull;
-    final orgWaiting = contextSwitchVisible(ctl) ? ctl.pendingTotal : 0;
+    final data = body.data;
+    final wallNow = AppTime.toZone(now);
+    final nowMin = wallNow.hour * 60 + wallNow.minute;
+    final next = home.nextUp(now);
+    final todo = home.attentionCount(AttentionTabs.home);
+    final inboxTodo = home.inboxTodo;
+    final inboxRows = home.inboxPreview.map(InboxItem.new).toList();
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── hero: next up
-      enter(guest
-          ? const ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())
-          : ParentComponent(
-              key: const ValueKey('student_home.upcoming_banner'),
-              child: scheduleLoading
-                  ? const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20),
-                      child: AppShimmer(child: AppSkeletonBox(height: 190, radius: 28)))
-                  : _NextUpHero(next: next, onTap: () => onTab('my_schedule')),
-            )),
+      enter(ParentComponent(
+        key: const ValueKey('student_home.upcoming_banner'),
+        child: NextUpHero(next: next, upcoming: home.firstUpcoming, now: now, onTap: () => _open(next?.event)),
+      )),
       const SizedBox(height: 28),
 
-      if (!guest) ...[
-        // ── what matters now
-        enter(HomeSectionTitle('home_needs_you'.tr)),
-        enter(HomeActionGrid(children: [
+      // ── what matters now (every count once)
+      enter(HomeSectionTitle('home_needs_you'.tr)),
+      enter(HomeActionGrid(children: [
+        HomeActionCard(
+          icon: Icons.task_alt_rounded,
+          title: 'home_todo'.tr,
+          subtitle: todo == 0 ? 'home_todo_clear'.tr : 'home_todo_hint'.tr,
+          count: todo,
+          tone: todo > 0 ? c.danger : c.success,
+          onTap: todo > 0 ? body.onOpenTodo : () => body.onTab('my_courses'),
+        ),
+        HomeActionCard(
+          icon: Icons.inbox_rounded,
+          title: 'inbox_title'.tr,
+          subtitle: inboxTodo == 0
+              ? 'inbox_preview_clear'.tr
+              : [
+                  if (home.inboxOverdue > 0) 'inbox_preview_overdue'.tr.replaceAll('{n}', '${home.inboxOverdue}'),
+                  if (home.inboxDueSoon > 0) 'inbox_preview_soon'.tr.replaceAll('{n}', '${home.inboxDueSoon}'),
+                ].join(' · '),
+          count: inboxTodo,
+          tone: home.inboxOverdue > 0 ? c.danger : (home.inboxDueSoon > 0 ? c.warning : c.primary),
+          onTap: body.onOpenInbox,
+        ),
+        HomeActionCard(
+          icon: Icons.notifications_rounded,
+          title: 'notifications'.tr,
+          subtitle: home.notificationsUnread == 0 ? 'home_s_all_read'.tr : 'home_s_unread_hint'.tr,
+          count: home.notificationsUnread,
+          tone: c.accent2,
+          onTap: body.onOpenNotifications,
+        ),
+        HomeActionCard(
+          icon: Icons.today_rounded,
+          title: 'home_today_sessions'.tr,
+          subtitle: home.today.isEmpty ? 'home_s_free_today'.tr : null,
+          count: home.today.length,
+          tone: c.primary,
+          onTap: () => body.onTab('my_schedule'),
+        ),
+        if (data.orgWaiting > 0)
           HomeActionCard(
-            icon: Icons.play_circle_fill_rounded,
-            title: first == null ? 'home_s_start_learning'.tr : 'home_s_continue'.tr,
-            subtitle: first == null ? 'home_s_start_learning_hint'.tr : ((AppConfig.lang == 'ar' ? first.titleAr : first.titleEn) ?? first.titleAr ?? first.titleEn),
-            tone: c.primary,
-            onTap: () => first == null ? onTab('my_courses') : onOpenCourse(first),
+            icon: Icons.account_balance_rounded,
+            title: 'home_org_waiting'.tr,
+            subtitle: 'home_org_waiting_hint'.tr,
+            count: data.orgWaiting,
+            tone: c.warning,
+            onTap: body.onOpenOrgs,
           ),
-          HomeTodoCard(fallback: () => onTab('my_courses')),
-          HomeActionCard(
-            icon: Icons.today_rounded,
-            title: 'home_today_sessions'.tr,
-            subtitle: items.isEmpty ? 'home_s_free_today'.tr : null,
-            count: items.length,
-            tone: c.accent2,
-            onTap: () => onTab('my_schedule'),
-          ),
-          if (orgWaiting > 0)
-            HomeActionCard(
-              icon: Icons.account_balance_rounded,
-              title: 'home_org_waiting'.tr,
-              subtitle: 'home_org_waiting_hint'.tr,
-              count: orgWaiting,
-              tone: c.warning,
-              onTap: () => showContextSwitcherSheet(context),
-            ),
-          HomeActionCard(
-            icon: Icons.menu_book_rounded,
-            title: 'my_courses'.tr,
-            count: myCourses.length,
-            tone: c.purple,
-            onTap: () => onTab('my_courses'),
-          ),
-        ])),
-        const SizedBox(height: 28),
+        HomeActionCard(
+          icon: Icons.menu_book_rounded,
+          title: 'my_courses'.tr,
+          count: home.coursesProgress.length,
+          tone: c.purple,
+          onTap: () => body.onTab('my_courses'),
+        ),
+      ])),
+      const SizedBox(height: 28),
 
-        // ── today
-        enter(HomeSectionTitle('home_today'.tr, count: items.length, actionLabel: 'home_full_timetable'.tr, onAction: () => onTab('my_schedule'))),
-        enter(HomeAgenda(
-          loading: scheduleLoading,
-          items: items,
-          emptyTitle: 'home_no_classes_today'.tr,
-          emptyMessage: 'home_s_free_hint'.tr,
-          emptyActionLabel: 'home_full_timetable'.tr,
-          onEmptyAction: () => onTab('my_schedule'),
+      // ── today
+      enter(HomeSectionTitle('home_today'.tr, count: home.today.length, actionLabel: 'home_full_timetable'.tr, onAction: () => body.onTab('my_schedule'))),
+      enter(HomeAgenda(
+        nowMin: nowMin,
+        items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
+        emptyTitle: 'home_no_classes_today'.tr,
+        emptyMessage: 'home_s_free_hint'.tr,
+        emptyActionLabel: 'home_full_timetable'.tr,
+        onEmptyAction: () => body.onTab('my_schedule'),
+      )),
+      const SizedBox(height: 28),
+
+      // ── this week
+      if (home.upcoming.isNotEmpty) ...[
+        enter(HomeSectionTitle('home_this_week'.tr, count: home.upcoming.length, actionLabel: 'home_open_calendar'.tr, onAction: () => Navigator.of(context).pushNamed('/calendar'))),
+        enter(UpcomingList(events: home.upcoming, onTap: _open)),
+        const SizedBox(height: 28),
+      ],
+
+      // ── continue learning
+      enter(HomeSectionTitle('home_continue_learning'.tr,
+          count: home.coursesProgress.isEmpty ? null : home.coursesProgress.length,
+          actionLabel: home.coursesProgress.isEmpty ? null : 'show_more'.tr,
+          onAction: () => body.onTab('my_courses'))),
+      enter(home.coursesProgress.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: AppEmpty(
+                icon: Icons.auto_stories_rounded,
+                title: 'home_s_no_courses'.tr,
+                message: 'home_s_no_courses_hint'.tr,
+                actionLabel: 'home_s_browse'.tr,
+                onAction: () => body.onTab('my_courses'),
+              ),
+            )
+          : CourseProgressList(courses: home.coursesProgress.take(5).toList(), now: now, onTap: body.onOpenCourse)),
+      const SizedBox(height: 28),
+
+      // ── inbox: the 5 most urgent rows (the count already sits in the grid)
+      if (inboxRows.isNotEmpty) ...[
+        enter(HomeSectionTitle('inbox_title'.tr, actionLabel: 'inbox_see_all'.tr, onAction: body.onOpenInbox)),
+        enter(Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(children: [
+            for (final x in inboxRows)
+              Padding(padding: const EdgeInsets.only(bottom: 8), child: InboxCard(item: x, onTap: () => body.onOpenInboxItem?.call(x))),
+          ]),
         )),
-        const SizedBox(height: 28),
-
-        // ── shortcuts
-        enter(HomeShortcuts(items: [
-          HomeShortcut(icon: Icons.menu_book_rounded, label: 'my_courses'.tr, onTap: () => onTab('my_courses'), featureKey: 'student_tab_my_courses'),
-          HomeShortcut(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, onTap: () => onTab('my_schedule'), featureKey: 'student_tab_my_schedule'),
-          HomeShortcut(icon: Icons.download_for_offline_rounded, label: 'home_downloads'.tr, onTap: () => Navigator.of(context).pushNamed('/downloads')),
-          HomeShortcut(
-              icon: Icons.category_rounded,
-              label: 'categories'.tr,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen()))),
-          HomeShortcut(icon: Icons.insights_rounded, label: 'analysis'.tr, onTap: () => onTab('analysis'), featureKey: 'student_tab_analysis'),
-        ])),
         const SizedBox(height: 24),
       ],
-      ?feeds,
+      ?body.feeds,
     ]);
   }
 
-  static int _wall(DateTime utc) {
-    final w = AppTime.toZone(utc);
-    return w.hour * 60 + w.minute;
-  }
-}
-
-/// The student's hero: the next session, its start time set big, live state, countdown.
-class _NextUpHero extends StatelessWidget {
-  const _NextUpHero({required this.next, required this.onTap});
-  final ScheduleSession? next;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final on = homeOnHero(context);
-    final n = next;
-    if (n == null) {
-      return HomeHeroCard(
-        gradient: c.successGradient,
-        glow: c.success,
-        onTap: onTap,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          HomeHeroTag('home_today'.tr, icon: Icons.wb_sunny_rounded),
-          const SizedBox(height: 14),
-          Text('no_sessions_today_title'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w900, c: on, h: 1.2)),
-          const SizedBox(height: 6),
-          Text('check_weekly_schedule'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, c: on.withValues(alpha: 0.9))),
-        ]),
-      );
+  void _open(CalEvent? e) {
+    if (e == null) {
+      body.onTab('my_schedule');
+    } else {
+      body.onOpenEvent?.call(e);
     }
-    final live = n.isOngoing || n.isLive;
-    final mins = live ? n.minutesUntilEnd : n.minutesUntilStart;
-    final rel = mins == null || mins <= 0
-        ? (n.isToday ? '' : n.dayLabelStr)
-        : (live ? 'home_ends_in' : 'home_starts_in').tr.replaceAll('{t}', _dur(mins));
-    return HomeHeroCard(
-      gradient: live ? c.dangerGradient : c.primaryGradient,
-      glow: live ? c.danger : c.primary,
-      onTap: onTap,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          HomeHeroTag(live ? 'home_live'.tr : 'home_next'.tr, icon: live ? Icons.sensors_rounded : Icons.schedule_rounded),
-          const SizedBox(width: 8),
-          if (rel.isNotEmpty)
-            Expanded(
-              child: Text(rel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: appText(12.5, w: FontWeight.w700, c: on.withValues(alpha: 0.9))),
-            ),
-        ]),
-        const SizedBox(height: 12),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(AppTime.time(teacherSessionUtc(n, n.startTime)), maxLines: 1, style: appText(40, w: FontWeight.w900, c: on, h: 1.05)),
-        ),
-        const SizedBox(height: 6),
-        Text(n.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: on, h: 1.25)),
-        const SizedBox(height: 4),
-        Text('${'home_until'.tr} ${AppTime.time(teacherSessionUtc(n, n.endTime))}',
-            maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, c: on.withValues(alpha: 0.85))),
-      ]),
-    );
-  }
-
-  static String _dur(int minutes) {
-    final h = minutes ~/ 60, m = minutes % 60;
-    if (h == 0) return 'home_min'.tr.replaceAll('{n}', '$m');
-    return 'home_h_min'.tr.replaceAll('{h}', '$h').replaceAll('{m}', '$m');
   }
 }
 
-/// Everything below the fold of the student home (kept from before, in priority order).
+// ═════════════════════════════════════════════════════════════════════════════
+//  Feeds (below the fold; each leaf fetches and listens on its own)
+// ═════════════════════════════════════════════════════════════════════════════
+
 class _Feeds extends StatelessWidget {
-  const _Feeds({required this.provider});
-  final HomeProvider provider;
+  const _Feeds();
 
   @override
   Widget build(BuildContext context) {
     final guest = GuestState.active;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      // ── Inbox: forms / requests / news / offers in one prioritized place
-      if (!guest) const ParentComponent(key: ValueKey('student_home.inbox'), child: InboxPreviewCard()),
+      // ── Featured (ads) — after personal content, never above the greeting
+      const HomeAdsSlider(),
+      // ── Organizations (join a university / faculty)
+      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: HomeOrgMix()),
+      // ── the marketing call (GET /teacher/student-dashboard): other courses · categories · best teachers
+      Consumer<HomeProvider>(builder: (context, provider, _) => _MarketingFeeds(provider: provider, guest: guest)),
+    ]);
+  }
+}
 
-      // ── My Courses
-      if (provider.myCourses.isNotEmpty) ...[
+class _MarketingFeeds extends StatelessWidget {
+  const _MarketingFeeds({required this.provider, required this.guest});
+  final HomeProvider provider;
+  final bool guest;
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.isLoading && !provider.hasData) {
+      return const Padding(padding: EdgeInsets.only(top: 12), child: AppListSkeleton(items: 2, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)));
+    }
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // ── guests: the catalogue's enrolled list is empty, their own courses live in "My courses"
+      if (guest && provider.myCourses.isNotEmpty) ...[
+        const SizedBox(height: 12),
         ParentComponent(
           key: const ValueKey('student_home.courses'),
           child: SectionHeader(
             title: 'my_courses'.tr,
             actionLabel: 'show_more'.tr,
-            onAction: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
+            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
           ),
         ),
         const SizedBox(height: 16),
@@ -473,28 +497,7 @@ class _Feeds extends StatelessWidget {
             hasMore: false,
           ),
         ),
-        const SizedBox(height: 28),
-      ] else if (!guest) ...[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: AppEmpty(
-            icon: Icons.auto_stories_rounded,
-            title: 'home_s_no_courses'.tr,
-            message: 'home_s_no_courses_hint'.tr,
-            actionLabel: provider.otherCourses.isEmpty ? null : 'home_s_browse'.tr,
-            onAction: provider.otherCourses.isEmpty
-                ? null
-                : () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => CoursesListScreen(homeCourses: provider.otherCourses, forMyCourses: false))),
-          ),
-        ),
-        const SizedBox(height: 12),
       ],
-
-      // ── Featured (ads) — after personal content, never above the greeting
-      const HomeAdsSlider(),
-      // ── Organizations (join a university / faculty)
-      if (!guest) const ParentComponent(key: ValueKey('student_home.org'), child: HomeOrgMix()),
 
       // ── Other Courses
       if (provider.otherCourses.isNotEmpty) ...[
@@ -504,8 +507,7 @@ class _Feeds extends StatelessWidget {
           child: SectionHeader(
             title: 'other_courses'.tr,
             actionLabel: 'show_more'.tr,
-            onAction: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => CoursesListScreen(homeCourses: provider.otherCourses, forMyCourses: false))),
+            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.otherCourses, forMyCourses: false))),
           ),
         ),
         const SizedBox(height: 16),

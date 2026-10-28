@@ -5,11 +5,13 @@
 //                       users = people who joined it (OrgUnitMember)
 //   unitType "program"  academic department (OrgProgram): staff = teachers / assistants of that department,
 //                       users = its students (OrgStudentAcademic), requests = joins + "choose your department"
-// One call: GET …/units/{type}/{id}/dashboard. Every block and action is gated by the server's `can` map (the
-// viewer's effective rights IN THIS department), so a head, an approver and the org admin each see what they may do.
+// One call: GET …/units/{type}/{id}/dashboard, typed once as OrgUnitData (org_dashboard_model.dart; the last payload
+// stays on screen when a reload fails). Every block and action is gated by the server's `can` map (the viewer's
+// effective rights IN THIS department), so a head, an approver and the org admin each see what they may do.
 //
-// Layout: hero (identity · manager · stats) → quick actions → tabs Requests · Users · Members (+ Overview on
-// phones). On wide screens the overview (announcements, sub-departments, contact card) sits in a side column.
+// Layout: hero (identity · manager · stats; a stat the viewer may not see reads "—") → quick actions → trend tiles
+// the day the server sends `series` → tabs Requests · Users · Members (+ Overview on phones). On wide screens the
+// overview (governance, announcements, sub-departments, contact card) sits in a side column.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,6 +26,8 @@ import 'package:provider/provider.dart';
 import '../admin/admin_common.dart';
 import '../admin/admin_list.dart' show AdminAvatar;
 import 'org_announcements.dart' show OrgAnnouncementFeed;
+import 'org_dashboard_home.dart' show OrgTrendRow;
+import 'org_dashboard_model.dart' show OrgUnitData;
 import 'org_departments_page.dart' show DeptLogo, OrgDepartmentHub, showDepartmentWizard;
 import 'org_join_pages.dart' show OrgUnitJoinHub;
 import 'org_providers.dart';
@@ -56,7 +60,7 @@ class OrgDepartmentDashboard extends StatefulWidget {
 enum _Load { loading, ready, forbidden, failed }
 
 class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
-  Map<String, dynamic>? _d;
+  OrgUnitData? _d;
   _Load _state = _Load.loading;
   String? _error;
 
@@ -75,7 +79,8 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
           queryParams: {'preview': 50});
       if (!mounted) return;
       setState(() {
-        _d = r is Map ? Map<String, dynamic>.from(r) : null;
+        final d = OrgUnitData.fromJson(r);
+        if (d != null) _d = d;                   // a bad answer keeps the last payload on screen
         _state = _d == null ? _Load.failed : _Load.ready;
       });
     } catch (e) {
@@ -89,9 +94,8 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
     }
   }
 
-  Map<String, dynamic> get _unit => asMap(_d?['unit']).isEmpty ? (widget.seed ?? const {}) : asMap(_d?['unit']);
-  Map<String, dynamic> get _can => asMap(_d?['can']);
-  bool _cap(String k) => _can[k] == true;
+  Map<String, dynamic> get _unit => (_d?.unit.isEmpty ?? true) ? (widget.seed ?? const {}) : _d!.unit;
+  bool _cap(String k) => _d?.cap(k) ?? false;
 
   Future<void> _push(String title, Widget child) async {
     final s = context.read<OrgSession>();
@@ -147,6 +151,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
             final header = <Widget>[
               _UnitHero(d: _d!, seed: widget.seed),
               _QuickActions(actions: _actions()),
+              if (_d!.trends.isNotEmpty) OrgTrendRow(trends: _d!.trends),
             ];
             Widget main;
             if (tabs.isEmpty) {
@@ -194,8 +199,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 
   // ── tabs: (label, icon, badge, body) ──
   List<(String, IconData, int, Widget)> _tabs(bool wide) {
-    final st = asMap(_d?['stats']);
-    final waiting = asInt(st['pending_join_requests']) + asInt(st['pending_forms']) + asInt(st['pending_program_choices']);
+    final waiting = _d?.waiting ?? 0;
     final showRequests = _cap('decide_requests') || _cap('configure_join') || _cap('view_forms') || _cap('decide_program_choices');
     return [
       if (!wide) (t('نظرة عامة', 'Overview'), Icons.space_dashboard_rounded, 0, _TabList(onRefresh: _load, children: _overview(wide: false))),
@@ -229,7 +233,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
   List<(IconData, String, Color?, VoidCallback)> _actions() {
     final c = context.colors;
     final id = widget.unitId;
-    final f = _asList(_d?['features']).toSet();
+    final f = (_d?.features ?? const <String>[]).toSet();
     return [
       if (_cap('configure_join'))
         (Icons.how_to_reg_rounded, t('إعداد الانضمام', 'Joining rules'), c.primary, _seeAllRequests),
@@ -260,7 +264,7 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
   List<Widget> _overview({required bool wide}) {
     final c = context.colors;
     final s = context.read<OrgSession>();
-    final subs = asMapList(_d?['sub_units']);
+    final subs = _d?.subUnits ?? const <Map<String, dynamic>>[];
     final u = _unit;
     final pad = wide ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 16);
     final card = [u['location'], u['office_hours'], u['email'], u['phone']].any((x) => '${x ?? ''}'.trim().isNotEmpty);
@@ -343,24 +347,23 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
 
 class _UnitHero extends StatelessWidget {
   const _UnitHero({required this.d, this.seed});
-  final Map<String, dynamic> d;
+  final OrgUnitData d;
   final Map<String, dynamic>? seed;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final u = asMap(d['unit']);
-    final st = asMap(d['stats']);
-    final mgr = asMap(d['manager']);
-    final isDept = u['unit_type'] == 'dept';
+    final u = d.unit;
+    final mgr = d.manager;
+    final isDept = d.isDept;
     final col = hexColor(u['color'] ?? seed?['color'], c.primary);
     final parent = asMap(u['parent']);
-    final waiting = asInt(st['pending_join_requests']) + asInt(st['pending_forms']) + asInt(st['pending_program_choices']);
+    String n(String key) => d.hidden(key) ? '—' : '${d.stat(key)}';   // a stat I may not see is null on the server
     final stats = <AppHeroStat>[
-      AppHeroStat(icon: Icons.people_alt_rounded, value: '${asInt(st['users'])}', label: isDept ? t('منضمّون', 'Users') : t('طلاب', 'Students')),
-      AppHeroStat(icon: Icons.badge_rounded, value: '${asInt(st['staff'])}', label: isDept ? t('الفريق', 'Team') : t('الهيئة', 'Faculty')),
-      AppHeroStat(icon: Icons.menu_book_rounded, value: '${asInt(st['courses'])}', label: t('مقررات', 'Courses')),
-      AppHeroStat(icon: Icons.inbox_rounded, value: '$waiting', label: t('تنتظر', 'Waiting')),
+      AppHeroStat(icon: Icons.people_alt_rounded, value: n('users'), label: isDept ? t('منضمّون', 'Users') : t('طلاب', 'Students')),
+      AppHeroStat(icon: Icons.badge_rounded, value: n('staff'), label: isDept ? t('الفريق', 'Team') : t('الهيئة', 'Faculty')),
+      AppHeroStat(icon: Icons.menu_book_rounded, value: n('courses'), label: t('مقررات', 'Courses')),
+      AppHeroStat(icon: Icons.inbox_rounded, value: '${d.waiting}', label: t('تنتظر', 'Waiting')),
     ];
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 6),
@@ -531,7 +534,7 @@ class _TabList extends StatelessWidget {
   final Future<void> Function() onRefresh;
 
   @override
-  Widget build(BuildContext context) => RefreshIndicator(
+  Widget build(BuildContext context) => AppRefresh(
         onRefresh: onRefresh,
         child: ListView(padding: const EdgeInsets.only(top: 6, bottom: 48), children: children),
       );
@@ -543,7 +546,7 @@ class _TabList extends StatelessWidget {
 
 class _RequestsTab extends StatefulWidget {
   const _RequestsTab({required this.d, required this.unitType, required this.unitId, required this.onChanged, required this.onSeeAll});
-  final Map<String, dynamic> d;
+  final OrgUnitData d;
   final String unitType;
   final int unitId;
   final Future<void> Function() onChanged;
@@ -555,8 +558,6 @@ class _RequestsTab extends StatefulWidget {
 
 class _RequestsTabState extends State<_RequestsTab> {
   final Set<String> _busy = {};
-
-  Map<String, dynamic> get _can => asMap(widget.d['can']);
 
   Future<void> _act(String key, Future<dynamic> Function() fn, String ok) async {
     if (_busy.contains(key)) return;
@@ -585,17 +586,16 @@ class _RequestsTabState extends State<_RequestsTab> {
     final c = context.colors;
     final s = context.read<OrgSession>();
     final api = ApiClient();
-    final joins = asMapList(widget.d['requests']);
-    final forms = asMapList(widget.d['forms']);
-    final choices = asMapList(widget.d['program_choices']);
-    final st = asMap(widget.d['stats']);
-    final decide = _can['decide_requests'] == true;
-    final review = _can['review_forms'] == true;
+    final joins = widget.d.requests;
+    final forms = widget.d.forms;
+    final choices = widget.d.programChoices;
+    final decide = widget.d.cap('decide_requests');
+    final review = widget.d.cap('review_forms');
     final children = <Widget>[];
 
     // join requests
-    if (decide || _can['configure_join'] == true) {
-      final total = asInt(st['pending_join_requests']);
+    if (decide || widget.d.cap('configure_join')) {
+      final total = widget.d.stat('pending_join_requests');
       children.add(_Title(t('طلبات الانضمام', 'Join requests'),
           subtitle: total == 0 ? t('لا أحد ينتظر', 'No one is waiting') : t('$total ينتظرون ردّك', '$total waiting for you'),
           trailing: TextButton(onPressed: widget.onSeeAll, child: Text(t('الكل والإعداد', 'All & settings')))));
@@ -641,8 +641,8 @@ class _RequestsTabState extends State<_RequestsTab> {
     }
 
     // forms submitted within this department
-    if (_can['view_forms'] == true) {
-      final total = asInt(st['pending_forms']);
+    if (widget.d.cap('view_forms')) {
+      final total = widget.d.stat('pending_forms');
       children.add(_Title(t('نماذج وطلبات للمراجعة', 'Forms to review'),
           subtitle: total == 0 ? t('كل الطلبات تمت مراجعتها', 'Everything is reviewed') : t('$total بانتظار المراجعة', '$total waiting for review'),
           trailing: TextButton(
@@ -684,8 +684,8 @@ class _RequestsTabState extends State<_RequestsTab> {
     }
 
     // academic: "choose your department" requests
-    if (_can['decide_program_choices'] == true) {
-      final total = asInt(st['pending_program_choices']);
+    if (widget.d.cap('decide_program_choices')) {
+      final total = widget.d.stat('pending_program_choices');
       children.add(_Title(t('طلبات اختيار القسم', 'Department choices'),
           subtitle: total == 0 ? t('لا طلبات معلّقة', 'Nothing pending') : t('$total طالب اختار هذا القسم', '$total students chose this department')));
       for (final r in choices) {
@@ -805,7 +805,7 @@ class _RequestCard extends StatelessWidget {
 
 class _UsersTab extends StatelessWidget {
   const _UsersTab({required this.d, required this.unitType, required this.unitId, required this.onChanged});
-  final Map<String, dynamic> d;
+  final OrgUnitData d;
   final String unitType;
   final int unitId;
   final Future<void> Function() onChanged;
@@ -814,9 +814,9 @@ class _UsersTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final s = context.read<OrgSession>();
-    final rows = asMapList(d['users']);
-    final total = asInt(asMap(d['stats'])['users']);
-    final canRemove = asMap(d['can'])['remove_users'] == true;
+    final rows = d.users;
+    final total = d.stat('users');
+    final canRemove = d.cap('remove_users');
     final isDept = unitType == 'dept';
     if (rows.isEmpty) {
       return _TabList(onRefresh: onChanged, children: [
@@ -877,7 +877,7 @@ class _UsersTab extends StatelessWidget {
 
 class _TeamTab extends StatelessWidget {
   const _TeamTab({required this.d, required this.isDept, required this.onManage, required this.onRefresh});
-  final Map<String, dynamic> d;
+  final OrgUnitData d;
   final bool isDept;
   final VoidCallback? onManage;
   final Future<void> Function() onRefresh;
@@ -885,8 +885,8 @@ class _TeamTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final rows = asMapList(d['team']);
-    final total = asInt(asMap(d['stats'])['staff']);
+    final rows = d.team;
+    final total = d.stat('staff');
     return _TabList(onRefresh: onRefresh, children: [
       _Title(isDept ? t('فريق الإدارة', 'Department team') : t('هيئة التدريس بالقسم', 'Department faculty'),
           subtitle: isDept

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/org/org_member_today.dart';
@@ -131,24 +132,11 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(loading: false));
   });
 
-  testWidgets('student home body (next up, live, free day, guest-free)', (tester) async {
+  testWidgets('student home body (smoke: loading, empty home — the full set is in student_home_layout_test)', (tester) async {
     AppModeController.instance.debugSet(overview, mode: AppMode.individual);
-    Widget body(ScheduleSession? next, List<ScheduleSession> today, {bool loading = false}) => SingleChildScrollView(
-          child: StudentHomeBody(
-            guest: false,
-            myCourses: const [],
-            scheduleLoading: loading,
-            today: today,
-            next: next,
-            onOpenCourse: (_) {},
-            onTab: (_) {},
-          ),
-        );
-    final a = session(1, '08:00', '09:30'), b = session(2, '10:00', '11:30', ongoing: true);
-    await expectNoLayoutErrors(tester, () => body(a, [a, b]));
-    await expectNoLayoutErrors(tester, () => body(b, [b]));
-    await expectNoLayoutErrors(tester, () => body(null, const []));
-    await expectNoLayoutErrors(tester, () => body(null, const [], loading: true));
+    Widget body(StudentHomeData data) => SingleChildScrollView(child: StudentHomeBody(data: data, onTab: (_) {}));
+    await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: MeHome.fromJson(const {}), now: DateTime.utc(2026, 10, 28, 9))));
+    await expectNoLayoutErrors(tester, () => body(const StudentHomeData(loading: true)));
   });
 
   test('org today: weekly slots of today unless an exam window pauses them, plus today\'s extras', () {

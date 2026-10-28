@@ -110,6 +110,10 @@ class ParentLinkProvider extends BaseProvider {
     notifyListeners();
   }
 
+  /// True once [loadAll] ran or the overview seeded this provider (Track B.5): the Children / Link tabs then paint
+  /// without a fetch of their own and refetch only on pull-to-refresh.
+  bool loadedOnce = false;
+
   Future<void> loadAll() async {
     final c = await run(() => _api.get('/api/v1/parent/link/config'));
     if (c is Map) config = Map<String, dynamic>.from(c);
@@ -117,8 +121,30 @@ class ParentLinkProvider extends BaseProvider {
     if (r != null) requests = plList(r);
     final ch = await run(() => _api.get('/api/v1/parent/children'), makLoading: false);
     if (ch != null) children = plList(ch);
+    loadedOnce = true;
     notifyListeners();
     loadProfiles(); // fire-and-forget: the cards fill in when it arrives
+  }
+
+  /// The config / requests / children that GET /parent/overview already carries — no second round of calls on
+  /// the first paint. The children's analytics profiles still load when the Children tab opens.
+  void seed({
+    required Map<String, dynamic> config,
+    required List<Map<String, dynamic>> requests,
+    required List<Map<String, dynamic>> children,
+  }) {
+    this.config = config;
+    this.requests = requests;
+    this.children = children;
+    loadedOnce = true;
+    notifyListeners();
+  }
+
+  /// What a tab calls on its first build: a full load unless the data is already here (seeded or loaded), in which
+  /// case only the missing child profiles are fetched.
+  Future<void> ensureLoaded() async {
+    if (!loadedOnce) return loadAll();
+    if (children.any((c) => !profiles.containsKey((c['id'] as num).toInt()))) await loadProfiles();
   }
 
   Future<void> refreshChildrenAndRequests() async {

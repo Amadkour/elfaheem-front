@@ -1,38 +1,49 @@
-// lib/features/teacher/home/home_screen.dart — the INSTRUCTOR home.
+// lib/features/teacher/home/home_screen.dart — the INSTRUCTOR home (Track B.5).
 //
 //   header      greeting · name · notifications · ContextSwitcher (Personal ↔ organizations, exit to personal)
-//   Personal:   hero = the teaching day as a ribbon (today's sessions, "now" marker, next session) + key figures
-//               needs you  attendance not taken · grading · material missing · enrollment requests (+ new course)
+//   Personal:   hero       the teaching day as a ribbon (today's sessions, "now" marker, next session) + figures:
+//                          students · courses · rating · earnings this month (when GET /me/home answers)
+//               needs you  attendance not taken · grading · material missing · enrollment requests · payout pending
+//                          — every count drawn ONCE on the page
 //               today      timeline of today's sessions → the course
-//               shortcuts  courses · timetable · analytics · new course
 //               upcoming   the live queue (start / join, countdowns) for ongoing + coming sessions
-//               courses    the course strip
-//               inbox · ads · organizations
+//               courses    an enrollments sparkline when the payload carries one, then the course strip
+//               inbox      the inbox preview from /me/home (older server: the self-fetching card)
+//               ads · organizations
 //   Organization: OrgMemberHome of the selected organization.
-// Data: TeacherHomeProvider (GET /api/v1/teacher/dashboard: stats, courses, schedule, pending).
+//
+// Data: TeacherHomeProvider — GET /api/v1/teacher/dashboard (stats, courses, schedule, pending) and GET /me/home
+// (earnings, inbox preview, unread; hidden on an older server), awaited together → ONE skeleton, then the body;
+// a failure shows ErrorRetry (retried by itself when the connection comes back), pull-to-refresh via AppRefresh.
+// The screen is kept alive: it loads once per signed-in user (ensureLoaded), never again after a /login as the
+// same account. TeacherHomeBody takes plain values (test/ui/teacher_home_layout_test.dart).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/org/home_org_mix.dart';
 import 'package:flutter_education_app/features/org/org_home_tab.dart' show homeTabs;
 import 'package:flutter_education_app/features/org/org_member_dashboard.dart' show OrgMemberHome;
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxPreviewCard;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
+    show InboxCard, InboxItem, InboxPreviewCard, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
+import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
+import 'package:flutter_education_app/features/teacher/profile/payout/teacher_payouts_screen.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
-import '../../../utils/top_route_observer.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../auth/auth_provider.dart';
 import '../../shared/notification/notifications_provider.dart';
@@ -43,6 +54,9 @@ import '../home/teacher_models.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
+
+// The older rating row still reaches the instructor profile through this file.
+export 'legacy_stats_row.dart' show StatsRow;
 
 class TeacherHomeScreen extends StatefulWidget {
   const TeacherHomeScreen({super.key});
@@ -70,11 +84,24 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (context.read<TeacherHomeProvider>().homeCourses.isEmpty || topRouteObserver.previousRouteName == '/login') {
-        context.read<TeacherHomeProvider>().init();
-      }
+    AppConnectivity.instance.online.addListener(_onConnectivity);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<TeacherHomeProvider>().ensureLoaded(context.read<MyAuthProvider>().currentUser?.id);
     });
+  }
+
+  @override
+  void dispose() {
+    AppConnectivity.instance.online.removeListener(_onConnectivity);
+    super.dispose();
+  }
+
+  /// The connection came back (AppConnectivity only says "online" after the server answered): retry a failed load.
+  void _onConnectivity() {
+    if (!mounted || !AppConnectivity.instance.isOnline) return;
+    final p = context.read<TeacherHomeProvider>();
+    if (p.hasError && !p.loaded) p.init();
   }
 
   void _tab(int i) => context.read<TeacherDashboardProvider>().onChangeTab(i);
@@ -96,6 +123,13 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
 
   void _newCourse() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CourseFormScreen()));
 
+  void _openEarnings() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const TeacherPayoutsScreen()));
+
+  Future<void> _openInbox() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InboxScreen()));
+    if (mounted) context.read<TeacherHomeProvider>().refreshSilently();
+  }
+
   Future<void> _refresh() async {
     await context.read<TeacherHomeProvider>().init();
     AppModeController.instance.refresh();
@@ -107,15 +141,17 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     super.build(context);
     final provider = context.watch<TeacherHomeProvider>();
     final user = context.watch<MyAuthProvider>().currentUser;
-    final unread = context.watch<NotificationsProvider>().unreadCount;
+    final unread = provider.extra?.notificationsUnread ?? context.watch<NotificationsProvider>().unreadCount;
+    final loading = provider.isLoading && !provider.loaded;
+    final error = provider.hasError && !provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
+    final staleError = provider.hasError && provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
 
     return BasePage(
       key: const ValueKey('teacher_home'),
       useWebCard: true,
       enableFooterWidget: false,
       child: SafeArea(
-        child: RefreshIndicator(
-          color: context.colors.primary,
+        child: AppRefresh(
           onRefresh: _refresh,
           child: ListenableBuilder(
             listenable: Listenable.merge([homeTabs, AppModeController.instance]),
@@ -145,15 +181,22 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                   SliverToBoxAdapter(
                     child: _Width(
                       child: TeacherHomeBody(
-                        loading: provider.isLoading,
+                        loading: loading,
+                        error: error,
+                        staleError: staleError,
+                        onRetry: provider.init,
                         stats: provider.stats,
                         schedule: provider.schedule,
                         pending: provider.pending,
                         courses: provider.homeCourses,
+                        extra: provider.extra,
                         onTab: _tab,
                         onOpenCourse: _openCourse,
                         onOpenCourseId: _openCourseId,
                         onNewCourse: _newCourse,
+                        onOpenEarnings: _openEarnings,
+                        onOpenInbox: _openInbox,
+                        onInboxChanged: provider.refreshSilently,
                       ),
                     ),
                   ),
@@ -189,25 +232,63 @@ class TeacherHomeBody extends StatelessWidget {
     required this.onOpenCourse,
     required this.onOpenCourseId,
     required this.onNewCourse,
+    this.extra,
+    this.error,
+    this.staleError,
+    this.onRetry,
+    this.onOpenEarnings,
+    this.onOpenInbox,
+    this.onInboxChanged,
     this.showFeeds = true,
   });
 
+  /// First load in flight (nothing to show yet) → one skeleton for the whole body.
   final bool loading;
+
+  /// The first load failed → ErrorRetry instead of zeros.
+  final String? error;
+
+  /// A refresh failed while data is on screen → a banner over the data.
+  final String? staleError;
+  final VoidCallback? onRetry;
+
   final TeacherStats stats;
   final List<ScheduleSession> schedule;
   final Map<String, int> pending;
   final List<TeacherCourse> courses;
+
+  /// The teacher block of GET /me/home; null on an older server → earnings / payout / inbox preview stay hidden.
+  final TeacherHomeExtra? extra;
+
   final ValueChanged<int> onTab; // 1 courses · 2 timetable · 3 analytics
   final ValueChanged<TeacherCourse> onOpenCourse;
   final ValueChanged<int> onOpenCourseId;
   final VoidCallback onNewCourse;
+  final VoidCallback? onOpenEarnings;
+  final VoidCallback? onOpenInbox;
 
-  /// Inbox / ads / organizations (network widgets) — off in layout tests.
+  /// An inbox item was acted on from the preview → reload the home silently.
+  final VoidCallback? onInboxChanged;
+
+  /// Ads / organizations / the self-fetching inbox card (network widgets) — off in layout tests.
   final bool showFeeds;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 36),
+        child: AppListSkeleton(items: 5, withAvatar: false, padding: EdgeInsets.zero),
+      );
+    }
+    if (error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: ErrorRetry(message: error!, onRetry: onRetry ?? () {}),
+      );
+    }
+
     final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
     final upcoming = schedule.where((s) => !s.isToday || s.isOngoing || s.isLive).toList();
     final items = [
@@ -224,23 +305,32 @@ class TeacherHomeBody extends StatelessWidget {
         ),
     ];
     int p(String k) => pending[k] ?? 0;
+    final payout = extra?.pendingPayout;
+    final hasPayout = payout != null && payout > 0;
+    final inbox = [for (final raw in extra?.inboxPreview ?? const <Map<String, dynamic>>[]) InboxItem(raw)];
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      if (staleError != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: AppBanner(
+            icon: Icons.cloud_off_rounded,
+            text: 'home_refresh_failed'.tr,
+            color: c.warning,
+            action: TextButton(onPressed: onRetry, child: Text('retry'.tr)),
+          ),
+        ),
+
       // ── hero: the teaching day
-      enter(loading
-          ? const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: AppShimmer(child: AppSkeletonBox(height: 220, radius: 28)))
-          : _TeachingDayHero(items: items, stats: stats, onTap: () => onTab(2))),
+      enter(_TeachingDayHero(items: items, stats: stats, earningsMonth: extra?.earningsMonth, onTap: () => onTab(2))),
       const SizedBox(height: 28),
 
-      // ── what needs you
+      // ── what needs you (every count once)
       enter(HomeSectionTitle('home_needs_you'.tr,
-          count: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests'))),
+          count: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + (hasPayout ? 1 : 0))),
       enter(HomeActionGrid(children: [
-        const HomeTodoCard(),
         HomeActionCard(
           icon: Icons.how_to_reg_rounded,
           title: 'home_t_attendance'.tr,
@@ -273,13 +363,21 @@ class TeacherHomeBody extends StatelessWidget {
           tone: c.primary,
           onTap: () => onTab(1),
         ),
+        if (payout != null)
+          HomeActionCard(
+            icon: Icons.payments_rounded,
+            title: 'home_t_payout_pending'.tr,
+            subtitle: hasPayout ? '${appCompactNumber(payout)} · ${'home_t_payout_pending_hint'.tr}' : 'home_t_payout_none'.tr,
+            count: hasPayout ? 1 : 0,
+            tone: c.success,
+            onTap: onOpenEarnings,
+          ),
       ])),
       const SizedBox(height: 28),
 
       // ── today
       enter(HomeSectionTitle('home_today_sessions'.tr, count: items.length, actionLabel: 'home_full_timetable'.tr, onAction: () => onTab(2))),
       enter(HomeAgenda(
-        loading: loading,
         items: items,
         emptyTitle: 'home_no_sessions_today'.tr,
         emptyMessage: 'home_no_sessions_today_hint'.tr,
@@ -288,17 +386,8 @@ class TeacherHomeBody extends StatelessWidget {
       )),
       const SizedBox(height: 28),
 
-      // ── shortcuts
-      enter(HomeShortcuts(items: [
-        HomeShortcut(icon: Icons.menu_book_rounded, label: 'my_courses'.tr, onTap: () => onTab(1), featureKey: 'teacher_tab_my_courses'),
-        HomeShortcut(icon: Icons.calendar_month_rounded, label: 'my_schedule'.tr, onTap: () => onTab(2), featureKey: 'teacher_tab_my_schedule'),
-        HomeShortcut(icon: Icons.insights_rounded, label: 'analysis'.tr, onTap: () => onTab(3), featureKey: 'teacher_tab_analysis'),
-        HomeShortcut(icon: Icons.add_circle_outline_rounded, label: 'hs_add_course'.tr, onTap: onNewCourse),
-      ])),
-      const SizedBox(height: 28),
-
       // ── upcoming (live queue: start / join + countdowns)
-      if (!loading && upcoming.isNotEmpty) ...[
+      if (upcoming.isNotEmpty) ...[
         HomeSectionTitle('hs_upcoming'.tr, count: upcoming.length, actionLabel: 'show_all'.tr, onAction: () => onTab(2)),
         ParentComponent(
           child: ContentBox(key: const ValueKey('teacher_home_schedule'), child: ScheduleQueueList(sessions: upcoming)),
@@ -306,11 +395,24 @@ class TeacherHomeBody extends StatelessWidget {
         const SizedBox(height: 28),
       ],
 
-      // ── courses
+      // ── courses (+ the enrollments trend when the payload carries one)
       HomeSectionTitle('my_courses'.tr, count: courses.length, actionLabel: 'show_all'.tr, onAction: () => onTab(1)),
-      if (loading)
-        const CoursesShimmer(count: 4)
-      else if (courses.isEmpty)
+      if (extra != null && extra!.enrollmentSeries.length >= 2)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: AppCard(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+            child: Row(children: [
+              Expanded(
+                child: Text('home_t_enrollments_trend'.tr,
+                    maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.textMedium)),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(width: 96, child: AppSparkline(extra!.enrollmentSeries, height: 30, label: 'home_t_enrollments_trend'.tr)),
+            ]),
+          ),
+        ),
+      if (courses.isEmpty)
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: AppEmpty(
@@ -336,8 +438,13 @@ class TeacherHomeBody extends StatelessWidget {
         ),
       const SizedBox(height: 24),
 
-      if (showFeeds) ...[
+      // ── inbox: the preview from /me/home; an older server gets the self-fetching card
+      if (extra != null)
+        TeacherInboxPreview(items: inbox, onOpenAll: onOpenInbox, onChanged: onInboxChanged)
+      else if (showFeeds)
         const InboxPreviewCard(padding: EdgeInsets.fromLTRB(20, 0, 20, 16)),
+
+      if (showFeeds) ...[
         const HomeAdsSlider(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
         const ParentComponent(
           child: ContentBox(key: ValueKey('teacher_home_org'), padding: EdgeInsets.symmetric(horizontal: 20), child: HomeOrgMix()),
@@ -348,16 +455,81 @@ class TeacherHomeBody extends StatelessWidget {
   }
 }
 
-/// The instructor's hero: how many sessions today, what is next, the day as a ribbon, three key figures.
+/// The inbox preview over plain values (the `inbox_preview` rows of GET /me/home): the 3 most urgent to-dos →
+/// the full inbox. Hidden when the preview is empty (no empty box on a fresh account).
+class TeacherInboxPreview extends StatelessWidget {
+  const TeacherInboxPreview({super.key, required this.items, this.onOpenAll, this.onChanged});
+
+  final List<InboxItem> items;
+  final VoidCallback? onOpenAll;
+  final VoidCallback? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      child: AppCard(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onOpenAll,
+            child: Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+                child: Icon(Icons.inbox_rounded, color: c.primary),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('inbox_title'.tr, style: appText(15, w: FontWeight.w800, c: c.textDark)),
+                  Text('inbox_preview_todo'.tr.replaceAll('{n}', '${items.length}'),
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium)),
+                ]),
+              ),
+              Flexible(
+                child: Text('inbox_see_all'.tr,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12.5, w: FontWeight.w700, c: c.primary)),
+              ),
+              Icon(Icons.chevron_right_rounded, color: c.primary, size: 20),
+            ]),
+          ),
+          const SizedBox(height: 10),
+          for (final x in items.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: InboxCard(
+                item: x,
+                onTap: () async {
+                  if (await openInboxItem(context, x)) {
+                    onChanged?.call();
+                    AppModeController.instance.refresh();
+                  }
+                },
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// The instructor's hero: how many sessions today, what is next, the day as a ribbon, the key figures
+/// (students · courses · rating · earnings this month when the server sends it).
 class _TeachingDayHero extends StatelessWidget {
-  const _TeachingDayHero({required this.items, required this.stats, required this.onTap});
+  const _TeachingDayHero({required this.items, required this.stats, required this.onTap, this.earningsMonth});
   final List<HomeAgendaItem> items;
   final TeacherStats stats;
+  final double? earningsMonth;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final on = homeOnHero(context);
+    final on = context.colors.onHero;
     final now = homeNow();
     final nowMin = now.hour * 60 + now.minute;
     final live = items.where((x) => x.live).firstOrNull;
@@ -383,7 +555,7 @@ class _TeachingDayHero extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.end,
-                style: appText(12, w: FontWeight.w600, c: on.withValues(alpha: 0.85))),
+                style: appText(12, w: FontWeight.w600, c: context.colors.onHeroMuted)),
           ),
         ]),
         const SizedBox(height: 14),
@@ -404,234 +576,13 @@ class _TeachingDayHero extends StatelessWidget {
         HomeDayRibbon(items: items, nowMin: nowMin),
         const SizedBox(height: 16),
         Row(children: [
-          Expanded(child: HomeHeroFigure(value: '${stats.totalStudents}', label: 'home_students'.tr)),
+          Expanded(child: HomeHeroFigure(value: appCompactNumber(stats.totalStudents), label: 'home_students'.tr)),
           Expanded(child: HomeHeroFigure(value: '${stats.totalCourses}', label: 'courses'.tr)),
           Expanded(child: HomeHeroFigure(value: stats.overallRating.toStringAsFixed(1), label: 'home_rating'.tr)),
+          if (earningsMonth != null)
+            Expanded(child: HomeHeroFigure(value: appCompactNumber(earningsMonth!), label: 'home_t_earnings_month'.tr)),
         ]),
       ]),
     );
   }
 }
-
-// ── Shimmer ───────────────────────────────────────────────────────────────────
-
-class Shimmer extends StatefulWidget {
-  final double width, height;
-  final double radius;
-
-  const Shimmer({
-    super.key,
-    required this.width,
-    required this.height,
-    this.radius = 0,
-  });
-
-  @override
-  State<Shimmer> createState() => _ShimmerState();
-}
-
-class _ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _anim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..repeat(reverse: true);
-    _anim = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _anim,
-    builder: (_, _) => Container(
-      width: widget.width,
-      height: widget.height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(widget.radius),
-        color: Color.lerp(
-          context.colors.divider,
-          context.colors.divider.withValues(alpha: 0.3),
-          _anim.value,
-        ),
-      ),
-    ),
-  );
-}
-
-class CoursesShimmer extends StatelessWidget {
-  const CoursesShimmer({super.key, this.width, this.height, this.count});
-
-  final double? width;
-  final double? height;
-  final int? count;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 200,
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      itemCount: count ?? 3,
-      separatorBuilder: (_, _) => const SizedBox(width: 14),
-      itemBuilder: (_, _) =>
-          Shimmer(width: width ?? 170, height: height ?? 200),
-    ),
-  );
-}
-
-// ── Stats row ─────────────────────────────────────────────────────────────────
-
-class StatsRow extends StatelessWidget {
-  final TeacherStats stats;
-  final bool isFull;
-
-  const StatsRow({super.key, required this.stats, required this.isFull});
-
-  @override
-  Widget build(BuildContext context) {
-    Widget mainW = Row(
-      children: [
-        _StatCard(
-          value: stats.overallRating.toStringAsFixed(1),
-          label: 'overall_rate'.tr,
-          icon: Icons.star_rounded,
-          gradient: context.colors.primarySliderGradient,
-
-          shadowColor: context.colors.accent2,
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalStudents}',
-          label: 'total_count'.tr,
-          icon: Icons.people_alt_rounded,
-          gradient: context.colors.primaryGradient,
-          shadowColor: context.colors.accent2,
-        ),
-        const SizedBox(width: 12),
-        _StatCard(
-          value: '${stats.totalCourses}',
-          label: 'course_count'.tr,
-          icon: Icons.library_books_rounded,
-          gradient: context.colors.accentGradient,
-          shadowColor: context.colors.accent2,
-        ),
-      ],
-    );
-
-    if (!isFull) return mainW;
-    return Column(
-      children: [
-        mainW,
-        SizedBox(height: 20),
-        Row(
-          children: [
-            _StatCard(
-              value: stats.doctorRating.toStringAsFixed(1),
-              label: 'teacher_rate'.tr,
-              icon: Icons.star_rounded,
-              gradient: context.colors.successGradient.withOpacity(.7),
-              shadowColor: context.colors.primary,
-            ),
-            const SizedBox(width: 12),
-            _StatCard(
-              value: stats.courseRating.toStringAsFixed(1),
-              label: 'course_rate'.tr,
-              icon: Icons.star_rounded,
-              gradient: context.colors.dangerGradient,
-              shadowColor: context.colors.textMedium,
-            ),
-            const SizedBox(width: 12),
-            _StatCard(
-              value: stats.materialRating.toStringAsFixed(1),
-              label: 'materials_rate'.tr,
-              icon: Icons.star_rounded,
-              gradient: context.colors.goldCharcoalGradient,
-              shadowColor: context.colors.purple,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  final String value, label;
-  final IconData icon;
-  final LinearGradient gradient;
-  final Color shadowColor;
-
-  const _StatCard({
-    required this.value,
-    required this.label,
-    required this.icon,
-    required this.gradient,
-    required this.shadowColor,
-  });
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: shadowColor.withValues(alpha: 0.32),
-            blurRadius: 16,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, color: context.colors.onHero, size: 18),
-          const SizedBox(height: 10),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'bahji',
-                overflow: TextOverflow.visible,
-                height: 1,
-              ),
-            ),
-          ),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                overflow: TextOverflow.ellipsis,
-                fontFamily: 'bahji',
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-

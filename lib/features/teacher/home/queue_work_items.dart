@@ -205,14 +205,18 @@ class _QueueHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
       child: Row(
         children: [
-          Text(
-            'weekly_schedule'.tr,
-            style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: context.colors.textMedium,
-              letterSpacing: 0.5,
+          Flexible(
+            child: Text(
+              'weekly_schedule'.tr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: context.colors.textMedium,
+                letterSpacing: 0.5,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -464,44 +468,59 @@ class _CountdownBar extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Elapsed
-                Row(
-                  children: [
-                    Icon(
-                      Icons.play_circle_outline_rounded,
-                      size: 12,
-                      color: accent,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'qw_live_now'.tr,
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.play_circle_outline_rounded,
+                        size: 12,
                         color: accent,
                       ),
-                    ),
-                  ],
-                ),
-                // Time remaining
-                Row(
-                  children: [
-                    Icon(
-                      Icons.timer_outlined,
-                      size: 12,
-                      color: accent.withValues(alpha: 0.7),
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${'qw_ends_in'.tr}  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
-                      style: TextStyle(
-                        fontFamily: 'bahji',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: accent.withValues(alpha: 0.85),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'qw_live_now'.tr,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            color: accent,
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Time remaining
+                Flexible(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.timer_outlined,
+                        size: 12,
+                        color: accent.withValues(alpha: 0.7),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${'qw_ends_in'.tr}  ${_fmtCountdown(untilEnd.isNegative ? Duration.zero : untilEnd)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontFamily: 'bahji',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: accent.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -523,16 +542,19 @@ class _CountdownBar extends StatelessWidget {
             color: accent.withValues(alpha: 0.8),
           ),
           const SizedBox(width: 6),
-          Text(
-            '${'qw_starts_in'.tr}  ${_fmtCountdown(display)}',
-            style: TextStyle(
-              fontFamily: 'bahji',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: accent,
+          Expanded(
+            child: Text(
+              '${'qw_starts_in'.tr}  ${_fmtCountdown(display)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'bahji',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: accent,
+              ),
             ),
           ),
-          const Spacer(),
           // Mini progress dots
           ...List.generate(3, (i) {
             final lit = display.inMinutes < (30 - i * 10);
@@ -765,12 +787,14 @@ class _CourseInfo extends StatelessWidget {
         ),
         const SizedBox(height: 8),
 
-        Row(
+        // wraps onto a second line on a narrow card instead of overflowing
+        Wrap(
+          spacing: 5,
+          runSpacing: 2,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _MetaChip(Icons.timer_rounded, dur),
-            const SizedBox(width: 5),
             Text("|"),
-            const SizedBox(width: 5),
             _MetaChip(Icons.group_rounded, students),
           ],
         ),
@@ -793,12 +817,16 @@ class _MetaChip extends StatelessWidget {
     children: [
       Icon(icon, size: 11, color: context.colors.textMedium),
       const SizedBox(width: 3),
-      Text(
-        label,
-        style: TextStyle(
-          fontFamily: 'bahji',
-          fontSize: 11,
-          color: context.colors.textMedium,
+      Flexible(
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontFamily: 'bahji',
+            fontSize: 11,
+            color: context.colors.textMedium,
+          ),
         ),
       ),
     ],

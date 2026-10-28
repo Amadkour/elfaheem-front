@@ -11,7 +11,7 @@ import '../../config/app_config.dart';
 import 'parent_link_providers.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -154,12 +154,15 @@ class _ParentAlertsPageState extends State<ParentAlertsPage> {
       ),
       Expanded(
         child: !p.loaded && p.isLoading
-            ? const Center(child: AppLoadingIndicator(size: 56))
+            ? const AppListSkeleton(items: 5)
             : !p.loaded && p.hasError
-                ? PlError(p.errorMessage ?? '', onRetry: p.load)
+                ? ErrorRetry(message: p.errorMessage ?? '', onRetry: p.load)
                 : list.isEmpty
-                    ? PlEmpty(p.items.isEmpty ? 'pl_alerts_empty'.tr : 'pl_alerts_empty_filter'.tr, icon: Icons.verified_rounded)
-                    : RefreshIndicator(
+                    ? AppEmpty(
+                        icon: Icons.verified_rounded,
+                        title: p.items.isEmpty ? 'pl_alerts_empty'.tr : 'pl_alerts_empty_filter'.tr,
+                      )
+                    : AppRefresh(
                         onRefresh: p.load,
                         child: ListView(
                           padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),

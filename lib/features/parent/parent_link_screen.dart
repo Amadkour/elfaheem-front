@@ -36,7 +36,7 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ParentLinkProvider>().loadAll();
+      if (mounted) context.read<ParentLinkProvider>().ensureLoaded();
     });
   }
 
@@ -213,7 +213,7 @@ class _ParentLinkPageState extends State<ParentLinkPage> {
     final c = context.colors;
     _resetFormIfConfigChanged(p);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: p.loadAll,
       child: ListView(
         padding: const EdgeInsets.all(20),
