@@ -16,6 +16,26 @@ class _FakeStream {
 
 LiveEvents get _bus => LiveEvents.instance;
 
+/// A connected flag that counts its listeners (a leaked listener keeps a disposed watcher alive on the app's
+/// singleton).
+class _CountingFlag extends ValueNotifier<bool> {
+  _CountingFlag(super.value);
+
+  int listeners = 0;
+
+  @override
+  void addListener(VoidCallback listener) {
+    listeners++;
+    super.addListener(listener);
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    if (listeners > 0) listeners--;
+    super.removeListener(listener);
+  }
+}
+
 void main() {
   group('pure', () {
     test('liveEventMatches: name, kind and id (each only when given)', () {
@@ -221,5 +241,35 @@ void main() {
       await tester.pump();
       expect(seen, ['admitted'], reason: 'nothing after dispose');
     });
+
+    testWidgets('a second next() while one waits leaves one connected listener, and dispose leaves none', (tester) async {
+      final flag = _CountingFlag(true);
+      final j = JobWatch(kind: 'k', id: '1', bus: _bus,
+          stream: LiveStreamHandle(connected: flag, bind: () {}, release: () {}));
+      final first = j.next(const Duration(seconds: 5));
+      j.next(const Duration(seconds: 5));
+      expect(await first, isNull);
+      expect(flag.listeners, 1);
+      j.dispose();
+      expect(flag.listeners, 0, reason: 'a leaked listener keeps the watcher alive on LiveEventsClient.connected');
+      await tester.pump(const Duration(seconds: 6));
+    });
+  });
+
+  test('EventOrPoll: a stream that flaps faster than [every] does not starve the poll (real time)', () async {
+    final s = _FakeStream();
+    var polls = 0;
+    final w = EventOrPoll(kind: 'export', every: const Duration(milliseconds: 300), poll: () async => polls++,
+        bus: _bus, stream: s.handle)
+      ..start();
+    // connect, drop at once, reconnect 100 ms later, … (a server that answers 200 and closes: Redis down)
+    for (var i = 0; i < 12; i++) {
+      s.connected.value = true;
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      s.connected.value = false;
+      await Future<void>.delayed(const Duration(milliseconds: 95));
+    }
+    expect(polls, greaterThanOrEqualTo(2), reason: 'every change used to re-book the poll [every] from now');
+    w.stop();
   });
 }

@@ -24,6 +24,16 @@ import '../../utils/live_events.dart';
 import '../api_client.dart';
 import '../live/live_events_client.dart';
 
+/// When a live event that changes the badges should reload them: [Duration.zero] = now; otherwise after the delay
+/// (a reload ran less than [gap] ago, or is running — its answer may predate the change). Dropping such an event
+/// instead left the badge stale until the next poll, 5 min while the stream is connected.
+Duration attentionEventDelay({DateTime? last, required DateTime now, required bool running, Duration gap = const Duration(seconds: 5)}) {
+  final since = last == null ? null : now.difference(last);
+  if (!running && (since == null || since >= gap)) return Duration.zero;
+  if (since == null || since >= gap || since.isNegative) return gap;
+  return gap - since;
+}
+
 /// Stable tab keys (same list as the server's TABS). Add new ones on both sides.
 class AttentionTabs {
   AttentionTabs._();
@@ -100,7 +110,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     super.addListener(listener);
     if (_timer != null) return;
     WidgetsBinding.instance.addObserver(this);
-    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => refresh(quiet: true));
+    _live = LiveEvents.instance.listen({...LiveEvents.silentTypes, LiveEvents.attentionChanged}, (_) => _onLiveEvent());
     final stream = LiveEventsClient.instance;
     stream.connected.addListener(_onStreamChanged);
     stream.bind();
@@ -114,9 +124,26 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
     if (!hasListeners) _stop();
   }
 
+  /// A live event: reload now, or once right after the reload that is running / just ran (never dropped).
+  void _onLiveEvent() {
+    if (_trailing != null) return;
+    final d = attentionEventDelay(last: _last, now: DateTime.now(), running: _running != null);
+    if (d == Duration.zero) {
+      refresh(quiet: true);
+      return;
+    }
+    _trailing = Timer(d, () {
+      _trailing = null;
+      if (_timer == null) return; // stopped meanwhile
+      _onLiveEvent();
+    });
+  }
+
   void _stop() {
     _timer?.cancel();
     _timer = null;
+    _trailing?.cancel();
+    _trailing = null;
     _live?.cancel();
     _live = null;
     final stream = LiveEventsClient.instance;
@@ -144,6 +171,7 @@ class AttentionService extends ChangeNotifier with WidgetsBindingObserver {
   static const _minGap = Duration(seconds: 15);
 
   Timer? _timer;
+  Timer? _trailing;
   StreamSubscription<LiveEvent>? _live;
   List<AttentionItem> _items = const [];
   List<AttentionItem> _focusItems = const [];

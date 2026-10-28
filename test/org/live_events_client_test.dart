@@ -1,5 +1,6 @@
 // The pure parts of the real-time client (lib/core/live/live_events_client.dart): the SSE parser, the dedupe
 // window, the backoff sequence and the "should the stream be open" decision. No network.
+import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart';
 import 'package:flutter_education_app/utils/live_events.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -150,5 +151,20 @@ void main() {
       'lobby_updated', 'join_decided', 'job_updated', 'session_live', 'quiz_started',
     ]));
     expect(LiveEvents.silentTypes.length, 4);
+  });
+
+  test("reconnectDelay: the backoff, never shorter than the server's retry: hint", () {
+    expect(reconnectDelay(0, 0), const Duration(seconds: 1));
+    expect(reconnectDelay(0, 0, retryMs: 30000), const Duration(seconds: 30));
+    expect(reconnectDelay(6, 0, retryMs: 5000), const Duration(seconds: 30));
+  });
+
+  test('attentionEventDelay: an event right after a reload is deferred, never dropped', () {
+    final t0 = DateTime(2026, 10, 28, 12);
+    expect(attentionEventDelay(last: null, now: t0, running: false), Duration.zero);
+    expect(attentionEventDelay(last: t0, now: t0.add(const Duration(seconds: 6)), running: false), Duration.zero);
+    expect(attentionEventDelay(last: t0, now: t0.add(const Duration(seconds: 2)), running: false), const Duration(seconds: 3));
+    expect(attentionEventDelay(last: t0, now: t0.add(const Duration(seconds: 1)), running: true), const Duration(seconds: 4));
+    expect(attentionEventDelay(last: t0, now: t0.add(const Duration(seconds: 9)), running: true), const Duration(seconds: 5));
   });
 }

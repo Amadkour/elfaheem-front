@@ -14,7 +14,9 @@
 //                                               was seen, so the stream opens right after login)
 //
 // The stream is open only while (a) an access token exists, (b) the app is in front and (c) something is bound.
-// It reconnects with exponential backoff (1 s → 30 s plus jitter) and resends Last-Event-ID; a 401 is retried
+// It reconnects with exponential backoff (1 s → 30 s plus jitter, never sooner than the server's `retry:` hint; the
+// backoff starts over only after a stream that stayed up [healthyAfter], so a server that answers 200 and closes at
+// once — Redis down — is not hammered every second) and resends Last-Event-ID; a 401 is retried
 // once through a ticket (POST /api/v1/me/events/ticket goes through ApiClient, so the Dio interceptor refreshes
 // the token on the way) and then the client stops until the access token changes. Events are deduplicated by
 // id (the last 200). A stream that stays silent longer than [stallAfter] (the server pings every 25 s) is dropped
@@ -22,8 +24,9 @@
 //
 // Web: package:http's BrowserClient streams a fetch() body, and fetch may send the Authorization and
 // Last-Event-ID headers, which EventSource cannot (and the app's envelope encryption does not apply to this
-// plain stream). The pure parts (SseParser, EventDedupe, backoffFor, shouldConnect, streamHeaders) are
-// unit-tested in test/org/live_events_client_test.dart.
+// plain stream). The pure parts (SseParser, EventDedupe, backoffFor, reconnectDelay, shouldConnect, streamHeaders) are
+// unit-tested in test/org/live_events_client_test.dart; the client itself against a local and (opt-in) a real server in
+// test/org/live_events_soak_test.dart.
 library;
 
 import 'dart:async';
@@ -168,6 +171,14 @@ Duration backoffFor(int attempt, double jitter) {
   return Duration(milliseconds: base * 1000 + (j * 1000).round());
 }
 
+/// The delay before the next attempt: [backoffFor], but never shorter than the server's `retry:` hint ([retryMs],
+/// sent when Redis is unavailable).
+Duration reconnectDelay(int attempt, double jitter, {int? retryMs}) {
+  final b = backoffFor(attempt, jitter);
+  if (retryMs == null || retryMs <= b.inMilliseconds) return b;
+  return Duration(milliseconds: retryMs);
+}
+
 /// The stream is open only with a token, in front, and while something listens.
 bool shouldConnect({required bool hasToken, required bool foreground, required int binds}) =>
     hasToken && foreground && binds > 0;
@@ -183,13 +194,50 @@ Map<String, String> streamHeaders({String? token, String? lastId}) => {
 // ── The client ───────────────────────────────────────────────────────────────
 
 class LiveEventsClient with WidgetsBindingObserver {
-  LiveEventsClient._();
+  LiveEventsClient._()
+      : stallAfter = defaultStallAfter,
+        healthyAfter = defaultHealthyAfter,
+        _tokenOf = null,
+        _ticketOf = null,
+        _baseUrl = null,
+        _delayScale = 1,
+        _observeLifecycle = true;
+
+  /// A separate client for tests: its own token / ticket source and server, no WidgetsBinding observer (the test
+  /// calls [didChangeAppLifecycleState] itself), and every reconnect delay multiplied by [delayScale].
+  @visibleForTesting
+  LiveEventsClient.test({
+    required Future<String?> Function() token,
+    Future<String?> Function()? ticket,
+    required String baseUrl,
+    this.stallAfter = defaultStallAfter,
+    this.healthyAfter = defaultHealthyAfter,
+    double delayScale = 1,
+  })  : _tokenOf = token,
+        _ticketOf = ticket,
+        _baseUrl = baseUrl,
+        _delayScale = delayScale,
+        _observeLifecycle = false;
 
   static final LiveEventsClient instance = LiveEventsClient._();
 
   static const streamPath = '/api/v1/me/events';
   static const ticketPath = '/api/v1/me/events/ticket';
-  static const stallAfter = Duration(seconds: 90);
+  static const defaultStallAfter = Duration(seconds: 90);
+  static const defaultHealthyAfter = Duration(seconds: 20);
+
+  /// A stream silent this long (the server pings every 25 s) is dropped and reopened.
+  final Duration stallAfter;
+
+  /// A stream that stayed up this long resets the backoff when it ends (a rollover, a deploy); a shorter one counts
+  /// as a failed attempt.
+  final Duration healthyAfter;
+
+  final Future<String?> Function()? _tokenOf;
+  final Future<String?> Function()? _ticketOf;
+  final String? _baseUrl;
+  final double _delayScale;
+  final bool _observeLifecycle;
 
   /// True while the stream is open (AttentionService polls every 5 min instead of 60 s then).
   final ValueNotifier<bool> connected = ValueNotifier(false);
@@ -211,13 +259,22 @@ class LiveEventsClient with WidgetsBindingObserver {
   StreamSubscription<String>? _sub;
   Timer? _retry;
   Timer? _stall;
+  int? _retryHintMs;
+  final Stopwatch _upFor = Stopwatch();
 
   /// Diagnostics.
   int get binds => _binds;
   bool get halted => _haltedToken != null;
+  int get attempt => _attempt;
+  String? get lastEventId => _lastId;
 
-  static Uri streamUri({String? ticket}) {
-    final base = Uri.parse('${AppConfig.baseUrl}$streamPath');
+  /// True while a stream, a connect, a reconnect timer or the stall watchdog is alive (tests: nothing may survive
+  /// the last [release]).
+  @visibleForTesting
+  bool get busy => _sub != null || _connecting || _retry != null || _stall != null || _http != null;
+
+  static Uri streamUri({String? ticket, String? baseUrl}) {
+    final base = Uri.parse('${baseUrl ?? AppConfig.baseUrl}$streamPath');
     if (ticket == null || ticket.isEmpty) return base;
     return base.replace(queryParameters: {...base.queryParameters, 't': ticket});
   }
@@ -261,7 +318,7 @@ class LiveEventsClient with WidgetsBindingObserver {
   }
 
   void _ensureObserver() {
-    if (_observing) return;
+    if (_observing || !_observeLifecycle) return;
     _observing = true;
     final binding = WidgetsBinding.instance;
     binding.addObserver(this);
@@ -295,7 +352,8 @@ class LiveEventsClient with WidgetsBindingObserver {
     try {
       String? token;
       try {
-        token = await ApiClient().accessToken;
+        final of = _tokenOf;
+        token = of != null ? await of() : await ApiClient().accessToken;
       } catch (_) {}
       if (token != null && token.isEmpty) token = null;
       if (_haltedToken != null && _haltedToken != token) _haltedToken = null;
@@ -323,7 +381,7 @@ class LiveEventsClient with WidgetsBindingObserver {
     final gen = ++_gen;
     final client = http.Client();
     _http = client;
-    final req = http.Request('GET', streamUri(ticket: ticket))
+    final req = http.Request('GET', streamUri(ticket: ticket, baseUrl: _baseUrl))
       ..headers.addAll(streamHeaders(token: ticket == null ? token : null, lastId: _lastId));
     http.StreamedResponse res;
     try {
@@ -346,8 +404,13 @@ class LiveEventsClient with WidgetsBindingObserver {
       // once through the ticket: the POST goes through ApiClient, whose interceptor refreshes the token
       String t = '';
       try {
-        final r = await ApiClient().post(ticketPath);
-        t = r is Map ? '${r['ticket'] ?? ''}' : '';
+        final of = _ticketOf;
+        if (of != null) {
+          t = await of() ?? '';
+        } else {
+          final r = await ApiClient().post(ticketPath);
+          t = r is Map ? '${r['ticket'] ?? ''}' : '';
+        }
       } catch (e) {
         _log('ticket failed: $e');
       }
@@ -367,7 +430,11 @@ class LiveEventsClient with WidgetsBindingObserver {
       return;
     }
     _connecting = false;
-    _attempt = 0;
+    // the backoff starts over only once this stream proved healthy (see _lost): a 200 that closes at once is a failure
+    _retryHintMs = null;
+    _upFor
+      ..reset()
+      ..start();
     final parser = SseParser();
     _sub = res.stream.transform(utf8.decoder).listen(
       (chunk) {
@@ -375,6 +442,7 @@ class LiveEventsClient with WidgetsBindingObserver {
         for (final e in parser.feed(chunk)) {
           _deliver(e);
         }
+        _retryHintMs = parser.retryMs;
       },
       onError: (Object e) => _lost(gen, 'stream error: $e'),
       onDone: () => _lost(gen, 'stream closed'),
@@ -391,7 +459,7 @@ class LiveEventsClient with WidgetsBindingObserver {
       if (_dedupe.seen(id)) return;
     }
     if (e.name == 'message' || e.name == 'ping') return;
-    LiveEvents.instance.emit(e.name, e.json);
+    LiveEvents.instance.emit(e.name, e.json); // the bus unwraps the envelope (LiveEvent.fieldsOf)
   }
 
   void _armStall(int gen) {
@@ -408,6 +476,8 @@ class LiveEventsClient with WidgetsBindingObserver {
     _stall = null;
     _closeHttp();
     connected.value = false;
+    if (_upFor.elapsed >= healthyAfter) _attempt = 0;
+    _upFor.stop();
     _scheduleRetry();
   }
 
@@ -420,7 +490,9 @@ class LiveEventsClient with WidgetsBindingObserver {
 
   void _scheduleRetry() {
     _retry?.cancel();
-    _retry = Timer(backoffFor(_attempt, _random.nextDouble()), () {
+    final d = reconnectDelay(_attempt, _random.nextDouble(), retryMs: _retryHintMs);
+    _retryHintMs = null;
+    _retry = Timer(d * _delayScale, () {
       _retry = null;
       _evaluate();
     });

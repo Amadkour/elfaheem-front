@@ -105,6 +105,7 @@ class EventOrPoll {
 
   StreamSubscription<LiveEvent>? _sub;
   Timer? _timer;
+  final Stopwatch _sincePoll = Stopwatch();
   bool _running = false;
   bool _polling = false;
   bool _again = false;
@@ -123,6 +124,9 @@ class EventOrPoll {
   void start({bool pollNow = false}) {
     if (_running) return;
     _running = true;
+    _sincePoll
+      ..reset()
+      ..start();
     _stream.bind();
     _stream.connected.addListener(_onConnectedChanged);
     _sub = _bus.listen(_matcher.names, _onEvent);
@@ -162,14 +166,25 @@ class EventOrPoll {
 
   void _onConnectedChanged() {
     if (!_running || _polling) return;
-    _book(); // the new cadence from now
+    if (connected) {
+      _book(); // the slow cadence from now: the stream delivers
+      return;
+    }
+    // Dropped: the fast cadence counts from the last poll, not from now. Re-booking [every] from now on each change
+    // let a flapping stream (200, closed at once, reconnect, …) push the poll back forever.
+    final left = every - _sincePoll.elapsed;
+    if (left <= Duration.zero) {
+      _run();
+    } else {
+      _book(left);
+    }
   }
 
-  void _book() {
+  void _book([Duration? after]) {
     _timer?.cancel();
     _timer = null;
     if (!_running) return;
-    _timer = Timer(interval, () {
+    _timer = Timer(after ?? interval, () {
       _timer = null;
       _run();
     });
@@ -189,6 +204,9 @@ class EventOrPoll {
       // the caller's poll handles its own errors; the schedule goes on
     } finally {
       _polling = false;
+      _sincePoll
+        ..reset()
+        ..start();
     }
     if (!_running) return;
     if (_again) {
@@ -244,7 +262,8 @@ class JobWatch {
       _pending = null;
       return Future.value(p);
     }
-    _waiting?.complete(null);
+    final prev = _waiting;
+    if (prev != null) _finish(prev, null); // also drops its connected listener (a second one would leak)
     final c = Completer<LiveEvent?>();
     _waiting = c;
     _timer?.cancel();
