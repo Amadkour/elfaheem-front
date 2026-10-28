@@ -393,14 +393,15 @@ class _SessionRow extends StatelessWidget {
     final sub = [
       if (event.subtitle.isNotEmpty) event.subtitle,
       if (event.location.isNotEmpty) event.location,
-      if (event.mode.isNotEmpty) event.mode,
+      // the server's mode keyword ("online" / "offline") in the reader's language — it was shown raw
+      if (event.mode.isNotEmpty) _modeLabel(event.mode),
     ].join(' · ');
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SizedBox(
         width: 64,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(s == null ? '—' : AppTime.time(s), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: appText(12, w: FontWeight.w800, c: tone)),
+              style: appText(12, w: FontWeight.w800, c: appInk(context, tone))),
           if (e != null)
             Text(AppTime.time(e), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10.5, c: c.textLight)),
         ]),
@@ -428,6 +429,12 @@ class _SessionRow extends StatelessWidget {
     ]);
   }
 }
+
+String _modeLabel(String mode) => switch (mode) {
+      'online' => AppConfig.lang == 'ar' ? 'أونلاين' : 'Online',
+      'offline' => AppConfig.lang == 'ar' ? 'حضوري' : 'In person',
+      _ => mode,
+    };
 
 class _MarkChip extends StatelessWidget {
   const _MarkChip({required this.mark});

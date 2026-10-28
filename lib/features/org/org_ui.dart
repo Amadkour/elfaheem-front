@@ -21,6 +21,7 @@ import '../admin/admin_list.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
@@ -191,8 +192,9 @@ class OrgStatTile extends StatelessWidget {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${value ?? 0}',
                     style: TextStyle(fontFamily: 'bahji', fontSize: 21, fontWeight: FontWeight.w800, color: c.textDark)),
-                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: orgText(context, size: 11.5, color: c.textMedium)),
+                // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
+                Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
+                    style: orgText(context, size: 11.5, color: c.textMedium).copyWith(height: 1.2)),
               ]),
             ),
           ]),
@@ -311,8 +313,9 @@ class OrgPill extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
       decoration: BoxDecoration(color: col.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (icon != null) ...[Icon(icon, size: 13, color: col), const SizedBox(width: 4)],
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: col))),
+        // the tint keeps the raw tone; the label is the readable ink of it (warning text on its own tint was 2:1)
+        if (icon != null) ...[Icon(icon, size: 13, color: appInk(context, col)), const SizedBox(width: 4)],
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: appInk(context, col)))),
       ]),
     );
   }

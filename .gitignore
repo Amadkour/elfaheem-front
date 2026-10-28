@@ -85,3 +85,6 @@ build/debug-info/
 # developer-documents toolchain (D1)
 .docvenv/
 documents/_build/__pycache__/
+
+# visual QA renders (flutter test test/visual --update-goldens); regenerated on demand, not diffed
+test/visual/goldens/

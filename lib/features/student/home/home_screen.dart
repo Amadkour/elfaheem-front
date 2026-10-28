@@ -380,24 +380,25 @@ class _Sections extends StatelessWidget {
       ])),
       const SizedBox(height: 28),
 
-      // ── today
-      enter(HomeSectionTitle('home_today'.tr, count: home.today.length, actionLabel: 'home_full_timetable'.tr, onAction: () => body.onTab('my_schedule'))),
-      enter(HomeAgenda(
-        nowMin: nowMin,
-        items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
-        emptyTitle: 'home_no_classes_today'.tr,
-        emptyMessage: 'home_s_free_hint'.tr,
-        emptyActionLabel: 'home_full_timetable'.tr,
-        onEmptyAction: () => body.onTab('my_schedule'),
-      )),
+      // ── today | this week (side by side on a wide window)
+      HomeSplit(start: [
+        enter(HomeSectionTitle('home_today'.tr, count: home.today.length, actionLabel: 'home_full_timetable'.tr, onAction: () => body.onTab('my_schedule'))),
+        enter(HomeAgenda(
+          nowMin: nowMin,
+          items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
+          emptyTitle: 'home_no_classes_today'.tr,
+          emptyMessage: 'home_s_free_hint'.tr,
+          emptyActionLabel: 'home_full_timetable'.tr,
+          onEmptyAction: () => body.onTab('my_schedule'),
+        )),
+      ], end: [
+        // ── this week
+        if (home.upcoming.isNotEmpty) ...[
+          enter(HomeSectionTitle('home_this_week'.tr, count: home.upcoming.length, actionLabel: 'home_open_calendar'.tr, onAction: () => Navigator.of(context).pushNamed('/calendar'))),
+          enter(UpcomingList(events: home.upcoming, onTap: _open)),
+        ],
+      ]),
       const SizedBox(height: 28),
-
-      // ── this week
-      if (home.upcoming.isNotEmpty) ...[
-        enter(HomeSectionTitle('home_this_week'.tr, count: home.upcoming.length, actionLabel: 'home_open_calendar'.tr, onAction: () => Navigator.of(context).pushNamed('/calendar'))),
-        enter(UpcomingList(events: home.upcoming, onTap: _open)),
-        const SizedBox(height: 28),
-      ],
 
       // ── continue learning
       enter(HomeSectionTitle('home_continue_learning'.tr,

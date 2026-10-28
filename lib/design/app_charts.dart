@@ -102,6 +102,26 @@ Color chartSnapLightness(Color c, {required bool dark}) {
   return h.toColor();
 }
 
+/// A tone (primary, warning, a series colour …) drawn as TEXT or an icon on a card, made readable in the open
+/// mode, hue kept: on a light surface it is darkened to OKLab L <= 0.56 (about 4.5:1 on white — the theme's
+/// warning / success are 2–2.5:1 as they are), on a dark surface lifted to L >= 0.72 (the indigo primary is
+/// 1.6:1 on the dark card). Fills, tints and borders keep the raw tone.
+Color appInk(BuildContext context, Color tone) {
+  final dark = context.colors.isDark;
+  var h = HSLColor.fromColor(tone);
+  for (var i = 0; i < 40; i++) {
+    final l = oklabLightness(h.toColor());
+    if (dark && l < 0.72) {
+      h = h.withLightness(math.min(1, h.lightness + 0.02));
+    } else if (!dark && l > 0.56) {
+      h = h.withLightness(math.max(0, h.lightness - 0.02));
+    } else {
+      break;
+    }
+  }
+  return h.toColor().withValues(alpha: tone.a);
+}
+
 /// The categorical palette of the open theme (fixed order, see the header). Index past the end → "other".
 List<Color> appChartPalette(BuildContext context) {
   final c = context.colors;
@@ -769,7 +789,8 @@ class AppTrendTile extends StatelessWidget {
                         color: deltaColor,
                       ),
                       const SizedBox(width: 2),
-                      Text(deltaText, style: _ink(deltaColor, size: 11, w: FontWeight.w700)),
+                      // a signed figure reads left to right in Arabic too ("+40.7%", not "40.7%+")
+                      Text(deltaText, textDirection: TextDirection.ltr, style: _ink(appInk(context, deltaColor), size: 11, w: FontWeight.w700)),
                     ]),
                   ),
                 ),

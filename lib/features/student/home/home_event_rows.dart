@@ -270,7 +270,7 @@ class CourseProgressList extends StatelessWidget {
                     height: 56,
                     child: x.imageUrl != null && x.imageUrl!.startsWith('http')
                         ? AppNetworkImage(url: x.imageUrl!, width: 56, height: 56)
-                        : ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, color: c.primary)),
+                        : ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, color: appInk(context, c.primary))),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -279,7 +279,8 @@ class CourseProgressList extends StatelessWidget {
                     Text(x.name(AppConfig.lang), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.25)),
                     const SizedBox(height: 8),
                     Row(children: [
-                      Expanded(child: AppProgressBar(value: x.progress, height: 5, color: appScoreColor(context, x.progress))),
+                      // progress is not a grade: the brand colour while under way, success when done (22 % drew an alarm red)
+                      Expanded(child: AppProgressBar(value: x.progress, height: 5, color: x.progress >= 100 ? c.success : appChartPalette(context).first)),
                       const SizedBox(width: 8),
                       Text('${x.progress.round()}%', style: appText(11.5, w: FontWeight.w800, c: c.textMedium)),
                     ]),
@@ -288,7 +289,7 @@ class CourseProgressList extends StatelessWidget {
                   ]),
                 ),
                 const SizedBox(width: 6),
-                Icon(Icons.play_circle_fill_rounded, color: c.primary, size: 26),
+                Icon(Icons.play_circle_fill_rounded, color: appInk(context, c.primary), size: 26),
               ]),
             ),
           ),

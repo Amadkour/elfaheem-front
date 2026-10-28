@@ -12,7 +12,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
-import '../../utils/widget/app_loading_indicator.dart';
 import 'admin_common.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 

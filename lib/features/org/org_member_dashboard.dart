@@ -25,6 +25,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -463,7 +464,7 @@ class OrgMemberHomeBody extends StatelessWidget {
 
     void openTimetable() => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: orgId)));
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    final top = <Widget>[
       OrgHero(
         org: org,
         subtitle: orgRolesLine(entry),
@@ -489,6 +490,8 @@ class OrgMemberHomeBody extends StatelessWidget {
       AppGrid(minTile: 140, padding: const EdgeInsets.symmetric(horizontal: 16), children: stats),
       const SizedBox(height: 18),
 
+    ];
+    final main = <Widget>[
       // ── today (the same events as the calendar: exam pauses and dated changes applied)
       if (isMember) ...[
         if (today == null && todayFallback != null)
@@ -511,17 +514,17 @@ class OrgMemberHomeBody extends StatelessWidget {
 
       // ── what needs me (the 5 most urgent rows of THIS organization; the counts sit in the tiles above)
       if (inboxRows == null && inboxFallback != null) ...[
-        AppSectionTitle(t('ما ينتظرك', 'What needs you'),
-            trailing: TextButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
-                child: Text(t('عرض الكل', 'See all')))),
+        HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
+            padding: _titlePad,
+            actionLabel: t('عرض الكل', 'See all'),
+            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
         inboxFallback!,
         const SizedBox(height: 8),
       ] else if (inboxRows != null && inboxRows.isNotEmpty) ...[
-        AppSectionTitle(t('ما ينتظرك', 'What needs you'),
-            trailing: TextButton(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org)))),
-                child: Text(t('عرض الكل', 'See all')))),
+        HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
+            padding: _titlePad,
+            actionLabel: t('عرض الكل', 'See all'),
+            onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(children: [
@@ -532,9 +535,11 @@ class OrgMemberHomeBody extends StatelessWidget {
         const SizedBox(height: 8),
       ],
 
+    ];
+    final side = <Widget>[
       // ── decisions (managers)
       if (manage != null && asInt(ap['total']) > 0) ...[
-        AppSectionTitle(t('بانتظار قرارك', 'Waiting for your decision')),
+        HomeSectionTitle(t('بانتظار قرارك', 'Waiting for your decision'), padding: _titlePad),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(children: [
@@ -568,7 +573,8 @@ class OrgMemberHomeBody extends StatelessWidget {
 
       // ── the parts I manage
       if (depts.isNotEmpty || subOrgs.isNotEmpty) ...[
-        AppSectionTitle(t('ما تديره', 'What you manage'),
+        HomeSectionTitle(t('ما تديره', 'What you manage'),
+            padding: _titlePad,
             subtitle: admin ? t('صلاحيات كاملة على المؤسسة', 'Full rights on the organization') : t('حسب الصلاحيات الممنوحة لك', 'Based on the rights you were given')),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -608,13 +614,35 @@ class OrgMemberHomeBody extends StatelessWidget {
 
       // ── news
       if (isMember && news != null) ...[
-        AppSectionTitle(t('أخبار المؤسسة', 'News'),
-            trailing: TextButton(onPressed: () => _space(context, org, 0), child: Text(t('كل الأخبار', 'All news')))),
+        HomeSectionTitle(t('أخبار المؤسسة', 'News'),
+            padding: _titlePad, actionLabel: t('كل الأخبار', 'All news'), onAction: () => _space(context, org, 0)),
         news!,
       ],
-      const SizedBox(height: 24),
-    ]);
+    ];
+
+    // A wide window: what is happening (today · what needs you) beside what you act on (decisions · what you
+    // manage · quick actions), at most 1240 wide — one 1400 px column stretched every row into a thin strip.
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < Breakpoints.desktop || side.isEmpty || main.isEmpty) {
+        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...top, ...main, ...side, const SizedBox(height: 24)]);
+      }
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1240),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            ...top,
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 3, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: main)),
+              Expanded(flex: 2, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: side)),
+            ]),
+            const SizedBox(height: 24),
+          ]),
+        ),
+      );
+    });
   }
+
+  static const _titlePad = EdgeInsets.fromLTRB(16, 0, 8, 10);
 
   static void _space(BuildContext context, Map<String, dynamic> org, int tab) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMemberSpace(org: org, initialTab: tab)));

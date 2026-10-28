@@ -20,6 +20,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show NumberFormat;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -27,7 +28,6 @@ import 'package:flutter_education_app/design/app_responsive.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
 
 import '../org/org_common.dart' show orgTypeLabels;
-import 'admin_common.dart' show money;
 import 'admin_home_data.dart';
 import 'admin_models.dart' show moneyByCurrency;
 
@@ -254,7 +254,7 @@ class _Pulse extends StatelessWidget {
       if (spark && data.mainCurrency != null)
         AppTrendTile(
           label: 'admin_home_revenue_30d'.tr,
-          value: money(data.revenue30ByCurrency[data.mainCurrency!] ?? 0, data.mainCurrency),
+          value: _money(data.revenue30ByCurrency[data.mainCurrency!] ?? 0, data.mainCurrency),
           delta: data.revenueDelta,
           spark: data.revenueSpark,
           deltaHint: 'admin_home_vs_prev_half'.tr,
@@ -444,7 +444,9 @@ class _Donuts extends StatelessWidget {
               ? AppDonut(
                   title: 'admin_home_revenue_by_currency'.tr,
                   parts: [for (final e in data.revenue30ByCurrency.entries) AppChartPart(e.key, e.value)],
-                  format: (v) => money(v),
+                  format: (v) => _money(v),
+                  // amounts in different currencies never add up: the centre names the main currency's share
+                  center: _CurrencyShare(byCurrency: data.revenue30ByCurrency),
                 )
               : Text('admin_home_no_revenue'.tr, style: appText(13, c: c.textLight)),
         ),
@@ -476,7 +478,7 @@ class _Health extends StatelessWidget {
     final failed = data.jobsFailed24h;
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeSectionTitle('admin_home_health'.tr, padding: const EdgeInsets.fromLTRB(6, 0, 0, 10)),
-      AppGrid(minTile: 140, children: [
+      AppGrid(minTile: 160, children: [ // 160: two per row in the side column — three cut every label
         if (data.hasRealtime)
           AppStatTile(
             icon: Icons.bolt_rounded,
@@ -533,7 +535,7 @@ class AdminAssistantCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          Icon(Icons.auto_awesome_rounded, size: 20, color: c.primary),
+          Icon(Icons.auto_awesome_rounded, size: 20, color: appInk(context, c.primary)),
           const SizedBox(width: 8),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -546,7 +548,8 @@ class AdminAssistantCard extends StatelessWidget {
         AppGrid(minTile: 110, spacing: 8, padding: EdgeInsets.zero, children: [
           AppStatTile(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: appCompactNumber(h.questions), color: c.primary),
           AppStatTile(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: h.noAnswerText, color: bad ? c.warning : c.success),
-          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: h.p50Text, color: c.purple),
+          // an LTR isolate keeps "11.4 s" in order inside Arabic
+          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: '\u2066${h.p50Text}\u2069', color: c.purple),
         ]),
         if (h.questions > 0) ...[
           const SizedBox(height: 10),
@@ -555,7 +558,11 @@ class AdminAssistantCard extends StatelessWidget {
         if (onOpen != null)
           Align(
             alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(onPressed: onOpen, icon: const Icon(Icons.open_in_new_rounded, size: 18), label: Text('admin_home_ai_open'.tr)),
+            child: TextButton.icon(
+                onPressed: onOpen,
+                style: TextButton.styleFrom(foregroundColor: appInk(context, c.primary)),
+                icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                label: Text('admin_home_ai_open'.tr)),
           ),
       ]),
     );
@@ -565,6 +572,33 @@ class AdminAssistantCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. Hubs
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// "631,785 EGP": grouped digits (the raw "631785" was hard to read at a glance).
+String _money(num v, [String? currency]) {
+  final s = NumberFormat(v == v.roundToDouble() ? '#,##0' : '#,##0.00', 'en').format(v);
+  return currency == null || currency.isEmpty ? s : '$s $currency';
+}
+
+/// The revenue donut's centre: the main currency's share ("98%" over "EGP").
+class _CurrencyShare extends StatelessWidget {
+  const _CurrencyShare({required this.byCurrency});
+  final Map<String, double> byCurrency;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final total = byCurrency.values.fold<double>(0, (a, b) => a + b);
+    final main = byCurrency.entries.fold<MapEntry<String, double>?>(null, (m, e) => m == null || e.value > m.value ? e : m);
+    if (main == null || total <= 0) return const SizedBox.shrink();
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Text('${(main.value / total * 100).round()}%', textDirection: TextDirection.ltr, style: appText(20, w: FontWeight.w900, c: c.textDark, h: 1.1)),
+        Text(main.key, style: appText(11, w: FontWeight.w700, c: c.textMedium)),
+      ]),
+    );
+  }
+}
 
 class _Hubs extends StatelessWidget {
   const _Hubs({required this.actions});

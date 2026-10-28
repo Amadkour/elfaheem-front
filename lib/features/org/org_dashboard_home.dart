@@ -25,7 +25,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppBanner, AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber, appText;
+    show AppBanner, AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber, appInk, appText;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton, leaveToPersonal;
 import 'package:flutter_education_app/design/home_kit.dart' show HomeSectionTitle, HomeShortcut, HomeShortcuts;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -449,11 +449,11 @@ class OrgAttentionCard extends StatelessWidget {
         const SizedBox(width: 8),
         // capped so a long action label (or a 1.3 text scale on a 320 px phone) never squeezes the title out
         ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 96),
+          constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width >= 600 ? 160 : 96),
           child: TextButton(
             onPressed: spec.onTap,
             style: TextButton.styleFrom(
-                foregroundColor: color, padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(48, 40)),
+                foregroundColor: appInk(context, color), padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(48, 40)),
             child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
           ),
@@ -487,7 +487,7 @@ class OrgTrendRow extends StatelessWidget {
     final palette = appChartPalette(context);
     const slots = {'joins': 0, 'attendance': 2, 'complaints': 4};
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle(t('آخر 30 يوماً', 'Last 30 days'), padding: const EdgeInsets.fromLTRB(16, 8, 12, 10)),
+      HomeSectionTitle(t('الاتجاهات · 30 يوماً', 'Trends · 30 days'), padding: const EdgeInsets.fromLTRB(16, 8, 12, 10)),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: LayoutBuilder(builder: (context, box) {

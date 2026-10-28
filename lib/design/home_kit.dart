@@ -143,9 +143,33 @@ class HomeHeader extends StatelessWidget {
 //  Section title
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Two home sections side by side from [minWidth] (each a list: title + body), one under the other below it — a
+/// 1000 px single column stretched a 5-row agenda into a strip with a blank half.
+class HomeSplit extends StatelessWidget {
+  const HomeSplit({super.key, required this.start, required this.end, this.minWidth = 900, this.gap = 28});
+  final List<Widget> start, end;
+  final double minWidth, gap;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        if (end.isEmpty) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: start);
+        if (start.isEmpty) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: end);
+        if (box.maxWidth < minWidth) {
+          return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [...start, SizedBox(height: gap), ...end]);
+        }
+        return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: start)),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: end)),
+        ]);
+      });
+}
+
 class HomeSectionTitle extends StatelessWidget {
-  const HomeSectionTitle(this.title, {super.key, this.count, this.actionLabel, this.onAction, this.padding});
+  const HomeSectionTitle(this.title, {super.key, this.count, this.actionLabel, this.onAction, this.padding, this.subtitle});
   final String title;
+
+  /// A quiet line under the title (e.g. "Based on the rights you were given").
+  final String? subtitle;
   final int? count;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -156,26 +180,35 @@ class HomeSectionTitle extends StatelessWidget {
     final c = context.colors;
     return Padding(
       padding: padding ?? const EdgeInsets.fromLTRB(20, 0, 12, 10),
+      // The title takes every pixel the action leaves (a Flexible + Spacer pair split the row in halves: the title
+      // was cut at half the width and the action floated mid-row instead of sitting at the end).
       child: LayoutBuilder(builder: (context, box) => Row(children: [
         Container(width: 4, height: 18, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(4))),
         const SizedBox(width: 10),
-        Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
-        if (count != null && count! > 0) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
-            child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: c.primary)),
-          ),
-        ],
-        const Spacer(),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Row(children: [
+              Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
+              if (count != null && count! > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: c.primaryTint, borderRadius: BorderRadius.circular(10)),
+                  child: Text(count! > 999 ? '999+' : '$count', style: appText(12, w: FontWeight.w800, c: appInk(context, c.primary))),
+                ),
+              ],
+            ]),
+            if (subtitle != null && subtitle!.isNotEmpty)
+              Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+          ]),
+        ),
         if (actionLabel != null && onAction != null)
           ConstrainedBox(
             constraints: BoxConstraints(maxWidth: box.maxWidth * 0.42),
             child: TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
-              child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: c.primary)),
+              child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: appInk(context, c.primary))),
             ),
           ),
       ])),
@@ -296,7 +329,7 @@ class HomeActionCard extends StatelessWidget {
       width: 40,
       height: 40,
       decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
-      child: Icon(icon, size: 21, color: color),
+      child: Icon(icon, size: 21, color: appInk(context, color)),
     );
     if (attentionKey != null) iconBox = homeAttentionBadge(attentionKey!, iconBox);
     return Material(
@@ -314,14 +347,17 @@ class HomeActionCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               iconBox,
-              const Spacer(),
+              // the count sits in the card's end corner (a Spacer + Flexible pair left it mid-card)
               if (count != null)
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
+                Expanded(
+                  child: Align(
                     alignment: AlignmentDirectional.topEnd,
-                    child: Text(count! > 999 ? '999+' : '$count',
-                        style: appText(26, w: FontWeight.w900, c: hot ? color : c.textLight, h: 1)),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.topEnd,
+                      child: Text(count! > 999 ? '999+' : '$count',
+                          style: appText(26, w: FontWeight.w900, c: hot ? appInk(context, color) : c.textLight, h: 1)),
+                    ),
                   ),
                 ),
             ]),
@@ -377,7 +413,10 @@ class HomeActionGrid extends StatelessWidget {
     return Padding(
       padding: padding,
       child: LayoutBuilder(builder: (context, box) {
-        final cols = box.maxWidth >= 900 ? 4 : (box.maxWidth >= 560 ? 3 : 2);
+        final max = box.maxWidth >= 900 ? 4 : (box.maxWidth >= 560 ? 3 : 2);
+        // never leave one card alone on the last row of a wide grid: 5 cards are 3 + 2, not 4 + 1
+        var cols = math.min(max, math.max(1, children.length));
+        if (cols > 2 && children.length % cols == 1) cols--;
         const gap = 10.0;
         final rows = <Widget>[];
         for (var i = 0; i < children.length; i += cols) {
@@ -632,7 +671,7 @@ class HomeShortcuts extends StatelessWidget {
                           border: Border.all(color: c.divider),
                           boxShadow: c.cardShadow,
                         ),
-                        child: Icon(s.icon, size: 23, color: c.primary),
+                        child: Icon(s.icon, size: 23, color: appInk(context, c.primary)),
                       ),
                     ),
                     const SizedBox(height: 8),
