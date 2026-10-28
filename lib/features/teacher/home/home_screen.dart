@@ -132,8 +132,8 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
   }
 
   Future<void> _refresh() async {
+    AppModeController.instance.refresh(); // beside the dashboard (it was asked only after it answered)
     await context.read<TeacherHomeProvider>().init();
-    AppModeController.instance.refresh();
     orgTodayEpoch.value++; // the organization's today agenda (Organization mode)
   }
 

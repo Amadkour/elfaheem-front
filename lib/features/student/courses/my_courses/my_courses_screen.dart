@@ -37,6 +37,8 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     if (!mounted) return;
     final list = _home.myCourses;
     if (identical(list, _synced)) return; // same list as last time → nothing new
+    // still empty (the home answered with no courses): page 1 was already requested for the first empty list
+    if (list.isEmpty && _synced != null && _synced!.isEmpty) return;
     _synced = list;
     context.read<MyCoursesProvider>().init(list);
   }

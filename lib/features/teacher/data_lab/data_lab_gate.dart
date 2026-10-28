@@ -71,6 +71,9 @@ class _DataLabGateState extends State<DataLabGate> with WidgetsBindingObserver {
     _checking = true;
     try {
       Map<String, dynamic>? setup = _setup;
+      // asked at once, beside the setup check (one round trip instead of two); used only when no setup is due
+      // (the failure stays inside the record, so an unused one is never reported as unhandled)
+      final pending = _api.myPendingRequests().then<(List<DlPendingRequest>?, Object?)>((r) => (r, null), onError: (Object e) => (null, e));
       try {
         final s = await _api.accountSetup();
         setup = s['required'] == true ? s : null;
@@ -82,7 +85,9 @@ class _DataLabGateState extends State<DataLabGate> with WidgetsBindingObserver {
       List<DlPendingForm> forms = _forms;
       if (setup == null) {
         try {
-          forms = DlPendingForm.group(await _api.myPendingRequests());
+          final (requests, failure) = await pending;
+          if (failure != null) throw failure;
+          forms = DlPendingForm.group(requests!);
         } catch (e) {
           debugPrint('[DataLabGate] pending questions check failed: ${e is ApiException ? '${e.statusCode} ${e.message}' : e}');
         }

@@ -92,6 +92,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  /// The feeds move from under the skeleton to under the sections when /me/home answers: a GlobalKey moves them
+  /// instead of mounting them again (a remount asked GET /ads/feed, /home/mix and /org/public/mine a second time).
+  final _feedsKey = GlobalKey(debugLabel: 'student_home.feeds');
+
   @override
   void initState() {
     super.initState();
@@ -187,7 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
                                   onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
                                   onOpenOrgs: () => showContextSwitcherSheet(context),
-                                  feeds: const _Feeds(),
+                                  feeds: KeyedSubtree(key: _feedsKey, child: const _Feeds()),
                                 );
                               },
                             ),
