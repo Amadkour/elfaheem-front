@@ -32,6 +32,7 @@ import 'complaint_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
@@ -1809,7 +1810,11 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
             for (final x in items!)
               Material(
                 type: MaterialType.transparency,
-                child: ListTile(title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)), onTap: () => Navigator.pop(ctx, x)),
+                child: ListTile(
+                  title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)),
+                  subtitle: usernameFrom(x) == null ? null : AppUsernameLine(usernameFrom(x)),
+                  onTap: () => Navigator.pop(ctx, x),
+                ),
               ),
           ])),
         ]),

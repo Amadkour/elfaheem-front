@@ -1,6 +1,6 @@
 // features/auth/auth_shell.dart
 // ─────────────────────────────────────────────────────────────────────────────
-// The page chrome of every auth screen (D-072):
+// The page chrome of every auth screen (D-073):
 //   AuthScaffold  – BasePage + AuthLayout + the language / theme switches; rebuilds when the language changes
 //   AuthLayout    – plain values (no provider), so the layout harness can pump it:
 //                   phone / tablet: a brand-gradient hero (back · logo + name · switches, then the page's

@@ -8,7 +8,7 @@
 // WhatsApp, SMS — in this priority order (the admin may put another way first):
 //   Telegram > E-mail > WhatsApp > SMS
 // The student can switch between them at any time:
-//   • code ways   (E-mail, SMS, WhatsApp code)  -> 4 code boxes, paste / auto-fill,
+//   • code ways   (E-mail, SMS, WhatsApp code)  -> 6 code boxes, paste / auto-fill,
 //                                                  auto-submit, a resend timer PER way
 //   • link ways   (Telegram, WhatsApp link)     -> brand button, QR code on the web,
 //                                                  live status while we wait for the message
@@ -35,7 +35,7 @@ import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
-import 'username.dart' show identifierLooksLikeEmail;
+import 'username.dart' show IdentifierKind, identifierKindOf;
 import 'verify_way.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
@@ -72,7 +72,8 @@ class OtpVerificationScreen extends StatefulWidget {
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     with TickerProviderStateMixin {
-  static const int otpLength = 4;
+  /// The server sends 6-digit codes (back/services/auth_security.py OTP_LENGTH).
+  static const int otpLength = 6;
   static const int resendSeconds = 120;
 
   final List<TextEditingController> _controllers = List.generate(
@@ -644,10 +645,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if (_isReg) return false;
     final w = _way ?? VerifyWay.email;
     if (_auth.resetWays.any((r) => r.way == w.name && r.masked != null)) return false;
-    final typed = widget.email.trim();
-    if (typed.isEmpty || identifierLooksLikeEmail(typed)) return false;
-    // a phone number: digits (any script), spaces, +, -, ( )
-    return !RegExp(r'^\+?[0-9٠-٩۰-۹\s\-()]{5,}$').hasMatch(typed);
+    // an e-mail or a phone / ID is shown as typed; only a username is hidden (the server's classify)
+    return identifierKindOf(widget.email) == IdentifierKind.username;
   }
 
   /// "We sent a code to the e-mail or phone on the account @name, if it exists."
@@ -796,7 +795,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           textDirection: TextDirection.ltr,
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 340),
+              constraints: const BoxConstraints(maxWidth: 380),
               child: Row(
                 children: List.generate(otpLength, _buildSingleBox),
               ),
@@ -812,7 +811,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final digit = AuthOtpBox.digitStyle(context);
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ListenableBuilder(
           listenable: Listenable.merge([
             _focusNodes[index],
@@ -822,7 +821,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             focused: _focusNodes[index].hasFocus,
             filled: _controllers[index].text.isNotEmpty,
             error: _hasError,
-            height: 64,
+            height: 58,
             child: Focus(
               onKeyEvent: (_, e) => _onKeyEvent(index, e),
               child: TextField(

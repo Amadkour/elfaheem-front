@@ -20,6 +20,7 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 
 const _font = 'tajawal';
 
@@ -63,6 +64,7 @@ Future<List<LookupValue>> _fetchLookup(
       LookupValue(
         m['id'] as Object,
         '${m['label'] ?? m['id']}'
+        '${usernameFrom(m) == null ? '' : '  ·  @${usernameFrom(m)}'}'
         '${(m['sub'] ?? '').toString().isEmpty ? '' : '  ·  ${m['sub']}'}',
       ),
   ];

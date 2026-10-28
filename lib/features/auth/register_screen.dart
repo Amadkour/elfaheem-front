@@ -233,7 +233,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           title: 'auth_register_title'.tr,
           subtitle: 'auth_register_sub'.tr,
           pageKey: const ValueKey('register'),
-          maxWidth: 480,
+          // the longest form of the module: a wider card on desktop (phones are limited by the screen anyway)
+          maxWidth: 640,
           builder: (context, isWide) => _buildForm(provider),
         );
       },
@@ -675,7 +676,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     final screenH = MediaQuery.of(context).size.height;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: pageDirection,
       child: Container(
         height: screenH * 0.88,
         decoration: BoxDecoration(
@@ -721,21 +722,22 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'الشروط والأحكام',
+                          'terms_and_conditions'.tr,
                           style: c.h2.copyWith(fontSize: 17),
                         ),
                         if (p.terms?.meta != null)
                           Text(
-                            'آخر تحديث: ${p.terms!.meta!.lastUpdated}',
+                            '${'terms_last_updated'.tr}: ${p.terms!.meta!.lastUpdated}',
                             style: c.caption.copyWith(fontSize: 11),
                           ),
                       ],
                     ),
                   ),
                   // Close
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context, false),
-                    child: Container(
+                  IconButton(
+                    tooltip: 'close'.tr,
+                    onPressed: () => Navigator.pop(context, false),
+                    icon: Container(
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
@@ -813,7 +815,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
     if (p.terms == null || p.terms!.sections.isEmpty) {
       return Center(
         child: Text(
-          'لا توجد شروط وأحكام متاحة حالياً',
+          'terms_empty'.tr,
           style: c.body.copyWith(color: c.textMedium),
         ),
       );
@@ -999,7 +1001,7 @@ class _ScrollHintState extends State<_ScrollHint>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
+              'terms_scroll_hint'.tr,
               style: TextStyle(
                 fontFamily: AppFonts.family,
                 fontSize: 12,
@@ -1077,7 +1079,7 @@ class _BottomBar extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
+                          'terms_read_all_done'.tr,
                           style: TextStyle(
                             fontFamily: AppFonts.family,
                             fontSize: 12,
@@ -1106,7 +1108,7 @@ class _BottomBar extends StatelessWidget {
                       color: context.colors.onHero,
                     ),
                     label: Text(
-                      'أوافق على الشروط والأحكام',
+                      'terms_accept_button'.tr,
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 15,
@@ -1135,7 +1137,7 @@ class _BottomBar extends StatelessWidget {
                   color: c.primary,
                 ),
                 label: Text(
-                  'انتقل إلى نهاية الشروط',
+                  'terms_jump_to_end'.tr,
                   style: TextStyle(
                     fontFamily: AppFonts.family,
                     fontSize: 14,

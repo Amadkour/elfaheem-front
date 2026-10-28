@@ -3566,8 +3566,8 @@
     "ar": "مكتمل"
   },
   "search_student_by_name_email": {
-    "en": "Search by name or email",
-    "ar": "ابحث بالاسم أو البريد الإلكتروني"
+    "en": "Search by name, e-mail or @username",
+    "ar": "ابحث بالاسم أو البريد أو @اسم المستخدم"
   },
   "send_certificate_btn": {
     "en": "Send certificate",
@@ -9626,8 +9626,8 @@
     "ar": "طلبات ربط أولياء الأمور"
   },
   "pl_search_hint": {
-    "en": "Search parent or student",
-    "ar": "ابحث باسم ولي الأمر أو الطالب"
+    "en": "Parent or student: name, e-mail, phone or @username",
+    "ar": "ولي الأمر أو الطالب: الاسم أو البريد أو الهاتف أو @اسم المستخدم"
   },
   "pl_request_details": {
     "en": "Request details",
@@ -16996,5 +16996,85 @@
   "terms_read_again": {
     "en": "Read again",
     "ar": "إعادة القراءة"
+  },
+  "terms_scroll_hint": {
+    "en": "Read every section and scroll to the end to enable \"Accept\"",
+    "ar": "اقرأ جميع البنود ومرّر حتى النهاية لتفعيل زر القبول"
+  },
+  "terms_read_all_done": {
+    "en": "You've read all the terms — you can accept them now",
+    "ar": "قرأت جميع الشروط، يمكنك الموافقة الآن"
+  },
+  "terms_accept_button": {
+    "en": "I accept the Terms & Conditions",
+    "ar": "أوافق على الشروط والأحكام"
+  },
+  "terms_jump_to_end": {
+    "en": "Go to the end of the terms",
+    "ar": "انتقل إلى نهاية الشروط"
+  },
+  "username_confirm_title": {
+    "en": "Your username is ready",
+    "ar": "اسم المستخدم الخاص بك جاهز"
+  },
+  "username_confirm_note": {
+    "en": "We made it from your e-mail address. People can find and add you by it — keep it, choose another one, or remove it.",
+    "ar": "أنشأناه من بريدك الإلكتروني، ويستطيع الآخرون العثور عليك وإضافتك به — احتفظ به أو اختر اسماً آخر أو احذفه."
+  },
+  "username_confirm_current": {
+    "en": "Your username",
+    "ar": "اسم المستخدم الحالي"
+  },
+  "username_confirm_keep": {
+    "en": "Keep this username",
+    "ar": "الاحتفاظ بهذا الاسم"
+  },
+  "username_confirm_change": {
+    "en": "Choose another",
+    "ar": "اختيار اسم آخر"
+  },
+  "username_confirm_remove": {
+    "en": "Remove it",
+    "ar": "حذف اسم المستخدم"
+  },
+  "username_confirm_later": {
+    "en": "Not now",
+    "ar": "ليس الآن"
+  },
+  "username_confirm_change_title": {
+    "en": "Choose your username",
+    "ar": "اختر اسم المستخدم"
+  },
+  "username_confirm_save": {
+    "en": "Save username",
+    "ar": "حفظ اسم المستخدم"
+  },
+  "username_confirm_kept": {
+    "en": "Your username is confirmed",
+    "ar": "تم تأكيد اسم المستخدم"
+  },
+  "username_confirm_changed": {
+    "en": "Your new username is saved",
+    "ar": "تم حفظ اسم المستخدم الجديد"
+  },
+  "username_confirm_removed": {
+    "en": "Your username was removed — you can add one any time from your profile",
+    "ar": "تم حذف اسم المستخدم — يمكنك إضافة اسم في أي وقت من ملفك الشخصي"
+  },
+  "username_change_again_on": {
+    "en": "You can change it again on {date}. You can still remove it.",
+    "ar": "يمكنك تغييره مرة أخرى في {date}، ويمكنك حذفه الآن."
+  },
+  "username_change_locked": {
+    "en": "You changed it recently — you can change it again later, or remove it now.",
+    "ar": "غيّرته مؤخراً — يمكنك تغييره لاحقاً، أو حذفه الآن."
+  },
+  "username_keep_current": {
+    "en": "Keep my username",
+    "ar": "الإبقاء على اسم المستخدم"
+  },
+  "username_remove": {
+    "en": "Remove username",
+    "ar": "حذف اسم المستخدم"
   }
 }

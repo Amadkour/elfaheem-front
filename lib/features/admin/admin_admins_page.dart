@@ -33,6 +33,7 @@ import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class _AdminsApi {
@@ -456,6 +457,7 @@ class _AdminTile extends StatelessWidget {
                     color: c.textDark,
                   ),
                 ),
+                AppUsernameLine(usernameFrom(row)),
                 Text(
                   asStr(row['gmail']),
                   maxLines: 1,

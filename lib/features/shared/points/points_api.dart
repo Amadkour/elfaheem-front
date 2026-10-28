@@ -313,13 +313,16 @@ class PointsLedgerEntry {
 }
 
 class PointsUser {
-  const PointsUser({required this.id, this.name = '', this.email, this.phone, this.role});
+  const PointsUser({required this.id, this.name = '', this.email, this.phone, this.role, this.username});
 
   final int id;
   final String name;
   final String? email;
   final String? phone;
   final String? role;
+
+  /// The @username (D-071), null when the account has none or the server is older.
+  final String? username;
 
   factory PointsUser.fromJson(dynamic json) {
     final j = _map(json);
@@ -329,6 +332,7 @@ class PointsUser {
       email: _strOrNull(j['email']),
       phone: _strOrNull(j['phone']),
       role: _strOrNull(j['role']),
+      username: _strOrNull(j['username']),
     );
   }
 

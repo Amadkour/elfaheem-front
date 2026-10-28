@@ -37,6 +37,13 @@ class UserModel {
   /// The optional @username (lowercase, without the "@"); null when the account has none (D-071).
   final String? username;
 
+  /// False for a name the server filled in from the e-mail and the person never chose: the app asks once after
+  /// sign-in whether to keep it (POST /auth/me/username/confirm). An older server sends no key → true (never ask).
+  final bool usernameConfirmed;
+
+  /// When the username may be changed again (UTC); null = now. Removing it is always allowed (D-071 v2).
+  final DateTime? usernameChangeAvailableAt;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -50,7 +57,19 @@ class UserModel {
     this.registrationStep,
     required this.lastLogin,
     this.username,
+    this.usernameConfirmed = true,
+    this.usernameChangeAvailableAt,
   });
+
+  /// The end of the change cooldown when it is still running at [now] (default: the clock), else null.
+  DateTime? usernameLockedUntil([DateTime? now]) {
+    final at = usernameChangeAvailableAt;
+    if (at == null || username == null) return null;
+    return at.isAfter((now ?? DateTime.now()).toUtc()) ? at : null;
+  }
+
+  /// The account holds a name it never confirmed: the keep / change / remove sheet may be offered.
+  bool get needsUsernameConfirm => username != null && !usernameConfirmed;
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
     id: j['id'] as int,
@@ -68,6 +87,9 @@ class UserModel {
     registrationStep: j['registration_step'] as String?,
     // an older server sends no key; an empty string means "none" too
     username: j['username'] is String && (j['username'] as String).isNotEmpty ? j['username'] as String : null,
+    // missing (older server, older cache) = confirmed: never prompt for a name the server did not flag
+    usernameConfirmed: j['username_confirmed'] is bool ? j['username_confirmed'] as bool : true,
+    usernameChangeAvailableAt: usernameParseUtc(j['username_change_available_at']),
   );
 
   /// Convert back to JSON for caching in SharedPreferences.
@@ -84,6 +106,8 @@ class UserModel {
     'image_url': imageUrl,
     'registration_step': registrationStep,
     'username': username,
+    'username_confirmed': usernameConfirmed,
+    'username_change_available_at': usernameChangeAvailableAt?.toUtc().toIso8601String(),
   };
 }
 
@@ -802,26 +826,32 @@ class MyAuthProvider extends BaseProvider {
   /// [idToken] is the Firebase ID token of a Google sign-in. [role] is only needed for a
   /// brand-new account; [phone] only when the admin verifies accounts by phone.
   /// Same session handling as [login] (tokens + cached user + push token).
+  /// [username]: the optional @username of a NEW account (the server ignores it for an existing one, D-071 v2); a
+  /// refused name fails the call with [usernameError] set, before any account is created.
   Future<GoogleAuthResult> googleAuth({
     required String idToken,
     String? role,
     String? phone,
+    String? username,
   }) async {
     isLoadingGoogle = true;
     needsVerification = false;
     pendingRole = null;
+    usernameError = null;
     _resetMfa();
     var roleRequired = false;
     notifyListeners();
+    final handle = UsernameRules.normalize(username ?? '');
 
     final result = await run(() async {
       try {
         return await _api.post(
           '/api/v1/auth/google',
-          body: {'id_token': idToken, 'role': ?role, 'phone': ?phone},
+          body: {'id_token': idToken, 'role': ?role, 'phone': ?phone, if (handle.isNotEmpty) 'username': handle},
           auth: false,
         );
       } on ApiException catch (e) {
+        if (handle.isNotEmpty) usernameError = UsernameError.from(e, submitted: handle);
         final d = ApiException.asMap(e.body)?['detail'];
         if (e.statusCode == 409 && e.code == 'GOOGLE_ROLE_REQUIRED') {
           roleRequired = true;

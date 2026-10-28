@@ -106,7 +106,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CertificateDesignsScreen(orgId: s.currentId)))),
     ];
     return AppSettingsPage(
-      header: AppSettingsHeader(name: p.name, role: p.role, email: p.email, imageUrl: p.imageUrl, heroTag: 'profile-user-${p.id}'),
+      header: AppSettingsHeader(name: p.name, role: p.role, email: p.email, username: p.username, imageUrl: p.imageUrl, heroTag: 'profile-user-${p.id}'),
       groups: [
         if (widget.services.isNotEmpty)
           AppSettingsGroup(title: t('التواصل والخدمات', 'Communication & services'), icon: Icons.forum_rounded, children: [

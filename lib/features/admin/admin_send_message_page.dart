@@ -13,6 +13,7 @@ import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import '../../utils/widget/primary_button.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -494,11 +495,19 @@ class _PickerSheetState extends State<_PickerSheet> {
                     itemCount: _items.length,
                     itemBuilder: (_, i) {
                       final it = _items[i];
+                      final uname = usernameFrom(it);
                       return ListTile(
                         title: Text('${it['name'] ?? it['title'] ?? it['id']}'),
                         subtitle: widget.subtitleKey == null
-                            ? null
-                            : Text('${it[widget.subtitleKey] ?? ''}'),
+                            ? (uname == null ? null : AppUsernameLine(uname))
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AppUsernameLine(uname),
+                                  Text('${it[widget.subtitleKey] ?? ''}'),
+                                ],
+                              ),
                         onTap: () => Navigator.pop(context, {
                           'id': it['id'],
                           'name': it['name'] ?? it['title'],

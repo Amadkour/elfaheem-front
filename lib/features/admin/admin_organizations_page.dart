@@ -20,6 +20,7 @@ import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _base = '/api/v1/admin/orgs';
@@ -371,6 +372,7 @@ class AdminOrgAdminsPage extends StatelessWidget {
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text('${row['name']}', style: orgText(context, w: FontWeight.w800)),
+                            AppUsernameLine(usernameFrom(row)),
                             Text('${row['email']}', textDirection: TextDirection.ltr,
                                 style: orgText(context, size: 12, color: c.textMedium)),
                             const SizedBox(height: 4),

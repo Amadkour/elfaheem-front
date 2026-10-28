@@ -8,6 +8,8 @@
 // rules at once; a valid name is sent to GET /auth/username/check after [UsernameField.debounce] (stale answers are
 // dropped, an empty value is never sent). [currentUsername] (profile edit) counts as available. [error] is a
 // USERNAME_* answer of the submit: it shows (with its suggestions) while the field still holds that name.
+// [lockedUntil] (D-071 v2) is the end of the change cooldown: the field is read-only, says when the name can be
+// changed again, and only offers to remove it (or to undo that).
 //
 // UsernameStatusView is the plain-values status line + suggestion chips (pumped by the layout harness,
 // test/auth/username_field_layout_test.dart).
@@ -20,6 +22,7 @@ import 'package:flutter/services.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../../core/app_time.dart';
 import 'auth_widgets.dart' show SectionLabel, authInputDecoration, authFieldText, authText, authDuration;
 import 'username.dart';
 
@@ -37,6 +40,9 @@ enum UsernameStatus {
 
   /// The account's own username.
   current,
+
+  /// The account's own username while the change cooldown runs: it can be kept or removed, not changed.
+  locked,
   taken,
   reserved,
   invalid,
@@ -62,6 +68,7 @@ class UsernameField extends StatefulWidget {
     this.label,
     this.enabled = true,
     this.debounce = const Duration(milliseconds: 450),
+    this.lockedUntil,
   });
 
   final TextEditingController controller;
@@ -82,6 +89,10 @@ class UsernameField extends StatefulWidget {
   final bool enabled;
   final Duration debounce;
 
+  /// The end of the change cooldown (UTC), or null. While set (and the account has a name) the field only keeps or
+  /// removes [currentUsername].
+  final DateTime? lockedUntil;
+
   @override
   State<UsernameField> createState() => _UsernameFieldState();
 }
@@ -97,6 +108,8 @@ class _UsernameFieldState extends State<UsernameField> {
 
   String get _current => UsernameRules.normalize(widget.currentUsername ?? '');
 
+  bool get _locked => widget.lockedUntil != null && _current.isNotEmpty;
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +124,9 @@ class _UsernameFieldState extends State<UsernameField> {
       old.controller.removeListener(_onText);
       widget.controller.addListener(_onText);
     }
-    if (old.error != widget.error || old.currentUsername != widget.currentUsername) {
+    if (old.error != widget.error ||
+        old.currentUsername != widget.currentUsername ||
+        old.lockedUntil != widget.lockedUntil) {
       _lastNorm = null;
       _evaluate(notify: false);
       // the parent is building: tell it after the frame
@@ -159,11 +174,11 @@ class _UsernameFieldState extends State<UsernameField> {
       return;
     }
     if (norm == _current) {
-      _set(UsernameStatus.current, notify: notify);
+      _set(_locked ? UsernameStatus.locked : UsernameStatus.current, notify: notify);
       return;
     }
     final err = widget.error;
-    if (err != null && err.username == norm) {
+    if (err != null && err.username == norm && !err.tooSoon) {
       _set(
         err.taken
             ? UsernameStatus.taken
@@ -238,6 +253,7 @@ class _UsernameFieldState extends State<UsernameField> {
           child: TextField(
             controller: widget.controller,
             enabled: widget.enabled,
+            readOnly: _locked,
             keyboardType: TextInputType.text,
             textDirection: TextDirection.ltr,
             autocorrect: false,
@@ -269,7 +285,26 @@ class _UsernameFieldState extends State<UsernameField> {
           serverMessage: _serverMessage,
           suggestions: _suggestions,
           onSuggestion: widget.enabled ? _pick : null,
+          lockedUntil: widget.lockedUntil,
         ),
+        if (_locked && widget.enabled) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: () => _pick(norm.isEmpty ? _current : ''),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 44),
+                foregroundColor: norm.isEmpty ? c.primary : c.danger,
+              ),
+              icon: Icon(norm.isEmpty ? Icons.undo_rounded : Icons.person_remove_outlined, size: 18),
+              label: Text(
+                norm.isEmpty ? 'username_keep_current'.tr : 'username_remove'.tr,
+                style: authText(13, w: FontWeight.w700, c: norm.isEmpty ? c.primary : c.danger),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -295,6 +330,7 @@ class _UsernameFieldState extends State<UsernameField> {
           ),
         UsernameStatus.available || UsernameStatus.current =>
           Icon(Icons.check_circle_rounded, size: 20, color: c.success),
+        UsernameStatus.locked => Icon(Icons.lock_clock_outlined, size: 20, color: c.textLight),
         UsernameStatus.taken || UsernameStatus.reserved || UsernameStatus.invalid =>
           Icon(Icons.error_outline_rounded, size: 20, color: c.danger),
         _ => null,
@@ -311,6 +347,7 @@ class UsernameStatusView extends StatelessWidget {
     this.serverMessage,
     this.suggestions = const [],
     this.onSuggestion,
+    this.lockedUntil,
   });
 
   final UsernameStatus status;
@@ -326,6 +363,9 @@ class UsernameStatusView extends StatelessWidget {
   final List<String> suggestions;
   final ValueChanged<String>? onSuggestion;
 
+  /// [UsernameStatus.locked]: when the name can be changed again (UTC).
+  final DateTime? lockedUntil;
+
   String _text() {
     switch (status) {
       case UsernameStatus.empty:
@@ -338,6 +378,11 @@ class UsernameStatusView extends StatelessWidget {
         return 'username_available'.tr;
       case UsernameStatus.current:
         return 'username_current'.tr;
+      case UsernameStatus.locked:
+        final at = lockedUntil;
+        return at == null
+            ? 'username_change_locked'.tr
+            : 'username_change_again_on'.tr.replaceAll('{date}', AppTime.date(at));
       case UsernameStatus.taken:
         return 'username_taken'.tr;
       case UsernameStatus.reserved:
@@ -359,6 +404,7 @@ class UsernameStatusView extends StatelessWidget {
       UsernameStatus.taken || UsernameStatus.reserved || UsernameStatus.invalid => (Icons.error_outline_rounded, c.danger),
       UsernameStatus.cleared => (Icons.remove_circle_outline_rounded, c.warning),
       UsernameStatus.checking => (Icons.hourglass_top_rounded, c.textLight),
+      UsernameStatus.locked => (Icons.lock_clock_outlined, c.textMedium),
       _ => (Icons.info_outline_rounded, c.textLight),
     };
     final showName = username.isNotEmpty &&

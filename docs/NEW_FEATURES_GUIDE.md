@@ -22,6 +22,9 @@ Any of these features can be hidden by a platform admin (a "feature switch"). If
 | Set a library's size limit | Super admin | Admin dashboard → People & messages → Organizations → the organization → Assistant library quota |
 | Turn on two-step verification | Admins, org admins and staff | Profile → Security → Two-step verification (التحقق بخطوتين); admins also: Support & security |
 | Unlock someone who lost their phone | Super admin | Admin user list (e.g. Teachers, Admins) → the person → Reset two-step verification |
+| Pick or change my @username | Everyone | Create account screen, or Profile → Account → Update Account (تعديل الحساب) |
+| Sign in with my @username | Everyone | Sign-in screen: type the username (with or without @) and the password |
+| Find someone by @username | Everyone | Any people search box: type @ and the first letters |
 | Download all my data | Everyone | Profile → Download my data (تنزيل بياناتي) |
 | Refund a payment | Admin, super admin | Admin dashboard → Finance & requests → Payments → the payment → Refund |
 
@@ -183,7 +186,7 @@ Tips: documents with clear headings ("Article 5", numbered sections) give the be
 | The assistant is busy — try again shortly | Many people are asking at once |
 | The assistant is still working on your answer — refresh in a moment | Tap Refresh |
 | The file is larger than 30 MB / Unsupported type | Pick a smaller file or a supported type |
-| The assistant is unavailable: this organization is deactivated | See section 5 |
+| The assistant is unavailable: this organization is deactivated | See section 6 |
 | I did not understand the question — could you rephrase it? | The message was too short or garbled to search |
 | I can help with the app and your documents only | The question was outside the assistant's scope |
 
@@ -271,7 +274,46 @@ Signing in afterwards: password (or Google) → "Type the 6-digit code" → **Ve
 
 This is not an error in your work. When too many heavy requests (exams, assistant) arrive at once, the server asks you to wait a few seconds. Your exam answers are kept and saving retries automatically.
 
-## 4. Download my data
+## 4. Your @username
+
+**Who:** everyone. A username is an optional, unique name such as **@ahmed_1**. You can sign in with it instead of your e-mail or phone number, use it to reset your password, and other people can find you by it.
+
+### 4.1 Pick one
+
+1. When you create your account, type it in **Username (optional) (اسم المستخدم (اختياري))**. With Google, the same field is in the sheet that asks for your role. You can also add it later: Profile (حسابي) → Account (الحساب) → **Update Account (تعديل الحساب)**.
+2. As you type, the app tells you whether the name is free. If it is taken, tap one of the names under **Try:** (جرّب:).
+3. Save.
+
+The rules: 3 to 30 characters, only English letters, digits, "." and "_", with at least one letter. Capitals don't matter (the app writes it in small letters). It can't start or end with a dot, have two dots in a row, start with "www" or end like a web address (".com"). Reserved names such as "admin" or "support" are refused.
+
+### 4.2 Sign in with it
+
+On the sign-in screen, type your username (with or without @) in the first field, then your password. **Forgot password** works with it too: the code goes to the e-mail or phone on your account. The screen does not say which address, because it never tells anyone whether a username exists.
+
+Tip: if the sign-in field does not mention "username", your platform admin has turned sign-in by username off. Super admins switch it in Admin dashboard → Support & security → **Verification & login (التحقق وتسجيل الدخول)** → **Sign in with username (الدخول باسم المستخدم)**.
+
+### 4.3 "Your username is ready": keep, change or remove
+
+Accounts that existed before usernames got one made from the e-mail address (for example ahmed.hamdy from ahmed.hamdy@…). The first time you sign in, the app asks you once:
+
+- **Keep this username (الاحتفاظ بهذا الاسم)**: it is yours from now on.
+- **Choose another (اختيار اسم آخر)**: type a new one; this first change does not start the 14-day wait below.
+- **Remove it (حذف اسم المستخدم)**: you have no username; you can add one later from Update Account.
+- **Not now (ليس الآن)**: the app asks again in 7 days at the earliest.
+
+Until you keep it, nobody who checks whether a name is free is told that yours is taken.
+
+### 4.4 Changing it: once every 14 days
+
+After you change your username, you wait **14 days** before the next change. Update Account then shows "You can change it again on …" with the date. Removing it is always possible; picking a new one after a removal waits for the same date.
+
+### 4.5 Find people by @username
+
+In a people search box (a member list, adding members, inviting people to a meeting, a teacher's list of course students), type **@** and the first letters of the username, for example **@ahm**. With @ only usernames match; without it, names, e-mails and usernames all match. Lists that support it show the @username under the person's name.
+
+Watch out: if you can't find the Username field at all, the feature is hidden on your platform. Ask your admin.
+
+## 5. Download my data
 
 1. Profile → **Download my data (تنزيل بياناتي)** → **Request a copy of my data**.
 2. The status shows **Being prepared**. The page updates by itself; a small account is ready in seconds, a large one may take a few minutes.
@@ -281,7 +323,7 @@ What is inside: a ZIP with one JSON file per part of your data (account, courses
 
 Limits: one copy every 24 hours. The file is deleted after 3 days. A super admin in "view as" mode cannot download someone else's data.
 
-## 5. Short items
+## 6. Short items
 
 **Organization status.** When the platform suspends an organization, or it is still under review, its exams and its documents library close for everyone in it. When a university is **deactivated**, its faculties and departments close for students too, while staff can still manage. Students see messages such as "The organization is not active right now (suspended or under review)" or "This organization is deactivated". Changes take effect within a few seconds.
 

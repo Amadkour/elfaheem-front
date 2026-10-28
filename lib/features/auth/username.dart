@@ -8,6 +8,7 @@
 //   UsernameCheck           GET /api/v1/auth/username/check, parsed defensively (missing keys never throw)
 //   UsernameError           a USERNAME_* error of register / PUT /auth/me, with the server's suggestions
 //   UsernameApi.check       the check call; an older server's bare 404 / 405 = "can't check", the submit decides
+//   identifierKindOf        e-mail · username · phone / ID of a typed sign-in identifier (the server's classify)
 //   identifierFieldSpec     label / keyboard of the sign-in identifier field (e-mail · phone · username)
 //
 // Pure apart from UsernameApi; tests: test/auth/username_test.dart.
@@ -24,6 +25,7 @@ const kUsernameFeatureKey = 'auth.username';
 const _codeInvalid = 'USERNAME_INVALID';
 const _codeReserved = 'USERNAME_RESERVED';
 const _codeTaken = 'USERNAME_TAKEN';
+const _codeTooSoon = 'USERNAME_CHANGE_TOO_SOON';
 
 /// The rule a username breaks, in the order the app checks them.
 enum UsernameProblem {
@@ -247,6 +249,7 @@ class UsernameError {
     required this.code,
     this.message,
     this.suggestions = const [],
+    this.retryAt,
   });
 
   /// The normalized username that was submitted.
@@ -255,10 +258,16 @@ class UsernameError {
   final String? message;
   final List<String> suggestions;
 
+  /// USERNAME_CHANGE_TOO_SOON (429): when the name may be changed again (`detail.retry_at`, UTC), if the server said.
+  final DateTime? retryAt;
+
   bool get taken => code == _codeTaken;
   bool get reserved => code == _codeReserved;
 
-  static const codes = {_codeInvalid, _codeReserved, _codeTaken};
+  /// The name was changed less than the cooldown ago (PUT /auth/me, D-071 v2); removing it is still allowed.
+  bool get tooSoon => code == _codeTooSoon;
+
+  static const codes = {_codeInvalid, _codeReserved, _codeTaken, _codeTooSoon};
 
   /// Null unless [e] is a username error. `suggestions` is read from `detail` and, for a server that puts it next
   /// to `detail`, from the top of the body.
@@ -275,8 +284,18 @@ class UsernameError {
       code: e.code!,
       message: message is String && message.trim().isNotEmpty ? message : null,
       suggestions: suggestions,
+      retryAt: detail is Map ? usernameParseUtc(detail['retry_at']) : null,
     );
   }
+}
+
+/// An ISO instant from the server as UTC; one without an offset is UTC (the server's naive UTC). Anything else
+/// (null, not a string, unparseable) → null.
+DateTime? usernameParseUtc(Object? v) {
+  if (v is! String || v.trim().isEmpty) return null;
+  final s = v.trim();
+  final hasZone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$', caseSensitive: false).hasMatch(s);
+  return DateTime.tryParse(hasZone ? s : '${s}Z')?.toUtc();
 }
 
 /// True for FastAPI's bare 404 "Not Found" or a 405: the server has no check route yet.
@@ -304,13 +323,39 @@ class UsernameApi {
   }
 }
 
-/// An identifier typed at sign-in is an e-mail when, after one leading "@" is stripped, it still holds an "@"
-/// (the server's rule) — so "@ahmed_1" is a username, not an e-mail.
-bool identifierLooksLikeEmail(String raw) {
+/// What a sign-in identifier (login, forgot password, OTP / reset steps) is taken as.
+enum IdentifierKind {
+  email,
+  username,
+
+  /// A phone number, or a data-lab ID login (the server tries those after the username lookup finds nobody).
+  phoneOrId,
+}
+
+final _usernameShape = RegExp(r'^[a-z0-9._]+$');
+final _anyLetter = RegExp(r'[a-z]');
+
+/// The server's `usernames.classify` (`../back/services/username_service.py`), mirrored — the ONE place the app
+/// decides what a typed identifier is. Trim, strip ONE leading "@"; still holds an "@" → e-mail; lower-cased it is
+/// username-shaped (3–30 of `a–z 0–9 . _` with at least one letter; reserved / web-address-like names are NOT
+/// excluded here, the lookup just finds nobody) → username; anything else → phone / ID ("+20 100…", "0100…").
+IdentifierKind identifierKindOf(String raw) {
   var s = raw.trim();
   if (s.startsWith('@')) s = s.substring(1);
-  return s.contains('@');
+  if (s.contains('@')) return IdentifierKind.email;
+  final n = s.toLowerCase();
+  if (n.length >= UsernameRules.minLength &&
+      n.length <= UsernameRules.maxLength &&
+      _usernameShape.hasMatch(n) &&
+      _anyLetter.hasMatch(n)) {
+    return IdentifierKind.username;
+  }
+  return IdentifierKind.phoneOrId;
 }
+
+/// An identifier typed at sign-in is an e-mail when, after one leading "@" is stripped, it still holds an "@"
+/// (the server's rule) — so "@ahmed_1" is a username, not an e-mail.
+bool identifierLooksLikeEmail(String raw) => identifierKindOf(raw) == IdentifierKind.email;
 
 /// What the single sign-in identifier field shows for the identifiers the admin allows.
 enum IdentifierIcon { email, phone, person }

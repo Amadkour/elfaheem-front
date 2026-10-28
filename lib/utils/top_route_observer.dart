@@ -11,6 +11,7 @@ import 'package:flutter_education_app/utils/live_events.dart';
 import '../features/shared/attendance/attendance_offline_sync.dart';
 import '../features/shared/attendance/attendance_store.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_service.dart';
+import 'package:flutter_education_app/features/auth/username_confirm.dart';
 
 class TopRouteObserver extends NavigatorObserver {
   Route<dynamic>? currentRoute;
@@ -30,6 +31,8 @@ class TopRouteObserver extends NavigatorObserver {
     }
     _refreshShortcut();
     AttentionService.instance.onRouteChanged();   // badges: a new screen / back from one
+    // a role home is on screen: ask once about an auto-filled @username (D-071 v2)
+    UsernameConfirmPrompt.instance.onRoute(route, () => currentRouteName);
   }
 
   @override

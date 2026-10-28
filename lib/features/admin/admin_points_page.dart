@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -488,6 +489,7 @@ class AdminPointsUsersView extends StatelessWidget {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(r.user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
+                        AppUsernameLine(r.user.username),
                         if (r.user.contact.isNotEmpty)
                           Text(r.user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
                       ]),

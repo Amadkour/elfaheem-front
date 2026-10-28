@@ -1,4 +1,4 @@
-// The auth design language (D-072): the page layout (hero + card on a phone, brand panel + card on a wide window)
+// The auth design language (D-073): the page layout (hero + card on a phone, brand panel + card on a wide window)
 // and every shared piece — fields, the gradient button in its three states, code boxes, password meter and
 // checklist, terms row, switches, the embedded two-step form — at 320x640 and 1400x900, Arabic and English,
 // textScaler 1.3 (layout harness). Then the behaviour the pieces promise: the button only fires when it can,

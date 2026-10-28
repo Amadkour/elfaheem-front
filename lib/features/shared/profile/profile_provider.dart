@@ -54,6 +54,7 @@ class ProfileProvider extends BaseProvider {
     role = u?.role ?? '';
     phone = u?.phone ?? '';
     username = u?.username ?? '';
+    usernameChangeAvailableAt = u?.usernameChangeAvailableAt;
     isLoading = false;
     notifyListeners();
   }
@@ -73,6 +74,9 @@ class ProfileProvider extends BaseProvider {
 
   /// The @username without the "@" ('' = none).
   String username = '';
+
+  /// When the username may be changed again (UTC); null = now (D-071 v2 cooldown; removing is always allowed).
+  DateTime? usernameChangeAvailableAt;
 
   /// A USERNAME_* error of the last [updateProfile] (shown on the username field with its suggestions).
   UsernameError? usernameError;

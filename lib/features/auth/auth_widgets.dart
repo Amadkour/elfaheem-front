@@ -1,6 +1,6 @@
 // auth_widgets.dart
 // ─────────────────────────────────────────────────────────────────────────────
-// The auth design language (D-072): every sign-in screen is built from these
+// The auth design language (D-073): every sign-in screen is built from these
 // pieces, so one change here restyles login, register, forgot password, the
 // code screens and the teacher's profile step together. Colours come from the
 // live theme (`context.colors`), text from AppFonts, motion honours
@@ -60,22 +60,22 @@ TextStyle authText(double size, {FontWeight w = FontWeight.w500, Color? c, doubl
       letterSpacing: ls,
     );
 
-/// The brand gradient of the hero and the brand panel: the theme's primary gradient, deepened toward the hero
-/// shade at its end (and as a whole in dark mode, where a bright brand block would glare).
+/// The brand gradient of the hero and the brand panel: shades of the primary colour only (a lighter tint →
+/// primary → deeper), the same family as the dashboard sidebar. Not the theme's primary gradient, which an
+/// admin may run into the accent colour. Deeper as a whole in dark mode, where a bright brand block would glare.
 LinearGradient authHeroGradient(ThemeConfigProvider c) {
-  final base = c.primaryGradientOnColor.colors;
-  final first = base.isEmpty ? c.primary : base.first;
-  final last = base.length < 2 ? c.primary : base.last;
+  final p = c.primary;
   return LinearGradient(
     begin: AlignmentDirectional.topStart,
     end: AlignmentDirectional.bottomEnd,
+    stops: const [0, 0.5, 1],
     colors: c.isDark
-        ? [c.heroEnd(first, 0.42), c.heroEnd(last, 0.62)]
-        : [first, c.heroEnd(last, 0.22)],
+        ? [c.heroEnd(p, 0.34), c.heroEnd(p, 0.48), c.heroEnd(p, 0.64)]
+        : [c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)],
   );
 }
 
-/// The hero surface: brand gradient, a warm accent glow, a cool glow and two hairline rings. Fills its box.
+/// The hero surface: brand gradient, a light primary glow, a soft glow and two hairline rings. Fills its box.
 class AuthHeroBackdrop extends StatelessWidget {
   const AuthHeroBackdrop({super.key, this.radius = 0});
 
@@ -109,7 +109,7 @@ class AuthHeroBackdrop extends StatelessWidget {
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
-            PositionedDirectional(top: -140, end: -120, child: glow(c.accent2.withValues(alpha: c.isDark ? 0.20 : 0.30), 360)),
+            PositionedDirectional(top: -140, end: -120, child: glow(c.heroTint(c.primary, 0.45).withValues(alpha: c.isDark ? 0.22 : 0.40), 360)),
             PositionedDirectional(bottom: -160, start: -120, child: glow(c.onHero.withValues(alpha: 0.10), 340)),
             PositionedDirectional(top: -90, end: -70, child: ring(260, 0.10)),
             PositionedDirectional(top: -40, end: -20, child: ring(160, 0.08)),
@@ -245,7 +245,7 @@ class AuthSidebar extends StatelessWidget {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [c.accent2, c.accent]),
+                            gradient: LinearGradient(colors: [c.onHero, c.heroTint(c.primary, 0.5)]),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -409,7 +409,7 @@ class _TrustBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_circle_rounded, size: 14, color: c.accent),
+          Icon(Icons.check_circle_rounded, size: 14, color: c.onHero),
           const SizedBox(width: 6),
           Flexible(
             child: Text(label, style: authText(12, w: FontWeight.w700, c: c.onHero)),

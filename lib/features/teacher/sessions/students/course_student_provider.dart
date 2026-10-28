@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
+import '../../../../design/app_username.dart' show usernameFrom;
 
 class EnrolledStudent {
   final int id;
@@ -12,6 +13,9 @@ class EnrolledStudent {
   final String status;
   final double progressPercentage;
 
+  /// The student's @username (without "@"); null when none or an older server (D-071 v2).
+  final String? username;
+
   const EnrolledStudent({
     required this.id,
     required this.name,
@@ -20,6 +24,7 @@ class EnrolledStudent {
     required this.enrolledAt,
     required this.status,
     required this.progressPercentage,
+    this.username,
   });
 
   factory EnrolledStudent.fromJson(Map<String, dynamic> j) => EnrolledStudent(
@@ -31,6 +36,7 @@ class EnrolledStudent {
     status: j['status'] as String,
     progressPercentage:
     (j['progress_percentage'] as num?)?.toDouble() ?? 0.0,
+    username: usernameFrom(j),
   );
 
   String get initials {

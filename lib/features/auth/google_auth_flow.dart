@@ -22,8 +22,12 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
+import '../../design/app_notice.dart';
+import '../../utils/widget/parent_component.dart';
 import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
+import 'username.dart';
+import 'username_field.dart';
 import 'mfa_verify_screen.dart';
 import 'auth_widgets.dart';
 import 'verified_screen.dart';
@@ -48,7 +52,10 @@ class GoogleRoleChoice {
   final String role; // student | teacher | parent
   final String? phone;
 
-  const GoogleRoleChoice({required this.role, this.phone});
+  /// The optional @username for the new account (normalized; null = none).
+  final String? username;
+
+  const GoogleRoleChoice({required this.role, this.phone, this.username});
 }
 
 const _cancelCodes = {
@@ -139,6 +146,7 @@ Future<void> continueWithGoogle(
       idToken: idToken,
       role: choice?.role,
       phone: choice?.phone,
+      username: choice?.username,
     );
 
     // Brand-new e-mail on the login screen: ask for the role, then finish.
@@ -157,6 +165,33 @@ Future<void> continueWithGoogle(
         idToken: idToken,
         role: choice.role,
         phone: choice.phone,
+        username: choice.username,
+      );
+    }
+
+    // The new account's @username was refused (taken / reserved / invalid) before anything was created: the sheet
+    // comes back with the error and the server's suggestions on the field, then the same Google token is reused.
+    for (var tries = 0;
+        tries < 3 && result == GoogleAuthResult.failed && auth.usernameError != null && choice != null;
+        tries++) {
+      if (!context.mounted || stale()) return;
+      fc.busy.value = false;
+      final again = await showGoogleRoleSheet(
+        context,
+        needPhone: false,
+        name: auth.googleName,
+        email: auth.googleEmail,
+        initial: choice,
+        usernameError: auth.usernameError,
+      );
+      if (again == null || !context.mounted || stale()) return; // dismissed
+      choice = again;
+      fc.busy.value = true;
+      result = await auth.googleAuth(
+        idToken: idToken,
+        role: again.role,
+        phone: again.phone,
+        username: again.username,
       );
     }
     if (!context.mounted || stale()) return;
@@ -909,11 +944,15 @@ class _GoogleGPainter extends CustomPainter {
 
 /// Shows the role sheet. Returns null when dismissed.
 /// [name]/[email] are shown as "you are joining as …" when Google already told us who it is.
+///
+/// [initial] / [usernameError]: the sheet comes back after the server refused the new account's @username.
 Future<GoogleRoleChoice?> showGoogleRoleSheet(
     BuildContext context, {
       bool needPhone = false,
       String? name,
       String? email,
+      GoogleRoleChoice? initial,
+      UsernameError? usernameError,
     }) {
   return showModalBottomSheet<GoogleRoleChoice>(
     context: context,
@@ -928,6 +967,8 @@ Future<GoogleRoleChoice?> showGoogleRoleSheet(
       needPhone: needPhone,
       name: name,
       email: email,
+      initial: initial,
+      usernameError: usernameError,
     ),
   );
 }
@@ -964,12 +1005,16 @@ class _GoogleRoleSheet extends StatefulWidget {
     required this.needPhone,
     this.name,
     this.email,
+    this.initial,
+    this.usernameError,
   });
 
   final List<String> roles;
   final bool needPhone;
   final String? name;
   final String? email;
+  final GoogleRoleChoice? initial;
+  final UsernameError? usernameError;
 
   @override
   State<_GoogleRoleSheet> createState() => _GoogleRoleSheetState();
@@ -978,13 +1023,27 @@ class _GoogleRoleSheet extends StatefulWidget {
 class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
   final _formKey = GlobalKey<FormState>();
   final _phone = TextEditingController();
+  final _username = TextEditingController();
+  UsernameStatus _usernameStatus = UsernameStatus.empty;
   String? _role;
+
+  @override
+  void initState() {
+    super.initState();
+    final init = widget.initial;
+    if (init != null && widget.roles.contains(init.role)) _role = init.role;
+    _phone.text = init?.phone ?? '';
+    _username.text = widget.usernameError?.username ?? init?.username ?? '';
+  }
 
   @override
   void dispose() {
     _phone.dispose();
+    _username.dispose();
     super.dispose();
   }
+
+  bool get _usernameOn => !AppConfig.disableList.contains(kUsernameFeatureKey);
 
   void _pick(String role) {
     HapticFeedback.selectionClick();
@@ -995,10 +1054,19 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
     if (_role == null) return;
     if (widget.needPhone && !(_formKey.currentState?.validate() ?? false)) return;
     final phone = _phone.text.trim();
+    final handle = _usernameOn ? UsernameRules.normalize(_username.text) : '';
+    if (handle.isNotEmpty && _usernameStatus.blocksSubmit) {
+      showAppNotice(
+        _usernameStatus == UsernameStatus.checking ? 'username_wait_check'.tr : 'username_fix_first'.tr,
+        error: _usernameStatus != UsernameStatus.checking,
+      );
+      return;
+    }
     Navigator.of(context).pop(
       GoogleRoleChoice(
         role: _role!,
         phone: widget.needPhone && phone.isNotEmpty ? phone : null,
+        username: handle.isEmpty ? null : handle,
       ),
     );
   }
@@ -1144,6 +1212,19 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                         ),
                       )
                           : const SizedBox(width: double.infinity),
+                    ),
+
+                    // Optional @username of the new account (D-071 v2; the server ignores it for an existing one)
+                    ParentComponent(
+                      featureKey: kUsernameFeatureKey,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 8),
+                        child: UsernameField(
+                          controller: _username,
+                          error: widget.usernameError,
+                          onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                        ),
+                      ),
                     ),
 
                     const SizedBox(height: 10),

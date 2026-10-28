@@ -475,8 +475,10 @@ countdown. Prices, days, free minutes and the price of a point are app settings 
 **Rejected.** Charging money directly per plan (the user asked for points; points also serve later services);
 per-day free minutes (a per-meeting limit is what people know from Zoom, and it is a setting); enforcing the limit
 in the app alone (a modified client would ignore it).
-**Consequences.** Until online payment is wired to points, students get points through an approved receipt or an
-admin grant. A student can still open a new meeting after 15 minutes; raising that bar means a per-day limit.
+**Consequences.** Students get points by card (Moyasar / Paymob, verified server-side, credited once), an approved
+receipt or an admin grant. Free time is capped per meeting AND per day (30 minutes by default), so opening a new
+meeting every 15 minutes no longer avoids the plan. Plans remind 3 days before the end and may renew themselves
+from the balance (Part 3, 2026-10-28).
 Quick meetings ("Meet now") and direct guest links (admitted without the lobby) come in the same release.
 
 ## D-071 — An optional, unique @username; the app mirrors the rules, the server decides · 2026-10-28 · accepted
@@ -500,9 +502,25 @@ check route, throttled per IP, answers "taken").
 **Rejected.** Usernames in Arabic or with capitals (unique index on a lowercase ASCII column, unambiguous to type
 and read out); checking availability on every keystroke (load on the throttled route); making it mandatory.
 **Consequences.** A new reserved word or rule is changed on both sides (`../back` and `UsernameRules`). The Google
-sign-up sheet does not ask for a username (the route takes none); people set it later in the profile. Hiding the
+sign-up sheet did not ask for a username in v1 (the route took none; v2 below adds it). Hiding the
 feature (`auth.username`) hides the field and the "or username" wording, but the server still resolves usernames
 at login until the admin turns `username_login` off.
+
+**v2 (2026-10-28).** *Confirmation:* names the server filled in from the e-mail come with `username_confirmed: false`;
+after sign-in (and on a start with a cached session) ONE trigger — `topRouteObserver.didPush` of a role home →
+`UsernameConfirmPrompt` (`username_confirm.dart`), re-checked when the signed-in user changes — offers a sheet once per
+run: Keep (`POST /auth/me/username/confirm {}`), Change (UsernameField, `{username}`) or Remove (`{username: null}`); a
+dismissal is remembered per user id and asked again after 7 days at the earliest. A missing key counts as confirmed
+(an older server never prompts); not in view-as, offline, or while an account setup is owed; kill switch `auth.username`.
+*Cooldown:* `username_change_available_at` in the future makes the profile field read-only with "You can change it
+again on <date>" (AppTime) and a Remove / undo action; 429 `USERNAME_CHANGE_TOO_SOON` (`detail.retry_at`) puts the
+current name back, locks the field and is worded by `apiErrorText`. *Google:* the role sheet (shown before the account
+exists — register: before Google, login: after 409 `GOOGLE_ROLE_REQUIRED`) holds the optional field; `username` goes to
+`POST /auth/google`, and a refused name re-opens the sheet with the error and suggestions on the field, reusing the same
+Google token. *Search:* the people pickers whose search the server now matches by @username (org members list and the
+manual add picker, calendar invitees, the teacher's course students, the admin parent-link requests) say so in the
+hint and show `AppUsernameLine` under the name (`lib/design/app_username.dart`, `usernameFrom` reads the row
+defensively). The sign-in identifier kind is decided in ONE place, `identifierKindOf` (mirrors `usernames.classify`).
 
 ## D-072 — Premium UI fonts chosen per language, display & reading settings · 2026-10-28 · accepted
 

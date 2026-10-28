@@ -18,6 +18,7 @@ import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
@@ -380,6 +381,7 @@ class _ViewAsTile extends StatelessWidget {
                           color: c.textDark,
                         ),
                       ),
+                      AppUsernameLine(usernameFrom(user)),
                       Text(
                         '${user['gmail'] ?? ''}',
                         maxLines: 1,

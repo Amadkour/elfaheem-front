@@ -35,6 +35,7 @@ import '../points/live_plan_sheet.dart' show showLivePlanSheet;
 import '../points/points_api.dart';
 import 'calendar_api.dart';
 import 'calendar_models.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 String _utcIso(DateTime wall) => AppTime.fromZone(wall).toUtc().toIso8601String();
 
@@ -215,12 +216,14 @@ class _AudiencePickerState extends State<_AudiencePicker> {
     final c = context.colors;
     final d = _data;
     final a = widget.aud;
-    Widget row(IconData icon, String title, String? sub, bool on, VoidCallback onTap, {Widget? avatar}) => ListTile(
+    Widget row(IconData icon, String title, String? sub, bool on, VoidCallback onTap, {Widget? avatar, String? username}) => ListTile(
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 4),
           leading: avatar ?? CircleAvatar(radius: 17, backgroundColor: c.primaryTint, child: Icon(icon, size: 18, color: c.primary)),
           title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-          subtitle: sub == null ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+          subtitle: username != null
+              ? AppUsernameLine(username) // the search also matches @username (D-071 v2)
+              : sub == null ? null : Text(sub, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
           trailing: Icon(on ? Icons.check_circle_rounded : Icons.add_circle_outline_rounded, color: on ? c.success : c.textLight),
           onTap: onTap,
         );
@@ -238,7 +241,7 @@ class _AudiencePickerState extends State<_AudiencePicker> {
               _debounce = Timer(const Duration(milliseconds: 350), _load);
             },
             decoration: InputDecoration(
-                isDense: true, prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث بالاسم', 'Search by name')),
+                isDense: true, prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث بالاسم أو @اسم المستخدم', 'Search by name or @username')),
           ),
           const SizedBox(height: 8),
           Expanded(
@@ -255,7 +258,8 @@ class _AudiencePickerState extends State<_AudiencePicker> {
                         for (final p in asMapList(d['people']))
                           row(Icons.person_rounded, '${p['name']}', null, a.users.containsKey(asInt(p['id'])),
                               () => _toggle(a.users, asInt(p['id']), '${p['name']}'),
-                              avatar: AppAvatar(name: '${p['name']}', url: p['image_url']?.toString(), size: 34)),
+                              avatar: AppAvatar(name: '${p['name']}', url: p['image_url']?.toString(), size: 34),
+                              username: usernameFrom(p)),
                         if (asMapList(d['departments']).isNotEmpty) AppSectionTitle(t('إدارات وأقسام', 'Departments')),
                         for (final dp in asMapList(d['departments'])) ...[
                           row(Icons.apartment_rounded, _name(dp), t('كل أعضاء الإدارة', 'Everyone in it'),

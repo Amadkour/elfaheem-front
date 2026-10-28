@@ -16,6 +16,7 @@ import 'org_member_form.dart';
 import 'org_v3.dart';
 import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -83,7 +84,7 @@ class _MembersView extends StatelessWidget {
     final header = Column(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-        child: SearchBox(hint: t('بحث بالاسم أو البريد أو الهاتف', 'Search name, email or phone'), onChanged: p.setSearch),
+        child: SearchBox(hint: t('بحث بالاسم أو البريد أو الهاتف أو @اسم المستخدم', 'Name, e-mail, phone or @username'), onChanged: p.setSearch),
       ),
       FilterChips<String>(
           value: p.status,
@@ -182,6 +183,7 @@ class _MemberTile extends StatelessWidget {
     return OrgMemberRowView(
       name: '${u['name']}',
       email: '${u['email']}',
+      username: usernameFrom(u),
       imageUrl: u['image_url'] as String?,
       accent: pending ? c.warning : (ended ? c.danger : null),
       period: pending ? null : membershipPeriodText(row),
@@ -249,6 +251,7 @@ class OrgMemberRowView extends StatelessWidget {
     super.key,
     required this.name,
     required this.email,
+    this.username,
     this.imageUrl,
     this.accent,
     this.chips = const [],
@@ -258,6 +261,9 @@ class OrgMemberRowView extends StatelessWidget {
   });
 
   final String name, email;
+
+  /// The member's @username (without "@"), shown under the name; null = none.
+  final String? username;
   final String? imageUrl;
   final Color? accent;
   final List<Widget> chips;
@@ -280,6 +286,7 @@ class OrgMemberRowView extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+              if (username != null) AppUsernameLine(username),
               Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
               if (chips.isNotEmpty) ...[
                 const SizedBox(height: 6),

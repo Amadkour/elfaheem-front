@@ -159,9 +159,36 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    OutlineInputBorder border(Color color) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: color, width: 1.5),
+    // The auth field look (D-073): one filled box, radius 16, hairline border, a primary stroke + halo on focus.
+    // The country code sits inside it as the prefix, so the halo wraps code and number together.
+    final code = Semantics(
+      button: true,
+      label: _country.name,
+      child: InkWell(
+        borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+        onTap: _pickCountry,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: 12, end: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_country.flag, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 6),
+                Text(
+                  _country.dial,
+                  style: authText(15, w: FontWeight.w700, c: c.textDark),
+                ),
+                const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+                const SizedBox(width: 6),
+                Container(width: 1, height: 24, color: c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75)),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
 
     return Column(
@@ -169,100 +196,26 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
       children: [
         SectionLabel(label: widget.label),
         const SizedBox(height: 8),
-        // Phone numbers always read left-to-right: [ code ] [ number ]
+        // Phone numbers always read left-to-right: [ code ▾ | number ]
         Directionality(
           textDirection: TextDirection.ltr,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Country code ─────────────────────────────────────────────
-              Material(
-                color: c.inputBg,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(color: c.divider, width: 1.5),
-                ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: _pickCountry,
-                  child: Container(
-                    height: 49,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _country.flag,
-                          style: const TextStyle(fontSize: 22),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _country.dial,
-                          style: TextStyle(
-                            fontFamily: AppFonts.family,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: c.textDark,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 20,
-                          color: c.textLight,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 2),
-
-              // ── Number ───────────────────────────────────────────────────
-              Expanded(
-                child: TextFormField(
-                  controller: _local,
-                  keyboardType: TextInputType.phone,
-                  textDirection: TextDirection.ltr,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
-                    LengthLimitingTextInputFormatter(18),
-                  ],
-                  onChanged: (_) => _sync(),
-                  validator: _validate,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 15,
-                    letterSpacing: 0.6,
-                    color: c.textDark,
-                  ),
-                  decoration: InputDecoration(
-                    prefixIcon: Icon(
-                      Icons.phone_outlined,
-                      size: 18,
-                      color: c.textLight,
-                    ),
-                    hintText: _country.hint,
-                    hintStyle: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 14,
-                      color: context.colors.textLight,
-                    ),
-                    filled: true,
-                    fillColor: c.inputBg,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    border: border(c.divider),
-                    enabledBorder: border(c.divider),
-                    focusedBorder: border(c.textAction.withAlpha(150)),
-                    errorBorder: border(c.danger),
-                    focusedErrorBorder: border(c.danger),
-                  ),
-                ),
-              ),
+          child: TextFormField(
+            controller: _local,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            autofillHints: const [AutofillHints.telephoneNumberNational],
+            inputFormatters: [
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]')),
+              LengthLimitingTextInputFormatter(18),
             ],
+            onChanged: (_) => _sync(),
+            validator: _validate,
+            style: authFieldText(context).copyWith(letterSpacing: 0.6),
+            cursorColor: c.primary,
+            decoration: authInputDecoration(context, hint: _country.hint).copyWith(
+              prefixIcon: code,
+              prefixIconConstraints: const BoxConstraints(minHeight: 48),
+            ),
           ),
         ),
       ],

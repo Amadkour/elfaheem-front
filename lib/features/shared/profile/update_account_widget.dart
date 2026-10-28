@@ -130,6 +130,16 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   /// The username field is shown (kill switch `auth.username` off).
   bool get _usernameOn => !Helpers.AppConfig.disableList.contains(kUsernameFeatureKey);
 
+  /// The end of the username change cooldown while it runs (the field then only keeps or removes the name): the
+  /// account's `username_change_available_at`, or the `retry_at` of a 429 USERNAME_CHANGE_TOO_SOON just received.
+  DateTime? get _usernameLockedUntil {
+    if (_p.username.isEmpty) return null;
+    final err = _usernameError;
+    final at = (err != null && err.tooSoon ? err.retryAt : null) ?? _p.usernameChangeAvailableAt;
+    if (at == null || !at.isAfter(DateTime.now().toUtc())) return null;
+    return at;
+  }
+
   /// Set, changed or removed ('' = remove).
   bool get _usernameChanged =>
       _usernameOn && UsernameRules.normalize(_usernameCtrl.text) != _p.username;
@@ -196,7 +206,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
         );
         if (user == null) {
           // taken / reserved / invalid: the field shows why, with the server's suggestions
-          if (mounted && _p.usernameError != null) setState(() => _usernameError = _p.usernameError);
+          if (mounted && _p.usernameError != null) {
+            setState(() => _usernameError = _p.usernameError);
+            // changed too soon: put the current name back, the field locks and says when it can change again
+            if (_p.usernameError!.tooSoon) _usernameCtrl.text = _p.username;
+          }
           if (mounted) _showSnack(_p.errorMessage ?? 'generic_error'.tr, context.colors.danger);
           return;
         }
@@ -349,6 +363,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
                     controller: _usernameCtrl,
                     currentUsername: _p.username,
                     error: _usernameError,
+                    lockedUntil: _usernameLockedUntil,
                     label: 'username_label'.tr,
                     onStatusChanged: (s) => setState(() => _usernameStatus = s),
                   ),

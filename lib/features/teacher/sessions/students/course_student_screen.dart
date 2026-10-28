@@ -32,6 +32,7 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -647,6 +648,7 @@ class _StudentCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 2),
+                    if (student.username != null) AppUsernameLine(student.username, fontSize: 11),
                     Text(
                       student.gmail,
                       style: TextStyle(

@@ -7,6 +7,7 @@ library;
 
 import '../config/app_config.dart';
 import 'api_client.dart';
+import 'app_time.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -24,6 +25,14 @@ Duration? apiRetryAfter(ApiException e) {
   final m = int.tryParse('${d['retry_after_minutes'] ?? ''}');
   if (m != null && m > 0) return Duration(minutes: m);
   return null;
+}
+
+/// An ISO instant as UTC (no offset = UTC), or null.
+DateTime? _utc(Object? v) {
+  if (v is! String || v.trim().isEmpty) return null;
+  final s = v.trim();
+  final zoned = RegExp(r'(Z|[+-]\d{2}:?\d{2})$', caseSensitive: false).hasMatch(s);
+  return DateTime.tryParse(zoned ? s : '${s}Z')?.toUtc();
 }
 
 String _wait(Duration? d) {
@@ -86,6 +95,13 @@ String apiErrorText(ApiException e) {
       return _t('اسم المستخدم محجوز لشخص آخر — جرّب أحد الاقتراحات', 'That username is taken — try one of the suggestions');
     case 'USERNAME_RESERVED':
       return _t('اسم المستخدم هذا محجوز للمنصة — اختر اسماً آخر', 'That username is reserved — pick another one');
+    case 'USERNAME_CHANGE_TOO_SOON':                       // 429 from PUT /auth/me (D-071 v2): `retry_at` ISO-UTC
+      final at = _utc(d['retry_at']);
+      return at == null
+          ? _t('غيّرت اسم المستخدم مؤخراً — يمكنك تغييره مرة أخرى لاحقاً، ويمكنك حذفه الآن',
+              'You changed your username recently — you can change it again later, or remove it now')
+          : _t('غيّرت اسم المستخدم مؤخراً — يمكنك تغييره مرة أخرى في ${AppTime.date(at)}',
+              'You changed your username recently — you can change it again on ${AppTime.date(at)}');
     case 'USERNAME_INVALID':
       return d['message'] is String && AppConfig.lang == 'ar'
           ? d['message'] as String

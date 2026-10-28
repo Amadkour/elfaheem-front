@@ -622,6 +622,7 @@
   "POST /api/v1/auth/me/cancel-deletion",
   "POST /api/v1/auth/me/image",
   "POST /api/v1/auth/me/sessions/revoke-all",
+  "POST /api/v1/auth/me/username/confirm",
   "POST /api/v1/auth/mfa/confirm",
   "POST /api/v1/auth/mfa/disable",
   "POST /api/v1/auth/mfa/recovery-codes",

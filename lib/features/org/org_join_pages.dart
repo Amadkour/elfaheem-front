@@ -35,6 +35,7 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_username.dart';
 
 String unitKindLabel(String type) => type == 'program' ? t('قسم علمي', 'Academic department') : t('إدارة خدمية', 'Service department');
 
@@ -1050,7 +1051,7 @@ class _ManualAddSheetState extends State<_ManualAddSheet> {
           onChanged: (_) => _search(),
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search_rounded),
-            hintText: t('ابحث بالاسم أو البريد أو الكود', 'Search by name, e-mail or code'),
+            hintText: t('ابحث بالاسم أو البريد أو الكود أو @اسم المستخدم', 'Name, e-mail, code or @username'),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
             isDense: true,
           ),
@@ -1073,8 +1074,11 @@ class _ManualAddSheetState extends State<_ManualAddSheet> {
                         onChanged: (on) => setState(() => on == true ? _picked.add(id) : _picked.remove(id)),
                         secondary: AdminAvatar(name: '${u['name']}', url: u['image_url'] as String?),
                         title: Text('${u['name']}', maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(memberRoleLabels()['${items[i]['role']}'] ?? '${items[i]['role'] ?? ''}',
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                          AppUsernameLine(usernameFrom(u)),
+                          Text(memberRoleLabels()['${items[i]['role']}'] ?? '${items[i]['role'] ?? ''}',
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ]),
                         controlAffinity: ListTileControlAffinity.trailing,
                         contentPadding: EdgeInsets.zero,
                       );

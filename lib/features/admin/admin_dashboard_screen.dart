@@ -431,6 +431,7 @@ class _MorePageState extends State<_MorePage> {
         name: p.name,
         role: p.role,
         email: p.email,
+        username: p.username,
         imageUrl: p.imageUrl,
         heroTag: 'profile-user-${p.id}',
       ),
