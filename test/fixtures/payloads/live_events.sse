@@ -1,0 +1,60 @@
+id: 15b9cbc0-4e31-43ba-8b5a-6555b9a118ed
+event: job_updated
+data: {"id": "15b9cbc0-4e31-43ba-8b5a-6555b9a118ed", "event": "job_updated", "data": {"kind": "rag_ingest", "id": 1, "status": "ready"}, "ts": "2026-10-28T06:30:34.839"}
+
+id: f3c7a8be-251c-4f48-8871-3c4ae7afe666
+event: job_updated
+data: {"id": "f3c7a8be-251c-4f48-8871-3c4ae7afe666", "event": "job_updated", "data": {"kind": "rag_query", "id": 1, "status": "done"}, "ts": "2026-10-28T06:30:36.994"}
+
+id: 73d8f3a7-c2c6-48f2-b699-283d18b97b10
+event: complaints_updated
+data: {"id": "73d8f3a7-c2c6-48f2-b699-283d18b97b10", "event": "complaints_updated", "data": {"complaint_id": 7}, "ts": "2026-10-28T06:31:41.299"}
+
+id: b90eb2de-86f6-49c9-9bba-86d36531bb3d
+event: transfers_updated
+data: {"id": "b90eb2de-86f6-49c9-9bba-86d36531bb3d", "event": "transfers_updated", "data": {"payment_id": 1, "org_id": 3}, "ts": "2026-10-28T06:31:41.379"}
+
+id: db991746-90f0-46fd-bea4-8f87656c6c84
+event: attention_changed
+data: {"id": "db991746-90f0-46fd-bea4-8f87656c6c84", "event": "attention_changed", "data": {"tab": "admin.finance", "org_id": 3}, "ts": "2026-10-28T06:31:41.401"}
+
+id: 199311a6-e956-4e91-8f9d-0426a0f60af6
+event: attention_changed
+data: {"id": "199311a6-e956-4e91-8f9d-0426a0f60af6", "event": "attention_changed", "data": {"tab": null}, "ts": "2026-10-28T06:31:41.453"}
+
+id: 2a1e2f3a-390f-460a-8bf3-20765cf80894
+event: payments_updated
+data: {"id": "2a1e2f3a-390f-460a-8bf3-20765cf80894", "event": "payments_updated", "data": {"payment_id": 1}, "ts": "2026-10-28T06:31:41.473"}
+
+id: f78c85c8-67e6-494b-bea5-aa1818abfa0c
+event: job_updated
+data: {"id": "f78c85c8-67e6-494b-bea5-aa1818abfa0c", "event": "job_updated", "data": {"kind": "export", "id": "e1", "status": "ready"}, "ts": "2026-10-28T06:31:41.485"}
+
+id: 8ebb69b6-37a0-4ae9-a87b-66633b20b799
+event: attendance_roster_updated
+data: {"id": "8ebb69b6-37a0-4ae9-a87b-66633b20b799", "event": "attendance_roster_updated", "data": {"session_id": 1}, "ts": "2026-10-28T06:31:41.966"}
+
+id: cd2b1dbd-94db-413e-bc19-9e4d12a904bf
+event: quiz_started
+data: {"id": "cd2b1dbd-94db-413e-bc19-9e4d12a904bf", "event": "quiz_started", "data": {"course_id": 1, "exam_id": 1}, "ts": "2026-10-28T06:31:42.278"}
+
+id: c046bf0a-f7bb-456a-8d30-c678237dc24b
+event: job_updated
+data: {"id": "c046bf0a-f7bb-456a-8d30-c678237dc24b", "event": "job_updated", "data": {"kind": "schedule_run", "id": 9, "status": "succeeded"}, "ts": "2026-10-28T06:31:42.961"}
+
+id: b0a58046-d817-4301-b3ce-900140bc4fed
+event: lobby_updated
+data: {"id": "b0a58046-d817-4301-b3ce-900140bc4fed", "event": "lobby_updated", "data": {"kind": "meeting", "id": 1}, "ts": "2026-10-28T06:31:53.951"}
+
+id: 92b01def-4a49-4ad5-9598-5075dbd985f0
+event: join_decided
+data: {"id": "92b01def-4a49-4ad5-9598-5075dbd985f0", "event": "join_decided", "data": {"request_id": 7, "status": "admitted", "kind": "meeting", "id": 1}, "ts": "2026-10-28T06:31:57.486"}
+
+id: 752bc315-c6cb-41b7-a613-83d032e7e11c
+event: lobby_updated
+data: {"id": "752bc315-c6cb-41b7-a613-83d032e7e11c", "event": "lobby_updated", "data": {"kind": "session", "id": 1}, "ts": "2026-10-28T06:32:01.494"}
+
+id: 3f798ee5-588b-4fd5-a492-b242afc8897b
+event: join_decided
+data: {"id": "3f798ee5-588b-4fd5-a492-b242afc8897b", "event": "join_decided", "data": {"request_id": 14, "status": "admitted", "kind": "session", "id": 1}, "ts": "2026-10-28T06:32:01.698"}
+

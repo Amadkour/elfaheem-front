@@ -1,0 +1,88 @@
+{
+ "_source": {
+  "route": "GET /api/v1/parent/overview",
+  "uid": 6
+ },
+ "payload": {
+  "now": "2026-10-28T06:30:18.704079",
+  "today_date": "2026-10-28",
+  "timezone": "Africa/Cairo",
+  "children": [
+   {
+    "child": {
+     "id": 4,
+     "name": "st",
+     "image_url": null,
+     "is_active": true,
+     "linked_at": "2026-10-28T06:30:12.318288Z"
+    },
+    "today_sessions": [
+     {
+      "id": "session:3",
+      "source": "course_session",
+      "title": "L2",
+      "subtitle": "رياضيات",
+      "starts_at": "2026-10-28T09:00:00",
+      "ends_at": "2026-10-28T10:00:00",
+      "org_id": null,
+      "org": null,
+      "color": null,
+      "location": null,
+      "mode": "online",
+      "course_id": 1,
+      "meeting_id": null,
+      "kind": "lecture",
+      "my_status": null,
+      "change_id": null
+     }
+    ],
+    "attendance_pct_30d": 50,
+    "latest_marks": [
+     {
+      "exam_id": 1,
+      "exam": "Quiz 1",
+      "course_id": 1,
+      "course_ar": "رياضيات",
+      "course_en": "Maths",
+      "percentage": 70.0,
+      "passed": true,
+      "submitted_at": "2026-10-28T06:30:12.317288"
+     }
+    ],
+    "open_alerts": 1,
+    "next_exam": {
+     "id": 2,
+     "name": "Midterm",
+     "course_id": 1,
+     "starts_at": "2026-10-30T06:30:10.229548",
+     "ends_at": "2026-10-30T08:30:10.229548",
+     "source": "course"
+    },
+    "courses": 1
+   },
+   {
+    "child": {
+     "id": 5,
+     "name": "st2",
+     "image_url": null,
+     "is_active": true,
+     "linked_at": "2026-10-28T06:30:12.318288Z"
+    },
+    "today_sessions": [],
+    "attendance_pct_30d": null,
+    "latest_marks": [],
+    "open_alerts": 0,
+    "next_exam": null,
+    "courses": 0
+   }
+  ],
+  "alerts_total": 1,
+  "requests": [],
+  "link_config": {
+   "mode": "easy",
+   "fields": [],
+   "documents": [],
+   "max_document_mb": 8
+  }
+ }
+}

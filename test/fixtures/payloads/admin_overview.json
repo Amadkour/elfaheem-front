@@ -1,0 +1,324 @@
+{
+ "_source": {
+  "route": "GET /api/v1/admin/overview",
+  "uid": 1
+ },
+ "payload": {
+  "students": 2,
+  "teachers": 1,
+  "admins": 2,
+  "active_students": 2,
+  "courses": 1,
+  "published_courses": 1,
+  "archived_courses": 0,
+  "categories": 0,
+  "active_enrollments": 1,
+  "subscription_income": 0.0,
+  "subscription_income_by_currency": {},
+  "active_subscriptions": 0,
+  "pending_subscriptions": 0,
+  "pending_transfers": 0,
+  "course_income": 100.0,
+  "collected": 100.0,
+  "collected_gross_by_currency": {
+   "EGP": 100.0
+  },
+  "income_by_currency": {
+   "EGP": 100.0
+  },
+  "refunded": 0.0,
+  "partially_refunded_payments": 0,
+  "collected_by_currency": {
+   "EGP": 100.0
+  },
+  "refunded_by_currency": {},
+  "platform_income_by_currency": {
+   "EGP": 20.0
+  },
+  "platform_income": 20.0,
+  "subscription_required": false,
+  "organizations": {
+   "total": 2,
+   "active": 1,
+   "pending_approval": 1,
+   "by_type": {
+    "faculty": 1,
+    "university": 1
+   }
+  },
+  "series": [
+   {
+    "date": "2026-09-29",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-09-30",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-01",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-02",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-03",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-04",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-05",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-06",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-07",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-08",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-09",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-10",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-11",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-12",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-13",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-14",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-15",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-16",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-17",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-18",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-19",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-20",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-21",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-22",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-23",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-24",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-25",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-26",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-27",
+    "signups": 0,
+    "enrollments": 0,
+    "revenue": {},
+    "live_sessions": 0,
+    "complaints": 0
+   },
+   {
+    "date": "2026-10-28",
+    "signups": 6,
+    "enrollments": 1,
+    "revenue": {
+     "EGP": 100.0
+    },
+    "live_sessions": 1,
+    "complaints": 1
+   }
+  ],
+  "alerts": [
+   {
+    "key": "jobs_failed_24h",
+    "severity": "danger",
+    "count": 1,
+    "deep_link": "/admin/ops/jobs",
+    "by_kind": {
+     "schedule_run": 1,
+     "registration": 0,
+     "outbox": 0,
+     "recording": 0
+    }
+   },
+   {
+    "key": "payouts_overdue",
+    "severity": "warning",
+    "count": 1,
+    "deep_link": "/admin/withdrawals?status=pending",
+    "days": 7
+   },
+   {
+    "key": "orgs_pending_approval",
+    "severity": "warning",
+    "count": 1,
+    "deep_link": "/admin/orgs?status=pending"
+   }
+  ],
+  "realtime": {
+   "events_24h": 3182
+  }
+ }
+}

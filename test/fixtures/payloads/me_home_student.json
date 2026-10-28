@@ -1,0 +1,163 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/home",
+  "uid": 4
+ },
+ "payload": {
+  "now": "2026-10-28T06:30:15.901268",
+  "today_date": "2026-10-28",
+  "timezone": "Africa/Cairo",
+  "role": "student",
+  "today": [
+   {
+    "id": "session:3",
+    "source": "course_session",
+    "title": "L2",
+    "subtitle": "رياضيات",
+    "starts_at": "2026-10-28T09:00:00",
+    "ends_at": "2026-10-28T10:00:00",
+    "org_id": null,
+    "org": null,
+    "color": null,
+    "location": null,
+    "mode": "online",
+    "course_id": 1,
+    "meeting_id": null,
+    "kind": "lecture",
+    "my_status": null,
+    "change_id": null
+   }
+  ],
+  "upcoming": [
+   {
+    "id": "session:4",
+    "source": "course_session",
+    "title": "L3",
+    "subtitle": "رياضيات",
+    "starts_at": "2026-10-31T07:00:00",
+    "ends_at": "2026-10-31T08:00:00",
+    "org_id": null,
+    "org": null,
+    "color": null,
+    "location": null,
+    "mode": "online",
+    "course_id": 1,
+    "meeting_id": null,
+    "kind": "lecture",
+    "my_status": null,
+    "change_id": null
+   }
+  ],
+  "attention": {
+   "counts": {},
+   "total": 0,
+   "by_org": {},
+   "items": [],
+   "tabs": [
+    "home",
+    "profile",
+    "parent.link",
+    "parent.alerts",
+    "admin.support",
+    "admin.finance",
+    "org.people",
+    "org.academics",
+    "org.timetable",
+    "org.services",
+    "org.settings"
+   ]
+  },
+  "inbox_preview": [],
+  "inbox_counts": {
+   "todo": 0,
+   "news": 0,
+   "offers": 0,
+   "done": 0,
+   "overdue": 0,
+   "due_soon": 0,
+   "mandatory": 0
+  },
+  "notifications_unread": 2,
+  "org_overview": {
+   "items": [
+    {
+     "organization": {
+      "id": 1,
+      "parent_id": null,
+      "path": "/1/",
+      "depth": 0,
+      "name_ar": null,
+      "name_en": "Agg U",
+      "type": "faculty",
+      "description": null,
+      "logo_url": null,
+      "color": null,
+      "join_mode": "approval",
+      "is_active": true,
+      "status": "approved",
+      "website": null,
+      "contact_email": null,
+      "contact_phone": null,
+      "address": null,
+      "review_note": null
+     },
+     "roles": [
+      "student"
+     ],
+     "membership": {
+      "id": 2,
+      "role": "student",
+      "status": "active",
+      "starts_at": null,
+      "expires_at": null
+     },
+     "manage": null,
+     "todo": {
+      "total": 0,
+      "forms": 0,
+      "mandatory": 0,
+      "overdue": 0,
+      "due_soon": 0,
+      "next_due_at": null
+     },
+     "approvals": {
+      "form_responses": 0,
+      "complaints": 0,
+      "overdue_complaints": 0,
+      "assigned_to_me": 0,
+      "join_requests": 0,
+      "unit_requests": 0,
+      "total": 0
+     },
+     "news": 0,
+     "requests_in_progress": 0
+    }
+   ],
+   "has_live_membership": true,
+   "default_org_id": 1,
+   "suggested_mode": "organization",
+   "independent_courses": 0,
+   "pending_total": 0,
+   "now": "2026-10-28T06:30:16.313802"
+  },
+  "orgs_enabled": true,
+  "courses_progress": [
+   {
+    "course_id": 1,
+    "name_ar": "رياضيات",
+    "name_en": "Maths",
+    "image_url": null,
+    "progress": 40.0,
+    "plan": null,
+    "expires_at": null,
+    "next_lecture": {
+     "id": 3,
+     "name": "L2",
+     "scheduled_at": "2026-10-28T09:00:00",
+     "duration_minutes": 60,
+     "track": "lecture"
+    }
+   }
+  ]
+ }
+}

@@ -19,6 +19,14 @@ import 'org_schedule_autopilot.dart' show TermNeed;
 
 int _int(dynamic v) => v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0);
 Map<String, dynamic> _map(dynamic v) => v is Map ? Map<String, dynamic>.from(v) : const {};
+/// The server's naive-UTC ISO time (no zone suffix) → a UTC instant; DateTime.tryParse alone reads it as local.
+DateTime? _utc(dynamic v) {
+  final s = '${v ?? ''}'.trim();
+  if (s.isEmpty) return null;
+  final zoned = s.endsWith('Z') || RegExp(r'[+-]\d\d:?\d\d$').hasMatch(s);
+  return DateTime.tryParse(zoned ? s : '${s}Z')?.toUtc();
+}
+
 List<Map<String, dynamic>> _list(dynamic v) => v is List ? [for (final x in v) if (x is Map) Map<String, dynamic>.from(x)] : const [];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +177,7 @@ class OrgHomeData {
       departments: _list(m['departments']),
       programs: _list(m['programs']),
       recentActivity: _list(m['recent_activity']),
-      generatedAt: DateTime.tryParse('${m['generated_at'] ?? ''}'),
+      generatedAt: _utc(m['generated_at']),
     );
   }
 

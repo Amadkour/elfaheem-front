@@ -1,0 +1,26 @@
+: connected
+
+id: f1330521-da96-4bcc-82e1-cf9df6fcad6d
+event: complaints_updated
+data: {"id": "f1330521-da96-4bcc-82e1-cf9df6fcad6d", "event": "complaints_updated", "data": {"complaint_id": 7}, "ts": "2026-10-28T06:31:42.352"}
+
+id: e5a84b2d-7ddf-46c8-b417-dd8f3287dd3e
+event: transfers_updated
+data: {"id": "e5a84b2d-7ddf-46c8-b417-dd8f3287dd3e", "event": "transfers_updated", "data": {"payment_id": 1, "org_id": 3}, "ts": "2026-10-28T06:31:42.371"}
+
+id: c3fa6adb-1a51-4ab9-a015-d607bbfd0201
+event: attention_changed
+data: {"id": "c3fa6adb-1a51-4ab9-a015-d607bbfd0201", "event": "attention_changed", "data": {"tab": "admin.finance", "org_id": 3}, "ts": "2026-10-28T06:31:42.379"}
+
+id: c046bf0a-f7bb-456a-8d30-c678237dc24b
+event: job_updated
+data: {"id": "c046bf0a-f7bb-456a-8d30-c678237dc24b", "event": "job_updated", "data": {"kind": "schedule_run", "id": 9, "status": "succeeded"}, "ts": "2026-10-28T06:31:42.961"}
+
+: ping
+
+: ping
+
+: ping
+
+: reconnect
+

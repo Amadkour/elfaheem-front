@@ -10,7 +10,7 @@
 //   ...
 //   _sub?.cancel();
 //
-// Event names must match services/live_update_service.py on the server. Both channels carry the same
+// Event names must match services/live_events.py (the catalogue) on the server. Both channels carry the same
 // `event` + `event_id` + fields; LiveEventsClient drops the duplicates.
 library;
 
@@ -36,6 +36,27 @@ class LiveEvent {
   String? get id => data['id']?.toString();
   String? get status => data['status']?.toString();
   String? get stage => data['stage']?.toString();
+
+  /// The other catalogue fields (services/live_events.py): `attendance_roster_updated` / `session_live`
+  /// {session_id}, `quiz_started` {course_id, exam_id}, `join_decided` {request_id}, `payouts_updated`
+  /// {withdrawal_id, state}, `attention_changed` {related_type?, related_id?}.
+  int? get sessionId => int.tryParse('${data['session_id'] ?? ''}');
+  int? get courseId => int.tryParse('${data['course_id'] ?? ''}');
+  int? get examId => int.tryParse('${data['exam_id'] ?? ''}');
+  int? get requestId => int.tryParse('${data['request_id'] ?? ''}');
+  int? get withdrawalId => int.tryParse('${data['withdrawal_id'] ?? ''}');
+  String? get state => data['state']?.toString();
+  String? get relatedType => data['related_type']?.toString();
+  int? get relatedId => int.tryParse('${data['related_id'] ?? ''}');
+
+  /// The fields of an event as the server sent them. The SSE stream's `data:` line is the whole envelope
+  /// `{"id": <event uuid>, "event": <name>, "data": {…fields}, "ts"}` (helpers/live_bus.py `sse()`); a silent
+  /// push carries the fields flat (+ `event_id`). Either way the listeners read the fields themselves.
+  static Map<String, dynamic> fieldsOf(String type, Map<String, dynamic> raw) {
+    final inner = raw['data'];
+    if (inner is Map && raw['event'] == type && raw.containsKey('id')) return Map<String, dynamic>.from(inner);
+    return raw;
+  }
 }
 
 class LiveEvents {
@@ -102,9 +123,10 @@ class LiveEvents {
 
   final _controller = StreamController<LiveEvent>.broadcast();
 
+  /// [data] may be the SSE envelope (`{id, event, data, ts}`) or the flat fields: listeners always get the fields.
   void emit(String type, [Map<String, dynamic> data = const {}]) {
     if (type.isEmpty) return;
-    if (!_controller.isClosed) _controller.add(LiveEvent(type, data));
+    if (!_controller.isClosed) _controller.add(LiveEvent(type, LiveEvent.fieldsOf(type, data)));
   }
 
   StreamSubscription<LiveEvent> listen(

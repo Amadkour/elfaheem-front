@@ -19,7 +19,7 @@ DateTime? parentUtc(dynamic v) {
   if (v == null) return null;
   final d = DateTime.tryParse('$v');
   if (d == null) return null;
-  return d.isUtc ? d : DateTime.utc(d.year, d.month, d.day, d.hour, d.minute, d.second, d.millisecond);
+  return d.isUtc ? d : DateTime.utc(d.year, d.month, d.day, d.hour, d.minute, d.second, d.millisecond, d.microsecond);
 }
 
 int? _int(dynamic v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
@@ -43,13 +43,14 @@ class ParentEventRow {
     this.location = '',
   });
 
-  final int? id;
+  /// The calendar row's id (`session:3`, `slot:12:2026-10-28`, …) — a string, never a number.
+  final String? id;
   final String source, title, subtitle, kind, mode, location;
   final DateTime? startsAt, endsAt;
   final int? courseId;
 
   factory ParentEventRow.fromJson(Map<String, dynamic> j) => ParentEventRow(
-        id: _int(j['id']),
+        id: j['id']?.toString(),
         source: _str(j['source']),
         title: _str(j['title']),
         subtitle: _str(j['subtitle']),
