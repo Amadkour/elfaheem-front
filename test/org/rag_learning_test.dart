@@ -47,7 +47,7 @@ void main() {
       expect(chatReasonLabel('new_code'), 'new_code');
       expect(learningReasonLabel('wrong'), 'Wrong');
       expect(learningReasonLabel('too_easy'), 'Too easy');
-      expect(suggestionKinds, ['qa_pair', 'eval_item', 'threshold', 'router_rule', 'exam_exemplar', 'exam_rule']);
+      expect(suggestionKinds, ['qa_pair', 'eval_item', 'threshold', 'router_rule', 'exam_exemplar', 'exam_rule', 'lora_ready']);
       expect(modelKinds, ['reranker', 'thresholds', 'router_rules', 'writer', 'examgen']);
       expect(modelKindLabel('writer'), 'Answer writer (LoRA)');
       expect(metricLabel('faithfulness'), 'Faithfulness');

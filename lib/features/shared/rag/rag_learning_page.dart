@@ -7,14 +7,18 @@
 //     the Q&A sheet prefilled; the others confirm what accepting does) · Dismiss.
 //   · Model versions (platform admins): reranker / thresholds / router rules / LoRA writer + question generator (D-070) with their metrics; Promote confirms
 //     with the metric deltas against the live version, Rollback returns to the previous one.
+//   · Model training readiness (platform admins, D-070): per LoRA kind N / needed with the sources, the last export and
+//     the last candidate's gate result; the commands of an open `lora_ready` suggestion with copy buttons.
 //   · An organization's managers see their organization's suggestions and the opt-in "Help improve the shared
 //     assistant" (`learning.contribute`, off by default).
 //
 // The super admin's console embeds [RagLearningBody] as its "Learning" tab; [RagLearningPage] is the organization's
 // page (from the documents library, next to its Q&A). Presentational, under the layout harness:
 // [LearningStatsView], [LearningSuggestionCard], [LearningSuggestionsView], [ModelVersionTile],
-// [LearningModelsView], [LearningContributeCard]. Kill switch `rag.learning`.
+// [LearningModelsView], [LearningContributeCard], [LoraReadinessCard], [LoraReadinessView], [LoraCommandList].
+// Kill switch `rag.learning`.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/context_switcher.dart';
@@ -130,6 +134,150 @@ class _ReasonsDonut extends StatelessWidget {
     final parts = reasonParts(reasons);
     if (parts.isEmpty) return Text(t('لا أسباب بعد', 'No reasons yet'), style: appText(13, c: context.colors.textLight));
     return Center(child: AppDonut(title: title, size: 132, parts: [for (final (k, n) in parts) AppChartPart(label(k), n.toDouble())]));
+  }
+}
+
+// ── LoRA readiness (D-070) ───────────────────────────────────────────────────────────────────────────────────────
+
+void _copyCommand(String command) {
+  Clipboard.setData(ClipboardData(text: command));
+  appToast(t('نُسخ الأمر', 'Command copied'));
+}
+
+/// The offline steps of a `lora_ready` suggestion, each with a copy button (left-to-right, monospace).
+class LoraCommandList extends StatelessWidget {
+  const LoraCommandList({super.key, required this.commands, this.onCopy});
+  final List<LoraCommand> commands;
+  final ValueChanged<String>? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      for (final (i, cmd) in commands.indexed)
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Text('${i + 1}. ${loraStepLabel(cmd.step)}', style: appText(12, w: FontWeight.w700, c: c.textMedium)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsetsDirectional.fromSTEB(10, 6, 4, 6),
+              decoration: BoxDecoration(color: c.textLight.withValues(alpha: 0.10), borderRadius: BorderRadius.circular(8)),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(cmd.command,
+                        textDirection: TextDirection.ltr,
+                        textAlign: TextAlign.left,
+                        style: appText(12, c: c.textDark).copyWith(fontFamily: 'monospace')),
+                  ),
+                ),
+                IconButton(
+                  tooltip: t('نسخ', 'Copy'),
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.copy_rounded, size: 18, color: c.textMedium),
+                  onPressed: () => (onCopy ?? _copyCommand)(cmd.command),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+    ]);
+  }
+}
+
+/// One kind's readiness: N / needed with a progress bar, the sources, the last export and the last candidate's gate
+/// result, and — once the monthly check opened a `lora_ready` suggestion — the offline commands.
+class LoraReadinessCard extends StatelessWidget {
+  const LoraReadinessCard({super.key, required this.readiness, this.commands = const [], this.onCopy});
+  final LoraKindReadiness readiness;
+  final List<LoraCommand> commands;
+  final ValueChanged<String>? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final r = readiness;
+    final cand = r.lastCandidate;
+    final exportAt = ragParseUtc(r.lastExportAt);
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: Text(modelKindLabel(r.kind), style: appText(14, w: FontWeight.w800, c: c.textDark))),
+          const SizedBox(width: 8),
+          AppBadgePill(r.reached ? t('جاهز', 'Ready') : t('قيد الجمع', 'Collecting'), color: r.reached ? c.success : c.warning),
+        ]),
+        const SizedBox(height: 10),
+        AppProgressBar(value: r.progress * 100, color: r.reached ? c.success : c.primary),
+        const SizedBox(height: 6),
+        Text(t('${r.ready} / ${r.needed} مثالاً صالحاً للتدريب', '${r.ready} / ${r.needed} training examples'),
+            style: appText(13, w: FontWeight.w700, c: c.textDark)),
+        const SizedBox(height: 10),
+        Text(t('المصادر', 'Sources'), style: appText(12, w: FontWeight.w700, c: c.textMedium)),
+        for (final e in r.bySource.entries)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Row(children: [
+              Expanded(child: Text(loraSourceLabel(e.key), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: c.textMedium))),
+              const SizedBox(width: 8),
+              Text(appCompactNumber(e.value), textDirection: TextDirection.ltr, style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
+            ]),
+          ),
+        const SizedBox(height: 10),
+        Text(exportAt == null ? t('لا تصدير بعد على هذا الخادم', 'No export on this server yet') : t('آخر تصدير: ${AppTime.date(exportAt)}', 'Last export: ${AppTime.date(exportAt)}'),
+            style: appText(12, c: c.textLight)),
+        const SizedBox(height: 6),
+        if (cand == null)
+          Text(t('لا إصدار مدرَّب مرشّح بعد', 'No fine-tuned candidate yet'), style: appText(12.5, c: c.textMedium))
+        else ...[
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(cand.passed ? Icons.verified_rounded : Icons.block_rounded, size: 18, color: cand.passed ? c.success : c.danger),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                  cand.passed
+                      ? t('آخر مرشّح ${cand.version}: يجتاز بوابة التقييم', 'Last candidate ${cand.version}: passes the gate')
+                      : t('آخر مرشّح ${cand.version}: أوقفته بوابة التقييم', 'Last candidate ${cand.version}: held by the gate'),
+                  style: appText(12.5, w: FontWeight.w700, c: c.textDark)),
+            ),
+          ]),
+          for (final f in cand.failures.take(3))
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 24, top: 2),
+              child: Text('• $f', textDirection: TextDirection.ltr, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+            ),
+        ],
+        if (commands.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          const Divider(height: 1),
+          const SizedBox(height: 8),
+          Text(t('أوامر التدريب (خارج الخادم)', 'Training commands (off the server)'), style: appText(13, w: FontWeight.w800, c: c.textDark)),
+          LoraCommandList(commands: commands, onCopy: onCopy),
+        ],
+      ]),
+    );
+  }
+}
+
+/// Both kinds side by side (stacked on a phone); the commands come from each kind's open `lora_ready` suggestion.
+class LoraReadinessView extends StatelessWidget {
+  const LoraReadinessView({super.key, required this.lora, this.suggestions = const [], this.onCopy});
+  final LoraReadiness lora;
+  final List<LearningSuggestion> suggestions;
+  final ValueChanged<String>? onCopy;
+
+  @override
+  Widget build(BuildContext context) {
+    return RagTileGrid(minTile: 320, children: [
+      for (final k in lora.kinds)
+        LoraReadinessCard(
+          readiness: k,
+          onCopy: onCopy,
+          commands: switch (loraSuggestionFor(suggestions, k.kind)) { final s? => loraCommandsOf(s), null => const [] },
+        ),
+    ]);
   }
 }
 
@@ -501,6 +649,12 @@ class _RagLearningBodyState extends State<RagLearningBody> {
           ]),
           const SizedBox(height: 10),
           LearningStatsView(stats: _stats!),
+        ],
+        if (_platform && _stats?.lora != null) ...[
+          const SizedBox(height: 16),
+          AppSectionTitle(t('جاهزية تدريب النموذج', 'Model training readiness'),
+              subtitle: t('تُحسب بمرشّحات التصدير نفسها؛ التدريب يجري خارج الخادم', "Counted with the export's own filters; training runs off the server")),
+          LoraReadinessView(lora: _stats!.lora!, suggestions: _suggestions),
         ],
         const SizedBox(height: 16),
         AppSectionTitle(t('الاقتراحات', 'Suggestions'), subtitle: t('مسودات تنتظر موافقتك', 'Drafts waiting for your approval')),

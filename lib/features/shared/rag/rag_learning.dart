@@ -15,7 +15,11 @@
 //        artifact_path, promoted_by, promoted_at}]}   ·   POST /models/{id}/promote (refused when the gate regresses)
 //        ·   POST /models/{id}/rollback   (platform admins)
 //   GET  /stats?days=[&org_id=]  {chat: {votes, helpful_rate, reasons{}, rephrase_rate}, exam: {items, accept_rate,
-//        edit_rate, reject_rate, reasons{}}, suggestions_open, models: [...]}
+//        edit_rate, reject_rate, reasons{}}, suggestions_open, models: [...], lora (platform view): {writer|examgen:
+//        {ready, needed, reached, by_source{}, holdout, last_candidate, last_export_at}, last_export_at, last_candidate:
+//        {id, kind, version, status, gate: {passed, failures[]}}, checked_at}}
+//   suggestion kind `lora_ready` (app scope, the worker's monthly check): payload {task, ready, needed, by_source,
+//        month, commands: [{step, command}]} — Accept only acknowledges; training is offline
 //   GET|PUT /orgs/{org_id}/settings {contribute}   the organization's opt-in "help improve the shared assistant"
 //        (`learning.contribute`, default off)
 //
@@ -24,7 +28,8 @@
 //
 // Pure, unit-tested: the reason / kind codes and their labels, [RagDownVote], [chatVoteBody], [chatSignalBody],
 // [legacyFeedbackComment], [examItemBody], [learningOlderServer], [LearningDebounce], [LearningSuggestion],
-// [groupSuggestions], [LearningStats], [ModelVersion], [metricDeltas], [promoteConfirmText], [learningCodeText].
+// [groupSuggestions], [LearningStats], [ModelVersion], [metricDeltas], [promoteConfirmText], [learningCodeText],
+// [LoraReadiness] / [loraCommandsOf] (the stats' `lora` block and the `lora_ready` suggestion's offline commands, D-070).
 library;
 
 import 'dart:async' show unawaited;
@@ -76,7 +81,7 @@ String learningReasonLabel(String code) => chatReasons.contains(code) ? chatReas
 /// The signals the chat sends besides the vote.
 const chatSignalKinds = ['chat_citation_open', 'chat_deeplink', 'chat_support'];
 
-const suggestionKinds = ['qa_pair', 'eval_item', 'threshold', 'router_rule', 'exam_exemplar', 'exam_rule'];
+const suggestionKinds = ['qa_pair', 'eval_item', 'threshold', 'router_rule', 'exam_exemplar', 'exam_rule', 'lora_ready'];
 
 String suggestionKindLabel(String kind) => switch (kind) {
       'qa_pair' => t('إجابات معتمدة مقترحة', 'Suggested Q&A pairs'),
@@ -85,6 +90,7 @@ String suggestionKindLabel(String kind) => switch (kind) {
       'router_rule' => t('قواعد التوجيه', 'Routing rules'),
       'exam_exemplar' => t('أمثلة لمولّد الأسئلة', 'Question generator examples'),
       'exam_rule' => t('قواعد فحص الأسئلة', 'Question checker rules'),
+      'lora_ready' => t('جاهز لتدريب النموذج', 'Ready for model training'),
       _ => kind,
     };
 
@@ -96,6 +102,8 @@ String suggestionAcceptText(String kind) => switch (kind) {
           'A candidate version is created and evaluated first; it only goes live once promoted under Model versions.'),
       'exam_exemplar' => t('يصبح السؤال مثالاً يحتذي به مولّد الأسئلة.', 'The question becomes an example the question generator follows.'),
       'exam_rule' => t('يطبّق مراجع الأسئلة هذه القاعدة على الأسئلة الجديدة.', 'The question reviewer applies this rule to new questions.'),
+      'lora_ready' => t('تأكيد الاطلاع فقط: التدريب يجري خارج الخادم بالأوامر الظاهرة في «جاهزية تدريب النموذج»، ولا يتغير شيء على الخادم.',
+          'Acknowledge only: training runs off the server with the commands under Model training readiness; nothing changes on the server.'),
       _ => t('يُعتمد هذا الاقتراح.', 'The suggestion is accepted.'),
     };
 
@@ -263,6 +271,9 @@ class LearningSuggestion {
 
   /// The line the inbox shows: the question, the rule or the proposed value.
   String get title {
+    if (kind == 'lora_ready') {
+      return '${modelKindLabel(asStr(payload['task']))} · ${asInt(payload['ready'])} / ${asInt(payload['needed'], loraNeededDefault)}';
+    }
     for (final k in ['question', 'title', 'prompt', 'rule', 'summary']) {
       final v = asStr(payload[k]).trim();
       if (v.isNotEmpty) return v;
@@ -354,6 +365,7 @@ class LearningStats {
     this.examReasons = const {},
     this.suggestionsOpen = 0,
     this.models = const [],
+    this.lora,
   });
   final int chatVotes;
   final double? helpfulRate;
@@ -364,6 +376,9 @@ class LearningStats {
   final Map<String, int> examReasons;
   final int suggestionsOpen;
   final List<ModelVersion> models;
+
+  /// The LoRA readiness (platform admins on the platform view; null elsewhere or from an older server).
+  final LoraReadiness? lora;
 
   factory LearningStats.fromJson(Map<String, dynamic> j) {
     final chat = asMap(j['chat']);
@@ -380,6 +395,7 @@ class LearningStats {
       examReasons: _counts(exam['reasons']),
       suggestionsOpen: asInt(j['suggestions_open']),
       models: asMapList(j['models']).map(ModelVersion.fromJson).toList(),
+      lora: LoraReadiness.fromJson(j['lora']),
     );
   }
 
@@ -389,6 +405,134 @@ class LearningStats {
 /// Reason counts, biggest first (the donut's parts).
 List<(String, int)> reasonParts(Map<String, int> reasons) =>
     (reasons.entries.map((e) => (e.key, e.value)).toList()..sort((a, b) => b.$2.compareTo(a.$2)));
+
+// ── LoRA readiness (D-070) ───────────────────────────────────────────────────────────────────────────────────────
+
+/// The export's minimum (mlops/learning/export_sft.MIN_EXAMPLES) when the server sends none.
+const loraNeededDefault = 300;
+
+/// The kinds the offline LoRA trains, in the order the page shows them.
+const loraKinds = ['writer', 'examgen'];
+
+/// The training sources per kind (export_sft.SOURCES).
+const loraSources = {
+  'writer': ['chat', 'qa', 'correction'],
+  'examgen': ['exam_accept', 'exam_edit'],
+};
+
+String loraSourceLabel(String source) => switch (source) {
+      'chat' => t('إجابات قيّمها السائلون مفيدة', 'Answers voted helpful'),
+      'qa' => t('إجابات معتمدة', 'Curated Q&A pairs'),
+      'correction' => t('تصحيحات التقييم', 'Evaluation corrections'),
+      'exam_accept' => t('أسئلة قبلها المعلمون', 'Questions teachers accepted'),
+      'exam_edit' => t('أسئلة عدّلها المعلمون', 'Questions teachers edited'),
+      _ => source,
+    };
+
+String loraStepLabel(String step) => switch (step) {
+      'export' => t('تصدير البيانات', 'Export the data'),
+      'plan' => t('فحص الخطة', 'Check the plan'),
+      'train' => t('التدريب (خارج الخادم)', 'Train (off the server)'),
+      'evaluate' => t('التقييم', 'Evaluate'),
+      'register' => t('الاعتماد', 'Promote'),
+      'restart' => t('إعادة تشغيل العامل', 'Restart the worker'),
+      _ => step,
+    };
+
+/// The newest fine-tune evaluated for a kind and the gate's verdict against the live version.
+class LoraCandidate {
+  const LoraCandidate(
+      {required this.id, required this.kind, required this.version, this.status = 'candidate', this.createdAt, this.passed = false, this.failures = const []});
+  final int id;
+  final String kind, version, status;
+  final String? createdAt;
+  final bool passed;
+  final List<String> failures;
+
+  static LoraCandidate? fromJson(Object? v) {
+    final j = asMap(v);
+    if (j.isEmpty || asInt(j['id']) <= 0) return null;
+    final gate = asMap(j['gate']);
+    return LoraCandidate(
+      id: asInt(j['id']),
+      kind: asStr(j['kind']),
+      version: asStr(j['version']),
+      status: asStr(j['status'], 'candidate'),
+      createdAt: j['created_at']?.toString(),
+      passed: gate['passed'] == true,
+      failures: [for (final f in (gate['failures'] is List ? gate['failures'] as List : const [])) '$f'],
+    );
+  }
+}
+
+class LoraKindReadiness {
+  const LoraKindReadiness(
+      {required this.kind, this.ready = 0, this.needed = loraNeededDefault, this.bySource = const {}, this.holdout = 0, this.lastCandidate, this.lastExportAt});
+  final String kind;
+  final int ready, needed, holdout;
+  final Map<String, int> bySource;
+  final LoraCandidate? lastCandidate;
+  final String? lastExportAt;
+
+  factory LoraKindReadiness.fromJson(String kind, Map<String, dynamic> j) {
+    final by = asMap(j['by_source']);
+    final known = loraSources[kind] ?? const <String>[];
+    final needed = asInt(j['needed'], loraNeededDefault);
+    return LoraKindReadiness(
+      kind: kind,
+      ready: asInt(j['ready']),
+      needed: needed > 0 ? needed : loraNeededDefault,
+      bySource: {for (final s in [...known, ...by.keys.where((k) => !known.contains(k))]) s: asInt(by[s])},
+      holdout: asInt(j['holdout']),
+      lastCandidate: LoraCandidate.fromJson(j['last_candidate']),
+      lastExportAt: j['last_export_at']?.toString(),
+    );
+  }
+
+  bool get reached => ready >= needed;
+
+  /// 0–1, for the progress bar.
+  double get progress => (ready / needed).clamp(0, 1).toDouble();
+}
+
+class LoraReadiness {
+  const LoraReadiness({this.kinds = const [], this.lastExportAt, this.lastCandidate, this.checkedAt});
+  final List<LoraKindReadiness> kinds;
+  final String? lastExportAt, checkedAt;
+  final LoraCandidate? lastCandidate;
+
+  /// The stats' `lora` block; null when absent or when the server could not count (`{error}`).
+  static LoraReadiness? fromJson(Object? v) {
+    final j = asMap(v);
+    if (j.isEmpty || j.containsKey('error')) return null;
+    final kinds = [for (final k in loraKinds) if (j[k] is Map) LoraKindReadiness.fromJson(k, asMap(j[k]))];
+    if (kinds.isEmpty) return null;
+    return LoraReadiness(
+        kinds: kinds,
+        lastExportAt: j['last_export_at']?.toString(),
+        lastCandidate: LoraCandidate.fromJson(j['last_candidate']),
+        checkedAt: j['checked_at']?.toString());
+  }
+}
+
+/// One offline step of a `lora_ready` suggestion (docs/learning/lora.md of the backend).
+typedef LoraCommand = ({String step, String command});
+
+/// The commands of a `lora_ready` suggestion, in order (empty for any other kind).
+List<LoraCommand> loraCommandsOf(LearningSuggestion s) => s.kind != 'lora_ready'
+    ? const []
+    : [
+        for (final c in asMapList(s.payload['commands']))
+          if (asStr(c['command']).trim().isNotEmpty) (step: asStr(c['step']), command: asStr(c['command']).trim()),
+      ];
+
+/// The open `lora_ready` suggestion of [kind] among [items], if any.
+LearningSuggestion? loraSuggestionFor(List<LearningSuggestion> items, String kind) {
+  for (final s in items) {
+    if (s.kind == 'lora_ready' && s.status == 'open' && asStr(s.payload['task']) == kind) return s;
+  }
+  return null;
+}
 
 // ── model versions ───────────────────────────────────────────────────────────────────────────────────────────────
 
