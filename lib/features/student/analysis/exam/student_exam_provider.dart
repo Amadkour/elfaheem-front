@@ -347,6 +347,15 @@ class StudentExamProvider extends BaseProvider {
       }
       return null;
     } on ApiException catch (e) {
+      if (e.code == 'review_flags_disabled') {
+        // The admin switched review flags off while the exam was open: hide the button too.
+        flagSettings = FlagSettings(
+          allowRead: flagSettings.allowRead,
+          limitExam: flagSettings.limitExam,
+          limitCourse: flagSettings.limitCourse,
+        );
+        return tx('flag_review_disabled');
+      }
       if (e.message.contains('review_limit_exam')) {
         return tx('flag_limit_exam', {'n': flagSettings.limitExam});
       }

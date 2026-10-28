@@ -82,8 +82,9 @@ synthetic ID login (`_find_for_login`, `<id>@<DATA_LAB_ID_DOMAIN>`) needs the pa
 is tried before the `login_identifier` policy on purpose (ID-only students).
 
 Residual notes: a pending switch request can be refreshed with another device id until it is decided (the teacher
-approves the latest one); `allow_review_flags` and the other flag keys are not `AppSettingsService` keys, so review flags
-answer 403 in production today (a missing feature switch, not a security issue).
+approves the latest one). The flag keys (`allow_review_flags`, …) had been dropped from `AppSettingsService`, so review
+flags answered 403 for everyone; they are real settings again (default on, admin "Flags" page; off answers 403
+`review_flags_disabled`), and `e2e_auth_residual.py` no longer patches them.
 
 ### IDOR sweep (route → guard → status): 50 routes checked, 11 fixed
 

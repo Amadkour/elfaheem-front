@@ -8677,6 +8677,10 @@
     "en": "You reached the limit of {n} review flags for this course. Remove one to add another.",
     "ar": "وصلت للحد الأقصى ({n}) من علامات المراجعة لهذه الدورة. احذف واحدة لإضافة أخرى."
   },
+  "flag_review_disabled": {
+    "en": "Review flags are turned off right now.",
+    "ar": "علامات المراجعة متوقفة حالياً."
+  },
   "flag_empty_review": {
     "en": "No review questions yet. Tap \"Review\" on a question while taking an exam.",
     "ar": "لا توجد أسئلة للمراجعة بعد. اضغط \"مراجعة\" على أي سؤال أثناء الاختبار."
