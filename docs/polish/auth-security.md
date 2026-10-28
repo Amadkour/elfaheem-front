@@ -49,3 +49,76 @@ back `tests/org_v2`: `spec_auth.py`, `e2e_auth_security.py`, `e2e_auth_sync_rout
 - Whether the reverse proxy adds a per-IP request rate (app has only DB throttles on named routes + a concurrency cap).
 - Imported-student temporary passwords (`data_lab_import.py:303`) and the synthetic-login path: expiry not reviewed.
 - `/api/v1/devices/*` switch-request approval flow not audited.
+
+## Residual audit 2026-10-28
+
+Scope: the four open questions above plus an IDOR sweep (back branch `feature/platform-polish`, not committed). Tests:
+`../back/tests/org_v2/e2e_auth_residual.py` (12 checks; the R1 / R2 / R4 fixes were reverted once each to see their
+check fail).
+
+### Findings
+
+| # | sev | where | what | status |
+|---|---|---|---|---|
+| R1 | High | `routers/sessions.py` `POST /sessions/{sid}/materials/{mid}/play` | the enrollment check ran only for non-"staff"; `is_staff` includes **parent** (self-registrable), org-admin / org-staff and every teacher → a playable link to any paid video by id | fixed: `_may_read_session` for every role (platform admin · course staff via `course_profile.material_reader` · enrolled · free first session) |
+| R2 | High | `services/exam_service.py` `get_questions_for_user` (`GET /exams/{id}/questions`) | any teacher / admin token got the whole pool **with correct answers** of any exam | fixed: course teacher (`_assert_course_teacher`) or super admin |
+| R3 | High | `services/data_lab_import.py` `reset_login` (`POST /data-lab/courses/{cid}/rows/{rid}/login`) | a course's teacher (or org staff with course `update`) could set a new password on ANY enrolled student — self-registered accounts included — and was handed it: account takeover | fixed: only an import-made account the student has not taken over (placeholder e-mail, or account setup still open), else 409 `SELF_SERVICE_RESET` |
+| R4 | Medium | `services/device_security_service.py` `list_for_teacher` / `_owned_pending` | only role `teacher` was scoped to `teacher_id`; parent, org-admin, org-staff, developer listed every pending switch request (student name + phone) and could approve / reject any | fixed: `REVIEW_ALL_ROLES` = admin, super-admin; everyone else only the requests addressed to them; someone else's id → 404 |
+| R5 | Medium | `GET /sessions/{sid}/materials`, `GET /modules/{id}/materials` | signed 1 h links to the PDFs / documents of any session or module for any signed-in user | fixed: rows stay as an outline, links (and captions) null for non-readers; the module list answers 403 |
+| R6 | Medium | `data_lab_import._new_account` / `reset_login`, login | temporary passwords never expired; "choose your own password" is enforced by the app only (the API works with the temporary password) | fixed: `IMPORT_TEMP_PASSWORD_DAYS` (30) → 403 `TEMP_PASSWORD_EXPIRED`, only after the password matched. A server-side forced change is left to the app (a global guard would 403 the app's start-up calls): residual, accepted |
+| R7 | Low | `GET /courses/{id}/enrolled-students` | any teacher passed (names + photos of another course); a `session_id` of another course was mixed in | fixed: `course_profile.resolve` role admin / instructor / ta, or enrolled; a foreign session is ignored |
+| R8 | Low | `services/exam_flags_service.py` `add_review_flag` | an enrolled student could flag any pool question id; after submitting, `GET /student/review-flags` returned them with answers (questions never on his paper) | fixed: the question must be on one of his papers when paper rules are active |
+| R9 | Low | `PATCH …/governance/entities/{id}`, `POST·PUT …/departments` | `program_id` stored without checking the organization (cross-tenant reference) | fixed: `entities.check_program` → 404 `program_not_found` |
+| R10 | Low | `exam_engine/authz.py`, `rag_service/authz.py` whoami cache | a deactivated / signed-out / re-roled account kept engine + RAG access for ≤ 30 s (`AUTHZ_CACHE_SECONDS`) | fixed for whoami: `services/authz_bust.py` deletes the `exam:authz:` / `rag:authz:` whoami keys after the commit (exact keys, no SCAN). Membership / course-role answers keep 30 s, org_state 10 s — documented in `docs/DEPLOY.md` |
+| R11 | Info | `deploy/nginx/nextbrain.conf.example` | no per-IP request rate at the proxy (open question 2) | fixed: `nb_auth` 20 r/m burst 30 (login, register, google, OTP, reset, change-password, phone-link/start, MFA verify / confirm, account-setup codes), `nb_session` 60 r/m burst 60 (refresh, link status, handshake), `nb_tunnel` 10 r/s (`/secure/t`); `docs/DEPLOY.md` "Rate limits" |
+
+Verified OK (no change): switch-request replay (the request must be `pending`, 400 afterwards; the student row is locked
+and `last_device_switch_at` re-checked); switch-request flooding (one pending row per student, refreshed in place); the
+old device after a switch (the student's login on the new phone already bumped `token_version` and revoked every refresh
+token, and the approval unbinds the old device from paid content); temporary passwords are 10 chars of `token_urlsafe`
+(~60 bits), returned once (the commit answer; the staged import row is deleted) or in the invitation e-mail, never
+logged; guessing them falls under the login throttle (10 / 15 min per account + IP, 30 per IP) and now nginx; the
+synthetic ID login (`_find_for_login`, `<id>@<DATA_LAB_ID_DOMAIN>`) needs the password, fails like any wrong login, and
+is tried before the `login_identifier` policy on purpose (ID-only students).
+
+Residual notes: a pending switch request can be refreshed with another device id until it is decided (the teacher
+approves the latest one); `allow_review_flags` and the other flag keys are not `AppSettingsService` keys, so review flags
+answer 403 in production today (a missing feature switch, not a security issue).
+
+### IDOR sweep (route → guard → status): 50 routes checked, 11 fixed
+
+| route | guard | status |
+|---|---|---|
+| `POST /devices/teacher/switch-requests/{id}/approve·reject`, `GET …/switch-requests` | `_owned_pending` / `list_for_teacher` | fixed (R4) |
+| `GET /exams/{id}/questions` | none for staff | fixed (R2) |
+| `GET /courses/{id}/enrolled-students` | role only | fixed (R7) |
+| `POST /sessions/{sid}/materials/{mid}/play` | skipped for staff | fixed (R1) |
+| `GET /sessions/{sid}/materials` · `GET /modules/{id}/materials` | none for attachments | fixed (R5) |
+| `POST /student/review-flags/{qid}` | enrollment only | fixed (R8) |
+| `POST /data-lab/courses/{cid}/rows/{rid}/login` | course staff, any enrolled student | fixed (R3) |
+| `PATCH …/governance/entities/{id}` · `PUT …/departments/{id}` (`program_id`) | org-scoped row, body id unchecked | fixed (R9) |
+| `GET /exams/{id}/export·results/all·attendance-results`, exam / question CRUD | `_assert_course_teacher` | ok |
+| `GET /exams/{id}/paper·results` (student) | active enrollment, own rows | ok |
+| `GET /exams/{id}/deadline-status` | none (own counters + the exam's end date only) | ok (low, no other user's data) |
+| `GET·PUT /complaints/{id}`, `POST …/replies` | `_assert_access` (`_visibility`) | ok |
+| `POST /transfers/{payment_id}/approve·reject` | `_get_reviewable` (course teacher / admin, pending only) | ok |
+| `GET /payments/{id}` | `get_payment_for` (owner / admin) | ok |
+| `PUT /notifications/{id}/read`, `GET …/{id}/target` | `user_id` filter | ok |
+| `GET /live/recordings/{rid}`, `…/chunk·stop·retry`, `GET /live/{kind}/{id}/recordings` | `visible` / `owned` / host or attendee | ok |
+| `GET /live/requests/{id}`, `/public/live/requests/{id}`, lobby admit / reject | own `user_id` / secret / `_host` + room-scoped request | ok |
+| `GET /live-sessions/{id}/join·recording`, `POST …/end` | enrolled or course teacher / course teacher | ok |
+| `GET /live-sessions/{id}/participants·force_attend`, `/sessions/{cid}/course_attendance` | `assert_session_manager` / `assert_course_manager` | ok |
+| `GET /courses/{id}/students`, `/certificates/{id}/issuances`, `/sessions/{id}/attendance` | course teacher / admin | ok |
+| `POST /certificate-requests/{id}/approve·reject` | `_get_request_for_teacher` | ok |
+| `/certificate-designs/{id}…`, `/certificates/{id}/design` | `can_view` / `can_edit` / `_assert_course_access` | ok |
+| `GET·PATCH·DELETE /calendar/meetings/{mid}` | `get_visible` / `_own` | ok |
+| `GET /parent/children/{sid}/report·profile` | `assert_child` | ok |
+| `DELETE /teacher-documents/{id}`, `GET /{teacher_id}/public` | the caller's profile / public filter | ok |
+| `GET /attendance/sessions/{att_id}/code`, `POST …/close` | `_owned_attendance` | ok |
+| `GET /data-lab/courses/{cid}/students/{sid}/profile`, `/data-lab/students/{sid}/profile` | `_course` + enrolled / the teacher's courses | ok |
+| `POST /messages/dialogs/{rid}/seen`, `GET /teacher/courses/{cid}/read-flags`, `DELETE /materials/{id}` | own row / course teacher / owner | ok |
+| org sample (10): `GET /org/public/announcements/{aid}`, `PUT …/{aid}/reaction`, `GET /orgs/{o}/announcements/{aid}/analytics`, `PUT·DELETE …/reports/templates/{tid}`, `PUT …/governance/categories/{cid}`, `PUT·DELETE …/periods/{pid}`, `GET …/departments/{id}`, `GET·PUT …/registrar/terms/{tid}/grades/{cid}` | `_visible` / audience; rows filtered by `org_id = ctx.org.id` + `org_ctx(module, action)` / `_require(dept)` / `_manages`; registrations of the org's term | ok |
+
+Contract notes for the app: `../back/FLUTTER_API_CHANGES.md` "Auth residual audit" (new codes `TEMP_PASSWORD_EXPIRED`,
+`SELF_SERVICE_RESET`; 404 on someone else's switch request; null links for non-readers). App follow-up: show the
+server's `message` for `TEMP_PASSWORD_EXPIRED` / `SELF_SERVICE_RESET` (it is user-readable); no other app change needed.

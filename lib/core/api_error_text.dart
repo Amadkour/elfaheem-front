@@ -69,6 +69,12 @@ String apiErrorText(ApiException e) {
       return _t('رقم الهاتف مستخدم بحساب آخر', 'This phone number is already used by another account');
     case 'REAUTH_REQUIRED':
       return _t('أدخل كلمة المرور الحالية للمتابعة', 'Enter your current password to continue');
+    case 'TEMP_PASSWORD_EXPIRED':
+      return _t('انتهت صلاحية كلمة المرور المؤقتة — اطلب بيانات دخول جديدة من مؤسستك',
+          'Your temporary password has expired — ask your organization for new login details');
+    case 'SELF_SERVICE_RESET':
+      return _t('هذا الحساب يدير كلمة مروره بنفسه — يستطيع صاحبه استخدام "نسيت كلمة المرور"',
+          'This account manages its own password — its owner can use "Forgot password"');
     case 'LOGIN_EMAIL_ONLY':
       return _t('سجّل الدخول بالبريد الإلكتروني', 'Please sign in with your e-mail');
     case 'LOGIN_PHONE_ONLY':
