@@ -11,6 +11,8 @@
 
 import 'dart:ui';
 
+import '../../design/app_contrast.dart';
+
 class ThemeConfigModel {
   // ── Primary family ──────────────────────────────────────────────────────
   final Color primary;
@@ -181,6 +183,18 @@ class ThemeConfigModel {
 
   // ── Factory ───────────────────────────────────────────────────────────────
 
+  /// Surfaces the light-mode text colours are drawn on.
+  static const lightTextSurfaceKeys = ['background', 'surface_card', 'card_bg', 'text_field_background', 'input_bg'];
+
+  /// Surfaces the dark-mode text colours are drawn on.
+  static const darkTextSurfaceKeys = ['dark_background', 'dark_surface', 'dark_card', 'dark_input', 'input_bg_dark'];
+
+  /// The secondary text colour under [key] in [j], nudged until it reaches WCAG AA (4.5:1) on every surface of
+  /// [surfaceKeys] that [j] carries. The palette is edited by the super admin, so a stored low-contrast value must
+  /// not ship unreadable captions; a colour that already passes comes back unchanged.
+  static Color readableText(Map<String, dynamic> j, String key, List<String> surfaceKeys) => ensureContrast(
+      _c(j[key] as String), [for (final k in surfaceKeys) if (j[k] is String) _c(j[k] as String)]);
+
   factory ThemeConfigModel.fromJson(Map<String, dynamic> j) {
     return ThemeConfigModel(
       // Primary family
@@ -212,8 +226,8 @@ class ThemeConfigModel {
 
       // Light text
       textDark: _c(j['text_dark'] as String),
-      textMedium: _c(j['text_medium'] as String),
-      textLight: _c(j['text_light'] as String),
+      textMedium: readableText(j, 'text_medium', lightTextSurfaceKeys),
+      textLight: readableText(j, 'text_light', lightTextSurfaceKeys),
       textAction: _c(j['text_action'] as String),
 
       // Dark surfaces
@@ -225,8 +239,8 @@ class ThemeConfigModel {
 
       // Dark text
       darkTextPrimary: _c(j['dark_text_primary'] as String),
-      darkTextMuted: _c(j['dark_text_muted'] as String),
-      darkTextLight: _c(j['dark_text_light'] as String),
+      darkTextMuted: readableText(j, 'dark_text_muted', darkTextSurfaceKeys),
+      darkTextLight: readableText(j, 'dark_text_light', darkTextSurfaceKeys),
 
       // Input backgrounds
       inputBg: _c(j['input_bg'] as String),

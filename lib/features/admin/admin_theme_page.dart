@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/app_bar.dart';
@@ -281,6 +282,31 @@ const _editable = <String, String>{
   'dark_card': 'admin_color_dark_card',
 };
 
+/// A secondary text colour of a theme that misses WCAG AA (4.5:1) on one of its surfaces.
+typedef MutedContrastIssue = ({bool dark, String hex, double ratio, Color adjusted});
+
+/// The secondary text colours (`text_light`, `dark_text_light`) of the flat theme [colors] that read below 4.5:1 on a
+/// surface they are drawn on, with the colour the app will use instead (the live palette is guarded the same way,
+/// `ThemeConfigModel.readableText`). Surfaces the theme does not carry are skipped.
+List<MutedContrastIssue> mutedContrastIssues(Map<String, String> colors) {
+  List<Color> on(List<String> keys) => [for (final k in keys) ?_parseHex(colors[k] ?? '')];
+  const light = ['background_hex', 'surface_card', 'card_bg_hexa', 'card_bg', 'text_field_background', 'input_bg'];
+  const dark = ['dark_background', 'dark_surface', 'dark_card', 'dark_input', 'input_bg_dark'];
+  return [
+    for (final (isDark, key, surfaces) in [(false, 'text_light', on(light)), (true, 'dark_text_light', on(dark))])
+      if (_parseHex(colors[key] ?? '') case final fg?)
+        if (surfaces.isNotEmpty && !passesContrast(fg, surfaces))
+          (
+            dark: isDark,
+            hex: colors[key]!.trim().toUpperCase(),
+            ratio: minContrast(fg, surfaces),
+            adjusted: ensureContrast(fg, surfaces),
+          ),
+  ];
+}
+
+String _hexOf(Color c) => '#${(c.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+
 Future<void> _openEditor(
   BuildContext context,
   AdminThemesProvider p, {
@@ -437,6 +463,30 @@ class _EditorState extends State<_Editor> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                for (final w in mutedContrastIssues({
+                  ...colors,
+                  for (final e in _ctrls.entries)
+                    if (_validHex(e.value.text)) e.key: e.value.text.trim(),
+                }))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.contrast_rounded, size: 16, color: context.colors.warning),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            t(
+                              'النص الثانوي ${w.dark ? '(الوضع الداكن) ' : ''}${w.hex} تباينه ${w.ratio.toStringAsFixed(1)}:1 فقط مع الخلفية (المطلوب 4.5:1) — سيعرضه التطبيق بلون ${_hexOf(w.adjusted)}',
+                              'Secondary text ${w.dark ? '(dark mode) ' : ''}${w.hex} reaches only ${w.ratio.toStringAsFixed(1)}:1 on its background (4.5:1 needed) — the app will show it as ${_hexOf(w.adjusted)}',
+                            ),
+                            style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.textMedium),
                           ),
                         ),
                       ],

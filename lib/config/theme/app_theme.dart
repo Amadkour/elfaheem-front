@@ -65,7 +65,7 @@ class AppTheme {
   // ── Light text ────────────────────────────────────────────────────────────
   static const Color textDark     = Color(0xFF1B1E33);
   static const Color textMedium   = Color(0xFF4B4F6B);
-  static const Color textLight    = Color(0xFF8A8EA8);
+  static const Color textLight    = Color(0xFF696E8E);   // 4.5:1+ on background / card / input (WCAG AA)
   static const Color textAction   = Color(0xFF2F3E9E);
 
   // ── Dark surfaces ─────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ class AppTheme {
   // ── Dark text ─────────────────────────────────────────────────────────────
   static const Color darkTextPrimary  = Color(0xFFF4F5FB);
   static const Color darkTextMuted    = Color(0xFFA9AECC);
-  static const Color darkTextLight    = Color(0xFF6B7099);
+  static const Color darkTextLight    = Color(0xFF8F93B2);   // 4.5:1+ on every dark surface (WCAG AA)
 
   // ── Radii ─────────────────────────────────────────────────────────────────
   static const double radiusSmall  = 10;
