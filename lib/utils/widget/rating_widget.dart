@@ -88,8 +88,8 @@ class RatingSummary {
     ratings: (j['ratings'] as List)
         .map((e) => RateResponse.fromJson(e as Map<String, dynamic>))
         .toList(),
-    total: (j['total'] as int)+200,
-    average:( (j['average'] as num).toDouble())+4,
+    total: (j['total'] as num?)?.toInt() ?? 0,
+    average: (j['average'] as num?)?.toDouble() ?? 0,
   );
 
   /// Distribution: how many ratings per star value (1–5)

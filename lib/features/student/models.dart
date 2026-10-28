@@ -600,7 +600,7 @@ class CourseModel with DiscountInfo {
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     status: CourseStatusX.fromApiValue(j['status'] as String?),
     studentsCount:
-    (j['students_count'] as int? ?? j['enrollment_count'] as int? ?? 0)+700,
+    ((j['students_count'] ?? j['enrollment_count']) as num?)?.toInt() ?? 0,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
     expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,

@@ -22,6 +22,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'widgets/controls.dart';
 import 'widgets/live_chat.dart';
 import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
+import 'widgets/live_duration.dart';
 import 'widgets/live_hands.dart';
 import 'widgets/live_quiz.dart';
 import 'widgets/live_reactions.dart';
@@ -88,8 +89,8 @@ class EnrolledStudent {
   factory EnrolledStudent.fromJson(
       Map<String, dynamic> j,
       List<int> studentsId,
-      List<String> studentsJoinDate,
-      List<String> studentsLeaveDate,
+      List<String?> studentsJoinDate,
+      List<String?> studentsLeaveDate,
       ) {
     bool isPresent = false;
     String? presentDate;
@@ -118,8 +119,9 @@ class EnrolledStudent {
       name: j['name'] ?? '',
       imageUrl: j['image_url'],
       isAttended: isPresent,
-      joinDate: presentDate != null ? DateTime.parse(presentDate) : null,
-      leaveDate: leaveDate != null ? DateTime.parse(leaveDate) : null,
+      // naive UTC from the server ("None" when empty): never DateTime.parse, which reads it as local time
+      joinDate: liveParseServerUtc(presentDate),
+      leaveDate: liveParseServerUtc(leaveDate),
     );
   }
 }
@@ -504,31 +506,7 @@ class _RoomPageState extends State<RoomPage>
     if (!mounted) return;
     setState(() => _isBroadcastingIOS = active);
     if (active) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.screen_share_rounded, color: LivePalette.textHigh, size: 16),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'lr_share_hint'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: _cyan,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 80),
-        ),
-      );
+      showAppNotice('lr_share_hint'.tr, icon: Icons.screen_share_rounded, duration: const Duration(seconds: 4));
     }
   }
 
@@ -1005,33 +983,19 @@ class _RoomPageState extends State<RoomPage>
 
   String get _recElapsedLabel => _formatElapsed(_recElapsedSeconds);
 
-  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? _netBanner;
+  /// The "reconnecting" notice while it is up (it stays until the network is back or the room closes).
+  String? _netNotice;
 
-  /// Weak network: tell people what is happening instead of showing a frozen picture.
+  /// Weak network: tell people what is happening instead of showing a frozen picture. A notice, not a SnackBar:
+  /// the room's Scaffold sits under its own sheets and dialogs, the notice above them.
   void _showNetBanner(bool reconnecting) {
     if (!mounted) return;
-    final m = ScaffoldMessenger.maybeOf(context);
-    if (m == null) return;
-    _netBanner?.close();
-    _netBanner = null;
-    final bar = SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: reconnecting ? _surfaceHi : _emerald.withValues(alpha: 0.95),
-      duration: reconnecting ? const Duration(minutes: 5) : const Duration(seconds: 2),
-      content: Row(children: [
-        if (reconnecting)
-          SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _cyan))
-        else
-          const Icon(Icons.wifi_rounded, color: LivePalette.textHigh, size: 20),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text((reconnecting ? 'lr_reconnecting' : 'lr_reconnected').tr,
-              style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontWeight: FontWeight.w700)),
-        ),
-      ]),
-    );
-    final c = m.showSnackBar(bar);
-    if (reconnecting) _netBanner = c;
+    final msg = (reconnecting ? 'lr_reconnecting' : 'lr_reconnected').tr;
+    showAppNotice(msg,
+        error: reconnecting,
+        icon: reconnecting ? Icons.wifi_off_rounded : Icons.wifi_rounded,
+        duration: reconnecting ? const Duration(minutes: 5) : const Duration(seconds: 2));
+    _netNotice = reconnecting ? msg : null;
   }
 
   @override
@@ -1046,7 +1010,7 @@ class _RoomPageState extends State<RoomPage>
     _chat.dispose();
     _guestBusy.dispose();
     WakelockPlus.disable().catchError((_) {});
-    _netBanner?.close();
+    if (_netNotice != null) hideAppNotice(message: _netNotice);
     if (!widget.isTeacher && !widget.isGuest) {
       // Check-out time: without this every student's attendance showed "stayed 0 min" (check-out = join time).
       // (A guest has no attendance record and no token: nothing to send.)
@@ -1261,10 +1225,10 @@ class _RoomPageState extends State<RoomPage>
       as List<dynamic>;
       final ids = participants.map<int>((p) => p['student_id'] as int).toList();
       final joins = participants
-          .map<String>((p) => p['join_date'] as String)
+          .map<String?>((p) => p['join_date']?.toString())
           .toList();
       final leaves = participants
-          .map<String>((p) => p['leave_date'] as String)
+          .map<String?>((p) => p['leave_date']?.toString())
           .toList();
       if (resp['students'] is List) {
         if (mounted) {
@@ -1928,22 +1892,10 @@ class _RoomPageState extends State<RoomPage>
           participantTracks.first.type == ParticipantTrackType.kScreenShare;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  void _showSnack(String msg, {bool error = false}) {
-    // Full-screen in LiveRoomLayer the room is painted ABOVE the app Navigator, and that Navigator's overlay is where
-    // showAppNotice draws — the notice would sit hidden behind the room. Use the room's own Scaffold then.
-    final scope = LiveRoomScope.maybeOf(context);
-    final m = ScaffoldMessenger.maybeOf(context);
-    if (scope != null && !scope.minimized && m != null) {
-      m.showSnackBar(SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: error ? _rose : _surfaceHi,
-        content: Text(msg,
-            style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontWeight: FontWeight.w600)),
-      ));
-      return;
-    }
-    showAppNotice(msg, error: error);
-  }
+  // Always a notice: full-screen, LiveRoomLayer hands showAppNotice the room navigator's overlay, so it is drawn
+  // above the room's own sheets and dialogs (a SnackBar in the room's Scaffold sat behind them); minimized or
+  // pushed as a plain route it lands in the app's root overlay as usual.
+  void _showSnack(String msg, {bool error = false}) => showAppNotice(msg, error: error);
 
   Future<void> _toggleParticipantPanel() async {
     if (_showParticipants) {
@@ -3798,9 +3750,8 @@ class _ParticipantRow extends StatelessWidget {
   final Widget? trailing;
 
   String _fmtDuration(DateTime? from, DateTime? to) {
-    if (from == null) return '';
-    final end = to ?? DateTime.now();
-    final mins = end.difference(from).inMinutes;
+    final mins = liveMinutesBetween(from, to);
+    if (mins == null) return '';
     if (mins < 60) return trp('lr_duration_m', {'m': '$mins'});
     return trp('lr_duration_hm', {'h': '${mins ~/ 60}', 'm': '${mins % 60}'});
   }
@@ -4889,7 +4840,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
       ? data.name.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join()
       : '؟';
   // Server attendance times are UTC instants: shown in the platform / organization zone and 12h/24h choice.
-  String fmt(DateTime? d) => d == null ? '—' : AppTime.dateTime(d);
+  String fmt(DateTime? d) => d == null ? '—' : AppTime.dateTime(d.toUtc());
 
   showDialog(
     context: context,

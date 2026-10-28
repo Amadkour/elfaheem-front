@@ -22,6 +22,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../design/app_notice.dart' show appNoticeTopOverlay;
 import '../../auth/auth_provider.dart';
 
 /// What [LiveRoomHost.open] needs: the full-screen page and the content of the minimized box.
@@ -130,6 +131,14 @@ class LiveRoomHost {
     WidgetsBinding.instance.addObserver(_LiveRoomBackObserver());
   }
 
+  /// Where notices go while the room is full-screen: its own navigator's overlay, above the room's sheets and
+  /// dialogs (the app's root overlay is painted under the room). Null when no room covers the app.
+  static OverlayState? noticeOverlay() {
+    final room = _active.value;
+    if (room == null || room.minimized.value) return null;
+    return room.navKey.currentState?.overlay;
+  }
+
   /// Tests: forget everything.
   @visibleForTesting
   static void reset() {
@@ -213,11 +222,13 @@ class _LiveRoomLayerState extends State<LiveRoomLayer> {
   void initState() {
     super.initState();
     LiveRoomHost._layers++;
+    appNoticeTopOverlay = LiveRoomHost.noticeOverlay;
   }
 
   @override
   void dispose() {
     LiveRoomHost._layers--;
+    if (LiveRoomHost._layers == 0 && appNoticeTopOverlay == LiveRoomHost.noticeOverlay) appNoticeTopOverlay = null;
     super.dispose();
   }
 

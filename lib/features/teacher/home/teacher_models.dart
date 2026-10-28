@@ -399,7 +399,7 @@ class TeacherCourse with DiscountInfo {
   factory TeacherCourse.fromJson(Map<String, dynamic> j) => TeacherCourse(
     id: j['id'] as int,
     imageUrl: j['image_url'] as String? ?? '',
-    studentsCount: (j['students_count'] as int? ?? 0) + 700,
+    studentsCount: (j['students_count'] as num?)?.toInt() ?? 0,
     expectedHours: j['expected_hours'] as double? ?? 0.0,
     isPrivate: j['is_private'] as bool? ?? false,
     sessionsCount: j['sessions_count'] as int? ?? 0,
