@@ -18,7 +18,7 @@ import '../../admin/admin_home_data.dart' show AdminAlert;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 
 /// The rules the console edits, in the order it shows them.
-const ragAlertRuleKeys = ['p95_latency', 'not_found_rate', 'thumbs_down_rate', 'ingest_failures', 'model_fallback'];
+const ragAlertRuleKeys = ['p95_latency', 'not_found_rate', 'thumbs_down_rate', 'ingest_failures', 'polling_share', 'model_fallback'];
 
 /// "41.2 s" · "31%" · "3" · "—".
 String ragAlertValueText(double? v, String? unit) {
@@ -40,6 +40,7 @@ String ragAlertFieldLabel(String field) => switch (field) {
       'window_days' => t('النافذة (أيام)', 'Window (days)'),
       'min_questions' => t('أقل عدد من الأسئلة', 'Minimum questions'),
       'min_votes' => t('أقل عدد من التقييمات', 'Minimum votes'),
+      'min_answers' => t('أقل عدد من الإجابات', 'Minimum answers'),
       _ => field,
     };
 
@@ -48,6 +49,7 @@ String ragAlertRuleTitle(String rule) => switch (rule) {
       'not_found_rate' => t('نسبة «لم أجد إجابة»', 'Not-found rate'),
       'thumbs_down_rate' => t('نسبة التقييمات السلبية', 'Thumbs-down rate'),
       'ingest_failures' => t('فشل معالجة المستندات', 'Ingestion failures'),
+      'polling_share' => t('الإجابات عبر الاستطلاع', 'Answers by polling'),
       'model_fallback' => t('النموذج المُحمَّل ليس المطلوب', 'Model fallback'),
       _ => rule,
     };
@@ -57,6 +59,8 @@ String ragAlertRuleHint(String rule) => switch (rule) {
       'not_found_rate' => t('حصة الأسئلة التي لم تجد إجابة', 'Share of the questions that found no answer'),
       'thumbs_down_rate' => t('حصة التقييمات السلبية من كل التقييمات', 'Share of thumbs-down among the votes'),
       'ingest_failures' => t('مستندات فشلت معالجتها', 'Documents whose processing failed'),
+      'polling_share' => t('حصة الإجابات التي وصلت للتطبيق بالاستطلاع لا بالبث المباشر',
+          'Share of the answers the app got by polling instead of the live stream'),
       'model_fallback' => t('نموذج الكتابة أو الترتيب لم يُحمَّل أو عاد للنسخة الأصلية', 'The writer or re-ranker did not load, or fell back to the shipped model'),
       _ => '',
     };
@@ -146,6 +150,8 @@ class RagAlert {
       'thumbs_down_rate' => t('${asInt(d['down'])} من ${asInt(d['votes'])} تقييم خلال ${asInt(d['window_days'])} يوم',
           '${asInt(d['down'])} of ${asInt(d['votes'])} votes in ${asInt(d['window_days'])} days'),
       'ingest_failures' => t('${asInt(d['failed'])} مستند خلال ${asInt(d['window_hours'])} ساعة', '${asInt(d['failed'])} documents in ${asInt(d['window_hours'])} h'),
+      'polling_share' => t('${asInt(d['poll'])} من ${asInt(d['answers'])} إجابة بالاستطلاع خلال ${asInt(d['window_hours'])} ساعة',
+          '${asInt(d['poll'])} of ${asInt(d['answers'])} answers by polling in ${asInt(d['window_hours'])} h'),
       'model_fallback' => asStr(d['served']).isEmpty ? '' : t('المُحمَّل: ${asStr(d['served'])}', 'Served: ${asStr(d['served'])}'),
       _ => '',
     };
@@ -194,7 +200,8 @@ class RagAlertsData {
   final List<RagAlert> items;
   final RagAlertRules? rules;
 
-  /// false: the server records nothing about stream vs polling delivery, so that rule does not exist.
+  /// Whether the server records how answers reached the app (rag_0015: the `polling_share` rule); false on an
+  /// older server, whose rules then simply lack that rule.
   final bool pollingSignal;
   final int intervalSeconds;
 

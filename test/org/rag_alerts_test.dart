@@ -32,6 +32,7 @@ Map<String, dynamic> rulesJson() => {
       'not_found_rate': {'enabled': true, 'threshold_pct': 25, 'window_hours': 24, 'min_questions': 20},
       'thumbs_down_rate': {'enabled': true, 'threshold_pct': 20, 'window_days': 7, 'min_votes': 10},
       'ingest_failures': {'enabled': true, 'threshold': 0, 'window_hours': 24},
+      'polling_share': {'enabled': true, 'threshold_pct': 50, 'window_hours': 1, 'min_answers': 20},
       'model_fallback': {'enabled': true},
     };
 
@@ -46,7 +47,7 @@ Map<String, dynamic> alertsJson() => {
       ],
       'rules': rulesJson(),
       'defaults': rulesJson(),
-      'polling_signal': false,
+      'polling_signal': true,
       'interval_seconds': 300,
     };
 
@@ -75,7 +76,7 @@ void main() {
       expect(d.items.length, 4);
       expect(d.open.map((a) => a.id).toList(), [1, 2, 3]);
       expect(d.resolved.single.key, 'ingest_failures');
-      expect(d.pollingSignal, isFalse);
+      expect(d.pollingSignal, isTrue);
       expect(d.intervalSeconds, 300);
       final p95 = d.items[0];
       expect(p95.isOpen && !p95.isDanger && p95.notified, isTrue);
@@ -91,6 +92,25 @@ void main() {
       AppConfig.lang = 'ar';
       expect(p95.title, 'زمن إجابة المساعد مرتفع');
       expect(d.items[1].detailText, contains('29'));
+    });
+
+    test('polling_share: the rule, its fields and the alert', () {
+      final d = RagAlertsData.fromJson(alertsJson());
+      expect(ragAlertRuleKeys, contains('polling_share'));
+      expect(d.rules!.has('polling_share'), isTrue);
+      expect(d.rules!.fields('polling_share'), ['threshold_pct', 'window_hours', 'min_answers']);
+      expect(d.rules!.withField('polling_share', 'min_answers', 30).toJson()['polling_share'],
+          {'enabled': true, 'threshold_pct': 50, 'window_hours': 1, 'min_answers': 30});
+      expect(ragAlertFieldLabel('min_answers'), 'Minimum answers');
+      expect(ragAlertRuleTitle('polling_share'), 'Answers by polling');
+      expect(ragAlertRuleHint('polling_share'), isNotEmpty);
+      final a = RagAlert.fromJson(alertJson(id: 5, key: 'polling_share', value: 0.6, threshold: 0.5, unit: 'ratio',
+          detail: {'answers': 20, 'poll': 12, 'stream': 7, 'mixed': 1, 'window_hours': 1}));
+      expect(a.valueText, '60% > 50%');
+      expect(a.detailText, '12 of 20 answers by polling in 1 h');
+      AppConfig.lang = 'ar';
+      expect(a.detailText, contains('20'));
+      expect(ragAlertRuleTitle('polling_share'), isNot('Answers by polling'));
     });
 
     test('tolerates an empty payload and missing keys', () {

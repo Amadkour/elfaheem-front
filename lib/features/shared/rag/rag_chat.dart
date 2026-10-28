@@ -5,7 +5,14 @@
 //
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
 // [answerBlocks] (paragraphs, bullet and numbered lists, **bold** runs), [ragStageText], [ragStarterPrompts],
-// [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll].
+// [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll], [RagDelivery].
+//
+// Delivery telemetry: when an answer finishes after the first response, [RagApi.waitFor] tells the server once,
+// fire-and-forget, how it got it — `stream` (the fetch that found it done was woken by the live job_updated event),
+// `poll` (by a timed poll), `mixed` (both played a part) — and the time to the final answer:
+// `POST /queries/{id}/delivery {path, ms}` → 204 (never retried, never awaited; the server's `polling_share` alert
+// reads it). An answer already done in the first response (cache, Q&A) sends nothing; an older server's 404 is
+// ignored.
 //
 // Partial answers (Track E.8): while the local model writes, the query row carries `answer_partial` — the answer so
 // far, shown only after the server's quote checks passed ([RagAnswer.provisional]). It is provisional: the server's
@@ -24,6 +31,7 @@
 // The client only ever sends `conversation_id`: the server bounds the memory it gives the model. Codes: 404
 // `conversation_not_found`, 403 `not_owner`. Pure: [RagConversation], [conversationTitleFrom], [retentionText],
 // [ragRelativeTime], [ragDeepLinkModule], [ragSessionsSupported].
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter_education_app/config/app_config.dart';
@@ -264,6 +272,42 @@ Duration ragNextPoll(Duration every, {bool writing = false}) {
   return every < const Duration(seconds: 4) ? every + const Duration(milliseconds: 500) : every;
 }
 
+/// How one answer reached the app, from the wake-ups of [RagApi.waitFor]: each fetch after the first is woken either
+/// by the job's live event or by the timer (with the stream down, or connected but silent). Pure; the decision:
+///   last fetch woken by the event → `stream`, or `mixed` when a poll ran while the stream was down;
+///   last fetch woken by the timer → `poll` (the stream did not deliver it), or `mixed` when an event woke an
+///   earlier fetch;
+///   no wake-up at all (done in the first response or the first fetch) → null: nothing to report.
+class RagDelivery {
+  int _events = 0;
+  int _downPolls = 0;
+  bool? _lastByEvent;
+
+  /// One fetch is about to run: woken [byEvent] (else by the timer), with the stream [connected] at that moment.
+  void wake({required bool byEvent, required bool connected}) {
+    _lastByEvent = byEvent;
+    if (byEvent) {
+      _events++;
+    } else if (!connected) {
+      _downPolls++;
+    }
+  }
+
+  /// `stream` · `poll` · `mixed`, or null before any wake-up.
+  String? get path {
+    final last = _lastByEvent;
+    if (last == null) return null;
+    if (last) return _downPolls == 0 ? 'stream' : 'mixed';
+    return _events == 0 ? 'poll' : 'mixed';
+  }
+
+  /// The report's body after [elapsed] (the time to the final answer), or null when there is nothing to report.
+  Map<String, dynamic>? body(Duration elapsed) {
+    final p = path;
+    return p == null ? null : {'path': p, 'ms': elapsed.inMilliseconds < 0 ? 0 : elapsed.inMilliseconds};
+  }
+}
+
 // ── chat sessions (Track E.5) ─────────────────────────────────────────────────────────────────────────────────────
 
 /// A translation.json text in [lang] (not the UI language: the caller chooses), the key itself when not loaded.
@@ -468,6 +512,12 @@ class RagApi {
 
   Future<EngineResult> query(int id) => engineCall(() => _api.get('$base/queries/$id'));
 
+  /// How a finished answer reached the app ([RagDelivery.body]): one best-effort report, never retried; the result is
+  /// ignored (an older server answers 404).
+  Future<void> reportDelivery(int id, Map<String, dynamic> body) async {
+    await engineCall(() => _api.post('$base/queries/$id/delivery', body: body));
+  }
+
   /// The asker's rating of a finished answer (Phase 8).
   Future<EngineResult> rate(int id, {required bool helpful, String? comment}) =>
       engineCall(() => _api.post('$base/queries/$id/feedback', body: {'helpful': helpful, 'comment': ?comment}));
@@ -485,16 +535,21 @@ class RagApi {
   /// Polls until the worker answered (or [timeout]), every second at first and then up to every 4 s (1.5 s while a
   /// draft grows, [ragNextPoll]) — every [waitLive] while the live stream is connected, where the job's event (`stage`
   /// shown at once, the draft fetched) comes early; the last state otherwise (the screen keeps it as "still working"
-  /// and asks again on refresh). [onUpdate] gets every poll (the stage and the draft change on the way).
+  /// and asks again on refresh). [onUpdate] gets every poll (the stage and the draft change on the way). An answer
+  /// that finishes after the first fetch is reported once ([RagDelivery], [reportDelivery]), without waiting for it.
   Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 3), void Function(RagAnswer)? onUpdate}) async {
     final end = DateTime.now().add(timeout);
+    final clock = Stopwatch()..start();
+    final delivery = RagDelivery();
     var every = const Duration(seconds: 1);
     var r = await query(id);
     if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
     final watch = JobWatch(kind: 'rag_query', id: '$id');
     try {
       while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
-        final stage = (await watch.next(every, fallbackEvery: waitLive))?.stage;
+        final event = await watch.next(every, fallbackEvery: waitLive);
+        delivery.wake(byEvent: event != null, connected: watch.connected);
+        final stage = event?.stage;
         if (stage != null && stage.isNotEmpty) onUpdate?.call(RagAnswer.fromJson({...r.map, 'stage': stage}));
         every = ragNextPoll(every, writing: RagAnswer.fromJson(r.map).provisional);
         r = await query(id);
@@ -503,6 +558,8 @@ class RagApi {
     } finally {
       watch.dispose();
     }
+    final report = r.ok && RagAnswer.fromJson(r.map).done ? delivery.body(clock.elapsed) : null;
+    if (report != null) unawaited(reportDelivery(id, report));
     return r;
   }
 

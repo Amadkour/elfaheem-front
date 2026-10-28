@@ -27,6 +27,7 @@ Map<String, dynamic> monitoringJson({int days = 14}) => {
       'fallback_rate': 0.0214,
       'helpful_rate': 0.8,
       'counts': {'no_answer': 14, 'cache_hits': 30, 'qa_direct': 20},
+      'delivery': {'stream': 70, 'poll': 25, 'mixed': 5, 'reported': 100, 'poll_rate': 0.25},
       'by_day': [
         for (var i = 0; i < days; i++)
           {
@@ -58,6 +59,9 @@ void main() {
       expect(m.helpfulRate, 0.8);
       expect(m.byDay.length, 14);
       expect(m.byDay.first.p50Ms, isNull);
+      expect((m.pollRate, m.deliveryReported), (0.25, 100));
+      final older = RagMonitoring.fromJson({...monitoringJson()}..remove('delivery'));
+      expect((older.pollRate, older.deliveryReported), (null, 0));
       expect(m.byDay.first.dayLabel, '15');
       expect(m.hasActivity, isTrue);
     });

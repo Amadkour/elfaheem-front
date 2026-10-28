@@ -75,14 +75,6 @@ class RagAlertsView extends StatelessWidget {
       const SizedBox(height: 16),
       AppSectionTitle(t('القواعد والحدود', 'Rules and thresholds')),
       if (data.rules != null) RagAlertRulesForm(rules: data.rules!, onSave: onSaveRules, busy: busy),
-      if (!data.pollingSignal)
-        Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(
-              t('لا توجد قاعدة «الإجابات عبر الاستطلاع بدل البث»: الخادم لا يسجّل كيف وصلت الإجابة إلى التطبيق.',
-                  'No "answers delivered by polling instead of the stream" rule: the server does not record how an answer reached the app.'),
-              style: appText(12, c: c.textLight, h: 1.4)),
-        ),
     ]);
   }
 }

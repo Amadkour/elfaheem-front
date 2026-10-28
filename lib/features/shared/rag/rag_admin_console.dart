@@ -311,13 +311,15 @@ class RagMonitorDay {
 class RagMonitoring {
   const RagMonitoring({
     this.days = 30, this.questions = 0, this.p50, this.p95, this.byPath = const {}, this.cacheHitRate, this.qaDirectRate,
-    this.qaExampleRate, this.noAnswerRate, this.fallbackRate, this.helpfulRate, this.byDay = const [],
+    this.qaExampleRate, this.noAnswerRate, this.fallbackRate, this.helpfulRate, this.byDay = const [], this.pollRate,
+    this.deliveryReported = 0,
   });
 
   factory RagMonitoring.fromJson(Map<String, dynamic> j) {
     final lat = asMap(j['latency_ms']);
     final bp = asMap(lat['by_path']);
     double? r(String k) => j[k] == null ? null : asDouble(j[k]);
+    final dl = asMap(j['delivery']);
     return RagMonitoring(
       days: asInt(j['days'], 30),
       questions: asInt(j['questions']),
@@ -327,6 +329,8 @@ class RagMonitoring {
       cacheHitRate: r('cache_hit_rate'), qaDirectRate: r('qa_direct_rate'), qaExampleRate: r('qa_example_rate'),
       noAnswerRate: r('no_answer_rate'), fallbackRate: r('fallback_rate'), helpfulRate: r('helpful_rate'),
       byDay: [for (final d in asMapList(j['by_day'])) RagMonitorDay.fromJson(d)],
+      pollRate: dl['poll_rate'] == null ? null : asDouble(dl['poll_rate']),
+      deliveryReported: asInt(dl['reported']),
     );
   }
 
@@ -335,6 +339,11 @@ class RagMonitoring {
   final Map<String, RagPathLatency> byPath;
   final double? cacheHitRate, qaDirectRate, qaExampleRate, noAnswerRate, fallbackRate, helpfulRate;
   final List<RagMonitorDay> byDay;
+
+  /// `delivery` (rag_0015): the share of the answers the app reported getting by polling instead of the live
+  /// stream, and how many reported at all (0 on an older server or before any report).
+  final double? pollRate;
+  final int deliveryReported;
 
   bool get hasActivity => questions > 0;
 
@@ -767,6 +776,8 @@ class RagHealthBlock extends StatelessWidget {
         _RatePill(icon: Icons.lightbulb_outline_rounded, value: ragPctText(m.qaExampleRate), label: t('استعان بإجابة معتمدة', 'helped by a Q&A pair')),
         _RatePill(icon: Icons.undo_rounded, value: ragPctText(m.fallbackRate), label: t('بديل عن النموذج', 'model fallback')),
         _RatePill(icon: Icons.thumb_up_alt_rounded, value: ragPctText(m.helpfulRate), label: t('مفيدة من المقيَّمة', 'rated helpful')),
+        if (m.deliveryReported > 0)
+          _RatePill(icon: Icons.sync_rounded, value: ragPctText(m.pollRate), label: t('وصلت بالاستطلاع لا بالبث', 'delivered by polling, not the stream')),
       ]),
       const SizedBox(height: 12),
       AppCard(
