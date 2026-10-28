@@ -5,7 +5,13 @@
 //
 // Pure parts (unit-tested): [RagCitation], [RagAnswer], [answerRuns] (the answer text split at its `[n]` markers),
 // [answerBlocks] (paragraphs, bullet and numbered lists, **bold** runs), [ragStageText], [ragStarterPrompts],
-// [ragCodeText], [ragChatResultText], [ragOrgBlocked].
+// [ragCodeText], [ragChatResultText], [ragOrgBlocked], [ragAnswerChanged], [ragNextPoll].
+//
+// Partial answers (Track E.8): while the local model writes, the query row carries `answer_partial` — the answer so
+// far, shown only after the server's quote checks passed ([RagAnswer.provisional]). It is provisional: the server's
+// checks still decide and the final answer (with its citations) replaces it; a retracted draft comes back as null.
+// The worker's `job_updated{kind: rag_query, stage: write, partial_len}` fetches it at once on the live stream; without
+// the stream [waitFor] polls every 1.5 s while a draft grows. An older server sends no field: nothing changes.
 //
 // Chat sessions (Track E.5): a conversation groups the asker's questions, `/api/v1/rag/conversations`:
 //   GET    ?app=&org_id=&course_id=&limit=&before=   {items: [{id, title, scope{app, org_id, course_id}, created_at,
@@ -75,7 +81,8 @@ class RagCitation {
 
 class RagAnswer {
   RagAnswer(this.id, this.state, this.question, this.found, this.answer, this.citations, this.error,
-      [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId, this.conversationId]);
+      [this.helpful, this.followUps = const [], this.stage, this.generator = '', this.app = false, this.orgId, this.conversationId,
+      this.partial]);
   final int id;
   final String state;
   final String question;
@@ -101,7 +108,15 @@ class RagAnswer {
   /// The chat session this question belongs to (Track E.5); null on an older server or a question asked before.
   final int? conversationId;
 
+  /// The answer so far while the model writes it (Track E.8, `answer_partial`); null before anything may be shown,
+  /// after a retraction, once done, and on an older server.
+  final String? partial;
+
   bool get done => state == 'done' || state == 'failed';
+
+  /// A draft to show under the stage trail: still running and the server sent text. Never once done (the final
+  /// answer replaces it, even if a stale field came along).
+  bool get provisional => !done && (partial ?? '').trim().isNotEmpty;
 
   /// Written by the model (as opposed to quoted straight from the documents).
   bool get byModel => generator.startsWith('llm');
@@ -123,7 +138,8 @@ class RagAnswer {
       asStr(j['generator']),
       j['app'] == true,
       j['org_id'] == null ? null : asInt(j['org_id']),
-      j['conversation_id'] == null ? null : asInt(j['conversation_id']));
+      j['conversation_id'] == null ? null : asInt(j['conversation_id']),
+      j['answer_partial'] is String ? j['answer_partial'] as String : null);
 
   RagCitation? citation(int n) {
     for (final c in citations) {
@@ -235,6 +251,18 @@ String ragStageText(String? stage) => switch (stage) {
 
 /// The steps shown as a progress trail while an answer is prepared, in order.
 const ragStages = ['plan', 'retrieve', 'write', 'verify'];
+
+/// Whether [next] (a poll or a live event) changes what the pending card shows compared with [prev].
+bool ragAnswerChanged(RagAnswer prev, RagAnswer next) =>
+    prev.state != next.state || prev.stage != next.stage || (prev.provisional ? prev.partial : null) != (next.provisional ? next.partial : null);
+
+/// The next poll interval of [RagApi.waitFor]: 1 s growing by 0.5 s up to 4 s, but every 1.5 s at most while a draft
+/// grows ([writing]: the asker is reading it).
+Duration ragNextPoll(Duration every, {bool writing = false}) {
+  const draft = Duration(milliseconds: 1500);
+  if (writing) return every < draft ? every : draft;
+  return every < const Duration(seconds: 4) ? every + const Duration(milliseconds: 500) : every;
+}
 
 // ── chat sessions (Track E.5) ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -454,10 +482,10 @@ class RagApi {
   /// The poll while the live stream is connected: `job_updated{kind: rag_query, id}` fetches at once then.
   static const waitLive = Duration(seconds: 8);
 
-  /// Polls until the worker answered (or [timeout]), every second at first and then up to every 4 s — every
-  /// [waitLive] while the live stream is connected, where the job's event (`stage` shown at once) fetches early;
-  /// the last state otherwise (the screen keeps it as "still working" and asks again on refresh). [onUpdate] gets
-  /// every poll (the stage changes on the way).
+  /// Polls until the worker answered (or [timeout]), every second at first and then up to every 4 s (1.5 s while a
+  /// draft grows, [ragNextPoll]) — every [waitLive] while the live stream is connected, where the job's event (`stage`
+  /// shown at once, the draft fetched) comes early; the last state otherwise (the screen keeps it as "still working"
+  /// and asks again on refresh). [onUpdate] gets every poll (the stage and the draft change on the way).
   Future<EngineResult> waitFor(int id, {Duration timeout = const Duration(minutes: 3), void Function(RagAnswer)? onUpdate}) async {
     final end = DateTime.now().add(timeout);
     var every = const Duration(seconds: 1);
@@ -468,7 +496,7 @@ class RagApi {
       while (r.ok && !RagAnswer.fromJson(r.map).done && DateTime.now().isBefore(end)) {
         final stage = (await watch.next(every, fallbackEvery: waitLive))?.stage;
         if (stage != null && stage.isNotEmpty) onUpdate?.call(RagAnswer.fromJson({...r.map, 'stage': stage}));
-        if (every < const Duration(seconds: 4)) every += const Duration(milliseconds: 500);
+        every = ragNextPoll(every, writing: RagAnswer.fromJson(r.map).provisional);
         r = await query(id);
         if (r.ok) onUpdate?.call(RagAnswer.fromJson(r.map));
       }

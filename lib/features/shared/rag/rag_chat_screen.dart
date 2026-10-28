@@ -4,8 +4,10 @@
 // an organization (that organization's library and rules as well). [RagChatView] is the conversation itself
 // (history, answers, starter prompts, the question box) without a page around it: [RagChatScreen] puts it in a
 // page, the floating app assistant (app_assistant.dart) in its pop-up. The presentational parts — [RagAnswerCard],
-// [RagAnswerBody], [RagStageTrail], [RagStarterPrompts] — take plain values and run under the layout harness; the
-// view owns the API calls and the polling.
+// [RagAnswerBody], [RagStageTrail], [RagPartialAnswer], [RagStarterPrompts] — take plain values and run under the
+// layout harness; the view owns the API calls and the polling. While the model writes, the pending card shows the
+// draft ([RagAnswer.provisional], Track E.8) under the stage trail in a muted style with a typing caret (steady under
+// reduced motion), then the final answer with its sources takes its place.
 //
 // Chat sessions (Track E.5): the view asks `GET /conversations` first. On a server that has them it keeps the
 // current conversation ([RagChatViewState.newChat] starts a clean one, created lazily on the first question;
@@ -444,7 +446,10 @@ class RagChatViewState extends State<RagChatView> {
     final done = await _api.waitFor(pending.id, onUpdate: (a) {
       if (!mounted) return;
       final i = _items.indexWhere((x) => x.id == a.id);
-      if (i >= 0 && _items[i].stage != a.stage) setState(() => _items[i] = a);
+      if (i < 0 || !ragAnswerChanged(_items[i], a)) return;
+      final first = a.provisional && !_items[i].provisional;
+      setState(() => _items[i] = a);
+      if (first) _toEnd(); // the draft starts: keep it in view
     });
     if (!mounted) return;
     setState(() {
@@ -657,6 +662,72 @@ class RagStarterPrompts extends StatelessWidget {
   }
 }
 
+/// The answer as the model writes it (Track E.8): muted, labelled as a draft, a caret at the end that blinks unless
+/// the platform asks for reduced motion. It is replaced by the checked answer, so it carries no sources or actions.
+class RagPartialAnswer extends StatefulWidget {
+  const RagPartialAnswer({super.key, required this.text});
+  final String text;
+
+  @override
+  State<RagPartialAnswer> createState() => _RagPartialAnswerState();
+}
+
+class _RagPartialAnswerState extends State<RagPartialAnswer> with SingleTickerProviderStateMixin {
+  late final AnimationController _blink = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+      _blink.stop();
+      _blink.value = 1;
+    } else if (!_blink.isAnimating) {
+      _blink.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _blink.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final base = Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.5, color: c.textMedium);
+    return Semantics(
+      liveRegion: true,
+      label: t('مسودة الإجابة', 'Draft answer'),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.edit_note_rounded, size: 16, color: c.textLight),
+          const SizedBox(width: 4),
+          Expanded(child: Text(t('مسودة — تُراجع مع المصادر', 'Draft — being checked against the sources'), style: appText(11.5, c: c.textLight))),
+        ]),
+        const SizedBox(height: 4),
+        Text.rich(
+          TextSpan(children: [
+            TextSpan(text: widget.text),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: FadeTransition(
+                opacity: _blink,
+                child: Container(
+                    width: 2,
+                    height: 16,
+                    margin: const EdgeInsetsDirectional.only(start: 2),
+                    color: appInk(context, c.primary)),
+              ),
+            ),
+          ]),
+          style: base,
+        ),
+      ]),
+    );
+  }
+}
+
 /// The steps of an answer being prepared: done · current · to come.
 class RagStageTrail extends StatelessWidget {
   const RagStageTrail({super.key, required this.stage});
@@ -741,7 +812,13 @@ class RagAnswerCard extends StatelessWidget {
         AppCard(
           padding: const EdgeInsets.all(12),
           child: !answer.done
-              ? RagStageTrail(stage: answer.stage)
+              ? (answer.provisional
+                  ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      RagStageTrail(stage: answer.stage),
+                      const SizedBox(height: 10),
+                      RagPartialAnswer(text: answer.partial!.trim()),
+                    ])
+                  : RagStageTrail(stage: answer.stage))
               : answer.state == 'failed'
                   ? AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: t('تعذرت الإجابة — أعد السؤال', 'Could not answer — ask again'))
                   : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

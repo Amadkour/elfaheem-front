@@ -30,7 +30,7 @@
      }
     ],
     "generator": "rule",
-    "latency_ms": 15,
+    "latency_ms": 16,
     "org_id": null,
     "course_id": null,
     "app": true,
@@ -38,8 +38,9 @@
     "helpful": null,
     "feedback_comment": null,
     "follow_ups": [],
-    "created_at": "2026-10-28T06:30:42.118656Z",
-    "conversation_id": 10
+    "created_at": "2026-10-28T11:32:29.665791Z",
+    "conversation_id": 10,
+    "answer_partial": null
    },
    {
     "id": 12,
@@ -66,7 +67,7 @@
      }
     ],
     "generator": "rule",
-    "latency_ms": 16,
+    "latency_ms": 11,
     "org_id": null,
     "course_id": null,
     "app": true,
@@ -74,8 +75,9 @@
     "helpful": null,
     "feedback_comment": null,
     "follow_ups": [],
-    "created_at": "2026-10-28T06:30:42.525219Z",
-    "conversation_id": 10
+    "created_at": "2026-10-28T11:32:29.737698Z",
+    "conversation_id": 10,
+    "answer_partial": null
    },
    {
     "id": 13,
@@ -102,7 +104,7 @@
      }
     ],
     "generator": "rule",
-    "latency_ms": 19,
+    "latency_ms": 13,
     "org_id": null,
     "course_id": null,
     "app": true,
@@ -110,8 +112,9 @@
     "helpful": null,
     "feedback_comment": null,
     "follow_ups": [],
-    "created_at": "2026-10-28T06:30:42.967879Z",
-    "conversation_id": 10
+    "created_at": "2026-10-28T11:32:29.798953Z",
+    "conversation_id": 10,
+    "answer_partial": null
    },
    {
     "id": 14,
@@ -138,7 +141,7 @@
      }
     ],
     "generator": "rule",
-    "latency_ms": 16,
+    "latency_ms": 12,
     "org_id": null,
     "course_id": null,
     "app": true,
@@ -146,8 +149,9 @@
     "helpful": null,
     "feedback_comment": null,
     "follow_ups": [],
-    "created_at": "2026-10-28T06:30:43.315280Z",
-    "conversation_id": 10
+    "created_at": "2026-10-28T11:32:29.864814Z",
+    "conversation_id": 10,
+    "answer_partial": null
    },
    {
     "id": 15,
@@ -174,7 +178,7 @@
      }
     ],
     "generator": "rule",
-    "latency_ms": 23,
+    "latency_ms": 12,
     "org_id": null,
     "course_id": null,
     "app": true,
@@ -182,8 +186,9 @@
     "helpful": null,
     "feedback_comment": null,
     "follow_ups": [],
-    "created_at": "2026-10-28T06:30:43.564477Z",
-    "conversation_id": 10
+    "created_at": "2026-10-28T11:32:29.926389Z",
+    "conversation_id": 10,
+    "answer_partial": null
    }
   ],
   "has_more": false
