@@ -32,7 +32,6 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart';
 import 'package:flutter_education_app/features/parent/parent_overview_page.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
-import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show chatReasonLabel, chatReasons;
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_education_app/features/teacher/courses/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/teacher/home/home_screen.dart';
@@ -60,22 +59,11 @@ final _guidelines = <(String, AccessibilityGuideline)>[
   ('text contrast', textContrastGuideline),
 ];
 
-bool _any(String label, List<String> labels) => labels.contains(label);
-
 /// Known failures that live in files other work has open (uncommitted) — see the header. Case name · the
 /// guideline (substring of its name) · which labels · why.
 final _blocked = <(String, String, bool Function(String label), String)>[
-  for (final g in ['tap target', 'text contrast'])
-    ('teacher', g, (l) => _any(l, ['Enter room', 'ادخل القاعة']),
-        'lib/features/teacher/home/queue_work_items.dart (dirty): the live queue\'s "Enter room" button is 40 px high '
-            '(VisualDensity.compact) and its label is 3.7:1'),
-  for (final g in ['tap target', 'text contrast'])
-    ('org member', g,
-        (l) => _any(l, ['Courses', 'المقررات', 'News', 'الأخبار', 'My requests', 'طلباتي', 'Management dashboard', 'لوحة الإدارة']),
-        'lib/features/teacher/data_lab/data_lab_widgets.dart (dirty): AppPill (DlActionPill) is 40 px high and its label '
-            'ink is 1.3–2:1 on its tint'),
-  ('rag', 'tap target', (l) => [...ragStarterPrompts(RagContext.app), ...chatReasons.map(chatReasonLabel)].contains(l),
-      'lib/features/teacher/data_lab/data_lab_widgets.dart (dirty): AppChoiceChip (DlChoiceChip) is 38 px high'),
+  // none open: the last ones (the theme's text / outlined buttons, AppPill / AppChoiceChip, the live queue's
+  // "Enter room") were fixed
 ];
 
 /// The app's real theme (light or dark) and locale (main.dart: `appLocale`, core/app_locale.dart) around [child],

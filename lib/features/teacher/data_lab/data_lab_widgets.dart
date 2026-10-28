@@ -5,6 +5,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'data_lab_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
@@ -170,8 +172,15 @@ class DlActionPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final col = color ?? c.primary;
+    // the label / icon ink: the tone made readable on its own tint in the open mode (fill and border keep the tone)
+    final ink = appInk(context, col);
     final off = onTap == null;
-    return Opacity(
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: !off,
+      child: DlTapTarget(
+      child: Opacity(
       opacity: off ? 0.45 : 1,
       child: Material(
         color: Colors.transparent,
@@ -186,14 +195,83 @@ class DlActionPill extends StatelessWidget {
               border: Border.all(color: col.withValues(alpha: 0.28)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 18, color: col),
+              Icon(icon, size: 18, color: ink),
               const SizedBox(width: 7),
               // Flexible: a long label (or a big text scale on a phone) ellipsizes instead of overflowing.
-              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12.5, w: FontWeight.w800, c: col))),
+              Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(12.5, w: FontWeight.w800, c: ink))),
             ]),
           ),
         ),
       ),
+    )));
+  }
+}
+
+/// Grows a compact control's tap target to the Material minimum, 48 x 48 (which also covers iOS's 44 x 44),
+/// without changing how it looks: the same idea as a Material button's padded tap target. The child keeps the
+/// incoming width constraints (a pill that fills an Expanded still fills it) and its own height, and sits centred
+/// in a box of at least 48 x 48. A tap anywhere in that box goes to the child (at its centre). Put a
+/// `Semantics(container: true)` above it so the screen reader's button is the whole box too.
+class DlTapTarget extends SingleChildRenderObjectWidget {
+  const DlTapTarget({super.key, required Widget super.child});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderDlTapTarget();
+}
+
+class _RenderDlTapTarget extends RenderShiftedBox {
+  _RenderDlTapTarget() : super(null);
+
+  static const double _min = kMinInteractiveDimension;
+
+  static BoxConstraints _forChild(BoxConstraints c) =>
+      BoxConstraints(minWidth: c.minWidth, maxWidth: c.maxWidth, maxHeight: c.maxHeight);
+
+  Size _grow(BoxConstraints c, Size child) =>
+      c.constrain(Size(math.max(child.width, _min), math.max(child.height, _min)));
+
+  @override
+  double computeMinIntrinsicWidth(double height) => math.max(super.computeMinIntrinsicWidth(height), _min);
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => math.max(super.computeMaxIntrinsicWidth(height), _min);
+
+  @override
+  double computeMinIntrinsicHeight(double width) => math.max(super.computeMinIntrinsicHeight(width), _min);
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => math.max(super.computeMaxIntrinsicHeight(width), _min);
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    final c = child;
+    return _grow(constraints, c == null ? Size.zero : c.getDryLayout(_forChild(constraints)));
+  }
+
+  @override
+  void performLayout() {
+    final c = child;
+    if (c == null) {
+      size = _grow(constraints, Size.zero);
+      return;
+    }
+    c.layout(_forChild(constraints), parentUsesSize: true);
+    size = _grow(constraints, c.size);
+    (c.parentData! as BoxParentData).offset =
+        Offset((size.width - c.size.width) / 2, (size.height - c.size.height) / 2);
+  }
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (super.hitTest(result, position: position)) return true;
+    final c = child;
+    if (c == null || !size.contains(position)) return false;
+    // around the visible control: hand the tap to its centre
+    final center = c.size.center(Offset.zero);
+    return result.addWithRawTransform(
+      transform: MatrixUtils.forceToPoint(center),
+      position: center,
+      hitTest: (result, _) => c.hitTest(result, position: center),
     );
   }
 }
@@ -486,7 +564,12 @@ class DlChoiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Material(
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      child: DlTapTarget(
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
@@ -510,7 +593,7 @@ class DlChoiceChip extends StatelessWidget {
           ]),
         ),
       ),
-    );
+    )));
   }
 }
 

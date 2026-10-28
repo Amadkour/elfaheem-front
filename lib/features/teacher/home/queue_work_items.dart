@@ -39,6 +39,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeDuration;
@@ -224,10 +225,11 @@ class _LiveNowCardState extends State<LiveNowCard> {
                     onLongPress: () => openTeacherGuestLink(context, s),
                     child: FilledButton.icon(
                       onPressed: () => openTeacherPreJoin(context, s),
+                      // the theme's 48 px tap target (no compact density: it made it 40); the fill is the live
+                      // tone darkened until its label reaches 4.5:1 (the raw danger red was 3.7:1)
                       style: FilledButton.styleFrom(
-                        backgroundColor: tone,
+                        backgroundColor: ensureContrast(tone, [c.onHero]),
                         foregroundColor: c.onHero,
-                        visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                       ),
                       icon: const Icon(Icons.sensors_rounded, size: 18),
