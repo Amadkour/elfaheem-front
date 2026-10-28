@@ -22,12 +22,6 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
-  // chat sessions (rag_chat.dart RagApi.conversations / createConversation / renameConversation / deleteConversation / messages)
-  'GET /api/v1/rag/conversations': 'Track E.5: backend lands next; remove when the snapshot regenerates',
-  'POST /api/v1/rag/conversations': 'Track E.5: backend lands next; remove when the snapshot regenerates',
-  'PATCH /api/v1/rag/conversations/{}': 'Track E.5: backend lands next; remove when the snapshot regenerates',
-  'DELETE /api/v1/rag/conversations/{}': 'Track E.5: backend lands next; remove when the snapshot regenerates',
-  'GET /api/v1/rag/conversations/{}/messages': 'Track E.5: backend lands next; remove when the snapshot regenerates',
 };
 
 void main() {
