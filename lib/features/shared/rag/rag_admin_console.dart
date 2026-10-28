@@ -11,6 +11,8 @@
 //   GET     /admin/queries?app=&org_id=&found=&helpful=&q=&limit=   browse questions with their traces
 //   GET     /admin/queries/{id} · POST /admin/playground {question, app, org_id?, course_id?} → 202 (poll the query)
 //   GET     /admin/exam-drafts?limit=   recent drafts with their review summaries
+//   (Track F) the Learning tab — /api/v1/rag/learning/… (rag_learning.dart, rag_learning_page.dart): shown once
+//   GET /learning/stats answers (an older server keeps the console as it was), kill switch rag.learning
 //
 // Pure, unit-tested: [RagAdminSettings], [RagOverview], [RagMonitoring], [RagTrace], [ragRate], [ragGeneratorLabel],
 // [ragTraceStepText], [ragMsText], [ragPctText], [halfRateDelta].
@@ -25,12 +27,15 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../admin/admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, t;
 import '../../admin/admin_home_data.dart' show halfDelta;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
+import 'rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
+import 'rag_learning_page.dart' show RagLearningBody;
 import 'rag_library.dart' show ragLibraryCodeText;
 import 'rag_library_screen.dart' show RagLibraryScreen;
 import 'rag_qa_admin.dart';
@@ -435,9 +440,10 @@ String ragAdminCodeText(String? code, String fallback) => switch (code) {
 // ── the page ─────────────────────────────────────────────────────────────────────────────────────────────────────
 
 class RagAdminConsole extends StatefulWidget {
-  const RagAdminConsole({super.key, this.api, this.qaApi});
+  const RagAdminConsole({super.key, this.api, this.qaApi, this.learningApi});
   final RagAdminApi? api;
   final QaApi? qaApi;
+  final LearningApi? learningApi;
 
   @override
   State<RagAdminConsole> createState() => _RagAdminConsoleState();
@@ -448,7 +454,22 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
   late final QaApi _qa = widget.qaApi ?? QaApi();
   // the Q&A tab and the "promote" actions (kill switch rag.qa_admin; the whole tree rebuilds when the list changes)
   final bool _qaOn = !AppConfig.disableList.contains('rag.qa_admin');
-  late final TabController _tabs = TabController(length: _qaOn ? 5 : 4, vsync: this);
+  // the Learning tab (Track F, kill switch rag.learning): added once the server answers the learning stats
+  final bool _learningAllowed = !AppConfig.disableList.contains(kRagLearningFeatureKey);
+  late final LearningApi _learning = widget.learningApi ?? LearningApi();
+  bool _learningOn = false;
+  late TabController _tabs = TabController(length: _tabCount, vsync: this);
+  int get _tabCount => 4 + (_qaOn ? 1 : 0) + (_learningOn ? 1 : 0);
+
+  /// Shows / hides the Learning tab: a new controller of the new length on the same tab (the old one is disposed
+  /// after the frame that stops using it).
+  void _setLearning(bool on) {
+    if (on == _learningOn) return;
+    final old = _tabs;
+    _learningOn = on;
+    _tabs = TabController(length: _tabCount, vsync: this, initialIndex: old.index.clamp(0, _tabCount - 1));
+    WidgetsBinding.instance.addPostFrameCallback((_) => old.dispose());
+  }
   RagOverview? _overview;
   RagAdminSettings? _settings;
   String? _error;
@@ -468,7 +489,9 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
 
   Future<void> _load() async {
     final rs = await Future.wait([_api.overview(days: _days), _api.settings()]);
+    final learning = _learningAllowed && !_learningOn ? await _learning.stats(days: 7) : null;
     if (!mounted) return;
+    if (learning != null) _setLearning(learning.ok);
     setState(() {
       _error = null;
       for (final r in rs) {
@@ -537,6 +560,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
             Tab(text: t('تجربة', 'Playground')),
             Tab(text: t('الأسئلة', 'Questions')),
             if (_qaOn) Tab(text: t('الإجابات المعتمدة', 'Q&A')),
+            if (_learningOn) Tab(text: t('التعلّم', 'Learning')),
           ]),
         ),
         if (_error != null) Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!)),
@@ -558,6 +582,7 @@ class _RagAdminConsoleState extends State<RagAdminConsole> with SingleTickerProv
             RagPlaygroundTab(api: _api),
             RagQuestionsTab(api: _api),
             if (_qaOn) RagQaAdminBody(scope: 'app', api: _qa),
+            if (_learningOn) ParentComponent(featureKey: 'rag.learning', child: RagLearningBody(api: _learning, qaApi: _qa)),
           ]),
         ),
       ]),

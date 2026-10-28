@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat.dart';
 import 'package:flutter_education_app/features/shared/rag/rag_chat_screen.dart';
+import 'package:flutter_education_app/features/shared/rag/rag_learning.dart' show RagDownVote;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -96,27 +97,30 @@ void main() {
 
   testWidgets('the thumbs-down comment sheet body, and the rename dialog', (tester) async {
     await expectNoLayoutErrors(tester, () => const Align(alignment: Alignment.bottomCenter, child: RagRatingCommentSheet()));
+    await expectNoLayoutErrors(tester, () => const Align(alignment: Alignment.bottomCenter, child: RagRatingCommentSheet(reasons: false)));
     await expectNoLayoutErrors(tester, () => RagRenameDialog(title: _longEn), scaffold: false);
   });
 
-  testWidgets('the comment sheet pops the typed comment, Skip pops an empty one', (tester) async {
+  testWidgets('the comment sheet pops the typed comment, Skip pops an empty one (Track F: with the picked reason)', (tester) async {
     AppConfig.lang = 'en';
-    String? got;
+    RagDownVote? got;
     await tester.pumpWidget(layoutHost(Builder(builder: (context) => Center(
         child: FilledButton(
-            onPressed: () async => got = await showAppSheet<String>(context, (_) => const RagRatingCommentSheet()),
+            onPressed: () async => got = await showAppSheet<RagDownVote>(context, (_) => const RagRatingCommentSheet()),
             child: const Text('rate'))))));
     await tester.tap(find.text('rate'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'The article number is wrong');
     await tester.tap(find.text('Send'));
     await tester.pumpAndSettle();
-    expect(got, 'The article number is wrong');
+    expect(got, const RagDownVote(comment: 'The article number is wrong'));
     await tester.tap(find.text('rate'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Outdated'));
+    await tester.pump();
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
-    expect(got, '');
+    expect(got, const RagDownVote(reason: 'outdated'));
   });
 
   testWidgets('an answer from the curated Q&A: the qa source with its Open link, and the qa stage while pending', (tester) async {

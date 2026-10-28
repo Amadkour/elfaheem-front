@@ -1,14 +1,15 @@
 // Chat sessions, the presentational side (Track E.5): the conversations panel ([RagSessionsPanel] — a bottom sheet
 // on phones, a side panel on a wide window — with its rows [RagSessionRow]), the rename dialog ([RagRenameDialog])
-// and the thumbs-down comment sheet ([RagRatingCommentSheet]). All take plain values and callbacks; [RagChatView]
+// and the thumbs-down sheet ([RagRatingCommentSheet]: reason chips + comment). All take plain values and callbacks; [RagChatView]
 // (rag_chat_screen.dart) owns the API calls. Texts come from translation.json (`rag_*` keys).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
-import '../../admin/admin_common.dart' show trp;
+import '../../admin/admin_common.dart' show t, trp;
 import 'rag_chat.dart';
+import 'rag_learning.dart' show RagDownVote, chatReasonLabel, chatReasons;
 
 /// The asker's conversations, newest first, with New chat on top and the retention notice at the bottom.
 /// [currentId] is highlighted; tapping a row opens it, its menu (and a long press) renames or deletes it.
@@ -223,10 +224,12 @@ class _RagRenameDialogState extends State<RagRenameDialog> {
   }
 }
 
-/// After a thumbs-down: an optional comment. Pops the comment (possibly empty) on Send, '' on Skip; a dismissed
-/// sheet pops null — the caller sends the rating either way.
+/// After a thumbs-down: why (reason chips, Track F — one or none) and an optional comment. Pops a [RagDownVote] on
+/// Send (the comment possibly empty) and on Skip (the picked reason, no comment); a dismissed sheet pops null — the
+/// caller sends the rating either way. [reasons] false (an older server) shows the comment only.
 class RagRatingCommentSheet extends StatefulWidget {
-  const RagRatingCommentSheet({super.key});
+  const RagRatingCommentSheet({super.key, this.reasons = true});
+  final bool reasons;
 
   @override
   State<RagRatingCommentSheet> createState() => _RagRatingCommentSheetState();
@@ -234,12 +237,15 @@ class RagRatingCommentSheet extends StatefulWidget {
 
 class _RagRatingCommentSheetState extends State<RagRatingCommentSheet> {
   final _ctrl = TextEditingController();
+  String? _reason;
 
   @override
   void dispose() {
     _ctrl.dispose();
     super.dispose();
   }
+
+  void _send() => Navigator.of(context).pop(RagDownVote(reason: _reason, comment: _ctrl.text.trim()));
 
   @override
   Widget build(BuildContext context) {
@@ -252,12 +258,21 @@ class _RagRatingCommentSheetState extends State<RagRatingCommentSheet> {
           const SizedBox(width: 8),
           Expanded(child: Text('rag_feedback_title'.tr, style: appText(16, w: FontWeight.w800, c: c.textDark))),
         ]),
+        if (widget.reasons) ...[
+          const SizedBox(height: 12),
+          Text(t('ما المشكلة؟', 'What was wrong?'), style: appText(13, w: FontWeight.w700, c: c.textMedium)),
+          const SizedBox(height: 8),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final r in chatReasons)
+              AppChoiceChip(label: chatReasonLabel(r), selected: _reason == r, onTap: () => setState(() => _reason = _reason == r ? null : r)),
+          ]),
+        ],
         const SizedBox(height: 12),
-        EnterSubmits(onSubmit: () => Navigator.of(context).pop(_ctrl.text.trim()), child: AppField(controller: _ctrl, label: 'rag_feedback_hint'.tr, maxLines: 4)),
+        EnterSubmits(onSubmit: _send, child: AppField(controller: _ctrl, label: 'rag_feedback_hint'.tr, maxLines: 4)),
         const SizedBox(height: 12),
         Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
-          TextButton(onPressed: () => Navigator.of(context).pop(''), child: Text('rag_feedback_skip'.tr)),
-          AppPrimaryButton(label: 'rag_feedback_send'.tr, icon: Icons.send_rounded, onPressed: () => Navigator.of(context).pop(_ctrl.text.trim())),
+          TextButton(onPressed: () => Navigator.of(context).pop(RagDownVote(reason: _reason)), child: Text('rag_feedback_skip'.tr)),
+          AppPrimaryButton(label: 'rag_feedback_send'.tr, icon: Icons.send_rounded, onPressed: _send),
         ]),
       ]),
     );

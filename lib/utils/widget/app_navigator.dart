@@ -15,6 +15,8 @@ import '../../core/attention/attention_service.dart' show AttentionService, OrgT
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
+import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
+import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintsScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
@@ -41,7 +43,7 @@ class AppNavigator {
     ));
   }
 
-  /// module: profile | course | course_profile | notifications | my_courses | subscription | org_exams | calendar |
+  /// module: profile | course | course_profile | notifications | support (the help center) | my_courses | subscription | org_exams | calendar |
   /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft) |
   /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
@@ -66,6 +68,11 @@ class AppNavigator {
         } else {
           await nav.pushNamed('/notifications');
         }
+        return;
+      case 'support': // "Contact support" from the assistant (Track F) → the help center (complaints)
+        await nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/help-center'),
+            builder: (_) => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const ComplaintsScreen())));
         return;
       case 'notifications':
         await nav.pushNamed('/notifications');

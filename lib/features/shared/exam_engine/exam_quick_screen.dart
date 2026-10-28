@@ -4,17 +4,25 @@
 //
 // Entry points: `openQuickExam` (a course's "new exam", an exam-timetable slot) and `showSlotExamSheet` (tapping an
 // exam in a timetable: create it now / not now, or open the one already made from that slot).
+//
+// Track F: questions that came from the generator carry a review strip (Accept / Edit / Reject, GenReviewBar); a
+// rejection asks why and is reported at once, the rest are reported as one batch when the exam is saved (ExamGenReview).
+import 'dart:async' show unawaited;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asInt, t;
+import '../rag/rag_learning.dart' show LearningApi, kRagLearningFeatureKey;
 import 'exam_authoring.dart';
 import 'exam_authoring_screen.dart' show ExamEditorScreen, pickEngineDateTime;
-import 'exam_generate_sheet.dart' show QuickGenerateCard, openExamGenerator;
+import 'exam_generate.dart' show ExamGenReview, GenMark, sendGenFeedback;
+import 'exam_generate_sheet.dart' show GenRejectSheet, GenReviewBar, QuickGenerateCard, openExamGenerator;
 import 'exam_paper_sheet.dart' show openExamPaper;
 import 'exam_quick.dart';
 import 'exam_results_screen.dart';
@@ -181,11 +189,26 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   late final _title = TextEditingController(text: q.title);
   bool _busy = false;
   bool _tried = false;
+  final _review = ExamGenReview();
+  late final _learning = LearningApi();
 
   @override
   void dispose() {
     _title.dispose();
     super.dispose();
+  }
+
+  /// The review strip shows on generated questions while the server takes the feedback and the feature is on.
+  bool _reviewing(QuickQuestion x) =>
+      _review.supported && _review.isGenerated(x) && !AppConfig.disableList.contains(kRagLearningFeatureKey);
+
+  /// Reject (or delete) a generated question: why → out of the exam, reported at once. A dismissed sheet keeps it.
+  Future<void> _reject(QuickQuestion x) async {
+    final reason = await showAppSheet<String>(context, (_) => const GenRejectSheet());
+    if (reason == null || !mounted) return;
+    final call = _review.reject(x, reason.isEmpty ? null : reason);
+    setState(() => q.questions.remove(x));
+    if (call != null) unawaited(sendGenFeedback(_learning, _review, [call]));
   }
 
   Future<void> _pickFile() async {
@@ -202,9 +225,10 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
   /// Questions written from the course documents, added to the list as an editable draft.
   Future<void> _generate() async {
     final got = await openExamGenerator(context, courseId: q.courseId!, orgId: q.orgId);
-    if (got == null || got.isEmpty || !mounted) return;
-    setState(() => q.questions.addAll(got));
-    appToast(t('أُضيف ${got.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.length} questions added — review and edit them before publishing'));
+    if (got == null || got.items.isEmpty || !mounted) return;
+    _review.track(got);
+    setState(() => q.questions.addAll(got.questions));
+    appToast(t('أُضيف ${got.items.length} سؤالاً — راجعها وعدّلها قبل النشر', '${got.items.length} questions added — review and edit them before publishing'));
   }
 
   /// [editor]: save a draft and continue in the full editor (questions may still be missing there).
@@ -219,6 +243,8 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
     }
     setState(() => _busy = true);
     final r = await createQuickExam(_api, q, publish: publish);
+    // the exam exists: every generated question still in it counts as accepted, or edited with its final text
+    if (r.examId != null) unawaited(sendGenFeedback(_learning, _review, _review.onSave(q.questions)));
     if (!mounted) return;
     setState(() => _busy = false);
     if (r.ok && editor) {
@@ -279,14 +305,24 @@ class _QuickExamScreenState extends State<QuickExamScreen> {
                     for (var i = 0; i < q.questions.length; i++)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 10),
-                        child: QuickQuestionCard(
-                          key: ObjectKey(q.questions[i]),
-                          index: i,
-                          question: q.questions[i],
-                          errors: perQ[i] ?? const [],
-                          onChanged: () => setState(() {}),
-                          onRemove: () => setState(() => q.questions.removeAt(i)),
-                        ),
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                          if (_reviewing(q.questions[i]))
+                            GenReviewBar(
+                              key: ObjectKey(_review.of(q.questions[i])),
+                              mark: _review.of(q.questions[i])!.mark,
+                              onAccept: () => setState(() => _review.mark(q.questions[i], GenMark.accepted)),
+                              onEdit: () => setState(() => _review.mark(q.questions[i], GenMark.edited)),
+                              onReject: () => _reject(q.questions[i]),
+                            ),
+                          QuickQuestionCard(
+                            key: ObjectKey(q.questions[i]),
+                            index: i,
+                            question: q.questions[i],
+                            errors: perQ[i] ?? const [],
+                            onChanged: () => setState(() {}),
+                            onRemove: _reviewing(q.questions[i]) ? () => _reject(q.questions[i]) : () => setState(() => q.questions.removeAt(i)),
+                          ),
+                        ]),
                       ),
                     if (q.questions.isEmpty)
                       AppEmpty(icon: Icons.post_add_rounded, title: t('أضف أول سؤال', 'Add the first question'),

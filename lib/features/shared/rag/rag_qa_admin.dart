@@ -729,9 +729,14 @@ class _QaPairFormState extends State<QaPairForm> {
 
 /// The sheet around [QaPairForm]: creates a new pair or saves an existing one and pops the saved [QaPair].
 class QaPairSheet extends StatefulWidget {
-  const QaPairSheet({super.key, required this.draft, this.api});
+  const QaPairSheet({super.key, required this.draft, this.api, this.save, this.title});
   final QaPair draft;
   final QaApi? api;
+
+  /// Saves the pair instead of POST / PUT /qa — accepting a learned suggestion (Track F, rag_learning.dart) sends
+  /// the edited pair to POST /learning/suggestions/{id}/accept. The answer may carry the pair as `pair`.
+  final Future<EngineResult> Function(QaPair pair)? save;
+  final String? title;
 
   @override
   State<QaPairSheet> createState() => _QaPairSheetState();
@@ -747,10 +752,10 @@ class _QaPairSheetState extends State<QaPairSheet> {
       _busy = true;
       _error = null;
     });
-    final r = p.isNew ? await _api.create(p) : await _api.update(p);
+    final r = widget.save != null ? await widget.save!(p) : (p.isNew ? await _api.create(p) : await _api.update(p));
     if (!mounted) return;
     if (r.ok) {
-      Navigator.pop(context, QaPair.fromJson(r.map));
+      Navigator.pop(context, QaPair.fromJson(r.map['pair'] is Map ? asMap(r.map['pair']) : r.map));
     } else {
       setState(() {
         _busy = false;
@@ -765,7 +770,7 @@ class _QaPairSheetState extends State<QaPairSheet> {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        AppSheetHeader(d.isNew ? t('إجابة معتمدة جديدة', 'New Q&A pair') : t('تعديل الإجابة المعتمدة', 'Edit the Q&A pair')),
+        AppSheetHeader(widget.title ?? (d.isNew ? t('إجابة معتمدة جديدة', 'New Q&A pair') : t('تعديل الإجابة المعتمدة', 'Edit the Q&A pair'))),
         QaPairForm(pair: d, busy: _busy, error: _error, onSave: _save),
       ]),
     );

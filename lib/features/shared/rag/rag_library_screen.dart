@@ -26,6 +26,7 @@ import '../exam_engine/exam_engine_api.dart' show EngineResult;
 import '../../admin/admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'rag_chat_screen.dart' show RagChatScreen;
 import 'rag_library.dart';
+import 'rag_learning_page.dart' show RagLearningPage;
 import 'rag_qa_admin.dart' show RagQaAdminPage;
 
 Color ragStatusColor(BuildContext context, String s) {
@@ -176,6 +177,15 @@ class _RagLibraryScreenState extends State<RagLibraryScreen> {
                 icon: const Icon(Icons.verified_outlined),
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => RagQaAdminPage(scope: widget.app ? 'app' : 'org', orgId: widget.app ? null : widget.orgId)))),
+          ),
+        // learning from feedback (Track F): the organization's suggestions and its opt-in (platform admins: the console)
+        if (lib?.manager == true && !widget.app && widget.orgId != null && widget.courseId == null)
+          ParentComponent(
+            featureKey: 'rag.learning',
+            child: IconButton(
+                tooltip: t('التعلّم من الملاحظات', 'Learning from feedback'),
+                icon: const Icon(Icons.school_outlined),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => RagLearningPage(orgId: widget.orgId)))),
           ),
         if (widget.orgId != null)
           IconButton(

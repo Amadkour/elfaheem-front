@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const notInCatalog = <String, String>{
+  'rag.learning': 'Track F; backend catalog regenerates with F.1',
 };
 
 final _patterns = [

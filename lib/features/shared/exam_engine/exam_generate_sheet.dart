@@ -3,6 +3,7 @@
 // "Advanced": a focus ("chapter 3 only") and the questions' language (D-012). The questions come back to the quick
 // builder as an editable draft, with one line on what the planner and the reviewer did. [ExamGenForm] and
 // [QuickGenerateCard] are presentational (tested under the layout harness); the sheet owns the calls and the polling.
+// Track F: [GenReviewBar] (Accept / Edit / Reject on a generated question in the builder) and [GenRejectSheet] (why).
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -14,12 +15,14 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t;
 import '../rag/rag_library.dart';
+import '../rag/rag_learning.dart' show examReasonLabel, examReasons;
 import 'exam_generate.dart';
 import 'exam_quick.dart';
 
-/// Opens the generator; the questions to add, or null when the teacher left without generating.
-Future<List<QuickQuestion>?> openExamGenerator(BuildContext context, {required int courseId, int? orgId}) =>
-    showAppSheet<List<QuickQuestion>>(context, (_) => ExamGenSheet(courseId: courseId, orgId: orgId));
+/// Opens the generator; the draft's questions to add (with their indexes in the draft, for the Track F review), or
+/// null when the teacher left without generating.
+Future<ExamGenResult?> openExamGenerator(BuildContext context, {required int courseId, int? orgId}) =>
+    showAppSheet<ExamGenResult>(context, (_) => ExamGenSheet(courseId: courseId, orgId: orgId));
 
 class ExamGenSheet extends StatefulWidget {
   const ExamGenSheet({super.key, required this.courseId, this.orgId, this.api, this.library, this.pickFile});
@@ -137,7 +140,8 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
     final done = await _api.waitFor(asInt(asMap(r.map)['id']));
     if (!mounted) return;
     final draft = done.ok ? ExamGenDraft.fromJson(asMap(done.map)) : null;
-    final questions = draft == null ? const <QuickQuestion>[] : quickQuestionsOf(draft.questions);
+    final items = draft == null ? const <(int, QuickQuestion)>[] : genItemsOf(draft.questions);
+    final questions = [for (final (_, q) in items) q];
     if (draft == null || !draft.done || questions.isEmpty) {
       return setState(() {
         _step = ExamGenStep.ready;
@@ -150,7 +154,7 @@ class _ExamGenSheetState extends State<ExamGenSheet> {
     }
     final summary = examGenSummary(draft);
     if (summary != null) appToast(summary);
-    Navigator.pop(context, questions);
+    Navigator.pop(context, ExamGenResult(draft.id, items));
   }
 
   @override
@@ -357,6 +361,68 @@ class QuickGenerateCard extends StatelessWidget {
           ]),
         ),
         Icon(Icons.chevron_right_rounded, color: c.textLight),
+      ]),
+    );
+  }
+}
+
+/// Track F: the strip on a generated question in the builder — "Generated" and Accept / Edit / Reject (plain values).
+/// Accept and Edit only mark it (what counts is the question when the exam is saved: unchanged = accepted, changed =
+/// edited with its final text); Reject asks why and takes the question out.
+class GenReviewBar extends StatelessWidget {
+  const GenReviewBar({super.key, required this.mark, required this.onAccept, required this.onEdit, required this.onReject});
+  final GenMark mark;
+  final VoidCallback onAccept, onEdit, onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Wrap(spacing: 8, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        AppBadgePill(t('مُنشأ تلقائياً', 'Generated'), icon: Icons.auto_awesome_rounded, color: c.primary),
+        AppChoiceChip(label: t('قبول', 'Accept'), icon: Icons.check_rounded, selected: mark == GenMark.accepted, onTap: onAccept),
+        AppChoiceChip(label: t('تعديل', 'Edit'), icon: Icons.edit_outlined, selected: mark == GenMark.edited, onTap: onEdit),
+        AppChoiceChip(label: t('رفض', 'Reject'), icon: Icons.close_rounded, selected: false, onTap: onReject),
+        if (mark == GenMark.edited)
+          Text(t('عدّل السؤال أدناه؛ يُسجَّل نصه النهائي عند الحفظ', 'Edit the question below; its final text is recorded when you save'),
+              style: appText(12, c: c.textMedium)),
+      ]),
+    );
+  }
+}
+
+/// Why the generated question is rejected (one reason or none). Pops the reason ('' = none given); a dismissed sheet
+/// pops null = keep the question.
+class GenRejectSheet extends StatefulWidget {
+  const GenRejectSheet({super.key});
+
+  @override
+  State<GenRejectSheet> createState() => _GenRejectSheetState();
+}
+
+class _GenRejectSheetState extends State<GenRejectSheet> {
+  String? _reason;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        AppSheetHeader(t('رفض السؤال', 'Reject the question')),
+        Text(t('لماذا؟ يساعد ذلك المولّد على كتابة أسئلة أفضل.', 'Why? It helps the generator write better questions.'),
+            style: appText(13, c: c.textMedium)),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final r in examReasons)
+            AppChoiceChip(label: examReasonLabel(r), selected: _reason == r, onTap: () => setState(() => _reason = _reason == r ? null : r)),
+        ]),
+        const SizedBox(height: 14),
+        Wrap(alignment: WrapAlignment.end, spacing: 8, runSpacing: 8, children: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t('إلغاء', 'Cancel'))),
+          AppPrimaryButton(label: t('رفض وحذف', 'Reject and remove'), icon: Icons.delete_outline_rounded, onPressed: () => Navigator.of(context).pop(_reason ?? '')),
+        ]),
       ]),
     );
   }

@@ -27,6 +27,7 @@ import '../../admin/admin_common.dart' show t;
 import 'rag_chat.dart';
 import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
+import 'rag_learning.dart';
 import 'rag_library_screen.dart';
 
 export 'rag_chat_sessions.dart';
@@ -100,6 +101,7 @@ class RagChatView extends StatefulWidget {
     this.onConversationChanged,
     this.onSessionsSupported,
     this.onNavigate,
+    this.learning,
   });
   final int? orgId;
   final int? courseId;
@@ -128,12 +130,16 @@ class RagChatView extends StatefulWidget {
   /// Called before a citation's deep link opens a page (the pop-up closes).
   final VoidCallback? onNavigate;
 
+  /// Track F: the vote with its reason and the implicit signals (citation opened, deep link, contact support).
+  final LearningSignals? learning;
+
   @override
   State<RagChatView> createState() => RagChatViewState();
 }
 
 class RagChatViewState extends State<RagChatView> {
   late final RagApi _api = widget.api ?? RagApi();
+  late final LearningSignals _learn = widget.learning ?? LearningSignals.instance;
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final List<RagAnswer> _items = [];
@@ -453,20 +459,42 @@ class RagChatViewState extends State<RagChatView> {
     _toEnd();
   }
 
-  /// Thumbs up sends at once; thumbs down first offers a comment (the sheet; Skip or dismiss = none).
+  /// Thumbs up sends at once; thumbs down first asks why and offers a comment (the sheet; Skip or dismiss = none).
+  /// Track F: the vote goes to POST /learning/feedback; an older server gets the old rating call, the reason folded
+  /// into the comment.
   Future<void> _rate(RagAnswer a, bool helpful) async {
-    String? comment;
+    String? reason, comment;
     if (!helpful) {
-      final c = await showAppSheet<String>(context, (_) => const RagRatingCommentSheet());
+      final v = await showAppSheet<RagDownVote>(context, (_) => RagRatingCommentSheet(reasons: _learn.supported));
       if (!mounted) return;
-      comment = c == null || c.trim().isEmpty ? null : c.trim();
+      reason = v?.reason;
+      comment = v?.commentOrNull;
     }
-    final r = await _api.rate(a.id, helpful: helpful, comment: comment);
+    if (_learn.supported) {
+      final r = await _learn.api.feedback(chatVoteBody(a.id, helpful: helpful, reason: reason, comment: comment));
+      _learn.note(r);
+      if (!mounted) return;
+      if (r.ok) return setState(() => _setHelpful(a.id, helpful));
+      if (!learningOlderServer(r)) return; // a real refusal: as before, the rating is simply not kept
+    }
+    final r = await _api.rate(a.id, helpful: helpful, comment: legacyFeedbackComment(reason, comment));
     if (!mounted || !r.ok) return;
     setState(() {
       final i = _items.indexWhere((x) => x.id == a.id);
       if (i >= 0) _items[i] = RagAnswer.fromJson(r.map);
     });
+  }
+
+  void _setHelpful(int id, bool helpful) {
+    final i = _items.indexWhere((x) => x.id == id);
+    if (i >= 0) _items[i] = ragAnswerRated(_items[i], helpful);
+  }
+
+  /// "Contact support" under an answer that found nothing: the signal, then the help center (the pop-up closes).
+  void _support(RagAnswer a) {
+    _learn.signal(a.id, 'chat_support');
+    widget.onNavigate?.call();
+    AppNavigator.openModule('support');
   }
 
   @override
@@ -536,7 +564,10 @@ class RagChatViewState extends State<RagChatView> {
                 answer: a,
                 onRate: a.smallTalk ? null : (helpful) => _rate(a, helpful),
                 onFollowUp: identical(a, last) && !_sending ? send : null,
-                onNavigate: widget.onNavigate),
+                onNavigate: widget.onNavigate,
+                onCitationOpen: (ci) => _learn.signal(a.id, 'chat_citation_open', {'n': ci.n, 'document_id': ci.documentId, 'kind': ci.kind}),
+                onDeepLink: (ci) => _learn.signal(a.id, 'chat_deeplink', {'link': ci.deepLink ?? ''}),
+                onSupport: a.smallTalk || a.found != false || AppConfig.disableList.contains('profile.help_center') ? null : () => _support(a)),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger)),
         ]),
       ),
@@ -667,7 +698,8 @@ class _StageDot extends StatelessWidget {
 
 /// A question and its answer: the answer's blocks with their `[n]` markers, the follow-ups, then the sources it quotes.
 class RagAnswerCard extends StatelessWidget {
-  const RagAnswerCard({super.key, required this.answer, this.onRate, this.onFollowUp, this.onNavigate});
+  const RagAnswerCard(
+      {super.key, required this.answer, this.onRate, this.onFollowUp, this.onNavigate, this.onCitationOpen, this.onDeepLink, this.onSupport});
   final RagAnswer answer;
 
   /// helpful? (null = no rating offered)
@@ -678,6 +710,13 @@ class RagAnswerCard extends StatelessWidget {
 
   /// Called before a curated source's deep link opens its page (the pop-up closes).
   final VoidCallback? onNavigate;
+
+  /// Track F signals (fire-and-forget, the caller debounces): a source expanded, a deep link followed.
+  final ValueChanged<RagCitation>? onCitationOpen;
+  final ValueChanged<RagCitation>? onDeepLink;
+
+  /// "Contact support" under the answer (null = not offered: only answers that found nothing offer it).
+  final VoidCallback? onSupport;
 
   @override
   Widget build(BuildContext context) {
@@ -715,8 +754,21 @@ class RagAnswerCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         Text(t('المصادر', 'Sources'), style: theme.labelMedium?.copyWith(color: c.textMedium)),
                         const SizedBox(height: 4),
-                        for (final ci in answer.citations) _Source(citation: ci, onNavigate: onNavigate),
+                        for (final ci in answer.citations)
+                          _Source(
+                              citation: ci,
+                              onNavigate: onNavigate,
+                              onOpen: onCitationOpen == null ? null : () => onCitationOpen!(ci),
+                              onDeepLink: onDeepLink == null ? null : () => onDeepLink!(ci)),
                       ],
+                      if (onSupport != null)
+                        Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: TextButton.icon(
+                              onPressed: onSupport,
+                              icon: const Icon(Icons.support_agent_rounded, size: 18),
+                              label: Text(t('تواصل مع الدعم', 'Contact support'))),
+                        ),
                       if (answer.followUps.isNotEmpty && onFollowUp != null) ...[
                         const SizedBox(height: 10),
                         Wrap(spacing: 6, runSpacing: 6, children: [
@@ -798,9 +850,10 @@ class RagAnswerBody extends StatelessWidget {
 }
 
 class _Source extends StatelessWidget {
-  const _Source({required this.citation, this.onNavigate});
+  const _Source({required this.citation, this.onNavigate, this.onOpen, this.onDeepLink});
   final RagCitation citation;
   final VoidCallback? onNavigate;
+  final VoidCallback? onOpen, onDeepLink;
 
   @override
   Widget build(BuildContext context) {
@@ -813,6 +866,9 @@ class _Source extends StatelessWidget {
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsetsDirectional.only(start: 34, bottom: 8),
         dense: true,
+        onExpansionChanged: (open) {
+          if (open) onOpen?.call();
+        },
         leading: Semantics(
           label: t('المصدر ${citation.n}', 'Source ${citation.n}'),
           excludeSemantics: true,
@@ -829,6 +885,7 @@ class _Source extends StatelessWidget {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton.icon(
                   onPressed: () {
+                    onDeepLink?.call();
                     onNavigate?.call();
                     AppNavigator.openModule(module);
                   },
