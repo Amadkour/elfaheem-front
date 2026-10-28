@@ -587,11 +587,11 @@ class _TermsAcceptRow extends StatelessWidget {
               ),
               child: Text(
                 accepted ? 'إعادة القراءة' : 'اقرأ الآن',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: context.colors.onHero,
                 ),
               ),
             ),
@@ -686,9 +686,9 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: c.primaryShadow,
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.description_outlined,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                       size: 22,
                     ),
                   ),
@@ -1015,7 +1015,7 @@ class _BottomBar extends StatelessWidget {
         color: c.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: context.colors.heroShade.withValues(alpha: 0.07),
             blurRadius: 10,
             offset: const Offset(0, -3),
           ),
@@ -1078,17 +1078,17 @@ class _BottomBar extends StatelessWidget {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.verified_outlined,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                     ),
-                    label: const Text(
+                    label: Text(
                       'أوافق على الشروط والأحكام',
                       style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                     ),
                   ),

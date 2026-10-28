@@ -91,7 +91,7 @@ class NetworkAttachmentTile extends StatelessWidget {
           ? _showPdfSheet(context, name: attachment.fileName, url: attachment.fileUrl, bytes: attachment.fileSize)
           : Navigator.of(context).push(PageRouteBuilder(
         opaque: false,
-        barrierColor: Colors.black,
+        barrierColor: context.colors.heroShade,
         pageBuilder: (_, _, _) => _ImageViewer(url: attachment.fileUrl, heroTag: heroTag),
       )),
       face: _pdf
@@ -193,20 +193,20 @@ class PendingAttachmentTile extends StatelessWidget {
             ? Image.network(attachment.localPreviewUrl, width: size, height: size, fit: BoxFit.cover)
             : Image.file(File(attachment.localPreviewUrl), width: size, height: size, fit: BoxFit.cover),
       ),
-      Positioned(
+      PositionedDirectional(
         top: -6,
-        right: -6,
+        end: -6,
         child: GestureDetector(
           onTap: onRemove,
           child: Container(
             width: 22,
             height: 22,
             decoration: BoxDecoration(
-              color: const Color(0xFFEF4444),
+              color: context.colors.danger,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 5, offset: const Offset(0, 2))],
+              boxShadow: [BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.2), blurRadius: 5, offset: const Offset(0, 2))],
             ),
-            child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
+            child: Icon(Icons.close_rounded, size: 14, color: context.colors.onHero),
           ),
         ),
       ),
@@ -244,7 +244,7 @@ class _AttachmentCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.10),
+              color: context.colors.heroShade.withValues(alpha: 0.10),
               blurRadius: 12,
               offset: const Offset(0, 5),
             ),
@@ -265,24 +265,24 @@ class _AttachmentCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.black.withValues(alpha: 0), Colors.black.withValues(alpha: 0.45)],
+                    colors: [context.colors.heroShade.withValues(alpha: 0), context.colors.heroShade.withValues(alpha: 0.45)],
                   ),
                 ),
               ),
             ),
             if (!isPdf)
-              Positioned(
-                right: 6,
+              PositionedDirectional(
+                end: 6,
                 bottom: 6,
-                child: Icon(Icons.zoom_in_rounded, size: 16, color: Colors.white.withValues(alpha: 0.9)),
+                child: Icon(Icons.zoom_in_rounded, size: 16, color: context.colors.onHero.withValues(alpha: 0.9)),
               ),
             if (sizeLabel != null && sizeLabel!.isNotEmpty)
-              Positioned(
-                left: 6,
+              PositionedDirectional(
+                start: 6,
                 bottom: 6,
                 child: Text(sizeLabel!,
-                    style: const TextStyle(
-                        fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white)),
+                    style: TextStyle(
+                        fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: context.colors.onHero)),
               ),
           ]),
         ),
@@ -305,8 +305,8 @@ class _PdfFace extends StatelessWidget {
       return Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
             colors: [c.primary.withValues(alpha: 0.16), c.primary.withValues(alpha: 0.06)],
           ),
         ),
@@ -320,7 +320,7 @@ class _PdfFace extends StatelessWidget {
               borderRadius: BorderRadius.circular(9),
               boxShadow: [BoxShadow(color: c.accent.withValues(alpha: 0.35), blurRadius: 8, offset: const Offset(0, 3))],
             ),
-            child: const Icon(Icons.picture_as_pdf_rounded, size: 18, color: Colors.white),
+            child: Icon(Icons.picture_as_pdf_rounded, size: 18, color: context.colors.onHero),
           ),
           const SizedBox(height: 6),
           Text(
@@ -348,7 +348,7 @@ class _ImageViewer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: context.colors.heroShade,
       body: Stack(children: [
         Center(
           child: Hero(
@@ -364,8 +364,8 @@ class _ImageViewer extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              _circleButton(Icons.close_rounded, () => Navigator.pop(context)),
-              _circleButton(Icons.open_in_new_rounded, () => _openExternally(context, url)),
+              _circleButton(context, Icons.close_rounded, () => Navigator.pop(context)),
+              _circleButton(context, Icons.open_in_new_rounded, () => _openExternally(context, url)),
             ]),
           ),
         ),
@@ -373,13 +373,13 @@ class _ImageViewer extends StatelessWidget {
     );
   }
 
-  Widget _circleButton(IconData icon, VoidCallback onTap) => Material(
-    color: Colors.black.withValues(alpha: 0.4),
+  Widget _circleButton(BuildContext context, IconData icon, VoidCallback onTap) => Material(
+    color: context.colors.heroShade.withValues(alpha: 0.4),
     shape: const CircleBorder(),
     child: InkWell(
       customBorder: const CircleBorder(),
       onTap: onTap,
-      child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, color: Colors.white, size: 20)),
+      child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, color: context.colors.onHero, size: 20)),
     ),
   );
 }
@@ -413,7 +413,7 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
                 borderRadius: BorderRadius.circular(13),
                 boxShadow: [BoxShadow(color: c.accent.withValues(alpha: 0.35), blurRadius: 10, offset: const Offset(0, 4))],
               ),
-              child: const Icon(Icons.picture_as_pdf_rounded, color: Colors.white, size: 24),
+              child: Icon(Icons.picture_as_pdf_rounded, color: context.colors.onHero, size: 24),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -440,7 +440,7 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: c.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: context.colors.onHero,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),

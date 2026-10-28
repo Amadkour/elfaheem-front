@@ -391,7 +391,7 @@ class ComplaintProvider extends BaseProvider {
             (hasMore ? _totalPages * 20 : _complaints.length);
       }
     } catch (e) {
-      if (requestId == _listRequestId) errorMsg = e.toString();
+      if (requestId == _listRequestId) errorMsg = ApiException.from(e).message;
       log('loadComplaints ❌ $e');
     } finally {
       if (requestId == _listRequestId) {
@@ -545,7 +545,7 @@ class ComplaintProvider extends BaseProvider {
             isReadByAdmin: _selected!.isReadByAdmin,
             isReadByUser: _selected!.isReadByUser,
             createdAt: _selected!.createdAt,
-            updatedAt: DateTime.now(),
+            updatedAt: DateTime.now().toUtc(),
             resolvedAt: _selected!.resolvedAt,
             repliesCount: _selected!.repliesCount + 1,
             replies: [..._selected!.replies, reply],
@@ -636,8 +636,8 @@ class ComplaintProvider extends BaseProvider {
         isReadByAdmin: true, // whoever acted on it has seen it
         isReadByUser: m.isReadByUser,
         createdAt: m.createdAt,
-        updatedAt: DateTime.now(),
-        resolvedAt: s == ComplaintStatus.resolved ? DateTime.now() : m.resolvedAt,
+        updatedAt: DateTime.now().toUtc(),
+        resolvedAt: s == ComplaintStatus.resolved ? DateTime.now().toUtc() : m.resolvedAt,
         repliesCount: m.repliesCount,
         replies: m.replies,
         attachments: m.attachments,

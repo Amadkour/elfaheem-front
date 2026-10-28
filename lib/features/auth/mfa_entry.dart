@@ -11,8 +11,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_state.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_group.dart';
-import 'package:flutter_education_app/features/shared/profile/components/setting_title.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
@@ -42,12 +40,11 @@ class MfaSecurityGroup extends StatelessWidget {
     final c = context.colors;
     final (label, on) = mfaEntryState(status);
     final color = on ? c.success : (status.required ? c.warning : c.textMedium);
-    return SettingsGroup(title: t('الأمان', 'Security'), icon: Icons.shield_rounded, children: [
-      SettingsTile(
+    return AppSettingsGroup(title: t('الأمان', 'Security'), icon: Icons.shield_rounded, children: [
+      AppSettingsTile(
         key: const ValueKey('mfa.entry'),
         icon: Icons.phonelink_lock_rounded,
-        iconBg: c.primaryTint,
-        iconColor: c.primary,
+        color: c.primary,
         label: mfaEntryLabel(),
         onTap: onTap,
         trailing: ConstrainedBox(

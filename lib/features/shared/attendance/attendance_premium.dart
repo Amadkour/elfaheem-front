@@ -92,8 +92,8 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(11),
                 gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+                  begin: AlignmentDirectional.centerStart,
+                  end: AlignmentDirectional.centerEnd,
                   colors: [widget.from, widget.to],
                 ),
                 boxShadow: [
@@ -119,7 +119,7 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
                             child: Container(
                               width: 14,
                               height: 60,
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: context.colors.onHero.withValues(alpha: 0.22),
                             ),
                           ),
                         ),
@@ -139,15 +139,15 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
                   const _Dot(),
                   const SizedBox(width: 6),
                 ],
-                Icon(widget.icon, size: 15, color: Colors.white),
+                Icon(widget.icon, size: 15, color: context.colors.onHero),
                 const SizedBox(width: 6),
                 Text(
                   widget.label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     letterSpacing: 0.2,
                   ),
                 ),
@@ -156,13 +156,13 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.22),
+                      color: context.colors.onHero.withValues(alpha: 0.22),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
                       widget.badge!,
-                      style: const TextStyle(
-                          fontSize: 8.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6),
+                      style: TextStyle(
+                          fontSize: 8.5, fontWeight: FontWeight.w900, color: context.colors.onHero, letterSpacing: 0.6),
                     ),
                   ),
                 ],
@@ -181,7 +181,7 @@ class _Dot extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         width: 7,
         height: 7,
-        decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: context.colors.onHero, shape: BoxShape.circle),
       );
 }
 

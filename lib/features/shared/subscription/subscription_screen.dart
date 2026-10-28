@@ -6,6 +6,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -14,7 +15,6 @@ import 'package:flutter_education_app/features/shared/profile/profile_provider.d
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../utils/widget/app_loading_indicator.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
 
@@ -110,7 +110,7 @@ class _ViewState extends State<_View> {
     Widget body;
     var scrollable = false; // the plans list scrolls by itself; the status cards are laid out by AppRefresh
     if (!p.loaded) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton(withAvatar: false);
     } else if (p.error != null && p.plans.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else if (p.hasAccess && p.required && p.active != null) {

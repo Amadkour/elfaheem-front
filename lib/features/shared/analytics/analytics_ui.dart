@@ -148,8 +148,8 @@ class AnRing extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = onColor ? Colors.white : (color ?? anScoreColor(context, value));
-    final track = onColor ? Colors.white.withValues(alpha: 0.18) : col.withValues(alpha: 0.13);
+    final col = onColor ? context.colors.onHero : (color ?? anScoreColor(context, value));
+    final track = onColor ? context.colors.onHero.withValues(alpha: 0.18) : col.withValues(alpha: 0.13);
     return Column(mainAxisSize: MainAxisSize.min, children: [
       TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: ((value ?? 0) / 100).clamp(0.0, 1.0)),
@@ -164,14 +164,14 @@ class AnRing extends StatelessWidget {
               child: CircularProgressIndicator(value: v, strokeWidth: stroke, strokeCap: StrokeCap.round, color: col),
             ),
             Text(value == null ? '–' : '${(v * 100).round()}%',
-                style: anText(size * 0.22, w: FontWeight.w800, c: onColor ? Colors.white : c.textDark)),
+                style: anText(size * 0.22, w: FontWeight.w800, c: onColor ? context.colors.onHero : c.textDark)),
           ]),
         ),
       ),
       if (label != null) ...[
         const SizedBox(height: 6),
         Text(label!, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis,
-            style: anText(11.5, w: FontWeight.w600, c: onColor ? Colors.white70 : c.textMedium)),
+            style: anText(11.5, w: FontWeight.w600, c: onColor ? context.colors.onHeroMuted : c.textMedium)),
       ],
     ]);
   }
@@ -244,12 +244,12 @@ class AnGlassIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final b = Material(
-      color: Colors.white.withValues(alpha: 0.16),
-      shape: const CircleBorder(side: BorderSide(color: Colors.white24)),
+      color: context.colors.onHero.withValues(alpha: 0.16),
+      shape: CircleBorder(side: BorderSide(color: context.colors.heroGlassBorder)),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: SizedBox(width: 40, height: 40, child: Icon(icon, color: Colors.white, size: 19)),
+        child: SizedBox(width: 40, height: 40, child: Icon(icon, color: context.colors.onHero, size: 19)),
       ),
     );
     return tooltip == null ? b : Tooltip(message: tooltip!, child: b);
@@ -266,7 +266,7 @@ class AnHeroStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
     child: Material(
-      color: Colors.white.withValues(alpha: 0.12),
+      color: context.colors.onHero.withValues(alpha: 0.12),
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -275,14 +275,14 @@ class AnHeroStat extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.18)),
           ),
           child: Column(children: [
-            Icon(icon, color: Colors.white, size: 19),
+            Icon(icon, color: context.colors.onHero, size: 19),
             const SizedBox(height: 6),
-            Text(value, maxLines: 1, style: anText(16, w: FontWeight.w800, c: Colors.white)),
+            Text(value, maxLines: 1, style: anText(16, w: FontWeight.w800, c: context.colors.onHero)),
             const SizedBox(height: 2),
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10, c: Colors.white70)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(10, c: context.colors.onHeroMuted)),
           ]),
         ),
       ),
@@ -300,17 +300,17 @@ class AnGlassPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.16),
-    shape: const StadiumBorder(side: BorderSide(color: Colors.white24)),
+    color: context.colors.onHero.withValues(alpha: 0.16),
+    shape: StadiumBorder(side: BorderSide(color: context.colors.heroGlassBorder)),
     child: InkWell(
       customBorder: const StadiumBorder(),
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 15, color: Colors.white), const SizedBox(width: 6)],
-          Text(label, style: anText(12.5, w: FontWeight.w700, c: Colors.white)),
-          if (onTap != null) ...[const SizedBox(width: 4), const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.white)],
+          if (icon != null) ...[Icon(icon, size: 15, color: context.colors.onHero), const SizedBox(width: 6)],
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(12.5, w: FontWeight.w700, c: context.colors.onHero))),
+          if (onTap != null) ...[const SizedBox(width: 4), Icon(Icons.chevron_right_rounded, size: 16, color: context.colors.onHero)],
         ]),
       ),
     ),
@@ -340,13 +340,13 @@ class AnChip extends StatelessWidget {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 5),
-          Text(label, style: anText(11.5, w: FontWeight.w700, c: color)),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(11.5, w: FontWeight.w700, c: color))),
           if (badge != null && badge! > 0) ...[
             const SizedBox(width: 5),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(10)),
-              child: Text('$badge', style: anText(10, w: FontWeight.w800, c: Colors.white)),
+              child: Text('$badge', style: anText(10, w: FontWeight.w800, c: context.colors.onHero)),
             ),
           ],
         ]),
@@ -434,7 +434,7 @@ class AnErrorRetry extends StatelessWidget {
         ),
         onPressed: onRetry,
         icon: const Icon(Icons.refresh_rounded),
-        label: Text('retry'.tr, style: anText(13.5, w: FontWeight.w700, c: Colors.white)),
+        label: Text('retry'.tr, style: anText(13.5, w: FontWeight.w700, c: context.colors.onHero)),
       ),
     );
   }
@@ -593,7 +593,7 @@ class AnAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(shape: BoxShape.circle, color: onColor ? Colors.white : col.withValues(alpha: 0.14)),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: onColor ? context.colors.onHero : col.withValues(alpha: 0.14)),
       child: Text(letter, style: anText(size * 0.42, w: FontWeight.w800, c: col)),
     );
     if (url == null || url!.isEmpty) return fallback;

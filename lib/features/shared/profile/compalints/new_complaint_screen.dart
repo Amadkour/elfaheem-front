@@ -14,6 +14,8 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh, AppTime;
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -79,30 +81,8 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
     super.dispose();
   }
 
-  void _snack(String message, Color color, IconData icon) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        backgroundColor: color,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Row(children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontFamily: 'bahji',
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
+  // `icon` is kept for the callers; the notice draws its own icon from `error`.
+  void _snack(String message, Color color, IconData icon) => showAppNotice(message, error: color == context.colors.danger);
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -243,7 +223,7 @@ class _GradIcon extends StatelessWidget {
         ),
       ],
     ),
-    child: Icon(icon, color: Colors.white, size: size * 0.52),
+    child: Icon(icon, color: context.colors.onHero, size: size * 0.52),
   );
 }
 
@@ -299,12 +279,12 @@ class _Hero extends StatelessWidget {
 
   final String? courseTitle;
 
-  Widget _blob(double size, double alpha) => Container(
+  Widget _blob(BuildContext context, double size, double alpha) => Container(
     width: size,
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: alpha),
+      color: context.colors.onHero.withValues(alpha: alpha),
     ),
   );
 
@@ -322,8 +302,8 @@ class _Hero extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Stack(children: [
-          PositionedDirectional(end: -30, top: -30, child: _blob(130, 0.10)),
-          PositionedDirectional(start: -24, bottom: -44, child: _blob(110, 0.08)),
+          PositionedDirectional(end: -30, top: -30, child: _blob(context, 130, 0.10)),
+          PositionedDirectional(start: -24, bottom: -44, child: _blob(context, 110, 0.08)),
           Padding(
             padding: const EdgeInsets.all(22),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -332,22 +312,22 @@ class _Hero extends StatelessWidget {
                   width: 54,
                   height: 54,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
+                    color: context.colors.onHero.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.support_agent_rounded,
-                      color: Colors.white, size: 29),
+                  child: Icon(Icons.support_agent_rounded,
+                      color: context.colors.onHero, size: 29),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(
                       'complaint_hero_title'.tr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'bahji',
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -357,7 +337,7 @@ class _Hero extends StatelessWidget {
                         fontFamily: 'bahji',
                         fontSize: 12.5,
                         height: 1.5,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: context.colors.onHero.withValues(alpha: 0.9),
                       ),
                     ),
                   ]),
@@ -368,22 +348,22 @@ class _Hero extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.20),
+                    color: context.colors.onHero.withValues(alpha: 0.20),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    const Icon(Icons.menu_book_rounded, size: 14, color: Colors.white),
+                    Icon(Icons.menu_book_rounded, size: 14, color: context.colors.onHero),
                     const SizedBox(width: 6),
                     Flexible(
                       child: Text(
                         'complaint_about_course'.tr.replaceAll('{course}', courseTitle!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                         ),
                       ),
                     ),
@@ -429,7 +409,7 @@ class _TabBar extends StatelessWidget {
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: Colors.transparent,
-        labelColor: Colors.white,
+        labelColor: context.colors.onHero,
         unselectedLabelColor: c.textMedium,
         labelStyle: const TextStyle(
             fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w700),
@@ -476,11 +456,11 @@ class _Badge extends StatelessWidget {
     child: Text(
       '$count',
       textAlign: TextAlign.center,
-      style: const TextStyle(
+      style: TextStyle(
         fontFamily: 'bahji',
         fontSize: 10,
         fontWeight: FontWeight.w800,
-        color: Colors.white,
+        color: context.colors.onHero,
       ),
     ),
   );
@@ -803,9 +783,22 @@ class _HistoryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (provider.isLoadingList && provider.complaints.isEmpty) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton();
     }
-    if (provider.complaints.isEmpty) return const _EmptyHistory();
+    if (provider.complaints.isEmpty && provider.errorMsg != null && provider.errorMsg != 'upload_failed') {
+      return AppRefresh(
+        onRefresh: () => provider.loadComplaints(reset: true),
+        scrollable: false,
+        child: ErrorRetry(message: provider.errorMsg!, onRetry: () => provider.loadComplaints(reset: true)),
+      );
+    }
+    if (provider.complaints.isEmpty) {
+      return AppRefresh(
+        onRefresh: () => provider.loadComplaints(reset: true),
+        scrollable: false,
+        child: const _EmptyHistory(),
+      );
+    }
 
     final all = provider.complaints;
     final open = all
@@ -813,10 +806,9 @@ class _HistoryTab extends StatelessWidget {
     x.status == ComplaintStatus.open || x.status == ComplaintStatus.inProgress)
         .length;
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => provider.loadComplaints(reset: true),
       child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
         itemCount: all.length + 1,
         itemBuilder: (_, i) {
@@ -1226,7 +1218,7 @@ class _AttachmentThumb extends StatelessWidget {
           height: _size,
           decoration: BoxDecoration(gradient: c.primaryGradient),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(Icons.picture_as_pdf_rounded, size: 28, color: Colors.white),
+            Icon(Icons.picture_as_pdf_rounded, size: 28, color: context.colors.onHero),
             const SizedBox(height: 4),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -1235,8 +1227,8 @@ class _AttachmentThumb extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontFamily: 'bahji', fontSize: 9, color: Colors.white),
+                style: TextStyle(
+                    fontFamily: 'bahji', fontSize: 9, color: context.colors.onHero),
               ),
             ),
           ]),
@@ -1260,7 +1252,7 @@ class _AttachmentThumb extends StatelessWidget {
               shape: BoxShape.circle,
               border: Border.all(color: c.cardBg, width: 2),
             ),
-            child: const Icon(Icons.close_rounded, size: 14, color: Colors.white),
+            child: Icon(Icons.close_rounded, size: 14, color: context.colors.onHero),
           ),
         ),
       ),
@@ -1465,7 +1457,7 @@ class _HistoryReplyBubble extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontSize: 13,
                     height: 1.5,
-                    color: isAdmin ? c.textDark : Colors.white,
+                    color: isAdmin ? c.textDark : context.colors.onHero,
                   ),
                 ),
                 if (reply.attachments.isNotEmpty) ...[
@@ -1506,7 +1498,7 @@ class _ResolvedBanner extends StatelessWidget {
         Icon(Icons.check_circle_rounded, size: 18, color: c.success),
         const SizedBox(width: 8),
         Text(
-          '${'resolved_at_prefix'.tr} ${resolvedAt.day}/${resolvedAt.month}/${resolvedAt.year}',
+          '${'resolved_at_prefix'.tr} ${AppTime.date(resolvedAt)}',
           style: TextStyle(
             fontFamily: 'bahji',
             fontSize: 12.5,
@@ -1537,7 +1529,7 @@ class _EmptyHistory extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: c.primaryShadow,
             ),
-            child: const Icon(Icons.inbox_rounded, size: 44, color: Colors.white),
+            child: Icon(Icons.inbox_rounded, size: 44, color: context.colors.onHero),
           ),
           const SizedBox(height: 20),
           Text('no_previous_complaints'.tr,
@@ -1673,7 +1665,7 @@ class _CategoryPicker extends StatelessWidget {
               boxShadow: sel ? c.primaryShadow : null,
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 17, color: sel ? Colors.white : c.textLight),
+              Icon(icon, size: 17, color: sel ? context.colors.onHero : c.textLight),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -1681,7 +1673,7 @@ class _CategoryPicker extends StatelessWidget {
                   fontFamily: 'bahji',
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
-                  color: sel ? Colors.white : c.textMedium,
+                  color: sel ? context.colors.onHero : c.textMedium,
                 ),
               ),
             ]),
@@ -1738,7 +1730,7 @@ class _PriorityPicker extends StatelessWidget {
                   ),
                 ),
                 child: Column(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, size: 16, color: sel ? Colors.white : color),
+                  Icon(icon, size: 16, color: sel ? context.colors.onHero : color),
                   const SizedBox(height: 3),
                   Text(
                     label,
@@ -1749,7 +1741,7 @@ class _PriorityPicker extends StatelessWidget {
                       fontFamily: 'bahji',
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: sel ? Colors.white : color,
+                      color: sel ? context.colors.onHero : color,
                     ),
                   ),
                 ]),

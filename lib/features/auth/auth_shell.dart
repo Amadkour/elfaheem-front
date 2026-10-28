@@ -47,7 +47,7 @@ class AuthScaffold extends StatelessWidget {
       builder: (context, l, _) {
         final isWide = MediaQuery.of(context).size.width > 800;
         return BasePage(
-          appBar: ScreenAppBar(title: title, showBack: true,background:context.colors.primary, titleColor: Colors.white,),
+          appBar: ScreenAppBar(title: title, showBack: true,background:context.colors.primary, titleColor: context.colors.onHero,),
           key: pageKey,
           child: isWide
               ? Row(
@@ -224,7 +224,7 @@ class AuthInfoBanner extends StatelessWidget {
 
 // ── Switches ─────────────────────────────────────────────────────────────────
 Gradient _switchGradient(BuildContext context, bool dark) => dark
-    ? const LinearGradient(colors: [Color(0xff0F172A), Color(0xff1E293B)])
+    ? LinearGradient(colors: [context.colors.heroShade, context.colors.heroTint(context.colors.heroShade, 0.12)])
     : context.colors.accentGradient;
 
 class AuthThemeSwitch extends StatelessWidget {
@@ -314,7 +314,7 @@ class AuthPillSwitch extends StatelessWidget {
             gradient: gradient,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(dark ? 80 : 30),
+                color: context.colors.heroShade.withAlpha(dark ? 80 : 30),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -336,8 +336,8 @@ class AuthPillSwitch extends StatelessWidget {
                   width: 30,
                   height: 30,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: context.colors.onHero,
                     shape: BoxShape.circle,
                   ),
                   child: knob,

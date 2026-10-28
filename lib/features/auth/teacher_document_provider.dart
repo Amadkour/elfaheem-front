@@ -158,7 +158,7 @@ class TeacherDocumentProvider extends BaseProvider {
       await loadOverview(email);
       return true;
     } catch (e) {
-      errorMessage = e is ApiException ? e.message : e.toString();
+      errorMessage = ApiException.from(e).message;
       log('_uploadThenAttach ❌ $e');
       return false;
     } finally {
@@ -337,7 +337,7 @@ class TeacherDocumentProvider extends BaseProvider {
       }
       return false;
     } catch (e) {
-      errorMessage = e is ApiException ? e.message : e.toString();
+      errorMessage = ApiException.from(e).message;
       log('finalizeRegistration ❌ $e');
       await loadOverview(email); // refresh so the UI shows what's still missing
       return false;

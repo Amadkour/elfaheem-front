@@ -429,7 +429,7 @@ class InboxCard extends StatelessWidget {
                     constraints: const BoxConstraints(minWidth: 26),
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(20)),
-                    child: Text('$count', textAlign: TextAlign.center, style: appText(12, w: FontWeight.w800, c: Colors.white)),
+                    child: Text('$count', textAlign: TextAlign.center, style: appText(12, w: FontWeight.w800, c: context.colors.onHero)),
                   )
                 else
                   Icon(Icons.chevron_right_rounded, color: c.textLight),
@@ -501,18 +501,18 @@ class InboxSegments extends StatelessWidget {
                     boxShadow: s == value ? [BoxShadow(color: c.primary.withValues(alpha: 0.25), blurRadius: 10, offset: const Offset(0, 4))] : null,
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(_segmentIcon(s), size: 17, color: s == value ? Colors.white : c.textMedium),
+                    Icon(_segmentIcon(s), size: 17, color: s == value ? context.colors.onHero : c.textMedium),
                     const SizedBox(width: 6),
-                    Text(inboxSegmentLabel(s), style: appText(13, w: FontWeight.w800, c: s == value ? Colors.white : c.textMedium)),
+                    Text(inboxSegmentLabel(s), style: appText(13, w: FontWeight.w800, c: s == value ? context.colors.onHero : c.textMedium)),
                     if ((counts[s] ?? 0) > 0) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                         decoration: BoxDecoration(
-                          color: s == value ? Colors.white.withValues(alpha: 0.25) : c.primary.withValues(alpha: 0.12),
+                          color: s == value ? context.colors.onHero.withValues(alpha: 0.25) : c.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text('${counts[s]}', style: appText(11.5, w: FontWeight.w800, c: s == value ? Colors.white : c.primary)),
+                        child: Text('${counts[s]}', style: appText(11.5, w: FontWeight.w800, c: s == value ? context.colors.onHero : c.primary)),
                       ),
                     ],
                   ]),
@@ -647,10 +647,9 @@ class _UnifiedInboxState extends State<UnifiedInbox> {
         if (widget.shrinkWrap) {
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [header, content]);
         }
-        return RefreshIndicator(
+        return AppRefresh(
           onRefresh: _c.load,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(top: 12, bottom: 40),
             children: [header, content],
           ),

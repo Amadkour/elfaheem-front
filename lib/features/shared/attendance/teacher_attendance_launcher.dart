@@ -74,7 +74,7 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
               height: 4,
               margin: const EdgeInsets.only(top: 12, bottom: 12),
               decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
+                  color: context.colors.textLight.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
           Text(attT('att_launch_title'),
               style: const TextStyle(fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
@@ -82,7 +82,7 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
             child: inverted.isEmpty
                 ? Center(
                     child: Text(attT('att_launch_empty'),
-                        style: TextStyle(fontFamily: 'tajawal', color: Colors.grey.shade600)))
+                        style: TextStyle(fontFamily: 'tajawal', color: context.colors.textMedium)))
                 : ListView.separated(
                     controller: scroll,
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),

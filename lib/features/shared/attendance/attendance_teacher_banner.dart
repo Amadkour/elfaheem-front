@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../config/theme/theme_config_provider.dart';
 
 import 'attendance_strings.dart';
 import 'attendance_live_screen.dart';
@@ -43,7 +44,7 @@ class AttendanceTeacherBanner extends StatelessWidget {
 
   Widget _bar(BuildContext context, TeacherAttendanceController t) {
     final closing = t.isClosing;
-    final color = closing ? const Color(0xFFB45309) : const Color(0xFF15803D);
+    final color = closing ? context.colors.heroEnd(context.colors.warning) : context.colors.heroEnd(context.colors.success);
     final code = t.code?.code ?? '';
     return Directionality(
       textDirection: Directionality.of(context),
@@ -60,24 +61,24 @@ class AttendanceTeacherBanner extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(children: [
                 Icon(closing ? Icons.lock_clock_rounded : Icons.sensors_rounded,
-                    color: Colors.white, size: 20),
+                    color: context.colors.onHero, size: 20),
                 const SizedBox(width: 10),
                 if (!closing && t.usesCode && code.length == 6)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
+                        color: context.colors.onHero.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
                     child: Text('${code.substring(0, 3)} ${code.substring(3)}',
-                        style: const TextStyle(
-                            fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 2, color: Colors.white)),
+                        style: TextStyle(
+                            fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: 2, color: context.colors.onHero)),
                   )
                 else
                   Flexible(
                     child: Text(
                       closing ? attT('att_t_closing', args: {'n': '${t.closingLeft}'}) : attT('att_t_running'),
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w700, color: context.colors.onHero),
                     ),
                   ),
                 if (t.lessonTitle != null && t.lessonTitle!.isNotEmpty) ...[
@@ -87,30 +88,36 @@ class AttendanceTeacherBanner extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontFamily: 'tajawal', fontSize: 12, color: Colors.white.withValues(alpha: 0.9))),
+                            fontFamily: 'tajawal', fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.9))),
                   ),
                 ],
                 const Spacer(),
-                const Icon(Icons.people_alt_rounded, color: Colors.white, size: 17),
+                Icon(Icons.people_alt_rounded, color: context.colors.onHero, size: 17),
                 const SizedBox(width: 4),
                 Text('${t.code?.presentCount ?? 0}',
-                    style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.white, fontSize: 15)),
+                    style: TextStyle(fontWeight: FontWeight.w900, color: context.colors.onHero, fontSize: 15)),
                 if (!closing) ...[
                   const SizedBox(width: 10),
-                  const Icon(Icons.timer_outlined, color: Colors.white, size: 16),
+                  Icon(Icons.timer_outlined, color: context.colors.onHero, size: 16),
                   const SizedBox(width: 3),
                   Text(_mmss(t.registrationLeft),
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w800, color: context.colors.onHero)),
                 ],
                 if (!closing)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      t.close();
-                    },
-                    icon: const Icon(Icons.stop_circle_rounded, color: Colors.white, size: 24),
+                  // No tooltip here (no Overlay above the Navigator): the label goes to screen readers only.
+                  Semantics(
+                    button: true,
+                    label: MaterialLocalizations.of(context).closeButtonTooltip,
+                    excludeSemantics: true,
+                    child: IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        t.close();
+                      },
+                      icon: Icon(Icons.stop_circle_rounded, color: context.colors.onHero, size: 24),
+                    ),
                   ),
               ]),
             ),

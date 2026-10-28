@@ -214,10 +214,10 @@ class _CalTimeGridState extends State<CalTimeGrid> {
                     width: gutter,
                     child: Stack(children: [
                       for (var h = 1; h < 24; h++)
-                        Positioned(
+                        PositionedDirectional(
                           top: h * hh - 7,
-                          left: 0,
-                          right: 4,
+                          start: 0,
+                          end: 4,
                           child: Text(AppTime.clockMinutes(h * 60),
                               textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.clip, style: appText(9.5, c: c.textLight)),
                         ),
@@ -268,7 +268,7 @@ class _DayHead extends StatelessWidget {
             height: 28,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
-            child: Text('${day.day}', style: appText(14, w: FontWeight.w800, c: today ? Colors.white : c.textDark)),
+            child: Text('${day.day}', style: appText(14, w: FontWeight.w800, c: today ? context.colors.onHero : c.textDark)),
           ),
         ]),
       ),
@@ -362,9 +362,9 @@ class _DayColumnState extends State<_DayColumn> {
               final h = ((p.bottom - p.top) / 60 * hh - 2).clamp(16.0, 24 * hh);
               final left = 1 + w * p.col / p.cols;
               final bw = w / p.cols - 1;
-              return Positioned(
+              return PositionedDirectional(
                 top: top,
-                left: left,
+                start: left,
                 width: bw,
                 height: h,
                 child: _draggable(
@@ -552,7 +552,7 @@ class _MonthCell extends StatelessWidget {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
                   child: Text('${day.day}',
-                      style: appText(11.5, w: FontWeight.w800, c: today ? Colors.white : (inMonth ? c.textDark : c.textLight))),
+                      style: appText(11.5, w: FontWeight.w800, c: today ? context.colors.onHero : (inMonth ? c.textDark : c.textLight))),
                 ),
               ),
               const SizedBox(height: 2),

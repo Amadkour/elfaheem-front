@@ -14,11 +14,6 @@ import '../../config/app_config.dart';
 import '../../utils/widget/primary_menue.dart' show MyPrimaryMenu;
 import 'auth_provider.dart';
 
-// ── Brand colours ─────────────────────────────────────────────────────────────
-const _kBrandLight = Color(0xFFEBF1FD);
-const _kBorder = Color(0xFFE5E7EB);
-const _kMuted = Color(0xFF6B7280);
-
 // ── 1. Sidebar (web only) ─────────────────────────────────────────────────────
 class AuthSidebar extends StatelessWidget {
   const AuthSidebar({super.key});
@@ -68,10 +63,10 @@ class AuthSidebar extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: context.colors.onHero.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: context.colors.onHero.withValues(alpha: 0.2),
                           ),
                         ),
                         child: id.logoUrl != null
@@ -82,9 +77,9 @@ class AuthSidebar extends StatelessWidget {
                                   fit: BoxFit.contain,
                                 ),
                               )
-                            : const Icon(
+                            : Icon(
                                 Icons.layers_rounded,
-                                color: Colors.white,
+                                color: context.colors.onHero,
                                 size: 22,
                               ),
                       ),
@@ -97,8 +92,8 @@ class AuthSidebar extends StatelessWidget {
                               id.name.isNotEmpty ? id.name : 'El-faheem',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: context.colors.onHero,
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                                 fontFamily: 'tajawal',
@@ -111,7 +106,7 @@ class AuthSidebar extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: context.colors.onHero.withValues(alpha: 0.5),
                                 fontSize: 11,
                                 letterSpacing: 1.2,
                                 fontFamily: 'tajawal',
@@ -128,8 +123,8 @@ class AuthSidebar extends StatelessWidget {
                   // Headline
                   Text(
                     'unlock_potential'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'tajawal',
@@ -144,7 +139,7 @@ class AuthSidebar extends StatelessWidget {
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                      color: context.colors.onHero.withValues(alpha: 0.65),
                       fontSize: 14,
                       fontFamily: 'tajawal',
                       height: 1.7,
@@ -213,7 +208,7 @@ class Circle extends StatelessWidget {
     height: size,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: opacity),
+      color: context.colors.onHero.withValues(alpha: opacity),
     ),
   );
 }
@@ -231,17 +226,17 @@ class _SidebarFeature extends StatelessWidget {
         width: 32,
         height: 32,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
+          color: context.colors.onHero.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(icon, size: 16, color: Colors.white),
+        child: Icon(icon, size: 16, color: context.colors.onHero),
       ),
       const SizedBox(width: 12),
       Expanded(
         child: Text(
           text,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
+            color: context.colors.onHero.withValues(alpha: 0.8),
             fontSize: 13,
             fontFamily: 'tajawal',
           ),
@@ -262,9 +257,9 @@ class _SidebarStat extends StatelessWidget {
     constraints: const BoxConstraints(minWidth: 96, maxWidth: 160),
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.10),
+      color: context.colors.onHero.withValues(alpha: 0.10),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      border: Border.all(color: context.colors.onHero.withValues(alpha: 0.16)),
     ),
     child: Column(
       mainAxisSize: MainAxisSize.min,
@@ -275,8 +270,8 @@ class _SidebarStat extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textDirection: TextDirection.ltr,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: context.colors.onHero,
             fontSize: 22,
             fontWeight: FontWeight.w800,
             fontFamily: 'tajawal',
@@ -288,7 +283,7 @@ class _SidebarStat extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.72),
+            color: context.colors.onHero.withValues(alpha: 0.72),
             fontSize: 11.5,
             fontFamily: 'tajawal',
             height: 1.3,
@@ -308,9 +303,9 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.1),
+      color: context.colors.onHero.withValues(alpha: 0.1),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+      border: Border.all(color: context.colors.onHero.withValues(alpha: 0.15)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -327,7 +322,7 @@ class _TrustBadge extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white,
+            color: context.colors.onHero,
             fontSize: 11,
             fontWeight: FontWeight.w700,
             fontFamily: 'tajawal',
@@ -349,7 +344,7 @@ class ScreenIcon extends StatelessWidget {
     width: 52,
     height: 52,
     decoration: BoxDecoration(
-      color: _kBrandLight,
+      color: context.colors.primaryTint,
       borderRadius: BorderRadius.circular(16),
     ),
     child: Icon(icon, color: context.colors.accent, size: 26),
@@ -387,7 +382,7 @@ class IconTextField extends StatelessWidget {
             color: context.colors.textDark,
           ),
           decoration: InputDecoration(
-            prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+            prefixIcon: Icon(icon, size: 18, color: context.colors.textLight),
             hintText: label,
             hintStyle: TextStyle(
               fontFamily: 'tajawal',
@@ -402,11 +397,11 @@ class IconTextField extends StatelessWidget {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _kBorder, width: 1.5),
+              borderSide: BorderSide(color: context.colors.divider, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _kBorder, width: 1.5),
+              borderSide: BorderSide(color: context.colors.divider, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -471,10 +466,10 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             color: context.colors.textDark,
           ),
           decoration: InputDecoration(
-            prefixIcon: const Icon(
+            prefixIcon: Icon(
               Icons.lock_outline_rounded,
               size: 18,
-              color: Color(0xFF9CA3AF),
+              color: context.colors.textLight,
             ),
             suffixIcon: GestureDetector(
               onTap: () {
@@ -486,7 +481,7 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 size: 18,
-                color: const Color(0xFF9CA3AF),
+                color: context.colors.textLight,
               ),
             ),
             hintText: 'XXXXXXXX',
@@ -503,11 +498,11 @@ class _IconPasswordFieldState extends State<IconPasswordField> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _kBorder, width: 1.5),
+              borderSide: BorderSide(color: context.colors.divider, width: 1.5),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
-              borderSide: const BorderSide(color: _kBorder, width: 1.5),
+              borderSide: BorderSide(color: context.colors.divider, width: 1.5),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(14),
@@ -534,11 +529,11 @@ class SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     label.toUpperCase(),
-    style: const TextStyle(
+    style: TextStyle(
       fontFamily: 'tajawal',
       fontSize: 11,
       fontWeight: FontWeight.w600,
-      color: _kMuted,
+      color: context.colors.textMedium,
       letterSpacing: 0.8,
     ),
   );
@@ -563,10 +558,10 @@ class LinkRow extends StatelessWidget {
     children: [
       Text(
         message,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'tajawal',
           fontSize: 14,
-          color: _kMuted,
+          color: context.colors.textMedium,
         ),
       ),
       const SizedBox(width: 4),
@@ -603,10 +598,10 @@ class ProgressBar extends StatelessWidget {
       final done = i <= currentStep;
       return Expanded(
         child: Container(
-          margin: EdgeInsets.only(right: i < totalSteps - 1 ? 6 : 0),
+          margin: EdgeInsetsDirectional.only(end: i < totalSteps - 1 ? 6 : 0),
           height: 4,
           decoration: BoxDecoration(
-            color: done ? context.colors.primary : _kBorder,
+            color: done ? context.colors.primary : context.colors.divider,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -646,7 +641,7 @@ class RolePicker extends StatelessWidget {
                 color: context.colors.inputBg,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isSelected ? context.colors.primary : _kBorder,
+                  color: isSelected ? context.colors.primary : context.colors.divider,
                   width: isSelected ? 2 : 1.5,
                 ),
               ),
@@ -658,14 +653,14 @@ class RolePicker extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? context.colors.primary.withValues(alpha: 0.15)
-                          : const Color(0xFF9CA3AF).withValues(alpha: 0.1),
+                          : context.colors.textLight.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       role['text'] == 'teacher'
                           ? Icons.cast_for_education_outlined
                           : Icons.school_outlined,
-                      color: isSelected ? context.colors.primary : _kMuted,
+                      color: isSelected ? context.colors.primary : context.colors.textMedium,
                       size: 20,
                     ),
                   ),
@@ -716,14 +711,14 @@ class StyledDropdown extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.inputBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kBorder, width: 1.5),
+        border: Border.all(color: context.colors.divider, width: 1.5),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(0, 20, 10, 0),
-            child: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+            child: Icon(icon, size: 18, color: context.colors.textLight),
           ),
           Expanded(
             child: Padding(
@@ -755,17 +750,17 @@ class LangRow extends StatelessWidget {
       children: provider.languages.map<Widget>((l) {
         final isActive = AppConfig.lang == l;
         return Padding(
-          padding: const EdgeInsets.only(right: 8),
+          padding: const EdgeInsetsDirectional.only(end: 8),
           child: GestureDetector(
             onTap: () => provider.changeLang(l),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: isActive ? _kBrandLight : context.colors.inputBg,
+                color: isActive ? context.colors.primaryTint : context.colors.inputBg,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isActive ? context.colors.primary : _kBorder,
+                  color: isActive ? context.colors.primary : context.colors.divider,
                   width: 1.5,
                 ),
               ),
@@ -775,7 +770,7 @@ class LangRow extends StatelessWidget {
                   Icon(
                     Icons.language_rounded,
                     size: 14,
-                    color: isActive ? context.colors.primary : _kMuted,
+                    color: isActive ? context.colors.primary : context.colors.textMedium,
                   ),
                   const SizedBox(width: 6),
                   Text(
@@ -784,7 +779,7 @@ class LangRow extends StatelessWidget {
                       fontFamily: 'tajawal',
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
-                      color: isActive ? context.colors.primary : _kMuted,
+                      color: isActive ? context.colors.primary : context.colors.textMedium,
                     ),
                   ),
                 ],

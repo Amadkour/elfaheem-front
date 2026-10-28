@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -17,7 +18,6 @@ import 'package:flutter_education_app/utils/helpers.dart';
 import '../../../core/offline/offline_strings.dart';
 import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../exam_engine/offline/offline_exam_screen.dart';
 import '../../admin/admin_common.dart' show t;
 
@@ -154,6 +154,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           leading: canPop
               ? null
               : IconButton(
+                  tooltip: offlineT('dl_go_home'),
                   icon: const Icon(Icons.home_rounded),
                   onPressed: _goHome,
                 ),
@@ -199,11 +200,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 : _tab == 1
                 ? const OfflineAttendanceTab()
                 : _loading
-            ? const Center(child: AppLoadingIndicator(size: 56))
-            : RefreshIndicator(
+            ? const AppListSkeleton()
+            : AppRefresh(
                 onRefresh: _load,
                 child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                   children: [
                     // Connection status card
@@ -336,8 +336,8 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [c.primary, c.primary.withValues(alpha: 0.75)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
         ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: c.primaryShadow,
@@ -348,10 +348,10 @@ class _SummaryCard extends StatelessWidget {
           height: 46,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.18),
+            color: context.colors.onHero.withValues(alpha: 0.18),
           ),
-          child: const Icon(Icons.download_done_rounded,
-              color: Colors.white, size: 26),
+          child: Icon(Icons.download_done_rounded,
+              color: context.colors.onHero, size: 26),
         ),
         const SizedBox(width: 14),
         Expanded(
@@ -359,10 +359,10 @@ class _SummaryCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('$count ${offlineT('dl_videos_count')}',
-                  style: c.h4.copyWith(color: Colors.white)),
+                  style: c.h4.copyWith(color: context.colors.onHero)),
               const SizedBox(height: 2),
               Text('${offlineT('dl_storage_used')}: $sizeLabel',
-                  style: c.caption.copyWith(color: Colors.white70)),
+                  style: c.caption.copyWith(color: context.colors.onHeroMuted)),
             ],
           ),
         ),
@@ -441,6 +441,7 @@ class _DownloadTile extends StatelessWidget {
                 ),
               ),
               IconButton(
+                tooltip: AppConfig.lang == 'ar' ? 'حذف' : 'Delete',
                 onPressed: onDelete,
                 icon: Icon(Icons.delete_outline_rounded, color: c.danger),
               ),

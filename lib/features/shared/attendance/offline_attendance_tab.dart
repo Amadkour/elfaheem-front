@@ -6,7 +6,7 @@ library;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -36,23 +36,11 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
       future: _future,
       builder: (_, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Center(child: AppLoadingIndicator(size: 56));
+          return const AppListSkeleton();
         }
         final courses = AttendanceStore.instance.cachedCourses;
         if (courses.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(CupertinoIcons.person_crop_circle_badge_checkmark,
-                    size: 56, color: primary.withValues(alpha: 0.5)),
-                const SizedBox(height: 14),
-                Text(attT('att_courses_empty'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'tajawal', color: context.colors.textMedium, height: 1.5)),
-              ]),
-            ),
-          );
+          return AppEmpty(icon: CupertinoIcons.person_crop_circle_badge_checkmark, title: attT('att_courses_empty'));
         }
         return ListView.separated(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),

@@ -13,10 +13,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -138,11 +138,11 @@ class _HeroPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = highlight ? c.charcoalDark : Colors.white;
+    final fg = highlight ? c.charcoalDark : context.colors.onHero;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: highlight ? c.accent : Colors.white.withValues(alpha: 0.18),
+        color: highlight ? c.accent : context.colors.onHero.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -162,10 +162,10 @@ class _Hero extends StatelessWidget {
   final String? subtitle;
   final List<Widget> pills;
 
-  Widget _blob(double size, double alpha) => Container(
+  Widget _blob(BuildContext context, double size, double alpha) => Container(
     width: size,
     height: size,
-    decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withValues(alpha: alpha)),
+    decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.onHero.withValues(alpha: alpha)),
   );
 
   @override
@@ -181,8 +181,8 @@ class _Hero extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(c.radiusXL),
         child: Stack(children: [
-          PositionedDirectional(end: -50, top: -50, child: _blob(170, 0.07)),
-          PositionedDirectional(start: -40, bottom: -60, child: _blob(140, 0.06)),
+          PositionedDirectional(end: -50, top: -50, child: _blob(context, 170, 0.07)),
+          PositionedDirectional(start: -40, bottom: -60, child: _blob(context, 140, 0.06)),
           Padding(
             padding: const EdgeInsets.fromLTRB(22, 28, 22, 24),
             child: Column(children: [
@@ -190,12 +190,12 @@ class _Hero extends StatelessWidget {
               const SizedBox(height: 16),
               Text(title,
                   textAlign: TextAlign.center,
-                  style: c.h2.copyWith(fontSize: 26, fontWeight: FontWeight.w800, color: Colors.white, height: 1.25)),
+                  style: c.h2.copyWith(fontSize: 26, fontWeight: FontWeight.w800, color: context.colors.onHero, height: 1.25)),
               if ((subtitle ?? '').isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(subtitle!,
                     textAlign: TextAlign.center,
-                    style: _b(context, size: 14.5, height: 1.6, color: Colors.white.withValues(alpha: 0.9))),
+                    style: _b(context, size: 14.5, height: 1.6, color: context.colors.onHero.withValues(alpha: 0.9))),
               ],
               if (pills.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -346,7 +346,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Widget _buildBody(AboutTermsProvider p, bool isWide) {
     if (p.about == null && p.aboutError == null) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(items: 5, withAvatar: false);
     }
     if (p.aboutError != null && p.about == null) {
       return _ErrorState(
@@ -359,13 +359,12 @@ class _AboutScreenState extends State<AboutScreen> {
 
     Widget gap(Widget w) => Padding(padding: const EdgeInsets.only(bottom: 30), child: w);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () async {
         await p.loadAbout(context, forceRefresh: true);
         await AppIdentity.instance.refresh();
       },
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
         child: Align(
           alignment: Alignment.topCenter,
           child: ConstrainedBox(
@@ -440,11 +439,11 @@ class _AboutHero extends StatelessWidget {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.22),
+            color: context.colors.onHero.withValues(alpha: 0.22),
             border: Border.all(color: c.accent.withValues(alpha: 0.9), width: 2),
           ),
           child: Container(
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.onHero),
             child: logo != null && logo.isNotEmpty
                 ? ClipOval(child: AppNetworkImage(url: logo, fit: BoxFit.cover))
                 : Icon(Icons.school_rounded, size: 50, color: c.primary),
@@ -636,8 +635,9 @@ class _TeamCard extends StatelessWidget {
             ),
           ),
           IconButton.filled(
-            style: IconButton.styleFrom(backgroundColor: Colors.black54),
-            icon: const Icon(Icons.close_rounded, color: Colors.white),
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            style: IconButton.styleFrom(backgroundColor: context.colors.heroShade.withValues(alpha: 0.54)),
+            icon: Icon(Icons.close_rounded, color: context.colors.onHero),
             onPressed: () => Navigator.pop(ctx),
           ),
         ]),
@@ -968,7 +968,7 @@ class _TermsScreenState extends State<TermsScreen> {
 
   Widget _buildBody(AboutTermsProvider p) {
     if (p.terms == null && p.termsError == null) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(items: 5, withAvatar: false);
     }
     if (p.termsError != null && p.terms == null) {
       return _ErrorState(
@@ -982,10 +982,9 @@ class _TermsScreenState extends State<TermsScreen> {
     final visible = terms.sections.where(_matches).toList();
     final allOpen = visible.isNotEmpty && visible.every((s) => _expanded.contains(s.id));
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => p.loadTerms(context, forceRefresh: true),
       child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Align(
           alignment: Alignment.topCenter,
@@ -1013,6 +1012,7 @@ class _TermsScreenState extends State<TermsScreen> {
                       suffixIcon: _q.isEmpty
                           ? null
                           : IconButton(
+                        tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
                         icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
                         onPressed: () => setState(() {
                           _search.clear();
@@ -1102,11 +1102,11 @@ class _TermsHero extends StatelessWidget {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
+          color: context.colors.onHero.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(c.radiusLarge),
           border: Border.all(color: c.accent.withValues(alpha: 0.85), width: 1.5),
         ),
-        child: const Icon(Icons.gavel_rounded, color: Colors.white, size: 34),
+        child: Icon(Icons.gavel_rounded, color: context.colors.onHero, size: 34),
       ),
       title: 'terms_and_conditions'.tr,
       subtitle: 'terms_intro'.tr,

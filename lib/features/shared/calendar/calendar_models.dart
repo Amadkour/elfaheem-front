@@ -233,7 +233,7 @@ IconData calSourceIcon(String s) => switch (s) {
 /// One colour per source (private meetings get the accent so "just me" stands out).
 Color calSourceColor(ThemeConfigProvider c, String source, {String? kind}) => switch (source) {
       'meeting' => kind == 'private' ? c.accent : c.primary,
-      'timetable' => kind == 'lab' ? const Color(0xFF0E9F8E) : const Color(0xFF0B7FAB),
+      'timetable' => kind == 'lab' ? c.accent2 : Color.lerp(c.primary, c.accent2, 0.45)!,
       'extra' => c.warning,
       'exam' => c.danger,
       'course_session' => c.purple,

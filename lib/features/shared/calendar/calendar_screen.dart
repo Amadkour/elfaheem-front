@@ -240,9 +240,9 @@ class _CalendarViewState extends State<CalendarView> {
           heroTag: 'cal_add',
           onPressed: () => _add(),
           backgroundColor: c.primary,
-          foregroundColor: Colors.white,
+          foregroundColor: context.colors.onHero,
           icon: const Icon(Icons.add_rounded),
-          label: Text(t('اجتماع', 'Meeting'), style: appText(14, w: FontWeight.w700, c: Colors.white)),
+          label: Text(t('اجتماع', 'Meeting'), style: appText(14, w: FontWeight.w700, c: context.colors.onHero)),
         ),
       ),
     ]);
@@ -333,7 +333,6 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     final views = Wrap(spacing: 6, runSpacing: 6, children: [
       for (final (v, label) in [
         (CalView.day, t('يوم', 'Day')),
@@ -350,11 +349,11 @@ class _Toolbar extends StatelessWidget {
           IconButton(
               tooltip: t('السابق', 'Previous'),
               onPressed: onPrev,
-              icon: Icon(rtl ? Icons.chevron_right_rounded : Icons.chevron_left_rounded)),
+              icon: const Icon(Icons.chevron_left_rounded)),   // matchTextDirection: points right in Arabic
           IconButton(
               tooltip: t('التالي', 'Next'),
               onPressed: onNext,
-              icon: Icon(rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded)),
+              icon: const Icon(Icons.chevron_right_rounded)),
           Expanded(
             child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(16, w: FontWeight.w800, c: c.textDark)),
           ),

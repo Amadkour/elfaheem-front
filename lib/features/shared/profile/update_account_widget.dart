@@ -4,6 +4,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:image_picker/image_picker.dart';
@@ -203,14 +204,14 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) _showSnack(e.toString(), context.colors.danger);
+      if (mounted) _showSnack(ApiException.from(e).message, context.colors.danger);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   void _showSnack(String msg, Color color) =>
-      showAppNotice(msg);
+      showAppNotice(msg, error: color == context.colors.danger);
 
   @override
   Widget build(BuildContext context) {
@@ -373,7 +374,7 @@ class _PremiumTabSwitcher extends StatelessWidget {
                     Icon(
                       tab.icon,
                       size: 17,
-                      color: isActive ? Colors.white : c.textLight,
+                      color: isActive ? context.colors.onHero : c.textLight,
                     ),
                     const SizedBox(width: 7),
                     Flexible(
@@ -385,7 +386,7 @@ class _PremiumTabSwitcher extends StatelessWidget {
                           fontFamily: 'bahji',
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
-                          color: isActive ? Colors.white : c.textLight,
+                          color: isActive ? context.colors.onHero : c.textLight,
                         ),
                       ),
                     ),
@@ -436,9 +437,9 @@ class _DocumentsTabView extends StatelessWidget {
                         gradient: c.primaryGradient,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.description_outlined,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                         size: 20,
                       ),
                     ),
@@ -492,8 +493,8 @@ class _MobileHero extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [c.primary, c.primary],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
         ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(32),
@@ -511,12 +512,18 @@ class _MobileHero extends StatelessWidget {
         children: [
           // ── Back button ────────────────────────────────────────────────
           Align(
-            alignment: Alignment.topRight,
-            child: GestureDetector(
+            alignment: AlignmentDirectional.topStart,
+            child: Semantics(
+              button: true,
+              label: MaterialLocalizations.of(context).backButtonTooltip,
+              child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () => Navigator.of(context).maybePop(),
               child: Container(
-                width: 42,
-                height: 42,
+                width: 48,                       // 48 px touch target, the visible well stays 42
+                height: 48,
+                padding: const EdgeInsets.all(3),
+                child: Container(
                 decoration: BoxDecoration(
                   color: context.colors.cardBg,
                   borderRadius: BorderRadius.circular(14),
@@ -528,6 +535,8 @@ class _MobileHero extends StatelessWidget {
                   size: 22,
                 ),
               ),
+              ),
+            ),
             ),
           ),
 
@@ -546,11 +555,11 @@ class _MobileHero extends StatelessWidget {
           // ── Name ────────────────────────────────────────────────────────
           Text(
             p.name.isNotEmpty ? p.name : '—',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 20,
               fontWeight: FontWeight.w700,
-              color: Colors.white,
+              color: context.colors.onHero,
             ),
           ),
           const SizedBox(height: 4),
@@ -559,7 +568,7 @@ class _MobileHero extends StatelessWidget {
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.75),
+              color: context.colors.onHero.withValues(alpha: 0.75),
             ),
           ),
         ],

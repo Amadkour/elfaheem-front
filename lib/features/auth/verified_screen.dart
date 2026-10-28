@@ -22,6 +22,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -594,19 +595,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     }
   }
 
-  void _snack(String msg, {bool error = false}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(msg),
-          backgroundColor: error
-              ? context.colors.danger
-              : context.colors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-  }
+  void _snack(String msg, {bool error = false}) => showAppNotice(msg, error: error);
 
   // ═══════════════════════════════════════════════════════════════════════
   //  UI
@@ -1046,7 +1035,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
       Center(
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: context.colors.onHero,
             // QR codes need a light background, also in dark mode
             borderRadius: BorderRadius.circular(c.radiusMedium),
             border: Border.all(
@@ -1065,7 +1054,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
             data: url,
             size: 190,
             padding: const EdgeInsets.all(12),
-            backgroundColor: Colors.white,
+            backgroundColor: context.colors.onHero,
           ),
         ),
       ),

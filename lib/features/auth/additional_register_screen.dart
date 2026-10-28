@@ -469,7 +469,7 @@ class _RequirementRow extends StatelessWidget {
                           ),
                           if (requirement.isRequired)
                             Container(
-                              margin: const EdgeInsets.only(right: 6),
+                              margin: const EdgeInsetsDirectional.only(start: 6),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 7,
                                 vertical: 2,
@@ -638,7 +638,7 @@ class _UploadButton extends StatelessWidget {
             child: Icon(
               fulfilled ? Icons.refresh_rounded : Icons.cloud_upload_outlined,
               size: 18,
-              color: fulfilled ? c.primary : Colors.white,
+              color: fulfilled ? c.primary : context.colors.onHero,
             ),
           ),
         ),
@@ -972,19 +972,19 @@ class _CustomDocEntryRow extends StatelessWidget {
                       : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.upload_file_outlined,
                         size: 16,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'upload_document'.tr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                         ),
                       ),
                     ],
@@ -1161,10 +1161,10 @@ class _DocThumbnail extends StatelessWidget {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: context.colors.heroShade,
           appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: context.colors.heroShade,
+            iconTheme: IconThemeData(color: context.colors.onHero),
           ),
           body: Center(
             child: InteractiveViewer(

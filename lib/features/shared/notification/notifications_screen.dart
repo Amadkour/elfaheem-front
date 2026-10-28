@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -33,44 +34,91 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       key: ValueKey('notifications'),
       useWebCard: true,
       child: SafeArea(
-        child: provider.isLoading
-            ? const Center(
-          child: AppLoadingIndicator(size: 64),
-        )
-            : Column(
+        child: Column(
           children: [
             ScreenAppBar(title: 'notifications'.tr, actions: [AppRefreshAction(onRefresh: provider.fetchNotifications)]),
             Expanded(
-              child: AppRefresh(
+              child: NotificationsStateBody(
+                loading: provider.isLoading,
+                empty: provider.allNotifs.isEmpty,
+                error: provider.hasError ? (provider.errorMessage ?? '') : null,
                 onRefresh: provider.fetchNotifications,
-                scrollable: provider.allNotifs.isNotEmpty,
-                child: provider.allNotifs.isEmpty
-                  ? Center(
-                child: Icon(
-                  Icons.notifications_active_rounded,
-                  size: 50,
-                  color: context.colors.primary,
-                ),
-              )
-                  : ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                physics: const BouncingScrollPhysics(),
+                onLoadMore: provider.hasMore ? () => provider.loadMore() : null,
                 children: [
-                  const SizedBox(height: 8),
                   ParentComponent(featureKey: 'notifications.today', child: _NotifGroup(
                     group: NotifGroup.today,
                     groupTitle: 'today'.tr,
                   )),
-                  const SizedBox(height: 20),
                   ParentComponent(featureKey: 'notifications.yesterday', child: _NotifGroup(
                     group: NotifGroup.yesterday,
                     groupTitle: 'yesterday'.tr,
                   )),
-                  const SizedBox(height: 24),
                 ],
               ),
-              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The list area of the notifications page over plain values: skeleton on the first load, the server's error with
+/// a retry, a real empty state, else the groups with pull-to-refresh and the next page fetched near the end.
+class NotificationsStateBody extends StatelessWidget {
+  const NotificationsStateBody({
+    super.key,
+    required this.loading,
+    required this.empty,
+    required this.error,
+    required this.onRefresh,
+    required this.children,
+    this.onLoadMore,
+  });
+
+  final bool loading;
+  final bool empty;
+  final String? error;
+  final Future<void> Function() onRefresh;
+  final VoidCallback? onLoadMore;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    if (empty && loading) return const AppListSkeleton();
+    if (empty && error != null) {
+      return AppRefresh(
+        onRefresh: onRefresh,
+        scrollable: false,
+        child: ErrorRetry(message: error!.isEmpty ? (AppConfig.lang == 'ar' ? 'تعذّر تحميل الإشعارات' : 'Could not load notifications') : error!, onRetry: onRefresh),
+      );
+    }
+    if (empty) {
+      return AppRefresh(
+        onRefresh: onRefresh,
+        scrollable: false,
+        child: AppEmpty(
+          icon: Icons.notifications_none_rounded,
+          title: AppConfig.lang == 'ar' ? 'لا توجد إشعارات' : 'No notifications yet',
+          message: AppConfig.lang == 'ar' ? 'ستظهر هنا رسائل المنصة والدورات' : 'Platform and course messages will appear here',
+        ),
+      );
+    }
+    return NotificationListener<ScrollNotification>(
+      onNotification: (n) {
+        if (onLoadMore != null && !loading && n.metrics.extentAfter < 300) onLoadMore!();
+        return false;
+      },
+      child: AppRefresh(
+        onRefresh: onRefresh,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          physics: const BouncingScrollPhysics(),
+          children: [
+            const SizedBox(height: 8),
+            for (final w in children) ...[w, const SizedBox(height: 20)],
+            if (loading) const AppListSkeleton(items: 2, padding: EdgeInsets.zero),
+            const SizedBox(height: 4),
           ],
         ),
       ),
@@ -93,6 +141,7 @@ class _NotifGroup extends StatelessWidget {
     List<NotificationModel> notifs = group == NotifGroup.today
         ? provider.todayNotifs
         : provider.yesterdayNotifs;
+    if (notifs.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -100,9 +149,10 @@ class _NotifGroup extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(groupTitle, style: context.colors.h2),
-            ParentComponent(featureKey: 'notifications.mark_all_read', child: GestureDetector(
-              onTap: () async {
+            Expanded(child: Text(groupTitle, style: context.colors.h2)),
+            ParentComponent(featureKey: 'notifications.mark_all_read', child: TextButton(
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+              onPressed: () async {
                 // FIX: capture provider before the async gap so we never
                 // access context after notifyListeners() may deactivate
                 // this widget.
@@ -272,11 +322,11 @@ class _NewBadgeIcon extends StatelessWidget {
         color: context.colors.danger,
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Center(
+      child: Center(
         child: Text(
           'NEW',
           style: TextStyle(
-            color: Colors.white,
+            color: context.colors.onHero,
             fontWeight: FontWeight.w900,
             fontSize: 12,
             fontFamily: 'tajawal',

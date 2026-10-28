@@ -194,6 +194,18 @@ class CategoriesProvider extends BaseProvider {
     notifyListeners();
   }
 
+  /// Pull-to-refresh: the categories again, then whatever course list is on screen (same calls as before).
+  Future<void> refresh() async {
+    await fetchCategories();
+    if (isSearching) {
+      await _runSearch();
+    } else if (_selectedId != null) {
+      await _fetchCoursesFor(_selectedId!);
+    } else if (_courses.isNotEmpty) {
+      await _fetchAllCourses();
+    }
+  }
+
   // ── selectCategory ──────────────────────────────────────────────────────
 
   Future<void> selectCategory(String id) async {

@@ -29,7 +29,7 @@ import '../session/video/video_player_screen.dart';
 import 'course_profile_actions.dart';
 import 'course_profile_announcements.dart' show CpAnnouncementCard;
 import 'course_profile_models.dart';
-import 'course_profile_screen.dart' show cpCall;
+import 'course_profile_screen.dart' show cpCall, cpErrorMessage;
 
 const _base = '/api/v1/course-profile';
 String _pct(dynamic v) => v is num ? '${v.round()}%' : '—';
@@ -674,7 +674,7 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
           queryParams: p.pastVersion && p.runId != null ? {'run_id': p.runId} : null);
       if (mounted) setState(() => _a = CpAttendance(Map<String, dynamic>.from(r as Map)));
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = cpErrorMessage(e));
     }
   }
 
@@ -831,7 +831,7 @@ class _CpAttendanceTabState extends State<CpAttendanceTab> {
         ));
       }
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         head,

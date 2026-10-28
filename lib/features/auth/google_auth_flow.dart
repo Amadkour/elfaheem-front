@@ -478,7 +478,7 @@ class _JoinCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
+                child: Icon(Icons.bolt_rounded, color: context.colors.onHero, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -624,7 +624,7 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
     final c = context.colors;
     final dark = c.isDark;
     const r = 18.0;
-    final surface = dark ? c.inputBg : Colors.white;
+    final surface = dark ? c.inputBg : context.colors.onHero;
 
     return AnimatedScale(
       scale: _down ? 0.975 : 1,
@@ -652,7 +652,7 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
               offset: const Offset(0, 10),
             ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: dark ? 0.30 : 0.05),
+              color: context.colors.heroShade.withValues(alpha: dark ? 0.30 : 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -683,9 +683,9 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    Colors.white.withValues(alpha: 0),
-                                    Colors.white.withValues(alpha: dark ? 0.07 : 0.65),
-                                    Colors.white.withValues(alpha: 0),
+                                    context.colors.onHero.withValues(alpha: 0),
+                                    context.colors.onHero.withValues(alpha: dark ? 0.07 : 0.65),
+                                    context.colors.onHero.withValues(alpha: 0),
                                   ],
                                   stops: const [0.35, 0.5, 0.65],
                                   transform: _SlideGradient(slide),
@@ -718,11 +718,11 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
                             width: 38,
                             height: 38,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: context.colors.onHero,
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.10),
+                                  color: context.colors.heroShade.withValues(alpha: 0.10),
                                   blurRadius: 10,
                                   offset: const Offset(0, 3),
                                 ),
@@ -818,7 +818,7 @@ class _GoogleCircleButtonState extends State<GoogleCircleButton> {
                   offset: const Offset(0, 8),
                 ),
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: dark ? 0.30 : 0.06),
+                  color: context.colors.heroShade.withValues(alpha: dark ? 0.30 : 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -826,7 +826,7 @@ class _GoogleCircleButtonState extends State<GoogleCircleButton> {
             ),
             child: ClipOval(
               child: Material(
-                color: dark ? c.inputBg : Colors.white,
+                color: dark ? c.inputBg : context.colors.onHero,
                 child: InkWell(
                   onTap: widget.loading ? null : widget.onPressed,
                   onHighlightChanged: (v) => setState(() => _down = v),
@@ -1105,11 +1105,11 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                           width: 58,
                           height: 58,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: context.colors.onHero,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.10),
+                                color: context.colors.heroShade.withValues(alpha: 0.10),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -1418,7 +1418,7 @@ class _RoleCard extends StatelessWidget {
                     child: Icon(
                       meta?.icon ?? Icons.person_rounded,
                       size: 24,
-                      color: selected ? Colors.white : c.primary,
+                      color: selected ? context.colors.onHero : c.primary,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -1468,11 +1468,11 @@ class _RoleCard extends StatelessWidget {
                       transitionBuilder: (w, a) =>
                           ScaleTransition(scale: a, child: w),
                       child: selected
-                          ? const Icon(
+                          ? Icon(
                         Icons.check_rounded,
                         key: ValueKey('on'),
                         size: 16,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       )
                           : const SizedBox(key: ValueKey('off')),
                     ),

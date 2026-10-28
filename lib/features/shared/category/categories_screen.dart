@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
@@ -105,11 +106,12 @@ class _SearchField extends StatelessWidget {
           border: InputBorder.none,
           isCollapsed: true,
           contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          hintText: 'ابحث عن قسم أو كورس...',
+          hintText: _tx('ابحث عن قسم أو كورس...', 'Search a category or course...'),
           hintStyle: context.colors.caption,
           prefixIcon: Icon(Icons.search_rounded, color: context.colors.primary),
           suffixIcon: isSearching
               ? IconButton(
+                  tooltip: MaterialLocalizations.of(context).deleteButtonTooltip,
                   icon: Icon(
                     Icons.close_rounded,
                     color: context.colors.textDark,
@@ -137,7 +139,9 @@ class _NarrowLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CategoriesProvider>();
 
-    return CustomScrollView(
+    return AppRefresh(
+      onRefresh: provider.refresh,
+      child: CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         SliverPadding(
@@ -173,6 +177,7 @@ class _NarrowLayout extends StatelessWidget {
         _CoursesSliver(crossAxisCount: 2),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
+    ),
     );
   }
 }
@@ -205,7 +210,7 @@ class _WideLayout extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('الأقسام', style: context.colors.h2),
+                Text(_tx('الأقسام', 'Categories'), style: context.colors.h2),
                 const SizedBox(height: 14),
                 Expanded(child: _CategorySideList()),
               ],
@@ -213,7 +218,9 @@ class _WideLayout extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: CustomScrollView(
+          child: AppRefresh(
+            onRefresh: context.read<CategoriesProvider>().refresh,
+            child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
               SliverPadding(
@@ -238,6 +245,7 @@ class _WideLayout extends StatelessWidget {
               const SliverToBoxAdapter(child: SizedBox(height: 24)),
             ],
           ),
+          ),
         ),
       ],
     );
@@ -254,12 +262,12 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = provider.isSearching
-        ? 'نتائج البحث'
+        ? _tx('نتائج البحث', 'Search results')
         : provider.selectedCategory != null
         ? AppConfig.lang == 'ar'
               ? provider.selectedCategory!.nameAr
               : provider.selectedCategory!.nameEn
-        : 'كل الكورسات';
+        : _tx('كل الكورسات', 'All courses');
 
     final showClear =
         provider.selectedCategoryId != null || provider.isSearching;
@@ -285,7 +293,7 @@ class _SectionHeader extends StatelessWidget {
           GestureDetector(
             onTap: () async => await provider.clearSelection(),
             child: Text(
-              'عرض الكل',
+              _tx('عرض الكل', 'Show all'),
               style: context.colors.label.copyWith(
                 color: context.colors.primary,
               ),
@@ -318,7 +326,7 @@ class _CategoryChipsRow extends StatelessWidget {
 
     if (categories.isEmpty) {
       return Center(
-        child: Text('لا توجد أقسام مطابقة', style: context.colors.caption),
+        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: context.colors.caption),
       );
     }
 
@@ -357,7 +365,7 @@ class _CategorySideList extends StatelessWidget {
 
     if (categories.isEmpty) {
       return Center(
-        child: Text('لا توجد أقسام مطابقة', style: context.colors.caption),
+        child: Text(_tx('لا توجد أقسام مطابقة', 'No matching categories'), style: context.colors.caption),
       );
     }
 
@@ -522,7 +530,7 @@ class CategoryAvatar extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isSelected ? 0.28 : 0.16),
+                color: context.colors.heroShade.withValues(alpha: isSelected ? 0.28 : 0.16),
                 blurRadius: isSelected ? 20 : 14,
                 offset: const Offset(0, 6),
               ),
@@ -626,7 +634,7 @@ class _CoursesSliver extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                hasFilter ? 'لا توجد نتائج مطابقة' : 'اختر قسمًا لعرض الكورسات',
+                hasFilter ? _tx('لا توجد نتائج مطابقة', 'Nothing matches') : _tx('اختر قسمًا لعرض الكورسات', 'Pick a category to see its courses'),
                 style: context.colors.caption,
               ),
             ],
@@ -694,7 +702,7 @@ class _CourseCardState extends State<_CourseCard> {
             boxShadow: _hovering
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.16),
+                      color: context.colors.heroShade.withValues(alpha: 0.16),
                       blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
@@ -724,9 +732,9 @@ class _CourseCardState extends State<_CourseCard> {
                                 alpha: 0.1,
                               ),
                             ),
-                      Positioned(
+                      PositionedDirectional(
                         top: 8,
-                        right: 8,
+                        end: 8,
                         child: _Badge(
                           icon: Icons.star_rounded,
                           label: course.rating.toStringAsFixed(1),
@@ -764,7 +772,7 @@ class _CourseCardState extends State<_CourseCard> {
                           Text(
                             course.price > 0
                                 ? '\$ ${course.price.toStringAsFixed(2)}'
-                                : 'مجاني',
+                                : _tx('مجاني', 'Free'),
                             style: context.colors.h3.copyWith(
                               color: context.colors.accent,
                               fontSize: 13,
@@ -796,7 +804,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
+        color: context.colors.heroShade.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
@@ -806,8 +814,8 @@ class _Badge extends StatelessWidget {
           const SizedBox(width: 3),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: context.colors.onHero,
               fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
@@ -916,3 +924,6 @@ class _ShimmerCard extends StatelessWidget {
     );
   }
 }
+
+/// Inline bilingual text (this screen used to show Arabic only, also in English).
+String _tx(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;

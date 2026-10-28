@@ -4,6 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
+
 /// Returns true when [code] is accepted.
 ///
 /// May be async (e.g. a server call). Throwing is treated as a failed attempt;
@@ -78,7 +81,7 @@ class PasscodeSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.6),
       builder: (_) => PasscodeSheet(
         title: title,
         hint: hint,
@@ -109,15 +112,16 @@ class _PasscodeSheetState extends State<PasscodeSheet>
   );
   final FocusNode _focus = FocusNode();
 
-  // ── design tokens ─────────────────────────────────────────────────────────
-  static const _bgColor = Color(0xFF0D0D14);
-  static const _surfaceColor = Color(0xFF15151F);
-  static const _accentGold = Color(0xFFC9A84C);
-  static const _dotFilled = Color(0xFFC9A84C);
-  static const _dotEmpty = Color(0xFF2A2A3A);
-  static const _errorRed = Color(0xFFE05C5C);
-  static const _textPrimary = Color(0xFFF4F0E8);
-  static const _textSecondary = Color(0xFF8A8498);
+  // ── design tokens (the live theme) ─────────────────────────────────────────
+  ThemeConfigProvider get _c => context.colors;
+  Color get _bgColor => _c.onHero;
+  Color get _surfaceColor => _c.cardBg;
+  Color get _accentGold => _c.primary;
+  Color get _dotFilled => _c.primary;
+  Color get _dotEmpty => _c.divider;
+  Color get _errorRed => _c.danger;
+  Color get _textPrimary => _c.textDark;
+  Color get _textSecondary => _c.textMedium;
 
   @override
   void dispose() {
@@ -200,9 +204,9 @@ class _PasscodeSheetState extends State<PasscodeSheet>
       child: Container(
         width: math.min(size.width, 500.0),
         constraints: BoxConstraints(maxHeight: size.height * 0.92),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: _surfaceColor,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         padding: EdgeInsets.only(bottom: bottomPadding),
         child: SafeArea(
@@ -241,7 +245,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
     width: 40,
     height: 4,
     decoration: BoxDecoration(
-      color: const Color(0xFF3A3A4A),
+      color: _c.divider,
       borderRadius: BorderRadius.circular(2),
     ),
   );
@@ -255,10 +259,10 @@ class _PasscodeSheetState extends State<PasscodeSheet>
           height: 64,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: const LinearGradient(
-              colors: [_accentGold, Color(0xFF8B6914)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+            gradient: LinearGradient(
+              colors: [_accentGold, _c.heroEnd(_accentGold)],
+              begin: AlignmentDirectional.topStart,
+              end: AlignmentDirectional.bottomEnd,
             ),
             boxShadow: [
               BoxShadow(
@@ -274,7 +278,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
         Text(
           widget.title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: _textPrimary,
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -286,7 +290,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
         Text(
           widget.hint,
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             color: _textSecondary,
             fontSize: 14,
             height: 1.55,
@@ -341,7 +345,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
       height: 44,
       child: Center(
         child: _checking
-            ? const SizedBox(
+            ? SizedBox(
                 width: 18,
                 height: 18,
                 child: CircularProgressIndicator(
@@ -357,7 +361,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
                   child: Text(
                     _error ?? '',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: _errorRed,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -405,7 +409,7 @@ class _PasscodeSheetState extends State<PasscodeSheet>
     onTap: () => _onKey(digit),
     child: Text(
       digit,
-      style: const TextStyle(
+      style: TextStyle(
         color: _textPrimary,
         fontSize: 24,
         fontWeight: FontWeight.w300,
@@ -416,23 +420,28 @@ class _PasscodeSheetState extends State<PasscodeSheet>
 
   Widget _buildDeleteKey() => _KeyButton(
     onTap: _onDelete,
-    child: const Icon(Icons.backspace_outlined, color: _textSecondary, size: 22),
+    semanticLabel: AppConfig.lang == 'ar' ? 'حذف' : 'Delete',
+    child: Icon(Icons.backspace_outlined, color: _textSecondary, size: 22),
   );
 
   Widget _buildCloseKey() => _KeyButton(
     onTap: () => Navigator.of(context).pop(false),
-    background: Colors.red.shade400,
-    child: const Icon(Icons.clear, color: Colors.white, size: 22),
+    semanticLabel: AppConfig.lang == 'ar' ? 'إغلاق' : 'Close',
+    background: context.colors.danger,
+    child: Icon(Icons.clear, color: context.colors.onHero, size: 22),
   );
 }
 
 // ── reusable key button ───────────────────────────────────────────────────────
 class _KeyButton extends StatefulWidget {
-  const _KeyButton({required this.child, required this.onTap, this.background});
+  const _KeyButton({required this.child, required this.onTap, this.background, this.semanticLabel});
 
   final Widget child;
   final VoidCallback onTap;
   final Color? background;
+
+  /// Read by screen readers on icon-only keys (delete, close).
+  final String? semanticLabel;
 
   @override
   State<_KeyButton> createState() => _KeyButtonState();
@@ -464,27 +473,32 @@ class _KeyButtonState extends State<_KeyButton>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: widget.semanticLabel,
+      child: ScaleTransition(
       scale: _ctrl,
       child: GestureDetector(
         onTap: _press,
         child: Container(
           height: 64,
           decoration: BoxDecoration(
-            color: widget.background ?? const Color(0xFF1E1E2C),
+            color: widget.background ?? c.inputBg,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: const Color(0xFF2E2E40), width: 1),
-            boxShadow: const [
+            border: Border.all(color: c.divider, width: 1),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x40000000),
+                color: c.heroShade.withValues(alpha: 0.10),
                 blurRadius: 8,
-                offset: Offset(0, 4),
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           alignment: Alignment.center,
           child: widget.child,
         ),
+      ),
       ),
     );
   }

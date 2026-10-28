@@ -4,6 +4,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -296,8 +297,8 @@ class _HeroSliverAppBar extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: AlignmentDirectional.topStart,
+                  end: AlignmentDirectional.bottomEnd,
                   colors: [
                     AppTheme.primary,
                     AppTheme.primary.withValues(alpha: 0.7),
@@ -314,7 +315,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: context.colors.onHero.withValues(alpha: 0.06),
                 ),
               ),
             ),
@@ -326,7 +327,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                 height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: context.colors.onHero.withValues(alpha: 0.04),
                 ),
               ),
             ),
@@ -373,8 +374,8 @@ class _HeroSliverAppBar extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   teacher.name,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: context.colors.onHero,
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
                                     letterSpacing: -0.5,
@@ -384,9 +385,9 @@ class _HeroSliverAppBar extends StatelessWidget {
                               ),
                               if (teacher.isVerified) ...[
                                 const SizedBox(width: 6),
-                                const Icon(
+                                Icon(
                                   Icons.verified_rounded,
-                                  color: Colors.white,
+                                  color: context.colors.onHero,
                                   size: 18,
                                 ),
                               ],
@@ -405,7 +406,7 @@ class _HeroSliverAppBar extends StatelessWidget {
                                 ?.nameEn) ??
                                 '',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: context.colors.onHero.withValues(alpha: 0.75),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               letterSpacing: 0.8,
@@ -446,8 +447,8 @@ class _ProfileCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
           colors: [AppTheme.primary, AppTheme.accent],
         ),
         borderRadius: c.brLarge,
@@ -468,8 +469,8 @@ class _ProfileCard extends StatelessWidget {
             children: [
               Text(
                 teacher.name,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.colors.onHero,
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -0.3,
@@ -478,9 +479,9 @@ class _ProfileCard extends StatelessWidget {
               ),
               if (teacher.isVerified) ...[
                 const SizedBox(width: 6),
-                const Icon(
+                Icon(
                   Icons.verified_rounded,
-                  color: Colors.white,
+                  color: context.colors.onHero,
                   size: 18,
                 ),
               ],
@@ -490,14 +491,14 @@ class _ProfileCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
+              color: context.colors.onHero.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
               teacher.teacherProfile?.teachingType.toUpperCase() ??
                   'teacher'.tr.toUpperCase(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.4,
@@ -546,7 +547,7 @@ class InstructorAvatar extends StatelessWidget {
         border: Border.all(color: context.colors.background, width: 3),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
+            color: context.colors.heroShade.withValues(alpha: 0.2),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -665,14 +666,14 @@ class _StatsRow extends StatelessWidget {
           icon: Icons.workspace_premium_rounded,
           value: tp != null ? '${tp.experienceYears}y' : '—',
           label: 'experience'.tr,
-          color: const Color(0xFFFFB830),
+          color: context.colors.warning,
         ),
         const SizedBox(width: 12),
         _StatTile(
           icon: Icons.payments_outlined,
           value: tp?.paymentType.toUpperCase() ?? '—',
           label: 'pricing'.tr,
-          color: const Color(0xFF00D4AA),
+          color: context.colors.accent2,
         ),
         const SizedBox(width: 12),
         _StatTile(
@@ -758,37 +759,37 @@ class _BadgesRow extends StatelessWidget {
         _BadgeData(
           icon: Icons.verified_rounded,
           label: 'verified'.tr,
-          color: const Color(0xFF3B82F6),
+          color: context.colors.primary,
         ),
       if (teacher.isActive)
         _BadgeData(
           icon: Icons.circle,
           label: 'active'.tr,
-          color: const Color(0xFF22C55E),
+          color: context.colors.success,
         ),
       if (teacher.teacherProfile?.paymentType == 'free')
         _BadgeData(
           icon: Icons.auto_awesome_rounded,
           label: 'free'.tr,
-          color: const Color(0xFFFF6B35),
+          color: Color.lerp(context.colors.warning, context.colors.danger, 0.5)!,
         ),
       if (teacher.teacherProfile?.teachingType == 'both')
         _BadgeData(
           icon: Icons.devices_rounded,
           label: 'live_and_recorded'.tr,
-          color: const Color(0xFF8B5CF6),
+          color: context.colors.purple,
         )
       else if (teacher.teacherProfile?.teachingType == 'live')
         _BadgeData(
           icon: Icons.wifi_tethering_rounded,
           label: 'live_only'.tr,
-          color: const Color(0xFFEF4444),
+          color: context.colors.danger,
         )
       else if (teacher.teacherProfile?.teachingType == 'recorded')
           _BadgeData(
             icon: Icons.videocam_outlined,
             label: 'record'.tr,
-            color: const Color(0xFF06B6D4),
+            color: context.colors.accent2,
           ),
     ];
 
@@ -1075,7 +1076,7 @@ class _DocumentCard extends StatelessWidget {
     );
   }
 
-  String _fmtDate(DateTime d) => '${d.day}/${d.month}/${d.year}';
+  String _fmtDate(DateTime d) => AppTime.date(d);
 }
 
 /// A teacher document's review status as a small pill: approved → "Verified", pending → "Pending review",
@@ -1163,10 +1164,10 @@ class _DocImagePreview extends StatelessWidget {
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: context.colors.heroShade,
           appBar: AppBar(
-            backgroundColor: Colors.black,
-            iconTheme: const IconThemeData(color: Colors.white),
+            backgroundColor: context.colors.heroShade,
+            iconTheme: IconThemeData(color: context.colors.onHero),
           ),
           body: Center(
             child: InteractiveViewer(
@@ -1198,19 +1199,19 @@ class _PdfChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+          color: context.colors.danger.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFFEF4444).withValues(alpha: 0.2),
+            color: context.colors.danger.withValues(alpha: 0.2),
           ),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(
+            Icon(
               Icons.picture_as_pdf_rounded,
               size: 16,
-              color: Color(0xFFEF4444),
+              color: context.colors.danger,
             ),
             const SizedBox(width: 8),
             Flexible(

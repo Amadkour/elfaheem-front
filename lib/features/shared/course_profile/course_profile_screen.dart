@@ -118,7 +118,7 @@ class _CourseProfileScreenState extends State<CourseProfileScreen> {
               })
           : p == null
               ? const AppListSkeleton(items: 5)
-              : RefreshIndicator(
+              : AppRefresh(
                   onRefresh: _load,
                   child: LayoutBuilder(builder: (context, box) {
                     final wide = box.maxWidth >= kCpRailBreak;
@@ -331,19 +331,19 @@ class CpHeader extends StatelessWidget {
     Widget chip(String label, {Color? dot, IconData? icon}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.16),
+            color: context.colors.onHero.withValues(alpha: 0.16),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white24),
+            border: Border.all(color: context.colors.heroGlassBorder),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (dot != null) ...[
               Container(width: 8, height: 8, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
               const SizedBox(width: 6),
             ],
-            if (icon != null) ...[Icon(icon, size: 13, color: Colors.white), const SizedBox(width: 5)],
+            if (icon != null) ...[Icon(icon, size: 13, color: context.colors.onHero), const SizedBox(width: 5)],
             Flexible(
               child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: appText(11.5, w: FontWeight.w700, c: Colors.white)),
+                  style: appText(11.5, w: FontWeight.w700, c: context.colors.onHero)),
             ),
           ]),
         );
@@ -372,10 +372,10 @@ class CpHeader extends StatelessWidget {
           ]),
           const SizedBox(height: 10),
           Text(p.name(ar), maxLines: 3, overflow: TextOverflow.ellipsis,
-              style: appText(roomy ? 23 : 19, w: FontWeight.w800, c: Colors.white, h: 1.3)),
+              style: appText(roomy ? 23 : 19, w: FontWeight.w800, c: context.colors.onHero, h: 1.3)),
           if (where.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: Colors.white70)),
+            Text(where, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12.5, c: context.colors.onHeroMuted)),
           ],
           if (teacher != null) ...[
             const SizedBox(height: 12),
@@ -384,7 +384,7 @@ class CpHeader extends StatelessWidget {
               const SizedBox(width: 8),
               Flexible(
                 child: Text('$teacher', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: appText(13, w: FontWeight.w700, c: Colors.white)),
+                    style: appText(13, w: FontWeight.w700, c: context.colors.onHero)),
               ),
             ]),
           ],

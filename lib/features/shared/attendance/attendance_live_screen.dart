@@ -88,7 +88,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
     final t = TeacherAttendanceController.instance;
     return Scaffold(
       // Projector mode: a deep shade of the app's OWN primary colour (follows the theme).
-      backgroundColor: Color.alphaBlend(Colors.black.withValues(alpha: 0.82), context.colors.primary),
+      backgroundColor: Color.alphaBlend(context.colors.heroShade.withValues(alpha: 0.82), context.colors.primary),
       body: SafeArea(
         child: ListenableBuilder(
           listenable: t,
@@ -107,7 +107,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                   IconButton(
                     tooltip: attT('att_t_minimize'),
                     onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(CupertinoIcons.fullscreen_exit, color: Colors.white),
+                    icon: Icon(CupertinoIcons.fullscreen_exit, color: context.colors.onHero),
                   ),
                   const Spacer(),
                   _Pill(icon: CupertinoIcons.person_3_fill, text: '${t.code?.presentCount ?? 0}'),
@@ -131,16 +131,16 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                           child: CircularProgressIndicator(
                             value: (t.secondsLeft / rot).clamp(0.0, 1.0),
                             strokeWidth: 8,
-                            color: Color.lerp(context.colors.success, Colors.white, 0.25),
-                            backgroundColor: Colors.white12,
+                            color: Color.lerp(context.colors.success, context.colors.onHero, 0.25),
+                            backgroundColor: context.colors.onHero.withValues(alpha: 0.12),
                           ),
                         ),
                         FittedBox(
                           child: Padding(
                             padding: const EdgeInsets.all(40),
                             child: Text(grouped,
-                                style: const TextStyle(
-                                    color: Colors.white,
+                                style: TextStyle(
+                                    color: context.colors.onHero,
                                     fontSize: 64,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 6)),
@@ -150,23 +150,23 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(attT('att_t_next_code', args: {'n': '${t.secondsLeft}'}),
-                        style: const TextStyle(fontFamily: 'tajawal', color: Colors.white60)),
+                        style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero.withValues(alpha: 0.6))),
                   ] else
-                    const Icon(CupertinoIcons.person_3_fill, size: 120, color: Colors.white70),
+                    Icon(CupertinoIcons.person_3_fill, size: 120, color: context.colors.onHeroMuted),
                   const SizedBox(height: 28),
                   Text(attT('att_t_reg_left'),
-                      style: const TextStyle(fontFamily: 'tajawal', color: Colors.white70, fontSize: 14)),
+                      style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHeroMuted, fontSize: 14)),
                   Text(_mmss(left),
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 44, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
+                      style: TextStyle(
+                          color: context.colors.onHero, fontSize: 44, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
                 ],
                 const Spacer(),
                 Row(children: [
                   Expanded(
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white38),
+                          foregroundColor: context.colors.onHero,
+                          side: BorderSide(color: context.colors.onHero.withValues(alpha: 0.38)),
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                       onPressed: () => Navigator.of(context).maybePop(),
@@ -215,11 +215,11 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: Colors.white, size: 20),
+          Icon(icon, color: context.colors.onHero, size: 20),
           const SizedBox(width: 8),
-          Text(text, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+          Text(text, style: TextStyle(color: context.colors.onHero, fontSize: 20, fontWeight: FontWeight.w900)),
         ]),
       );
 }
@@ -230,10 +230,10 @@ class _Status extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Column(children: [
-        Icon(icon, size: 90, color: Colors.white70),
+        Icon(icon, size: 90, color: context.colors.onHeroMuted),
         const SizedBox(height: 16),
         Text(text,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 22, fontWeight: FontWeight.w800)),
       ]);
 }

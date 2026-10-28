@@ -298,6 +298,12 @@ class TeacherAttendanceController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Pull-to-refresh on the teacher sheet: the same code / present-count read the ticker does, at once.
+  Future<void> refresh() async {
+    await _sync();
+    notifyListeners();
+  }
+
   Future<void> _sync() async {
     final w = window;
     if (w == null) return;

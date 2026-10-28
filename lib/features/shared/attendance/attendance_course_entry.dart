@@ -113,7 +113,7 @@ class _PremiumSurfaceState extends State<_PremiumSurface> with SingleTickerProvi
                         alignment: Alignment(-1.8 + 3.6 * _c.value, 0),
                         child: Transform.rotate(
                           angle: 0.35,
-                          child: Container(width: 22, height: widget.height * 2, color: Colors.white.withValues(alpha: 0.18)),
+                          child: Container(width: 22, height: widget.height * 2, color: context.colors.onHero.withValues(alpha: 0.18)),
                         ),
                       ),
                     ),
@@ -221,9 +221,9 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
           Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.2), shape: BoxShape.circle),
             child: Icon(online ? Icons.how_to_reg_rounded : Icons.bluetooth_searching_rounded,
-                color: Colors.white, size: 18),
+                color: context.colors.onHero, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -234,26 +234,26 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
                     : attT('att_btn_checkin_now'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    fontFamily: 'tajawal', fontSize: 14, fontWeight: FontWeight.w800, color: Colors.white),
+                style: TextStyle(
+                    fontFamily: 'tajawal', fontSize: 14, fontWeight: FontWeight.w800, color: context.colors.onHero),
               ),
               if (_checked)
                 Text(
                   attT('att_entry_open'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: Colors.white.withValues(alpha: 0.85)),
+                  style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: context.colors.onHero.withValues(alpha: 0.85)),
                 ),
             ]),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(8)),
             child: Text(attT('att_btn_live'),
-                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 0.6)),
+                style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w900, color: context.colors.onHero, letterSpacing: 0.6)),
           ),
           const SizedBox(width: 6),
-          const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 22),
+          Icon(Icons.chevron_right_rounded, color: context.colors.onHero, size: 22),
         ]),
       ),
     );
@@ -312,8 +312,8 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                child: Icon(running ? Icons.sensors_rounded : Icons.qr_code_2_rounded, color: Colors.white, size: 21),
+                decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.2), shape: BoxShape.circle),
+                child: Icon(running ? Icons.sensors_rounded : Icons.qr_code_2_rounded, color: context.colors.onHero, size: 21),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -321,28 +321,28 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
                   Text(running ? attT('att_t_running') : attT('att_launch_btn'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontFamily: 'tajawal', fontSize: 14.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                      style: TextStyle(
+                          fontFamily: 'tajawal', fontSize: 14.5, fontWeight: FontWeight.w800, color: context.colors.onHero)),
                   Text(
                     running
                         ? '${attT('att_t_present')}: ${t.code?.presentCount ?? 0}'
                         : (target?.name ?? attT('att_t_entry_sub')),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: Colors.white.withValues(alpha: 0.85)),
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.onHero.withValues(alpha: 0.85)),
                   ),
                 ]),
               ),
               if (running)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.22), borderRadius: BorderRadius.circular(10)),
                   child: Text(t.code?.code ?? '------',
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2)),
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero, letterSpacing: 2)),
                 ),
               const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 24),
+              Icon(Icons.chevron_right_rounded, color: context.colors.onHero, size: 24),
             ]),
           ),
           ]),
@@ -374,20 +374,20 @@ class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFEA580C)]),
+          gradient: LinearGradient(colors: [context.colors.warning, context.colors.heroEnd(context.colors.warning)]),
           borderRadius: BorderRadius.circular(18),
-          boxShadow: [BoxShadow(color: const Color(0xFFEA580C).withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))],
+          boxShadow: [BoxShadow(color: context.colors.warning.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 6))],
         ),
         child: Row(children: [
-          const Icon(Icons.location_searching_rounded, color: Colors.white),
+          Icon(Icons.location_searching_rounded, color: context.colors.onHero),
           const SizedBox(width: 10),
           Expanded(
             child: Text(attT('att_t_web_asks_body'),
-                style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 12.5, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 8),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: const Color(0xFFEA580C)),
+            style: FilledButton.styleFrom(backgroundColor: context.colors.onHero, foregroundColor: context.colors.heroEnd(context.colors.warning)),
             onPressed: _busy ? null : _share,
             child: _busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))

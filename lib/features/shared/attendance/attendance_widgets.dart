@@ -9,6 +9,9 @@ library;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -74,8 +77,12 @@ Future<void> showStudentCheckInSheet(BuildContext context, {int? sessionId, int?
 }
 
 class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.child, this.header});
+  const _SheetFrame({required this.child, this.header, this.onRefresh});
   final Widget child;
+
+  /// Pull-to-refresh on the sheet (the teacher's live counter). The child must not hold a scroll view of its own:
+  /// AppRefresh makes every scrollable inside always-scrollable, and an inner one would steal the sheet's drags.
+  final Future<void> Function()? onRefresh;
 
   /// Premium gradient header (icon, title, subtitle). Sits flush at the top of the sheet.
   final Widget? header;
@@ -89,10 +96,10 @@ class _SheetFrame extends StatelessWidget {
         decoration: BoxDecoration(
           color: surface,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 30, offset: const Offset(0, -6))],
+          boxShadow: [BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.18), blurRadius: 30, offset: const Offset(0, -6))],
         ),
         clipBehavior: Clip.antiAlias,
-        child: SingleChildScrollView(
+        child: _refreshable(SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             if (header != null)
               header!
@@ -105,10 +112,12 @@ class _SheetFrame extends StatelessWidget {
                       color: context.colors.divider, borderRadius: BorderRadius.circular(2))),
             Padding(padding: const EdgeInsets.fromLTRB(20, 16, 20, 24), child: child),
           ]),
-        ),
+        )),
       ),
     );
   }
+
+  Widget _refreshable(Widget scroll) => onRefresh == null ? scroll : AppRefresh(onRefresh: onRefresh!, child: scroll);
 }
 
 /// Gradient header shared by the student and teacher sheets.
@@ -127,8 +136,8 @@ class _PremiumHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 10, 12, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
           colors: [c.primary, c.purple],
         ),
       ),
@@ -137,16 +146,16 @@ class _PremiumHeader extends StatelessWidget {
             width: 42,
             height: 4,
             margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(color: Colors.white38, borderRadius: BorderRadius.circular(2))),
+            decoration: BoxDecoration(color: context.colors.onHero.withValues(alpha: 0.38), borderRadius: BorderRadius.circular(2))),
         Row(children: [
           Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: context.colors.onHero.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white24)),
-            child: Icon(icon, color: Colors.white, size: 26),
+                border: Border.all(color: context.colors.heroGlassBorder)),
+            child: Icon(icon, color: context.colors.onHero, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -154,12 +163,12 @@ class _PremiumHeader extends StatelessWidget {
               Text(title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+                  style: TextStyle(
+                      fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800, color: context.colors.onHero)),
               if (subtitle != null) ...[
                 const SizedBox(height: 3),
                 Text(subtitle!,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: Colors.white.withValues(alpha: 0.85))),
+                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.85))),
               ],
             ]),
           ),
@@ -205,8 +214,7 @@ class _RadiosRow extends StatelessWidget {
               : () async {
                   final opened = await AttendanceRadios.fix(kind);
                   if (!opened && context.mounted) {
-                    ScaffoldMessenger.maybeOf(context)
-                        ?.showSnackBar(SnackBar(content: Text(attT(AttendanceRadios.hintKey(kind)))));
+                    showAppNotice(attT(AttendanceRadios.hintKey(kind)));
                   }
                   await p.refreshRadios();   // the Android Bluetooth dialog returns without a resume
                 },
@@ -282,8 +290,7 @@ class _FixRadios extends StatelessWidget {
                 onPressed: () async {
                   final opened = await AttendanceRadios.fix(k);
                   if (!opened && context.mounted) {
-                    ScaffoldMessenger.maybeOf(context)
-                        ?.showSnackBar(SnackBar(content: Text(attT(AttendanceRadios.hintKey(k)))));
+                    showAppNotice(attT(AttendanceRadios.hintKey(k)));
                   }
                   await p.refreshRadios();
                 },
@@ -399,8 +406,9 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
         title: widget.title ?? attT('att_sheet_title'),
         subtitle: attT(p.needsCode ? 'att_sheet_sub' : 'att_sheet_sub_mates'),
         trailing: IconButton(
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
           onPressed: () => Navigator.of(context).maybePop(),
-          icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white70),
+          icon: Icon(CupertinoIcons.xmark_circle_fill, color: context.colors.onHeroMuted),
         ),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -475,8 +483,8 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
                       ? () => Navigator.of(context).maybePop()
                       : () => p.submit(_ctrl.text),
               child: p.busy
-                  ? const SizedBox(
-                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                  ? SizedBox(
+                      width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: context.colors.onHero))
                   : Text(attT(finished ? 'att_done' : (o == null ? 'att_submit' : 'att_retry')),
                       style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16)),
             ),
@@ -573,7 +581,7 @@ class _OutcomeCard extends StatelessWidget {
         final t = outcome.result?.confirmedLocal;
         final time = t == null
             ? ''
-            : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+            : AppTime.time(t.toUtc());
         body = attT('att_ok_body', args: {'time': time}) +
             (outcome.viaRelay ? ' — ${attT('att_ok_via')}' : '');
       case OutcomeKind.rejected:
@@ -776,11 +784,12 @@ class _TeacherSheet extends StatelessWidget {
         title: attT('att_t_title'),
         subtitle: p.lessonTitle,
         trailing: IconButton(
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             onPressed: () => Navigator.of(context).maybePop(),
-            icon: const Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white70)),
+            icon: Icon(CupertinoIcons.xmark_circle_fill, color: context.colors.onHeroMuted)),
       ),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
+      onRefresh: started ? p.refresh : null,
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
           if (!started) ...[
             _Card(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             _label(context, 'att_t_duration'),
@@ -842,8 +851,8 @@ class _TeacherSheet extends StatelessWidget {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 onPressed: p.loading ? null : () => p.open(),
                 child: p.loading
-                    ? const SizedBox(
-                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                    ? SizedBox(
+                        width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: context.colors.onHero))
                     : Text(attT('att_t_start'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
               ),
             ),
@@ -925,7 +934,6 @@ class _TeacherSheet extends StatelessWidget {
               label: Text(attT('att_err_perm_settings'), style: const TextStyle(fontFamily: 'tajawal')),
             ),
         ]),
-      ),
     );
   }
 }
@@ -1019,8 +1027,7 @@ class _LocationSetup extends StatelessWidget {
               onPressed: () async {
                 final ok = await p.shareLocationForWeb();
                 if (ok && context.mounted) {
-                  ScaffoldMessenger.maybeOf(context)
-                      ?.showSnackBar(SnackBar(content: Text(attT('att_t_shared_done'))));
+                  showAppNotice(attT('att_t_shared_done'));
                 }
               },
               icon: Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.share, size: 18),
@@ -1058,8 +1065,8 @@ class _CodeDisplay extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(color: context.colors.success, shape: BoxShape.circle),
               child: Text('${p.code?.presentCount ?? 0}',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w900, fontSize: 17)),
+                  style: TextStyle(
+                      color: context.colors.onHero, fontWeight: FontWeight.w900, fontSize: 17)),
             ),
           ),
           SizedBox(

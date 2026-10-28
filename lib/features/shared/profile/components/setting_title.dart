@@ -46,7 +46,7 @@ class SettingsTile extends StatelessWidget {
             const SizedBox(width: 10),
             trailing!,
           ] else if (onTap != null)
-            Icon(Directionality.of(context) == TextDirection.rtl ? Icons.chevron_left_rounded : Icons.chevron_right_rounded,
+            Icon(Icons.chevron_right_rounded, // matchTextDirection: Flutter mirrors it in Arabic
                 color: c.textLight, size: 22),
         ]),
       ),

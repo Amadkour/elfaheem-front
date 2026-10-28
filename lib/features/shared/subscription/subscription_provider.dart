@@ -91,10 +91,8 @@ class SubscriptionProvider extends BaseProvider {
       );
       await load();
       return null;
-    } on ApiException catch (e) {
-      return e.message;
     } catch (e) {
-      return '$e';
+      return ApiException.from(e).message;
     }
   }
 }

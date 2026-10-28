@@ -131,7 +131,7 @@ class ComplaintReply {
     senderImage: j['sender_image'],
     message: j['message'],
     isAdmin: j['is_admin'] ?? false,
-    createdAt: j['created_at'].toString().toLocalSaTime,
+    createdAt: complaintUtc(j['created_at']),
     attachments: (j['attachments'] as List? ?? [])
         .map((a) => ComplaintAttachment.fromJson(a))
         .toList(),
@@ -206,9 +206,9 @@ class ComplaintModel {
     status: ComplaintStatus.fromString(j['status'] ?? 'open'),
     isReadByAdmin: j['is_read_by_admin'] ?? false,
     isReadByUser: j['is_read_by_user'] ?? true,
-    createdAt: j['created_at'].toString().toLocalSaTime,
-    updatedAt: j['updated_at'].toString().toLocalSaTime,
-    resolvedAt: j['resolved_at']?.toString().toLocalSaTime,
+    createdAt: complaintUtc(j['created_at']),
+    updatedAt: complaintUtc(j['updated_at']),
+    resolvedAt: j['resolved_at'] == null ? null : complaintUtc(j['resolved_at']),
     repliesCount: j['replies_count'] ?? 0,
     replies: (j['replies'] as List? ?? [])
         .map((r) => ComplaintReply.fromJson(r))
@@ -246,4 +246,13 @@ class ComplaintStats {
     closed: j['closed'] ?? 0,
     unreadAdmin: j['unread_admin'] ?? 0,
   );
+}
+
+/// A server timestamp as the UTC instant it is (a naive ISO string is UTC). Shown through AppTime, which applies the
+/// platform / organization timezone. (It used to be shifted to UTC+3 but kept the UTC flag, so "x min ago" stayed
+/// at "0 min" for three hours and every displayed time ignored the platform timezone.)
+DateTime complaintUtc(Object? v) {
+  final p = DateTime.tryParse('${v ?? ''}');
+  if (p == null) return DateTime.now().toUtc();
+  return p.isUtc ? p : DateTime.utc(p.year, p.month, p.day, p.hour, p.minute, p.second, p.millisecond);
 }

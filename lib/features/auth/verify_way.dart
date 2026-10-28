@@ -137,8 +137,8 @@ class _BrandBadge extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: selected
             ? LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
                 colors: [way.brand, way.brandDark],
               )
             : null,
@@ -157,7 +157,7 @@ class _BrandBadge extends StatelessWidget {
       child: Icon(
         way.icon,
         size: size * 0.46,
-        color: selected ? Colors.white : way.brand,
+        color: selected ? context.colors.onHero : way.brand,
       ),
     );
   }
@@ -230,7 +230,7 @@ class VerifyWayPicker extends StatelessWidget {
                 borderRadius: BorderRadius.circular(13),
                 boxShadow: c.primaryShadow,
               ),
-              child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
+              child: Icon(Icons.verified_user_rounded, color: context.colors.onHero, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -371,7 +371,7 @@ class _WayCard extends StatelessWidget {
                 ]
               : [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
+                    color: context.colors.heroShade.withValues(alpha: 0.03),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -468,7 +468,7 @@ class _CheckDot extends StatelessWidget {
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 180),
         opacity: selected ? 1 : 0,
-        child: const Icon(Icons.check_rounded, size: 17, color: Colors.white),
+        child: Icon(Icons.check_rounded, size: 17, color: context.colors.onHero),
       ),
     );
   }
@@ -559,7 +559,7 @@ class _SwitchItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = selected ? Colors.white : (done ? c.success : c.textMedium);
+    final fg = selected ? context.colors.onHero : (done ? c.success : c.textMedium);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
@@ -639,8 +639,8 @@ class VerifyWayButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
           colors: [way.brand, way.brandDark],
         ),
         borderRadius: radius,
@@ -662,23 +662,23 @@ class VerifyWayButton extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(way.icon, color: Colors.white, size: 22),
+                Icon(way.icon, color: context.colors.onHero, size: 22),
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'tajawal',
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.open_in_new_rounded, color: Colors.white70, size: 18),
+                Icon(Icons.open_in_new_rounded, color: context.colors.onHeroMuted, size: 18),
               ],
             ),
           ),
@@ -713,13 +713,17 @@ class VerifyWayStatusPill extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 2, color: way.brand),
             ),
             const SizedBox(width: 10),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 12.5,
-                fontWeight: FontWeight.w700,
-                color: context.colors.textMedium,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: context.colors.textMedium,
+                ),
               ),
             ),
           ],
@@ -777,8 +781,8 @@ class _VerifyWayHeroState extends State<VerifyWayHero>
             height: widget.size,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
                 colors: [way.brand, way.brandDark],
               ),
               borderRadius: BorderRadius.circular(widget.size * 0.32),
@@ -790,7 +794,7 @@ class _VerifyWayHeroState extends State<VerifyWayHero>
                 ),
               ],
             ),
-            child: Icon(way.icon, color: Colors.white, size: widget.size * 0.46),
+            child: Icon(way.icon, color: context.colors.onHero, size: widget.size * 0.46),
           );
         },
       ),
@@ -880,7 +884,9 @@ class VerifyStepTracker extends StatelessWidget {
           ),
         ));
       }
-      items.add(Column(
+      items.add(Flexible(
+        flex: 2,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           AnimatedContainer(
@@ -897,12 +903,15 @@ class VerifyStepTracker extends StatelessWidget {
                   ? Icons.check_rounded
                   : (ch == 'email' ? Icons.mail_rounded : Icons.phone_iphone_rounded),
               size: 17,
-              color: (done || active) ? Colors.white : c.textLight,
+              color: (done || active) ? context.colors.onHero : c.textLight,
             ),
           ),
           const SizedBox(height: 5),
           Text(
             (ch == 'email' ? 'verify_channel_email' : 'verify_channel_phone').tr,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 11.5,
@@ -911,7 +920,7 @@ class VerifyStepTracker extends StatelessWidget {
             ),
           ),
         ],
-      ));
+      )));
     }
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: items);
   }

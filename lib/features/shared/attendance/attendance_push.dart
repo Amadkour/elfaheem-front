@@ -11,6 +11,7 @@ library;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
 
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
@@ -57,8 +58,7 @@ class AttendancePush {
     if (ok) {
       t.markWebRequest(false);
       if (ctx != null && ctx.mounted) {
-        ScaffoldMessenger.maybeOf(ctx)
-            ?.showSnackBar(SnackBar(content: Text(attT('att_t_shared_auto'))));
+        showAppNotice(attT('att_t_shared_auto'));
       }
       return;
     }

@@ -374,12 +374,12 @@ class _LoginScreenState extends State<LoginScreen> {
       isEnd: dark,
       dark: dark,
       gradient: dark
-          ? const LinearGradient(colors: [Color(0xff0F172A), Color(0xff1E293B)])
+          ? LinearGradient(colors: [context.colors.heroShade, context.colors.heroTint(context.colors.heroShade, 0.12)])
           : context.colors.accentGradient,
       knob: Icon(
         dark ? Icons.dark_mode_rounded : Icons.wb_sunny_rounded,
         key: ValueKey(dark),
-        color: dark ? Colors.indigo : Colors.orange,
+        color: dark ? context.colors.purple : context.colors.warning,
         size: 18,
       ),
       onTap: () => provider.changeMode(!provider.darkMode),
@@ -396,7 +396,7 @@ class _LoginScreenState extends State<LoginScreen> {
       physical: true,
       dark: dark,
       gradient: dark
-          ? const LinearGradient(colors: [Color(0xff0F172A), Color(0xff1E293B)])
+          ? LinearGradient(colors: [context.colors.heroShade, context.colors.heroTint(context.colors.heroShade, 0.12)])
           : context.colors.accentGradient,
       knob: Text(
         ar ? 'ع' : 'EN',
@@ -405,7 +405,7 @@ class _LoginScreenState extends State<LoginScreen> {
           fontFamily: 'tajawal',
           fontSize: ar ? 17 : 12,
           fontWeight: FontWeight.w800,
-          color: dark ? Colors.indigo : context.colors.primary,
+          color: dark ? context.colors.purple : context.colors.primary,
         ),
       ),
       onTap: _toggleLang,
@@ -451,7 +451,7 @@ class _PillSwitch extends StatelessWidget {
             gradient: gradient,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withAlpha(dark ? 80 : 30),
+                color: context.colors.heroShade.withAlpha(dark ? 80 : 30),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -473,8 +473,8 @@ class _PillSwitch extends StatelessWidget {
                   width: 30,
                   height: 30,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: context.colors.onHero,
                     shape: BoxShape.circle,
                   ),
                   child: knob,
