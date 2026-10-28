@@ -539,7 +539,7 @@ class _JoinCard extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: AppFonts.family,
                         fontSize: 12.5,
-                        color: c.secondText,
+                        color: c.textMedium, // AA on the card's primary tint (secondText was 3.8–4.2:1)
                       ),
                     ),
                   ],

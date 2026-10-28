@@ -29,6 +29,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_inputs.dart' show validateEmail, kEmailRegex;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:provider/provider.dart';
@@ -188,7 +189,8 @@ class AuthBrandName extends StatelessWidget {
               id.tagline.isNotEmpty ? id.tagline : 'learning_platform'.tr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: authText(large ? 13 : 11.5, w: FontWeight.w500, c: onHero ? c.onHeroMuted : c.textLight, h: 1.3, ls: authTracking(0.3)),
+              // full on-hero ink: the muted one is under 4.5:1 on the gradient's light end at this size
+              style: authText(large ? 13 : 11.5, w: FontWeight.w500, c: onHero ? c.onHero : c.textLight, h: 1.3, ls: authTracking(0.3)),
             ),
           ],
         );
@@ -1082,7 +1084,7 @@ class AuthTextAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final ink = c.isDark ? c.primaryLight : c.primary;
+    final ink = appInk(context, c.primary); // AA on its tint in both modes
     return Material(
       color: c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07),
       shape: const StadiumBorder(),
@@ -1090,7 +1092,7 @@ class AuthTextAction extends StatelessWidget {
         customBorder: const StadiumBorder(),
         onTap: onTap,
         child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 44),
+          constraints: const BoxConstraints(minHeight: 48),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(

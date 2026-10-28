@@ -27,6 +27,7 @@ import 'google_auth_flow.dart';
 import 'verify_way.dart';
 import 'username.dart';
 import 'username_field.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -545,7 +546,7 @@ class AuthTermsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final link = c.isDark ? c.primaryLight : c.primary;
+    final link = appInk(context, c.primary); // AA on the row and on the Read button's tint, both modes
     return AnimatedContainer(
       duration: authDuration(context, 240),
       padding: const EdgeInsetsDirectional.fromSTEB(4, 6, 6, 6),
@@ -564,14 +565,19 @@ class AuthTermsRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Checkbox (48 dp target)
-          Checkbox(
-            value: accepted,
-            onChanged: (v) => onCheckChanged(v ?? false),
-            activeColor: c.success,
-            checkColor: c.onHero,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            side: BorderSide(color: accepted ? c.success : c.textLight, width: 1.5),
+          // Checkbox (48 dp target), named for screen readers
+          MergeSemantics(
+            child: Semantics(
+              label: AppConfig.lang == 'ar' ? 'أوافق على الشروط والأحكام' : 'I agree to the terms and conditions',
+              child: Checkbox(
+                value: accepted,
+                onChanged: (v) => onCheckChanged(v ?? false),
+                activeColor: c.success,
+                checkColor: c.onHero,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                side: BorderSide(color: accepted ? c.success : c.textLight, width: 1.5),
+              ),
+            ),
           ),
           // Text + link
           Expanded(

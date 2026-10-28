@@ -80,14 +80,6 @@ final _blocked = <(String, String, bool Function(String label), String)>[
   ('parent', 'text contrast', (l) => _any(l, ['Link another child', 'ربط ابن آخر']),
       'lib/config/theme/theme_config_provider.dart (dirty): the Text/OutlinedButton themes draw the raw primary on the '
           'dark surface (2:1)'),
-  for (final g in ['tap target', 'text contrast'])
-    ('login', g, (l) => _any(l, ['Register an institution', 'تسجيل مؤسسة تعليمية', 'Continue as guest', 'المتابعة كضيف']),
-        'lib/features/auth/auth_widgets.dart (dirty): AuthTextAction is under 44 px high and its ink is under 4.5:1'),
-  ('register', 'labeled tap target', (l) => l.isEmpty,
-      'lib/features/auth/register_screen.dart (dirty): the terms checkbox (AuthTermsRow) has no semantic label'),
-  ('register', 'text contrast',
-      (l) => _any(l, ['Read', 'اقرأ الآن', 'The fastest way to create your account', 'أسرع طريقة لإنشاء حسابك']),
-      'lib/features/auth/register_screen.dart (dirty): the terms row\'s "Read" link and the page subtitle are 2.7–4.2:1'),
 ];
 
 /// The app's real theme (light or dark) around [child], with the language's direction.
