@@ -29,6 +29,7 @@ import '../../../../utils/helpers.dart' show Helpers;
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_mentions.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -1408,6 +1409,7 @@ class _ComplaintDetailScreenState extends State<ComplaintDetailScreen> {
               if (complaint.status != ComplaintStatus.closed)
                 ParentComponent(featureKey: 'complaint_detail.reply_input', child: _ReplyInput(
                   controller: _replyCtrl,
+                  mentions: MentionApi.source('complaint', ref: widget.complaintId),
                   isSending: p.isSending,
                   pendingAttachments: p.pendingReplyAttachments,
                   onSend: _sendReply,
@@ -1550,7 +1552,7 @@ class _InfoCard extends StatelessWidget {
               color: c.background,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Text(
+            child: MentionText(
               complaint.description,
               style: c.body.copyWith(height: 1.7),
             ),
@@ -1755,7 +1757,7 @@ class _ReplyBubble extends StatelessWidget {
                       ),
                     ),
                   if (reply.message.isNotEmpty)
-                    Text(
+                    MentionText(
                       reply.message,
                       style: TextStyle(
                         fontFamily: AppFonts.display,
@@ -1763,6 +1765,9 @@ class _ReplyBubble extends StatelessWidget {
                         height: 1.5,
                         color: isMe ? context.colors.onHero : c.textDark,
                       ),
+                      mentionStyle: isMe
+                          ? TextStyle(color: context.colors.onHero, decoration: TextDecoration.underline)
+                          : null,
                     ),
 
                   // ── Reply image attachments ──────────────────────────────
@@ -1813,9 +1818,13 @@ class _ReplyInput extends StatelessWidget {
     required this.onPickCamera,
     required this.onPickFile,
     required this.onRemoveImage,
+    this.mentions,
   });
 
   final TextEditingController controller;
+
+  /// "@" suggests the complainant and the staff of this complaint (D-075).
+  final MentionSource? mentions;
   final bool isSending;
   final List<PendingAttachment> pendingAttachments;
   final VoidCallback onSend;
@@ -1823,6 +1832,11 @@ class _ReplyInput extends StatelessWidget {
   final VoidCallback onPickCamera;
   final VoidCallback onPickFile;
   final ValueChanged<int> onRemoveImage;
+
+  Widget _withMentions(Widget field) {
+    final m = mentions;
+    return m == null ? field : Mentions(controller: controller, source: m, above: true, child: field);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1852,6 +1866,7 @@ class _ReplyInput extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end, // the @mention list grows above the field
               children: [
                 // Camera / gallery button
                 GestureDetector(
@@ -1875,7 +1890,7 @@ class _ReplyInput extends StatelessWidget {
 
                 // Text field
                 Expanded(
-                  child: Container(
+                  child: _withMentions(Container(
                     decoration: BoxDecoration(
                       color: c.background,
                       borderRadius: BorderRadius.circular(24),
@@ -1899,7 +1914,7 @@ class _ReplyInput extends StatelessWidget {
                         border: InputBorder.none,
                       ),
                     ),
-                  ),
+                  )),
                 ),
                 const SizedBox(width: 10),
 

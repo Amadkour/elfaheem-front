@@ -522,6 +522,17 @@ manual add picker, calendar invitees, the teacher's course students, the admin p
 hint and show `AppUsernameLine` under the name (`lib/design/app_username.dart`, `usernameFrom` reads the row
 defensively). The sign-in identifier kind is decided in ONE place, `identifierKindOf` (mirrors `usernames.classify`).
 
+**Admin edit (round 3, 2026-10-28).** Platform admins set, change or remove someone's @username (e.g. an offensive
+one) from the student / teacher and admin edit sheets: `AdminUsernameField` (`lib/features/admin/admin_username_field.dart`:
+`UsernameField` with the row's name as current + Remove / Keep + "the person is notified"), `adminUsernameBody` sends
+`username` only when it changed (null = remove), a USERNAME_* answer lands on the field with its suggestions; kill switch
+`auth.username`. Server: `PUT /admin/users/{id}` and `/admin/admins/{id}` take `username`, same rules and claim as
+`PUT /auth/me`, the existing who-may rules unchanged (admins: students / teachers; super-admin: admins). Deliberately
+outside the person's cooldown and never stamping `username_changed_at` (an admin fix must not cost the person their own
+next change, nor wait 14 days); the result is confirmed, also after a removal (no prompt about a name that is gone). An
+admin editing their OWN account goes through the person's rules (cooldown), so the admin form is no way around it. Each
+change is audited (`platform.username_changed`, before / after, org_id null) and told to the person in-app.
+
 ## D-072 — Premium UI fonts chosen per language, display & reading settings · 2026-10-28 · accepted
 
 **Context.** The whole UI was drawn in Tajawal (plus Bahij for some headings), written as the literal
@@ -574,3 +585,75 @@ became `AuthEmailField`, which reuses `validateEmail`).
 **Consequences.** New auth screens use `AuthScaffold(title:, subtitle:)` and never draw their own header, logo or
 switches. `IconTextField`, `StyledDropdown` and `SectionLabel` are shared with profile / complaints screens, which
 pick up the new field look. Renders: `test/visual/auth_screens_golden_test.dart`; layout: `test/auth/auth_premium_layout_test.dart`.
+
+## D-074 — Profile links by username: `https://nextbrain.site/@name` · 2026-10-28 · accepted
+
+**Decision.** A confirmed @username is a public profile link, built exactly like the course share link: the route
+`/@name` reaches `onGenerateRoute` (Android app link `pathPrefix="/@"` in the same auto-verified intent filter as `/c/`
+and `/live/` — verification is per host; web path URL strategy), is parsed by `profileLinkFrom` (one "@", any case,
+`%40`, full `https://nextbrain.site/@name` URLs; anything else is not a profile link) and, like `/c/<id>`, a signed-out
+visitor goes to login first with the link pending. `PublicProfileScreen` loads the public, unauthenticated
+`GET /api/v1/public/u/{username}` (`routers/public_profile_router.py`); only a TEACHER with a CONFIRMED name, an
+active, complete account and no pending deletion has a profile — every other case (unknown, auto-filled name =
+the e-mail's local part, students, parents, admins, inactive) is the same 404 `user_not_found`, so the route says
+nothing about who exists. The courses are the visitor catalogue's own cards (`CourseService.get_courses` +
+`CourseResponse`, published / public / not archived / not members-only) without the `teacher` block (which carries
+e-mail and phone); the app draws them with the existing `CourseCard`, tapping one opens the usual course page. Every
+call counts against the caller's address (`public_profile` bucket, 60 / 10 min → 429). Teachers share the link from
+Profile ("Share my profile link", the course link's share sheet / web copy dialog). Kill switches `auth.username` and
+the new `profile.public_link` (web list → 403 `public_profiles_disabled`). A link-preview page `/share/og/u/{name}`
+mirrors `/share/og/{id}`; neither is wired in nginx (bots get the SPA).
+**Rejected.** Public profiles for students / parents (no "public profile" notion exists for them); showing the page
+signed out (the course link does not either — the page itself needs no token, so this is a routing change only); iOS
+universal links (the app declares no associated domains for `/c/` either).
+
+## D-075 — @mentions in announcements, complaints and meetings: suggest within reach, notify once · 2026-10-28 · accepted
+
+**Decision.** Typing "@" + letters in an organization announcement's body, a new complaint, a complaint reply or a
+meeting's notes shows suggestions (`Mentions` / `MentionTextField` in `lib/design/app_mentions.dart`: debounced
+250 ms, avatar + name + LTR "@username", tap or Up / Down / Enter / Tab, Esc; on web / desktop the open list takes
+Enter / Esc through the new `AppKeyboard.keyClaim`, so Enter picks instead of submitting). One endpoint,
+`GET /api/v1/me/mentions/suggest?context=&ref=&item=&q=`, reuses each flow's own scope: announcement = the org tree's
+live members for someone who may write announcements there (narrowed to a saved announcement's audience), complaint
+= the complainant + `complaint_staff_ids` re-checked with `_visibility` (a new complaint: the platform admins, the
+form's "staff" targets), meeting = owner + invitees (a new meeting: the calendar people scope). Rows follow
+`usernames.shown` exactly: confirmed names only, auto-filled ones to platform admins. The SERVER parses the saved
+text with the same token rule (`services/mentions.py`; an e-mail is never a mention) and notifies only people who can
+ALREADY open the item — the announcement's audience snapshot once it is live (never a draft), the complaint's
+complainant + staff, the meeting's owner + invitees — so a mention can neither reveal an item nor reach anyone the
+writer could not reach; anything else is ignored silently. One notification per person per item (a reply is its own
+item), deduplicated by `mention_notices` (context, ref_id, user_id) unique, migration 0027 — an edit tells only the
+names it added. Plain notification pipeline (`notify_user`: in-app + push), type `mention`, bilingual title; taps
+reuse the existing targets (org home for announcements, `calendar` for meetings, `support` + `target_id` → the
+complaint's detail screen, now also for ordinary complaint notifications). Read views render "@name" highlighted
+(`MentionText`, LRI/PDI-isolated in Arabic); a tap opens the public profile (D-074) unless `profile.public_link` is
+off. Kill switch `mentions` (also off with `auth.username`): plain fields and text in the app; switched off on
+EVERY platform → the server neither parses nor suggests. No per-type notification preferences exist, so none apply.
+**Rejected.** Suggesting or notifying the wider people-picker scope for meetings / complaints (a non-invitee would
+learn the meeting exists and land on a 404); notifying at draft time; diffing old / new text instead of a dedupe
+table (removing and re-adding a name would notify twice, and concurrent saves race); an overlay list (inline lists
+work in sheets and dialogs and are layout-testable).
+
+## D-076 — Username rollout numbers for platform admins: a kind-only event log + a daily sign-in counter · 2026-10-28 · accepted
+
+**Decision.** The admin "Usernames" page (Support & security, kill switch `admin.username_stats`,
+`lib/features/admin/admin_username_stats.dart`) reads `GET /api/v1/admin/usernames/stats?days=7|30|90` (admins and
+super admins, `require_admin`). The SNAPSHOT (accounts, with a username, confirmed, still waiting for the
+keep-or-change answer, none) is computed from `users` at request time, so it is exact from day one; only the FLOWS
+start at deploy (migration 0026, no back-filled history): `username_events` holds one row per change — the kind
+(backfilled · chosen_at_signup · set_in_profile · changed · removed · confirmed_kept / _changed / _removed ·
+admin_set · admin_cleared) and the UTC time, never a name, `user_id` without a foreign key — and `sign_in_daily`
+counts successful sign-ins per UTC day and method (email · phone · username · id = the data-lab ID login · google;
+"successful" = the password or Google was right, so an MFA step counts at the password). `login_history` keeps one
+row per user and `auth_attempts` is pruned after 2 days, so neither could answer a 90-day window. Events are written
+from the one place each change happens (`username_service.change` / `confirm` / `backfill`, register and Google
+sign-up in `auth_service`, the admin edit in `admin_panel._set_username_by_admin`): `username_stats.note` queues the
+kind on the session and `commit_claim` writes it in its own commit AFTER the change is committed, swallowing any
+error, so a refused claim writes nothing and a stats failure never fails the request. `prompt_conversion` =
+answered / (answered + still pending) over the window. The page shows tiles (snapshot), trend tiles with
+sparklines, a donut (confirmed / waiting / none), the flows as bars, sign-in methods as a donut and the daily trend
+folded into at most 10 bars (`usernameTrend`); everything from `app_charts.dart`.
+**Rejected.** Storing old / new names in the log (the stats need counts only); a row per sign-in (grows without
+bound and says who signed in when — a per-day counter answers the question); adding a method column to
+`login_history` (it keeps only the latest login per user); writing events inside the user's transaction (a logging
+error would roll the change back).

@@ -52,6 +52,7 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import '../../admin/admin_common.dart' show t;
 import '../points/points_api.dart' show kPointsFeatureKey;
 import '../points/points_wallet_page.dart' show PointsWalletPage;
+import '../public_profile/public_profile_page.dart' show ShareMyProfileTile;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -221,6 +222,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                 ),
                               ),
                             ),
+                            // https://nextbrain.site/@name — confirmed usernames only (D-074)
+                            const ShareMyProfileTile(),
                             ParentComponent(
                               featureKey: 'profile.certificate_requests',
                               child: AppSettingsTile(

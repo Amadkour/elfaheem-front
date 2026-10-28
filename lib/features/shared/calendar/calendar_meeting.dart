@@ -36,6 +36,7 @@ import '../points/points_api.dart';
 import 'calendar_api.dart';
 import 'calendar_models.dart';
 import 'package:flutter_education_app/design/app_username.dart';
+import 'package:flutter_education_app/design/app_mentions.dart';
 
 String _utcIso(DateTime wall) => AppTime.fromZone(wall).toUtc().toIso8601String();
 
@@ -515,7 +516,12 @@ class _MeetingFormState extends State<MeetingForm> {
         ],
         ],
         const SizedBox(height: 10),
-        AppField(controller: _notes, label: t('ملاحظات (اختياري)', 'Notes (optional)'), maxLines: 3),
+        // "@" suggests the people of my organizations; only the invitees are told (D-075)
+        Mentions(
+          controller: _notes,
+          source: MentionApi.source('meeting', item: widget.orgId),
+          child: AppField(controller: _notes, label: t('ملاحظات (اختياري)', 'Notes (optional)'), maxLines: 3),
+        ),
         if (_checking || mine.isNotEmpty || others.isNotEmpty) const SizedBox(height: 12),
         if (_checking && mine.isEmpty && others.isEmpty)
           Text(t('نتحقق من التوفر…', 'Checking availability…'), style: appText(12, c: c.textLight)),
@@ -745,7 +751,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
               value: [if (org.isNotEmpty) _name(org), if (dept.isNotEmpty) _name(dept)].join(' · ')),
         if ('${m['notes'] ?? ''}'.trim().isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text('${m['notes']}', style: appText(13, c: c.textMedium, h: 1.5)),
+          MentionText('${m['notes']}', style: appText(13, c: c.textMedium, h: 1.5)),
         ],
         if (online && m['status'] != 'cancelled')
           if (MeetingTimeLimit.parse(m['time_limit']) case final limit?)

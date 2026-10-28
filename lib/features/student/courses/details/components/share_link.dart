@@ -39,19 +39,22 @@ Future<void> shareCourseLink(BuildContext context, CourseModel course) async {
   if (copied) Helpers.showMessage(gt('تم نسخ الرابط', 'Link copied'));
 }
 
+/// [heading] replaces "Share this course" (e.g. a profile link, D-074).
 Future<void> showShareLinkDialog(
   BuildContext context, {
   required String url,
   required String title,
+  String? heading,
 }) =>
     showDialog<void>(
       context: context,
-      builder: (_) => _ShareLinkDialog(url: url, title: title),
+      builder: (_) => _ShareLinkDialog(url: url, title: title, heading: heading),
     );
 
 class _ShareLinkDialog extends StatefulWidget {
-  const _ShareLinkDialog({required this.url, required this.title});
+  const _ShareLinkDialog({required this.url, required this.title, this.heading});
   final String url, title;
+  final String? heading;
 
   @override
   State<_ShareLinkDialog> createState() => _ShareLinkDialogState();
@@ -104,7 +107,7 @@ class _ShareLinkDialogState extends State<_ShareLinkDialog> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    gt('مشاركة الكورس', 'Share this course'),
+                    widget.heading ?? gt('مشاركة الكورس', 'Share this course'),
                     style: c.h3.copyWith(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                 ),

@@ -24,6 +24,7 @@ import '../shared/attendance/admin_data_lab_page.dart';
 import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
 import 'admin_admins_page.dart';
 import 'admin_auth_settings_page.dart';
+import 'admin_username_stats.dart' show AdminUsernameStatsPage, kUsernameStatsFeatureKey;
 import 'admin_categories_page.dart';
 import 'admin_common.dart';
 import 'admin_content_page.dart';
@@ -333,6 +334,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.verified_user_rounded,
           colors: AdminPalette.indigo,
           onTap: () => push(const AdminAuthSettingsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_username_stats',
+          descKey: 'admin_username_stats_d',
+          label: t('أسماء المستخدمين', 'Usernames'),
+          desc: t('هل يستخدم الناس اسم المستخدم: من أكّده أو غيّره، وطرق تسجيل الدخول',
+              'Is the @username used: who kept or changed it, and how people sign in'),
+          icon: Icons.alternate_email_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kUsernameStatsFeatureKey,
+          onTap: () => push(const AdminUsernameStatsPage()),
         ),
         AdminService(
           labelKey: 'mfa',

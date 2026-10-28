@@ -102,7 +102,13 @@ class _AppKeyboardSupportState extends State<AppKeyboardSupport> {
 
 /// The decisions, kept static so a test can drive them with `tester.sendKeyEvent`.
 abstract final class AppKeyboard {
+  /// A widget that owns some keys for a moment — an open @mention list (`Mentions` in app_mentions.dart, D-075):
+  /// every key goes to it first, and what it handles (Enter picks, Esc closes) never reaches the rules below.
+  static bool Function(KeyDownEvent e)? keyClaim;
+
   static bool handleKeyDown(KeyDownEvent e) {
+    final claim = keyClaim;
+    if (claim != null && claim(e)) return true;
     final kb = HardwareKeyboard.instance;
     if (kb.isAltPressed) return false;
     final ctrl = kb.isControlPressed || kb.isMetaPressed;

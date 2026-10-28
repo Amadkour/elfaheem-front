@@ -16,8 +16,9 @@ import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
 import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
-import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintsScreen;
+import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintDetailScreen, ComplaintsScreen;
 import '../../features/student/courses/details/course_link_loader.dart';
+import '../../features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
@@ -42,6 +43,14 @@ class AppNavigator {
     await navigatorKey.currentState?.push(MaterialPageRoute(
       settings: const RouteSettings(name: '/course-by-id'),
       builder: (_) => CourseLinkLoader(courseId: courseId, ref: ref),
+    ));
+  }
+
+  /// A public profile by @username (profile links `https://nextbrain.site/@name`, D-074).
+  static Future<void> openProfile(String username) async {
+    await navigatorKey.currentState?.push(MaterialPageRoute(
+      settings: RouteSettings(name: '/@$username'),
+      builder: (_) => PublicProfileScreen(username: username),
     ));
   }
 
@@ -74,6 +83,13 @@ class AppNavigator {
         }
         return;
       case 'support': // "Contact support" from the assistant (Track F) → the help center (complaints)
+        if (targetId != null) { // a complaint notification / @mention (D-075) → that complaint
+          await nav.push(MaterialPageRoute(
+              settings: const RouteSettings(name: '/complaint'),
+              builder: (_) => ChangeNotifierProvider<ComplaintProvider>(
+                  create: (_) => ComplaintProvider(), child: ComplaintDetailScreen(complaintId: targetId))));
+          return;
+        }
         await nav.push(MaterialPageRoute(
             settings: const RouteSettings(name: '/help-center'),
             builder: (_) => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const ComplaintsScreen())));

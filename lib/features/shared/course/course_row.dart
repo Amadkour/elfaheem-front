@@ -693,10 +693,14 @@ class _StudentRow extends StatelessWidget {
           ),
         if (hasStudents && hasCertificate) const SizedBox(width: 10),
         if (hasStudents)
-          _IconText(
-            color: context.colors.accent2,
-            icon: CupertinoIcons.group,
-            text: '${course.studentsCount} ${'student'.tr}',
+          // shrinks too: "1300 students" overflowed a 2-column card on a 320 px phone at text scale 1.3
+          Flexible(
+            child: _IconText(
+              color: context.colors.accent2,
+              icon: CupertinoIcons.group,
+              text: '${course.studentsCount} ${'student'.tr}',
+              shrinkText: true,
+            ),
           ),
       ],
     );

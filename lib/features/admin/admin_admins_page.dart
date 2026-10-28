@@ -6,7 +6,7 @@
 // Uses the EXISTING admin_panel.py endpoints (super-admin rules are enforced there):
 //   GET    /api/v1/admin/users?role=admin&search=&page=1&size=20  -> {items, total, page, size, pages}
 //   POST   /api/v1/admin/users        {role:"admin", name, gmail, password, phone?, country?}
-//   PUT    /api/v1/admin/users/{id}   {name, gmail, phone, country, is_active, password?}
+//   PUT    /api/v1/admin/users/{id}   {name, gmail, phone, country, is_active, password?, username? (null = remove)}
 //   DELETE /api/v1/admin/users/{id}
 library;
 
@@ -35,6 +35,9 @@ import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../auth/username.dart' show UsernameError;
+import '../auth/username_field.dart' show UsernameStatus;
+import 'admin_username_field.dart';
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -239,14 +242,17 @@ class AdminAdminsProvider extends ChangeNotifier implements AdminQueryHost {
     }
   }
 
-  Future<bool> update(int id, Map<String, dynamic> body) async {
+  /// [onError] also gets the server's error (a USERNAME_* code lands on the form's username field).
+  Future<bool> update(int id, Map<String, dynamic> body, {ValueChanged<ApiException>? onError}) async {
     try {
       await _api.put(_AdminsApi.one(id), body: body);
       toast('admin_admin_saved'.tr);
       await refresh();
       return true;
     } catch (e) {
-      toast(ApiException.from(e).message, error: true);
+      final err = ApiException.from(e);
+      onError?.call(err);
+      toast(err.message, error: true);
       return false;
     }
   }
@@ -562,13 +568,18 @@ class _AdminFormState extends State<_AdminForm> {
   late final _phone = TextEditingController(text: asStr(widget.existing?['phone']));
   final _password = TextEditingController();
   late bool _active = asBool(widget.existing?['is_active'], true);
+  // the row's @username: a super-admin may set, change or remove it (D-071, admin edit)
+  late final String? _currentUsername = usernameFrom(widget.existing);
+  late final _username = TextEditingController(text: _currentUsername ?? '');
+  UsernameError? _usernameError;
+  UsernameStatus _usernameStatus = UsernameStatus.current;
   bool busy = false;
 
   bool get editing => widget.existing != null;
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _phone, _password]) {
+    for (final c in [_name, _email, _phone, _password, _username]) {
       c.dispose();
     }
     super.dispose();
@@ -576,6 +587,14 @@ class _AdminFormState extends State<_AdminForm> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    final uname = editing
+        ? adminUsernameBody(current: _currentUsername, text: _username.text, enabled: adminUsernameOn)
+        : const <String, Object?>{};
+    final hold = adminUsernameHold(uname, _usernameStatus);
+    if (hold != null) {
+      toast(hold, error: _usernameStatus != UsernameStatus.checking);
+      return;
+    }
     setState(() => busy = true);
     final phone = _phone.text.trim();
     final bool ok;
@@ -589,6 +608,10 @@ class _AdminFormState extends State<_AdminForm> {
           .flag,
         'is_active': _active,
         if (_password.text.isNotEmpty) 'password': _password.text,
+        ...uname,
+      }, onError: (e) {
+        final err = UsernameError.from(e, submitted: _username.text);
+        if (err != null && mounted) setState(() => _usernameError = err);
       });
     } else {
       ok = await widget.provider.create({
@@ -632,6 +655,13 @@ class _AdminFormState extends State<_AdminForm> {
                     controller: _phone,
                     label: 'admin_phone'.tr,
                   ),
+                  if (editing)
+                    AdminUsernameField(
+                      controller: _username,
+                      currentUsername: _currentUsername,
+                      error: _usernameError,
+                      onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                    ),
                   AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr
                         : 'password'.tr, required: !editing),

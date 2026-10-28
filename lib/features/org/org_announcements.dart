@@ -22,6 +22,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_mentions.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -651,7 +652,7 @@ class _AnnouncementCardState extends State<AnnouncementCard> {
                       style: orgText(context, size: widget.compact ? 14.5 : 15.5, w: FontWeight.w800)),
                   if ('${a['body'] ?? ''}'.trim().isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text('${a['body']}'.trim(),
+                    MentionText('${a['body']}'.trim(),
                         maxLines: widget.compact ? 2 : 5,
                         overflow: TextOverflow.ellipsis,
                         style: orgText(context, size: 13, color: c.textMedium)),
@@ -838,7 +839,7 @@ class _AnnouncementDetailState extends State<_AnnouncementDetail> {
           Text('${a['title']}', style: orgText(context, size: 18, w: FontWeight.w800)),
           if ('${a['body'] ?? ''}'.trim().isNotEmpty) ...[
             const SizedBox(height: 8),
-            SelectableText('${a['body']}'.trim(), style: orgText(context, size: 14, color: c.textMedium)),
+            MentionText('${a['body']}'.trim(), selectable: true, style: orgText(context, size: 14, color: c.textMedium)),
           ],
           const SizedBox(height: 16),
           _ActionsBar(
@@ -1116,7 +1117,12 @@ Future<void> showAnnouncementEditor(BuildContext context,
               ),
             ChoiceRow<String>(label: t('النوع', 'Type'), options: annCategories(), value: cat, onChanged: (v) => set(() => cat = v)),
             Field(controller: title, label: t('العنوان', 'Title')),
-            Field(controller: body, label: t('التفاصيل', 'Details'), maxLines: 5),
+            // "@" suggests the organization's members (this announcement's audience once saved), D-075
+            Mentions(
+              controller: body,
+              source: MentionApi.source('announcement', ref: oid, item: int.tryParse('${edit?['id'] ?? ''}')),
+              child: Field(controller: body, label: t('التفاصيل', 'Details'), maxLines: 5),
+            ),
             Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
               OutlinedButton.icon(
                 onPressed: () async {

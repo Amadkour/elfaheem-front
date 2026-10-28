@@ -6253,6 +6253,14 @@
     "en": "New password (optional)",
     "ar": "كلمة مرور جديدة (اختياري)"
   },
+  "admin_username_keep": {
+    "en": "Keep the current username",
+    "ar": "الإبقاء على اسم المستخدم الحالي"
+  },
+  "admin_username_note": {
+    "en": "The person gets a notification when you change or remove their username.",
+    "ar": "سيصل إشعار لصاحب الحساب عند تغيير اسم المستخدم أو حذفه."
+  },
   "admin_at_least_6_characters": {
     "en": "At least 8 characters",
     "ar": "8 أحرف على الأقل"

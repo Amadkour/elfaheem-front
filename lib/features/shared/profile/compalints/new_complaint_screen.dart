@@ -33,6 +33,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_username.dart';
+import 'package:flutter_education_app/design/app_mentions.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
@@ -576,13 +577,18 @@ class _FormTab extends StatelessWidget {
                   icon: Icons.notes_rounded,
                   gradient: c.tealGradient,
                   title: 'detailed_description_label'.tr,
-                  child: MyTextField(
+                  // "@" suggests the platform staff who will handle it (D-075)
+                  child: Mentions(
                     controller: descCtrl,
-                    label: 'description_complaint_hint'.tr,
-                    maxLine: 5,
-                    validator: (v) => (v == null || v.trim().length < 10)
-                        ? 'description_too_short'.tr
-                        : null,
+                    source: MentionApi.source('complaint'),
+                    child: MyTextField(
+                      controller: descCtrl,
+                      label: 'description_complaint_hint'.tr,
+                      maxLine: 5,
+                      validator: (v) => (v == null || v.trim().length < 10)
+                          ? 'description_too_short'.tr
+                          : null,
+                    ),
                   ),
                 ),
 

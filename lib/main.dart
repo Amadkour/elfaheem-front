@@ -61,6 +61,7 @@ import 'features/org/org_dashboard_screen.dart';
 import 'features/org/org_member_dashboard.dart' show OrgMemberDashboardScreen;
 import 'features/org/orgs_unavailable_gate.dart';
 import 'features/student/courses/details/course_link_loader.dart';
+import 'features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import 'features/teacher/dashboard/teacher_dashboard_screen.dart';
 import 'features/admin/admin_dashboard_screen.dart';
 import 'features/parent/parent_dashboard_screen.dart';
@@ -628,6 +629,15 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
         ),
         settings,
       );
+    }
+    // /@ahmed — a profile link (D-074): the same flow as a course link (signed out → login, then the profile)
+    final profile = DeepLinkService.parseProfile(settings.name);
+    if (profile != null) {
+      if (!context.read<MyAuthProvider>().isAuthenticated) {
+        DeepLinkService.instance.setPendingProfile(profile);
+        return _fade(const LoginScreen(), const RouteSettings(name: '/login'));
+      }
+      return _fade(_Guard(child: PublicProfileScreen(username: profile.username)), settings);
     }
     switch (settings.name) {
       case '/login':

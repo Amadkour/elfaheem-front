@@ -25,6 +25,10 @@ import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
+import '../auth/username.dart' show UsernameError;
+import '../auth/username_field.dart' show UsernameStatus;
+import 'admin_username_field.dart';
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key, required this.role, this.embedded = false});
@@ -991,6 +995,11 @@ class _UserFormState extends State<_UserForm> {
   late final _phone = TextEditingController(text: widget.existing?.phone);
   final _password = TextEditingController();
   final _years = TextEditingController(text: '0');
+  // the row's @username: an admin may set, change or remove it (D-071, admin edit)
+  late final String? _currentUsername = usernameFrom(widget.existing?.j);
+  late final _username = TextEditingController(text: _currentUsername ?? '');
+  UsernameError? _usernameError;
+  UsernameStatus _usernameStatus = UsernameStatus.current;
   bool busy = false;
 
   bool get editing => widget.existing != null;
@@ -999,7 +1008,7 @@ class _UserFormState extends State<_UserForm> {
 
   @override
   void dispose() {
-    for (final c in [_name, _email, _phone, _password, _years]) {
+    for (final c in [_name, _email, _phone, _password, _years, _username]) {
       c.dispose();
     }
     super.dispose();
@@ -1007,6 +1016,14 @@ class _UserFormState extends State<_UserForm> {
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
+    final uname = editing
+        ? adminUsernameBody(current: _currentUsername, text: _username.text, enabled: adminUsernameOn)
+        : const <String, Object?>{};
+    final hold = adminUsernameHold(uname, _usernameStatus);
+    if (hold != null) {
+      toast(hold, error: _usernameStatus != UsernameStatus.checking);
+      return;
+    }
     setState(() => busy = true);
     bool ok;
 
@@ -1019,6 +1036,10 @@ class _UserFormState extends State<_UserForm> {
             .firstWhere((e) => _phone.text.contains(e.dial))
             .flag,
         if (_password.text.isNotEmpty) 'password': _password.text,
+        ...uname,
+      }, onError: (e) {
+        final err = UsernameError.from(e, submitted: _username.text);
+        if (err != null && mounted) setState(() => _usernameError = err);
       });
     } else {
       ok = await widget.provider.create({
@@ -1067,6 +1088,13 @@ class _UserFormState extends State<_UserForm> {
                   ),
                   AppEmailField(controller: _email, label: 'admin_email'.tr),
                   PhoneInputField(controller: _phone, label: 'admin_phone'.tr),
+                  if (editing)
+                    AdminUsernameField(
+                      controller: _username,
+                      currentUsername: _currentUsername,
+                      error: _usernameError,
+                      onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                    ),
                   if (!editing && role == 'teacher')
                     Field(
                       controller: _years,

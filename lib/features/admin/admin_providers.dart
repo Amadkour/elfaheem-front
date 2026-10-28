@@ -30,13 +30,16 @@ class AdminBase extends BaseProvider {
 
   /// Runs a mutation. Returns the response body (or `true` when the body is
   /// empty) on success and `null` on failure, after toasting the server's
-  /// message. [ok] is the success toast.
-  Future<dynamic> call(Future<dynamic> Function() fn, {String? ok}) async {
+  /// message. [ok] is the success toast. [onError] also gets the server's
+  /// error (e.g. a USERNAME_* code that lands on a form field).
+  Future<dynamic> call(Future<dynamic> Function() fn,
+      {String? ok, ValueChanged<ApiException>? onError}) async {
     try {
       final r = await fn();
       if (ok != null) toast(ok);
       return r ?? true;
     } on ApiException catch (e) {
+      onError?.call(e);
       toast(e.message, error: true);
       return null;
     } catch (e) {
@@ -287,9 +290,10 @@ class AdminUsersProvider extends AdminPagedProvider {
     return r != null;
   }
 
-  Future<bool> update(int id, Map<String, dynamic> body) async {
+  Future<bool> update(int id, Map<String, dynamic> body,
+      {ValueChanged<ApiException>? onError}) async {
     final r = await call(() => api.put('$_base/users/$id', body: body),
-        ok: 'admin_saved'.tr);
+        ok: 'admin_saved'.tr, onError: onError);
     if (r != null) await refresh();
     return r != null;
   }
