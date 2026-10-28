@@ -11,6 +11,9 @@
 //   4. charts                           AppBarChart signups vs enrollments per day (last 14) · AppDonut organizations
 //                                       by type · AppDonut revenue by currency (30 days)
 //   5. activity & health                live events 24 h · failed jobs 24 h · live sessions · complaints · subscribers
+//                                       + the "AI assistant" card (AdminAssistantCard, Track E.7: questions 7 d, no-answer
+//                                       rate, p50, link to the console) when the page has the RAG summary and
+//                                       `rag.assistant` is on
 //   6. hubs                             Data Lab · organizations · AI assistant console · features · teachers · income
 // A block the server does not send (older server) is left out; nothing crashes. Colours: context.colors only.
 // Layout test: test/ui/admin_home_layout_test.dart.
@@ -105,6 +108,7 @@ class AdminHomeBody extends StatelessWidget {
     this.headerActions = const [],
     this.notice,
     this.todoTabKey = AttentionTabs.adminSupport,
+    this.assistant,
   });
 
   final AdminHomeData data;
@@ -120,6 +124,9 @@ class AdminHomeBody extends StatelessWidget {
   /// A line above the pulse, e.g. "showing the last numbers, refresh failed".
   final String? notice;
   final String todoTabKey;
+
+  /// The RAG monitoring summary (null: an older server, a failed call, or the assistant switched off → no card).
+  final AdminAssistantHealth? assistant;
 
   static const _maxWidth = 1180.0;
 
@@ -147,7 +154,15 @@ class AdminHomeBody extends StatelessWidget {
       final needs = _NeedsYou(data: data, pendingPayouts: pendingPayouts, actions: actions, todoTabKey: todoTabKey);
       final bars = _ActivityChart(data: data);
       final donuts = _Donuts(data: data, stacked: !twoColumns);
-      final health = _Health(data: data, actions: actions);
+      final showAi = assistant != null && !AppConfig.disableList.contains('rag.assistant');
+      final health = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        _Health(data: data, actions: actions),
+        if (showAi) ...[
+          const SizedBox(height: 16),
+          AdminAssistantCard(
+              health: assistant!, onOpen: AppConfig.disableList.contains('rag.admin') ? null : actions.openAssistant),
+        ],
+      ]);
       final hubs = _Hubs(actions: actions);
       if (twoColumns) {
         sections.add(HomeEntrance(
@@ -500,6 +515,50 @@ class _Health extends StatelessWidget {
         ),
       ]),
     ]);
+  }
+}
+
+/// The "AI assistant" health card (Track E.7): questions of the window with their daily sparkline, the no-answer
+/// rate and the median answer time; [onOpen] opens the console (null hides the link).
+class AdminAssistantCard extends StatelessWidget {
+  const AdminAssistantCard({super.key, required this.health, this.onOpen});
+  final AdminAssistantHealth health;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final h = health;
+    final bad = (h.noAnswerRate ?? 0) >= .3;
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Icon(Icons.auto_awesome_rounded, size: 20, color: c.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('admin_home_ai_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark)),
+              Text('admin_home_ai_sub'.tr.replaceAll('{n}', '${h.days}'), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        AppGrid(minTile: 110, spacing: 8, padding: EdgeInsets.zero, children: [
+          AppStatTile(icon: Icons.forum_rounded, label: 'admin_home_ai_questions'.tr, value: appCompactNumber(h.questions), color: c.primary),
+          AppStatTile(icon: Icons.search_off_rounded, label: 'admin_home_ai_no_answer'.tr, value: h.noAnswerText, color: bad ? c.warning : c.success),
+          AppStatTile(icon: Icons.timer_outlined, label: 'admin_home_ai_p50'.tr, value: h.p50Text, color: c.purple),
+        ]),
+        if (h.questions > 0) ...[
+          const SizedBox(height: 10),
+          AppSparkline(h.spark, height: 32, label: 'admin_home_ai_questions'.tr),
+        ],
+        if (onOpen != null)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(onPressed: onOpen, icon: const Icon(Icons.open_in_new_rounded, size: 18), label: Text('admin_home_ai_open'.tr)),
+          ),
+      ]),
+    );
   }
 }
 

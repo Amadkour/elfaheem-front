@@ -4,14 +4,18 @@
 //                             the model's status; PUT takes any subset (422 bad_setting)
 //   POST    /admin/llm/test   a one-word completion against the provider → {ok, model, latency_ms | error}
 //   GET     /admin/overview?days=   questions per day, found / helpful rates, by context, generators, latency, the
-//                             questions most often not found, recent unhelpful answers, documents, queue, exam drafts
+//                             questions most often not found, recent unhelpful answers, documents, queue, exam drafts,
+//                             `monitoring` (Track E.7: path qa_direct · cache · extractive · model per question, latency
+//                             p50 / p95 per path, rates, by_day) → [RagMonitoring], drawn by [RagHealthBlock]
+//   GET     /admin/monitoring/summary?days=7   the super admin home's "AI assistant" card (admin_home_body.dart)
 //   GET     /admin/queries?app=&org_id=&found=&helpful=&q=&limit=   browse questions with their traces
 //   GET     /admin/queries/{id} · POST /admin/playground {question, app, org_id?, course_id?} → 202 (poll the query)
 //   GET     /admin/exam-drafts?limit=   recent drafts with their review summaries
 //
-// Pure, unit-tested: [RagAdminSettings], [RagOverview], [RagTrace], [ragRate], [ragGeneratorLabel], [ragTraceStepText].
-// Presentational, under the layout harness: [RagOverviewView], [RagPlatformSettingsForm], [RagTraceView],
-// [RagAdminQueryTile]. [RagAdminConsole] owns the calls.
+// Pure, unit-tested: [RagAdminSettings], [RagOverview], [RagMonitoring], [RagTrace], [ragRate], [ragGeneratorLabel],
+// [ragTraceStepText], [ragMsText], [ragPctText], [halfRateDelta].
+// Presentational, under the layout harness: [RagOverviewView], [RagHealthBlock], [RagPlatformSettingsForm],
+// [RagTraceView], [RagAdminQueryTile]. [RagAdminConsole] owns the calls.
 library;
 
 import 'package:flutter/material.dart';
@@ -23,6 +27,7 @@ import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../admin/admin_common.dart' show asBool, asDouble, asInt, asMap, asMapList, asStr, t;
+import '../../admin/admin_home_data.dart' show halfDelta;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
 import 'rag_chat.dart';
 import 'rag_chat_screen.dart' show RagAnswerBody;
@@ -41,6 +46,7 @@ class RagAdminSettings {
     this.personaAr = '',
     this.personaEn = '',
     this.conversationTurns = 4,
+    this.conversationRetentionDays = 90,
     this.planQueries = true,
     this.verifyAnswers = true,
     this.smallTalk = true,
@@ -69,6 +75,9 @@ class RagAdminSettings {
   final String answerStyle; // concise | balanced | detailed
   final String assistantName, personaAr, personaEn;
   final int conversationTurns, maxCitations;
+
+  /// Chats with no new question for this many days are deleted by the server (0 = kept forever; 0–3650, D-064).
+  final int conversationRetentionDays;
   final bool planQueries, verifyAnswers, smallTalk, examPlanner, examReviewer;
   final String effortAnswer, effortLight, effortExam;
   final String model, fastModel;
@@ -83,6 +92,9 @@ class RagAdminSettings {
 
   bool get light => llmProfile == 'light';
 
+  /// The server's bound of `conversation_retention_days`.
+  static const maxRetentionDays = 3650;
+
   factory RagAdminSettings.fromJson(Map<String, dynamic> j) {
     final s = asMap(j['settings']);
     final llm = asMap(j['llm']);
@@ -94,6 +106,7 @@ class RagAdminSettings {
       personaAr: asStr(s['persona_ar']),
       personaEn: asStr(s['persona_en']),
       conversationTurns: asInt(s['conversation_turns'], 4),
+      conversationRetentionDays: asInt(s['conversation_retention_days'], 90).clamp(0, maxRetentionDays),
       planQueries: asBool(s['plan_queries'], true),
       verifyAnswers: asBool(s['verify_answers'], true),
       smallTalk: asBool(s['small_talk'], true),
@@ -128,6 +141,7 @@ class RagAdminSettings {
         'persona_ar': personaAr,
         'persona_en': personaEn,
         'conversation_turns': conversationTurns,
+        'conversation_retention_days': conversationRetentionDays,
         'plan_queries': planQueries,
         'verify_answers': verifyAnswers,
         'small_talk': smallTalk,
@@ -143,7 +157,7 @@ class RagAdminSettings {
 
   RagAdminSettings copyWith({
     String? generator, bool? allowExternalDefault, String? answerStyle, String? assistantName, String? personaAr, String? personaEn,
-    int? conversationTurns, bool? planQueries, bool? verifyAnswers, bool? smallTalk, bool? examPlanner, bool? examReviewer,
+    int? conversationTurns, int? conversationRetentionDays, bool? planQueries, bool? verifyAnswers, bool? smallTalk, bool? examPlanner, bool? examReviewer,
     int? maxCitations, String? effortAnswer, String? effortLight, String? effortExam, String? model, String? fastModel,
   }) =>
       RagAdminSettings(
@@ -154,6 +168,7 @@ class RagAdminSettings {
         personaAr: personaAr ?? this.personaAr,
         personaEn: personaEn ?? this.personaEn,
         conversationTurns: conversationTurns ?? this.conversationTurns,
+        conversationRetentionDays: conversationRetentionDays ?? this.conversationRetentionDays,
         planQueries: planQueries ?? this.planQueries,
         verifyAnswers: verifyAnswers ?? this.verifyAnswers,
         smallTalk: smallTalk ?? this.smallTalk,
@@ -176,7 +191,7 @@ class RagOverview {
     this.days = 30, this.asked = 0, this.answered = 0, this.found = 0, this.failed = 0, this.pending = 0, this.rated = 0, this.helpful = 0,
     this.askers = 0, this.p50, this.p90, this.byDay = const [], this.contexts = const {}, this.generators = const {}, this.notFound = const [],
     this.unhelpful = const [], this.documents = const [], this.queueWaiting = 0, this.drafts = 0, this.draftQuestions = 0, this.draftsLlm = 0,
-    this.qaPairs = 0, this.qaEnabled = 0, this.qaDirect = 0, this.qaExample = 0,
+    this.qaPairs = 0, this.qaEnabled = 0, this.qaDirect = 0, this.qaExample = 0, this.monitoring,
   });
   final int days, asked, answered, found, failed, pending, rated, helpful, askers;
   final int? p50, p90;
@@ -187,6 +202,9 @@ class RagOverview {
 
   /// Curated Q&A (Track E.2): pairs, enabled pairs, direct hits and example uses in the window.
   final int qaPairs, qaEnabled, qaDirect, qaExample;
+
+  /// Track E.7 (null: an older server without the block — the Health block is left out).
+  final RagMonitoring? monitoring;
 
   factory RagOverview.fromJson(Map<String, dynamic> j) {
     final tot = asMap(j['totals']);
@@ -207,6 +225,7 @@ class RagOverview {
       generators: {for (final e in gens.entries) e.key: asInt(e.value)},
       queueWaiting: asInt(q['waiting']),
       drafts: asInt(ed['total']), draftQuestions: asInt(ed['questions']), draftsLlm: asInt(ed['llm']),
+      monitoring: j['monitoring'] is Map ? RagMonitoring.fromJson(asMap(j['monitoring'])) : null,
     );
   }
 
@@ -219,6 +238,113 @@ class RagOverview {
 
 /// A percentage of [part] over [whole] (null when [whole] is 0).
 int? ragRate(int part, int whole) => whole <= 0 ? null : (part * 100 / whole).round();
+
+/// The answer paths of `monitoring`, in the order the console lists them.
+const ragPaths = ['qa_direct', 'cache', 'extractive', 'model'];
+
+String ragPathLabel(String path) => switch (path) {
+      'qa_direct' => t('إجابة معتمدة مباشرة', 'Direct Q&A'),
+      'cache' => t('من الذاكرة المؤقتة', 'From the cache'),
+      'model' => t('النموذج اللغوي', 'Language model'),
+      _ => t('اقتباس من المستندات', 'Quoted from documents'),
+    };
+
+/// 45 → "45 ms", 1234 → "1.2 s", null → "—".
+String ragMsText(int? ms) => ms == null ? '—' : (ms < 1000 ? '$ms ms' : '${(ms / 1000).toStringAsFixed(1)} s');
+
+/// A 0..1 rate as "12%" (null → "—").
+String ragPctText(double? rate) => rate == null ? '—' : '${(rate * 100).round()}%';
+
+/// Percent change of the rate part / whole in the second half of the window against the first half (null without
+/// a base: no question, or a zero rate, in the first half).
+double? halfRateDelta(List<int> part, List<int> whole) {
+  if (part.length != whole.length || whole.length < 2) return null;
+  final mid = whole.length ~/ 2;
+  int sum(Iterable<int> xs) => xs.fold(0, (a, b) => a + b);
+  final w1 = sum(whole.take(mid)), w2 = sum(whole.skip(mid));
+  if (w1 <= 0 || w2 <= 0) return null;
+  final r1 = sum(part.take(mid)) / w1, r2 = sum(part.skip(mid)) / w2;
+  if (r1 <= 0) return null;
+  return (r2 - r1) / r1 * 100;
+}
+
+/// One path's latency (`monitoring.latency_ms.by_path[path]`): questions on it, how many carry a latency, p50 / p95.
+class RagPathLatency {
+  const RagPathLatency({required this.path, this.questions = 0, this.count = 0, this.p50, this.p95});
+  factory RagPathLatency.fromJson(String path, Map<String, dynamic> j) => RagPathLatency(
+      path: path, questions: asInt(j['questions']), count: asInt(j['count']),
+      p50: j['p50'] == null ? null : asInt(j['p50']), p95: j['p95'] == null ? null : asInt(j['p95']));
+  final String path;
+  final int questions, count;
+  final int? p50, p95;
+}
+
+/// One UTC day of `monitoring.by_day`.
+class RagMonitorDay {
+  const RagMonitorDay({required this.day, this.questions = 0, this.noAnswer = 0, this.cacheHits = 0, this.qaDirect = 0, this.p50Ms});
+  factory RagMonitorDay.fromJson(Map<String, dynamic> j) => RagMonitorDay(
+      day: asStr(j['day']), questions: asInt(j['questions']), noAnswer: asInt(j['no_answer']), cacheHits: asInt(j['cache_hits']),
+      qaDirect: asInt(j['qa_direct']), p50Ms: j['p50_ms'] == null ? null : asInt(j['p50_ms']));
+  final String day;
+  final int questions, noAnswer, cacheHits, qaDirect;
+  final int? p50Ms;
+
+  /// "2026-10-07" → "7" (the bar chart's axis).
+  String get dayLabel {
+    final p = day.split('-');
+    return p.length == 3 ? '${int.tryParse(p[2]) ?? p[2]}' : day;
+  }
+}
+
+/// The overview's `monitoring` block (Track E.7): how the window's questions were answered, computed by the server
+/// in SQL. Rates are 0..1 (null: nothing to divide by).
+class RagMonitoring {
+  const RagMonitoring({
+    this.days = 30, this.questions = 0, this.p50, this.p95, this.byPath = const {}, this.cacheHitRate, this.qaDirectRate,
+    this.qaExampleRate, this.noAnswerRate, this.fallbackRate, this.helpfulRate, this.byDay = const [],
+  });
+
+  factory RagMonitoring.fromJson(Map<String, dynamic> j) {
+    final lat = asMap(j['latency_ms']);
+    final bp = asMap(lat['by_path']);
+    double? r(String k) => j[k] == null ? null : asDouble(j[k]);
+    return RagMonitoring(
+      days: asInt(j['days'], 30),
+      questions: asInt(j['questions']),
+      p50: lat['p50'] == null ? null : asInt(lat['p50']),
+      p95: lat['p95'] == null ? null : asInt(lat['p95']),
+      byPath: {for (final p in ragPaths) p: RagPathLatency.fromJson(p, asMap(bp[p]))},
+      cacheHitRate: r('cache_hit_rate'), qaDirectRate: r('qa_direct_rate'), qaExampleRate: r('qa_example_rate'),
+      noAnswerRate: r('no_answer_rate'), fallbackRate: r('fallback_rate'), helpfulRate: r('helpful_rate'),
+      byDay: [for (final d in asMapList(j['by_day'])) RagMonitorDay.fromJson(d)],
+    );
+  }
+
+  final int days, questions;
+  final int? p50, p95;
+  final Map<String, RagPathLatency> byPath;
+  final double? cacheHitRate, qaDirectRate, qaExampleRate, noAnswerRate, fallbackRate, helpfulRate;
+  final List<RagMonitorDay> byDay;
+
+  bool get hasActivity => questions > 0;
+
+  List<int> get _q => [for (final d in byDay) d.questions];
+  List<double> _rate(int Function(RagMonitorDay d) part) => [for (final d in byDay) d.questions == 0 ? 0 : part(d) / d.questions];
+
+  List<double> get questionsSpark => [for (final d in byDay) d.questions.toDouble()];
+  List<double> get noAnswerSpark => _rate((d) => d.noAnswer);
+  List<double> get cacheSpark => _rate((d) => d.cacheHits);
+  List<double> get qaDirectSpark => _rate((d) => d.qaDirect);
+
+  /// Second half of the window against the first (AppTrendTile's delta, in percent).
+  double? get questionsDelta => halfDelta(questionsSpark);
+  double? get noAnswerDelta => halfRateDelta([for (final d in byDay) d.noAnswer], _q);
+  double? get cacheDelta => halfRateDelta([for (final d in byDay) d.cacheHits], _q);
+  double? get qaDirectDelta => halfRateDelta([for (final d in byDay) d.qaDirect], _q);
+
+  /// The last [n] days (the bar chart: 90 groups do not fit a phone).
+  List<RagMonitorDay> recent(int n) => byDay.length <= n ? byDay : byDay.sublist(byDay.length - n);
+}
 
 /// A short human label of a `generator` value.
 String ragGeneratorLabel(String g) {
@@ -275,6 +401,10 @@ class RagAdminApi {
   Future<EngineResult> saveSettings(Map<String, dynamic> body) => engineCall(() => _api.put('$base/settings', body: body));
   Future<EngineResult> testLlm() => engineCall(() => _api.post('$base/llm/test'));
   Future<EngineResult> overview({int days = 30}) => engineCall(() => _api.get('$base/overview', queryParams: {'days': days}));
+
+  /// The super admin home's card (Track E.7); `unavailable` on an older server.
+  Future<EngineResult> monitoringSummary({int days = 7}) =>
+      engineCall(() => _api.get('$base/monitoring/summary', queryParams: {'days': days}));
   Future<EngineResult> queries({bool? app, int? orgId, bool? found, bool? helpful, String? q, int limit = 50}) => engineCall(() =>
       _api.get('$base/queries', queryParams: {'app': ?app, 'org_id': ?orgId, 'found': ?found, 'helpful': ?helpful, 'q': ?q, 'limit': limit}));
   Future<EngineResult> query(int id) => engineCall(() => _api.get('$base/queries/$id'));
@@ -472,6 +602,7 @@ class RagOverviewView extends StatelessWidget {
         for (final d in const [7, 30, 90]) AppChoiceChip(label: t('آخر $d يوماً', 'Last $d days'), selected: o.days == d, onTap: () => onDays?.call(d)),
       ]),
       const SizedBox(height: 12),
+      if (o.monitoring != null) ...[RagHealthBlock(monitoring: o.monitoring!), const SizedBox(height: 16)],
       AppGrid(minTile: 150, children: [
         AppStatTile(icon: Icons.people_alt_rounded, label: t('سائلون', 'Askers'), value: o.askers),
         AppStatTile(icon: Icons.timer_outlined, label: t('زمن الإجابة (وسيط)', 'Answer time (median)'), value: o.p50 == null ? '—' : '${(o.p50! / 1000).toStringAsFixed(1)} s'),
@@ -550,6 +681,126 @@ class RagOverviewView extends StatelessWidget {
   }
 }
 
+/// The overview's "Health" block (Track E.7): four trend tiles (questions, no-answer rate, cache hits, direct Q&A),
+/// questions per day, and the answer time p50 / p95 per path. Plain values: the layout harness pumps it.
+class RagHealthBlock extends StatelessWidget {
+  const RagHealthBlock({super.key, required this.monitoring});
+  final RagMonitoring monitoring;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final m = monitoring;
+    final palette = appChartPalette(context);
+    final hint = t('مقارنة بالنصف الأول من الفترة', 'vs the first half of the period');
+    final recent = m.recent(14);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      AppSectionTitle(t('الصحة', 'Health'), subtitle: t('كيف أُجيب كل سؤال خلال آخر ${m.days} يوماً', 'How every question of the last ${m.days} days was answered')),
+      AppGrid(minTile: 160, padding: EdgeInsets.zero, children: [
+        AppTrendTile(
+            label: t('الأسئلة', 'Questions'), value: appCompactNumber(m.questions), delta: m.questionsDelta, spark: m.questionsSpark,
+            deltaHint: hint, icon: Icons.forum_rounded, color: palette[0]),
+        AppTrendTile(
+            label: t('بلا إجابة', 'No answer'), value: ragPctText(m.noAnswerRate), delta: m.noAnswerDelta, spark: m.noAnswerSpark,
+            upIsGood: false, deltaHint: hint, icon: Icons.search_off_rounded, color: palette[1 % palette.length]),
+        AppTrendTile(
+            label: t('من الذاكرة المؤقتة', 'Cache hits'), value: ragPctText(m.cacheHitRate), delta: m.cacheDelta, spark: m.cacheSpark,
+            deltaHint: hint, icon: Icons.bolt_rounded, color: palette[2 % palette.length]),
+        AppTrendTile(
+            label: t('إجابات معتمدة مباشرة', 'Direct Q&A'), value: ragPctText(m.qaDirectRate), delta: m.qaDirectDelta, spark: m.qaDirectSpark,
+            deltaHint: hint, icon: Icons.verified_rounded, color: palette[3 % palette.length]),
+      ]),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: [
+        _RatePill(icon: Icons.lightbulb_outline_rounded, value: ragPctText(m.qaExampleRate), label: t('استعان بإجابة معتمدة', 'helped by a Q&A pair')),
+        _RatePill(icon: Icons.undo_rounded, value: ragPctText(m.fallbackRate), label: t('بديل عن النموذج', 'model fallback')),
+        _RatePill(icon: Icons.thumb_up_alt_rounded, value: ragPctText(m.helpfulRate), label: t('مفيدة من المقيَّمة', 'rated helpful')),
+      ]),
+      const SizedBox(height: 12),
+      AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(t('الأسئلة يومياً', 'Questions per day'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
+          const SizedBox(height: 12),
+          if (m.hasActivity)
+            AppBarChart(
+              title: t('الأسئلة يومياً', 'Questions per day'),
+              labels: [for (final d in recent) d.dayLabel],
+              series: [
+                AppChartSeries(t('الأسئلة', 'Questions'), [for (final d in recent) d.questions.toDouble()]),
+                AppChartSeries(t('بلا إجابة', 'No answer'), [for (final d in recent) d.noAnswer.toDouble()]),
+              ],
+            )
+          else
+            Text(t('لا أسئلة في هذه الفترة', 'No questions in this period'), style: appText(13, c: c.textLight)),
+        ]),
+      ),
+      const SizedBox(height: 12),
+      AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(t('زمن الإجابة حسب المسار', 'Answer time by path'), style: appText(14, w: FontWeight.w800, c: c.textDark)),
+          const SizedBox(height: 8),
+          RagLatencyRow(label: t('المسار', 'Path'), questions: t('أسئلة', 'Asked'), p50: 'p50', p95: 'p95', header: true),
+          for (final p in ragPaths)
+            RagLatencyRow(
+                label: ragPathLabel(p), questions: '${m.byPath[p]?.questions ?? 0}', p50: ragMsText(m.byPath[p]?.p50), p95: ragMsText(m.byPath[p]?.p95)),
+          const Divider(height: 12),
+          RagLatencyRow(label: t('الكل', 'All'), questions: '${m.questions}', p50: ragMsText(m.p50), p95: ragMsText(m.p95), header: true),
+        ]),
+      ),
+    ]);
+  }
+}
+
+/// A secondary rate: value + label in a pill whose label wraps on a narrow screen (AppStatChip never wraps).
+class _RatePill extends StatelessWidget {
+  const _RatePill({required this.icon, required this.value, required this.label});
+  final IconData icon;
+  final String value, label;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 12, 6),
+      decoration: BoxDecoration(
+        color: c.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: c.primary.withValues(alpha: 0.18)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 16, color: c.primary),
+        const SizedBox(width: 6),
+        Text(value, style: appText(13, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(width: 5),
+        Flexible(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textMedium))),
+      ]),
+    );
+  }
+}
+
+/// One row of the latency table: a label that wraps, three right-aligned figures.
+class RagLatencyRow extends StatelessWidget {
+  const RagLatencyRow({super.key, required this.label, required this.questions, required this.p50, required this.p95, this.header = false});
+  final String label, questions, p50, p95;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final st = appText(12.5, w: header ? FontWeight.w800 : FontWeight.w500, c: header ? c.textDark : c.textMedium);
+    Widget cell(String v) => SizedBox(width: 58, child: Text(v, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis, style: st));
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(children: [
+        Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: st)),
+        cell(questions),
+        cell(p50),
+        cell(p95),
+      ]),
+    );
+  }
+}
+
 class _RateRow extends StatelessWidget {
   const _RateRow({required this.label, required this.count, required this.rate});
   final String label;
@@ -592,10 +843,11 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
   late final _en = TextEditingController(text: _s.personaEn);
   late final _model = TextEditingController(text: _s.model);
   late final _fast = TextEditingController(text: _s.fastModel);
+  late final _retention = TextEditingController(text: '${_s.conversationRetentionDays}');
 
   @override
   void dispose() {
-    for (final c in [_name, _ar, _en, _model, _fast]) {
+    for (final c in [_name, _ar, _en, _model, _fast, _retention]) {
       c.dispose();
     }
     super.dispose();
@@ -693,6 +945,21 @@ class _RagPlatformSettingsFormState extends State<RagPlatformSettingsForm> {
         SizedBox(width: 36, child: Text('${s.maxCitations}', textAlign: TextAlign.center, style: appText(15, w: FontWeight.w800, c: c.textDark))),
         IconButton.outlined(onPressed: s.maxCitations < 8 ? () => setState(() => _s = _s.copyWith(maxCitations: s.maxCitations + 1)) : null, icon: const Icon(Icons.add_rounded, size: 18)),
       ]),
+      const SizedBox(height: 8),
+      AppField(
+          controller: _retention,
+          label: t('مدة الاحتفاظ بالمحادثات (أيام)', 'Keep chats for (days)'),
+          keyboard: TextInputType.number,
+          ltr: true,
+          onChanged: (v) {
+            final n = int.tryParse(v.trim());
+            if (n != null) _s = _s.copyWith(conversationRetentionDays: n.clamp(0, RagAdminSettings.maxRetentionDays));
+          }),
+      Padding(
+        padding: const EdgeInsetsDirectional.only(start: 4, top: 4),
+        child: Text(t('تُحذف تلقائياً المحادثات التي لم يُطرح فيها سؤال جديد طوال هذه المدة؛ 0 يحتفظ بها دائماً',
+            'Chats with no new question for this many days are deleted automatically; 0 keeps them'), style: appText(12, c: c.textLight)),
+      ),
       if (s.light) ...[
         _title(context, t('النموذج المحلي', 'Local model')),
         AppBanner(

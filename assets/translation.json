@@ -16636,5 +16636,73 @@
   "home_next_lecture": {
     "en": "Next: {n}",
     "ar": "التالي: {n}"
+  },
+  "admin_home_ai_title": {
+    "en": "AI assistant",
+    "ar": "المساعد الذكي"
+  },
+  "admin_home_ai_sub": {
+    "en": "Last {n} days",
+    "ar": "آخر {n} أيام"
+  },
+  "admin_home_ai_questions": {
+    "en": "Questions",
+    "ar": "الأسئلة"
+  },
+  "admin_home_ai_no_answer": {
+    "en": "No answer",
+    "ar": "بلا إجابة"
+  },
+  "admin_home_ai_p50": {
+    "en": "Median answer time",
+    "ar": "وسيط زمن الإجابة"
+  },
+  "admin_home_ai_open": {
+    "en": "Open the console",
+    "ar": "افتح لوحة المساعد"
+  },
+  "pl_move_up": {
+    "en": "Move up",
+    "ar": "نقل لأعلى"
+  },
+  "pl_move_down": {
+    "en": "Move down",
+    "ar": "نقل لأسفل"
+  },
+  "pl_show": {
+    "en": "Show",
+    "ar": "إظهار"
+  },
+  "pl_hide": {
+    "en": "Hide",
+    "ar": "إخفاء"
+  },
+  "pl_align_left": {
+    "en": "Align left",
+    "ar": "محاذاة لليسار"
+  },
+  "pl_align_center": {
+    "en": "Align center",
+    "ar": "محاذاة للوسط"
+  },
+  "pl_align_right": {
+    "en": "Align right",
+    "ar": "محاذاة لليمين"
+  },
+  "pl_fewer_lines": {
+    "en": "Fewer lines",
+    "ar": "أسطر أقل"
+  },
+  "pl_more_lines": {
+    "en": "More lines",
+    "ar": "أسطر أكثر"
+  },
+  "pl_requests_load_failed": {
+    "en": "Could not load the requests",
+    "ar": "تعذّر تحميل الطلبات"
+  },
+  "pl_designs_load_failed": {
+    "en": "Could not load the designs",
+    "ar": "تعذّر تحميل التصاميم"
   }
 }

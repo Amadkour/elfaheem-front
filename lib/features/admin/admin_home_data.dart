@@ -8,6 +8,9 @@
 //   AdminAlert                         one row of `alerts[]` (key, severity, count, deep link, extras).
 //   halfDelta(values)                  the trend figure of a 30-day series: the last 15 days vs the 15 before, in
 //                                      percent (null when the first half is 0 — nothing to compare against).
+//   AdminAssistantHealth               the "AI assistant" card (Track E.7) from the RAG service's
+//                                      GET /api/v1/rag/admin/monitoring/summary — a SECOND call beside the overview
+//                                      (the core cannot import the RAG service); null = route missing / switched off.
 //
 // The server sends exactly 30 rows, so "vs the previous period" means the previous HALF of the window; a true
 // 30-vs-30 needs a 60-row series (open point in docs/polish/dashboards.md).
@@ -23,6 +26,41 @@ double? halfDelta(List<double> values) {
   final b = values.skip(mid).fold<double>(0, (s, v) => s + v);
   if (a <= 0) return null;
   return (b - a) / a * 100;
+}
+
+/// The super admin home's "AI assistant" card: the RAG service's monitoring summary (Track E.7).
+class AdminAssistantHealth {
+  const AdminAssistantHealth({this.days = 7, this.questions = 0, this.noAnswerRate, this.cacheHitRate, this.p50Ms, this.daily = const []});
+
+  /// Tolerant of every missing key.
+  factory AdminAssistantHealth.fromJson(Map<String, dynamic> j) {
+    final lat = asMap(j['latency_ms']);
+    return AdminAssistantHealth(
+      days: asInt(j['days'], 7),
+      questions: asInt(j['questions']),
+      noAnswerRate: j['no_answer_rate'] == null ? null : asDouble(j['no_answer_rate']),
+      cacheHitRate: j['cache_hit_rate'] == null ? null : asDouble(j['cache_hit_rate']),
+      p50Ms: lat['p50'] == null ? null : asInt(lat['p50']),
+      daily: [for (final d in asMapList(j['by_day'])) asInt(d['questions'])],
+    );
+  }
+
+  final int days, questions;
+
+  /// 0..1; null when there was no question.
+  final double? noAnswerRate, cacheHitRate;
+  final int? p50Ms;
+
+  /// Questions per UTC day, oldest first.
+  final List<int> daily;
+
+  List<double> get spark => [for (final n in daily) n.toDouble()];
+
+  /// "12%" / "—".
+  String get noAnswerText => noAnswerRate == null ? '—' : '${(noAnswerRate! * 100).round()}%';
+
+  /// "850 ms" / "12.4 s" / "—".
+  String get p50Text => p50Ms == null ? '—' : (p50Ms! < 1000 ? '$p50Ms ms' : '${(p50Ms! / 1000).toStringAsFixed(1)} s');
 }
 
 class AdminDayPoint {

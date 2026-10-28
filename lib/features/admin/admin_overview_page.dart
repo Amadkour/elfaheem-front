@@ -5,7 +5,9 @@
 // ErrorRetry when there is nothing to show yet, a warning line when a refresh fails over shown numbers. It reloads
 // on open, on resume, on pull (AppRefresh) and on the live events `attention_changed` / transfers / payouts /
 // payments (LiveEvents). The body is AdminHomeBody (admin_home_body.dart), presentational over AdminHomeData
-// (admin_home_data.dart); this file only wires the callbacks (tabs, pages, alert deep links).
+// (admin_home_data.dart); this file only wires the callbacks (tabs, pages, alert deep links). Beside the overview it
+// asks the RAG service for the assistant's health (GET /api/v1/rag/admin/monitoring/summary, Track E.7) — the core
+// cannot import the RAG service; an older server (bare 404) or `rag.assistant` off leaves the card out.
 library;
 
 import 'dart:async';
@@ -20,7 +22,7 @@ import 'package:provider/provider.dart';
 
 import '../auth/auth_provider.dart';
 import '../shared/attendance/admin_data_lab_page.dart';
-import '../shared/rag/rag_admin_console.dart' show RagAdminConsole;
+import '../shared/rag/rag_admin_console.dart' show RagAdminApi, RagAdminConsole;
 import 'admin_common.dart';
 import 'admin_features_page.dart';
 import 'admin_home_body.dart';
@@ -58,9 +60,30 @@ class _View extends StatefulWidget {
 class _ViewState extends State<_View> with WidgetsBindingObserver {
   StreamSubscription<LiveEvent>? _sub;
 
+  /// The AI assistant card's numbers (null until loaded, or when the route is missing / the assistant is off).
+  AdminAssistantHealth? _assistant;
+
+  /// The RAG service answered a bare 404: an older server, never asked again on this page.
+  bool _assistantMissing = false;
+
+  Future<void> _loadAssistant() async {
+    if (_assistantMissing || AppConfig.disableList.contains('rag.assistant')) return;
+    final r = await RagAdminApi().monitoringSummary();
+    if (!mounted) return;
+    if (r.ok) {
+      setState(() => _assistant = AdminAssistantHealth.fromJson(r.map));
+    } else if (r.unavailable) {
+      setState(() {
+        _assistantMissing = true;
+        _assistant = null;
+      });
+    } // any other failure keeps the last numbers
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadAssistant();
     WidgetsBinding.instance.addObserver(this);
     _sub = LiveEvents.instance.listen(
       {LiveEvents.attentionChanged, LiveEvents.transfers, LiveEvents.payouts, LiveEvents.payments},
@@ -84,12 +107,14 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     if (!mounted) return;
     context.read<AdminOverviewProvider>().load(quiet: true);
     context.read<AdminPendingPayoutsProvider>().refresh();
+    _loadAssistant();
   }
 
   Future<void> _refresh() async {
     await Future.wait([
       context.read<AdminOverviewProvider>().load(),
       context.read<AdminPendingPayoutsProvider>().refresh(),
+      _loadAssistant(),
     ]);
   }
 
@@ -189,6 +214,7 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
         pendingPayouts: pendingPayouts,
         notice: p.error == null ? null : 'admin_home_stale'.tr,
         headerActions: const [CalendarEntryIcon()],
+        assistant: _assistant,
         actions: AdminHomeActions(
           openStudents: () => widget.onOpenTab(1),
           openCourses: () => widget.onOpenTab(2),

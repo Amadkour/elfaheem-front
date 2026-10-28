@@ -131,7 +131,7 @@ void main() {
       expect(body['generator'], 'extractive');
       expect(body['persona_ar'], 'كن ودوداً');
       expect(body['verify_answers'], isFalse);
-      expect(body.keys.length, 18);
+      expect(body.keys.length, 19); // + conversation_retention_days (D-064)
       expect(RagAdminSettings.fromJson({'settings': {'answer_style': 'weird'}}).answerStyle, 'balanced');
       expect(s.llmLocal, isFalse);
       expect(s.light, isFalse);
