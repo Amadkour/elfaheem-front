@@ -283,7 +283,7 @@ class ParentChildOverviewCard extends StatelessWidget {
 
         // ── pills: attendance · alerts
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+          padding: const EdgeInsets.fromLTRB(14, 0, 14, 0),
           child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
             AppBadgePill(
               att == null ? 'pl_ov_attendance_none'.tr : 'pl_ov_attendance'.tr.replaceAll('{n}', '$att'),
@@ -293,10 +293,17 @@ class ParentChildOverviewCard extends StatelessWidget {
             InkWell(
               borderRadius: BorderRadius.circular(20),
               onTap: onOpenAlerts,
-              child: AppBadgePill(
+              // the pill is 22 px; its tap target is 48 high (Android / iOS minimum)
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Center(
+                  widthFactor: 1,
+                  child: AppBadgePill(
                 hot ? 'pl_ov_alerts_n'.tr.replaceAll('{n}', '${ch.openAlerts}') : 'pl_ov_alerts_none'.tr,
                 color: hot ? c.danger : c.success,
                 icon: hot ? Icons.notifications_active_rounded : Icons.verified_rounded,
+                  ),
+                ),
               ),
             ),
           ]),

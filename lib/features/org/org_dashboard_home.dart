@@ -238,11 +238,11 @@ class OrgHero extends StatelessWidget {
                 ]),
               ),
           ],
-          child: const _HeroIconBox(Icons.more_horiz_rounded),
+          child: const SizedBox.square(dimension: 48, child: Center(child: _HeroIconBox(Icons.more_horiz_rounded))),
         ),
     ];
     Widget iconRow() => Row(mainAxisSize: MainAxisSize.min, children: [
-          for (var i = 0; i < icons.length; i++) ...[if (i > 0) const SizedBox(width: 6), icons[i]],
+          for (var i = 0; i < icons.length; i++) ...[if (i > 0) const SizedBox(width: 2), icons[i]],
         ]);
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
@@ -362,7 +362,11 @@ class _HeroIcon extends StatelessWidget {
         message: tooltip,
         child: Material(
           type: MaterialType.transparency,
-          child: InkWell(borderRadius: BorderRadius.circular(12), onTap: onTap, child: _HeroIconBox(icon)),
+          // the box stays 38 px; the tap target around it is 48 (Android / iOS minimum)
+          child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: onTap,
+              child: SizedBox.square(dimension: 48, child: Center(child: _HeroIconBox(icon)))),
         ),
       );
 }

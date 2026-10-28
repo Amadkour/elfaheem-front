@@ -4,6 +4,7 @@ import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import '../../design/app_charts.dart' show appInk;
 import '../../utils/helpers.dart';
 import '../shared/guest/guest_state.dart';
 import 'auth_provider.dart';
@@ -99,7 +100,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildForm() {
     final c = context.colors;
-    final link = c.isDark ? c.primaryLight : c.primary;
+    // the readable ink of the primary on the card (the raw primary was 3:1 on it, light and dark)
+    final link = appInk(context, c.primary);
     final guestEnabled = !AppConfig.disableList.contains('guest_mode');
 
     return AutofillGroup(

@@ -870,7 +870,6 @@ class RagAnswerCard extends StatelessWidget {
                           ),
                         IconButton(
                             tooltip: t('نسخ', 'Copy'),
-                            visualDensity: VisualDensity.compact,
                             onPressed: () {
                               Clipboard.setData(ClipboardData(text: answerRuns(answer.answer).where((r) => r.cite == null).map((r) => r.text).join()));
                               appToast(t('تم النسخ', 'Copied'));
@@ -879,11 +878,11 @@ class RagAnswerCard extends StatelessWidget {
                         if (onRate != null) ...[
                           Text(t('هل أفادتك؟', 'Helpful?'), style: theme.bodySmall?.copyWith(color: c.textLight)),
                           IconButton(
-                              tooltip: t('مفيدة', 'Helpful'), visualDensity: VisualDensity.compact, onPressed: () => onRate!(true),
+                              tooltip: t('مفيدة', 'Helpful'), onPressed: () => onRate!(true),
                               icon: Icon(answer.helpful == true ? Icons.thumb_up_alt_rounded : Icons.thumb_up_alt_outlined, size: 18,
                                   color: answer.helpful == true ? c.success : c.textLight)),
                           IconButton(
-                              tooltip: t('غير مفيدة', 'Not helpful'), visualDensity: VisualDensity.compact, onPressed: () => onRate!(false),
+                              tooltip: t('غير مفيدة', 'Not helpful'), onPressed: () => onRate!(false),
                               icon: Icon(answer.helpful == false ? Icons.thumb_down_alt_rounded : Icons.thumb_down_alt_outlined, size: 18,
                                   color: answer.helpful == false ? c.danger : c.textLight)),
                         ],

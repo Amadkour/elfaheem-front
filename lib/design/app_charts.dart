@@ -105,7 +105,8 @@ Color chartSnapLightness(Color c, {required bool dark}) {
 }
 
 /// A tone (primary, warning, a series colour …) drawn as TEXT or an icon on a card, made readable in the open
-/// mode, hue kept: on a light surface it is darkened to OKLab L <= 0.56 (about 4.5:1 on white — the theme's
+/// mode, hue kept: on a light surface it is darkened to OKLab L <= 0.53 (about 5:1 on white and still 4.5:1 on the
+/// tone's own 12 % tint, where 0.56 gave 4.1 (WCAG text contrast guideline); the theme's
 /// warning / success are 2–2.5:1 as they are), on a dark surface lifted to L >= 0.72 (the indigo primary is
 /// 1.6:1 on the dark card). Fills, tints and borders keep the raw tone.
 Color appInk(BuildContext context, Color tone) {
@@ -115,7 +116,7 @@ Color appInk(BuildContext context, Color tone) {
     final l = oklabLightness(h.toColor());
     if (dark && l < 0.72) {
       h = h.withLightness(math.min(1, h.lightness + 0.02));
-    } else if (!dark && l > 0.56) {
+    } else if (!dark && l > 0.53) {
       h = h.withLightness(math.max(0, h.lightness - 0.02));
     } else {
       break;

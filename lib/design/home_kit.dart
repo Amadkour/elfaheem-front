@@ -210,7 +210,8 @@ class HomeSectionTitle extends StatelessWidget {
             constraints: BoxConstraints(maxWidth: box.maxWidth * 0.42),
             child: TextButton(
               onPressed: onAction,
-              style: TextButton.styleFrom(visualDensity: VisualDensity.compact, padding: const EdgeInsets.symmetric(horizontal: 8)),
+              // horizontally compact only: the vertical density keeps the 48 px tap target (a compact one is 40)
+              style: TextButton.styleFrom(visualDensity: const VisualDensity(horizontal: -2), padding: const EdgeInsets.symmetric(horizontal: 8)),
               child: Text(actionLabel!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w700, c: appInk(context, c.primary))),
             ),
           ),
@@ -961,7 +962,10 @@ class HomeCourseSummary extends StatelessWidget {
             divider,
             InkWell(
               onTap: onMore,
-              child: Padding(
+              // at least a 48 px tap target whatever the font's line height
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   Flexible(
@@ -971,6 +975,7 @@ class HomeCourseSummary extends StatelessWidget {
                   Icon(Icons.chevron_right_rounded,
                       size: 18, color: appInk(context, c.primary)),
                 ]),
+              ),
               ),
             ),
           ],
