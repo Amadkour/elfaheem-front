@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'auth_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Model
@@ -180,7 +181,7 @@ class _Pill extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontSize: 10.5,
           fontWeight: FontWeight.w800,
           color: color,
@@ -240,7 +241,7 @@ class VerifyWayPicker extends StatelessWidget {
                   Text(
                     'verify_way_title'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: c.textDark,
@@ -250,7 +251,7 @@ class VerifyWayPicker extends StatelessWidget {
                   Text(
                     interactive ? 'verify_way_subtitle'.tr : 'verify_way_single_subtitle'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12.5,
                       height: 1.5,
                       color: c.secondText,
@@ -278,7 +279,7 @@ class VerifyWayPicker extends StatelessWidget {
                   child: Text(
                     'verify_way_both_hint'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       height: 1.5,
                       fontWeight: FontWeight.w600,
@@ -400,7 +401,7 @@ class _WayCard extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                   color: c.textDark,
@@ -423,7 +424,7 @@ class _WayCard extends StatelessWidget {
                         Text(
                           subtitle,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 12,
                             height: 1.45,
                             color: c.secondText,
@@ -505,7 +506,7 @@ class VerifyWaySwitcher extends StatelessWidget {
           child: Text(
             'verify_way_switch_title'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
               color: c.secondText,
@@ -602,7 +603,7 @@ class _SwitchItem extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 11.5,
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     color: fg,
@@ -670,7 +671,7 @@ class VerifyWayButton extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: context.colors.onHero,
@@ -719,7 +720,7 @@ class VerifyWayStatusPill extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: context.colors.textMedium,
@@ -831,7 +832,7 @@ class VerifyDestinationChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
                 color: c.textDark,
@@ -913,7 +914,7 @@ class VerifyStepTracker extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11.5,
               fontWeight: active ? FontWeight.w800 : FontWeight.w600,
               color: done ? c.success : (active ? c.textDark : c.textLight),

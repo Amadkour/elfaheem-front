@@ -33,6 +33,7 @@ import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class _AdminsApi {
   static const list = '/api/v1/admin/users';
@@ -392,7 +393,7 @@ class _AdminsViewState extends State<_AdminsView> {
         icon: Icon(Icons.admin_panel_settings_rounded, color: c.onHero),
         label: Text(
           'admin_add_admin'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+          style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
         ),
       ),
       child: Column(
@@ -450,7 +451,7 @@ class _AdminTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     color: c.textDark,
                   ),
@@ -461,7 +462,7 @@ class _AdminTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.textLight,
                   ),

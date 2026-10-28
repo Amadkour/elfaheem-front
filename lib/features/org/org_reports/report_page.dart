@@ -205,12 +205,12 @@ class _OrgComplaintReportPageState extends State<OrgComplaintReportPage> {
             child: Row(children: [
               if (_step > 0)
                 OutlinedButton.icon(
-                    onPressed: () => setState(() => _step--), icon: Icon(_rtl ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded), label: Text(t('السابق', 'Back'))),
+                    onPressed: () => setState(() => _step--), icon: const Icon(Icons.arrow_back_rounded), label: Text(t('السابق', 'Back'))),
               const Spacer(),
               if (_step < 2)
                 FilledButton.icon(
                   onPressed: _step == 0 && _loading ? null : () => setState(() => _step++),
-                  icon: Icon(_rtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded),
+                  icon: const Icon(Icons.arrow_forward_rounded),
                   label: Text(t('التالي', 'Next')),
                 ),
             ]),

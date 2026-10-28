@@ -37,6 +37,8 @@ import 'org_v3.dart' show orgCall, orgParseUtc;
 import 'governance/gov_dashboard.dart' show GovDashboardCard;
 import 'governance/gov_delegations_page.dart' show GovDelegationsPage;
 import 'governance/gov_wiring.dart' show govDeptItemsTab, govEnabled, govOpenCouncilOfDept;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Opens the dashboard of one department, carrying the current organization session.
 Future<void> openDepartmentDashboard(BuildContext context,
@@ -172,8 +174,8 @@ class _OrgDepartmentDashboardState extends State<OrgDepartmentDashboard> {
                           indicatorColor: c.primary,
                           unselectedLabelColor: c.textMedium,
                           dividerColor: c.divider,
-                          labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
-                          unselectedLabelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w600),
+                          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
+                          unselectedLabelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w600),
                           tabs: [for (final tb in tabs) Tab(child: _TabLabel(icon: tb.$2, label: tb.$1, badge: tb.$3))],
                         ),
                         c.cardBg,
@@ -396,7 +398,7 @@ class _UnitHero extends StatelessWidget {
                 _GlassTag(isDept ? Icons.apartment_rounded : Icons.school_rounded,
                     isDept ? t('إدارة خدمية', 'Service department') : t('قسم علمي', 'Academic department')),
                 if ('${u['code'] ?? ''}'.isNotEmpty) _GlassTag(Icons.tag_rounded, '${u['code']}'),
-                if (parent.isNotEmpty) _GlassTag(Icons.subdirectory_arrow_left_rounded, t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}')),
+                if (parent.isNotEmpty) _GlassTag(DirIcons.subArrowLeft, t('تابعة لـ ${orgNameOf(parent)}', 'Part of ${orgNameOf(parent)}')),
                 if (u['is_active'] == false) _GlassTag(Icons.archive_rounded, t('مؤرشفة', 'Archived')),
               ]),
             ]),

@@ -29,6 +29,8 @@ import 'org_ui.dart';
 import 'org_academic_pages.dart' show orgCourseGate;
 import 'org_access_joining.dart' show openOrgJoin;
 import 'org_v3.dart' show membershipStatusLabels, orgCodeText;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home entry card
@@ -72,13 +74,13 @@ class OrgHomeEntry extends StatelessWidget {
                     first == null ? t('انضم إلى جامعتك أو كليتك', 'Join your university or faculty') : OrgSession.nameOf(first),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'bahji', fontSize: 16, fontWeight: FontWeight.w800, color: c.onHero),
+                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 16, fontWeight: FontWeight.w800, color: c.onHero),
                   ),
                   Text(
                     first == null
                         ? (pending > 0 ? t('طلبك قيد المراجعة', 'Your request is being reviewed') : t('اطّلع على كورسات مؤسستك واشترك بها', "See your institution's courses and subscribe"))
                         : t('${active.length} مؤسسة · الكورسات والجدول', '${active.length} organization(s) · courses & timetable'),
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88)),
                   ),
                 ]),
               ),
@@ -118,7 +120,7 @@ class _MembershipView extends StatelessWidget {
         backgroundColor: c.primary,
         onPressed: () => openOrgJoin(context, onDone: p.loadMine),   // org_access_joining.dart: code · browse · my requests
         icon: Icon(Icons.add_business_rounded, color: c.onHero),
-        label: Text(t('انضمام لمؤسسة', 'Join an organization'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+        label: Text(t('انضمام لمؤسسة', 'Join an organization'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
       ),
       child: !p.loaded
           ? const AppListSkeleton()
@@ -164,8 +166,8 @@ class _OrgCard extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 15, color: c.textDark)),
-            Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+            Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 15, color: c.textDark)),
+            Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
             const SizedBox(height: 6),
             StatusChip(
               status == 'active' ? t('عضو', 'Member') : status == 'rejected' ? t('مرفوض', 'Declined') : membershipStatusLabels()[status] ?? status,
@@ -175,14 +177,14 @@ class _OrgCard extends StatelessWidget {
             if (status == 'expired' || status == 'suspended')
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(orgCodeText('membership_ended'), style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textMedium)),
+                child: Text(orgCodeText('membership_ended'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium)),
               ),
           ]),
         ),
         if (status == 'active') const Icon(Icons.chevron_right_rounded),
         if (status != 'active' || m['role'] == 'student' || m['role'] == 'teacher')
           IconButton(
-            icon: Icon(Icons.logout_rounded, color: c.textLight, size: 20),
+            icon: Icon(DirIcons.logout, color: c.textLight, size: 20),
             tooltip: t('خروج', 'Leave'),
             onPressed: () async {
               if (await confirm(context, message: t('الخروج من المؤسسة؟ اشتراكاتك في الكورسات تبقى كما هي.', 'Leave this organization? Your course enrollments stay.'), danger: true)) {
@@ -271,8 +273,8 @@ class _CoursesBody extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                      Text(t('${row['name_ar'] ?? row['name_en']}', '${row['name_en'] ?? row['name_ar']}'), maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                      if (row['teacher'] != null) Text('${(row['teacher'] as Map)['name']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
                       const SizedBox(height: 6),
                       Wrap(spacing: 6, children: [
                         InfoChip(Icons.payments_rounded, asDouble(row['fees']) == 0 ? t('مجاني', 'Free') : money(asDouble(row['fees'])), c.success),
@@ -392,12 +394,12 @@ class _TimetableView extends StatelessWidget {
     final days = memberTimetableDays(tt);
     Widget heading(String text) => Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 6),
-          child: Text(text, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
+          child: Text(text, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.primary, fontSize: 14)),
         );
     return [
       Text('${sched['name'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis, style: c.h2),
       if ('${sched['term_label'] ?? ''}'.isNotEmpty)
-        Text('${sched['term_label']}', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+        Text('${sched['term_label']}', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
       const SizedBox(height: 8),
       examPauseBanner(context, examPausesOf(tt)),
       if (extras.isNotEmpty) ...[
@@ -425,7 +427,7 @@ class _TimetableView extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 12),
           child: Text(t('لا حصص لك في هذا الجدول.', 'You have no sessions in this timetable.'),
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+              style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
         ),
       for (final (day, items) in days) ...[
         heading(labels[day] ?? day),
@@ -479,10 +481,10 @@ class _SlotRow extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
               if (subtitle.isNotEmpty)
                 Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
             ]),
           ),
         ]),

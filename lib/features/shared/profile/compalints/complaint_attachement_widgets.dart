@@ -29,6 +29,7 @@ import '../../../../utils/widget/app_network_image.dart';
 import 'complaint_model.dart';
 import 'complaint_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Shared helpers
@@ -143,7 +144,7 @@ class AttachmentGalleryGrid extends StatelessWidget {
           Text(
             '${'attachments_label'.tr} (${attachments.length})',
             style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: c.textLight),
@@ -282,7 +283,7 @@ class _AttachmentCard extends StatelessWidget {
                 bottom: 6,
                 child: Text(sizeLabel!,
                     style: TextStyle(
-                        fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: context.colors.onHero)),
+                        fontFamily: AppFonts.display, fontSize: 9, fontWeight: FontWeight.w600, color: context.colors.onHero)),
               ),
           ]),
         ),
@@ -328,7 +329,7 @@ class _PdfFace extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'bahji', fontSize: 9, fontWeight: FontWeight.w600, color: c.primary),
+            style: TextStyle(fontFamily: AppFonts.display, fontSize: 9, fontWeight: FontWeight.w600, color: c.primary),
           ),
         ]),
       );
@@ -421,11 +422,11 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
                 Text(name ?? 'document.pdf',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'bahji', fontSize: 14, fontWeight: FontWeight.w700, color: c.textDark)),
+                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 14, fontWeight: FontWeight.w700, color: c.textDark)),
                 if (bytes != null && bytes > 0) ...[
                   const SizedBox(height: 2),
                   Text(formatFileSize(bytes),
-                      style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: c.textLight)),
+                      style: TextStyle(fontFamily: AppFonts.display, fontSize: 12, color: c.textLight)),
                 ],
               ]),
             ),
@@ -446,7 +447,7 @@ void _showPdfSheet(BuildContext context, {required String? name, required String
               ),
               icon: const Icon(Icons.open_in_new_rounded, size: 18),
               label: Text('open_document'.tr,
-                  style: const TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: AppFonts.display, fontWeight: FontWeight.w700)),
             ),
           ),
         ]),

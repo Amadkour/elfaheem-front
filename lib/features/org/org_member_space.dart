@@ -30,6 +30,7 @@ import 'org_dynamic_form.dart';
 import 'org_join_pages.dart' show OrgJoinUnitsTab;
 import 'org_platform_context.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -73,7 +74,7 @@ class OrgMemberSpace extends StatelessWidget {
             labelColor: col,
             indicatorColor: col,
             unselectedLabelColor: c.textMedium,
-            labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
             tabs: [
               Tab(icon: const Icon(Icons.campaign_rounded, size: 20), text: t('الأخبار', 'News')),
               Tab(icon: const Icon(Icons.apartment_rounded, size: 20), text: t('الإدارات', 'Departments')),
@@ -216,7 +217,7 @@ class _DirectoryState extends State<_Directory> with _Loader<_Directory> {
                       child: TextButton.icon(
                         onPressed: () => showComplaintComposer(context, widget.org, dept: d),
                         icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
-                        label: Text(t('تواصل / شكوى', 'Contact / complain'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                        label: Text(t('تواصل / شكوى', 'Contact / complain'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
                       ),
                     ),
                 ]),
@@ -368,7 +369,7 @@ class _OrgFormFillScreenState extends State<OrgFormFillScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           icon: Icon(Icons.check_circle_rounded, color: ctx.colors.success, size: 56),
           title: Text(t('تم الإرسال', 'Sent'), textAlign: TextAlign.center),
-          content: Text('${r['message'] ?? ''}', textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'tajawal', height: 1.5)),
+          content: Text('${r['message'] ?? ''}', textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, height: 1.5)),
           actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: Text(t('حسناً', 'OK')))],
         ),
       );
@@ -527,7 +528,7 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
           if (await showComplaintComposer(context, widget.org)) load();
         },
         icon: Icon(Icons.edit_rounded, color: c.onHero),
-        label: Text(t('شكوى جديدة', 'New complaint'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+        label: Text(t('شكوى جديدة', 'New complaint'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
       ),
       body: body((all) {
         final list = all.where((x) => asInt(x['org_id']) == asInt(widget.org['id'])).toList();
@@ -689,7 +690,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
                             if (await OrgApi.i.post('$_url/reopen', null, t('أُعيد فتح الشكوى', 'Reopened')) != null) _load();
                           },
                           icon: const Icon(Icons.replay_rounded),
-                          label: Text(t('ما زالت المشكلة قائمة؟ أعد فتحها', 'Still a problem? Reopen it'), style: const TextStyle(fontFamily: 'tajawal')),
+                          label: Text(t('ما زالت المشكلة قائمة؟ أعد فتحها', 'Still a problem? Reopen it'), style: TextStyle(fontFamily: AppFonts.family)),
                         ),
                     ]),
                   ),
@@ -704,7 +705,7 @@ class _MyComplaintThreadState extends State<_MyComplaintThread> {
                           controller: _msg,
                           minLines: 1,
                           maxLines: 4,
-                          style: const TextStyle(fontFamily: 'tajawal'),
+                          style: TextStyle(fontFamily: AppFonts.family),
                           decoration: InputDecoration(
                             hintText: t('اكتب ردك…', 'Write your reply…'),
                             filled: true,

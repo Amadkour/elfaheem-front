@@ -81,6 +81,84 @@ void main() {
     });
   });
 
+  group('QuickGuestLinkCard (lobby top card, spec §10)', () {
+    Widget card({bool loading = false, String? error, LiveLink? link, bool showQr = false, bool busy = false}) => SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: QuickGuestLinkCard(
+            loading: loading,
+            busy: busy,
+            error: error,
+            link: link,
+            showQr: showQr,
+            onRetry: () {},
+            onMakeDirect: () {},
+            onDirectChanged: (_) {},
+            onCopy: () {},
+            onShare: () {},
+            onToggleQr: () {},
+          ),
+        );
+    const direct = LiveLink(url: 'https://nextbrain.site/live/4f3b1c9e8d7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c', token: '4f3b', canPublish: true, direct: true);
+
+    testWidgets('loading · error · no link · not direct · direct with QR', (tester) async {
+      await expectNoLayoutErrors(tester, () => card(loading: true));
+      await expectNoLayoutErrors(tester, () => card(error: 'Only the room host can do this.'),
+          act: (t) async => expect(find.byKey(const ValueKey('lobby.quick_link.error')), findsOneWidget));
+      await expectNoLayoutErrors(tester, () => card(), act: (t) async {
+        expect(find.byKey(const ValueKey('lobby.quick_link.create')), findsOneWidget);
+        expect(find.byKey(const ValueKey('lobby.quick_link.copy')), findsNothing);
+        expect(find.byKey(const ValueKey('lobby.quick_link.direct')), findsNothing);
+      });
+      await expectNoLayoutErrors(tester, () => card(link: _link, busy: true), act: (t) async {
+        expect(find.byKey(const ValueKey('lobby.quick_link.create')), findsOneWidget, reason: 'one tap turns it direct');
+        expect(find.byKey(const ValueKey('lobby.quick_link.copy')), findsOneWidget);
+        expect(find.byKey(const ValueKey('lobby.quick_link.direct')), findsNothing);
+      });
+      await expectNoLayoutErrors(tester, () => card(link: direct, showQr: true), act: (t) async {
+        expect(find.byKey(const ValueKey('lobby.quick_link.create')), findsNothing);
+        expect(find.byKey(const ValueKey('lobby.quick_link.url')), findsOneWidget);
+        expect(find.byKey(const ValueKey('lobby.quick_link.share')), findsOneWidget);
+        expect(find.byKey(const ValueKey('lobby.quick_link.qr_image')), findsOneWidget);
+        expect(find.byKey(const ValueKey('lobby.quick_link.direct')), findsOneWidget);
+      });
+    });
+
+    testWidgets('the lobby shows the card on top', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => LobbyBody(
+          loading: false,
+          error: null,
+          waiting: _waiting,
+          everyoneNeedsApproval: false,
+          guestsJoinAutomatically: false,
+          onAdmit: (_) {},
+          onReject: (_) {},
+          onAdmitAll: () {},
+          onRefresh: () {},
+          onEveryoneNeedsApproval: (_) {},
+          onGuestsJoinAutomatically: (_) {},
+          quickLink: QuickGuestLinkCard(
+            loading: false,
+            busy: false,
+            error: null,
+            link: direct,
+            onRetry: () {},
+            onMakeDirect: () {},
+            onDirectChanged: (_) {},
+            onCopy: () {},
+            onShare: () {},
+            onToggleQr: () {},
+          ),
+        ),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('lobby.quick_link')), findsOneWidget);
+          expect(find.byKey(const ValueKey('lobby.everyone_approval')), findsOneWidget);
+        },
+      );
+    });
+  });
+
   group('ShareLinkBody', () {
     testWidgets('loading · error · create form · link with QR and settings', (tester) async {
       await expectNoLayoutErrors(tester, () => _share(loading: true));
@@ -209,6 +287,27 @@ void main() {
           expect(find.byKey(const ValueKey('guest_live.meeting')), findsOneWidget);
           expect(find.byKey(const ValueKey('guest_live.join_account')), findsOneWidget);
           expect(find.byKey(const ValueKey('guest_live.join')), findsOneWidget);
+        },
+      );
+      // A direct link (auto_join): the short card — host, "straight in", the name field, Join.
+      final quick = GuestLiveInfo.fromJson({
+        'kind': 'meeting',
+        'id': 45,
+        'title': 'Quick meeting · Ahmed Hamdy Madkour and the study group of section B',
+        'host_name': 'Ahmed Hamdy',
+        'is_live': true,
+        'can_publish': true,
+        'auto_join': true,
+        'course_name': 'Physics',
+        'max_guests': 20,
+      });
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestLiveContent(loading: false, info: quick, error: null, joining: false, nameController: TextEditingController(), onJoin: () {}, onRetry: () {}),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('guest_live.name')), findsOneWidget);
+          expect(find.byKey(const ValueKey('guest_live.join')), findsOneWidget);
+          expect(find.text('Physics'), findsNothing);
         },
       );
       // Not signed in → no account button.

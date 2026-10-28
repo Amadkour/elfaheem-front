@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../admin/admin_common.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 enum GridFilterKind { all, cohort, teacher, assistant, room, group, student }
 
@@ -130,7 +131,7 @@ class TimetableFilterBar extends StatelessWidget {
         if (k == GridFilterKind.all || k == GridFilterKind.student || (options[k]?.isNotEmpty ?? false)) k,
     ];
     final active = filter.kind != GridFilterKind.all && filter.value != null;
-    final style = TextStyle(fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w700, color: c.textDark);
+    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: c.textDark);
 
     final Widget value = switch (filter.kind) {
       GridFilterKind.all => Text(
@@ -259,7 +260,7 @@ class TimetableLegend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final style = TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: c.textMedium);
+    final style = TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: c.textMedium);
     Widget item(Widget mark, String label) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [

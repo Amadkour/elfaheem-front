@@ -31,6 +31,7 @@ import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -396,7 +397,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
             const SizedBox(width: 5),
             Text(label,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
+                    fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: fg)),
           ]),
         ),
       ),
@@ -444,7 +445,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                 onPressed: onAdd,
                 icon: const Icon(Icons.add_rounded, size: 18),
                 label: Text(addKey.tr,
-                    style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -668,7 +669,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
           OutlinedButton.icon(
             onPressed: uploading ? null : () => _pickImage('/about/info/splash-logo'),
             icon: const Icon(Icons.add_photo_alternate_rounded, size: 18),
-            label: Text('content_upload_splash_logo'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+            label: Text('content_upload_splash_logo'.tr, style: TextStyle(fontFamily: AppFonts.family)),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -679,7 +680,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                   ? null
                   : () => _run(() => _api.delete('$_write/about/info/splash-logo'), ok: 'content_photo_removed'),
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              label: Text('content_remove_splash_logo'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+              label: Text('content_remove_splash_logo'.tr, style: TextStyle(fontFamily: AppFonts.family)),
             ),
         ]),
       ]),
@@ -790,7 +791,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
               FilledButton.icon(
                 onPressed: () => _form(_aboutCfg, item: info, path: '/about/info', single: true),
                 icon: const Icon(Icons.edit_rounded, size: 18),
-                label: Text('btn_edit'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+                label: Text('btn_edit'.tr, style: TextStyle(fontFamily: AppFonts.family)),
                 style: FilledButton.styleFrom(
                   backgroundColor: c.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -799,7 +800,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
               OutlinedButton.icon(
                 onPressed: uploading ? null : () => _pickImage('/about/info/logo'),
                 icon: const Icon(Icons.add_photo_alternate_rounded, size: 19),
-                label: Text('content_upload_logo'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+                label: Text('content_upload_logo'.tr, style: TextStyle(fontFamily: AppFonts.family)),
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
@@ -844,7 +845,7 @@ class _AdminContentPageState extends State<AdminContentPage> {
                 textAlign: TextAlign.center,
                 textDirection: TextDirection.ltr,
                 style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: c.onHero)),
@@ -1288,7 +1289,7 @@ class _EntityFormState extends State<_EntityForm> {
                           ? null
                           : Icon(contentIcon(p.icon), size: 16, color: c.primary),
                       label: Text(ar ? p.ar : p.en,
-                          style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
                       backgroundColor: c.inputBg,
                       side: BorderSide(color: c.divider),
                       onPressed: () => _usePreset(p),
@@ -1304,7 +1305,7 @@ class _EntityFormState extends State<_EntityForm> {
                       avatar: Icon(e.value, size: 16, color: _type == e.key ? c.primary : c.textMedium),
                       label: Text('content_type_${e.key}'.tr,
                           style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 12.5,
                               fontWeight: _type == e.key ? FontWeight.w800 : FontWeight.w600,
                               color: _type == e.key ? c.primary : c.textMedium)),
@@ -1373,7 +1374,7 @@ class _EntityFormState extends State<_EntityForm> {
                   ),
                   child: Text('save'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 15.5,
                           fontWeight: FontWeight.w800,
                           color: c.onHero)),

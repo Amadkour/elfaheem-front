@@ -11,6 +11,7 @@ import 'live_control_bar.dart';
 import 'live_palette.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 Color get _amber   => LivePalette.warning;   // paused recording
 Color get _emerald => LivePalette.success;   // resume / sharing
@@ -74,6 +75,14 @@ class ControlsWidget extends StatefulWidget {
   final VoidCallback? onLobby;
   final int waitingCount;
 
+  /// [meeting-recording] The meeting creator's labelled red Record / Stop (live-rooms-spec §11) — in the PRIMARY
+  /// group, pinned in the phone pill. Null hides it (course sessions, everyone but the creator).
+  final VoidCallback? onMeetingRecord;
+  /// True while this meeting records (the action reads "Stop").
+  final bool meetingRecording;
+  /// Starting / stopping is in flight (spinner).
+  final bool meetingRecordBusy;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -101,6 +110,9 @@ class ControlsWidget extends StatefulWidget {
         this.chatOpen = false,
         this.onLobby,
         this.waitingCount = 0,
+        this.onMeetingRecord,
+        this.meetingRecording = false,
+        this.meetingRecordBusy = false,
       });
 
   @override
@@ -444,6 +456,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
         : null;
 
     final record = recOn ? _recordingAction() : null;
+    final meetRec = meetingRecordAction(
+        onTap: widget.onMeetingRecord, recording: widget.meetingRecording, busy: widget.meetingRecordBusy);
 
     // ── Reactions (everyone) ────────────────────────────────────────────────
     final react = widget.onToggleReactions != null
@@ -532,11 +546,11 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
     return LiveControlBar(
       // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
-      primary: [mic, cam, ?share, ?react, ?hand, ?hands, ?chat],
+      primary: [mic, cam, ?meetRec, ?share, ?react, ?hand, ?hands, ?chat],
       secondary: [?flip, ?speaker, ?output, ?record],
       groups: [
         [mic, cam, ?flip, ?speaker, ?output],
-        [?share, ?record],
+        [?share, ?meetRec, ?record],
         [?react, ?hand, ?hands, ?chat],
       ],
       end: end,
@@ -544,6 +558,23 @@ class ControlsWidgetState extends State<ControlsWidget> {
       onInteraction: widget.onInteraction,
       onLobby: widget.onLobby,
       waitingCount: widget.waitingCount,
+    );
+  }
+
+  // ── [meeting-recording] Record / Stop (meeting creator) ──────────────────
+  /// The labelled red Record / Stop of a meeting creator, pinned in the phone pill; null when [onTap] is null.
+  /// Public and pure so the layout test builds exactly what the bar gets.
+  static LiveControlAction? meetingRecordAction({required VoidCallback? onTap, bool recording = false, bool busy = false}) {
+    if (onTap == null) return null;
+    return LiveControlAction(
+      key: const ValueKey('live_room.meeting_record'),
+      icon: recording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded,
+      label: recording ? t('إيقاف', 'Stop') : t('تسجيل', 'Record'),
+      active: true,
+      color: LivePalette.danger,
+      loading: busy,
+      pinned: true,
+      onTap: busy ? null : onTap,
     );
   }
 

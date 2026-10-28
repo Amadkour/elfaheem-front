@@ -22,6 +22,7 @@ import 'org_schedule_insights.dart' show ActionOption;
 import 'org_schedule_reassign.dart' show ReassignMetrics, ReassignVersion;
 import 'org_ui.dart' show orgText;
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// One fix as two versions. [regenerate] = a data change (nothing moves until the timetable is re-solved).
 class ChangePlan {
@@ -159,7 +160,7 @@ class MiniTimetable extends StatelessWidget {
           border: Border.all(color: hot ? tone : Colors.transparent, width: hot ? 1.4 : 0),
         ),
         child: Text(short, maxLines: 1, overflow: TextOverflow.clip, softWrap: false,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 9.5, fontWeight: hot ? FontWeight.w800 : FontWeight.w600, color: hot ? tone : c.textMedium)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: hot ? FontWeight.w800 : FontWeight.w600, color: hot ? tone : c.textMedium)),
       );
     }
 

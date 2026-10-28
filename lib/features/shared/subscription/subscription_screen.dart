@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 
 import '../../../utils/widget/primary_button.dart';
 import 'subscription_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class SubscriptionScreen extends StatelessWidget {
   const SubscriptionScreen({super.key});
@@ -149,14 +150,14 @@ class _ViewState extends State<_View> {
         const SizedBox(height: 8),
         Text('sub_subscribe_to_continue'.tr,
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 22, color: c.textDark)),
+            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 22, color: c.textDark)),
         if (p.last != null && '${p.last!['status']}' == 'rejected')
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               '${'sub_prev_rejected'.tr}${p.last!['rejection_reason'] != null ? ': ${p.last!['rejection_reason']}' : ''}',
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.danger, fontSize: 12.5),
+              style: TextStyle(fontFamily: AppFonts.family, color: c.danger, fontSize: 12.5),
             ),
           ),
         const SizedBox(height: 16),
@@ -182,13 +183,13 @@ class _ViewState extends State<_View> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(isAr ? x.nameAr : x.nameEn,
-                          style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16, color: c.textDark)),
                       Text('${x.durationDays} ${'sub_days'.tr}',
-                          style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
                     ]),
                   ),
                   Text(x.isFree ? 'sub_free'.tr : money(x.price, x.currency),
-                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 18, color: c.primary)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 18, color: c.primary)),
                 ]),
               ),
             ),
@@ -197,7 +198,7 @@ class _ViewState extends State<_View> {
           const SizedBox(height: 6),
           if (!transferEnabled)
             Text('sub_no_payment_methods'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.danger))
+                style: TextStyle(fontFamily: AppFonts.family, color: c.danger))
           else ...[
             ParentComponent(
                 featureKey: 'subscription.payment_method',
@@ -268,7 +269,7 @@ class _ViewState extends State<_View> {
       child: Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(
-          title: Text('sub_title'.tr, style: const TextStyle(fontFamily: 'tajawal')),
+          title: Text('sub_title'.tr, style: TextStyle(fontFamily: AppFonts.family)),
           actions: [AppRefreshAction(onRefresh: p.load)],
         ),
         body: p.loaded ? AppRefresh(onRefresh: p.load, scrollable: scrollable, child: body) : body,
@@ -296,9 +297,9 @@ class _Status extends StatelessWidget {
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 20, color: c.textDark)),
+              style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 20, color: c.textDark)),
           const SizedBox(height: 6),
-          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+          Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
           const SizedBox(height: 22),
           action,
         ]),

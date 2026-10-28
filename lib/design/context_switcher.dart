@@ -27,6 +27,7 @@ import '../features/org/org_access_joining.dart' show openOrgJoin;
 import '../features/org/org_common.dart' show orgColor, orgTypeIcons;
 import '../features/org/org_member_dashboard.dart' show orgRolesLine;
 import '../features/org/org_ui.dart' show orgNameOf;
+import 'package:flutter_education_app/design/app_icons.dart';
 
 /// Feature key that hides the organization side of the home screens (platform kill-switch).
 const String kContextSwitchFeature = 'home.org_tab';
@@ -73,7 +74,7 @@ class ContextExitButton extends StatelessWidget {
         key: const ValueKey('ctx.leave'),
         tooltip: 'ctx_exit'.tr,
         onPressed: () => leaveToPersonal(context),
-        icon: Icon(Icons.logout_rounded, color: context.colors.primary, textDirection: TextDirection.ltr),
+        icon: Icon(DirIcons.logout, color: context.colors.primary, textDirection: TextDirection.ltr),
       );
 }
 
@@ -195,7 +196,7 @@ class _ContextSwitcherState extends State<ContextSwitcher> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.logout_rounded, size: 18, color: c.primary, textDirection: TextDirection.ltr),
+                            Icon(DirIcons.logout, size: 18, color: c.primary, textDirection: TextDirection.ltr),
                             if (!narrow) ...[
                               const SizedBox(width: 6),
                               Text(

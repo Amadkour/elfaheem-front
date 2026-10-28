@@ -269,4 +269,60 @@ void main() {
       expect(GuestJoin.fromJson({'ws_url': 'wss://b', 'token': 't'}).wsUrl, 'wss://b');
     });
   });
+
+  // ── Part 2 (spec §8, §10) ───────────────────────────────────────────────────
+  group('Part 2: time limit · direct link · auto_join', () {
+    test('a meeting join payload carries time_limit.ends_at (naive UTC) to the room', () {
+      final o = JoinOutcome.parse({
+        'url': 'wss://lk',
+        'token': 'tok',
+        'time_limit': {'ends_at': '2026-10-28T10:15:00', 'free_minutes': 15},
+      });
+      expect(o.isAdmitted, isTrue);
+      expect(o.freeEndsAt, DateTime.utc(2026, 10, 28, 10, 15));
+      expect(o.freeEndsAt!.isUtc, isTrue);
+      expect(o.freeMinutes, 15);
+      final live = o.live(sessionId: -7);
+      expect(live.freeEndsAt, DateTime.utc(2026, 10, 28, 10, 15));
+      expect(live.sessionId, -7);
+    });
+
+    test('time_limit null / absent / junk → unlimited; an explicit offset is honoured', () {
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't', 'time_limit': null}).freeEndsAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't'}).freeEndsAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't', 'time_limit': {'ends_at': 'soon'}}).freeEndsAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't'}).live(sessionId: 1).freeEndsAt, isNull);
+      expect(
+        JoinOutcome.parse({'url': 'u', 'token': 't', 'time_limit': {'ends_at': '2026-10-28T12:15:00+02:00'}}).freeEndsAt,
+        DateTime.utc(2026, 10, 28, 10, 15),
+      );
+    });
+
+    test('the guest join payload carries the time limit too', () {
+      final j = GuestJoin.fromJson({'url': 'wss://a', 'token': 't', 'time_limit': {'ends_at': '2026-10-28T10:15:00Z', 'free_minutes': 15}});
+      expect(j.freeEndsAt, DateTime.utc(2026, 10, 28, 10, 15));
+      expect(GuestJoin.fromJson({'url': 'wss://a', 'token': 't'}).freeEndsAt, isNull);
+    });
+
+    test('the link payload carries direct (default false), also inside the policy', () {
+      expect(LiveLink.fromJson({'url': 'https://x/live/a', 'token': 'a', 'direct': true}).direct, isTrue);
+      expect(LiveLink.fromJson({'url': 'https://x/live/a', 'token': 'a'}).direct, isFalse);
+      final p = LivePolicy.fromJson({'kind': 'session', 'id': 3, 'link': {'url': 'https://x/live/b', 'token': 'b', 'direct': true, 'can_publish': true}});
+      expect(p.link!.direct, isTrue);
+      expect(p.link!.canPublish, isTrue);
+    });
+
+    test('public info: auto_join (= the link is direct), default false', () {
+      expect(GuestLiveInfo.fromJson({'kind': 'meeting', 'id': 4, 'is_live': true, 'auto_join': true}).autoJoin, isTrue);
+      expect(GuestLiveInfo.fromJson({'session_id': 4, 'is_live': true}).autoJoin, isFalse);
+    });
+
+    test('free-time codes have bilingual text', () {
+      expect(liveRoomCodeText('meeting_time_limit'), isNotNull);
+      expect(liveRoomCodeText('live_plan_required'), isNotNull);
+      AppConfig.lang = 'ar';
+      expect(liveRoomCodeText('meeting_time_limit'), contains('الوقت المجاني'));
+      AppConfig.lang = 'en';
+    });
+  });
 }

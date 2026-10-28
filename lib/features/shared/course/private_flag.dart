@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PrivateFlag extends StatelessWidget {
   const PrivateFlag({super.key,  this.label});
@@ -36,7 +37,7 @@ class PrivateFlag extends StatelessWidget {
             style: TextStyle(
                 color: context.colors.onHero,
                 fontSize: 10,
-                fontFamily: 'bahji'
+                fontFamily: AppFonts.display
             ),
           )
         ],

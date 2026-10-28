@@ -8,6 +8,7 @@ import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/widget/app_navigator.dart';
 import '../../../../auth/auth_provider.dart';
 import 'app_responsive.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Wrap all pages inside AppShell to get sidebar on web,
 /// bottom-nav on mobile automatically.
@@ -171,7 +172,7 @@ class _Sidebar extends StatelessWidget {
                     color: context.colors.onHero,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                   ),
                 ),
               ],
@@ -216,7 +217,7 @@ class _Sidebar extends StatelessWidget {
                       color: context.colors.onHero,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                     ),
                   ),
                 ),
@@ -231,7 +232,7 @@ class _Sidebar extends StatelessWidget {
                           color: context.colors.onHero,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -240,7 +241,7 @@ class _Sidebar extends StatelessWidget {
                         style: TextStyle(
                           color: context.colors.onHero.withValues(alpha: 0.5),
                           fontSize: 10,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                         ),
                       ),
                     ],
@@ -322,7 +323,7 @@ class _SideNavItem extends StatelessWidget {
                       : context.colors.onHero.withValues(alpha: 0.55),
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                 ),
               ),
             ],
@@ -435,7 +436,7 @@ class _BottomNav extends StatelessWidget {
                           color: active
                               ? context.colors.primary
                               : context.colors.textLight,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                         ),
                       ),
                     ],

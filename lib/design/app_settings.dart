@@ -9,7 +9,7 @@
 //   AppSettingsTile(icon:, label:, subtitle:, color:, trailing:, onTap:, badge:, featureKey:, keywords:)
 //       one row: tinted icon well (bg = color @ tint), label, optional subtitle, a count pill, a trailing widget
 //       or the direction-aware chevron. `featureKey` hides it with the kill switch (ParentComponent).
-//   AppSettingsHeader(name:, role:, email:, imageUrl:, onEdit:)
+//   AppSettingsHeader(name:, role:, email:, username:, imageUrl:, onEdit:)
 //       the profile hero over plain values (kill switch `profile.header`; `appRoleLabel` names the role).
 //   AppSettingsSearchable
 //       implement it on a custom row (CalendarEntryTile does) so the search can see it; a row that is not
@@ -27,6 +27,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/app_network_image.dart';
 import '../utils/widget/parent_component.dart';
 import 'app_responsive.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// A row the settings search can read.
 abstract class AppSettingsSearchable {
@@ -244,9 +245,13 @@ class AppSettingsHeader extends StatelessWidget {
     this.imageUrl = '',
     this.onEdit,
     this.heroTag,
+    this.username = '',
   });
 
   final String name, role, email, imageUrl;
+
+  /// The @username without the "@" ('' = none); hidden by the kill switch `auth.username`.
+  final String username;
   final VoidCallback? onEdit;
   final String? heroTag;
 
@@ -269,7 +274,7 @@ class AppSettingsHeader extends StatelessWidget {
                 color: c.onHero,
                 alignment: Alignment.center,
                 child: Text(name.isNotEmpty ? name.characters.first.toUpperCase() : '?',
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 40, fontWeight: FontWeight.w800, color: c.primary)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 40, fontWeight: FontWeight.w800, color: c.primary)),
               ),
       ),
     );
@@ -287,7 +292,7 @@ class AppSettingsHeader extends StatelessWidget {
               child: Text(text,
                   overflow: TextOverflow.ellipsis,
                   textDirection: ltr ? TextDirection.ltr : null,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w600, color: c.onHero)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w600, color: c.onHero)),
             ),
           ]),
         );
@@ -335,11 +340,13 @@ class AppSettingsHeader extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 21, fontWeight: FontWeight.w800, color: c.onHero)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 21, fontWeight: FontWeight.w800, color: c.onHero)),
               const SizedBox(height: 8),
               Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 6, children: [
                 if (role.isNotEmpty) glass(Icons.verified_user_rounded, appRoleLabel(role)),
                 if (email.isNotEmpty) glass(Icons.alternate_email_rounded, email, ltr: true),
+                if (username.isNotEmpty)
+                  ParentComponent(featureKey: 'auth.username', child: glass(Icons.person_pin_rounded, '@$username', ltr: true)),
               ]),
             ]),
           ),

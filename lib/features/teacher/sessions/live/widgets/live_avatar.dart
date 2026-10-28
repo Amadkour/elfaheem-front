@@ -12,6 +12,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'live_palette.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// "Ahmed Hamdy Madkour" → "AH", "سارة محمود" → "سم", "" → "•". The first grapheme of the first two
 /// words, upper-cased (a no-op for Arabic).
@@ -137,7 +138,7 @@ class _Initials extends StatelessWidget {
           maxLines: 1,
           textScaler: TextScaler.noScaling,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             color: LivePalette.textHigh,
             fontSize: size * (text.length > 1 ? 0.38 : 0.44),
             fontWeight: FontWeight.w800,

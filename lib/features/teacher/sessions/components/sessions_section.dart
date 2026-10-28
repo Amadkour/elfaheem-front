@@ -1,274 +1,84 @@
 // components/sessions_section.dart
 //
-// Renders the sessions header + list (or loading / empty states).
-// Consumes [TeacherCourseScreenProvider] via context — but only the sessions
-// slice, so rebuilds are isolated to this widget tree.
+// The Sessions tab of the teacher's course page: header + track tabs + the reorderable list (or the skeleton /
+// the first-session call to action). It is the one part of the page that reacts to nearly everything the mega
+// provider does (session CRUD, live flags, material uploads), so it does its own `watch` — the hero, actions and
+// side card above it never rebuild with it.
 // ─────────────────────────────────────────────────────────────────────────────
 
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../../../../config/app_config.dart';
-import '../../../../config/theme/theme_config_provider.dart';
+import '../../../shared/course/course_space/course_space.dart' show kCourseGutter;
 import '../../../shared/session/material/session_material_widget.dart';
-import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
-// ── Public entry point ────────────────────────────────────────────────────────
+import 'teacher_course_parts.dart';
 
-/// [SliverList] + header that lives inside the parent [CustomScrollView].
-/// Returns a list of slivers so the parent can simply spread them.
-List<Widget> buildSessionsSlivers(
-    BuildContext context, {
-      required TeacherCourse course,
-      required VoidCallback onAdd,
-      required TeacherCourseScreenProvider provider,
-    }) {
-  if (provider.loadingAllPage) {
-    return [
-      SliverToBoxAdapter(
-        child: const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(16, 20, 16, 0)),
-      ),
-    ];
-  }
+class TeacherSessionsBody extends StatelessWidget {
+  const TeacherSessionsBody({super.key, required this.onAdd});
 
-  return [
-    SliverToBoxAdapter(
-      child: _SectionHeader(key: const ValueKey('teacher_sessions.header'), onAdd: onAdd, sessionCount: provider.sessionCount),
-    ),
-    if (provider.sessions.isEmpty)
-      SliverToBoxAdapter(
-        child: provider.isLoading
-            ? const _LoadingState()
-            : _EmptyState(key: const ValueKey('teacher_sessions.empty'), onAdd: onAdd),
-      ),
-    // Lectures (teacher) · Sections (assistant) — only when the course has sections
-    if (provider.hasSections)
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-        sliver: SliverToBoxAdapter(
-          child: SessionTrackTabs(
-            value: provider.trackFilter,
-            lectures: provider.sessions.where((s) => s.track != 'section').length,
-            sections: provider.sessions.where((s) => s.track == 'section').length,
-            onChanged: provider.setTrackFilter,
-          ),
-        ),
-      ),
-    if (provider.sessions.isNotEmpty)
-      SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-        key: const ValueKey('teacher_sessions.list'),
-        sliver: SliverToBoxAdapter(
-          child: ReorderableListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            buildDefaultDragHandles: false,
-            itemCount: provider.visibleSessions.length,
-            // re-ordering changes the course's real order → only in the "All" view
-            onReorderItem: (oldIndex, newIndex) {
-              if (provider.trackFilter == 'all') provider.reorderSessions(oldIndex, newIndex);
-            },
-            itemBuilder: (ctx, i) => KeyedSubtree(
-              key: ValueKey('session_${provider.visibleSessions[i].id}'),
-              child: SessionMaterialCard(
-                session: provider.visibleSessions[i],
-                sessionNumber: i + 1,
-                course: course,
-                isTeacher: true,
-              ),
-            ),
-          ),
-        ),
-      ),
-  ];
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Section header
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
   final VoidCallback onAdd;
-  final int sessionCount;
-
-  const _SectionHeader({super.key, required this.onAdd, required this.sessionCount});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 20,
-            decoration: BoxDecoration(
-              gradient: context.colors.primaryGradient,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text('sessions'.tr, style: context.colors.h3.copyWith(fontSize: 15)),
-          if (sessionCount > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: context.colors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
+    final provider = context.watch<TeacherCourseScreenProvider>();
+    final sessions = provider.sessions;
+    final loading = sessions.isEmpty && (provider.isLoading || provider.loadingAllPage);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TeacherSessionsHeader(
+          key: const ValueKey('teacher_sessions.header'),
+          count: provider.sessionCount,
+          onAdd: onAdd,
+        ),
+        if (loading)
+          const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(kCourseGutter, 0, kCourseGutter, 0))
+        else if (sessions.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: kCourseGutter),
+            child: TeacherSessionsEmpty(key: const ValueKey('teacher_sessions.empty'), onAdd: onAdd),
+          )
+        else ...[
+          // Lectures (teacher) · Sections (assistant) — only when the course has sections
+          if (provider.hasSections)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 12),
+              child: SessionTrackTabs(
+                value: provider.trackFilter,
+                lectures: sessions.where((s) => s.track != 'section').length,
+                sections: sessions.where((s) => s.track == 'section').length,
+                onChanged: provider.setTrackFilter,
               ),
-              child: Text(
-                '$sessionCount',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.primary,
+            ),
+          Padding(
+            key: const ValueKey('teacher_sessions.list'),
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 16),
+            child: ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: provider.visibleSessions.length,
+              // re-ordering changes the course's real order → only in the "All" view
+              onReorderItem: (oldIndex, newIndex) {
+                if (provider.trackFilter == 'all') provider.reorderSessions(oldIndex, newIndex);
+              },
+              itemBuilder: (ctx, i) => KeyedSubtree(
+                key: ValueKey('session_${provider.visibleSessions[i].id}'),
+                child: SessionMaterialCard(
+                  session: provider.visibleSessions[i],
+                  sessionNumber: i + 1,
+                  course: provider.course,
+                  isTeacher: true,
                 ),
               ),
             ),
-          Spacer(),
-          if (sessionCount > 0) _AddButton(onTap: onAdd),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Add button
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AddButton extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _AddButton({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          gradient: context.colors.accentGradient,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: context.colors.primaryShadow,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.add_rounded, color: context.colors.onHero, size: 18),
-            const SizedBox(width: 6),
-            Text(
-              'add_session_btn'.tr,
-              style: TextStyle(
-                color: context.colors.onHero,
-                fontWeight: FontWeight.w700,
-                fontFamily: 'tajawal',
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Loading state
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _LoadingState extends StatelessWidget {
-  const _LoadingState();
-
-  @override
-  Widget build(BuildContext context) => const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0));
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Empty state
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _EmptyState extends StatelessWidget {
-  final VoidCallback onAdd;
-
-  const _EmptyState({super.key, required this.onAdd});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                gradient: context.colors.primaryGradient,
-                shape: BoxShape.circle,
-                boxShadow: context.colors.primaryShadow,
-              ),
-              child: Icon(
-                Icons.video_library_rounded,
-                size: 40,
-                color: context.colors.onHero,
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'no_sessions_yet'.tr,
-              style: context.colors.h3.copyWith(color: context.colors.textDark),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'add_first_session_hint'.tr,
-              style: context.colors.body,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 28),
-            GestureDetector(
-              onTap: onAdd,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  gradient: context.colors.accentGradient,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: context.colors.primaryShadow,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.add_rounded,
-                      color: context.colors.onHero,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'add_first_session_btn'.tr,
-                      style: TextStyle(
-                        color: context.colors.onHero,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: 'tajawal',
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

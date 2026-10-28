@@ -42,6 +42,7 @@ if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'room_recorder.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ── DIAGNOSTIC (2026-07-30) ───────────────────────────────────────────────
 // Tests the hypothesis that WebRTC's Voice-Processing I/O unit (engaged by
@@ -790,8 +791,8 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
+                  style: TextStyle(
+                    fontFamily: AppFonts.family,
                     color: LivePalette.textHigh,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
@@ -801,7 +802,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
                 Text(
                   subtitle,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     color: LivePalette.ink(0.55),
                     fontSize: 11,
                   ),

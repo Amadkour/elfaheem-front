@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../courses/component/teacher_stats.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StatsRow extends StatelessWidget {
   final TeacherStats stats;
@@ -127,7 +128,7 @@ class _StatCard extends StatelessWidget {
                     color: context.colors.onHero,
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     overflow: TextOverflow.visible,
                     height: 1,
                   ),
@@ -144,7 +145,7 @@ class _StatCard extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     overflow: TextOverflow.ellipsis,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                   ),
                 ),
               ),

@@ -278,3 +278,41 @@ String calTitleFor(CalView v, DateTime anchor) {
         : '${fmt(days.first, 'd MMM')} – ${fmt(days.last, 'd MMM y')}',
   };
 }
+
+// ── The meeting form's request (live-rooms-spec §7 – §8) ─────────────────────
+
+/// Why the form's title blocks saving: required in person, optional online (the server then names the meeting
+/// after its start date and time). Null = fine.
+String? calMeetingTitleError(String title, String mode) =>
+    mode != 'online' && title.trim().isEmpty ? t('اكتب عنوان الاجتماع', 'Give the meeting a title') : null;
+
+/// POST …/meetings body. A blank title is left out (online only — offline is stopped by [calMeetingTitleError]);
+/// a student's meeting is always online and private (an empty audience), whatever the form held.
+Map<String, dynamic> calMeetingBody({
+  required String title,
+  String notes = '',
+  required String startsAt,
+  required String endsAt,
+  required String mode,
+  String location = '',
+  int? orgId,
+  int? deptId,
+  required Map<String, dynamic> audience,
+  required Map<String, dynamic> emptyAudience,
+  bool student = false,
+  bool force = false,
+}) {
+  final m = student ? 'online' : mode;
+  return {
+    if (title.trim().isNotEmpty) 'title': title.trim(),
+    if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+    'starts_at': startsAt,
+    'ends_at': endsAt,
+    'mode': m,
+    if (m == 'offline' && location.trim().isNotEmpty) 'location': location.trim(),
+    'org_id': ?orgId,
+    'dept_id': ?deptId,
+    'audience': student ? emptyAudience : audience,
+    'force': force,
+  };
+}

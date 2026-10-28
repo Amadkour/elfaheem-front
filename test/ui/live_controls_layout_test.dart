@@ -3,6 +3,8 @@
 // Plus the recorder controls of a meeting creator who is not a teacher (showsRecorderControls): Pause while recording,
 // Resume while paused, nothing while not recording.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/features/teacher/sessions/live/widgets/controls.dart' show ControlsWidgetState;
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_control_bar.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -198,6 +200,67 @@ void main() {
         }
         expect(find.byKey(const ValueKey('live_room.end')), findsOneWidget);
       });
+    });
+  });
+
+  // ── The meeting creator's red Record / Stop (live-rooms-spec §11): primary group, pinned in the phone pill ──
+  group('meeting Record / Stop in the primary group', () {
+    Widget creatorBar({required bool recording, bool busy = false}) {
+      final a = _eight();
+      final mic = a[0], cam = a[1], react = a[3], flip = a[4], speaker = a[5], output = a[6];
+      final chat = LiveControlAction(key: const ValueKey('live_room.chat'), icon: Icons.chat_bubble_outline_rounded, label: 'Chat', badge: 3, shortcut: 'C', onTap: () {});
+      final hand = LiveControlAction(key: const ValueKey('live_room.hand'), icon: Icons.back_hand_outlined, label: 'Raise hand', onTap: () {});
+      // Exactly what ControlsWidget hands the bar for a meeting creator (no share: only teachers share).
+      final rec = ControlsWidgetState.meetingRecordAction(onTap: () {}, recording: recording, busy: busy)!;
+      return Align(
+        alignment: Alignment.bottomCenter,
+        child: LiveControlBar(
+          primary: [mic, cam, rec, react, hand, chat],
+          secondary: [flip, speaker, output, if (recording) a[7]],
+          groups: [
+            [mic, cam, flip, speaker, output],
+            [rec, if (recording) a[7]],
+            [react, hand, chat],
+          ],
+          end: _end(),
+          rec: recording ? LiveRecBadge.recording : LiveRecBadge.none,
+          onLobby: () {},
+          waitingCount: 4,
+        ),
+      );
+    }
+
+    test('the action: null without a callback; Record / Stop, red, pinned', () {
+      AppConfig.lang = 'en';
+      expect(ControlsWidgetState.meetingRecordAction(onTap: null), isNull);
+      final idle = ControlsWidgetState.meetingRecordAction(onTap: () {})!;
+      final on = ControlsWidgetState.meetingRecordAction(onTap: () {}, recording: true)!;
+      final busy = ControlsWidgetState.meetingRecordAction(onTap: () {}, busy: true)!;
+      expect(idle.pinned, isTrue);
+      expect(idle.label, 'Record');
+      expect(on.label, 'Stop');
+      expect(idle.icon, isNot(on.icon));
+      expect(idle.color, isNotNull);
+      expect(busy.loading, isTrue);
+      expect(busy.onTap, isNull);
+    });
+
+    testWidgets('always on the bar, never in More — 320 px with the lobby too, no overflow', (tester) async {
+      for (final recording in [false, true]) {
+        await expectNoLayoutErrors(tester, () => creatorBar(recording: recording), act: (t) async {
+          final rec = find.byKey(const ValueKey('live_room.meeting_record'));
+          expect(rec, findsOneWidget);
+          expect(find.byKey(const ValueKey('live_room.lobby')), findsOneWidget);
+          final endX = t.getCenter(find.byKey(const ValueKey('live_room.end'))).dx;
+          expect(endX, greaterThan(t.getCenter(rec).dx));
+          if (t.view.physicalSize.width < kLiveControlsMobileBreakpoint) {
+            await t.tap(find.byKey(const ValueKey('live_room.more')));
+            await t.pump(const Duration(milliseconds: 400));
+            expect(find.byKey(const ValueKey('live_room.meeting_record.sheet')), findsNothing);
+          }
+        });
+      }
+      await expectNoLayoutErrors(tester, () => creatorBar(recording: true, busy: true));
     });
   });
 

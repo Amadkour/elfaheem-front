@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/parent/parent_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -50,7 +51,7 @@ class ScreenAppBar extends StatelessWidget implements PreferredSizeWidget {
         title: Text(
           title,
           textAlign: TextAlign.start,
-          style: c.h2.copyWith(fontFamily: 'bahji',color: titleColor),
+          style: c.h2.copyWith(fontFamily: AppFonts.display,color: titleColor),
         ),
         actions: actions,
       ),

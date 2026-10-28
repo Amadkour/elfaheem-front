@@ -35,6 +35,7 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TimetableWizard extends StatefulWidget {
   const TimetableWizard({super.key, this.scheduleId});
@@ -270,7 +271,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
                         padding: const EdgeInsetsDirectional.only(end: 6),
                         child: ChoiceChip(
                           avatar: Icon(_steps[i].$2, size: 16, color: i == _step ? c.onHero : c.textMedium),
-                          label: Text('${i + 1}. ${_steps[i].$1}', style: TextStyle(fontFamily: 'tajawal', color: i == _step ? c.onHero : c.textDark)),
+                          label: Text('${i + 1}. ${_steps[i].$1}', style: TextStyle(fontFamily: AppFonts.family, color: i == _step ? c.onHero : c.textDark)),
                           selected: i == _step,
                           selectedColor: c.primary,
                           showCheckmark: false,
@@ -437,7 +438,7 @@ class _TimetableWizardState extends State<TimetableWizard> {
             FilterChip(
               avatar: termIds.contains(asInt(l['course_id'])) ? Icon(Icons.event_available_rounded, size: 16, color: c.primary) : null,
               label: Text('${'${asMap(l['course'])['code'] ?? ''}'.isEmpty ? '' : '${asMap(l['course'])['code']} · '}${courseName(l)}',
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
               selected: d.courseIds.contains(asInt(l['course_id'])),
               onSelected: _locked ? null : (on) => setState(() => on ? d.courseIds.add(asInt(l['course_id'])) : d.courseIds.remove(asInt(l['course_id']))),
             ),

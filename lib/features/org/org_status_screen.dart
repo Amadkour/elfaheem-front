@@ -19,6 +19,8 @@ import 'org_ui.dart';
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OrgStatusScreen extends StatefulWidget {
   const OrgStatusScreen({super.key});
@@ -186,13 +188,13 @@ class _OrgStatusScreenState extends State<OrgStatusScreen> {
                   await context.read<ProfileProvider>().logout(context);
                 }
               },
-              icon: Icon(Icons.logout_rounded, color: c.danger),
-              label: Text('logout'.tr, style: TextStyle(fontFamily: 'tajawal', color: c.danger)),
+              icon: Icon(DirIcons.logout, color: c.danger),
+              label: Text('logout'.tr, style: TextStyle(fontFamily: AppFonts.family, color: c.danger)),
             ),
             TextButton.icon(
               onPressed: _busy ? null : _refresh,
               icon: const Icon(Icons.refresh_rounded),
-              label: Text(t('تحقق من الحالة الآن', 'Check the status now'), style: const TextStyle(fontFamily: 'tajawal')),
+              label: Text(t('تحقق من الحالة الآن', 'Check the status now'), style: TextStyle(fontFamily: AppFonts.family)),
             ),
           ]),
         ),

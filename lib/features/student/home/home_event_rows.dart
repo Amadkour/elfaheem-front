@@ -8,7 +8,7 @@
 //   homeEventTag(e) · homeDuration(min) the tag of an event (lab · exam · meeting · online) · "1 h 20 min"
 //   NextUpHero(next:, now:, upcoming:)  the hero: the next event's start time set big, live state, countdown
 //   UpcomingList(events:)               "This week": compact rows with the day in a small column
-//   CourseProgressList(courses:, now:)  "Continue learning": thin progress bar + the next lecture per course
+//   StudentCourseSummary(courses:)      "My courses" in one card: figures + the 3 that matter now (homeCourseFocus)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
 library;
@@ -23,7 +23,6 @@ import 'package:flutter_education_app/features/org/org_member_pages.dart' show O
 import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
-import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 /// Where an event of the home goes when tapped. [inOrg]: a timetable slot opens the member's own timetable
 /// (changes · hold online) instead of the calendar.
@@ -242,65 +241,60 @@ class UpcomingList extends StatelessWidget {
   }
 }
 
-/// "Continue learning": a thin progress bar per course and the next lecture; tap → the course.
-class CourseProgressList extends StatelessWidget {
-  const CourseProgressList({super.key, required this.courses, required this.now, this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+/// The order the home shows courses in: the soonest scheduled next lecture first, then the furthest along that
+/// is not finished, finished courses last.
+List<MeCourseProgress> homeCourseFocus(List<MeCourseProgress> all) {
+  int rank(MeCourseProgress x) => x.progress >= 100 ? 2 : (x.nextLecture?.scheduledAt != null ? 0 : 1);
+  return [...all]..sort((a, b) {
+      final r = rank(a).compareTo(rank(b));
+      if (r != 0) return r;
+      if (rank(a) == 0) return a.nextLecture!.scheduledAt!.compareTo(b.nextLecture!.scheduledAt!);
+      return b.progress.compareTo(a.progress);
+    });
+}
+
+/// "Next: lecture · when", or "no lecture scheduled yet".
+String homeNextLectureLine(MeCourseProgress x) {
+  final n = x.nextLecture;
+  if (n == null) return 'home_no_next_lecture'.tr;
+  final when = n.scheduledAt == null ? '' : ' · ${AppTime.dateTime(n.scheduledAt!)}';
+  return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
+}
+
+/// "My courses" summarized in one card: how many, in progress, completed, the average progress, and the three
+/// courses that matter now (homeCourseFocus); tap → the course, the foot → the courses tab.
+class StudentCourseSummary extends StatelessWidget {
+  const StudentCourseSummary({super.key, required this.courses, this.onOpen, this.onShowAll});
   final List<MeCourseProgress> courses;
-  final DateTime now;
-  final ValueChanged<int>? onTap;
-  final EdgeInsetsGeometry padding;
+  final ValueChanged<int>? onOpen;
+  final VoidCallback? onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return Padding(
-      padding: padding,
-      child: Column(children: [
-        for (final x in courses)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: AppCard(
-              padding: const EdgeInsets.all(12),
-              onTap: onTap == null ? null : () => onTap!(x.courseId),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: SizedBox(
-                    width: 56,
-                    height: 56,
-                    child: x.imageUrl != null && x.imageUrl!.startsWith('http')
-                        ? AppNetworkImage(url: x.imageUrl!, width: 56, height: 56)
-                        : ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, color: appInk(context, c.primary))),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(x.name(AppConfig.lang), maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w800, c: c.textDark, h: 1.25)),
-                    const SizedBox(height: 8),
-                    Row(children: [
-                      // progress is not a grade: the brand colour while under way, success when done (22 % drew an alarm red)
-                      Expanded(child: AppProgressBar(value: x.progress, height: 5, color: x.progress >= 100 ? c.success : appChartPalette(context).first)),
-                      const SizedBox(width: 8),
-                      Text('${x.progress.round()}%', style: appText(11.5, w: FontWeight.w800, c: c.textMedium)),
-                    ]),
-                    const SizedBox(height: 6),
-                    Text(_nextLine(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium)),
-                  ]),
-                ),
-                const SizedBox(width: 6),
-                Icon(Icons.play_circle_fill_rounded, color: appInk(context, c.primary), size: 26),
-              ]),
-            ),
+    final done = courses.where((x) => x.progress >= 100).length;
+    final going = courses.where((x) => x.progress > 0 && x.progress < 100).length;
+    final avg = courses.isEmpty ? 0.0 : courses.fold<double>(0, (s, x) => s + x.progress) / courses.length;
+    final top = homeCourseFocus(courses).take(3).toList();
+    return HomeCourseSummary(
+      figures: [
+        ('${courses.length}', 'courses'.tr),
+        ('$going', 'home_courses_going'.tr),
+        ('$done', 'completed'.tr),
+        ('${avg.round()}%', 'home_courses_avg'.tr),
+      ],
+      lines: [
+        for (final x in top)
+          HomeCourseLine(
+            title: x.name(AppConfig.lang),
+            subtitle: homeNextLectureLine(x),
+            imageUrl: x.imageUrl,
+            progress: x.progress,
+            trailing: '${x.progress.round()}%',
+            onTap: onOpen == null ? null : () => onOpen!(x.courseId),
           ),
-      ]),
+      ],
+      moreLabel: courses.length > top.length ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
+      onMore: onShowAll,
     );
-  }
-
-  String _nextLine(MeCourseProgress x) {
-    final n = x.nextLecture;
-    if (n == null) return 'home_no_next_lecture'.tr;
-    final when = n.scheduledAt == null ? '' : ' · ${AppTime.dateTime(n.scheduledAt!)}';
-    return 'home_next_lecture'.tr.replaceAll('{n}', n.name) + when;
   }
 }

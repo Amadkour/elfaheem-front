@@ -31,6 +31,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -166,7 +167,7 @@ class _HeroHeader extends StatelessWidget {
                     Text(
                       'enrolled_students_title'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: context.colors.onHero,
@@ -179,7 +180,7 @@ class _HeroHeader extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12,
                         color: context.colors.onHero.withValues(alpha: 0.78),
                       ),
@@ -232,7 +233,7 @@ class _ProgressRing extends StatelessWidget {
               Text(
                 '${value.toStringAsFixed(0)}%',
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: context.colors.onHero,
@@ -243,7 +244,7 @@ class _ProgressRing extends StatelessWidget {
               Text(
                 'stat_avg_progress'.tr,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: context.colors.onHero.withValues(alpha: 0.85),
@@ -367,7 +368,7 @@ class _StatTile extends StatelessWidget {
             Text(
               value,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
                 color: context.colors.textDark,
@@ -376,7 +377,7 @@ class _StatTile extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 10,
                 color: context.colors.textMedium,
               ),
@@ -498,7 +499,7 @@ class _LoadMoreFooter extends StatelessWidget {
           child: Text(
             'end_of_list'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11,
               color: context.colors.textLight,
             ),
@@ -567,7 +568,7 @@ class _EmptyState extends StatelessWidget {
               'no_students_hint'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 color: context.colors.textMedium,
               ),
@@ -624,7 +625,7 @@ class _StudentCard extends StatelessWidget {
                           child: Text(
                             student.name,
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: context.colors.textDark,
@@ -637,7 +638,7 @@ class _StudentCard extends StatelessWidget {
                         Text(
                           '${student.progressPercentage.toStringAsFixed(0)}%',
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             color: _progressColor(context),
@@ -649,7 +650,7 @@ class _StudentCard extends StatelessWidget {
                     Text(
                       student.gmail,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11,
                         color: context.colors.textMedium,
                       ),
@@ -660,7 +661,7 @@ class _StudentCard extends StatelessWidget {
                     Text(
                       '${'joined'.tr} ${_formatDate(student.enrolledAt)}',
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 10,
                         color: context.colors.textLight,
                       ),
@@ -752,7 +753,7 @@ class _RingAvatar extends StatelessWidget {
     child: Text(
       student.initials,
       style: TextStyle(
-        fontFamily: 'tajawal',
+        fontFamily: AppFonts.family,
         fontSize: 14,
         fontWeight: FontWeight.w700,
         color: _avatarColor(context),
@@ -822,7 +823,7 @@ class _CertificateAction extends StatelessWidget {
             Text(
               isSent ? 'resend_certificate_btn'.tr : 'send_btn'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: color,
@@ -865,7 +866,7 @@ class _CertificatePickerSheet extends StatelessWidget {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.workspace_premium_rounded, color: context.colors.accent2),
-                  title: Text(c.title, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
+                  title: Text(c.title, style: TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
                   onTap: () => Navigator.pop(context, c),
                 ),
               ),
@@ -921,10 +922,10 @@ class _SendToAllButton extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text('send_to_all_title'.tr,
-            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
         content: Text(
           '${'send_to_all_confirm'.tr}\n\n${cert.title} · ${provider.totalCount} ${'students'.tr}',
-          style: const TextStyle(fontFamily: 'tajawal', fontSize: 13),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
         ),
         actions: [
           TextButton(
@@ -964,7 +965,7 @@ class _SendToAllButton extends StatelessWidget {
             : const Icon(Icons.send_rounded, size: 18),
         label: Text(
           busy ? 'sending_label'.tr : 'send_to_all_students_btn'.tr,
-          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700),
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
         ),
       ),
     );
@@ -1042,7 +1043,7 @@ class _StudentDetailsDialog extends StatelessWidget {
                 student.name,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
                   color: c.textDark,
@@ -1064,11 +1065,11 @@ class _StudentDetailsDialog extends StatelessWidget {
               Row(
                 children: [
                   Text('stat_avg_progress'.tr,
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
                   const Spacer(),
                   Text('${pct.toStringAsFixed(0)}%',
                       style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: color)),
@@ -1090,7 +1091,7 @@ class _StudentDetailsDialog extends StatelessWidget {
                   alignment: AlignmentDirectional.centerStart,
                   child: Text('certificates'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                           color: c.textDark)),
@@ -1099,7 +1100,7 @@ class _StudentDetailsDialog extends StatelessWidget {
                 if (course.certificates.isEmpty)
                   Text('no_certificate_for_course'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 12, color: c.textMedium))
+                          fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium))
                 else
                   for (final cert in course.certificates)
                     _CertificateRow(cert: cert, student: student, provider: provider),
@@ -1128,7 +1129,7 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: c.textMedium),
           const SizedBox(width: 10),
-          Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+          Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -1136,7 +1137,7 @@ class _InfoRow extends StatelessWidget {
               textAlign: TextAlign.end,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: c.textDark,
@@ -1182,14 +1183,14 @@ class _CertificateRow extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: c.textDark)),
                 if (count > 0)
                   Text('${'certificate_sent_label'.tr} · $count×',
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 11, color: c.success)),
+                          fontFamily: AppFonts.family, fontSize: 11, color: c.success)),
               ],
             ),
           ),
@@ -1207,7 +1208,7 @@ class _CertificateRow extends StatelessWidget {
             icon: Icon(count > 0 ? Icons.replay_rounded : Icons.send_rounded, size: 16),
             label: Text(
               count > 0 ? 'resend_certificate_btn'.tr : 'send_certificate_btn'.tr,
-              style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12),
             ),
           ),
         ],

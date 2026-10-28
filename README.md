@@ -66,8 +66,9 @@ EXPORT_SAMPLES=<dir> flutter test test/org/org_export_test.dart        # writes 
 
 `test/widget_test.dart` is the stock counter template and fails; it is not part of the suite. New widgets go
 through `test/ui/layout_harness.dart` (`expectNoLayoutErrors`: 320×640 and 1400×900, Arabic and English, text scale
-1.3). `test/contract/` checks that every API path the app calls exists in the backend snapshot
-(`../back/docs/api_paths.json`).
+1.3). `test/contract/` checks that every API path the app calls exists in the backend's route snapshot
+(`test/contract/api_paths.json`, regenerated from `../back` with
+`python scripts/contract/export_api_paths.py --front ../nextbrain-front` after a server route is added).
 
 ## Build and release
 

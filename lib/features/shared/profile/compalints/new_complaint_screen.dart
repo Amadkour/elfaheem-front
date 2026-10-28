@@ -31,6 +31,7 @@ import 'complaint_model.dart';
 import 'complaint_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class NewComplaintScreen extends StatefulWidget {
   const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
@@ -324,7 +325,7 @@ class _Hero extends StatelessWidget {
                     Text(
                       'complaint_hero_title'.tr,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
                         color: context.colors.onHero,
@@ -334,7 +335,7 @@ class _Hero extends StatelessWidget {
                     Text(
                       'complaint_hero_sub'.tr,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 12.5,
                         height: 1.5,
                         color: context.colors.onHero.withValues(alpha: 0.9),
@@ -360,7 +361,7 @@ class _Hero extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: context.colors.onHero,
@@ -411,10 +412,10 @@ class _TabBar extends StatelessWidget {
         dividerColor: Colors.transparent,
         labelColor: context.colors.onHero,
         unselectedLabelColor: c.textMedium,
-        labelStyle: const TextStyle(
-            fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w700),
-        unselectedLabelStyle: const TextStyle(
-            fontFamily: 'bahji', fontSize: 13, fontWeight: FontWeight.w500),
+        labelStyle: TextStyle(
+            fontFamily: AppFonts.display, fontSize: 13, fontWeight: FontWeight.w700),
+        unselectedLabelStyle: TextStyle(
+            fontFamily: AppFonts.display, fontSize: 13, fontWeight: FontWeight.w500),
         tabs: [
           Tab(
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -457,7 +458,7 @@ class _Badge extends StatelessWidget {
       '$count',
       textAlign: TextAlign.center,
       style: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontSize: 10,
         fontWeight: FontWeight.w800,
         color: context.colors.onHero,
@@ -678,7 +679,7 @@ class _SuggestedSolutionField extends StatelessWidget {
                         child: Text(
                           'suggested_solution_label'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: isExpanded ? accent : c.textDark,
@@ -695,7 +696,7 @@ class _SuggestedSolutionField extends StatelessWidget {
                         child: Text(
                           'optional'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: accent,
@@ -747,7 +748,7 @@ class _SuggestedSolutionField extends StatelessWidget {
                     builder: (_, v, _) => Text(
                       '${v.text.length} / 2000',
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 11,
                         color: v.text.length > 1800 ? c.warning : c.textLight,
                       ),
@@ -1034,7 +1035,7 @@ class _SuggestionBadge extends StatelessWidget {
         Text(
           'has_suggestion'.tr,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 10,
             fontWeight: FontWeight.w700,
             color: c.success,
@@ -1105,7 +1106,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
           Text(
             'suggested_solution_label'.tr,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: c.success,
@@ -1157,7 +1158,7 @@ class _AttachmentSection extends StatelessWidget {
         child: Text(
           '${attachments.length} / $_max',
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: c.textMedium,
@@ -1183,7 +1184,7 @@ class _AttachmentSection extends StatelessWidget {
         if (attachments.isEmpty) ...[
           const SizedBox(height: 10),
           Text('attachments_hint'.tr,
-              style: TextStyle(fontFamily: 'bahji', fontSize: 12, color: c.textLight)),
+              style: TextStyle(fontFamily: AppFonts.display, fontSize: 12, color: c.textLight)),
         ],
       ]),
     );
@@ -1228,7 +1229,7 @@ class _AttachmentThumb extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontFamily: 'bahji', fontSize: 9, color: context.colors.onHero),
+                    fontFamily: AppFonts.display, fontSize: 9, color: context.colors.onHero),
               ),
             ),
           ]),
@@ -1294,7 +1295,7 @@ class _AddImageButton extends StatelessWidget {
               'add_attachment'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: c.primary,
@@ -1351,7 +1352,7 @@ class _AddImageButton extends StatelessWidget {
       title: Text(
         label,
         style: TextStyle(
-            fontFamily: 'bahji', fontWeight: FontWeight.w700, color: c.textDark),
+            fontFamily: AppFonts.display, fontWeight: FontWeight.w700, color: c.textDark),
       ),
       onTap: () {
         Navigator.pop(context);
@@ -1377,7 +1378,7 @@ class _AttachmentGallery extends StatelessWidget {
       Text(
         'attachments_label'.tr,
         style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: c.textLight),
@@ -1444,7 +1445,7 @@ class _HistoryReplyBubble extends StatelessWidget {
                     child: Text(
                       reply.senderName,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                         color: c.primary,
@@ -1454,7 +1455,7 @@ class _HistoryReplyBubble extends StatelessWidget {
                 Text(
                   reply.message,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 13,
                     height: 1.5,
                     color: isAdmin ? c.textDark : context.colors.onHero,
@@ -1500,7 +1501,7 @@ class _ResolvedBanner extends StatelessWidget {
         Text(
           '${'resolved_at_prefix'.tr} ${AppTime.date(resolvedAt)}',
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12.5,
             color: c.success,
             fontWeight: FontWeight.w700,
@@ -1571,7 +1572,7 @@ class _StatusBadge extends StatelessWidget {
       Text(
         label,
         style: TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
           fontSize: 10.5,
           fontWeight: FontWeight.w700,
           color: color,
@@ -1599,7 +1600,7 @@ class _CategoryBadge extends StatelessWidget {
     child: Text(
       label,
       style: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontSize: 10.5,
         fontWeight: FontWeight.w600,
         color: primary,
@@ -1670,7 +1671,7 @@ class _CategoryPicker extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: sel ? context.colors.onHero : c.textMedium,
@@ -1738,7 +1739,7 @@ class _PriorityPicker extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: sel ? context.colors.onHero : color,
@@ -1802,13 +1803,13 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
       builder: (ctx) => Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(_types.firstWhere((x) => x.$1 == type).$3.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16)),
+          Text(_types.firstWhere((x) => x.$1 == type).$3.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 8),
           Flexible(child: ListView(shrinkWrap: true, children: [
             for (final x in items!)
               Material(
                 type: MaterialType.transparency,
-                child: ListTile(title: Text('${x['label']}', style: const TextStyle(fontFamily: 'tajawal')), onTap: () => Navigator.pop(ctx, x)),
+                child: ListTile(title: Text('${x['label']}', style: TextStyle(fontFamily: AppFonts.family)), onTap: () => Navigator.pop(ctx, x)),
               ),
           ])),
         ]),
@@ -1823,13 +1824,13 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('complaint_about'.tr, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+        Text('complaint_about'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final x in _types)
             ChoiceChip(
               avatar: Icon(x.$2, size: 17, color: widget.type == x.$1 ? c.primary : c.textMedium),
-              label: Text(x.$3.tr, style: const TextStyle(fontFamily: 'tajawal')),
+              label: Text(x.$3.tr, style: TextStyle(fontFamily: AppFonts.family)),
               selected: widget.type == x.$1,
               onSelected: (_) => _pick(x.$1),
             ),
@@ -1844,7 +1845,7 @@ class _ComplaintTargetPickerState extends State<ComplaintTargetPicker> {
               child: Row(children: [
                 Icon(_types.firstWhere((x) => x.$1 == widget.type).$2, color: c.primary, size: 20),
                 const SizedBox(width: 8),
-                Expanded(child: Text('${widget.label}', style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
+                Expanded(child: Text('${widget.label}', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark))),
                 TextButton(onPressed: () => _pick(widget.type), child: Text('change'.tr)),
               ]),
             ),

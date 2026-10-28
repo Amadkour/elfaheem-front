@@ -7,6 +7,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/student_exam_api.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StudentExamFrozenScreen extends StatefulWidget {
   final StudentExamListItem exam;
@@ -80,8 +81,8 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
           onPressed: widget.onBack,
         ),
         title: Text(e.name,
-            style: const TextStyle(
-                fontFamily: 'bahji', fontWeight: FontWeight.w700),
+            style: TextStyle(
+                fontFamily: AppFonts.display, fontWeight: FontWeight.w700),
             overflow: TextOverflow.ellipsis),
       ),
       child: SingleChildScrollView(
@@ -120,7 +121,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                 ? tx('exam_frozen_deadline_title')
                 : tx('exam_frozen_attempts_title'),
             style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: _accent),
@@ -134,7 +135,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                 ? tx('exam_frozen_deadline_msg')
                 : tx('exam_frozen_attempts_msg', {'count': e.submissionCount}),
             style: TextStyle(
-                fontFamily: 'bahji', fontSize: 14, color: context.colors.textLight),
+                fontFamily: AppFonts.display, fontSize: 14, color: context.colors.textLight),
             textAlign: TextAlign.center,
           ),
 
@@ -206,8 +207,8 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
               icon: Icon(Icons.arrow_back_ios_new_rounded,
                   size: 16, color: context.colors.onHero),
               label: Text(tx('exam_back_to_exams'),
-                  style: const TextStyle(
-                      fontFamily: 'bahji',
+                  style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontSize: 15,
                       fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
@@ -252,7 +253,7 @@ class _ScoreSummaryCard extends StatelessWidget {
       child: Column(children: [
         Text(tx('exam_last_result'),
             style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 13,
                 color: context.colors.textLight)),
         const SizedBox(height: 12),
@@ -270,7 +271,7 @@ class _ScoreSummaryCard extends StatelessWidget {
           ),
           Text('${pct.toStringAsFixed(0)}%',
               style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                   color: accent)),
@@ -279,7 +280,7 @@ class _ScoreSummaryCard extends StatelessWidget {
         Text(
           exam.passed == true ? tx('exam_passed_mark') : tx('exam_failed_mark'),
           style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 15,
               fontWeight: FontWeight.w700,
               color: accent),
@@ -289,7 +290,7 @@ class _ScoreSummaryCard extends StatelessWidget {
           Text(
             tx('exam_marks_of_total', {'obtained': exam.marksObtained!.toStringAsFixed(1), 'total': exam.totalMarks!.toStringAsFixed(0)}),
             style: TextStyle(
-                fontFamily: 'bahji', fontSize: 13, color: context.colors.textLight),
+                fontFamily: AppFonts.display, fontSize: 13, color: context.colors.textLight),
           ),
         ],
       ]),
@@ -344,11 +345,11 @@ class _InfoRow extends StatelessWidget {
     const SizedBox(width: 8),
     Text(label,
         style: TextStyle(
-            fontFamily: 'bahji', fontSize: 13, color: context.colors.textLight)),
+            fontFamily: AppFonts.display, fontSize: 13, color: context.colors.textLight)),
     const Spacer(),
     Text(value,
         style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: color)),

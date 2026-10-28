@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TimeField extends StatelessWidget {
   final String label;
@@ -12,7 +13,7 @@ class TimeField extends StatelessWidget {
     controller: controller,
     textAlign: TextAlign.center,
     keyboardType: TextInputType.datetime,
-    style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
+    style: TextStyle(fontFamily: AppFonts.display, fontSize: 14),
     decoration: InputDecoration(
       labelText: label,
       labelStyle: context.colors.caption,

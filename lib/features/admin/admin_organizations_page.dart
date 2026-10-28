@@ -20,6 +20,7 @@ import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _base = '/api/v1/admin/orgs';
 
@@ -226,7 +227,7 @@ Future<void> _openReview(BuildContext context, int id) async {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 onPressed: busy ? null : () => act('reject', needNote: true),
                 icon: const Icon(Icons.edit_note_rounded),
-                label: Text(t('طلب تعديلات', 'Ask for changes'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                label: Text(t('طلب تعديلات', 'Ask for changes'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               ),
             ],
             if (status == 'approved')
@@ -235,7 +236,7 @@ Future<void> _openReview(BuildContext context, int id) async {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 onPressed: busy ? null : () => act('suspend', needNote: true),
                 icon: const Icon(Icons.pause_circle_rounded),
-                label: Text(t('إيقاف مؤقت', 'Suspend'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                label: Text(t('إيقاف مؤقت', 'Suspend'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               ),
             if (status == 'suspended')
               PrimaryButton(isLoading: busy, label: t('إعادة التفعيل', 'Reactivate'), icon: Icons.play_circle_rounded,
@@ -247,7 +248,7 @@ Future<void> _openReview(BuildContext context, int id) async {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               onPressed: () => _billingSheet(ctx, asInt(d['id']), orgNameOf(d)),
               icon: const Icon(Icons.payments_rounded),
-              label: Text(t('رسوم العضوية', 'Membership fees'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              label: Text(t('رسوم العضوية', 'Membership fees'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
             ),
             // the assistant library's per-organization quota: the Super Admin's override (PUT /rag/orgs/{id}/quota)
             if (isSuperNow(ctx)) ...[
@@ -258,7 +259,7 @@ Future<void> _openReview(BuildContext context, int id) async {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 onPressed: () => showRagQuotaAdminSheet(ctx, orgId: asInt(d['id']), orgName: orgNameOf(d)),
                 icon: const Icon(Icons.inventory_2_outlined),
-                label: Text(t('حصة مكتبة المساعد', 'Assistant library quota'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                label: Text(t('حصة مكتبة المساعد', 'Assistant library quota'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               ),
             ],
           ]),
@@ -462,7 +463,7 @@ Future<void> _manageOrgAdmin(BuildContext context, Map<String, dynamic> row) asy
                         content: Column(mainAxisSize: MainAxisSize.min, children: [
                           AppPasswordField(controller: pwd, label: t('اكتبها أو اتركها فارغة لتوليد واحدة قوية', 'Type it, or leave empty to generate a strong one'),
                               required: false, showStrength: true, minLength: 8),
-                          Text(t('سيُسجَّل خروجه من كل الأجهزة.', 'They will be signed out on every device.'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+                          Text(t('سيُسجَّل خروجه من كل الأجهزة.', 'They will be signed out on every device.'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
                         ]),
                         actions: [
                           TextButton(onPressed: () => Navigator.pop(dc, false), child: Text(t('إلغاء', 'Cancel'))),

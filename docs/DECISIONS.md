@@ -458,3 +458,101 @@ the value labels and the semantics). Status colours (success / warning / danger)
 `AppDonut`; a server aggregate that gains a time series feeds `spark` directly. A sixth series folds into "other"
 (textLight) — facet or fold rather than invent a hue. Line / area charts over time with axes are not built yet;
 add them here, not from a package.
+
+## D-060 — Students host live meetings on a points plan; the platform gets a points wallet · 2026-10-28 · accepted
+
+**Context.** Students may now create live meetings, but only online and private ("Only me"; people come through
+the share link), free for the first 15 minutes of each meeting, then through a monthly "live meeting" plan priced
+in points (30 points / 30 days). The platform had no points: only the money ledger of course purchases. Contract:
+`docs/backend/live-rooms-spec.md` Part 2.
+**Decision.** A points wallet in the core: `user_points` (balance), `points_ledger` (every change, balance after),
+`points_topups` (buy points with a bank-transfer / InstaPay receipt the admin approves, the same manual flow as the
+student subscription) and `service_subscriptions` (what points bought, first service `live_meeting`). A debit is one
+conditional UPDATE and an approval a compare-and-set, so balances never go negative and a top-up is credited once.
+The free time is per meeting, counted from the room's first join (`cal_meetings.live_started_at`) and enforced by
+the server: joins after the limit are refused and a 60 s tick deletes the LiveKit room; the app only shows the
+countdown. Prices, days, free minutes and the price of a point are app settings the super admin edits.
+**Rejected.** Charging money directly per plan (the user asked for points; points also serve later services);
+per-day free minutes (a per-meeting limit is what people know from Zoom, and it is a setting); enforcing the limit
+in the app alone (a modified client would ignore it).
+**Consequences.** Until online payment is wired to points, students get points through an approved receipt or an
+admin grant. A student can still open a new meeting after 15 minutes; raising that bar means a per-day limit.
+Quick meetings ("Meet now") and direct guest links (admitted without the lobby) come in the same release.
+
+## D-071 — An optional, unique @username; the app mirrors the rules, the server decides · 2026-10-28 · accepted
+
+**Context.** People asked for a WhatsApp-style handle: chosen at sign-up or later, unique, and usable to sign in.
+Contract shared with the backend: lowercase `a–z 0–9 . _`, 3–30 characters, at least one letter, no leading /
+trailing / double dot, not `www…`, not ending like a domain (`.com`, `.io` …), a reserved list; errors
+`USERNAME_INVALID` / `USERNAME_RESERVED` / `USERNAME_TAKEN` (409, with up to 3 `suggestions`);
+`GET /auth/username/check`; `username` on register and `PUT /auth/me` (null / "" removes it); policy
+`username_login`; kill switch `auth.username`.
+**Decision.** `lib/features/auth/username.dart` holds the mirrored rules and the reserved list in ONE place
+(`UsernameRules`), an input formatter that lowercases and drops impossible characters, the defensive check parser
+and the error reader. `UsernameField` validates every keystroke locally and asks the server only for a name the
+rules accept, after 450 ms, dropping stale answers; the account's own name counts as available. The server stays
+the authority: a submit error lands on the field with its suggestions, and an older server (bare 404 / 405 on the
+check route, or a throttle) means "can't check now", never a block. Login and forgot-password accept a username
+only when the policy says `username_login: true` — a MISSING key counts as false, so an older server is never sent
+an identifier it cannot resolve. The app never asks whether a typed sign-in identifier exists: an unknown
+username fails exactly like an unknown e-mail (no enumeration on login / reset / OTP routes; only the sign-up
+check route, throttled per IP, answers "taken").
+**Rejected.** Usernames in Arabic or with capitals (unique index on a lowercase ASCII column, unambiguous to type
+and read out); checking availability on every keystroke (load on the throttled route); making it mandatory.
+**Consequences.** A new reserved word or rule is changed on both sides (`../back` and `UsernameRules`). The Google
+sign-up sheet does not ask for a username (the route takes none); people set it later in the profile. Hiding the
+feature (`auth.username`) hides the field and the "or username" wording, but the server still resolves usernames
+at login until the admin turns `username_login` off.
+
+## D-072 — Premium UI fonts chosen per language, display & reading settings · 2026-10-28 · accepted
+
+**Context.** The whole UI was drawn in Tajawal (plus Bahij for some headings), written as the literal
+`fontFamily: 'tajawal'` / `'bahji'` in ~1,200 places, and people could not change the font, the size or the zoom
+for young learners or older eyes. Arabic icons also pointed the wrong way in places.
+**Decision.** `AppFonts` (`lib/core/display/app_fonts.dart`) holds a catalog of OFL families, one choice per
+language: Arabic IBM Plex Sans Arabic (default) · Readex Pro · Noto Kufi Arabic · Almarai · Cairo · Tajawal; English
+Inter (default) · Plus Jakarta Sans · Lexend · Atkinson Hyperlegible Next · Nunito (the Arabic ones too). Every
+literal became `AppFonts.family` (`'bahji'` → `AppFonts.display`, a bold-only alias of the same font, which is how
+Bahij drew); `const` was dropped where that required it and `AppTheme`'s text styles became getters. The two
+defaults are pubspec fonts (first frame); the rest are asset folders registered by `FontLoader` when chosen or
+previewed (web downloads only what is used); Latin-only files are subset to Latin. Static weights 400–800 (a variable
+font's `wght` is not driven by `fontWeight`). The other language's font is the theme's `fontFamilyFallback`.
+`DisplaySettings` (device-local) adds text size × the system's, whole-interface zoom (`DisplayZoom`: lays out at
+size / zoom, draws × zoom, so breakpoints, insets and hit tests follow), bold text, high contrast (the palette's
+muted ink pulled toward the main ink), reduce motion and larger touch targets, with presets; `AppDisplayScope`
+applies them in `MaterialApp.builder`. A font or contrast change rebuilds every mounted element.
+**Rejected.** `google_fonts` (network at first run, offline app); swapping the bytes behind the family name
+'tajawal' at run time (a family cannot be unregistered, so a second switch needs a restart); removing the literals
+and inheriting from the theme (RichText, TextPainter and button text styles do not inherit).
+**Consequences.** New UI never writes a family name: `appText(...)`, theme styles or `fontFamily: AppFonts.family`.
+Documents keep their own fonts (PDF / Word / certificates / the export designer). A `static final` TextStyle
+would freeze the font: make it a getter. Icons: `DirIcons` (`lib/design/app_icons.dart`) for logout / login /
+exit / subdirectory / north-east / outward, never a language ternary over an icon that mirrors by itself
+(`test/ui/rtl_icons_test.dart` reads lib/ for both).
+
+## D-073 — One design language for the sign-in module · 2026-10-28 · accepted
+
+**Context.** Each auth screen drew its own chrome: the login page had a private layout and switches, the other
+pages a primary app bar over a tinted panel, fields were flat grey boxes with an UPPERCASE label, buttons the
+generic `PrimaryButton`, and several strings (password rules, terms row, strength words) were Arabic-only.
+**Decision.** The look lives in two shared files, so every auth screen inherits it. `auth_shell.dart`:
+`AuthScaffold` (BasePage + language rebuild) over the plain-values `AuthLayout` — on a phone / tablet a
+brand-gradient hero (back · logo tile · admin name + tagline · language + theme switches, then the page title and
+subtitle in on-hero ink) with the form card rising 36 px over its rounded bottom; from 900 px the brand panel
+(`AuthSidebar`: logo, headline, mission, features, the admin's stats) beside a calm surface holding the card
+(title inside it, max width 440–600). `auth_widgets.dart`: `authHeroGradient` (the theme's primary gradient,
+deepened toward `heroShade`, more so in dark mode), `authText` / `authTracking` (AppFonts; letter spacing for Latin
+only), `authInputDecoration` (filled, 16 radius, hairline border, a primary stroke plus a 4 px halo on focus via
+`AuthFieldBorder`, which lerps so the InputDecorator animates the ring; the prefix icon follows focus / error),
+`AuthButton` (gradient, 54 dp, press scale, spinner, light haptic — a `FilledButton` underneath so Enter-to-submit
+and screen readers still find it), `AuthOtpBox` (tabular digits, focus ring, error), `AuthPasswordStrength` /
+`AuthRequirement`, `AuthOrDivider`, `AuthTextAction`, role cards with a check badge. Every colour comes from
+`context.colors` (on-hero roles on the hero), motion is implicit and skipped under `disableAnimations`, forms are
+`AutofillGroup`s with the right hints / keyboards / input actions, the last field submits, touch targets are 48 dp.
+Login shows a full-width "Continue with Google" button instead of the icon-only circle.
+**Rejected.** A font package or a custom display face (D-072 owns fonts); restyling `app_inputs.dart` / the phone
+field globally (other screens rely on them — the auth fields match their geometry instead, and the register e-mail
+became `AuthEmailField`, which reuses `validateEmail`).
+**Consequences.** New auth screens use `AuthScaffold(title:, subtitle:)` and never draw their own header, logo or
+switches. `IconTextField`, `StyledDropdown` and `SectionLabel` are shared with profile / complaints screens, which
+pick up the new field look. Renders: `test/visual/auth_screens_golden_test.dart`; layout: `test/auth/auth_premium_layout_test.dart`.

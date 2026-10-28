@@ -28,6 +28,8 @@ import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppRefresh;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _featureIcons = {
   'announcements': Icons.campaign_rounded,
@@ -131,7 +133,7 @@ class _OrgDepartmentsPageState extends State<OrgDepartmentsPage> {
               },
               icon: Icon(Icons.add_business_rounded, color: c.onHero),
               label: Text(t('إدارة جديدة', 'New department'),
-                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
             )
           : null,
       body: OrgAsync(
@@ -242,7 +244,7 @@ class _DeptCard extends StatelessWidget {
             const SizedBox(height: 12),
             Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
               if ((parentName ?? '').isNotEmpty)
-                OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: Icons.subdirectory_arrow_left_rounded, color: c.textMedium),
+                OrgPill(t('تابعة لـ $parentName', 'Part of $parentName'), icon: DirIcons.subArrowLeft, color: c.textMedium),
               if (subCount > 0) OrgPill(t('$subCount فرعية', '$subCount sub'), icon: Icons.account_tree_rounded, color: col),
               OrgPill(t('${asInt(counts['team'])} في الفريق', '${asInt(counts['team'])} team'), icon: Icons.groups_rounded, color: col),
               for (final f in (d['features'] as List? ?? const []))
@@ -389,7 +391,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
                     avatar: Icon(deptIcon(p['icon']), size: 16,
                         color: preset == p['key'] ? c.onHero : hexColor(p['color'], c.primary)),
                     label: Text(t('${p['name_ar']}', '${p['name_en']}'),
-                        style: TextStyle(fontFamily: 'tajawal', color: preset == p['key'] ? c.onHero : c.textDark)),
+                        style: TextStyle(fontFamily: AppFonts.family, color: preset == p['key'] ? c.onHero : c.textDark)),
                     selected: preset == p['key'],
                     selectedColor: hexColor(p['color'], c.primary),
                     showCheckmark: false,
@@ -488,7 +490,7 @@ Future<bool> showDepartmentWizard(BuildContext context, {Map<String, dynamic>? e
               for (final e in featureLabels().entries)
                 FilterChip(
                   avatar: Icon(_featureIcons[e.key], size: 16),
-                  label: Text(e.value, style: const TextStyle(fontFamily: 'tajawal')),
+                  label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family)),
                   selected: features.contains(e.key),
                   onSelected: (on) => set(() => on ? features.add(e.key) : features.remove(e.key)),
                 ),
@@ -633,10 +635,10 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
               const SizedBox(width: 14),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(orgNameOf(_d), style: TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
+                  Text(orgNameOf(_d), style: TextStyle(fontFamily: AppFonts.display, fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
                   if ('${_d['description'] ?? ''}'.isNotEmpty)
                     Text('${_d['description']}', maxLines: 2, overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88))),
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.88))),
                 ]),
               ),
             ]),
@@ -647,7 +649,7 @@ class _OrgDepartmentHubState extends State<OrgDepartmentHub> {
             labelColor: col,
             indicatorColor: col,
             unselectedLabelColor: c.textMedium,
-            labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
             tabs: [for (final tb in tabs) Tab(icon: Icon(tb.$2, size: 20), text: tb.$1)],
           ),
           Expanded(child: TabBarView(children: [for (final tb in tabs) tb.$3])),
@@ -767,7 +769,7 @@ class _TeamBodyState extends State<_TeamBody> {
                       ListTile(
                         onTap: () => set(() => picked = asInt(asMap(m['user'])['id'])),
                         leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 38),
-                        title: Text('${asMap(m['user'])['name']}', style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                        title: Text('${asMap(m['user'])['name']}', style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
                         subtitle: Text('${asMap(m['user'])['email']}', textDirection: TextDirection.ltr),
                         trailing: Icon(
                             picked == asInt(asMap(m['user'])['id']) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
@@ -817,7 +819,7 @@ class _TeamBodyState extends State<_TeamBody> {
               backgroundColor: c.primary,
               onPressed: _add,
               icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
-              label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+              label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
             )
           : null,
       body: OrgAsync(

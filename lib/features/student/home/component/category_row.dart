@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/category/categories_provider.dart';
 import '../../../shared/category/categories_screen.dart';
 
@@ -25,25 +24,8 @@ class CategoriesRow extends StatelessWidget {
           );
         }
 
-        if (provider.categories.isEmpty) {
-          return SizedBox(
-            height: 112,
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.category_outlined,
-                    size: 36,
-                    color: context.colors.primary,
-                  ),
-                  SizedBox(height: 8),
-                  Text('لا توجد أقسام', style: context.colors.caption),
-                ],
-              ),
-            ),
-          );
-        }
+        // nothing to show → nothing drawn (the home hides the section title too)
+        if (provider.categories.isEmpty) return const SizedBox.shrink();
         final List<CategoryModel> categories = provider.categories
             .take(5)
             .toList();

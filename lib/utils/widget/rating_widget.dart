@@ -9,6 +9,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -447,7 +448,7 @@ class _RatingWidgetState extends State<RatingWidget>
                   Text(
                     summary.average.toStringAsFixed(1),
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 48,
                       fontWeight: FontWeight.w900,
                       color: AppTheme.primary,

@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../main.dart';           // navigatorKey
 import 'api_client.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class VersionCheckService {
   VersionCheckService._();
@@ -96,8 +97,8 @@ class VersionCheckService {
                 Expanded(
                   child: Text(
                     mustUpdate ? 'تحديث إلزامي' : 'تحديث متاح',
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
+                    style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w700,
                       fontSize: 18,
                     ),
@@ -116,14 +117,14 @@ class VersionCheckService {
                   mustUpdate
                       ? 'يجب تحديث التطبيق إلى الإصدار $latest للمتابعة.'
                       : 'يتوفر إصدار جديد ($latest). هل تريد التحديث الآن؟',
-                  style: const TextStyle(fontFamily: 'bahji', fontSize: 14),
+                  style: TextStyle(fontFamily: AppFonts.display, fontSize: 14),
                 ),
                 if (notes.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(
                     'ما الجديد:\n$notes',
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
+                    style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontSize: 13,
                       color: Colors.grey,
                     ),
@@ -138,8 +139,8 @@ class VersionCheckService {
                 onPressed: () => Navigator.of(context).pop(),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3.0),
-                  child: const Text('لاحقاً',
-                      style: TextStyle(fontFamily: 'bahji')),
+                  child: Text('لاحقاً',
+                      style: TextStyle(fontFamily: AppFonts.display)),
                 ),
               ),
             ElevatedButton.icon(
@@ -152,9 +153,9 @@ class VersionCheckService {
               onPressed: () => _openStore(storeUrl),
               icon: const Icon(Icons.download_rounded,
                   color: Colors.white, size: 18),
-              label: const Text('تحديث الآن',
+              label: Text('تحديث الآن',
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
                   )),

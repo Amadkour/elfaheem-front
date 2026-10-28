@@ -21,6 +21,7 @@ import 'admin_list.dart';
 import 'admin_table_export.dart' show adminSubscriptionsExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminSubscriptionsPage extends StatelessWidget {
   const AdminSubscriptionsPage({super.key});
@@ -162,12 +163,12 @@ class _PlanRow extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(plan.code == 'yearly' ? Icons.calendar_month_rounded : Icons.calendar_today_rounded, color: c.primary),
-      title: Text(plan.name, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+      title: Text(plan.name, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
       subtitle: Text(
         plan.price <= 0
             ? 'admin_free'.tr
             : '${money(plan.price, plan.currency)} • ${plan.durationDays} ${'admin_days'.tr}',
-        style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium),
+        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium),
       ),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         AppSwitch(
@@ -278,7 +279,7 @@ class _SubTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w800,
                       fontSize: 14.5,
                       color: c.textDark)),
@@ -286,13 +287,13 @@ class _SubTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
             ]),
           ),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(money(s.amount, s.currency),
                 style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                     color: c.textDark)),
@@ -385,7 +386,7 @@ class _SubTile extends StatelessWidget {
                 style: ElevatedButton.styleFrom(backgroundColor: c.success),
                 icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
                 label: Text('admin_approve'.tr,
-                    style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
+                    style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
                 onPressed: () async {
                   final ok = await confirm(context, message: 'admin_approve_this_subscription'.tr);
                   if (ok) await p.approve(s.id);

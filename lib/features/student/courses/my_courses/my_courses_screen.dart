@@ -16,6 +16,7 @@ import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'my_courses_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
@@ -175,7 +176,7 @@ class _StatCard extends StatelessWidget {
                 color: context.colors.onHero,
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 height: 1,
               ),
             ),
@@ -186,7 +187,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               color: context.colors.onHero,
               fontSize: 14,
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
             ),
           ),
         ],

@@ -14,6 +14,7 @@ import '../../../main.dart' show navigatorKey;
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/view_as_state.dart';
 import '../../student/courses/details/growth_tr.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminMessageDialogs {
   AdminMessageDialogs._();
@@ -88,8 +89,8 @@ class AdminMessageDialogs {
           title: Text(
             '${m['title']}',
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
+            style: TextStyle(
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -97,7 +98,7 @@ class AdminMessageDialogs {
             child: Text(
               '${m['body']}',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontFamily: 'tajawal', height: 1.6),
+              style: TextStyle(fontFamily: AppFonts.family, height: 1.6),
             ),
           ),
           actionsAlignment: MainAxisAlignment.center,

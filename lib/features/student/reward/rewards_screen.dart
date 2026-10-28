@@ -6,6 +6,7 @@ import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import '../../../utils/widget/app_bar.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import 'rewards_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class RewardsScreen extends StatelessWidget {
   const RewardsScreen({super.key});
@@ -293,7 +294,7 @@ class _UserTrophy extends StatelessWidget {
                   color:      context.colors.onHero,
                   fontWeight: FontWeight.w800,
                   fontSize:   13,
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                 ),
               ),
             ),

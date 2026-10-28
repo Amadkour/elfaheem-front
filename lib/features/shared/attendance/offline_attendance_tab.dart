@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OfflineAttendanceTab extends StatefulWidget {
   const OfflineAttendanceTab({super.key});
@@ -51,8 +52,8 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Text(attT('att_courses_title'),
-                    style: const TextStyle(
-                        fontFamily: 'tajawal', fontSize: 15, fontWeight: FontWeight.w800)),
+                    style: TextStyle(
+                        fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w800)),
               );
             }
             final c = courses[i - 1];
@@ -76,15 +77,15 @@ class _OfflineAttendanceTabState extends State<OfflineAttendanceTab> {
                         Text(name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 14)),
+                            style: TextStyle(
+                                fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14)),
                         const SizedBox(height: 2),
                         Text(attT('att_course_tap'),
                             style: TextStyle(
-                                fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+                                fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
                       ]),
                     ),
-                    const Icon(CupertinoIcons.chevron_forward, size: 16),
+                    const Icon(CupertinoIcons.forward, size: 16),
                   ]),
                 ),
               ),

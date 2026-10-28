@@ -12,6 +12,10 @@
 //                              before Join (remembered per token in SharedPreferences).
 //                            • 429 `too_many_requests` → "try again in a minute" banner with a 60 s countdown
 //                              that keeps Join disabled.
+//                            • `auto_join` (a DIRECT link, live-rooms-spec §10): signed in → joins with the account
+//                              at once; a remembered guest name → joins at once; otherwise only the name field
+//                              (autofocus) → Join. The pre-join step then presses Join by itself (JoinArgs.autoJoin).
+//                              Tried once per visit; a PIN or a missing recording consent waits for the visitor.
 //   GuestLiveContent       → the pure layout (plain values + callbacks): loading skeleton · not live (waiting) ·
 //                            live · error. Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
 import 'dart:async';
@@ -35,6 +39,7 @@ import '../live/live_lobby_sheets.dart' show WaitingForHostPage;
 import '../live/live_room.dart';
 import 'guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/design/app_icons.dart';
 
 /// SharedPreferences key of the last name a guest typed.
 const String kGuestLiveNamePref = 'guest_live_name';
@@ -72,6 +77,10 @@ class _GuestLivePageState extends State<GuestLivePage> {
   Timer? _poll;
   Timer? _rateTimer;
 
+  /// Direct link (`auto_join`): the remembered name and consent are read; the one automatic join was tried.
+  bool _prefsLoaded = false;
+  bool _autoTried = false;
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +112,26 @@ class _GuestLivePageState extends State<GuestLivePage> {
         _consent = consent;
       });
     } catch (_) {}
+    _prefsLoaded = true;
+    _maybeAutoJoin();
+  }
+
+  /// A DIRECT link joins by itself once (spec §10): with the account when signed in, else with the remembered
+  /// guest name. Without a name the page shows just the name field; a PIN or the recording consent waits for the
+  /// visitor too.
+  void _maybeAutoJoin() {
+    final info = _info;
+    if (!mounted || _autoTried || !_prefsLoaded || info == null || !info.autoJoin || !info.isLive) return;
+    if (_joining || _rateLimitSeconds > 0 || info.requiresPin || (info.recordingEnabled && !_consent)) return;
+    final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
+    if (full) return;
+    if (_signedIn && info.signedInJoin) {
+      _autoTried = true;
+      unawaited(_joinWithAccount());
+    } else if (_nameCtrl.text.trim().isNotEmpty) {
+      _autoTried = true;
+      unawaited(_join());
+    }
   }
 
   Future<void> _rememberName(String n) async {
@@ -136,6 +165,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
         _errorFinal = false;
       });
       _schedulePoll(info);
+      _maybeAutoJoin();
     } catch (e) {
       if (!mounted) return;
       final isFinal = guestLiveErrorIsFinal(e);
@@ -323,11 +353,16 @@ class _GuestLivePageState extends State<GuestLivePage> {
               url: j.wsUrl,
               token: j.token,
               recordingEnabled: j.recordingEnabled,
+              freeEndsAt: j.freeEndsAt,
             ),
             onEnd: () async {},
             sessionName: info.displayTitle,
             guest: guest,
             canPublish: j.canPublish,
+            // A direct link: the pre-join step presses Join itself once the devices are ready (spec §10).
+            autoJoin: info.autoJoin,
+            startsAt: info.startsAt,
+            hostName: info.displayHost.isEmpty ? null : info.displayHost,
           ),
         ),
       ),
@@ -543,9 +578,29 @@ class _SessionCardState extends State<_SessionCard> {
 
   TextEditingController get _pin => widget.pinController ?? (_ownPin ??= TextEditingController());
 
+  /// Wraps the name field: a direct link focuses it at once (AppField has no autofocus of its own).
+  final FocusNode _nameGroup = FocusNode(debugLabel: 'guest_live.name', skipTraversal: true, canRequestFocus: false);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.info.autoJoin && widget.nameController.text.trim().isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        for (final n in _nameGroup.descendants) {
+          if (n.canRequestFocus && !n.skipTraversal) {
+            n.requestFocus();
+            break;
+          }
+        }
+      });
+    }
+  }
+
   @override
   void dispose() {
     _ownPin?.dispose();
+    _nameGroup.dispose();
     super.dispose();
   }
 
@@ -560,6 +615,8 @@ class _SessionCardState extends State<_SessionCard> {
     final title = info.displayTitle.isNotEmpty ? info.displayTitle : (info.isMeeting ? t('اجتماع', 'Meeting') : 'lr_live_session'.tr);
     final host = info.displayHost;
     final accountJoin = widget.signedIn && info.signedInJoin && widget.onJoinWithAccount != null;
+    // A direct link: just the title, the host and the name field — the visitor comes straight in.
+    final quick = info.autoJoin;
     return AppCard(
       key: ValueKey(live ? 'guest_live.live' : 'guest_live.waiting'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -576,20 +633,21 @@ class _SessionCardState extends State<_SessionCard> {
         const SizedBox(height: 10),
         Text(title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.2)),
         const SizedBox(height: 8),
-        if (info.courseName.trim().isNotEmpty) AppInfoRow(Icons.menu_book_rounded, info.courseName),
+        if (!quick && info.courseName.trim().isNotEmpty) AppInfoRow(Icons.menu_book_rounded, info.courseName),
         if (host.isNotEmpty) AppInfoRow(info.isMeeting ? Icons.person_rounded : Icons.school_rounded, host),
-        if (info.startsAt != null) AppInfoRow(Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
+        if (!quick && info.startsAt != null) AppInfoRow(Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
         AppInfoRow(
-          info.guestAdmission == LiveGuestAdmission.auto ? Icons.door_front_door_outlined : Icons.how_to_reg_rounded,
-          info.guestAdmission == LiveGuestAdmission.auto
+          quick || info.guestAdmission == LiveGuestAdmission.auto ? Icons.door_front_door_outlined : Icons.how_to_reg_rounded,
+          quick || info.guestAdmission == LiveGuestAdmission.auto
               ? t('تدخل مباشرة بعد الانضمام', 'You come straight in after joining')
               : t('يقبل المضيف الزوار واحداً واحداً — قد تنتظر قليلاً', 'The host lets visitors in one by one — you may wait a moment'),
         ),
-        AppInfoRow(
-          info.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
-          (info.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
-        ),
-        if (info.maxGuests != null)
+        if (!quick)
+          AppInfoRow(
+            info.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
+            (info.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
+          ),
+        if (!quick && info.maxGuests != null)
           AppInfoRow(Icons.people_alt_rounded, '${'guest_link_joined'.tr}: ${info.guestsJoined} / ${info.maxGuests}'),
         if (info.requiresPin) AppInfoRow(Icons.lock_rounded, 'guest_live_pin_protected'.tr),
 
@@ -638,11 +696,15 @@ class _SessionCardState extends State<_SessionCard> {
         Divider(height: 1, color: c.divider),
         const SizedBox(height: 16),
 
-        AppField(
-          controller: widget.nameController,
-          label: 'guest_live_name'.tr,
-          hint: 'guest_live_name_hint'.tr,
-          keyboard: TextInputType.name,
+        Focus(
+          key: const ValueKey('guest_live.name'),
+          focusNode: _nameGroup,
+          child: AppField(
+            controller: widget.nameController,
+            label: 'guest_live_name'.tr,
+            hint: 'guest_live_name_hint'.tr,
+            keyboard: TextInputType.name,
+          ),
         ),
         if (info.requiresPin)
           _Shake(
@@ -696,7 +758,7 @@ class _SessionCardState extends State<_SessionCard> {
                   : live
                       ? 'lr_join_session'.tr
                       : 'guest_live_join_when_live'.tr,
-          icon: widget.joining ? null : Icons.login_rounded,
+          icon: widget.joining ? null : DirIcons.login,
           busy: widget.joining,
           onPressed: live && !full && !limited && !needsConsent ? widget.onJoin : null,
         ),

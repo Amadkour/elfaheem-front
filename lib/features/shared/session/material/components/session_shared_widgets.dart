@@ -9,6 +9,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RTL themed AlertDialog wrapper
@@ -47,7 +48,7 @@ class RtlDialog extends StatelessWidget {
             child: Text(
               'cancel'.tr,
               style: TextStyle(
-                  fontFamily: 'bahji', color: context.colors.textMedium),
+                  fontFamily: AppFonts.display, color: context.colors.textMedium),
             ),
           ),
           ElevatedButton(
@@ -60,7 +61,7 @@ class RtlDialog extends StatelessWidget {
             child: Text(
               confirmLabel,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 color: context.colors.onHero,
                 fontWeight: FontWeight.w700,
               ),
@@ -165,7 +166,7 @@ class SessionPill extends StatelessWidget {
     child: Text(
       label,
       style: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontSize: 9,
         color: color,
         fontWeight: FontWeight.w700,
@@ -236,7 +237,7 @@ class SessionActionBtn extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w700,
                 color: textColor,

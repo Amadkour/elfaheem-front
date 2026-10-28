@@ -117,6 +117,15 @@ flutter:
   assets:
     - assets/images/
     - assets/translation.json
+    # UI fonts the person can choose (lib/core/display/app_fonts.dart): loaded by FontLoader when chosen
+    - assets/fonts/ui/readex/
+    - assets/fonts/ui/noto_kufi/
+    - assets/fonts/ui/almarai/
+    - assets/fonts/ui/cairo/
+    - assets/fonts/ui/jakarta/
+    - assets/fonts/ui/lexend/
+    - assets/fonts/ui/atkinson/
+    - assets/fonts/ui/nunito/
   fonts:
     # certificate fonts — the SAME static files the server renders with (preview == issued certificate)
     - family: CertCinzel
@@ -224,6 +233,28 @@ flutter:
           weight: 800
         - asset: assets/fonts/tajawal/Tajawal-Black.ttf
           weight: 900
+    # the default UI fonts (premium, OFL): available from the first frame; the other choices are the asset
+    # folders above. AppFonts.family picks per language; never write the family name in a TextStyle.
+    - family: uiPlexArabic
+      fonts:
+        - asset: assets/fonts/ui/plex_arabic/IBMPlexSansArabic-400.ttf
+        - asset: assets/fonts/ui/plex_arabic/IBMPlexSansArabic-500.ttf
+          weight: 500
+        - asset: assets/fonts/ui/plex_arabic/IBMPlexSansArabic-600.ttf
+          weight: 600
+        - asset: assets/fonts/ui/plex_arabic/IBMPlexSansArabic-700.ttf
+          weight: 700
+    - family: uiInter
+      fonts:
+        - asset: assets/fonts/ui/inter/Inter-400.ttf
+        - asset: assets/fonts/ui/inter/Inter-500.ttf
+          weight: 500
+        - asset: assets/fonts/ui/inter/Inter-600.ttf
+          weight: 600
+        - asset: assets/fonts/ui/inter/Inter-700.ttf
+          weight: 700
+        - asset: assets/fonts/ui/inter/Inter-800.ttf
+          weight: 800
     - family: NotoSansSC
       fonts:
         - asset: assets/fonts/Tajawal-Regular.ttf

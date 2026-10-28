@@ -21,6 +21,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show trp
 
 import 'live_palette.dart';
 import 'participant_info.dart' show isGuestIdentity;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const kLiveHandTopic = 'hand';
 
@@ -180,7 +181,7 @@ class LiveHandBadge extends StatelessWidget {
           Text('lr_hand_raised'.tr,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 10, fontWeight: FontWeight.w800, color: c)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, fontWeight: FontWeight.w800, color: c)),
         ],
       ]),
     );
@@ -236,8 +237,8 @@ class LiveHandsPanel extends StatelessWidget {
                     trp('lr_raised_hands_n', {'n': '${hands.length}'}),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w700, fontSize: 15),
+                    style: TextStyle(
+                        fontFamily: AppFonts.family, color: _textHigh, fontWeight: FontWeight.w700, fontSize: 15),
                   ),
                 ),
                 if (onClose != null)
@@ -259,7 +260,7 @@ class LiveHandsPanel extends StatelessWidget {
                         const SizedBox(height: 10),
                         Text('lr_no_hands'.tr,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontFamily: 'tajawal', color: _textLow, fontSize: 13)),
+                            style: TextStyle(fontFamily: AppFonts.family, color: _textLow, fontSize: 13)),
                       ]),
                     )
                   : ListView.builder(
@@ -327,7 +328,7 @@ class _HandRow extends StatelessWidget {
             border: Border.all(color: warn.withValues(alpha: index == 1 ? 0.7 : 0.3)),
           ),
           child: Text('$index',
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: warn)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: warn)),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -347,7 +348,7 @@ class _HandRow extends StatelessWidget {
                     border: Border.all(color: warn.withValues(alpha: 0.3)),
                   ),
                   child: Text('lr_guest'.tr,
-                      style: TextStyle(fontFamily: 'tajawal', color: warn, fontSize: 9, fontWeight: FontWeight.w700)),
+                      style: TextStyle(fontFamily: AppFonts.family, color: warn, fontSize: 9, fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(width: 6),
               ],
@@ -355,7 +356,7 @@ class _HandRow extends StatelessWidget {
                 child: Text(_since(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontFamily: 'tajawal', color: LiveHandsPanel._textLow, fontSize: 10)),
+                    style: TextStyle(fontFamily: AppFonts.family, color: LiveHandsPanel._textLow, fontSize: 10)),
               ),
             ]),
           ]),

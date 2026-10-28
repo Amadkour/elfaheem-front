@@ -10,6 +10,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 Future<void> _launch(String url) async {
@@ -94,7 +95,7 @@ class _PdfDialog extends StatelessWidget {
                           Text(
                             t('إيصال التحويل', 'Transfer receipt'),
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 19,
                               fontWeight: FontWeight.w800,
                               color: _ink,
@@ -104,7 +105,7 @@ class _PdfDialog extends StatelessWidget {
                           Text(
                             t('مستند PDF', 'PDF document'),
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 12,
                               color: context.colors.textMedium,
                             ),
@@ -161,7 +162,7 @@ class _PdfDialog extends StatelessWidget {
                         ),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: _ink,
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -175,7 +176,7 @@ class _PdfDialog extends StatelessWidget {
                         ),
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: context.colors.textMedium,
                           height: 1.5,
                           fontSize: 13,
@@ -200,8 +201,8 @@ class _PdfDialog extends StatelessWidget {
                         ),
                         child: Text(
                           t('إغلاق', 'Close'),
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
+                          style: TextStyle(
+                            fontFamily: AppFonts.family,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -218,8 +219,8 @@ class _PdfDialog extends StatelessWidget {
                         icon: const Icon(Icons.open_in_new_rounded, size: 18),
                         label: Text(
                           t('فتح PDF', 'Open PDF'),
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
+                          style: TextStyle(
+                            fontFamily: AppFonts.family,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -295,7 +296,7 @@ class _ImageDialog extends StatelessWidget {
                           Text(
                             t('إيصال التحويل', 'Transfer receipt'),
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
                               color: context.colors.primary,
@@ -308,7 +309,7 @@ class _ImageDialog extends StatelessWidget {
                               'Zoom in to inspect receipt details',
                             ),
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               color: context.colors.textMedium,
                               fontSize: 12,
                             ),
@@ -374,7 +375,7 @@ class _ImageDialog extends StatelessWidget {
                                   ),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontFamily: 'tajawal',
+                                    fontFamily: AppFonts.family,
                                     color: context.colors.primary,
                                     fontWeight: FontWeight.w800,
                                     fontSize: 16,
@@ -388,7 +389,7 @@ class _ImageDialog extends StatelessWidget {
                                   ),
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontFamily: 'tajawal',
+                                    fontFamily: AppFonts.family,
                                     color: context.colors.textMedium,
                                     height: 1.5,
                                     fontSize: 13,
@@ -403,8 +404,8 @@ class _ImageDialog extends StatelessWidget {
                                   ),
                                   label: Text(
                                     t('فتح الإيصال', 'Open receipt'),
-                                    style: const TextStyle(
-                                      fontFamily: 'tajawal',
+                                    style: TextStyle(
+                                      fontFamily: AppFonts.family,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -446,7 +447,7 @@ class _ImageDialog extends StatelessWidget {
                           'Pinch or use the mouse wheel to zoom',
                         ),
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: context.colors.textMedium,
                           fontSize: 12,
                         ),
@@ -457,8 +458,8 @@ class _ImageDialog extends StatelessWidget {
                       style: TextButton.styleFrom(foregroundColor: context.colors.primary),
                       child: Text(
                         t('إغلاق', 'Close'),
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w800,
                         ),
                       ),

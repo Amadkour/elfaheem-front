@@ -19,6 +19,7 @@ import '../../student/models.dart';
 import 'enrollment_models.dart';
 import 'enrollment_provider.dart';
 import 'enrollment_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 class EnrollmentScreen extends StatelessWidget {
@@ -640,7 +641,7 @@ class _PlanTile extends StatelessWidget {
                       style: c.h3.copyWith(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         color: selected ? c.primary : c.textDark,
                       ),
                     ),
@@ -699,7 +700,7 @@ class _PlanTile extends StatelessWidget {
                           _fmtMoney(option.price, currencySymbol),
                           style: c.caption.copyWith(
                             fontSize: 11,
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             decoration: TextDecoration.lineThrough,
                             decorationColor: context.colors.danger,
                           ),
@@ -709,7 +710,7 @@ class _PlanTile extends StatelessWidget {
                       Text(
                         _fmtMoney(option.finalPrice, currencySymbol),
                         style: c.label.copyWith(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
 
                           color: selected ? c.primary : c.textDark,
                           fontWeight: FontWeight.w800,
@@ -952,7 +953,7 @@ class _SecureBadge extends StatelessWidget {
             fontSize: 10,
             fontWeight: FontWeight.w700,
             color: context.colors.success,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
           ),
         ),
       ],

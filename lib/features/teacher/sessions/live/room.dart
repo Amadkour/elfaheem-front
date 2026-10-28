@@ -43,10 +43,16 @@ import 'package:flutter_education_app/features/shared/live/meeting_recording.dar
     show RecordingQuality, RecordingStart;
 import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart'
     show showRecordSetupSheet;
+// Part 2 (live-rooms-spec §8, §11): the free-time countdown, the (i) sheet and the live plan
+import 'package:flutter_education_app/features/shared/live/live_time_limit.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
+import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 import 'widgets/recorder_web_stub.dart'
 if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -270,6 +276,14 @@ class RoomPage extends StatefulWidget {
   /// offers Record → RecordSetupSheet → chunks to the recording's own route (spec §5). Course sessions ignore it.
   final bool canRecord;
 
+  /// Part 2 (spec §8, §11): when a student meeting's free time ends (`time_limit.ends_at`, UTC); null = no limit.
+  /// Everyone sees the countdown; the owner ([host] of a meeting) gets "Upgrade" from 3 minutes left.
+  final DateTime? freeEndsAt;
+
+  /// The meeting's scheduled start and its host, for the (i) sheet.
+  final DateTime? startsAt;
+  final String? hostName;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -289,6 +303,9 @@ class RoomPage extends StatefulWidget {
         this.roomRef,
         this.isHost,
         this.canRecord = false,
+        this.freeEndsAt,
+        this.startsAt,
+        this.hostName,
       });
 
   @override
@@ -594,6 +611,85 @@ class _RoomPageState extends State<RoomPage>
     await _drainAndDispose(rec);
   }
   // ── [meeting-recording] end ───────────────────────────────────────────────
+
+  // ── Part 2: free-time limit · info sheet (docs/backend/live-rooms-spec.md §8, §11) ──────────────────────────
+  /// The meeting's owner: the only one who can lift the limit (the live plan).
+  bool get _isMeetingOwner => widget.host && widget.ref.isMeeting && !widget.isGuest;
+
+  /// The owner subscribed during this visit: the countdown is gone.
+  bool _limitLifted = false;
+  bool _planBusy = false;
+
+  LiveTimeLimit? get _timeLimit {
+    final end = widget.freeEndsAt;
+    if (end == null) return null;
+    return LiveTimeLimit(endsAt: end, isOwner: _isMeetingOwner, lifted: _limitLifted);
+  }
+
+  Future<void> _upgradePlan() async {
+    if (_planBusy || !mounted) return;
+    setState(() => _planBusy = true);
+    try {
+      final ok = await showLivePlanSheet(context);
+      if (ok && mounted) setState(() => _limitLifted = true);
+    } catch (e) {
+      log('live plan sheet: $e');
+    } finally {
+      if (mounted) setState(() => _planBusy = false);
+    }
+  }
+
+  /// The owner's "Free time ended" after the server deleted the room for the limit; Subscribe opens the plan.
+  Future<void> _showFreeTimeEnded() async {
+    final subscribe = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: LiveFreeTimeEndedCard(
+          onSubscribe: () => Navigator.pop(ctx, true),
+          onClose: () => Navigator.pop(ctx, false),
+        ),
+      ),
+    );
+    if (subscribe == true && mounted) {
+      try {
+        await showLivePlanSheet(context);
+      } catch (e) {
+        log('live plan sheet: $e');
+      }
+    }
+  }
+
+  LiveInfoRecording get _infoRecording {
+    final st = _recorder?.state;
+    if (_recordsHere && st == RecState.paused) return LiveInfoRecording.paused;
+    if (_recordsHere && st == RecState.recording) return LiveInfoRecording.recording;
+    if (_serverRecording) return LiveInfoRecording.server;
+    if (!widget.ref.isMeeting && widget.recordingEnabled) return LiveInfoRecording.server;
+    return LiveInfoRecording.off;
+  }
+
+  MeetingInfo _infoSnapshot() {
+    final limit = _timeLimit;
+    return MeetingInfo(
+      title: widget.sessionName ?? '',
+      isMeeting: widget.ref.isMeeting,
+      role: widget.isGuest ? LiveRoomRole.guest : (widget.host ? LiveRoomRole.host : LiveRoomRole.member),
+      hostName: widget.hostName,
+      startsAt: widget.startsAt,
+      elapsed: Duration(seconds: _sessionElapsedSeconds),
+      participants: widget.room.remoteParticipants.length + 1,
+      recording: _infoRecording,
+      freeLeft: limit == null || limit.lifted ? null : limit.remaining(DateTime.now()),
+    );
+  }
+
+  Future<void> _openInfo() async {
+    _pokeControls();
+    await showMeetingInfoSheet(context, ref: widget.ref, snapshot: _infoSnapshot);
+  }
+
   bool _isPausingRecording = false; // true while pauseRecording() is in flight
   bool _isResumingRecording = false; // true while resumeRecording() is in flight
 
@@ -1480,7 +1576,14 @@ class _RoomPageState extends State<RoomPage>
       final userLeft = event.reason == DisconnectReason.clientInitiated;
       WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
         if (mounted) LiveRoomScope.maybeOf(context)?.expand(); // minimized: the dialog must be seen
-        if (isTeacherEnd && !widget.isTeacher && mounted) {
+        final limit = _timeLimit;
+        if (event.reason == DisconnectReason.roomDeleted &&
+            limit != null &&
+            limit.showFreeTimeEnded(DateTime.now()) &&
+            mounted) {
+          // The server ended the meeting for the free-time limit: the owner is offered the plan.
+          await _showFreeTimeEnded();
+        } else if (isTeacherEnd && !widget.isTeacher && mounted) {
           await showDialog(
             context: context,
             barrierDismissible: false,
@@ -2120,7 +2223,7 @@ class _RoomPageState extends State<RoomPage>
                           Text(
                             'lr_saving_recording'.tr,
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               color: LivePalette.textHigh,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -2137,7 +2240,7 @@ class _RoomPageState extends State<RoomPage>
                               return Text(
                                 trp('lr_chunk_mb', {'n': '${r.uploadedChunks}', 'mb': mb}),
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   color: LivePalette.ink(0.55),
                                   fontSize: 13,
                                 ),
@@ -2491,7 +2594,7 @@ class _RoomPageState extends State<RoomPage>
                 child: Text(
                   'lr_sharing_screen'.tr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     color: LivePalette.textHigh,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
@@ -2505,7 +2608,7 @@ class _RoomPageState extends State<RoomPage>
                   child: Text(
                     _recElapsedLabel,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: _cyan,
                       fontWeight: FontWeight.w800,
                       fontSize: 12,
@@ -2528,7 +2631,7 @@ class _RoomPageState extends State<RoomPage>
                   child: Text(
                     'lr_stop_sharing'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: _rose,
                       fontWeight: FontWeight.w700,
                       fontSize: 11,
@@ -2552,9 +2655,26 @@ class _RoomPageState extends State<RoomPage>
     final badges = <Widget>[];
 
     // ── Minimize: the room keeps running in a small box while moving around the app (LiveRoomLayer) ──
+    // ── (i) beside it: what this room is (MeetingInfoSheet, spec §11) ──
     final scope = LiveRoomScope.maybeOf(context);
-    if (scope != null && !_endingSession) {
-      badges.add(_MinimizeChip(onTap: scope.minimize));
+    if (!_endingSession) {
+      badges.add(Row(mainAxisSize: MainAxisSize.min, children: [
+        _InfoChip(onTap: _openInfo),
+        if (scope != null) ...[const SizedBox(width: 6), _MinimizeChip(onTap: scope.minimize)],
+      ]));
+    }
+
+    // ── Free-time countdown (a student's meeting) — everyone; the owner gets Upgrade near the end ──
+    final limit = _timeLimit;
+    if (limit != null && limit.showPill(DateTime.now())) {
+      final now = DateTime.now();
+      badges.add(LiveTimeLimitPill(
+        remaining: limit.remaining(now),
+        tone: limit.tone(now),
+        showUpgrade: limit.showUpgrade(now),
+        busy: _planBusy,
+        onUpgrade: _upgradePlan,
+      ));
     }
 
     // ── Total session time — everyone, always (not just teacher/recording) ──
@@ -2568,8 +2688,8 @@ class _RoomPageState extends State<RoomPage>
           children: [
             Text(
               _sessionElapsedLabel,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: _textMid,
@@ -2594,7 +2714,7 @@ class _RoomPageState extends State<RoomPage>
               Text(
                 'REC',
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 11,
                   fontWeight: FontWeight.w800,
                   color: _recRed,
@@ -2609,10 +2729,14 @@ class _RoomPageState extends State<RoomPage>
 
     // ── [meeting-recording] Record / Stop for a meeting's creator ─────────────
     if (_canRecordMeeting && !_endingSession) {
-      badges.add(_MeetingRecordChip(
-        recording: _meetingRecording != null,
-        busy: _meetingRecordBusy,
-        onTap: _meetingRecording == null ? _recordMeeting : _stopMeetingRecording,
+      badges.add(AnimatedBuilder(
+        animation: _recDotAnim,
+        builder: (_, _) => _MeetingRecordChip(
+          recording: _meetingRecording != null,
+          busy: _meetingRecordBusy,
+          pulse: _recDotOpacity.value,
+          onTap: _meetingRecording == null ? _recordMeeting : _stopMeetingRecording,
+        ),
       ));
     }
 
@@ -2673,7 +2797,7 @@ class _RoomPageState extends State<RoomPage>
                 Text(
                   stateLabel,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: dotColor,
@@ -2691,7 +2815,7 @@ class _RoomPageState extends State<RoomPage>
                   Text(
                     timeLabel,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       color: dotColor,
@@ -2712,7 +2836,7 @@ class _RoomPageState extends State<RoomPage>
                   Text(
                     '$chunkLabel $mbLabel',
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       color: dotColor.withValues(alpha: 0.7),
@@ -2752,6 +2876,12 @@ class _RoomPageState extends State<RoomPage>
         // Lobby (host only): the waiting count on the bar's lobby button.
         waitingCount: _lobby?.waitingCount ?? 0,
         onLobby: _lobby == null ? null : _openLobby,
+        // [meeting-recording] the creator's labelled red Record / Stop in the primary group (spec §11)
+        onMeetingRecord: _canRecordMeeting && !_endingSession
+            ? (_meetingRecording == null ? _recordMeeting : _stopMeetingRecording)
+            : null,
+        meetingRecording: _meetingRecording != null,
+        meetingRecordBusy: _meetingRecordBusy,
         recordingEnabled: widget.recordingEnabled,
         onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
@@ -2815,7 +2945,7 @@ class _RoomPageState extends State<RoomPage>
     final c = _lobby;
     if (c == null) return;
     _pokeControls();
-    await showLobbySheet(context, widget.ref, controller: c);
+    await showLobbySheet(context, widget.ref, controller: c, title: widget.sessionName);
   }
 
   Widget _buildLobbyBanner() {
@@ -2905,10 +3035,10 @@ class _RoomPageState extends State<RoomPage>
                     children: [
                       Icon(Icons.people_rounded, color: _cyan, size: 18),
                       const SizedBox(width: 8),
-                      const Text(
+                      Text(
                         'Participants',
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: _textHigh,
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -2985,7 +3115,7 @@ class _RoomPageState extends State<RoomPage>
                       Text(
                         trp('lr_students_count', {'n': '${_enrolledStudents.length}'}),
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: _textLow,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -3007,7 +3137,7 @@ class _RoomPageState extends State<RoomPage>
                         child: Text(
                           trp('lr_n_attended', {'n': '${_enrolledStudents.where((s) => s.isAttended).length}'}),
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             color: _emerald,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -3050,7 +3180,7 @@ class _RoomPageState extends State<RoomPage>
                         Text(
                           'lr_no_students'.tr,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             color: _textLow,
                             fontSize: 13,
                           ),
@@ -3148,7 +3278,7 @@ class _RoomPageState extends State<RoomPage>
           child: Text(label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w600, color: color ?? _textHigh)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w600, color: color ?? _textHigh)),
         ),
       ]);
 
@@ -3236,7 +3366,7 @@ class _RoomPageState extends State<RoomPage>
                     Text(
                       'lr_live_quiz'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         color: _cyan,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
@@ -3275,7 +3405,7 @@ class _RoomPageState extends State<RoomPage>
                     Text(
                       timerStr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         color: _quizSecondsLeft < 30 ? _rose : _textMid,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
@@ -3305,7 +3435,7 @@ class _RoomPageState extends State<RoomPage>
               Text(
                 trp('lr_question_of', {'n': '${_currentQuestionIndex + 1}', 'total': '${quiz.questions.length}'}),
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   color: _textLow,
                   fontSize: 11,
                 ),
@@ -3386,7 +3516,7 @@ class _RoomPageState extends State<RoomPage>
                     child: Text(
                       q.options[idx],
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         color: selected ? _textHigh : _textMid,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -3415,7 +3545,7 @@ class _RoomPageState extends State<RoomPage>
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: _glassBdr),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
@@ -3427,7 +3557,7 @@ class _RoomPageState extends State<RoomPage>
                           Text(
                             'Back',
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               color: _textMid,
                               fontWeight: FontWeight.w600,
                             ),
@@ -3518,7 +3648,7 @@ class _RoomPageState extends State<RoomPage>
           Text(
             'lr_quiz_submitted_title'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: _textHigh,
               fontWeight: FontWeight.w800,
               fontSize: 20,
@@ -3528,7 +3658,7 @@ class _RoomPageState extends State<RoomPage>
           Text(
             trp('lr_you_answered', {'n': '$answered', 'total': '${quiz.questions.length}'}),
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: _textMid,
               fontSize: 14,
             ),
@@ -3552,7 +3682,7 @@ class _RoomPageState extends State<RoomPage>
               child: Text(
                 'lr_back_to_room'.tr,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   color: _textHigh,
                   fontWeight: FontWeight.w700,
                   fontSize: 14,
@@ -3596,7 +3726,7 @@ class _MinimizeChip extends StatelessWidget {
             const SizedBox(width: 6),
             Text(
               t('تصغير', 'Minimize'),
-              style: const TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: _textHigh),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: _textHigh),
             ),
           ]),
         ),
@@ -3605,12 +3735,48 @@ class _MinimizeChip extends StatelessWidget {
   }
 }
 
+/// Top-right (i) chip: the room's info sheet (MeetingInfoSheet).
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: t('عن الغرفة', 'About this room'),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const ValueKey('live_room.info'),
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _surfaceHi.withValues(alpha: 0.9),
+              shape: BoxShape.circle,
+              border: Border.all(color: _textMid.withValues(alpha: 0.5)),
+            ),
+            child: const Icon(Icons.info_outline_rounded, size: 17, color: _textHigh),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The meeting creator's Record / Stop at the top (spec §11: larger, a pulsing red dot while recording).
 class _MeetingRecordChip extends StatelessWidget {
-  const _MeetingRecordChip({required this.recording, required this.busy, required this.onTap});
+  const _MeetingRecordChip({required this.recording, required this.busy, required this.onTap, this.pulse = 1});
 
   final bool recording;
   final bool busy;
   final VoidCallback onTap;
+
+  /// 0.25–1, the room's REC blink; only used while recording.
+  final double pulse;
 
   @override
   Widget build(BuildContext context) {
@@ -3619,25 +3785,36 @@ class _MeetingRecordChip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        key: const ValueKey('live_room.meeting_record'),
+        key: const ValueKey('live_room.meeting_record_chip'),
         borderRadius: BorderRadius.circular(999),
         onTap: busy ? null : onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: _surfaceHi.withValues(alpha: 0.9),
+            color: recording ? Color.alphaBlend(_recRed.withValues(alpha: 0.18), _surfaceHi) : _surfaceHi.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: color.withValues(alpha: 0.6)),
+            border: Border.all(color: color.withValues(alpha: recording ? 0.4 + 0.5 * pulse : 0.7), width: 1.4),
+            boxShadow: recording ? [BoxShadow(color: _recRed.withValues(alpha: 0.30 * pulse), blurRadius: 14)] : const [],
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             if (busy)
-              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+            else if (recording)
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _recRed.withValues(alpha: 0.35 + 0.65 * pulse),
+                  boxShadow: [BoxShadow(color: _recRed.withValues(alpha: 0.6 * pulse), blurRadius: 8)],
+                ),
+              )
             else
-              Icon(recording ? Icons.stop_rounded : Icons.fiber_manual_record_rounded, size: 14, color: color),
-            const SizedBox(width: 6),
+              Icon(Icons.fiber_manual_record_rounded, size: 18, color: color),
+            const SizedBox(width: 8),
             Text(
               label,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: color),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800, color: recording ? _textHigh : color),
             ),
           ]),
         ),
@@ -3794,7 +3971,7 @@ class _ParticipantRow extends StatelessWidget {
                   child: Text(
                     name.isNotEmpty ? name[0].toUpperCase() : '?',
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: isTeacher ? _bg : _textMid,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
@@ -3867,7 +4044,7 @@ class _ParticipantRow extends StatelessWidget {
                         ? trp('lr_stayed', {'t': _fmtDuration(joinDate, leaveDate)})
                         : '',
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: _textLow,
                       fontSize: 10,
                     ),
@@ -3922,7 +4099,7 @@ class _MiniTag extends StatelessWidget {
     child: Text(
       label,
       style: TextStyle(
-        fontFamily: 'tajawal',
+        fontFamily: AppFonts.family,
         color: color,
         fontSize: 9,
         fontWeight: FontWeight.w700,
@@ -4243,7 +4420,7 @@ class _PresenterBadge extends StatelessWidget {
         Text(
           name,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: isSpeaking ? _cyan : _textMid,
@@ -4272,7 +4449,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
         BoxShadow(color: _indigo.withValues(alpha: 0.4), blurRadius: 14),
       ],
     ),
-    child: const Row(
+    child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(Icons.screen_share_rounded, size: 13, color: LivePalette.textHigh),
@@ -4280,7 +4457,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
         Text(
           'SCREEN',
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 10,
             fontWeight: FontWeight.w800,
             color: LivePalette.textHigh,
@@ -4370,7 +4547,7 @@ class _ScreenShareBottomBar extends StatelessWidget {
                 Text(
                   'lr_sharing_screen'.tr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     color: _cyan.withValues(alpha: 0.8),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -4477,7 +4654,7 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
         Text(
           'Connecting…',
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             color: _cyan.withValues(alpha: 0.6),
             fontSize: 11,
           ),
@@ -4759,8 +4936,8 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                   Expanded(
                     child: Text(
                       trp('lr_participants_count', {'n': '${tiles.length}'}),
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
+                      style: TextStyle(
+                        fontFamily: AppFonts.family,
                         color: _textHigh,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
@@ -4804,16 +4981,16 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                     ),
                     title: Text(
                       t.name,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
+                      style: TextStyle(
+                        fontFamily: AppFonts.family,
                         color: _textHigh,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
                       t.isHost ? 'teacher'.tr : 'student'.tr,
-                      style: const TextStyle(
-                          fontFamily: 'tajawal', color: _textLow, fontSize: 12),
+                      style: TextStyle(
+                          fontFamily: AppFonts.family, color: _textLow, fontSize: 12),
                     ),
                     trailing: Icon(
                       t.isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
@@ -4917,8 +5094,8 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
             Text(
               data.name,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: _textHigh,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
@@ -4936,7 +5113,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
               child: Text(
                 data.isHost ? 'teacher'.tr : 'student'.tr,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   color: data.isHost ? _cyan : _emerald,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -4964,14 +5141,14 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                 value: data.isAttended ? 'lr_present'.tr : 'lr_not_registered'.tr,
               ),
               _ProfileInfoRow(
-                icon: Icons.login_rounded,
+                icon: DirIcons.login,
                 iconColor: _textLow,
                 label: 'lr_join_time'.tr,
                 value: fmt(data.joinDate),
               ),
               if (data.leaveDate != null)
                 _ProfileInfoRow(
-                  icon: Icons.logout_rounded,
+                  icon: DirIcons.logout,
                   iconColor: _textLow,
                   label: 'lr_leave_time'.tr,
                   value: fmt(data.leaveDate),
@@ -5020,7 +5197,7 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                 child: Text(
                   'close'.tr,
                   style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: _textMid,
                       fontWeight: FontWeight.w600),
                 ),
@@ -5056,14 +5233,14 @@ class _ProfileInfoRow extends StatelessWidget {
           const SizedBox(width: 10),
           Text(
             label,
-            style: const TextStyle(
-                fontFamily: 'tajawal', color: _textLow, fontSize: 13),
+            style: TextStyle(
+                fontFamily: AppFonts.family, color: _textLow, fontSize: 13),
           ),
           const Spacer(),
           Text(
             value,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
+            style: TextStyle(
+              fontFamily: AppFonts.family,
               color: _textHigh,
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -5107,7 +5284,7 @@ class _GlassBadge extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: color ?? _textMid,
@@ -5156,7 +5333,7 @@ class _SessionEndedDialog extends StatelessWidget {
           Text(
             'lr_teacher_ended_title'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: _textHigh,
               fontWeight: FontWeight.w800,
               fontSize: 20,
@@ -5167,7 +5344,7 @@ class _SessionEndedDialog extends StatelessWidget {
             'lr_teacher_ended_msg'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: _textMid.withValues(alpha: 0.85),
               fontSize: 14,
               height: 1.5,
@@ -5193,11 +5370,11 @@ class _SessionEndedDialog extends StatelessWidget {
                   ),
                 ],
               ),
-              child: const Text(
+              child: Text(
                 'OK',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   color: _textHigh,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
@@ -5326,11 +5503,11 @@ class _ConnectionLostDialog extends StatelessWidget {
             const SizedBox(height: 20),
             Text((removed ? 'lr_removed_title' : 'lr_connection_lost_title').tr,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
+                style: TextStyle(fontFamily: AppFonts.family, color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
             const SizedBox(height: 10),
             Text((removed ? 'lr_removed_body' : 'lr_connection_lost_body').tr,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontFamily: 'tajawal', color: _textMid, height: 1.5)),
+                style: TextStyle(fontFamily: AppFonts.family, color: _textMid, height: 1.5)),
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
@@ -5338,7 +5515,7 @@ class _ConnectionLostDialog extends StatelessWidget {
                 style: FilledButton.styleFrom(
                     backgroundColor: _cyan, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('admin_ok'.tr, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                child: Text('admin_ok'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
               ),
             ),
           ]),

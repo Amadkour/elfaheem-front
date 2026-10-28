@@ -66,6 +66,9 @@ import 'features/admin/admin_dashboard_screen.dart';
 import 'features/parent/parent_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
+import 'core/display/display_settings.dart';
+import 'design/app_display.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 late StorageService _storage;
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -149,6 +152,8 @@ Future<void> _initCore() async {
   await _safe('identity', _initIdentity, seconds: 3);
 
   await _safe('language', () => readLanguage(), seconds: 8);
+  // Display & reading (fonts per language, text size, zoom, contrast …) before the first real frame (D-072)
+  await _safe('display', DisplaySettings.instance.load, seconds: 4);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
@@ -558,7 +563,10 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
           // ONE direction for everything the Navigator shows — pages AND overlays (dialogs, bottom sheets, menus,
           // date pickers). A Directionality inside a page never reaches overlays, which is why some of them were
           // laid out in the wrong direction.
-          builder: (_, child) => Directionality(
+          // AppDisplayScope (outermost): the person's text size, zoom, bold, contrast, motion and fonts for
+          // everything below — pages, overlays, the assistant and the live room (design/app_display.dart, D-072)
+          builder: (_, child) => AppDisplayScope(
+            child: Directionality(
             textDirection: Helpers.pageDirection,
             // web / desktop keyboards: Enter walks a form and submits it, Ctrl+Enter from a multi-line field, Esc,
             // Ctrl+K / "/" to the search box — for every text field (design/app_keyboard.dart)
@@ -589,7 +597,7 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
                 ),
               ),
             ),
-          )))),
+          ))))),
           supportedLocales: context
               .read<LangProvider>()
               .languages
@@ -768,8 +776,8 @@ class _OfflineThemeBanner extends StatelessWidget {
                         Expanded(
                           child: Text(
                             'no_network_banner'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -813,8 +821,8 @@ class _OfflineThemeBanner extends StatelessWidget {
                                         const SizedBox(width: 6),
                                         Text(
                                           offlineT('dl_open_downloads'),
-                                          style: const TextStyle(
-                                            fontFamily: 'tajawal',
+                                          style: TextStyle(
+                                            fontFamily: AppFonts.family,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                             color: Colors.white,
@@ -847,8 +855,8 @@ class _OfflineThemeBanner extends StatelessWidget {
                                 icon: const Icon(Icons.refresh_rounded, size: 18),
                                 label: Text(
                                   'retry'.tr,
-                                  style: const TextStyle(
-                                    fontFamily: 'tajawal',
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.family,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -896,7 +904,7 @@ class _PremiumLoadingScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(brightness: Brightness.light, fontFamily: 'tajawal'),
+      theme: ThemeData(brightness: Brightness.light, fontFamily: AppFonts.family),
       onGenerateRoute: _splashRoute,
       onGenerateInitialRoutes: (_) => [
         _splashRoute(const RouteSettings(name: '/')),
@@ -1002,7 +1010,7 @@ class _NotFoundScreen extends StatelessWidget {
             Text(
               'not_found'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 16,
                 color: c.textMedium,
               ),
@@ -1019,8 +1027,8 @@ class _NotFoundScreen extends StatelessWidget {
               ).pushReplacementNamed(context.read<MyAuthProvider>().homeRoute),
               child: Text(
                 'home'.tr,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
+                style: TextStyle(
+                  fontFamily: AppFonts.family,
                   color: Color(0xFF5B8FFF),
                 ),
               ),

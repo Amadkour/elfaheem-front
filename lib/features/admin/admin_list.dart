@@ -18,6 +18,7 @@ import 'admin_providers.dart';
 import 'admin_table_export.dart' show AppExportPill, exportPagedList;
 import '../../design/app_table_export.dart' show AppTableExport;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paged list (same pagination progress as the user lists)
@@ -339,7 +340,7 @@ class AdminAvatar extends StatelessWidget {
       child: Text(
         name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase(),
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w800,
           fontSize: size * 0.4,
           color: c.primary,
@@ -388,7 +389,7 @@ class InfoChip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: color,
@@ -439,7 +440,7 @@ class FilterChips<T> extends StatelessWidget {
                 label: Text(
                   e.value,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12.5,
                     fontWeight: e.key == value ? FontWeight.w800 : FontWeight.w600,
                     color: e.key == value ? c.onHero : c.textDark,

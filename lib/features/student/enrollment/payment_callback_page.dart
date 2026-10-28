@@ -41,6 +41,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 import '../../../utils/widget/base_page.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PaymentCallbackPage extends StatefulWidget {
   const PaymentCallbackPage({super.key});
@@ -302,7 +303,7 @@ class _GradBtn extends StatelessWidget {
             color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 16,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
           ),
         ),
       ),

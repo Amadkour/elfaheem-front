@@ -79,6 +79,17 @@ String apiErrorText(ApiException e) {
       return _t('سجّل الدخول بالبريد الإلكتروني', 'Please sign in with your e-mail');
     case 'LOGIN_PHONE_ONLY':
       return _t('سجّل الدخول برقم الهاتف', 'Please sign in with your phone number');
+    case 'LOGIN_USERNAME_DISABLED':
+      return _t('الدخول باسم المستخدم غير متاح حالياً — استخدم بريدك أو رقم هاتفك',
+          'Signing in with a username is off right now — use your e-mail or phone');
+    case 'USERNAME_TAKEN':
+      return _t('اسم المستخدم محجوز لشخص آخر — جرّب أحد الاقتراحات', 'That username is taken — try one of the suggestions');
+    case 'USERNAME_RESERVED':
+      return _t('اسم المستخدم هذا محجوز للمنصة — اختر اسماً آخر', 'That username is reserved — pick another one');
+    case 'USERNAME_INVALID':
+      return d['message'] is String && AppConfig.lang == 'ar'
+          ? d['message'] as String
+          : _t('اسم المستخدم غير صالح', 'That username isn\'t valid');
   }
   if (e.type == ApiErrorType.rateLimited) {
     return _t('طلبات كثيرة — انتظر قليلاً ثم حاول مجدداً', 'Too many requests — wait a moment and try again') + _wait(apiRetryAfter(e));

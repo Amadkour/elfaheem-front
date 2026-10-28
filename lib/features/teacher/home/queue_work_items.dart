@@ -33,12 +33,15 @@
 
 import 'dart:async';
 import 'dart:developer';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeDuration;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
 import 'package:flutter_education_app/features/teacher/sessions/model/live_response_model.dart';
@@ -49,6 +52,7 @@ import '../sessions/components/guest_link_sheet.dart';
 import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Parses 'HH:MM' from [session] fields and combines with [session.scheduledDate]
@@ -81,6 +85,175 @@ String _fmtCountdown(Duration d) {
   final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
   final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
   return h > 0 ? '$h:$m:$s' : '$m:$s';
+}
+
+/// The course's sessions screen (details open), from a session tile.
+void openTeacherCourseSessions(BuildContext context, int courseId) => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => TeacherCourseScreenProvider(initialCourse: TeacherCourse.dummy(courseId)),
+          child: TeacherSessionsScreen(expandDetails: true),
+        ),
+      ),
+    );
+
+/// The instructor's pre-join page for [session] (the queue's start strip and the home's "Live now" card).
+void openTeacherPreJoin(BuildContext context, ScheduleSession session) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => PreJoinPage(
+        args: JoinArgs(
+          sessionId: session.sessionId,
+          courseId: session.courseId,
+          maxStudents: session.maxStudents,
+          isTeacher: true,
+          userName: context.read<MyAuthProvider>().currentUser?.name ?? 'Teacher',
+          userId: context.read<MyAuthProvider>().currentUser?.id ?? 0,
+          onStart: () async {
+            log('[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}');
+            return LiveResponseModel(
+              sessionId: session.sessionId!,
+              url: session.joinUrl!,
+              token: session.token!,
+            );
+          },
+          onEnd: () => context.read<TeacherCourseScreenProvider>().endLive(session.sessionId!),
+          apiClient: ApiClient(),
+        ),
+      ),
+    ),
+  );
+}
+
+/// The session's public guest link sheet, unless the kill switch hides it.
+void openTeacherGuestLink(BuildContext context, ScheduleSession session) {
+  final id = session.sessionId;
+  if (id == null || AppConfig.disableList.contains(kGuestLinkFeatureKey)) return;
+  showGuestLinkSheet(context, sessionId: id, sessionName: session.courseName);
+}
+
+// ── "Live now" on the instructor home ─────────────────────────────────────────
+
+/// One calm card per running session: course, time, capacity, how far it is, and ONE button into the room (the
+/// pre-join page; long-press it for the guest link). A tap elsewhere opens the course's sessions. Ticks every 30 s.
+class LiveNowCard extends StatefulWidget {
+  const LiveNowCard({super.key, required this.session, this.now});
+  final ScheduleSession session;
+
+  /// A fixed clock (tests / renders); null = the device clock.
+  final DateTime? now;
+
+  @override
+  State<LiveNowCard> createState() => _LiveNowCardState();
+}
+
+class _LiveNowCardState extends State<LiveNowCard> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.now == null) {
+      _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final s = widget.session;
+    final (:start, :end) = _sessionDateTimes(s);
+    final now = widget.now ?? DateTime.now().toUtc();
+    final total = end.difference(start).inSeconds;
+    final done = total <= 0 ? 0.0 : (now.difference(start).inSeconds / total).clamp(0.0, 1.0);
+    final started = !now.isBefore(start);
+    final left = (started ? end : start).difference(now);
+    final tone = c.danger;
+    final ink = appInk(context, tone);
+    final r = BorderRadius.circular(c.radiusLarge);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Material(
+        color: Color.alphaBlend(tone.withValues(alpha: 0.06), c.cardBg),
+        borderRadius: r,
+        child: InkWell(
+          borderRadius: r,
+          onTap: () => openTeacherCourseSessions(context, s.courseId),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(borderRadius: r, border: Border.all(color: tone.withValues(alpha: 0.35))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      _LiveDot(),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text('home_live'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w800, c: ink)),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(s.courseName, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15.5, w: FontWeight.w900, c: c.textDark, h: 1.25)),
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        '${AppTime.time(start)} – ${AppTime.time(end)}',
+                        if (s.maxStudents != null) 'home_capacity'.tr.replaceAll('{n}', '${s.maxStudents}'),
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: appText(12, c: c.textMedium),
+                    ),
+                  ]),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: GestureDetector(
+                    onLongPress: () => openTeacherGuestLink(context, s),
+                    child: FilledButton.icon(
+                      onPressed: () => openTeacherPreJoin(context, s),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: tone,
+                        foregroundColor: c.onHero,
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                      icon: const Icon(Icons.sensors_rounded, size: 18),
+                      label: Text('home_t_enter_room'.tr, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: AppProgressBar(value: done * 100, height: 5, color: tone)),
+                const SizedBox(width: 10),
+                Flexible(
+                  child: Text(
+                    '${(started ? 'qw_ends_in' : 'qw_starts_in').tr} ${homeDuration(math.max(1, left.inMinutes))}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: appText(11.5, w: FontWeight.w700, c: ink),
+                  ),
+                ),
+              ]),
+            ]),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ── Entry point widget ────────────────────────────────────────────────────────
@@ -211,7 +384,7 @@ class _QueueHeader extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: context.colors.textMedium,
@@ -230,7 +403,7 @@ class _QueueHeader extends StatelessWidget {
             child: Text(
               '$count',
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: context.colors.textMedium,
@@ -266,7 +439,7 @@ class _DayGroup extends StatelessWidget {
           child: Text(
             dayLabel,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               color: context.colors.textMedium.withValues(alpha: 0.6),
@@ -311,20 +484,9 @@ class ScheduleSessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TeacherCourse course = TeacherCourse.dummy(session.courseId);
     final (:start, :end) = _sessionDateTimes(session);
 
-    void openSessionsScreen() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ChangeNotifierProvider(
-            create: (_) => TeacherCourseScreenProvider(initialCourse: course),
-            child: TeacherSessionsScreen(expandDetails: true),
-          ),
-        ),
-      );
-    }
+    void openSessionsScreen() => openTeacherCourseSessions(context, session.courseId);
 
     // Only this ValueListenableBuilder rebuilds each tick — not the day
     // group, not sibling cards, not the queue header.
@@ -484,7 +646,7 @@ class _CountdownBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                             color: accent,
@@ -512,7 +674,7 @@ class _CountdownBar extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             color: accent.withValues(alpha: 0.85),
@@ -548,7 +710,7 @@ class _CountdownBar extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: accent,
@@ -616,62 +778,12 @@ class _InlineStartButton extends StatelessWidget {
     );
   }
 
-  void _handleTap(BuildContext context) {
-    // if (session.canJoinNow) {
-    _openPreJoin(context);
-    // } else {
-    // Helpers.showAddSessionSheet(
-    //   context,
-    //   TeacherCourse.dummy(session.courseId),
-    //   openLive: true,
-    // );
-    // _openCreationSheet(context);
-    // }
-  }
-
-  void _openPreJoin(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PreJoinPage(
-          args: JoinArgs(
-            sessionId: session.sessionId,
-            courseId: session.courseId,
-            maxStudents: session.maxStudents,
-            isTeacher: true,
-            userName:
-            context.read<MyAuthProvider>().currentUser?.name ?? 'Teacher',
-            userId: context.read<MyAuthProvider>().currentUser?.id ?? 0,
-            onStart: () async {
-              log(
-                '[PRE-JOIN] session=${session.sessionId} url=${session.joinUrl}',
-              );
-              return LiveResponseModel(
-                sessionId: session.sessionId!,
-                url: session.joinUrl!,
-                token: session.token!,
-              );
-            },
-            onEnd: () => context.read<TeacherCourseScreenProvider>().endLive(session.sessionId!),
-            apiClient: ApiClient(),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Long-press → the session's public guest link (the tile is too small for a second button).
-  void _openGuestLink(BuildContext context) {
-    final id = session.sessionId;
-    if (id == null || AppConfig.disableList.contains(kGuestLinkFeatureKey)) return;
-    showGuestLinkSheet(context, sessionId: id, sessionName: session.courseName);
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: () => _handleTap(context),
-      onLongPress: () => _openGuestLink(context),
+      onTap: () => openTeacherPreJoin(context, session),
+      // long-press → the guest link (the tile is too small for a second button)
+      onLongPress: () => openTeacherGuestLink(context, session),
       child: Container(
         decoration: BoxDecoration(gradient: _gradient),
         child: Column(
@@ -682,8 +794,8 @@ class _InlineStartButton extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               _label,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 fontSize: 10,
                 fontWeight: FontWeight.normal,
                 color: Colors.white,
@@ -719,7 +831,7 @@ class _TimeBlock extends StatelessWidget {
           Text(
             session.startTime,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 12,
               fontWeight: FontWeight.w900,
               color: accent,
@@ -734,7 +846,7 @@ class _TimeBlock extends StatelessWidget {
           Text(
             session.endTime,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: accent.withValues(alpha: 0.7),
@@ -823,7 +935,7 @@ class _MetaChip extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 11,
             color: context.colors.textMedium,
           ),
@@ -861,7 +973,7 @@ class _StatusBadge extends StatelessWidget {
     child: Text(
       _label,
       style: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontSize: 10,
         fontWeight: FontWeight.w800,
         color: accent,

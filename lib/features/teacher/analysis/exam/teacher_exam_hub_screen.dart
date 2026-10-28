@@ -15,6 +15,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/exam_review_screen.dart' show EngineReviewSection;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherExamHubScreen extends StatelessWidget {
   final int courseId;
@@ -405,21 +406,21 @@ class _HubViewState extends State<_HubView>
           ),
           title: Text(
             'delete_exam_title'.tr,
-            style: const TextStyle(
-              fontFamily: 'bahji',
+            style: TextStyle(
+              fontFamily: AppFonts.display,
               fontWeight: FontWeight.w700,
             ),
           ),
           content: Text(
             'delete_exam_confirm_body'.tr,
-            style: const TextStyle(fontFamily: 'bahji'),
+            style: TextStyle(fontFamily: AppFonts.display),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(
                 'cancel'.tr,
-                style: const TextStyle(fontFamily: 'bahji'),
+                style: TextStyle(fontFamily: AppFonts.display),
               ),
             ),
             ElevatedButton(
@@ -432,7 +433,7 @@ class _HubViewState extends State<_HubView>
               ),
               child: Text(
                 'btn_delete'.tr,
-                style: const TextStyle(fontFamily: 'bahji'),
+                style: TextStyle(fontFamily: AppFonts.display),
               ),
             ),
           ],
@@ -895,8 +896,8 @@ class _ManageQuestionsSheet extends StatelessWidget {
                       children: [
                         Text(
                           'manage_questions_title'.tr,
-                          style: const TextStyle(
-                            fontFamily: 'bahji',
+                          style: TextStyle(
+                            fontFamily: AppFonts.display,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                           ),
@@ -904,7 +905,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                         Text(
                           exam.name,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             color: context.colors.textLight,
                           ),
@@ -964,7 +965,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                     label: Text(
                       'btn_add'.tr,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontWeight: FontWeight.w700,
                         color: context.colors.primary,
                       ),
@@ -993,7 +994,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           Text(
                             error,
                             style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               color: context.colors.textLight,
                             ),
                           ),
@@ -1005,7 +1006,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                             ),
                             child: Text(
                               'retry'.tr,
-                              style: const TextStyle(fontFamily: 'bahji'),
+                              style: TextStyle(fontFamily: AppFonts.display),
                             ),
                           ),
                         ],
@@ -1025,7 +1026,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           Text(
                             'no_questions_yet'.tr,
                             style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               fontSize: 15,
                               color: context.colors.textLight,
                             ),
@@ -1034,7 +1035,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
                           Text(
                             'no_questions_hint'.tr,
                             style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               fontSize: 12,
                               color: context.colors.textLight,
                             ),
@@ -1102,21 +1103,21 @@ class _ManageQuestionsSheet extends StatelessWidget {
           ),
           title: Text(
             'delete_question_title'.tr,
-            style: const TextStyle(
-              fontFamily: 'bahji',
+            style: TextStyle(
+              fontFamily: AppFonts.display,
               fontWeight: FontWeight.w700,
             ),
           ),
           content: Text(
             'delete_question_title'.tr,
-            style: const TextStyle(fontFamily: 'bahji'),
+            style: TextStyle(fontFamily: AppFonts.display),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(
                 'cancel'.tr,
-                style: const TextStyle(fontFamily: 'bahji'),
+                style: TextStyle(fontFamily: AppFonts.display),
               ),
             ),
             ElevatedButton(
@@ -1129,7 +1130,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
               ),
               child: Text(
                 'btn_delete'.tr,
-                style: const TextStyle(fontFamily: 'bahji'),
+                style: TextStyle(fontFamily: AppFonts.display),
               ),
             ),
           ],
@@ -1191,7 +1192,7 @@ class _QuestionTile extends StatelessWidget {
                   child: Text(
                     '${index + 1}',
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: context.colors.primary,
@@ -1203,8 +1204,8 @@ class _QuestionTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   question.title,
-                  style: const TextStyle(
-                    fontFamily: 'bahji',
+                  style: TextStyle(
+                    fontFamily: AppFonts.display,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     height: 1.4,
@@ -1236,7 +1237,7 @@ class _QuestionTile extends StatelessWidget {
                       ),
                       title: Text(
                         'btn_edit'.tr,
-                        style: const TextStyle(fontFamily: 'bahji'),
+                        style: TextStyle(fontFamily: AppFonts.display),
                       ),
                     ),
                   ),
@@ -1251,7 +1252,7 @@ class _QuestionTile extends StatelessWidget {
                       title: Text(
                         'btn_delete'.tr,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           color: context.colors.danger,
                         ),
                       ),
@@ -1302,7 +1303,7 @@ class _QuestionTile extends StatelessWidget {
                       Text(
                         opt,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 12,
                           color: isCorrect
                               ? context.colors.success
@@ -1325,7 +1326,7 @@ class _QuestionTile extends StatelessWidget {
           child: Text(
             '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} ${'marks_label'.tr}',
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 11,
               color: context.colors.textLight,
             ),
@@ -1509,8 +1510,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                     isEditing
                         ? 'edit_question_title'.tr
                         : 'add_question_title'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
+                    style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1585,7 +1586,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                         Text(
                           'options_label'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                             color: context.colors.textLight,
@@ -1614,7 +1615,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                         '${i + 1}',
                                       ),
                                       hintStyle: TextStyle(
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                         color: context.colors.textLight,
                                       ),
                                       filled: true,
@@ -1664,8 +1665,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           icon: const Icon(Icons.add_rounded, size: 16),
                           label: Text(
                             'btn_add_option'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'bahji',
+                            style: TextStyle(
+                              fontFamily: AppFonts.display,
                               fontSize: 13,
                             ),
                           ),
@@ -1703,8 +1704,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                   isEditing
                                       ? 'btn_save_edits'.tr
                                       : 'btn_add_question'.tr,
-                                  style: const TextStyle(
-                                    fontFamily: 'bahji',
+                                  style: TextStyle(
+                                    fontFamily: AppFonts.display,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1894,8 +1895,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                 SizedBox(width: 8),
                 Text(
                   'create_exam_sheet_title'.tr,
-                  style: const TextStyle(
-                    fontFamily: 'bahji',
+                  style: TextStyle(
+                    fontFamily: AppFonts.display,
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1964,7 +1965,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         decoration: InputDecoration(
                           labelText: 'field_exam_session_label'.tr,
                           labelStyle: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 13,
                             color: context.colors.textLight,
                           ),
@@ -1993,7 +1994,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                             value: null,
                             child: Text(
                               'exam_no_session'.tr,
-                              style: const TextStyle(fontFamily: 'bahji'),
+                              style: TextStyle(fontFamily: AppFonts.display),
                             ),
                           ),
                           for (final s in widget.provider.sessions)
@@ -2002,7 +2003,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                               child: Text(
                                 s.name,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontFamily: 'bahji'),
+                                style: TextStyle(fontFamily: AppFonts.display),
                               ),
                             ),
                         ],
@@ -2030,7 +2031,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                 child: Text(
                                   'exam_session_gate_hint'.tr,
                                   style: TextStyle(
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                     fontSize: 12,
                                     color: context.colors.primary,
                                   ),
@@ -2107,7 +2108,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                                 '${AppTime.clockMinutes(_scheduleDate!.hour * 60 + _scheduleDate!.minute)}'
                                           : 'pick_start_datetime'.tr,
                                       style: TextStyle(
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                         fontSize: 14,
                                         color: _scheduleDate != null
                                             ? context.colors.textDark
@@ -2160,7 +2161,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                                 '${AppTime.clockMinutes(_deadlineDate!.hour * 60 + _deadlineDate!.minute)}'
                                           : 'pick_deadline'.tr,
                                       style: TextStyle(
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                         fontSize: 14,
                                         color: _deadlineDate != null
                                             ? context.colors.textDark
@@ -2196,8 +2197,8 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                             ? const AppLoadingIndicator()
                             : Text(
                                 'btn_create_exam'.tr,
-                                style: const TextStyle(
-                                  fontFamily: 'bahji',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.display,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -2262,8 +2263,8 @@ class _SessionPickerSheet extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'exam_pick_session_title'.tr,
-                      style: const TextStyle(
-                        fontFamily: 'bahji',
+                      style: TextStyle(
+                        fontFamily: AppFonts.display,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                       ),
@@ -2277,7 +2278,7 @@ class _SessionPickerSheet extends StatelessWidget {
               child: Text(
                 'exam_session_gate_hint'.tr,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12,
                   color: context.colors.textLight,
                 ),
@@ -2312,7 +2313,7 @@ class _SessionPickerSheet extends StatelessWidget {
                           child: Text(
                             'no_sessions_yet'.tr,
                             style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               color: context.colors.textLight,
                             ),
                           ),
@@ -2339,7 +2340,7 @@ class _SessionPickerSheet extends StatelessWidget {
     title: Text(
       label,
       style: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
         color: selected ? context.colors.primary : null,
       ),
@@ -2398,7 +2399,7 @@ class _AnswersSheet extends StatelessWidget {
                           style: TextStyle(
                             color: context.colors.primary,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                           ),
                         )
                       : null,
@@ -2410,8 +2411,8 @@ class _AnswersSheet extends StatelessWidget {
                     children: [
                       Text(
                         result.studentName,
-                        style: const TextStyle(
-                          fontFamily: 'bahji',
+                        style: TextStyle(
+                          fontFamily: AppFonts.display,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2421,7 +2422,7 @@ class _AnswersSheet extends StatelessWidget {
                         '${result.totalMarks?.toStringAsFixed(0) ?? 0} ${'marks_label'.tr}'
                         '  •  ${result.percentage?.toStringAsFixed(1) ?? 0}%',
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 13,
                           color: context.colors.textLight,
                         ),
@@ -2447,7 +2448,7 @@ class _AnswersSheet extends StatelessWidget {
                     child: Text(
                       'no_answers'.tr,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         color: context.colors.textLight,
                       ),
                     ),
@@ -2488,15 +2489,15 @@ class _AnswersSheet extends StatelessWidget {
                                   Text(
                                     '${'question_prefix'.tr} ${a.questionId}',
                                     style: TextStyle(
-                                      fontFamily: 'bahji',
+                                      fontFamily: AppFonts.display,
                                       fontSize: 12,
                                       color: context.colors.textLight,
                                     ),
                                   ),
                                   Text(
                                     a.answer ?? 'no_answer_given'.tr,
-                                    style: const TextStyle(
-                                      fontFamily: 'bahji',
+                                    style: TextStyle(
+                                      fontFamily: AppFonts.display,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -2507,7 +2508,7 @@ class _AnswersSheet extends StatelessWidget {
                             Text(
                               '${a.marksObtained?.toStringAsFixed(1) ?? 0} ${'marks_label'.tr}',
                               style: TextStyle(
-                                fontFamily: 'bahji',
+                                fontFamily: AppFonts.display,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: color,
@@ -2739,11 +2740,11 @@ class _Field extends StatelessWidget {
       labelText: label,
       hintText: hint,
       labelStyle: TextStyle(
-        fontFamily: 'bahji',
+        fontFamily: AppFonts.display,
         fontSize: 13,
         color: context.colors.textLight,
       ),
-      hintStyle: TextStyle(fontFamily: 'bahji', color: context.colors.textLight),
+      hintStyle: TextStyle(fontFamily: AppFonts.display, color: context.colors.textLight),
       filled: true,
       fillColor: context.colors.inputBg,
       border: OutlineInputBorder(
@@ -2787,8 +2788,8 @@ class _Toggle extends StatelessWidget {
           leading: Icon(icon, color: context.colors.primary, size: 20),
           title: Text(
             label,
-            style: const TextStyle(
-              fontFamily: 'bahji',
+            style: TextStyle(
+              fontFamily: AppFonts.display,
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -2880,7 +2881,7 @@ PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
           const SizedBox(width: 10),
           Text(
             label,
-            style: const TextStyle(fontFamily: 'bahji', fontSize: 13),
+            style: TextStyle(fontFamily: AppFonts.display, fontSize: 13),
           ),
         ],
       )),
@@ -2950,8 +2951,8 @@ class _ImportResultDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(
         'import_result_title'.tr,
-        style: const TextStyle(
-          fontFamily: 'bahji',
+        style: TextStyle(
+          fontFamily: AppFonts.display,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -2964,7 +2965,7 @@ class _ImportResultDialog extends StatelessWidget {
             Text(
               '${'import_added_label'.tr}: ${result.created}',
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontWeight: FontWeight.w700,
                 color: context.colors.success,
               ),
@@ -2974,7 +2975,7 @@ class _ImportResultDialog extends StatelessWidget {
               Text(
                 '${'import_skipped_label'.tr}: ${result.skipped}',
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontWeight: FontWeight.w700,
                   color: context.colors.danger,
                 ),
@@ -2991,7 +2992,7 @@ class _ImportResultDialog extends StatelessWidget {
                         child: Text(
                           '${'import_row_label'.tr} ${e.row}: ${e.message}',
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             color: context.colors.textLight,
                           ),
@@ -3007,7 +3008,7 @@ class _ImportResultDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text('btn_ok'.tr, style: const TextStyle(fontFamily: 'bahji')),
+          child: Text('btn_ok'.tr, style: TextStyle(fontFamily: AppFonts.display)),
         ),
       ],
     ),
@@ -3104,7 +3105,7 @@ class _ExamRulesFieldsState extends State<_ExamRulesFields> {
     final tooMany =
         _limitQuestions && n != null && pool != null && pool > 0 && n > pool;
     final hintStyle = TextStyle(
-      fontFamily: 'bahji',
+      fontFamily: AppFonts.display,
       fontSize: 12,
       color: context.colors.textLight,
     );
@@ -3272,8 +3273,8 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                 Expanded(
                   child: Text(
                     'exam_rules_title'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
+                    style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                     ),
@@ -3295,7 +3296,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                       child: Text(
                         'exam_rules_apply_note'.tr,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 12,
                           color: context.colors.textLight,
                         ),
@@ -3323,8 +3324,8 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                             ? const AppLoadingIndicator()
                             : Text(
                                 'btn_save_changes'.tr,
-                                style: const TextStyle(
-                                  fontFamily: 'bahji',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.display,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                 ),

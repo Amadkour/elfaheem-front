@@ -17,6 +17,7 @@ import 'package:flutter_education_app/design/app_inputs.dart';
 import '../admin/admin_common.dart';
 import 'org_services_pages.dart' show fieldIcons;
 import 'org_ui.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// (value, label) of one option, whatever shape the server used.
 (String, String) orgOption(dynamic o) {
@@ -112,7 +113,7 @@ class OrgDynamicField extends StatelessWidget {
           Wrap(spacing: 8, runSpacing: 6, children: [
             for (final (val, lbl) in opts)
               ChoiceChip(
-                  label: Text(lbl, style: const TextStyle(fontFamily: 'tajawal')),
+                  label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
                   selected: '${v[k] ?? ''}' == val,
                   onSelected: (_) => put(val)),
           ]),
@@ -125,7 +126,7 @@ class OrgDynamicField extends StatelessWidget {
           Wrap(spacing: 8, runSpacing: 6, children: [
             for (final (val, lbl) in opts)
               FilterChip(
-                  label: Text(lbl, style: const TextStyle(fontFamily: 'tajawal')),
+                  label: Text(lbl, style: TextStyle(fontFamily: AppFonts.family)),
                   selected: cur.contains(val),
                   onSelected: (on) => put(on ? [...cur, val] : cur.where((x) => x != val).toList())),
           ]),

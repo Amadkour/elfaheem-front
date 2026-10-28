@@ -231,3 +231,206 @@ size, duration_seconds, remote_file_id, remote_url, error, created_at, finished_
   retry); `finished_at` stays null while a retry is pending. `POST …/retry` keeps working on any failed row,
   resets `attempts` and the backoff, and answers 409 `not_failed` (`recording_status: uploading`) when the tick
   claimed the row first. Columns `attempts` · `next_retry_at` · `last_error_at` come with migration 0019.
+
+---
+
+# Part 2 (2026-10-28): quick meetings · student live plan · points · direct guest link · room info
+
+Same conventions as above: errors are `{"detail": {"code", "message", …}}`, times naive UTC ISO, new app strings
+inline `t(ar, en)`. Schema: ONE new Alembic revision `0020_points_live_plan` (+ the models, so the e2e scripts get
+them from `create_all`).
+
+## 7. Quick meeting ("Meet now")
+
+```
+POST /api/v1/me/calendar/meetings/quick   {title?: str ≤200, minutes?: int 15..240 = 60, org_id?: int}
+→ 201 the meeting detail (same shape as POST …/meetings): mode online, private (no audience), starts now,
+       ends now + minutes, room_name set. No title → the date title below.
+```
+
+**Optional title for online meetings (added 2026-10-28).** `POST …/meetings` and `/meetings/quick`: when
+`mode = online`, `title` may be omitted, null, empty or blank; the server then stores the meeting's start as its
+title, `YYYY-MM-DD HH:mm` in the organization's timezone when `org_id` is set, else the platform timezone (the same
+timezone the app's `AppTime` shows). A `PATCH` that sends an empty title for an online meeting does the same.
+Offline meetings keep the title required (422 as today). App: the meeting form's title field is optional while
+Online is selected (hint "Optional, the date is used"), and the quick meeting sends no title.
+Any signed-in user (students too: it is online + private by construction). Feature key `live.quick_meeting`.
+App: a "Meet now" button next to "New meeting" on the calendar (and on the student / teacher "My schedule"
+upcoming-meetings card when present) → create → `PreJoinPage(JoinArgs(..., autoJoin: true))`, which presses Join
+by itself as soon as the devices are ready (no tap) → the room. The owner is the host (lobby, link, record).
+
+## 8. Students and the live-meeting plan
+
+A **student** = a user whose role is not in `subscription_service.STAFF_VALUES`.
+
+* **Online + private only.** A student's `POST …/meetings` and `PATCH …/meetings/{id}` must keep `mode = online`
+  and an EMPTY audience (the app's "Only me"; people come through the share link) → else 422
+  `student_meeting_online_private`. `meeting_detail` gains `owner_is_student: bool`.
+* **Free time.** A student-owned meeting whose owner has no active plan is free for `live_meeting_free_minutes`
+  (app setting, default 15) of LIVE time per meeting, counted from the room's first successful join (new column
+  `cal_meetings.live_started_at`, set once). After that:
+  - `POST …/meetings/{id}/join` → owner: 402 `live_plan_required` {price_points, days, balance}; anyone else:
+    403 `meeting_time_limit`. The public / link guest joins of that meeting → 403 `meeting_time_limit`.
+  - a scheduler tick every 60 s (`_live_plan_tick`) deletes the LiveKit room of every live, over-limit,
+    unplanned student meeting (ends it for everyone) once, and notifies the owner (type `live_plan_required`,
+    deep link `live_plan`).
+  - Every successful meeting join payload (200 owner / member / admitted guest) carries
+    `time_limit: {ends_at: iso, free_minutes: int} | null` (null = unlimited). `meeting_detail` carries the same
+    `time_limit` plus `owner_plan_active: bool` (meaningful for the owner; false for others).
+  - The limit is computed on every check: subscribing mid-meeting lifts it at once; the same meeting can be
+    rejoined after subscribing.
+* **The plan:** `live_meeting_price_points` (default 30) points for `live_meeting_plan_days` (default 30) days.
+
+```
+GET  /api/v1/me/live-plan            → {active, ends_at|null, price_points, days, free_minutes, balance, needed}
+POST /api/v1/me/live-plan/subscribe  → 200 same shape (debits the price; starts now, or extends an active ends_at)
+                                       402 points_insufficient {balance, price_points}
+```
+Staff never need it: `needed: false`, `active: true`, `ends_at: null`; their subscribe → 409 `plan_not_needed`.
+
+## 9. Points wallet
+
+Tables: `user_points` (user_id PK, balance int ≥ 0, updated_at), `points_ledger` (id, user_id, delta,
+balance_after, kind grant|deduct|topup|spend|refund, ref_type, ref_id, note, by_user_id, created_at),
+`points_topups` (id, user_id, points, amount, currency, method bank_transfer|instapay, receipt_key, status
+pending|approved|rejected, note, decided_by, decided_at, created_at), `service_subscriptions` (id, user_id,
+service 'live_meeting', starts_at, ends_at, points, ledger_id, created_at). A debit is ONE conditional UPDATE
+(`… WHERE balance >= :p`), never read-then-write; an approve is a compare-and-set on `status = 'pending'`.
+App settings (AppSettingsService DEFAULTS, edited by the super admin): `live_meeting_free_minutes` 15,
+`live_meeting_price_points` 30, `live_meeting_plan_days` 30, `points_price` 1.0 (money per point),
+`points_currency` "SAR", `points_topup_min` 10.
+
+```
+GET  /api/v1/me/points                 → {balance, price_per_point, currency, topup_min, methods: [...],
+                                          history: [ledger rows, newest first, ≤50], topups: [mine, ≤20]}
+POST /api/v1/me/points/topups          multipart: points (int ≥ topup_min), method, receipt (image / pdf ≤ 10 MB)
+                                       → 201 {id, points, amount, currency, method, status, created_at}
+Admin (admin / super-admin / developer):
+GET  /api/v1/admin/points/users?q=&page=      → {items: [{user {id,name,email,phone,role}, balance}], total}
+POST /api/v1/admin/points/grant               {user_id, points (≠0; negative = deduct), note} → {user_id, balance}
+                                               422 points_negative_balance when a deduct would go below 0
+GET  /api/v1/admin/points/users/{uid}/history → {items: ledger rows}
+GET  /api/v1/admin/points/topups?status=pending|approved|rejected → {items: [topup + user]}
+POST /api/v1/admin/points/topups/{id}/approve · …/reject   {note?} → topup  (409 topup_decided)
+GET  /api/v1/admin/points/topups/{id}/receipt → the file
+GET  /api/v1/admin/points/settings · PUT {the six settings} → the settings
+```
+Notifications: top-up approved / rejected (type `points_topup`, deep link `points`), plan bought (`live_plan`).
+Feature keys: `profile.points` (the wallet and the live plan), `admin.points` (the admin page).
+
+## 10. Direct guest link (the waiting icon)
+
+`live_room_settings.link_direct` (bool, default false, for BOTH kinds: a session's settings row holds it too).
+
+```
+PUT /api/v1/live/{kind}/{id}/link   gains  direct?: bool   (omitted = unchanged)
+the link payload (GET / PUT …/link) gains  direct: bool
+GET /api/v1/public/live/{token}     gains  auto_join: bool  (= the link is direct)
+```
+A guest entering through a DIRECT link is admitted at once (as if `guest_admission = auto`); the PIN, block,
+guest limit and the meeting time limit still apply. A signed-in non-member through it too. Members keep the
+member door. App: the room's waiting (lobby) button opens `LobbySheet`, whose top card is **"Quick guest link"**:
+one tap creates the link if missing (`PUT …/link {direct: true, can_publish: true}`) or turns an existing one
+direct, then Copy / Share / QR; a switch turns direct entry off again. The guest page (`/live/<token>`) with
+`auto_join`: signed in → joins with the account at once; a remembered guest name → joins at once; otherwise only
+the name field (autofocus) → Join; the pre-join step then presses Join by itself (`JoinArgs.autoJoin`).
+
+## 11. Room: record button, info, time limit
+
+* **Record** (the meeting creator, `canRecord`): a labelled red "Record" / "Stop" action in the control bar's
+  primary group (not hidden in More), and the top chip larger with a pulsing dot while recording.
+* **Info** (everyone): an (i) chip at the top beside Minimize → `MeetingInfoSheet` (plain values): title, kind,
+  host, scheduled time, live time elapsed, participants count, your role, the share link with Copy (host), the
+  admission rules (host), the recording state, the free time left.
+* **Time limit:** `LiveResponseModel.freeEndsAt` (from `time_limit.ends_at`) → `RoomPage.freeEndsAt`: a countdown
+  pill for everyone; the owner, from 3 minutes left, gets "Upgrade" → `showLivePlanSheet(context)` in
+  `lib/features/shared/points/live_plan_sheet.dart` (signature `Future<bool> showLivePlanSheet(BuildContext
+  context)`, true = subscribed); after subscribing the pill disappears. When the server ends the room for the
+  limit, the owner sees "Free time ended" with Subscribe.
+
+### Deviations recorded by the backend (Part 2, 2026-10-28)
+
+- The revision is `0021_points_live_plan` (Revises `0020`): `0020` was already the theme-contrast fix.
+- One extra column, `cal_meetings.live_limit_ended_at`: the scheduler's `_live_plan_tick` claims each over-limit
+  meeting with a compare-and-set on it, so a room is ended and its owner notified ONCE across workers.
+- `PUT /live/{kind}/{id}/link` did not exist before (only POST): it is new, every field optional and omitted =
+  unchanged (`can_publish`, `max_guests` with null = unlimited, `pin`, `clear_pin`, `rotate`, `direct`), and it
+  creates a missing link. `POST …/link` takes `direct` too. Deleting the link resets `direct` to false. The old
+  `/live-sessions/{id}/guest-link` payload does not carry `direct`.
+- Extra fields: `meeting_detail.live_started_at`; top-up items `note`, `has_receipt`, `decided_at` (+ `user` in
+  the admin list); the users list `page`, `size`; the history route `balance`; `topup_decided` carries
+  `topup_status`. Extra codes: 422 `title_required` (offline meeting without a title), `points_zero`,
+  `points_below_min {topup_min}`, `bad_method`, `receipt_invalid`, `bad_setting`; 404 `user_not_found`,
+  `topup_not_found`, `receipt_missing`; 403 `admin_required`; 502 `receipt_upload_failed`.
+- A guest whose lobby request was admitted but who polls after the free time ran out gets 403
+  `meeting_time_limit` (not `expired`); a member's admitted poll likewise.
+- Receipts always go to the PRIVATE bucket (`services/private_storage.py`), whatever `PRIVATE_SENSITIVE_UPLOADS`
+  says; `GET …/topups/{id}/receipt` streams the bytes with the file's own content type.
+- `/api/v1/me/points*` and `/api/v1/me/live-plan*` are open past the subscription paywall (and the device guard's
+  list), like `/subscriptions`: the wallet is the user's own money.
+- Push data: `live_plan_required` → `{type: live_plan, meeting_id, id}` (`related_type: meeting`), plan bought
+  `live_plan` → `{type: live_plan, id}`, `points_topup` → `{type: points, id, status}`.
+
+---
+
+# Part 3 (2026-10-28): card top-ups · daily free cap · plan reminders and auto-renew · public API base · live time · stuck uploads
+
+## 12. Public API base for every callback
+
+Production nginx strips one `/api` (`location /api/ → :8000/`), so the API root's public URL is
+`https://nextbrain.site/api` while `APP_URL` is `https://nextbrain.site`. New setting `PUBLIC_API_BASE_URL` (the
+public URL of the API ROOT; empty = `APP_URL`) and ONE helper `config.public_api_url(path)` (path starts with
+`/api/v1/…`). Every URL handed to an outside party that must reach the API uses it: Moyasar / Paymob callback and
+webhook URLs (`routers/checkout.py`, `routers/webhooks.py`, `payment_providers/*`, the org creation fee), the cloud
+OAuth redirect (`CLOUD_OAUTH_BASE_URL` still wins when set, then `PUBLIC_API_BASE_URL`, then `APP_URL`). Links meant
+for the WEB APP (`FLUTTER_APP_URL`, `PUBLIC_WEB_URL`, login links) are not touched.
+
+## 13. Buy points by card
+
+```
+POST /api/v1/me/points/checkout     {points: int ≥ topup_min, provider?: "moyasar"|"paymob"}
+→ 201 {topup_id, provider, amount, currency, …whatever the app needs to open the provider's payment page,
+       exactly like the course checkout returns it}
+GET  /api/v1/me/points/topups/{id}  → the top-up (the app polls it after the payment page closes)
+```
+A card top-up is a `points_topups` row with `method = "card"`, `provider`, `payment_id`, status `pending`. The
+provider's callback / webhook is verified server-side (fetch the payment from the provider, check amount and
+currency, the same way course payments are verified) and credits the points ONCE (compare-and-set on
+`status = pending`; a repeated callback is a no-op). Failed / cancelled → `rejected` with the provider's reason.
+Notification on success (`points_topup`, deep link `points`). Settings: `points_card_enabled` (default true) — the
+`methods` list of `GET /me/points` includes `card` only when it is on and a provider is configured. Admin
+"Top-ups" lists card rows too (read-only: they were decided by the provider).
+
+## 14. Daily free-time cap for students
+
+Setting `live_meeting_free_minutes_daily` (default 30; 0 = no daily cap). When a student's unplanned meeting goes
+live (its first join stamps `live_started_at`), it gets `free_window_minutes = min(live_meeting_free_minutes,
+daily_left)` (new column `cal_meetings.free_window_minutes`, set once), where `daily_left` = the daily cap minus the
+`free_window_minutes` of the owner's meetings that went live TODAY (platform timezone day). `daily_left = 0` → the
+owner's first join gets 402 `live_plan_required` with `reason: "daily_limit"`; others 403 `meeting_time_limit`.
+The meeting's limit is `live_started_at + free_window_minutes`. `time_limit` gains `daily_minutes` and `daily_left`;
+`GET /me/live-plan` gains `daily_free_minutes` and `daily_free_left`.
+
+## 15. Plan reminders and auto-renew
+
+`PUT /api/v1/me/live-plan {auto_renew: bool}` → the plan payload, which gains `auto_renew`, `days_left`.
+Stored per user (`user_points.live_auto_renew`, default false). An hourly tick:
+* a plan ending within 3 days, not yet reminded → notification `live_plan_expiring` (deep link `live_plan`), stamped
+  (`service_subscriptions.reminded_at`) so it is sent once;
+* a plan that has ended (no newer plan) with auto-renew on → ONE conditional debit + a new 30-day plan starting at
+  the old `ends_at` (ledger kind `spend`, note `auto_renew`), notification `live_plan_renewed`; not enough points →
+  notification `live_plan_renew_failed` once (stamp `renew_failed_at`), auto-renew stays on for a later top-up.
+
+## 16. The meeting's real live time
+
+Every meeting join payload (owner / member / admitted guest) and `meeting_detail` carry `live_started_at` (the
+room's first join); a course session's join payloads carry the online session's start time under the same key.
+App: `LiveResponseModel.liveStartedAt` → `RoomPage.liveStartedAt` → the info sheet's "Live for" counts from it
+(falls back to the person's own time in the room when absent).
+
+## 17. Recovering stuck recording uploads
+
+A meeting recording left in `uploading` (or `assembling`) longer than 30 minutes (by its claim / `updated_at`) means
+the worker died. The existing retry tick takes it back with the same compare-and-set as a retry: it is treated as a
+transient failure (attempt counted, `last_error` "worker_lost"), so it either uploads again or, after the last
+attempt, fails with the usual notification. Never two workers on one row.

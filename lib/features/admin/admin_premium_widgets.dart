@@ -16,6 +16,7 @@ import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../design/app_switch.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Gradient pairs (light → base) for the feature icons / hero banners.
 ///
@@ -95,7 +96,7 @@ TextStyle adminText(
   Color? color,
   double? height,
 }) => TextStyle(
-  fontFamily: 'tajawal',
+  fontFamily: AppFonts.family,
   fontSize: size,
   fontWeight: weight,
   color: color ?? context.colors.textDark,
@@ -219,7 +220,7 @@ class PremiumHero extends StatelessWidget {
                             Text(
                               title,
                               style: TextStyle(
-                                fontFamily: 'tajawal',
+                                fontFamily: AppFonts.family,
                                 fontSize: 19,
                                 fontWeight: FontWeight.w800,
                                 color: context.colors.onHero,
@@ -230,7 +231,7 @@ class PremiumHero extends StatelessWidget {
                               Text(
                                 subtitle!,
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 12.5,
                                   height: 1.4,
                                   color: context.colors.onHero.withValues(alpha: 0.88),
@@ -280,7 +281,7 @@ class HeroPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: context.colors.onHero,
@@ -596,7 +597,7 @@ class PremiumSaveBar extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 15.5,
                                   fontWeight: FontWeight.w800,
                                   color: c.onHero,

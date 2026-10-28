@@ -25,6 +25,7 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -380,7 +381,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
             await context.read<ProfileProvider>().logout(context);
           } catch (_) {}
         },
-        icon: Icon(Icons.logout_rounded, size: 18, color: c.textMedium),
+        icon: Icon(DirIcons.logout, size: 18, color: c.textMedium),
         label: Text(_tr('dl_setup_sign_out', 'Sign out'), style: dlText(12.5, c: c.textMedium)),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class RefreshButton extends StatefulWidget {
   final Future<void> Function() onTap;
@@ -75,7 +76,7 @@ class _RefreshButtonState extends State<RefreshButton>
           Text(
             isRefreshing ? 'refreshing'.tr : 'refresh'.tr,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: isRefreshing ? context.colors.primary : Colors.white,

@@ -18,6 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/offline/offline_strings.dart';
 import 'package:flutter_education_app/utils/top_route_observer.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OfflineShortcutOverlay extends StatelessWidget {
   const OfflineShortcutOverlay({super.key, required this.child});
@@ -92,8 +93,8 @@ class _ShortcutPill extends StatelessWidget {
                             const SizedBox(width: 6),
                             Text(
                               offlineT('dl_open_downloads'),
-                              style: const TextStyle(
-                                fontFamily: 'tajawal',
+                              style: TextStyle(
+                                fontFamily: AppFonts.family,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,

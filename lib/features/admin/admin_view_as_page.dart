@@ -18,6 +18,7 @@ import '../../utils/widget/view_as_state.dart';
 import 'admin_common.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Starts view-as for [id] and lands on that user's own home. ONE place for every entry point
 /// (this page, the student/teacher lists, the user detail sheet).
@@ -374,7 +375,7 @@ class _ViewAsTile extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w800,
                           color: c.textDark,
                         ),
@@ -385,7 +386,7 @@ class _ViewAsTile extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         textDirection: TextDirection.ltr,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 12,
                           color: c.textLight,
                         ),
@@ -470,7 +471,7 @@ class ViewAsBanner extends StatelessWidget {
                             style: TextStyle(
                               color: context.colors.onHero,
                               fontWeight: FontWeight.w700,
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               decoration: TextDecoration.none,
                               fontSize: 13,
                             ),
@@ -490,8 +491,8 @@ class ViewAsBanner extends StatelessWidget {
                           ),
                           label: Text(
                             'admin_back_to_admin'.tr,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
                               fontWeight: FontWeight.w800,
                               fontSize: 12.5,
                             ),

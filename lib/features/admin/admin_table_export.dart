@@ -16,6 +16,7 @@ import 'admin_common.dart';
 import 'admin_filter_models.dart' show encodeFilters;
 import 'admin_models.dart' show PageData;
 import 'admin_providers.dart' show AdminPagedProvider;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Every row of [p]'s list (current search / filters / sort), [pageSize] per request, at most [maxRows].
 Future<List<Map<String, dynamic>>> fetchAllRows(AdminPagedProvider p, {int pageSize = 200, int maxRows = 20000}) async {
@@ -102,7 +103,7 @@ class AppExportPill extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(label ?? t('تصدير · Excel · Word · PDF', 'Export · Excel · Word · PDF'),
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w700, color: c.primary)),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w700, color: c.primary)),
             ),
           ]),
         ),

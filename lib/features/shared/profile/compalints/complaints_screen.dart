@@ -28,6 +28,7 @@ import '../../../../utils/helpers.dart' show Helpers;
 // (it is the file the teacher transfer / device-request screens already import).
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -387,7 +388,7 @@ class _OverviewStrip extends StatelessWidget {
                 child: Text(
                   _t('نظرة عامة', 'Overview'),
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: c.textDark,
@@ -415,7 +416,7 @@ class _OverviewStrip extends StatelessWidget {
                         'complaints_new_n'.tr
                             .replaceAll('{n}', '${stats.unreadAdmin}'),
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w800,
                           color: context.colors.danger,
@@ -545,7 +546,7 @@ class _Kpi extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: c.textMedium,
@@ -562,7 +563,7 @@ class _Kpi extends StatelessWidget {
               builder: (_, v, _) => Text(
                 '${v.round()}',
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
                   color: c.textDark,
@@ -574,7 +575,7 @@ class _Kpi extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 color: c.textLight,
               ),
@@ -663,7 +664,7 @@ class _FilterRow extends StatelessWidget {
               Text(
                 _t('تصفية حسب النوع', 'Filter by category'),
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: c.textDark,
@@ -730,7 +731,7 @@ class _FilterRow extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
                     color: selected ? context.colors.onHero : c.textMedium,
@@ -902,7 +903,7 @@ class _ActiveChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: c.primary,
@@ -953,7 +954,7 @@ class _FilterChip extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
             color: selected ? accent : c.textMedium,
@@ -1507,7 +1508,7 @@ class _InfoCard extends StatelessWidget {
                 child: Text(
                   _statusLabel(complaint.status),
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: statusClr,
@@ -1595,7 +1596,7 @@ class _InfoCard extends StatelessWidget {
                     child: Text(
                       _statusLabel(s),
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: selected ? context.colors.onHero : sc,
@@ -1665,7 +1666,7 @@ class _MetaChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: color,
@@ -1746,7 +1747,7 @@ class _ReplyBubble extends StatelessWidget {
                       child: Text(
                         reply.senderName,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: reply.isAdmin ? c.accent : c.textMedium,
@@ -1757,7 +1758,7 @@ class _ReplyBubble extends StatelessWidget {
                     Text(
                       reply.message,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 14,
                         height: 1.5,
                         color: isMe ? context.colors.onHero : c.textDark,
@@ -1783,7 +1784,7 @@ class _ReplyBubble extends StatelessWidget {
                   Text(
                     _formatTime(reply.createdAt),
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 10,
                       color: isMe ? context.colors.onHero.withValues(alpha: 0.6) : c.textLight,
                     ),
@@ -1884,11 +1885,11 @@ class _ReplyInput extends StatelessWidget {
                       controller: controller,
                       maxLines: null,
                       textDirection: TextDirection.rtl,
-                      style: TextStyle(fontFamily: 'bahji', color: c.textDark),
+                      style: TextStyle(fontFamily: AppFonts.display, color: c.textDark),
                       decoration: InputDecoration(
                         hintText: 'write_reply_hint'.tr,
                         hintStyle: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           color: c.textLight,
                         ),
                         contentPadding: const EdgeInsets.symmetric(
@@ -1974,7 +1975,7 @@ class _ReplyInput extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1998,7 +1999,7 @@ class _ReplyInput extends StatelessWidget {
                   title: Text(
                     'take_photo'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -2021,7 +2022,7 @@ class _ReplyInput extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -2107,7 +2108,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
               Text(
                 'suggested_solution_label'.tr,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: accent,
@@ -2123,7 +2124,7 @@ class _SuggestedSolutionBlock extends StatelessWidget {
                 child: Text(
                   'by_student'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                     color: accent,

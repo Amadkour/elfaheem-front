@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 
 import '../admin/admin_common.dart' show t;
 import 'org_platform_context.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 class OrgsGate extends StatelessWidget {
   const OrgsGate({super.key, required this.child});
@@ -100,7 +101,7 @@ class _OrgsUnavailablePageState extends State<OrgsUnavailablePage> {
                   const SizedBox(height: 8),
                   TextButton.icon(
                     onPressed: _logout,
-                    icon: Icon(Icons.logout_rounded, color: c.textMedium, size: 18),
+                    icon: Icon(DirIcons.logout, color: c.textMedium, size: 18),
                     label: Text(t('تسجيل الخروج', 'Sign out'), style: appText(13.5, w: FontWeight.w700, c: c.textMedium)),
                   ),
                 ]),

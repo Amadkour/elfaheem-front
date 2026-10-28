@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import '../validators.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyPasswordTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -32,7 +33,7 @@ class MyPasswordTextField extends StatelessWidget {
         textInputAction: TextInputAction.next,
         obscureText: obscurePassword,
         style:  TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: context.colors.textDark),
@@ -43,7 +44,7 @@ class MyPasswordTextField extends StatelessWidget {
           hint: Text(
             label,
             style:  TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
                 color:  context.colors.textDark),
             textDirection: TextDirection.rtl,

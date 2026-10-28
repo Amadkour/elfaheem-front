@@ -20,6 +20,7 @@ import 'package:uuid/uuid.dart';
 
 import 'live_palette.dart';
 import 'participant_info.dart' show isGuestIdentity;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const kLiveChatTopic = 'chat';
 const kLiveChatMaxChars = 500;
@@ -279,8 +280,8 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
               child: Text('lr_chat'.tr,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontFamily: 'tajawal', color: _textHigh, fontWeight: FontWeight.w700, fontSize: 15)),
+                  style: TextStyle(
+                      fontFamily: AppFonts.family, color: _textHigh, fontWeight: FontWeight.w700, fontSize: 15)),
             ),
             if (widget.canClear && msgs.isNotEmpty)
               IconButton(
@@ -311,7 +312,7 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
                       const SizedBox(height: 10),
                       Text('lr_chat_empty'.tr,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontFamily: 'tajawal', color: _textLow, fontSize: 13)),
+                          style: TextStyle(fontFamily: AppFonts.family, color: _textLow, fontSize: 13)),
                     ]),
                   ),
                 )
@@ -341,7 +342,7 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
                 child: Text('lr_chat_slow_down'.tr,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: LivePalette.warning)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: LivePalette.warning)),
               ),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
@@ -353,13 +354,13 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
                   maxLines: 1,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (_) => _send(),
-                  style: const TextStyle(fontFamily: 'tajawal', color: _textHigh, fontSize: 14),
+                  style: TextStyle(fontFamily: AppFonts.family, color: _textHigh, fontSize: 14),
                   cursorColor: LivePalette.accent,
                   decoration: InputDecoration(
                     counterText: '',
                     isDense: true,
                     hintText: 'lr_chat_hint'.tr,
-                    hintStyle: const TextStyle(fontFamily: 'tajawal', color: _textLow, fontSize: 13),
+                    hintStyle: TextStyle(fontFamily: AppFonts.family, color: _textLow, fontSize: 13),
                     filled: true,
                     fillColor: _glass10,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -443,14 +444,14 @@ class _Bubble extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w800, color: accent),
+                              fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: accent),
                         ),
                       ),
                       if (m.isGuest) ...[
                         const SizedBox(width: 5),
                         Text('lr_guest'.tr,
                             style: TextStyle(
-                                fontFamily: 'tajawal',
+                                fontFamily: AppFonts.family,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
                                 color: LivePalette.warning)),
@@ -458,10 +459,10 @@ class _Bubble extends StatelessWidget {
                     ]),
                   ),
                 Text(m.text,
-                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5, height: 1.35, color: LivePalette.textHigh)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, height: 1.35, color: LivePalette.textHigh)),
                 const SizedBox(height: 2),
                 Text(liveChatTime(m.ts),
-                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 9.5, color: LivePalette.textSoft)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, color: LivePalette.textSoft)),
               ],
             ),
         ),

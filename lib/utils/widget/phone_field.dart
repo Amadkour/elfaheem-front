@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../features/auth/auth_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PhoneCountry {
   final String nameEn;
@@ -82,8 +83,6 @@ class PhoneInputField extends StatefulWidget {
 }
 
 class _PhoneInputFieldState extends State<PhoneInputField> {
-  static const _kBorder = Color(0xFFE5E7EB);
-  static const _kIcon = Color(0xFF9CA3AF);
 
   final _local = TextEditingController();
   late PhoneCountry _country;
@@ -181,7 +180,7 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
                 color: c.inputBg,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
-                  side: const BorderSide(color: _kBorder, width: 1.5),
+                  side: BorderSide(color: c.divider, width: 1.5),
                 ),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -200,17 +199,17 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
                         Text(
                           _country.dial,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
                             color: c.textDark,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        const Icon(
+                        Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 20,
-                          color: _kIcon,
+                          color: c.textLight,
                         ),
                       ],
                     ),
@@ -232,20 +231,20 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
                   onChanged: (_) => _sync(),
                   validator: _validate,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 15,
                     letterSpacing: 0.6,
                     color: c.textDark,
                   ),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.phone_outlined,
                       size: 18,
-                      color: _kIcon,
+                      color: c.textLight,
                     ),
                     hintText: _country.hint,
                     hintStyle: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 14,
                       color: context.colors.textLight,
                     ),
@@ -255,8 +254,8 @@ class _PhoneInputFieldState extends State<PhoneInputField> {
                       horizontal: 16,
                       vertical: 14,
                     ),
-                    border: border(_kBorder),
-                    enabledBorder: border(_kBorder),
+                    border: border(c.divider),
+                    enabledBorder: border(c.divider),
                     focusedBorder: border(c.textAction.withAlpha(150)),
                     errorBorder: border(c.danger),
                     focusedErrorBorder: border(c.danger),
@@ -313,7 +312,7 @@ class _CountrySheet extends StatelessWidget {
             Text(
               AppConfig.lang == 'ar' ? 'اختر الدولة' : 'Select country',
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 color: c.textDark,
@@ -362,7 +361,7 @@ class _CountryTile extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: selected ? c.primary : const Color(0xFFE5E7EB),
+                color: selected ? c.primary : c.divider,
                 width: selected ? 1.8 : 1.2,
               ),
             ),
@@ -374,7 +373,7 @@ class _CountryTile extends StatelessWidget {
                   child: Text(
                     country.name,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: c.textDark,
@@ -386,7 +385,7 @@ class _CountryTile extends StatelessWidget {
                   child: Text(
                     country.dial,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                       color: selected ? c.primary : c.secondText,

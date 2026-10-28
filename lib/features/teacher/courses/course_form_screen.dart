@@ -32,6 +32,7 @@ import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -637,7 +638,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                               Text(
                                 'price_plans_hint'.tr,
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 11.5,
                                   color: context.colors.textLight,
                                 ),
@@ -657,7 +658,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       ChoiceChip(
                                         label: Text(
                                           e.value,
-                                          style: const TextStyle(fontFamily: 'tajawal'),
+                                          style: TextStyle(fontFamily: AppFonts.family),
                                         ),
                                         selected: provider.defaultPlanIndex == e.key,
                                         onSelected: (_) =>
@@ -720,7 +721,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 'discount_section_title'.tr,
                                 // e.g. "Discount (optional)"
                                 style: TextStyle(
-                                  fontFamily: 'bahji',
+                                  fontFamily: AppFonts.display,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                   color: context.colors.heroShade.withValues(alpha: 0.55),
@@ -731,7 +732,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 'discount_section_hint'.tr,
                                 // e.g. "Leave empty for no discount"
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 11,
                                   color: context.colors.textLight,
                                 ),
@@ -802,7 +803,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                     child: Text(
                                       'remove_discount_btn'.tr, // "Remove discount"
                                       style: TextStyle(
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         color: context.colors.danger,
@@ -829,7 +830,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       Text(
                                         'next_course_label'.tr,
                                         style: TextStyle(
-                                          fontFamily: 'bahji',
+                                          fontFamily: AppFonts.display,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: context.colors.heroShade.withValues(alpha: 0.55),
@@ -839,7 +840,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       Text(
                                         'next_course_hint'.tr,
                                         style: TextStyle(
-                                          fontFamily: 'tajawal',
+                                          fontFamily: AppFonts.family,
                                           fontSize: 11,
                                           color: context.colors.textLight,
                                         ),
@@ -857,7 +858,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                       Text(
                                         'recommended_courses_label'.tr,
                                         style: TextStyle(
-                                          fontFamily: 'bahji',
+                                          fontFamily: AppFonts.display,
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
                                           color: context.colors.heroShade.withValues(alpha: 0.55),
@@ -1130,7 +1131,7 @@ class _HeroHeader extends StatelessWidget {
                       color: context.colors.onHero,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                     ),
                   ),
                 ),
@@ -1154,7 +1155,7 @@ class _HeroHeader extends StatelessWidget {
                       color: context.colors.onHero,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                     ),
                   ),
                 ),
@@ -1227,7 +1228,7 @@ class _FormCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   color: context.colors.textDark,
                 ),
               ),
@@ -1341,7 +1342,7 @@ class _EditCertificateTemplateCardState
               ? 'certificate_template_card_hint_edit'.tr
               : 'certificate_template_card_hint'.tr,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 12,
             color: context.colors.textMedium,
           ),
@@ -1361,7 +1362,7 @@ class _EditCertificateTemplateCardState
               child: Text(
                 _existingCert!.title,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textDark,
@@ -1413,7 +1414,7 @@ class _EditCertificateTemplateCardState
                       child: Text(
                         'change_template_btn'.tr,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: context.colors.onHero,
@@ -1436,7 +1437,7 @@ class _EditCertificateTemplateCardState
                     Text(
                       'upload_template_btn'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: context.colors.textMedium,
@@ -1472,7 +1473,7 @@ class _LabeledField extends StatelessWidget {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
           color: context.colors.heroShade.withValues(alpha: 0.55),
         ),
       ),
@@ -1550,7 +1551,7 @@ class _CourseTypeSelector extends StatelessWidget {
                           Text(
                             label,
                             style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: selected == value
@@ -1570,7 +1571,7 @@ class _CourseTypeSelector extends StatelessWidget {
         Text(
           hint,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 11,
             color: context.colors.textLight,
           ),
@@ -1642,7 +1643,7 @@ class _CollapsibleSection extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           color: context.colors.textDark,
                         ),
                       ),
@@ -1650,7 +1651,7 @@ class _CollapsibleSection extends StatelessWidget {
                       Text(
                         subtitle,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           color: context.colors.textLight,
                         ),
@@ -1764,7 +1765,7 @@ class _StickyFooter extends StatelessWidget {
                             : context.colors.textLight,
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                       ),
                     ),
                   ),
@@ -1811,7 +1812,7 @@ class _StickyFooter extends StatelessWidget {
                       color: context.colors.onHero,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                     ),
                   ),
                 ),
@@ -1883,7 +1884,7 @@ class _StatusCard extends StatelessWidget {
               child: Text(
                 isPublished ? 'status_published'.tr : 'status_draft'.tr,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: statusColor,
@@ -1906,7 +1907,7 @@ class _StatusCard extends StatelessWidget {
               ? 'course_status_published_hint'.tr
               : 'course_status_draft_hint'.tr,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 11,
             color: context.colors.textLight,
           ),
@@ -1972,14 +1973,14 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
             ),
             title: Text(
               'duplicate-schedule'.tr,
-              style: const TextStyle(
-                fontFamily: 'bahji',
+              style: TextStyle(
+                fontFamily: AppFonts.display,
                 fontWeight: FontWeight.w700,
               ),
             ),
             content: Text(
               'same-day-schedule-exists'.tr,
-              style: const TextStyle(fontFamily: 'bahji'),
+              style: TextStyle(fontFamily: AppFonts.display),
             ),
             actions: [
               TextButton(
@@ -1987,7 +1988,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                 child: Text(
                   'cancel'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: context.colors.textMedium,
                   ),
                 ),
@@ -2003,7 +2004,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                 child: Text(
                   'add'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2232,8 +2233,8 @@ class _CertificateDesignsLink extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('cert_designs_link_title'.tr, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                Text('cert_designs_link_sub'.tr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                Text('cert_designs_link_title'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                Text('cert_designs_link_sub'.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
               ]),
             ),
             Icon(Icons.chevron_right_rounded, color: c.textLight),

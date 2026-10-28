@@ -1,6 +1,7 @@
 // lib/features/shared/calendar/calendar_api.dart — calls of the smart calendar (../back/routers/calendar_router.py).
 //
 //   GET    /api/v1/me/calendar · /depts/{id} · /people          POST /busy
+//   POST   /meetings/quick ("Meet now": online, private, starts now — live-rooms-spec §7)
 //   POST   /meetings · GET|PATCH|DELETE /meetings/{id} · POST /meetings/{id}/respond|accept-proposal|join
 //   POST   /api/v1/org/orgs/{o}/complaints/{c}/meeting          (a complaint / request → a meeting with its sender)
 //
@@ -11,6 +12,8 @@ import 'dart:async';
 
 import 'package:flutter_education_app/core/api_client.dart';
 
+import '../points/points_api.dart' show pointsCodeText, pointsErrorCode;
+
 const _base = '/api/v1/me/calendar';
 const calTimeout = Duration(seconds: 25);
 
@@ -18,6 +21,9 @@ abstract class CalendarApi {
   Future<dynamic> feed(String start, String end, {int? orgId, int? deptId});
   Future<dynamic> meeting(int id);
   Future<dynamic> create(Map<String, dynamic> body);
+
+  /// "Meet now": no title (the server names it after its start), [minutes] 15..240 (server default 60).
+  Future<dynamic> quick({int? orgId, int? minutes});
   Future<dynamic> update(int id, Map<String, dynamic> body);
   Future<dynamic> cancel(int id);
   Future<dynamic> respond(int id, Map<String, dynamic> body);
@@ -44,6 +50,10 @@ class RemoteCalendarApi implements CalendarApi {
 
   @override
   Future<dynamic> create(Map<String, dynamic> body) => _api.post('$_base/meetings', body: body).timeout(calTimeout);
+
+  @override
+  Future<dynamic> quick({int? orgId, int? minutes}) =>
+      _api.post('$_base/meetings/quick', body: {'org_id': ?orgId, 'minutes': ?minutes}).timeout(calTimeout);
 
   @override
   Future<dynamic> update(int id, Map<String, dynamic> body) =>
@@ -87,4 +97,12 @@ List<Map<String, dynamic>> calBusyOf(Object e) {
 }
 
 /// User-facing text of any calendar error (timeouts included).
-String calErrorText(Object e) => e is TimeoutException ? ApiMessages.timeout : ApiException.from(e).message;
+String calErrorText(Object e) {
+  if (e is TimeoutException) return ApiMessages.timeout;
+  final code = pointsErrorCode(e);
+  if (_meetingCodes.contains(code)) return pointsCodeText(code) ?? ApiException.from(e).message;
+  return ApiException.from(e).message;
+}
+
+/// Meeting codes of live-rooms-spec §7 – §8 with app texts (points_api.dart).
+const _meetingCodes = {'student_meeting_online_private', 'live_plan_required', 'meeting_time_limit', 'plan_not_needed'};

@@ -20,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:video_player/video_player.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _gold = Color(0xFFE6C582);
 
@@ -372,7 +373,7 @@ class _PreviewBadge extends StatelessWidget {
             Text(
               'course_reel_badge'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
                 color: context.colors.onHero,

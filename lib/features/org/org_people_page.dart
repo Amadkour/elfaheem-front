@@ -15,6 +15,7 @@ import 'org_ui.dart';
 import 'org_member_form.dart';
 import 'org_v3.dart';
 import '../admin/admin_table_export.dart' show exportPagedList, orgMembersExport;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OrgPeoplePage extends StatelessWidget {
   const OrgPeoplePage({super.key});
@@ -41,7 +42,7 @@ class OrgPeoplePage extends StatelessWidget {
             indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
             labelColor: c.onHero,
             unselectedLabelColor: c.textMedium,
-            labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+            labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
             tabs: [for (final x in tabs) Tab(text: x.$2, height: 40)],
           ),
         ),
@@ -129,7 +130,7 @@ class _MembersView extends StatelessWidget {
               if (r != null) p.refresh();
             },
             icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
-            label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+            label: Text(t('إضافة', 'Add'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
           ),
         ),
     ]);
@@ -146,7 +147,7 @@ class _Act extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ActionChip(
         avatar: Icon(icon, size: 18, color: color),
-        label: Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: color, fontWeight: FontWeight.w700)),
+        label: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: color, fontWeight: FontWeight.w700)),
         onPressed: onTap,
         side: BorderSide(color: color.withValues(alpha: 0.35)),
         backgroundColor: color.withValues(alpha: 0.08),
@@ -278,8 +279,8 @@ class OrgMemberRowView extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+              Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
               if (chips.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 4, children: chips),
@@ -287,7 +288,7 @@ class OrgMemberRowView extends StatelessWidget {
               if (period != null && period!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(period!, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: periodEnded ? c.danger : c.textLight)),
+                  child: Text(period!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: periodEnded ? c.danger : c.textLight)),
                 ),
             ]),
           ),
@@ -329,7 +330,7 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SheetHeader(t('صلاحيات ${(row['user'] as Map)['name']}', 'Permissions · ${(row['user'] as Map)['name']}')),
             Text(t('اختر ما يستطيع المساعد الإداري فعله في كل قسم. "عرض" يُضاف تلقائياً مع أي صلاحية أخرى.', 'Choose what this assistant can do in each module. "View" is added automatically with any other right.'),
-                style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textMedium)),
+                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textMedium)),
             const SizedBox(height: 10),
             for (final m in _modules)
               Container(
@@ -337,12 +338,12 @@ Future<void> _permissions(BuildContext context, OrgMembersProvider p, Map<String
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(modLabel[m]!, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                  Text(modLabel[m]!, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, children: [
                     for (final a in _actions)
                       FilterChip(
-                        label: Text(actLabel[a]!, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+                        label: Text(actLabel[a]!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
                         selected: cur[m]!.contains(a),
                         onSelected: (on) => set(() {
                           if (on) {

@@ -12,6 +12,8 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../models.dart';
 import 'attendance_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StudentAttendanceWidget extends StatelessWidget {
   final SessionModel session;
@@ -54,11 +56,11 @@ class StudentAttendanceWidget extends StatelessWidget {
                 featureKey: 'attendance.record',
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _RecordRow('att_check_in_time'.tr, _fmt(provider.activeRecord!.checkInAt),
-                      Icons.login_rounded, context.colors.success),
+                      DirIcons.login, context.colors.success),
                   if (provider.activeRecord!.checkOutAt != null) ...[
                     const SizedBox(height: 6),
                     _RecordRow('att_check_out_time'.tr, _fmt(provider.activeRecord!.checkOutAt),
-                        Icons.logout_rounded, context.colors.danger),
+                        DirIcons.logout, context.colors.danger),
                   ],
                   const SizedBox(height: 12),
                 ])),
@@ -86,8 +88,8 @@ class StudentAttendanceWidget extends StatelessWidget {
                           : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Icon(
                             inSession
-                                ? Icons.logout_rounded
-                                : Icons.login_rounded,
+                                ? DirIcons.logout
+                                : DirIcons.login,
                             color: context.colors.onHero,
                             size: 18),
                         const SizedBox(width: 8),
@@ -96,7 +98,7 @@ class StudentAttendanceWidget extends StatelessWidget {
                                 color: context.colors.onHero,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
-                                fontFamily: 'bahji'))
+                                fontFamily: AppFonts.display))
                       ])),
                 )),
           ]),

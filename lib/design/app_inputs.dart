@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 export 'package:flutter_education_app/utils/widget/phone_field.dart' show PhoneInputField;
 
@@ -41,7 +42,7 @@ InputDecoration appInputDecoration(BuildContext context, {required String hint, 
     prefixIcon: Icon(icon, size: 18, color: c.textLight),
     suffixIcon: suffix,
     hintText: hint,
-    hintStyle: TextStyle(fontFamily: 'tajawal', fontSize: 14, color: c.textLight),
+    hintStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 14, color: c.textLight),
     filled: true,
     fillColor: c.inputBg,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -50,7 +51,7 @@ InputDecoration appInputDecoration(BuildContext context, {required String hint, 
     focusedBorder: b(c.primary.withValues(alpha: 0.7)),
     errorBorder: b(c.danger.withValues(alpha: 0.7)),
     focusedErrorBorder: b(c.danger),
-    errorStyle: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.danger),
+    errorStyle: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.danger),
   );
 }
 
@@ -62,7 +63,7 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Text(text,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w700, color: context.colors.textMedium)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w700, color: context.colors.textMedium)),
       );
 }
 
@@ -109,7 +110,7 @@ class _AppEmailFieldState extends State<AppEmailField> {
           enableSuggestions: false,
           autofillHints: const [AutofillHints.email],
           textInputAction: TextInputAction.next,
-          style: TextStyle(fontFamily: 'tajawal', fontSize: 14, color: c.textDark),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, color: c.textDark),
           autovalidateMode: _touched ? AutovalidateMode.onUserInteraction : AutovalidateMode.disabled,
           validator: (v) => validateEmail(v, required: widget.required),
           onChanged: (v) {
@@ -177,7 +178,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
           autocorrect: false,
           enableSuggestions: false,
           autofillHints: const [AutofillHints.password],
-          style: TextStyle(fontFamily: 'tajawal', fontSize: 14, color: c.textDark),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, color: c.textDark),
           validator: (s) {
             final x = s ?? '';
             if (x.isEmpty) return widget.required ? _t('كلمة المرور مطلوبة', 'Password is required') : null;
@@ -206,7 +207,7 @@ class _AppPasswordFieldState extends State<AppPasswordField> {
                 Icon(ok ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
                     size: 15, color: ok ? c.success : c.textLight),
                 const SizedBox(width: 6),
-                Text(text, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: ok ? c.success : c.textMedium)),
+                Text(text, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: ok ? c.success : c.textMedium)),
               ]),
             ),
         ],
@@ -237,7 +238,7 @@ class AppUrlField extends StatelessWidget {
             keyboardType: TextInputType.url,
             textDirection: TextDirection.ltr,
             autocorrect: false,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 14, color: context.colors.textDark),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, color: context.colors.textDark),
             validator: (v) {
               final s = normalize(v ?? '');
               if (s.isEmpty) return required ? _t('الرابط مطلوب', 'The link is required') : null;

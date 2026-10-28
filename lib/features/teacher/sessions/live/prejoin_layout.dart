@@ -14,6 +14,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
 import 'widgets/live_palette.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 /// One input device: `(id, label)`.
 typedef PreJoinDevice = (String id, String label);
@@ -331,7 +332,7 @@ class PreJoinLayout extends StatelessWidget {
           key: const ValueKey('prejoin.join'),
           child: AppPrimaryButton(
             label: busy ? 'lr_joining'.tr : 'lr_join_session'.tr,
-            icon: busy ? null : Icons.login_rounded,
+            icon: busy ? null : DirIcons.login,
             busy: busy,
             onPressed: onJoin,
           ),

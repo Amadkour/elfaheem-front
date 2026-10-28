@@ -21,6 +21,7 @@ import 'attendance_offline_sync.dart';
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Premium pill
@@ -144,7 +145,7 @@ class _PremiumPillState extends State<_PremiumPill> with SingleTickerProviderSta
                 Text(
                   widget.label,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
                     color: context.colors.onHero,

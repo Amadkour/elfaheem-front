@@ -14,6 +14,7 @@ import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import 'admin_common.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Future<void> showIncomeBreakdown(BuildContext context) =>
     showAdminSheet(context, (_) => const _BreakdownSheet());
@@ -83,7 +84,7 @@ class _BreakdownSheetState extends State<_BreakdownSheet> {
     final subs = asMapList(data!['subscriptions']);
 
     Widget hint(String text) =>
-        Text(text, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight));
+        Text(text, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight));
 
     return Column(mainAxisSize: MainAxisSize.min, children: [
       SheetHeader('admin_inc_title'.tr),

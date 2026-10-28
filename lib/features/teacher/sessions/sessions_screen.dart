@@ -1,73 +1,58 @@
 // teacher_sessions_screen.dart
 //
-// Slim orchestrator. Creates + scopes [TeacherCourseScreenProvider] to this
-// route only. All rendering is delegated to focused component files.
+// The teacher's course studio, drawn by the shared course page (CourseSpace, the same component as the student's
+// course details): hero · spotlight (live now · attendance · setup checklist) · quick actions · tabs Sessions /
+// Details · desktop side card (status, price, Add session) · recommendations.
 //
-// PERFORMANCE REFACTOR
+// REBUILD SCOPING
 // ─────────────────────────────────────────────────────────────────────────
-// The previous version called `context.watch<TeacherCourseScreenProvider>()`
-// once at the top of `_TeacherSessionsView`. TeacherCourseScreenProvider is a
-// "mega provider" — it owns the course header, the sessions list, per-session
-// materials, upload progress flags, and live-session state — and calls
-// notifyListeners() for all of them. A single top-level `watch` meant *every*
-// notifyListeners() (e.g. toggling an upload-in-progress flag for one
-// session) rebuilt the hero, the rating widget, the course-details card, and
-// the entire sessions list, even though none of that data had changed.
-//
-// It also gave `DetailCard` a brand new `Key` (`Random().nextDouble()`) on
-// every single build. A changing key tells Flutter "this is a different
-// widget", so DetailCard was being torn down and recreated from scratch on
-// every rebuild — losing its own internal expand/collapse animation state
-// and paying full widget-creation cost for no reason.
-//
-// Fix, keeping the app's existing Provider architecture (no need for a
-// framework switch — the app already has 20+ ChangeNotifierProviders wired
-// through `providers.dart`; the fix is scoping rebuilds correctly):
-//   • No more top-level `watch`. `_TeacherSessionsView` itself never rebuilds
-//     from provider changes.
-//   • `CourseHero` is wrapped in a `Selector<..., TeacherCourse>` — it only
-//     rebuilds when the course object itself changes (i.e. after
-//     refreshCourse()), not on session/material/live-state churn.
-//   • The course-details card is wrapped in a `Selector` over a record of
-//     exactly the three values it needs (course, sessionCount, expanded).
-//     Dart records have structural equality, so the Selector only rebuilds
-//     when one of those three actually changes.
-//   • DetailCard gets a stable `ValueKey` instead of a random one, so its
-//     internal expand/collapse state and animation survive rebuilds.
-//   • The sessions list is the one section that legitimately needs to react
-//     to almost everything (session CRUD, live flags, materials), so it's
-//     isolated into its own `_SessionsSlivers` widget that does its own
-//     `watch` — confined to a `SliverMainAxisGroup` so its rebuilds can never
-//     leak into the hero or details card next to it.
+// TeacherCourseScreenProvider is a "mega provider" (course header, sessions, per-session materials, upload flags,
+// live state) and notifies for all of it. Nothing at the top watches it:
+//   • the page is built from a `Selector` over a record of only what the hero / actions / spotlight / side card
+//     need (course, reel, session count, the running live session, first-load flag). Records compare
+//     structurally, so material uploads and live-flag churn on other sessions never rebuild the hero;
+//   • the Sessions tab body (`TeacherSessionsBody`) does its own `watch` — it is the one part that legitimately
+//     reacts to almost everything;
+//   • the attendance spotlight selects (type, session count) on its own.
 // ─────────────────────────────────────────────────────────────────────────
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../../design/app_responsive.dart';
 import '../../../utils/widget/base_page.dart';
 import '../../../utils/widget/rating_widget.dart';
 import '../../shared/attendance/attendance_course_entry.dart';
 import '../../shared/attendance/teacher_attendance_controller.dart';
 import '../../shared/attendance/teacher_attendance_launcher.dart';
+import '../../shared/course/course_space/course_space.dart';
 import '../../shared/course/teacher_course_roadmap_section.dart';
-import '../../shared/session/material/components/session_progress_section.dart';
 import '../../teacher/courses/course_form_screen.dart';
 import '../../teacher/sessions/components/session_form_sheet.dart';
-import '../data_lab/data_lab_entry_cards.dart';
+import '../courses/component/certificate_manager_sheet.dart';
+import '../data_lab/data_lab_api.dart';
+import '../data_lab/data_lab_models.dart';
+import '../data_lab/data_lab_screen.dart';
 import '../home/teacher_models.dart';
-import '../../student/models.dart' show CourseModel, CourseSummary;
+import '../schedules/schedules_screen.dart';
+import '../../student/models.dart' show AppCurrencyX, CourseModel, CourseSummary;
 import '../../student/courses/details/course_detail_screen.dart';
-import 'components/course_details_section.dart';
+import '../../student/courses/details/components/share_link.dart';
 import '../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
-import 'package:flutter_education_app/design/app_kit.dart' show AppBanner;
-import 'components/course_hero.dart';
-import 'components/course_stats_row.dart';
+import 'components/course_reel_player.dart';
 import 'components/sessions_section.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
+import 'components/teacher_course_parts.dart';
+import 'students/course_student_screen.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+
+String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
+
+const _tabSessions = 'sessions';
+const _tabDetails = 'details';
 
 /// Opens one of the teacher's OWN courses (next course / manually
 /// recommended — both are guaranteed by the backend to belong to this
@@ -110,9 +95,32 @@ void _openForeignCoursePreview(BuildContext context, CourseSummary summary) {
   );
 }
 
+/// What the page (everything but the Sessions tab body) depends on.
+typedef _PageData = ({
+  TeacherCourse course,
+  String? reelUrl,
+  int sessionCount,
+  int liveId,
+  String liveName,
+  bool loadingAll,
+});
+
+_PageData _select(TeacherCourseScreenProvider p) {
+  final live = p.sessions.where((s) => s.isLiveActive).firstOrNull;
+  return (
+    course: p.course,
+    reelUrl: p.reelUrl,
+    sessionCount: p.sessionCount,
+    liveId: live?.id ?? -1,
+    liveName: live?.name ?? '',
+    loadingAll: p.loadingAllPage,
+  );
+}
+
 class TeacherSessionsScreen extends StatefulWidget {
   const TeacherSessionsScreen({super.key, this.expandDetails});
 
+  /// Open on the Details tab.
   final bool? expandDetails;
 
   @override
@@ -120,43 +128,40 @@ class TeacherSessionsScreen extends StatefulWidget {
 }
 
 class _TeacherSessionsScreenState extends State<TeacherSessionsScreen> {
+  late String _tab = widget.expandDetails == true ? _tabDetails : _tabSessions;
+
+  /// First load finished (later refreshes keep the page on screen).
+  bool _loaded = false;
+
+  /// Data Lab switched on for this course (DlConfig.enabled); unknown until loaded.
+  bool _dataLab = false;
+
+  TeacherCourseScreenProvider get _provider => context.read<TeacherCourseScreenProvider>();
+
   @override
   void initState() {
     super.initState();
-    // addPostFrameCallback instead of Future.microtask — runs after the
-    // first frame is laid out, consistent with the rest of the app (see
-    // EnrolledStudentsScreen), and avoids any chance of racing widget build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<TeacherCourseScreenProvider>().refresh();
-      }
+      if (!mounted) return;
+      final provider = _provider;
+      provider.refresh().whenComplete(() {
+        if (mounted) setState(() => _loaded = true);
+      });
+      DataLabApi()
+          .config(courseId: provider.course.id)
+          .catchError((_) => const DlConfig())
+          .then((cfg) {
+        if (mounted) setState(() => _dataLab = cfg.enabled);
+      });
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Scope the provider to this route. Disposed automatically on pop.
-    return ChangeNotifierProvider.value(
-      value: context.read<TeacherCourseScreenProvider>(),
-      child: _TeacherSessionsView(expandDetails: widget.expandDetails),
-    );
-  }
-}
+  // ── Navigation ────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────────────────────
-// View — owns navigation callbacks only. Does NOT watch the provider: every
-// section below scopes its own rebuild independently.
-// ─────────────────────────────────────────────────────────────────────────────
+  void _setTab(String id) => setState(() => _tab = id);
 
-class _TeacherSessionsView extends StatelessWidget {
-  const _TeacherSessionsView({this.expandDetails});
-
-  final bool? expandDetails;
-
-  // ── Navigation helpers ────────────────────────────────────────────────────
-
-  void _openAddSheet(BuildContext context) {
-    final provider = context.read<TeacherCourseScreenProvider>();
+  void _openAddSheet() {
+    final provider = _provider;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -169,225 +174,317 @@ class _TeacherSessionsView extends StatelessWidget {
     );
   }
 
-  Future<void> _openEditCourse(BuildContext context) async {
-    final provider = context.read<TeacherCourseScreenProvider>();
+  Future<void> _openEditCourse() async {
+    final provider = _provider;
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => CourseFormScreen(course: provider.course),
-      ),
+      MaterialPageRoute(builder: (_) => CourseFormScreen(course: provider.course)),
     );
     // Refresh header + sessions after editing
     await provider.refresh();
   }
 
+  Future<void> _openSchedules() async {
+    final provider = _provider;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => TeacherSchedulesScreen(course: provider.course)),
+    );
+    if (mounted) await provider.refreshCourse();
+  }
+
+  void _openStudents() => Navigator.push(
+    context,
+    MaterialPageRoute(builder: (_) => EnrolledStudentsScreen(course: _provider.course)),
+  );
+
+  void _openCertificate(CourseCertificate cert) => showCertificateManagerSheet(
+    context,
+    courseId: _provider.course.id,
+    certificateId: cert.id,
+    certificateTitle: cert.title,
+    templateUrl: cert.templateUrl,
+  );
+
+  // ── Build ─────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    // `read`, not `watch` — this widget has nothing that depends on provider
-    // state directly (onRefresh just delegates), so it should never rebuild
-    // when the provider notifies.
-    final provider = context.read<TeacherCourseScreenProvider>();
     return BasePage(
       key: const ValueKey('teacher_sessions'),
       useWebCard: true,
+      maxWith: 1360,
       child: SafeArea(
         top: false,
-        child: AppRefresh(
-          onRefresh: () => provider.refresh(),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            slivers: [
-              // ── Hero — rebuilds only when `course` changes ────────────
-              SliverToBoxAdapter(
-                child:
-                    Selector<
-                      TeacherCourseScreenProvider,
-                      (TeacherCourse course, String? reelUrl)
-                    >(
-                      selector: (_, p) => (p.course, p.reelUrl),
-                      builder: (context, data, _) {
-                        final (course, reelUrl) = data;
+        child: Selector<TeacherCourseScreenProvider, _PageData>(
+          selector: (_, p) => _select(p),
+          builder: (context, d, _) =>
+              !_loaded && d.loadingAll ? const CourseSpaceSkeleton() : _page(context, d),
+        ),
+      ),
+    );
+  }
 
-                        return CourseHero(
-                          course: course,
-                          reelUrl: reelUrl,
-                          onBack: () => Navigator.maybePop(context),
-                          onEditCourse: () => _openEditCourse(context),
-                          onRefresh: () => provider.refresh(),
-                        );
-                      },
-                    ),
+  Widget _page(BuildContext context, _PageData d) {
+    final course = d.course;
+    final c = context.colors;
+    final ar = AppConfig.lang == 'ar';
+    final title = (ar ? course.titleAr : course.titleEn) ?? course.titleEn ?? course.titleAr ?? '';
+    final description = (ar ? course.descriptionAr : course.descriptionEn) ?? '';
+    final reel = d.reelUrl;
+    final hasReel = reel != null && reel.isNotEmpty && !AppConfig.disableList.contains('course_hero.reel');
+    final live = course.type == 'live';
+
+    final hero = CourseSpaceHeroData(
+      title: title,
+      subtitle: description,
+      imageUrl: course.imageUrl,
+      category: course.category == null ? null : (ar ? course.category!.nameAr : course.category!.nameEn),
+      isPrivate: course.isPrivate,
+      privateLabel: 'course_hero_private'.tr,
+      badges: [
+        course.isPublished
+            ? CourseSpaceBadge(label: _t('منشور', 'Published'), icon: Icons.public_rounded)
+            : CourseSpaceBadge(label: _t('مسودة', 'Draft'), icon: Icons.edit_note_rounded, color: c.warning),
+        if (live)
+          CourseSpaceBadge(label: _t('بث مباشر', 'Live'), icon: Icons.sensors_rounded)
+        else if (course.type == 'recorded')
+          CourseSpaceBadge(label: _t('مسجّل', 'Recorded'), icon: Icons.play_circle_outline_rounded),
+      ],
+      stats: [
+        CourseSpaceStat(
+          featureKey: 'course_stats.students',
+          icon: Icons.groups_rounded,
+          value: '${course.studentsCount}',
+          label: 'student'.tr,
+          onTap: _openStudents,
+        ),
+        CourseSpaceStat(
+          featureKey: 'course_stats.sessions',
+          icon: Icons.play_lesson_rounded,
+          value: '${d.sessionCount}',
+          label: 'sessions'.tr,
+        ),
+        CourseSpaceStat(
+          featureKey: 'course_stats.duration',
+          icon: Icons.schedule_rounded,
+          value: courseHoursLabel(course.totalHours),
+          label: 'duration'.tr,
+        ),
+        CourseSpaceStat(
+          featureKey: 'course_stats.price',
+          icon: Icons.sell_rounded,
+          value: course.currency.format(course.finalPrice ?? 0),
+          label: 'cost'.tr,
+        ),
+      ],
+    );
+
+    final showRefresh = kIsWeb || MediaQuery.sizeOf(context).width >= Breakpoints.desktop;
+    final provider = _provider;
+
+    return CourseSpace(
+      hero: hero,
+      heroBackground: hasReel
+          ? CourseReelPlayer(
+              key: ValueKey(reel),
+              url: reel,
+              posterUrl: course.imageUrl.isNotEmpty ? course.imageUrl : null,
+            )
+          : null,
+      onBack: Navigator.of(context).canPop() ? () => Navigator.maybePop(context) : null,
+      onRefresh: provider.refresh,
+      topActions: [
+        if (showRefresh)
+          CourseSpaceTopAction(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, onTap: provider.refresh),
+        CourseSpaceTopAction(
+          icon: Icons.ios_share_rounded,
+          tooltip: 'course_hero_share'.tr,
+          onTap: () => shareCourseLink(context, course.toCourseModel),
+        ),
+        CourseSpaceTopAction(icon: Icons.edit_rounded, tooltip: _t('تعديل الكورس', 'Edit course'), onTap: _openEditCourse),
+      ],
+      spotlight: [
+        if (d.liveId != -1)
+          CourseSpotlightCard(
+            icon: Icons.sensors_rounded,
+            title: '${_t('بث مباشر الآن', 'Live now')}: ${d.liveName}',
+            subtitle: _t('الجلسة تعمل الآن — ادخل الغرفة لإدارة البث', 'The session is running — enter the room to manage the stream'),
+            color: c.danger,
+            filled: true,
+            live: true,
+            actionLabel: _t('دخول الغرفة', 'Enter room'),
+            actionIcon: DirIcons.login,
+            // The same call the session row's join button makes for a running session.
+            onAction: () => _provider.joinLive(context, d.liveId, course.id, 100, true),
+            onTap: () => _setTab(_tabSessions),
+          ),
+        const _AttendanceSpot(),
+        if (_loaded)
+          CourseReadinessCard(
+            items: [
+              CourseReadinessItem(
+                label: _t('صورة الغلاف', 'Cover image'),
+                done: course.imageUrl.isNotEmpty,
+                icon: Icons.image_rounded,
+                onTap: _openEditCourse,
               ),
-              SliverToBoxAdapter(
-                child: DataLabEntryCard(
-                  courseId: provider.course.id,
-                  courseTitle: provider.course.titleEn ?? '',
-                ),
+              CourseReadinessItem(
+                label: _t('وصف الكورس', 'Description'),
+                done: (course.descriptionAr ?? '').trim().isNotEmpty || (course.descriptionEn ?? '').trim().isNotEmpty,
+                icon: Icons.notes_rounded,
+                onTap: _openEditCourse,
               ),
-              // course profile: attendance per session · team grants · certificate rules · archive
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: AppBanner(
-                    icon: Icons.dashboard_customize_rounded,
-                    text: AppConfig.lang == 'ar'
-                        ? 'ملف المقرر: الحضور، فريق التدريس، الشهادات والأرشيف'
-                        : 'Course profile: attendance, teaching team, certificates and archive',
-                    action: TextButton(
-                      onPressed: () => openCourseProfile(context, provider.course.id),
-                      child: Text(AppConfig.lang == 'ar' ? 'فتح' : 'Open'),
-                    ),
-                  ),
+              if (live)
+                CourseReadinessItem(
+                  label: 'weekly_schedule'.tr,
+                  done: course.schedules.isNotEmpty,
+                  icon: Icons.calendar_month_rounded,
+                  onTap: _openSchedules,
                 ),
+              CourseReadinessItem(
+                label: _t('أضف أول جلسة', 'Add the first session'),
+                done: d.sessionCount > 0,
+                icon: Icons.add_circle_outline_rounded,
+                onTap: _openAddSheet,
               ),
-
-              // ── Course details card — rebuilds only when course,
-              // sessionCount, or the expand flag actually change. A record
-              // has structural equality, so Selector correctly skips
-              // rebuilds triggered by unrelated provider activity (uploads,
-              // live-session flags, etc.). ──────────────────────────────
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child:
-                      Selector<
-                        TeacherCourseScreenProvider,
-                        (TeacherCourse course, int sessionCount, bool expanded)
-                      >(
-                        selector: (_, p) =>
-                            (p.course, p.sessionCount, p.openCourseDetails),
-                        builder: (context, data, _) {
-                          final (course, sessionCount, expanded) = data;
-                          return DetailCard(
-                            // Stable key — DetailCard keeps its own
-                            // expand/collapse animation state across
-                            // rebuilds instead of being destroyed and
-                            // recreated every time (previously a fresh
-                            // Random() key every build).
-                            key: const ValueKey('sessions_course_details_card'),
-                            expanded: expanded,
-                            icon: CupertinoIcons.list_bullet_below_rectangle,
-                            title: 'course_details'.tr,
-                            color: context.colors.primaryLight,
-                            course: course,
-                            children: [
-                              // ── Rating ──────────────────────────────
-                              RatingWidget(
-                                type: RateType.course,
-                                sourceId: course.id.toString(),
-                                canEdit: false,
-                                compact: false,
-                              ),
-                              // Student progress section
-                              SessionProgressSection(
-                                totalMaterial: course.expectedHours.toInt() > 0
-                                    ? course.expectedHours.toInt()
-                                    : course.totalHours.toInt(),
-                                completeMaterial: course.totalHours.toInt(),
-                                isTeacher: false,
-                                isFull: true,
-                              ),
-                              CourseStatsRow(
-                                course: course,
-                                sessionCount: sessionCount,
-                              ),
-                              CourseDetailsSection(course: course),
-                            ],
-                          );
-                        },
-                      ),
-                ),
-              ),
-
-              // ── Attendance: ONE premium entry for the whole course (not live-only
-              // courses hide it). Reacts to the sessions list only. ─────────────
-              SliverToBoxAdapter(child: _AttendanceEntrySliver()),
-
-              // ── Sessions header + list / loading / empty ──────────────
-              // Isolated so its (legitimately broad) rebuilds never touch
-              // the hero or details card above.
-              _SessionsSlivers(onAdd: () => _openAddSheet(context)),
-
-              // ── Recommendations — last component on the page, matching
-              // e-commerce "you might also like" placement. Teacher-side
-              // only ever shows the teacher's own courses (next course +
-              // manually recommended) — never the auto-suggested
-              // `similarCourses` from other teachers, since tapping those
-              // would otherwise dead-end on a student enroll flow.
-              SliverToBoxAdapter(
-                child: Selector<TeacherCourseScreenProvider, TeacherCourse>(
-                  selector: (_, p) => p.course,
-                  builder: (context, course, _) => Padding(
-                    padding: const EdgeInsets.only(top: 8, bottom: 24),
-                    child: CourseRecommendationsSection(
-                      nextCourses: course.nextCourses,
-                      recommendedCourses: course.recommendedCourseSummaries,
-                      similarCourses: course.similarCourses,
-                      onTapOwnCourse: (s) => _openOwnCoursePreview(context, s),
-                      onTapSuggestedCourse: (s) =>
-                          _openForeignCoursePreview(context, s),
-                    ),
-                  ),
-                ),
+              CourseReadinessItem(
+                label: _t('انشر الكورس', 'Publish the course'),
+                done: course.isPublished,
+                icon: Icons.public_rounded,
+                onTap: _openEditCourse,
               ),
             ],
           ),
+      ],
+      actions: [
+        CourseSpaceAction(
+          icon: Icons.add_rounded,
+          label: 'add_session_btn'.tr,
+          caption: _t('درس جديد بمواده', 'A new lesson with its materials'),
+          onTap: _openAddSheet,
+        ),
+        CourseSpaceAction(
+          icon: Icons.groups_rounded,
+          label: _t('الطلاب', 'Students'),
+          caption: _t('المسجّلون وتقدّمهم', 'Enrolled students and progress'),
+          color: c.primaryLight,
+          onTap: _openStudents,
+        ),
+        CourseSpaceAction(
+          icon: Icons.dashboard_customize_rounded,
+          label: _t('ملف المقرر', 'Course profile'),
+          caption: _t('الحضور، الفريق، الشهادات، الأرشيف', 'Attendance, team, certificates, archive'),
+          color: c.purple,
+          onTap: () => openCourseProfile(context, course.id),
+        ),
+        if (_dataLab)
+          CourseSpaceAction(
+            featureKey: 'data_lab.entry',
+            icon: Icons.science_rounded,
+            label: 'dl_title'.tr,
+            caption: 'dl_entry_sub'.tr,
+            color: c.accent,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => DataLabScreen(courseId: course.id, courseTitle: title)),
+            ),
+          ),
+        if (course.type != 'recorded')
+          CourseSpaceAction(
+            icon: Icons.calendar_month_rounded,
+            label: 'weekly_schedule'.tr,
+            caption: course.schedules.isEmpty
+                ? _t('لم تُضف مواعيد بعد', 'No times yet')
+                : _t('${course.schedules.length} مواعيد', '${course.schedules.length} times a week'),
+            color: c.success,
+            onTap: _openSchedules,
+          ),
+        if (course.certificates.isNotEmpty)
+          CourseSpaceAction(
+            icon: Icons.workspace_premium_rounded,
+            label: 'certificates'.tr,
+            caption: 'manage_certificate_btn'.tr,
+            color: c.accent2,
+            onTap: () => course.certificates.length == 1
+                ? _openCertificate(course.certificates.first)
+                : _setTab(_tabDetails),
+          ),
+        CourseSpaceAction(
+          icon: Icons.edit_rounded,
+          label: _t('تعديل الكورس', 'Edit course'),
+          caption: _t('السعر، الوصف، النشر', 'Price, description, publishing'),
+          color: c.warning,
+          onTap: _openEditCourse,
+        ),
+      ],
+      tabs: [
+        CourseSpaceTab(
+          id: _tabSessions,
+          label: 'sessions'.tr,
+          icon: Icons.play_lesson_rounded,
+          count: d.sessionCount,
+          live: d.liveId != -1,
+          builder: (_) => TeacherSessionsBody(onAdd: _openAddSheet),
+        ),
+        CourseSpaceTab(
+          id: _tabDetails,
+          label: 'course_details'.tr,
+          icon: Icons.info_outline_rounded,
+          builder: (_) => TeacherCourseDetails(
+            course: course,
+            rating: RatingWidget(
+              type: RateType.course,
+              sourceId: course.id.toString(),
+              canEdit: false,
+              compact: false,
+            ),
+            onManageSchedule: _openSchedules,
+            onManageCertificate: _openCertificate,
+          ),
+        ),
+      ],
+      activeTab: _tab,
+      onTab: _setTab,
+      aside: TeacherCourseStatusCard(course: course, onAddSession: _openAddSheet, onEdit: _openEditCourse),
+      // Recommendations — last on the page, e-commerce "you might also like" placement. Teacher-side only ever
+      // shows the teacher's own courses (next course + manually recommended) as manageable; the auto-suggested
+      // `similarCourses` of other teachers open read-only.
+      footer: Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: CourseRecommendationsSection(
+          nextCourses: course.nextCourses,
+          recommendedCourses: course.recommendedCourseSummaries,
+          similarCourses: course.similarCourses,
+          onTapOwnCourse: (s) => _openOwnCoursePreview(context, s),
+          onTapSuggestedCourse: (s) => _openForeignCoursePreview(context, s),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────
-// Sessions section — the one area that needs to react to nearly everything
-// the provider does (session CRUD, live-session flags, material uploads),
-// so it does its own `watch`. `SliverMainAxisGroup` lets a single widget own
-// a whole group of slivers, which is what confines this rebuild boundary.
-// ─────────────────────────────────────────────────────────────────────────
+/// ONE attendance entry for the whole course: hidden for recorded / empty courses — unless a web session is
+/// waiting for this phone's location, then the entry (with its "share location" card) must always be reachable.
+class _AttendanceSpot extends StatelessWidget {
+  const _AttendanceSpot();
 
-class _SessionsSlivers extends StatelessWidget {
-  const _SessionsSlivers({required this.onAdd});
-
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<TeacherCourseScreenProvider>();
-    return SliverMainAxisGroup(
-      slivers: buildSessionsSlivers(
-        context,
-        course: provider.course,
-        provider: provider,
-        onAdd: onAdd,
-      ),
-    );
-  }
-}
-
-class _AttendanceEntrySliver extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.select<TeacherCourseScreenProvider, (String?, int)>(
       (p) => (p.course.type, p.sessions.length),
     );
-    // Hidden for recorded / empty courses — unless a web session is waiting for this phone's
-    // location, then the entry (with its "share location" card) must always be reachable.
     return ListenableBuilder(
       listenable: TeacherAttendanceController.instance,
       builder: (ctx, _) {
-        final waiting =
-            TeacherAttendanceController.instance.webLocationRequested;
-        if (!waiting && (p.$1 == 'recorded' || p.$2 == 0))
-          return const SizedBox.shrink();
+        final waiting = TeacherAttendanceController.instance.webLocationRequested;
+        if (!waiting && (p.$1 == 'recorded' || p.$2 == 0)) return const SizedBox.shrink();
         final sessions = ctx.read<TeacherCourseScreenProvider>().sessions;
         return TeacherAttendanceCourseEntry(
+          padding: EdgeInsets.zero,
           sessions: [
             for (var i = 0; i < sessions.length; i++)
-              LauncherSession(
-                id: sessions[i].id,
-                number: i + 1,
-                name: sessions[i].name,
-              ),
+              LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name),
           ],
         );
       },

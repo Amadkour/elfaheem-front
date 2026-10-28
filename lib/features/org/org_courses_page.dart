@@ -15,6 +15,7 @@ import 'org_v3.dart';
 import 'org_academic_pages.dart' show CourseArchiveScreen;
 import '../admin/admin_table_export.dart' show exportPagedList, orgCoursesExport;
 import '../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Active members of one role (up to 200) — used by the pickers.
 Future<List<Map<String, dynamic>>> orgPeople(OrgSession s, String role, {String? search}) async {
@@ -54,31 +55,31 @@ class _CoursesView extends StatelessWidget {
           if (s.can('courses', 'insert')) ...[
             ActionChip(
               avatar: Icon(Icons.upload_file_rounded, size: 18, color: c.primary),
-              label: Text(t('استيراد كورسات', 'Import courses'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+              label: Text(t('استيراد كورسات', 'Import courses'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
               onPressed: () async {
                 if (await importExcelFlow(context, 'courses') && context.mounted) p.refresh();
               },
             ),
             ActionChip(
               avatar: Icon(Icons.description_outlined, size: 18, color: c.textMedium),
-              label: Text(t('نموذج الكورسات', 'Courses template'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+              label: Text(t('نموذج الكورسات', 'Courses template'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
               onPressed: () => downloadExcel(context, 'template/courses'),
             ),
           ],
           if (s.can('students', 'insert'))
             ActionChip(
               avatar: Icon(Icons.how_to_reg_rounded, size: 18, color: c.primary),
-              label: Text(t('استيراد تسجيلات', 'Import enrollments'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+              label: Text(t('استيراد تسجيلات', 'Import enrollments'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
               onPressed: () => importExcelFlow(context, 'enrollments').then((_) => p.refresh()),
             ),
           ActionChip(
             avatar: Icon(Icons.ios_share_rounded, size: 18, color: c.success),
-            label: Text(t('تصدير الكورسات', 'Export courses'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+            label: Text(t('تصدير الكورسات', 'Export courses'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
             onPressed: () => exportPagedList(context, p, (rows) => orgCoursesExport(rows, orgName: s.name)),
           ),
           ActionChip(
             avatar: Icon(Icons.download_rounded, size: 18, color: c.success),
-            label: Text(t('تصدير التسجيلات', 'Export enrollments'), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+            label: Text(t('تصدير التسجيلات', 'Export enrollments'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
             onPressed: () => downloadExcel(context, 'export/enrollments'),
           ),
         ]),
@@ -102,7 +103,7 @@ class _CoursesView extends StatelessWidget {
               if (await showOrgCourseForm(context) != null) p.refresh();
             },
             icon: Icon(Icons.add_rounded, color: c.onHero),
-            label: Text(t('كورس جديد', 'New course'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+            label: Text(t('كورس جديد', 'New course'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
           ),
         ),
     ]);
@@ -128,8 +129,8 @@ class _CourseTile extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: teacher == null ? c.warning : c.textMedium)),
+              Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+              Text(teacher == null ? t('بلا مدرس بعد', 'No teacher yet') : '$teacher', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: teacher == null ? c.warning : c.textMedium)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 InfoChip(Icons.groups_rounded, '${row['students']}', c.primary),
@@ -273,12 +274,12 @@ Future<Map<String, dynamic>?> showOrgCourseForm(BuildContext context, {Map<Strin
             ),
             if (options.isNotEmpty) ...[
               Text(t('المتطلبات السابقة (مقررات يجب اجتيازها أولاً)', 'Prerequisites (courses to complete first)'),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 6, children: [
                 for (final o in options)
                   FilterChip(
-                    label: Text(t('${o['name_ar'] ?? o['name_en']}', '${o['name_en'] ?? o['name_ar']}'), style: const TextStyle(fontFamily: 'tajawal')),
+                    label: Text(t('${o['name_ar'] ?? o['name_en']}', '${o['name_en'] ?? o['name_ar']}'), style: TextStyle(fontFamily: AppFonts.family)),
                     selected: prereqs.contains(asInt(o['id'])),
                     onSelected: (on) => set(() => on ? prereqs.add(asInt(o['id'])) : prereqs.remove(asInt(o['id']))),
                   ),
@@ -377,7 +378,7 @@ Future<void> _enrollSheet(BuildContext context, OrgCoursesProvider p, Map<String
                         CheckboxListTile(
                           value: picked.contains(asInt(u['id'])),
                           onChanged: (v) => set(() => v == true ? picked.add(asInt(u['id'])) : picked.remove(asInt(u['id']))),
-                          title: Text('${u['name']}', style: TextStyle(fontFamily: 'tajawal', color: c.textDark)),
+                          title: Text('${u['name']}', style: TextStyle(fontFamily: AppFonts.family, color: c.textDark)),
                           subtitle: Text('${u['email']}', textDirection: TextDirection.ltr),
                           dense: true,
                         ),

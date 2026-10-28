@@ -19,7 +19,9 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, AppTime;
 import '../../../core/base_provider.dart';
 import '../../shared/calendar/calendar_models.dart';
+import '../../shared/calendar/calendar_meeting.dart' show QuickMeetingButton;
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -218,7 +220,12 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
                   sliver: SliverList.list(children: [
                     Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: Text('upcoming_meetings'.tr, style: context.colors.h3),
+                      child: Row(children: [
+                        Expanded(child: Text('upcoming_meetings'.tr, style: context.colors.h3)),
+                        const SizedBox(width: 8),
+                        // "Meet now" (live-rooms-spec §7, kill switch live.quick_meeting)
+                        const QuickMeetingButton(),
+                      ]),
                     ),
                     for (final m in meetings.take(8)) _MeetingTile(meeting: m),
                   ]),
@@ -423,7 +430,7 @@ class _NextBanner extends StatelessWidget {
                       style: TextStyle(
                           color: context.colors.onHero,
                           fontSize: 11,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -432,7 +439,7 @@ class _NextBanner extends StatelessWidget {
                       style: TextStyle(
                           color: context.colors.onHero,
                           fontSize: 17,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontWeight: FontWeight.w800),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
@@ -445,7 +452,7 @@ class _NextBanner extends StatelessWidget {
                         style: TextStyle(
                             color: context.colors.onHeroMuted,
                             fontSize: 12,
-                            fontFamily: 'bahji')),
+                            fontFamily: AppFonts.display)),
                     if (slot.calcDuration > 0) ...[
                       const SizedBox(width: 10),
                       Container(
@@ -457,7 +464,7 @@ class _NextBanner extends StatelessWidget {
                             style: TextStyle(
                                 color: context.colors.onHeroMuted,
                                 fontSize: 11,
-                                fontFamily: 'bahji')),
+                                fontFamily: AppFonts.display)),
                       ),
                     ],
                   ]),
@@ -474,7 +481,7 @@ class _NextBanner extends StatelessWidget {
                       style: TextStyle(
                           color: context.colors.onHero,
                           fontSize: 13,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontWeight: FontWeight.w700),
                     ),
                   ),
@@ -557,12 +564,12 @@ class _ProgressRing extends StatelessWidget {
                       color: context.colors.onHero,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'bahji')),
+                      fontFamily: AppFonts.display)),
               Text('completed'.tr,
                   style: TextStyle(
                       color: context.colors.onHeroMuted,
                       fontSize: 9,
-                      fontFamily: 'bahji')),
+                      fontFamily: AppFonts.display)),
             ]),
           ]));
 }
@@ -678,7 +685,7 @@ class _WeekStrip extends StatelessWidget {
                         slotDayShort(day),
                         maxLines: 1,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isSel
@@ -920,7 +927,7 @@ class _ManageCard extends StatelessWidget {
                 color: context.colors.onHero,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'bahji'),
+                fontFamily: AppFonts.display),
             textAlign: TextAlign.center,
           ),
         ),
@@ -974,18 +981,18 @@ class _ManageCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16)),
             title:  Text('appointment-delete'.tr,
                 style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w700)),
             content: Text(
                 trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': AppTime.clock(s.startTime)}),
 
-                style: const TextStyle(fontFamily: 'bahji')),
+                style: TextStyle(fontFamily: AppFonts.display)),
             actions: [
               TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
                   child:  Text('cancel'.tr,
                       style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           color: context.colors.textMedium))),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -995,7 +1002,7 @@ class _ManageCard extends StatelessWidget {
                 onPressed: () => Navigator.pop(ctx, true),
                 child:  Text('delete'.tr,
                     style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         color: context.colors.onHero,
                         fontWeight: FontWeight.w700)),
               ),
@@ -1049,7 +1056,7 @@ class _ManageEmptyState extends StatelessWidget {
                 style: TextStyle(
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 14)),
           ),
         ),
@@ -1104,17 +1111,17 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
               child: AlertDialog(
                 title:  Text('duplicate-schedule'.tr,
                     style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontWeight: FontWeight.w700)),
                 content:  Text(
                     'same-day-schedule-exists'.tr,
-                    style: TextStyle(fontFamily: 'bahji')),
+                    style: TextStyle(fontFamily: AppFonts.display)),
                 actions: [
                   TextButton(
                       onPressed: () => Navigator.pop(context, false),
                       child:  Text('cancel'.tr,
                           style: TextStyle(
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                               color: context.colors.textMedium))),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
@@ -1124,7 +1131,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                     onPressed: () => Navigator.pop(context, true),
                     child:  Text('add'.tr,
                         style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             color: context.colors.onHero,
                             fontWeight: FontWeight.w700)),
                   ),

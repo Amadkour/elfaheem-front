@@ -12,6 +12,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class RecommendedCoursesField extends StatelessWidget {
   final List<Map<String, dynamic>> options; // [{'id': int, 'text': String}]
@@ -77,7 +78,7 @@ class RecommendedCoursesField extends StatelessWidget {
                         : 'choose_recommended_courses'.tr)
                         : '${selected.length} ${'courses_selected_count'.tr}',
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 16,
                       color: selected.isEmpty
                           ? context.colors.textLight
@@ -113,7 +114,7 @@ class RecommendedCoursesField extends StatelessWidget {
                     Text(
                       c['text'] as String,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: context.colors.primary,
@@ -191,7 +192,7 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
                     onPressed: () => Navigator.pop(context),
                     child: Text('done_btn'.tr,
                         style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontWeight: FontWeight.w700,
                             color: context.colors.primary)),
                   ),
@@ -214,7 +215,7 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
                       value: checked,
                       title: Text(
                         o['text'] as String,
-                        style: const TextStyle(fontFamily: 'tajawal', fontSize: 13),
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
                       ),
                       activeColor: context.colors.primary,
                       controlAffinity: ListTileControlAffinity.leading,

@@ -21,6 +21,7 @@ import 'admin_table_export.dart' show adminCoursesExport;
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminCoursesPage extends StatelessWidget {
   const AdminCoursesPage({super.key, this.embedded = false});
@@ -117,7 +118,7 @@ class _CoursesView extends StatelessWidget {
                   child: Text(
                     'admin_total_course_income_after_discounts'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       color: c.textMedium,
                     ),
                   ),
@@ -125,7 +126,7 @@ class _CoursesView extends StatelessWidget {
                 Text(
                   moneyByCurrency(p.incomeByCurrency),
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w900,
                     color: c.primary,
                     fontSize: 16,
@@ -147,7 +148,7 @@ class _CoursesView extends StatelessWidget {
             : AppBar(
           title: Text(
             'courses'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(
@@ -158,7 +159,7 @@ class _CoursesView extends StatelessWidget {
           icon: Icon(Icons.add_rounded, color: c.onHero),
           label: Text(
             'admin_add_course'.tr,
-            style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+            style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
           ),
         ),
         body: PagedList<AdminCoursesProvider>(
@@ -196,7 +197,7 @@ class _CourseTile extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: c.textDark,
@@ -213,7 +214,7 @@ class _CourseTile extends StatelessWidget {
           Text(
             course.teacherName,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               color: c.textLight,
             ),
@@ -299,7 +300,7 @@ class _Stat extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 12.5,
                     color: c.textDark,
@@ -308,7 +309,7 @@ class _Stat extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 10.5,
                     color: c.textLight,
                   ),
@@ -408,7 +409,7 @@ class _CourseDetailState extends State<_CourseDetail> {
           child: AlertDialog(
             scrollable: true,
             title: Text('admin_change_access_code'.tr,
-                style: const TextStyle(fontFamily: 'tajawal')),
+                style: TextStyle(fontFamily: AppFonts.family)),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -626,7 +627,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                             FilterChip(
                               label: Text(
                                 m.value,
-                                style: const TextStyle(fontFamily: 'tajawal'),
+                                style: TextStyle(fontFamily: AppFonts.family),
                               ),
                               selected: methods.contains(m.key),
                               selectedColor: c.primary.withValues(alpha: 0.25),
@@ -649,7 +650,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                     Text(
                       'admin_instapay_is_only_shown_for_egp_courses'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11.5,
                         color: c.textLight,
                       ),
@@ -677,7 +678,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                                 child: Text(
                                   '#${pay['id']} • ${asStr(pay['method'], '—')} • ${shortDate(asStrOrNull(pay['created_at']))}',
                                   style: TextStyle(
-                                    fontFamily: 'tajawal',
+                                    fontFamily: AppFonts.family,
                                     fontSize: 12.5,
                                     color: c.textMedium,
                                   ),
@@ -691,7 +692,7 @@ class _CourseDetailState extends State<_CourseDetail> {
                                   ),
                                 ),
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontWeight: FontWeight.w700,
                                   color: c.textDark,
                                 ),
@@ -944,7 +945,7 @@ class _CourseFormState extends State<_CourseForm> {
         child: SimpleDialog(
           title: Text(
             'admin_choose_teacher'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
           children: [
             SizedBox(
@@ -956,7 +957,7 @@ class _CourseFormState extends State<_CourseForm> {
                     ListTile(
                       title: Text(
                         u.name,
-                        style: const TextStyle(fontFamily: 'tajawal'),
+                        style: TextStyle(fontFamily: AppFonts.family),
                       ),
                       subtitle: Text(
                         u.gmail,
@@ -1084,7 +1085,7 @@ class _CourseFormState extends State<_CourseForm> {
                     child: Text(
                       'price_plans_hint'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11.5,
                         color: context.colors.textLight,
                       ),

@@ -7,6 +7,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -38,13 +39,13 @@ class SessionTrackTabs extends StatelessWidget {
               Icon(icon, size: 18, color: on ? tone : c.textLight),
               const SizedBox(width: 6),
               Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? c.textDark : c.textMedium))),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? c.textDark : c.textMedium))),
               if (n != null) ...[
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
                   decoration: BoxDecoration(color: (on ? tone : c.textLight).withValues(alpha: 0.14), borderRadius: BorderRadius.circular(10)),
-                  child: Text('$n', style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w800, color: on ? tone : c.textMedium)),
+                  child: Text('$n', style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w800, color: on ? tone : c.textMedium)),
                 ),
               ],
             ]),

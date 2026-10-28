@@ -14,6 +14,7 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'attendance_strings.dart';
 import 'attendance_live_screen.dart';
 import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String _mmss(Duration d) =>
     '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
@@ -78,7 +79,7 @@ class AttendanceTeacherBanner extends StatelessWidget {
                       closing ? attT('att_t_closing', args: {'n': '${t.closingLeft}'}) : attT('att_t_running'),
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 13, fontWeight: FontWeight.w700, color: context.colors.onHero),
+                          fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w700, color: context.colors.onHero),
                     ),
                   ),
                 if (t.lessonTitle != null && t.lessonTitle!.isNotEmpty) ...[
@@ -88,7 +89,7 @@ class AttendanceTeacherBanner extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                            fontFamily: 'tajawal', fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.9))),
+                            fontFamily: AppFonts.family, fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.9))),
                   ),
                 ],
                 const Spacer(),

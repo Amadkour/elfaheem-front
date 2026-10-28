@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import '../../utils/helpers.dart';
-import '../../utils/widget/primary_button.dart';
 import '../shared/guest/guest_state.dart';
 import 'auth_provider.dart';
+import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'forget_screen.dart';
 import 'google_auth_flow.dart';
 import 'mfa.dart';
 import 'mfa_verify_screen.dart';
 import 'register_screen.dart';
+import 'username.dart' show IdentifierIconData;
 import '../../utils/widget/parent_component.dart';
 import '../org/org_application_screen.dart';
 
@@ -58,6 +57,8 @@ class _LoginScreenState extends State<LoginScreen> {
     );
     if (!mounted) return;
     if (success) {
+      // lets the platform's password manager offer to save the sign-in
+      TextInput.finishAutofillContext();
       authProvider.loadCachedUser();
       if (mounted) {
         Navigator.of(context).pushNamed(authProvider.homeRoute);
@@ -87,401 +88,111 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── Language switch ──────────────────────────────────────────────────────
-  bool get _isArabic => AppConfig.lang == 'ar';
-
-  Future<void> _toggleLang() async {
-    await context.read<LangProvider>().changeLang(_isArabic ? 'en' : 'ar');
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Consumer<LangProvider>(
-      builder: (context, l, _) {
-        return BasePage(
-          child: MediaQuery.of(context).size.width > 800
-              ? _buildWideLayout()
-              : _buildNarrowLayout(),
-        );
-      },
+    return AuthScaffold(
+      title: 'auth_welcome_back'.tr,
+      subtitle: 'auth_login_sub'.tr,
+      builder: (context, isWide) => _buildForm(),
     );
   }
 
-  // ── Wide (web) layout: sidebar + centered form panel ─────────────────────
-  Widget _buildWideLayout() {
-    return Row(
-      children: [
-        AuthSidebar(),
-        Spacer(),
-        Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: ClipRRect(
-            borderRadius: BorderRadiusGeometry.circular(
-              context.colors.radiusXL,
-            ),
-            child: ColoredBox(
-              color: context.colors.isDark
-                  ? context.colors.cardBg
-                  : context.colors.primary.withAlpha(30),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 24,
-                ),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 40,
-                      vertical: 32,
-                    ),
-                    child: _buildFormCard(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Spacer(),
-
-      ],
-    );
-  }
-
-  // ── Narrow (mobile) layout ───────────────────────────────────────────────
-  Widget _buildNarrowLayout() {
-    return Center(
-      child: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: _buildFormCard(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormCard() {
+  Widget _buildForm() {
     final c = context.colors;
-    final provider = context.read<ProfileProvider>();
-    final heightUnit = context.height / 100;
+    final link = c.isDark ? c.primaryLight : c.primary;
+    final guestEnabled = !AppConfig.disableList.contains('guest_mode');
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Top bar: logo on the start side, both switches on the end ────
-          Row(
-            children: [
-              AppNetworkImage(
-                url: 'assets/images/logo.png',
-                width: 130,
-                height: 130,
-                heroTag: "logo-login",
-                fit: BoxFit.scaleDown,
-                color: c.background,
-              ),
-              const Spacer(),
-              Column(
-                children: [
-                  _langSwitch(provider),
-                  const SizedBox(height: 10),
-                  _themeSwitch(provider),
-                ],
-              ),
-            ],
-          ),
-
-          // ── Title block ──────────────────────────────────────────────────
-          Container(
-            width: 100,
-            height: 5,
-            decoration: BoxDecoration(
-              gradient: c.accentGradient,
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'login'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 30,
-              height: 1.2,
-              fontWeight: FontWeight.w800,
-              color: c.textDark,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'login_welcome'.tr,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 16,
-              height: 1.5,
-              fontWeight: FontWeight.w500,
-              color: c.secondText,
-            ),
-          ),
-          SizedBox(height: heightUnit * 2.5),
-
-          // ── Email / phone / either — controlled by the admin ─────────────
-          Builder(
-            builder: (context) {
-              final a = context.watch<MyAuthProvider>();
-              final phoneOnly = !a.loginAllowsEmail;
-              final both = a.loginAllowsEmail && a.loginAllowsPhone;
-              return IconTextField(
-                controller: _emailController,
-                label: phoneOnly
-                    ? 'phone'.tr
-                    : both
-                    ? 'email_or_phone'.tr
-                    : 'email'.tr,
-                icon: phoneOnly
-                    ? Icons.phone_outlined
-                    : both
-                    ? Icons.person_outline
-                    : Icons.email_outlined,
-                keyboard: phoneOnly
-                    ? TextInputType.phone
-                    : both
-                    ? TextInputType.text
-                    : TextInputType.emailAddress,
-              );
-            },
-          ),
-          SizedBox(height: heightUnit),
-
-          // ── Password ─────────────────────────────────────────────────────
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-          ),
-          const SizedBox(height: 10),
-
-          // ── Forgot password (end aligned) ────────────────────────────────
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: Text(
-                  'forget_password'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 13.5,
-                    color: c.primary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(height: heightUnit * 3),
-
-          // ── Login button ─────────────────────────────────────────────────
-          PrimaryButton(
-            isLoading: context.watch<MyAuthProvider>().isLoadingLogin,
-            label: 'login'.tr,
-            icon: Icons.arrow_forward_rounded,
-            onPressed: _login,
-          ),
-
-          SizedBox(height: heightUnit * 2),
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
-          ),
-          // institutions apply here; the platform team approves them before any dashboard opens
-          ParentComponent(
-            featureKey: 'register.organization',
-            child: Center(
-              child: TextButton.icon(
-                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgApplicationScreen())),
-                icon: const Icon(Icons.domain_add_rounded, size: 18),
-                label: Text('register_organization'.tr),
-              ),
-            ),
-          ),
-          SizedBox(height: heightUnit * 1.5),
-
-          // ── Continue with Google ─────────────────────────────────────────
-          const GoogleAuthSection(joining: true, smallIcon: true),
-          SizedBox(height: heightUnit * 1.5),
-
-          // ── Register + guest on ONE row (saves a full row of height) ─────
-          Center(
-            child: Builder(
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Email / phone / either (+ @username) — controlled by the admin ─
+            Builder(
               builder: (context) {
-                final guestEnabled = !AppConfig.disableList.contains(
-                  'guest_mode',
+                final spec = context.watch<MyAuthProvider>().identifierSpec;
+                return IconTextField(
+                  controller: _emailController,
+                  label: spec.labelKey.tr,
+                  icon: spec.icon.data,
+                  keyboard: spec.keyboard,
+                  autocorrect: false,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  textInputAction: TextInputAction.next,
                 );
-                if (!guestEnabled) return SizedBox.shrink();
-                return _guestButton();
               },
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            const SizedBox(height: 16),
 
-  Widget _guestButton() {
-    final c = context.colors;
-    return Material(
-      color: c.primary.withAlpha(c.isDark ? 28 : 18),
-      borderRadius: BorderRadius.circular(40),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(40),
-        onTap: () => startGuest(Navigator.of(context)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.explore_outlined, size: 16, color: c.primary),
-              const SizedBox(width: 6),
-              Text(
-                'continue_as_guest'.tr,
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: c.primary,
+            // ── Password ───────────────────────────────────────────────────
+            IconPasswordField(
+              controller: _passwordController,
+              label: 'password'.tr,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _login(),
+            ),
+
+            // ── Forgot password (end aligned) ──────────────────────────────
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ForgetScreen())),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  foregroundColor: link,
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Switches (same look for theme and language) ──────────────────────────
-  Widget _themeSwitch(ProfileProvider provider) {
-    final dark = provider.darkMode;
-    return _PillSwitch(
-      tooltip: dark ? 'Light' : 'Dark',
-      isEnd: dark,
-      dark: dark,
-      gradient: dark
-          ? LinearGradient(colors: [context.colors.heroShade, context.colors.heroTint(context.colors.heroShade, 0.12)])
-          : context.colors.accentGradient,
-      knob: Icon(
-        dark ? Icons.dark_mode_rounded : Icons.wb_sunny_rounded,
-        key: ValueKey(dark),
-        color: dark ? context.colors.purple : context.colors.warning,
-        size: 18,
-      ),
-      onTap: () => provider.changeMode(!provider.darkMode),
-    );
-  }
-
-  Widget _langSwitch(ProfileProvider provider) {
-    final ar = _isArabic;
-    final dark = provider.darkMode;
-    return _PillSwitch(
-      tooltip: ar ? 'English' : 'العربية',
-      // Physical positions: EN on the left, AR on the right.
-      isEnd: ar,
-      physical: true,
-      dark: dark,
-      gradient: dark
-          ? LinearGradient(colors: [context.colors.heroShade, context.colors.heroTint(context.colors.heroShade, 0.12)])
-          : context.colors.accentGradient,
-      knob: Text(
-        ar ? 'ع' : 'EN',
-        key: ValueKey(ar),
-        style: TextStyle(
-          fontFamily: 'tajawal',
-          fontSize: ar ? 17 : 12,
-          fontWeight: FontWeight.w800,
-          color: dark ? context.colors.purple : context.colors.primary,
-        ),
-      ),
-      onTap: _toggleLang,
-    );
-  }
-}
-
-/// Animated pill toggle shared by the theme and language switches.
-class _PillSwitch extends StatelessWidget {
-  final bool isEnd;
-  final bool dark;
-  final bool physical;
-  final Gradient gradient;
-  final Widget knob;
-  final VoidCallback onTap;
-  final String tooltip;
-
-  const _PillSwitch({
-    required this.isEnd,
-    required this.dark,
-    required this.gradient,
-    required this.knob,
-    required this.onTap,
-    required this.tooltip,
-    this.physical = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final alignment = isEnd ? Alignment.centerRight : Alignment.centerLeft;
-
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          width: 72,
-          height: 38.0,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(40),
-            gradient: gradient,
-            boxShadow: [
-              BoxShadow(
-                color: context.colors.heroShade.withAlpha(dark ? 80 : 30),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          // Force LTR inside so the knob always slides the same physical way.
-          child: Directionality(
-            textDirection: TextDirection.ltr,
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeInOut,
-              alignment: alignment,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 400),
-                transitionBuilder: (child, animation) =>
-                    ScaleTransition(scale: animation, child: child),
-                child: Container(
-                  key: ValueKey('$isEnd$dark'),
-                  width: 30,
-                  height: 30,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: context.colors.onHero,
-                    shape: BoxShape.circle,
-                  ),
-                  child: knob,
-                ),
+                child: Text('auth_forgot'.tr, style: authText(13.5, w: FontWeight.w700, c: link)),
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+
+            // ── Sign in ────────────────────────────────────────────────────
+            AuthButton(
+              loading: context.watch<MyAuthProvider>().isLoadingLogin,
+              label: 'auth_sign_in'.tr,
+              icon: Icons.arrow_forward_rounded,
+              onPressed: _login,
+            ),
+            const SizedBox(height: 24),
+
+            // ── or · Continue with Google ──────────────────────────────────
+            const GoogleAuthSection(joining: true, smallIcon: true),
+            const SizedBox(height: 16),
+
+            LinkRow(
+              message: 'auth_no_account'.tr,
+              linkText: 'auth_create_account'.tr,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            ),
+            const SizedBox(height: 8),
+
+            // ── Institutions apply · explore as a guest ────────────────────
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                // institutions apply here; the platform team approves them before any dashboard opens
+                ParentComponent(
+                  featureKey: 'register.organization',
+                  child: AuthTextAction(
+                    icon: Icons.domain_add_rounded,
+                    label: 'register_organization'.tr,
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const OrgApplicationScreen())),
+                  ),
+                ),
+                if (guestEnabled)
+                  AuthTextAction(
+                    icon: Icons.explore_outlined,
+                    label: 'continue_as_guest'.tr,
+                    onTap: () => startGuest(Navigator.of(context)),
+                  ),
+              ],
+            ),
+          ],
         ),
       ),
     );

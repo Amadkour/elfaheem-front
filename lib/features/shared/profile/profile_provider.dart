@@ -12,6 +12,7 @@ import 'package:http/http.dart' hide MultipartFile;
 import '../../../config/storage_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
+import '../../auth/username.dart' show UsernameError, UsernameRules;
 import '../../student/models.dart';
 import '../../admin/enrollment_request/teacher_transfers_provider.dart';
 import '../../teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
@@ -52,6 +53,7 @@ class ProfileProvider extends BaseProvider {
     imageUrl = u?.imageUrl ?? '';
     role = u?.role ?? '';
     phone = u?.phone ?? '';
+    username = u?.username ?? '';
     isLoading = false;
     notifyListeners();
   }
@@ -68,6 +70,12 @@ class ProfileProvider extends BaseProvider {
   String country = '';
   String imageUrl = '';
   String role = '';
+
+  /// The @username without the "@" ('' = none).
+  String username = '';
+
+  /// A USERNAME_* error of the last [updateProfile] (shown on the username field with its suggestions).
+  UsernameError? usernameError;
   bool _notificationsEnabled = true;
 
   bool get notificationsEnabled => _notificationsEnabled;
@@ -143,8 +151,10 @@ class ProfileProvider extends BaseProvider {
     String? country,
     String? password,
     String? mfaCode,
+    String? username,
   }) async {
     _setLoading(true);
+    usernameError = null;
     try {
       final body = <String, dynamic>{};
       // A phone change is re-authenticated (400 REAUTH_REQUIRED without it; 409 PHONE_TAKEN; the server
@@ -156,7 +166,17 @@ class ProfileProvider extends BaseProvider {
       if (dob != null && dob.isNotEmpty) body['dob'] = dob;
       if (bio != null && bio.isNotEmpty) body['bio'] = bio;
       if (country != null && country.isNotEmpty) body['country'] = country;
-      final r = await run(() => ApiClient().put('/api/v1/auth/me', body: body));
+      // [username]: null = unchanged (not sent), '' = remove it (sent as null), otherwise the new one
+      final handle = username == null ? null : UsernameRules.normalize(username);
+      if (handle != null) body['username'] = handle.isEmpty ? null : handle;
+      final r = await run(() async {
+        try {
+          return await ApiClient().put('/api/v1/auth/me', body: body);
+        } on ApiException catch (e) {
+          if (handle != null) usernameError = UsernameError.from(e, submitted: handle);
+          rethrow;
+        }
+      });
       if (r != null && r is Map) {
         _setLoading(false);
         return UserModel.fromJson(r as Map<String, dynamic>);

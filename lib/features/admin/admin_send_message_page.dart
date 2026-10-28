@@ -14,6 +14,7 @@ import 'admin_premium_widgets.dart';
 import '../../utils/widget/primary_button.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminSendMessagePage extends StatefulWidget {
   const AdminSendMessagePage({super.key});
@@ -173,7 +174,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       child: Text(
         s,
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w800,
           color: c.textDark,
         ),
@@ -454,8 +455,8 @@ class _PickerSheetState extends State<_PickerSheet> {
           const SizedBox(height: 12),
           Text(
             widget.title,
-            style: const TextStyle(
-              fontFamily: 'tajawal',
+            style: TextStyle(
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w800,
               fontSize: 16,
             ),

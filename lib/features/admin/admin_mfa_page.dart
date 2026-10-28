@@ -20,6 +20,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../auth/auth_provider.dart';
 import '../auth/mfa.dart';
 import 'admin_common.dart' show t;
+import 'package:flutter_education_app/design/app_icons.dart';
 
 /// The settings entry's label.
 String mfaEntryLabel() => t('التحقق بخطوتين', 'Two-step verification');
@@ -124,7 +125,7 @@ class MfaStatusView extends StatelessWidget {
               AppInfoRow(Icons.info_outline_rounded,
                   t('التحقق بخطوتين غير متاح لهذا الحساب', 'Two-step verification is not available for this account')),
             if (s.enabled && onSignInAgain != null)
-              AppInfoRow(Icons.login_rounded,
+              AppInfoRow(DirIcons.login,
                   t('التحقق بخطوتين مفعّل لهذا الحساب. سجّل الدخول مرة أخرى بالرمز من تطبيق المصادقة.',
                       'Two-step verification is on for this account. Sign in again with the code from your authenticator app.')),
             const SizedBox(height: 14),
@@ -163,7 +164,7 @@ class MfaStatusView extends StatelessWidget {
           AppPrimaryButton(
               key: const ValueKey('mfa.sign_in_again'),
               label: t('تسجيل الدخول مرة أخرى', 'Sign in again'),
-              icon: Icons.login_rounded,
+              icon: DirIcons.login,
               onPressed: busy ? null : onSignInAgain),
         ],
       ],

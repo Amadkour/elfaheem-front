@@ -16,11 +16,11 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
-import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'login_screen.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdditionalRegisterScreen extends StatefulWidget {
   const AdditionalRegisterScreen({super.key, required this.email});
@@ -116,9 +116,10 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
     return Consumer2<MyAuthProvider, TeacherDocumentProvider>(
       builder: (context, auth, docs, _) {
         return AuthScaffold(
-          title: 'register'.tr,
+          title: 'complete_profile'.tr,
+          subtitle: 'additional_registration_welcome'.tr.trim(),
           pageKey: const ValueKey('additional_register'),
-          maxWidth: 680,
+          maxWidth: 600,
           builder: (context, isWide) => _buildForm(auth, docs),
         );
       },
@@ -132,12 +133,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProgressBar(currentStep: 2, totalSteps: 3),
-            const SizedBox(height: 22),
-            AuthHeader(
-              title: 'complete_profile'.tr,
-              subtitle: 'additional_registration_welcome'.tr,
-            ),
+            const ProgressBar(currentStep: 2, totalSteps: 3),
             const SizedBox(height: 24),
 
             // ── Profile fields ──────────────────────────────────────────────
@@ -156,7 +152,7 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
                       // validator: (v) =>
                       // (v == null || v.isEmpty) ? 'field_required'.tr : null,
                     )),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 16),
 
                     ParentComponent(featureKey: 'additional_register.specialization', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [SectionLabel(label: 'specialization'.tr),
                       const SizedBox(height: 8),
@@ -247,8 +243,8 @@ class _AdditionalRegisterScreenState extends State<AdditionalRegisterScreen> {
             ],
 
             // ── Submit ──────────────────────────────────────────────────────
-            PrimaryButton(
-              isLoading: _profileSubmitted
+            AuthButton(
+              loading: _profileSubmitted
                   ? docs.isFinalized
                   : auth.isLoadingAdditionalRegistration,
               label: _profileSubmitted
@@ -305,7 +301,7 @@ class _DocumentsSection extends StatelessWidget {
               Text(
                 '${overview.fulfilledRequiredCount}/${overview.requiredCount}',
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
                   color: overview.allRequiredFulfilled ? c.success : c.primary,
@@ -481,7 +477,7 @@ class _RequirementRow extends StatelessWidget {
                               child: Text(
                                 'required'.tr,
                                 style: TextStyle(
-                                  fontFamily: 'bahji',
+                                  fontFamily: AppFonts.display,
                                   fontSize: 9,
                                   fontWeight: FontWeight.w700,
                                   color: c.danger,
@@ -506,7 +502,7 @@ class _RequirementRow extends StatelessWidget {
                             Text(
                               _statusLabel(doc.status, context),
                               style: TextStyle(
-                                fontFamily: 'bahji',
+                                fontFamily: AppFonts.display,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: statusColor,
@@ -582,7 +578,7 @@ class _RequirementRow extends StatelessWidget {
                     child: Text(
                       doc!.rejectionReason!,
                       style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 11,
                         color: context.colors.danger,
                       ),
@@ -703,7 +699,7 @@ class _UploadButton extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -723,7 +719,7 @@ class _UploadButton extends StatelessWidget {
                   title: Text(
                     'take_photo'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -742,7 +738,7 @@ class _UploadButton extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -920,14 +916,14 @@ class _CustomDocEntryRow extends StatelessWidget {
             child: TextField(
               onChanged: (v) => provider.setCustomEntryTitle(index, v),
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 13,
                 color: c.textDark,
               ),
               decoration: InputDecoration(
                 hintText: 'document_title_hint'.tr,
                 hintStyle: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   color: c.textLight,
                   fontSize: 13,
                 ),
@@ -981,7 +977,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                       Text(
                         'upload_document'.tr,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: context.colors.onHero,
@@ -1030,7 +1026,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1045,7 +1041,7 @@ class _CustomDocEntryRow extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -1102,7 +1098,7 @@ class _AddAnotherButton extends StatelessWidget {
             Text(
               'add_another_document'.tr,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: c.primary,
@@ -1201,7 +1197,7 @@ class _PdfChip extends StatelessWidget {
             child: Text(
               fileName,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12,
                 color: c.textDark,
               ),

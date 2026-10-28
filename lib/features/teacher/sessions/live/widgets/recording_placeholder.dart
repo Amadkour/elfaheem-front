@@ -18,6 +18,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 
 import 'live_avatar.dart';
 import 'live_palette.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PlaceholderParticipant {
   const PlaceholderParticipant({
@@ -184,8 +185,8 @@ class _TopBar extends StatelessWidget {
                 platformName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
+                style: TextStyle(
+                  fontFamily: AppFonts.family,
                   color: LivePalette.textMid,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -251,7 +252,7 @@ class _LiveChipState extends State<_LiveChip> with SingleTickerProviderStateMixi
             Text(
               widget.label.toUpperCase(),
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 color: LivePalette.danger,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
@@ -283,8 +284,8 @@ class _CountChip extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               '$count',
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: LivePalette.textHigh,
                 fontSize: 11,
                 fontWeight: FontWeight.w800,
@@ -325,8 +326,8 @@ class _Hero extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'tajawal',
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             color: LivePalette.textHigh,
             fontSize: 18,
             fontWeight: FontWeight.w800,
@@ -359,8 +360,8 @@ class _Hero extends StatelessWidget {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontFamily: 'tajawal',
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             color: LivePalette.textMid,
             fontSize: 13,
             fontWeight: FontWeight.w600,
@@ -399,7 +400,7 @@ class _Badge extends StatelessWidget {
           label,
           maxLines: 1,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             color: color,
             fontSize: 10,
             fontWeight: FontWeight.w800,
@@ -536,7 +537,7 @@ class _RosterTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     color: p.isGuest ? LivePalette.warning : LivePalette.textHigh,
                     fontSize: 10.5,
                     fontWeight: FontWeight.w700,
@@ -572,8 +573,8 @@ class _OverflowTile extends StatelessWidget {
             fit: BoxFit.scaleDown,
             child: Text(
               '+$count',
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: LivePalette.textMid,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,

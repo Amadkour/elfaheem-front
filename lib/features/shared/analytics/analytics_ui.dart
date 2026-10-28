@@ -6,12 +6,13 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import '../../teacher/data_lab/data_lab_models.dart';
 
-const anFont = 'bahji';
+String get anFont => AppFonts.display;
 
 TextStyle anText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
     TextStyle(fontFamily: anFont, fontSize: size, fontWeight: w, color: c, height: h);

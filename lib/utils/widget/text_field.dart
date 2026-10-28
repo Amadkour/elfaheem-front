@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyTextField extends StatelessWidget {
   final TextEditingController controller;
@@ -34,7 +35,7 @@ class MyTextField extends StatelessWidget {
         textInputAction: TextInputAction.next,
         controller: controller,
         style:  TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 15,
           color: context.colors.textDark,
@@ -48,7 +49,7 @@ class MyTextField extends StatelessWidget {
           hint: Text(
             label,
             style:  TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w600,
               color: context.colors.textDark,
             ),

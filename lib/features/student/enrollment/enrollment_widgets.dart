@@ -11,6 +11,7 @@ import '../../../utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../utils/widget/primary_button.dart';
 import 'enrollment_models.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 bool isWideLayout(BuildContext context) =>
     MediaQuery.of(context).size.width > 600;
@@ -223,7 +224,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                               color: c.onHero,
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
-                              fontFamily: 'bahji',
+                              fontFamily: AppFonts.display,
                             ),
                           ),
                         ),

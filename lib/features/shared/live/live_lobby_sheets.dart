@@ -11,6 +11,9 @@
 //                           system sound + haptic on a new request and keeps it as [latestNew] for the banner.
 //   LobbySheet / LobbyBody  the waiting list (avatar / initials, Admit · Reject · Admit all) and the two switches
 //                           "Everyone needs my approval" / "Guests join automatically". showLobbySheet(context, ref).
+//   QuickGuestLinkCard      the lobby's top card (spec §10): one tap creates the share link / turns it DIRECT
+//                           (`PUT …/link {direct: true, can_publish: true}`) — guests then walk straight in — with
+//                           Copy / Share / QR and a switch that turns direct entry off again.
 //   ShareLinkSheet / ShareLinkBody   the room's share link for meetings (can-publish, max guests, PIN, copy / share /
 //                           QR / settings / revoke) — mirrors the session guest-link sheet. showShareLinkSheet(…).
 //   WaitingForHostPage / WaitingForHostScreen   the joiner's "Waiting for the host…" (animated, cancel) with the
@@ -29,6 +32,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../core/api_client.dart' show ApiException;
 import '../../../core/live/event_wait.dart';
@@ -38,6 +42,7 @@ import '../../admin/admin_common.dart' show t;
 import '../guest/guest_live_api.dart' show guestPinValid;
 import '../../teacher/sessions/live/widgets/live_palette.dart';
 import 'live_room.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Controller
@@ -379,14 +384,33 @@ class LiveLobbyController extends ChangeNotifier with WidgetsBindingObserver {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Opens the lobby of [ref]. Pass the room's [controller] to share its state; otherwise one is created for the sheet.
-Future<void> showLobbySheet(BuildContext context, LiveRoomRef ref, {LiveLobbyController? controller}) =>
-    showAppSheet<void>(context, (_) => LobbySheet(ref: ref, controller: controller));
+Future<void> showLobbySheet(BuildContext context, LiveRoomRef ref, {LiveLobbyController? controller, String? title}) =>
+    showAppSheet<void>(context, (_) => LobbySheet(ref: ref, controller: controller, title: title));
+
+/// Copies a share link and says so.
+Future<void> copyLiveLink(String url) async {
+  await Clipboard.setData(ClipboardData(text: url));
+  appToast(t('نُسخ الرابط', 'Link copied'));
+}
+
+/// The system share sheet with [title] above the link; desktop browsers without one copy instead.
+Future<void> shareLiveLink(String url, {String? title}) async {
+  final name = (title ?? '').trim();
+  try {
+    await SharePlus.instance.share(ShareParams(text: name.isEmpty ? url : '$name\n$url', subject: name.isEmpty ? null : name));
+  } catch (_) {
+    await copyLiveLink(url);
+  }
+}
 
 class LobbySheet extends StatefulWidget {
-  const LobbySheet({super.key, required this.ref, this.controller});
+  const LobbySheet({super.key, required this.ref, this.controller, this.title});
 
   final LiveRoomRef ref;
   final LiveLobbyController? controller;
+
+  /// The room's title, put above the link when sharing.
+  final String? title;
 
   @override
   State<LobbySheet> createState() => _LobbySheetState();
@@ -396,6 +420,14 @@ class _LobbySheetState extends State<LobbySheet> {
   late final LiveLobbyController _c = widget.controller ?? LiveLobbyController(widget.ref);
   late final bool _own = widget.controller == null;
 
+  // ── Quick guest link (spec §10) ───────────────────────────────────────────
+  bool get _quickLinkOn => !AppConfig.disableList.contains(kLiveShareLinkFeatureKey);
+  bool _linkLoading = true;
+  bool _linkBusy = false;
+  String? _linkError;
+  LiveLink? _link;
+  bool _showQr = false;
+
   @override
   void initState() {
     super.initState();
@@ -403,7 +435,73 @@ class _LobbySheetState extends State<LobbySheet> {
     _c.sheetOpened(); // refresh now, then the 4 s cadence while the list is on screen
     // A banner for the request being shown in the list is redundant.
     WidgetsBinding.instance.addPostFrameCallback((_) => _c.dismissBanner());
+    if (_quickLinkOn) unawaited(_loadLink());
   }
+
+  Future<void> _loadLink() async {
+    setState(() {
+      _linkLoading = true;
+      _linkError = null;
+    });
+    try {
+      final l = await _c.api.link();
+      if (mounted) setState(() => _link = l);
+    } catch (e) {
+      if (mounted) setState(() => _linkError = liveRoomErrorText(e));
+    } finally {
+      if (mounted) setState(() => _linkLoading = false);
+    }
+  }
+
+  /// One tap: creates the link when there is none (mic and camera allowed) or turns the existing one direct;
+  /// `false` turns direct entry off again.
+  Future<void> _setDirect(bool on) async {
+    if (_linkBusy) return;
+    setState(() => _linkBusy = true);
+    final had = _link;
+    try {
+      LiveLink l;
+      try {
+        l = await _c.api.updateLink(direct: on, canPublish: had == null ? true : null);
+      } on ApiException catch (e) {
+        // An older server without `PUT …/link`: create the link the old way (no direct entry there).
+        if (had != null || !on || (e.statusCode != 404 && e.statusCode != 405)) rethrow;
+        l = await _c.api.createLink(canPublish: true);
+      }
+      if (!mounted) return;
+      setState(() {
+        _link = l;
+        _linkError = null;
+      });
+      appToast(on
+          ? t('الزوار يدخلون الآن مباشرة عبر الرابط', 'Guests with the link now come straight in')
+          : t('أُوقف الدخول المباشر — الزوار ينتظرون موافقتك', 'Direct entry is off — guests wait for you'));
+    } catch (e) {
+      appToast(liveRoomErrorText(e), error: true);
+    } finally {
+      if (mounted) setState(() => _linkBusy = false);
+    }
+  }
+
+  Widget _quickLinkCard() => QuickGuestLinkCard(
+        loading: _linkLoading,
+        busy: _linkBusy,
+        error: _linkError,
+        link: _link,
+        showQr: _showQr,
+        onRetry: _loadLink,
+        onMakeDirect: () => _setDirect(true),
+        onDirectChanged: (v) => _setDirect(v),
+        onCopy: () {
+          final u = _link?.url;
+          if (u != null) unawaited(copyLiveLink(u));
+        },
+        onShare: () {
+          final u = _link?.url;
+          if (u != null) unawaited(shareLiveLink(u, title: widget.title));
+        },
+        onToggleQr: () => setState(() => _showQr = !_showQr),
+      );
 
   @override
   void dispose() {
@@ -428,6 +526,7 @@ class _LobbySheetState extends State<LobbySheet> {
           onRefresh: _c.refresh,
           onEveryoneNeedsApproval: (v) => _c.setAdmission(v ? LiveAdmission.approve : LiveAdmission.open),
           onGuestsJoinAutomatically: (v) => _c.setGuestAdmission(v ? LiveGuestAdmission.auto : LiveGuestAdmission.approve),
+          quickLink: _quickLinkOn ? _quickLinkCard() : null,
         ),
       );
 }
@@ -448,7 +547,11 @@ class LobbyBody extends StatelessWidget {
     required this.onEveryoneNeedsApproval,
     required this.onGuestsJoinAutomatically,
     this.busyIds = const {},
+    this.quickLink,
   });
+
+  /// The top card (QuickGuestLinkCard), null → none (share links switched off, tests).
+  final Widget? quickLink;
 
   final bool loading;
   final String? error;
@@ -483,6 +586,7 @@ class LobbyBody extends StatelessWidget {
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            if (quickLink != null) ...[quickLink!, const SizedBox(height: 16)],
             // ── Waiting ──────────────────────────────────────────────────
             Row(children: [
               Expanded(
@@ -618,6 +722,154 @@ class LobbyRequestRow extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Quick guest link (the lobby's top card, spec §10)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// "Quick guest link" (plain values): no link or not direct → one primary button (create / let guests in directly);
+/// a link → its URL with Copy · Share · QR; direct → a switch that turns direct entry off again.
+class QuickGuestLinkCard extends StatelessWidget {
+  const QuickGuestLinkCard({
+    super.key,
+    required this.loading,
+    required this.busy,
+    required this.error,
+    required this.link,
+    required this.onRetry,
+    required this.onMakeDirect,
+    required this.onDirectChanged,
+    required this.onCopy,
+    required this.onShare,
+    required this.onToggleQr,
+    this.showQr = false,
+  });
+
+  final bool loading;
+  final bool busy;
+  final String? error;
+  final LiveLink? link;
+  final bool showQr;
+  final VoidCallback onRetry;
+  final VoidCallback onMakeDirect;
+  final ValueChanged<bool> onDirectChanged;
+  final VoidCallback onCopy;
+  final VoidCallback onShare;
+  final VoidCallback onToggleQr;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final l = link;
+    final direct = l != null && l.direct;
+    return AppCard(
+      key: const ValueKey('lobby.quick_link'),
+      padding: const EdgeInsets.all(14),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: c.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
+            child: Icon(Icons.bolt_rounded, color: c.primary, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(t('رابط سريع للزوار', 'Quick guest link'), style: appText(14.5, w: FontWeight.w800, c: c.textDark)),
+              const SizedBox(height: 2),
+              Text(
+                direct
+                    ? t('من يفتح الرابط يدخل مباشرة — دون انتظار.', 'Anyone who opens the link comes straight in — no waiting.')
+                    : t('أنشئ رابطاً يدخل به الزوار مباشرة دون انتظار موافقتك.', 'Make a link that lets guests in directly, without waiting for you.'),
+                style: appText(12, c: c.textMedium, h: 1.4),
+              ),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        if (loading)
+          const SizedBox(height: 64, child: AppListSkeleton(items: 1, withAvatar: false, padding: EdgeInsets.zero))
+        else if (error != null && l == null)
+          AppBanner(
+            key: const ValueKey('lobby.quick_link.error'),
+            icon: Icons.error_outline_rounded,
+            text: error!,
+            color: c.danger,
+            action: IconButton(tooltip: t('إعادة المحاولة', 'Retry'), onPressed: onRetry, icon: Icon(Icons.refresh_rounded, color: c.danger)),
+          )
+        else ...[
+          if (l != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
+              child: Row(children: [
+                Icon(Icons.link_rounded, size: 16, color: c.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    l.url,
+                    key: const ValueKey('lobby.quick_link.url'),
+                    textDirection: TextDirection.ltr,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: appText(12, c: c.textDark, w: FontWeight.w600),
+                  ),
+                ),
+              ]),
+            ),
+          if (!direct) ...[
+            if (l != null) const SizedBox(height: 10),
+            AppPrimaryButton(
+              key: const ValueKey('lobby.quick_link.create'),
+              label: l == null ? t('إنشاء رابط سريع', 'Create quick link') : t('اسمح بالدخول المباشر', 'Let guests in directly'),
+              icon: Icons.bolt_rounded,
+              busy: busy,
+              onPressed: busy ? null : onMakeDirect,
+            ),
+          ],
+          if (l != null) ...[
+            const SizedBox(height: 10),
+            Wrap(spacing: 8, runSpacing: 8, children: [
+              AppPill(key: const ValueKey('lobby.quick_link.copy'), icon: Icons.copy_rounded, label: t('نسخ', 'Copy'), onTap: busy ? null : onCopy),
+              AppPill(key: const ValueKey('lobby.quick_link.share'), icon: Icons.ios_share_rounded, label: t('مشاركة', 'Share'), onTap: busy ? null : onShare),
+              AppPill(
+                key: const ValueKey('lobby.quick_link.qr'),
+                icon: Icons.qr_code_2_rounded,
+                label: t('رمز QR', 'QR code'),
+                onTap: busy ? null : onToggleQr,
+                color: showQr ? c.primary : null,
+              ),
+            ]),
+            if (showQr) ...[
+              const SizedBox(height: 12),
+              Center(
+                child: Container(
+                  key: const ValueKey('lobby.quick_link.qr_image'),
+                  padding: const EdgeInsets.all(10),
+                  // Pure white in both themes: phone scanners need the contrast.
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+                  child: QrImageView(data: l.url, version: QrVersions.auto, size: 168, backgroundColor: Colors.white),
+                ),
+              ),
+            ],
+          ],
+          if (direct) ...[
+            const SizedBox(height: 4),
+            AppSwitchTile(
+              key: const ValueKey('lobby.quick_link.direct'),
+              title: t('الدخول المباشر', 'Direct entry'),
+              subtitle: t('أوقفه ليعود الزوار إلى الانتظار حتى تقبلهم.', 'Turn it off and guests wait again until you admit them.'),
+              icon: Icons.door_front_door_outlined,
+              value: true,
+              onChanged: busy ? null : onDirectChanged,
+            ),
+          ],
+        ],
+      ]),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Share link sheet (meetings and any room through the generic routes)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -743,19 +995,13 @@ class _ShareLinkSheetState extends State<ShareLinkSheet> {
   Future<void> _copy() async {
     final url = _link?.url;
     if (url == null) return;
-    await Clipboard.setData(ClipboardData(text: url));
-    appToast(t('نُسخ الرابط', 'Link copied'));
+    await copyLiveLink(url);
   }
 
   Future<void> _share() async {
     final url = _link?.url;
     if (url == null) return;
-    final name = (widget.title ?? '').trim();
-    try {
-      await SharePlus.instance.share(ShareParams(text: name.isEmpty ? url : '$name\n$url', subject: name.isEmpty ? null : name));
-    } catch (_) {
-      await _copy(); // desktop browsers without a share sheet
-    }
+    await shareLiveLink(url, title: widget.title); // desktop browsers without a share sheet copy instead
   }
 
   @override
@@ -1356,13 +1602,13 @@ class LobbyBanner extends StatelessWidget {
                   '${r.displayName} ${t('يريد الانضمام', 'wants to join')}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
                 ),
                 Text(
                   '$who$more',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: _muted),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: _muted),
                 ),
               ]),
             ),

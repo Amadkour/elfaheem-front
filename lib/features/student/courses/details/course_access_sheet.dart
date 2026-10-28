@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 class CourseAccessSheet extends StatefulWidget {
@@ -128,14 +129,14 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
             ),
             const SizedBox(height: 14),
             Text('cas_private_course'.tr,
-                style: TextStyle(color: _text, fontSize: 21, fontWeight: FontWeight.w700, fontFamily: 'tajawal')),
+                style: TextStyle(color: _text, fontSize: 21, fontWeight: FontWeight.w700, fontFamily: AppFonts.family)),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Text(
                 'cas_enter_code'.tr.replaceAll('{name}', widget.courseName),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: _muted, fontSize: 13, height: 1.5, fontFamily: 'tajawal'),
+                style: TextStyle(color: _muted, fontSize: 13, height: 1.5, fontFamily: AppFonts.family),
               ),
             ),
             const SizedBox(height: 22),
@@ -170,7 +171,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                 child: _checking
                     ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
                     : Text(_error ?? '', textAlign: TextAlign.center,
-                    style: TextStyle(color: _red, fontSize: 12.5, fontFamily: 'tajawal')),
+                    style: TextStyle(color: _red, fontSize: 12.5, fontFamily: AppFonts.family)),
               ),
             ),
             Padding(

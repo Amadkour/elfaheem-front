@@ -3,12 +3,12 @@
 //   header        greeting · name · calendar · notifications · ContextSwitcher (Personal ↔ organizations) · search
 //   Personal (StudentHomeBody, plain values from ONE call — GET /api/v1/me/home, MeHomeService):
 //     hero        "next up": today's next session / exam, its start time set big, live state and countdown
-//     needs you   to do (attention) · inbox to-dos · unread notifications · today · organizations waiting · my courses
-//                 — every count drawn ONCE on this screen
+//     needs you   ONE card of small tiles (HomeStatStrip): to do (attention) · inbox to-dos · unread notifications ·
+//                 organizations waiting — every count drawn ONCE on this screen
 //     today       timeline of today's events (sessions · timetable slots · exams · meetings, exam pauses applied)
-//     this week   the next 7 days, compact rows
-//     continue    courses_progress[]: thin progress bar, the next lecture, tap → the course
-//     inbox       the 5 most urgent inbox rows (no second count)
+//     this week   the next 5 events of the coming 7 days, compact rows
+//     my courses  courses_progress[] summarized in one card (StudentCourseSummary): figures + the 3 that matter now
+//     inbox       the 3 most urgent inbox rows (no second count)
 //     feeds       ads · organizations · other courses · categories · best teachers (HomeProvider's marketing call,
 //                 never awaited for the first paint; each leaf listens on its own)
 //   Organization: OrgMemberHome of the selected organization (from the same payload's org_overview).
@@ -34,7 +34,7 @@ import 'package:flutter_education_app/features/org/org_member_dashboard.dart' sh
 import 'package:flutter_education_app/features/org/org_member_today.dart' show orgTodayEpoch;
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart' show CalEvent;
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
-import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCard, InboxItem, InboxScreen, openInboxItem;
+import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCompactList, InboxItem, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
@@ -54,9 +54,9 @@ import '../courses/list/courses_list_screen.dart';
 import '../dashboard/dashboard_screen.dart' show CalendarIcon, NotificationIcon, UserChipButton;
 import '../models.dart';
 import 'component/category_row.dart';
-import 'component/home_section_header.dart';
 import 'component/instractor_roe.dart';
 import 'component/search_bar_icon.dart';
+import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Data (plain values → the body is layout-tested without providers)
@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
             name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
             leading: user == null ? null : UserChipButton(user: user, showLabel: false),
             // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
-            actions: [if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+            actions: [if (!guest) const QuickMeetingIcon(), if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
             contextSwitcher: guest ? null : const ContextSwitcher(),
           ),
         ),
@@ -309,7 +309,7 @@ class _Sections extends StatelessWidget {
     final next = home.nextUp(now);
     final todo = home.attentionCount(AttentionTabs.home);
     final inboxTodo = home.inboxTodo;
-    final inboxRows = home.inboxPreview.map(InboxItem.new).toList();
+    final inboxRows = home.inboxPreview.take(3).map(InboxItem.new).toList();
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
 
@@ -321,62 +321,38 @@ class _Sections extends StatelessWidget {
       )),
       const SizedBox(height: 28),
 
-      // ── what matters now (every count once)
+      // ── what matters now: one card of small tiles (today's and the courses' counts sit on their own sections)
       enter(HomeSectionTitle('home_needs_you'.tr)),
-      enter(HomeActionGrid(children: [
-        HomeActionCard(
+      enter(HomeStatStrip(items: [
+        HomeStat(
           icon: Icons.task_alt_rounded,
-          title: 'home_todo'.tr,
-          subtitle: todo == 0 ? 'home_todo_clear'.tr : 'home_todo_hint'.tr,
+          label: 'home_todo'.tr,
           count: todo,
-          tone: todo > 0 ? c.danger : c.success,
+          tone: c.danger,
           onTap: todo > 0 ? body.onOpenTodo : () => body.onTab('my_courses'),
         ),
-        HomeActionCard(
+        HomeStat(
           icon: Icons.inbox_rounded,
-          title: 'inbox_title'.tr,
-          subtitle: inboxTodo == 0
-              ? 'inbox_preview_clear'.tr
-              : [
-                  if (home.inboxOverdue > 0) 'inbox_preview_overdue'.tr.replaceAll('{n}', '${home.inboxOverdue}'),
-                  if (home.inboxDueSoon > 0) 'inbox_preview_soon'.tr.replaceAll('{n}', '${home.inboxDueSoon}'),
-                ].join(' · '),
+          label: 'inbox_title'.tr,
           count: inboxTodo,
           tone: home.inboxOverdue > 0 ? c.danger : (home.inboxDueSoon > 0 ? c.warning : c.primary),
           onTap: body.onOpenInbox,
         ),
-        HomeActionCard(
+        HomeStat(
           icon: Icons.notifications_rounded,
-          title: 'notifications'.tr,
-          subtitle: home.notificationsUnread == 0 ? 'home_s_all_read'.tr : 'home_s_unread_hint'.tr,
+          label: 'notifications'.tr,
           count: home.notificationsUnread,
           tone: c.accent2,
           onTap: body.onOpenNotifications,
         ),
-        HomeActionCard(
-          icon: Icons.today_rounded,
-          title: 'home_today_sessions'.tr,
-          subtitle: home.today.isEmpty ? 'home_s_free_today'.tr : null,
-          count: home.today.length,
-          tone: c.primary,
-          onTap: () => body.onTab('my_schedule'),
-        ),
         if (data.orgWaiting > 0)
-          HomeActionCard(
+          HomeStat(
             icon: Icons.account_balance_rounded,
-            title: 'home_org_waiting'.tr,
-            subtitle: 'home_org_waiting_hint'.tr,
+            label: 'home_org_waiting'.tr,
             count: data.orgWaiting,
             tone: c.warning,
             onTap: body.onOpenOrgs,
           ),
-        HomeActionCard(
-          icon: Icons.menu_book_rounded,
-          title: 'my_courses'.tr,
-          count: home.coursesProgress.length,
-          tone: c.purple,
-          onTap: () => body.onTab('my_courses'),
-        ),
       ])),
       const SizedBox(height: 28),
 
@@ -395,16 +371,13 @@ class _Sections extends StatelessWidget {
         // ── this week
         if (home.upcoming.isNotEmpty) ...[
           enter(HomeSectionTitle('home_this_week'.tr, count: home.upcoming.length, actionLabel: 'home_open_calendar'.tr, onAction: () => Navigator.of(context).pushNamed('/calendar'))),
-          enter(UpcomingList(events: home.upcoming, onTap: _open)),
+          enter(UpcomingList(events: home.upcoming.take(5).toList(), onTap: _open)),
         ],
       ]),
       const SizedBox(height: 28),
 
-      // ── continue learning
-      enter(HomeSectionTitle('home_continue_learning'.tr,
-          count: home.coursesProgress.isEmpty ? null : home.coursesProgress.length,
-          actionLabel: home.coursesProgress.isEmpty ? null : 'show_more'.tr,
-          onAction: () => body.onTab('my_courses'))),
+      // ── my courses, summarized (the full cards live on the courses tab)
+      enter(HomeSectionTitle('my_courses'.tr)),
       enter(home.coursesProgress.isEmpty
           ? Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -416,20 +389,14 @@ class _Sections extends StatelessWidget {
                 onAction: () => body.onTab('my_courses'),
               ),
             )
-          : CourseProgressList(courses: home.coursesProgress.take(5).toList(), now: now, onTap: body.onOpenCourse)),
+          : StudentCourseSummary(courses: home.coursesProgress, onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses'))),
       const SizedBox(height: 28),
 
-      // ── inbox: the 5 most urgent rows (the count already sits in the grid)
+      // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
       if (inboxRows.isNotEmpty) ...[
         enter(HomeSectionTitle('inbox_title'.tr, actionLabel: 'inbox_see_all'.tr, onAction: body.onOpenInbox)),
-        enter(Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(children: [
-            for (final x in inboxRows)
-              Padding(padding: const EdgeInsets.only(bottom: 8), child: InboxCard(item: x, onTap: () => body.onOpenInboxItem?.call(x))),
-          ]),
-        )),
-        const SizedBox(height: 24),
+        enter(InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x))),
+        const SizedBox(height: 28),
       ],
       ?body.feeds,
     ]);
@@ -475,21 +442,23 @@ class _MarketingFeeds extends StatelessWidget {
     if (provider.isLoading && !provider.hasData) {
       return const Padding(padding: EdgeInsets.only(top: 12), child: AppListSkeleton(items: 2, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)));
     }
+    final categories = context.read<CategoriesProvider>().categories;
+    // every feed uses the home's section title; an empty feed draws nothing (no empty box below the fold)
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── guests: the catalogue's enrolled list is empty, their own courses live in "My courses"
       if (guest && provider.myCourses.isNotEmpty) ...[
         const SizedBox(height: 12),
         ParentComponent(
-          key: const ValueKey('student_home.courses'),
-          child: SectionHeader(
-            title: 'my_courses'.tr,
+          featureKey: 'student_home.courses',
+          child: HomeSectionTitle(
+            'my_courses'.tr,
             actionLabel: 'show_more'.tr,
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         ParentComponent(
-          key: const ValueKey('student_home.courses'),
+          featureKey: 'student_home.courses',
           child: HomeCourseList(
             courses: provider.myCourses,
             pageName: 'home-my-courses',
@@ -500,54 +469,54 @@ class _MarketingFeeds extends StatelessWidget {
         ),
       ],
 
-      // ── Other Courses
+      // ── Other courses (at most 8 here; "Show more" lists them all)
       if (provider.otherCourses.isNotEmpty) ...[
         const SizedBox(height: 12),
         ParentComponent(
-          key: const ValueKey('student_home.other_courses'),
-          child: SectionHeader(
-            title: 'other_courses'.tr,
+          featureKey: 'student_home.other_courses',
+          child: HomeSectionTitle(
+            'other_courses'.tr,
             actionLabel: 'show_more'.tr,
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.otherCourses, forMyCourses: false))),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 6),
         ParentComponent(
-          key: const ValueKey('student_home.other_courses'),
+          featureKey: 'student_home.other_courses',
           child: HomeCourseList(
             pageName: 'home-other-courses',
-            courses: provider.otherCourses,
+            courses: provider.otherCourses.take(8).toList(),
             isTeacher: false,
             // Private courses ask for the access code first.
             onTap: (CourseModel c) => openCourse(context, c, provider.api),
             hasMore: false,
           ),
         ),
+        const SizedBox(height: 28),
       ],
-      const SizedBox(height: 28),
 
       // ── Categories
-      if (context.read<CategoriesProvider>().categories.length > 5)
+      if (categories.isNotEmpty) ...[
         ParentComponent(
-          key: const ValueKey('student_home.category'),
-          child: SectionHeader(
-            title: 'categories'.tr,
-            actionLabel: 'show_more'.tr,
+          featureKey: 'student_home.category',
+          child: HomeSectionTitle(
+            'categories'.tr,
+            actionLabel: categories.length > 5 ? 'show_more'.tr : null,
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
           ),
         ),
-      const SizedBox(height: 16),
-      const ParentComponent(key: ValueKey('student_home.category'), child: CategoriesRow()),
-      const SizedBox(height: 28),
+        const SizedBox(height: 6),
+        const ParentComponent(featureKey: 'student_home.category', child: CategoriesRow()),
+        const SizedBox(height: 28),
+      ],
 
-      // ── Best teachers
-      ParentComponent(
-        key: const ValueKey('student_home.best_teachers'),
-        child: SectionHeader(title: 'best_teachers'.tr, actionLabel: 'show_more'.tr, onAction: () {}),
-      ),
-      const SizedBox(height: 16),
-      ParentComponent(key: const ValueKey('student_home.best_teachers'), child: InstructorsRow()),
-      const SizedBox(height: 40),
+      // ── Best teachers (no list page exists, so no "Show more")
+      if (provider.instructors.isNotEmpty) ...[
+        ParentComponent(featureKey: 'student_home.best_teachers', child: HomeSectionTitle('best_teachers'.tr)),
+        const SizedBox(height: 6),
+        ParentComponent(featureKey: 'student_home.best_teachers', child: InstructorsRow()),
+      ],
+      const SizedBox(height: 32),
     ]);
   }
 }

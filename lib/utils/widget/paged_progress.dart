@@ -9,6 +9,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// "Showing {loaded} of {total}" with a progress bar that animates as pages are appended.
 class PagedCountCard extends StatelessWidget {
@@ -75,7 +76,7 @@ class PagedCountCard extends StatelessWidget {
                   builder: (_, v, _) => Text(
                     _label(v.round(), total),
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w800,
                       fontSize: 13.5,
                       color: c.textDark,
@@ -155,7 +156,7 @@ class PagedListFooter extends StatelessWidget {
                   Text(
                     'admin_loading_more'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12.5,
                       color: c.textMedium,
                     ),
@@ -167,7 +168,7 @@ class PagedListFooter extends StatelessWidget {
             : Text(
                 'admin_all_loaded'.tr,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 12,
                   color: c.textLight,
                 ),

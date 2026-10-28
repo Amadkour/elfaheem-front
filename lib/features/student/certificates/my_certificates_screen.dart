@@ -17,6 +17,7 @@ import 'my_certificate_model.dart';
 import 'my_certificates_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyCertificatesScreen extends StatelessWidget {
   const MyCertificatesScreen({super.key});
@@ -125,7 +126,7 @@ class _Summary extends StatelessWidget {
             child: Text(
               '${'certificates_earned'.tr}: $issued / $total',
               style: TextStyle(
-                  fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 15, fontWeight: FontWeight.w800),
+                  fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
         ]),
@@ -255,7 +256,7 @@ class _StateChip extends StatelessWidget {
       ),
       child: Text(label,
           style: TextStyle(
-              fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+              fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w700, color: color)),
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../../student/models.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
 // full-width bottom sheet — covers desktop web and tablets in landscape.
@@ -575,7 +576,7 @@ class _PremiumField extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: context.colors.textDark,
@@ -599,7 +600,7 @@ class _PremiumField extends StatelessWidget {
             keyboardType: keyboardType,
             onChanged: onChanged,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 13.5,
               color: context.colors.textDark,
             ),
@@ -618,7 +619,7 @@ class _PremiumField extends StatelessWidget {
             child: Text(
               errorText!,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 color: context.colors.danger,
               ),
@@ -710,7 +711,7 @@ class _LiveDateTimePicker extends StatelessWidget {
             child: Text(
               errorText!,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 color: context.colors.danger,
               ),

@@ -15,6 +15,7 @@ import '../../../../utils/widget/base_page.dart';
 import 'student_exam_provider.dart';
 import 'student_exam_quiz_screen.dart';
 import 'exam_tr.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StudentExamResultScreen extends StatefulWidget {
   final QuizSession session;
@@ -159,7 +160,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                                 Text(
                                   '${(_scoreAnim.value * _pct).toStringAsFixed(0)}%',
                                   style: TextStyle(
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                     fontSize: 32,
                                     fontWeight: FontWeight.w900,
                                     color: context.colors.onHero,
@@ -170,7 +171,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                                       ? tx('exam_passed_mark')
                                       : tx('exam_failed_mark'),
                                   style: TextStyle(
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                     color: context.colors.onHero,
@@ -185,7 +186,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                       Text(
                         s.exam.name,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 14,
                           color: context.colors.onHeroMuted,
                         ),
@@ -199,7 +200,7 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
             title: Text(
               tx('exam_result_title'),
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontWeight: FontWeight.w700,
                 color: context.colors.onHero,
               ),
@@ -385,7 +386,7 @@ class _ResultBanner extends StatelessWidget {
                             ? tx('exam_result_congrats')
                             : tx('exam_result_not_passed'),
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: color,
@@ -417,7 +418,7 @@ class _ResultBanner extends StatelessWidget {
                             Text(
                               tx('exam_best_score'),
                               style: TextStyle(
-                                fontFamily: 'bahji',
+                                fontFamily: AppFonts.display,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 color: c.onHero,
@@ -441,7 +442,7 @@ class _ResultBanner extends StatelessWidget {
                     'passing': passingScore.toInt(),
                   }),
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 12,
                     color: color.withValues(alpha: .8),
                   ),
@@ -551,7 +552,7 @@ class _StatRow extends StatelessWidget {
       Text(
         label,
         style: TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
           fontSize: 13,
           color: context.colors.textLight,
         ),
@@ -560,7 +561,7 @@ class _StatRow extends StatelessWidget {
       Text(
         value,
         style: TextStyle(
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
           fontSize: 15,
           fontWeight: FontWeight.w800,
           color: color,
@@ -609,7 +610,7 @@ class _RetryButton extends StatelessWidget {
               Text(
                 tx('exam_retry'),
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: context.colors.onHero,
@@ -619,7 +620,7 @@ class _RetryButton extends StatelessWidget {
                 Text(
                   tx('exam_attempts_remaining_n', {'n': remaining}),
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 10,
                     color: context.colors.onHeroMuted,
                   ),
@@ -692,8 +693,8 @@ class _QuestionBreakdownTile extends StatelessWidget {
                       'title': question.title,
                     }),
                     textDirection: Helpers.textDirOf('${question.title}'),
-                    style: const TextStyle(
-                      fontFamily: 'bahji',
+                    style: TextStyle(
+                      fontFamily: AppFonts.display,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -707,7 +708,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
                         : tx('exam_not_answered'),
                     textDirection: Helpers.textDirOf(answer ?? tx('exam_not_answered')),
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 12,
                       color: color,
                     ),
@@ -725,7 +726,7 @@ class _QuestionBreakdownTile extends StatelessWidget {
                 child: Text(
                   '${marksObtained.toStringAsFixed(1)} / ${question.marks.toStringAsFixed(0)}',
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: color,
@@ -799,7 +800,7 @@ class _GradBtn extends StatelessWidget {
             color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 16,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
           ),
         ),
       ),
@@ -828,7 +829,7 @@ class _WarningBanner extends StatelessWidget {
           child: Text(
             message,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 12,
               color: context.colors.warning,
             ),

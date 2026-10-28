@@ -11,6 +11,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 import 'live_palette.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 enum ParticipantTrackType {
   kUserMedia,
@@ -181,7 +182,7 @@ class _NameChip extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             color: LivePalette.textHigh,
             fontSize: compact ? 10 : 12,
             fontWeight: FontWeight.w700,
@@ -209,7 +210,7 @@ class _RoleChip extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             color: color,
             fontSize: 10,
             fontWeight: FontWeight.w800,
@@ -262,8 +263,8 @@ class _MicPill extends StatelessWidget {
             Text(
               'lr_muted'.tr,
               maxLines: 1,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: LivePalette.textHigh,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,

@@ -1,8 +1,15 @@
+// features/student/courses/details/components/about.dart
+//
+// The About tab: my certificates · description · rating · instructor · schedule · certificates · tools ·
+// prerequisites, as CourseInfoSection cards of the shared course page. [AboutTab] reads the provider and hands
+// plain values to [CourseAboutView] (tested by the layout harness).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
+import '../../../../../utils/widget/rating_widget.dart';
+import '../../../../shared/course/course_space/course_space.dart';
 import '../../../../shared/profile/course_instractor_profile.dart';
 import '../../../../teacher/home/teacher_models.dart';
 import '../course_detail_provider.dart';
@@ -10,6 +17,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'issued_certificate.dart';
 import '../growth_tr.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
@@ -18,219 +26,190 @@ class AboutTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<CourseDetailProvider>();
     final c = provider.course;
+    final ar = AppConfig.lang == 'ar';
+    return CourseAboutView(
+      description: (ar ? c.descriptionAr : c.descriptionEn) ?? '',
+      teacherName: c.teacher?.name,
+      category: (ar ? c.category?.nameAr : c.category?.nameEn) ?? '',
+      onTeacher: c.teacher == null
+          ? null
+          : () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => InstructorProfileScreen(teacher: c.teacher!)),
+            ),
+      rating: RatingWidget(type: RateType.course, sourceId: c.id, canEdit: c.isEnrolled),
+      myCertificates: provider.myCertificates,
+      schedules: c.schedules,
+      certificates: c.certificates,
+      tools: c.tools,
+      prerequisites: c.prerequisites,
+    );
+  }
+}
 
+/// The About tab from plain values.
+class CourseAboutView extends StatelessWidget {
+  const CourseAboutView({
+    super.key,
+    this.description = '',
+    this.teacherName,
+    this.category = '',
+    this.onTeacher,
+    this.rating,
+    this.myCertificates = const [],
+    this.schedules = const [],
+    this.certificates = const [],
+    this.tools = const [],
+    this.prerequisites = const [],
+  });
+
+  final String description;
+  final String? teacherName;
+  final String category;
+  final VoidCallback? onTeacher;
+
+  /// The course rating (RatingWidget) — a slot, it talks to the server.
+  final Widget? rating;
+  final List<IssuedCertificate> myCertificates;
+  final List<CourseSchedule> schedules;
+  final List<CourseCertificate> certificates;
+  final List<CourseTool> tools;
+  final List<CoursePrerequisite> prerequisites;
+
+  @override
+  Widget build(BuildContext context) {
+    final col = context.colors;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 36),
+      padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (provider.myCertificates.isNotEmpty) ...[
-            _SectionTitle(
+          if (myCertificates.isNotEmpty)
+            CourseInfoSection(
               title: 'my_certificates_title'.tr,
               icon: Icons.emoji_events_rounded,
-              color: context.colors.accent,
+              color: col.accent,
+              children: [for (final x in myCertificates) _IssuedCertificateCard(cert: x)],
             ),
-            const SizedBox(height: 12),
-            ...provider.myCertificates.map(
-              (x) => _IssuedCertificateCard(cert: x),
-            ),
-            const SizedBox(height: 22),
-          ],
-          if (c.teacher != null) ...[   // was `!= Null` (the Type) — always true, then `c.teacher!` threw
-            InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        InstructorProfileScreen(teacher: c.teacher!),
-                  ),
-                );
-              },
-              child: CourseInstructorCard(
-                name: c.teacher?.name??'' ,
-                category: (AppConfig.lang == 'ar'
-                    ? c.category?.nameAr
-                    : c.category?.nameEn) ?? '',
-              ),
-            ),
-            const SizedBox(height: 26),
-          ],
-          if (((AppConfig.lang=='ar'? c.descriptionAr:c.descriptionEn)?? '').isNotEmpty) ...[
-            _SectionTitle(
+          if (description.trim().isNotEmpty)
+            CourseInfoSection(
               title: gt('عن الكورس', 'About the course'),
               icon: Icons.info_outline_rounded,
+              children: [_ExpandableText(text: description.trim())],
             ),
-            const SizedBox(height: 10),
-            Text(
-              (AppConfig.lang == 'ar' ? c.descriptionAr : c.descriptionEn) ??
-                  '',
-              style: context.colors.body.copyWith(height: 1.75),
+          if (rating != null)
+            CourseInfoSection(
+              title: gt('التقييم', 'Rating'),
+              icon: Icons.star_rounded,
+              color: col.accent2,
+              children: [rating!],
             ),
-            const SizedBox(height: 26),
+          if (teacherName != null) ...[
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: onTeacher,
+              child: CourseInstructorCard(name: teacherName!, category: category),
+            ),
+            const SizedBox(height: 12),
           ],
-          if (c.schedules.isNotEmpty) ...[
-            _SectionTitle(
+          if (schedules.isNotEmpty)
+            CourseInfoSection(
               title: gt('المواعيد الأسبوعية', 'Weekly schedule'),
               icon: Icons.calendar_month_rounded,
-              color: context.colors.primary,
+              children: [CourseScheduleChips(schedules: schedules)],
             ),
-            const SizedBox(height: 12),
-            ...c.schedules.map(
-              (s) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: ScheduleChip(schedule: s),
-              ),
-            ),
-            const SizedBox(height: 22),
-          ],
-          if (c.certificates.isNotEmpty) ...[
-            _SectionTitle(
+          if (certificates.isNotEmpty)
+            CourseInfoSection(
               title: gt('الشهادات', 'Certificates'),
               icon: Icons.workspace_premium_rounded,
-              color: context.colors.accent,
+              color: col.success,
+              children: [
+                for (final x in certificates)
+                  CourseInfoRow(icon: Icons.verified_rounded, color: col.success, title: x.title, subtitle: x.description),
+              ],
             ),
-            const SizedBox(height: 12),
-            ...c.certificates.map(
-              (x) => _InfoCard(
-                icon: Icons.verified_rounded,
-                iconBg: context.colors.accentTint,
-                iconColor: context.colors.accent,
-                title: x.title,
-                subtitle: x.description,
-              ),
+          if (tools.isNotEmpty)
+            CourseInfoSection(
+              title: gt('الأدوات المطلوبة', 'Required tools'),
+              icon: Icons.build_rounded,
+              color: col.warning,
+              children: [
+                for (final x in tools)
+                  CourseInfoRow(icon: Icons.settings_rounded, color: col.warning, title: x.name, subtitle: x.description),
+              ],
             ),
-            const SizedBox(height: 22),
-          ],
-          if (c.tools.isNotEmpty) ...[
-            _SectionTitle(title: gt('الأدوات المطلوبة', 'Required tools'), icon: Icons.build_rounded),
-            const SizedBox(height: 12),
-            ...c.tools.map(
-              (x) => _InfoCard(
-                icon: Icons.settings_rounded,
-                iconBg: context.colors.primaryTint,
-                iconColor: context.colors.primary,
-                title: x.name,
-                subtitle: x.description,
-              ),
-            ),
-            const SizedBox(height: 22),
-          ],
-          if (c.prerequisites.isNotEmpty) ...[
-            _SectionTitle(
+          if (prerequisites.isNotEmpty)
+            CourseInfoSection(
               title: gt('المتطلبات المسبقة', 'Prerequisites'),
               icon: Icons.checklist_rounded,
-              color: context.colors.accent2,
+              color: col.accent,
+              children: [
+                for (final x in prerequisites)
+                  CourseInfoRow(
+                    icon: Icons.check_circle_outline_rounded,
+                    color: col.accent,
+                    title: x.title,
+                    subtitle: x.description,
+                  ),
+              ],
             ),
-            const SizedBox(height: 12),
-            ...c.prerequisites.map(
-              (x) => _InfoCard(
-                icon: Icons.check_circle_outline_rounded,
-                iconBg: context.colors.successTint,
-                iconColor: context.colors.accent2,
-                title: x.title,
-                subtitle: x.description,
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-// ── Section title ─────────────────────────────────────────────────────────────
+/// A long description folds to 6 lines with "Show more".
+class _ExpandableText extends StatefulWidget {
+  const _ExpandableText({required this.text});
 
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final Color? color;
+  final String text;
 
-  const _SectionTitle({required this.title, required this.icon, this.color});
+  @override
+  State<_ExpandableText> createState() => _ExpandableTextState();
+}
+
+class _ExpandableTextState extends State<_ExpandableText> {
+  bool _open = false;
 
   @override
   Widget build(BuildContext context) {
-    final c = color ?? context.colors.primary;
-    return Row(
-      children: [
-        Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(
-            color: c.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 18, color: c),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title,
-          style: context.colors.h3.copyWith(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
+    final c = context.colors;
+    final style = c.body.copyWith(height: 1.75);
+    return LayoutBuilder(
+      builder: (context, box) {
+        final tp = TextPainter(
+          text: TextSpan(text: widget.text, style: style),
+          maxLines: 6,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+        )..layout(maxWidth: box.maxWidth);
+        final long = tp.didExceedMaxLines;
+        tp.dispose();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              alignment: AlignmentDirectional.topStart,
+              child: Text(
+                widget.text,
+                style: style,
+                maxLines: _open || !long ? null : 6,
+                overflow: _open || !long ? null : TextOverflow.fade,
+              ),
+            ),
+            if (long)
+              TextButton(
+                onPressed: () => setState(() => _open = !_open),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 36)),
+                child: Text(_open ? gt('عرض أقل', 'Show less') : gt('عرض المزيد', 'Show more')),
+              ),
+          ],
+        );
+      },
     );
   }
-}
-
-// ── Shared schedule chip ──────────────────────────────────────────────────────
-
-class ScheduleChip extends StatelessWidget {
-  final CourseSchedule schedule;
-
-  const ScheduleChip({super.key, required this.schedule});
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-    decoration: BoxDecoration(
-      color: context.colors.primaryLight.withValues(alpha: 0.12),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(color: context.colors.primary.withValues(alpha: 0.2)),
-    ),
-    child: Row(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: context.colors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            Icons.access_time_filled_rounded,
-            color: context.colors.primary,
-            size: 18,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Text(
-          schedule.dayLabel,
-          style: context.colors.label.copyWith(
-            color: context.colors.primary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const Spacer(),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            color: context.colors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            '${schedule.startTime} — ${schedule.endTime}',
-            style: context.colors.label.copyWith(
-              color: context.colors.textDark,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 // ── Instructor card ───────────────────────────────────────────────────────────
@@ -276,7 +255,7 @@ class CourseInstructorCard extends StatelessWidget {
                     color: context.colors.onHero,
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                   ),
                 )
               : Icon(Icons.person_rounded, color: context.colors.onHero, size: 28),
@@ -329,7 +308,7 @@ class CourseInstructorCard extends StatelessWidget {
                   color: context.colors.onHero,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                 ),
               )),
             ],
@@ -340,113 +319,6 @@ class CourseInstructorCard extends StatelessWidget {
   );
 }
 
-// ── Info card ─────────────────────────────────────────────────────────────────
-
-class _InfoCard extends StatelessWidget {
-  final IconData icon;
-  final Color iconBg, iconColor;
-  final String title;
-  final String? subtitle;
-
-  const _InfoCard({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.title,
-    this.subtitle,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: context.colors.cardBg,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: context.colors.heroShade.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: context.colors.label.copyWith(
-                    color: context.colors.textDark,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (subtitle != null && subtitle!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(subtitle!, style: context.colors.caption),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-// ── Shared section header (exported) ─────────────────────────────────────────
-
-class SectionHdr extends StatelessWidget {
-  final String title;
-  final IconData? icon;
-  final Color? iconColor;
-
-  const SectionHdr({super.key, required this.title, this.icon, this.iconColor});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = iconColor ?? context.colors.primary;
-    return Row(
-      children: [
-        if (icon != null) ...[
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: c.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icon, size: 17, color: c),
-          ),
-          const SizedBox(width: 10),
-        ],
-        Text(
-          title,
-          style: context.colors.h3.copyWith(
-            fontWeight: FontWeight.w800,
-            fontSize: 15,
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 // ── Issued certificate (student's own) ───────────────────────────────────────
 

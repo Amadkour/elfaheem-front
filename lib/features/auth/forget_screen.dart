@@ -3,11 +3,11 @@ import 'package:flutter_education_app/features/auth/verified_screen.dart';
 import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../utils/helpers.dart';
-import '../../utils/widget/primary_button.dart';
 import 'auth_provider.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'register_screen.dart';
+import 'username.dart';
 
 class ForgetScreen extends StatefulWidget {
   const ForgetScreen({super.key});
@@ -62,69 +62,64 @@ class _ForgetScreenState extends State<ForgetScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-        title: 'forget'.tr,
-        builder: (context, isWide) => _buildForm());
+      title: 'auth_reset_title'.tr,
+      subtitle: 'auth_reset_sub'.tr,
+      builder: (context, isWide) => _buildForm(),
+    );
   }
 
   Widget _buildForm() {
-    final heightUnit = context.height / 100;
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Email / phone (+ @username when the admin allows it) ───────
+            Builder(
+              builder: (context) {
+                final a = context.watch<MyAuthProvider>();
+                final spec = identifierFieldSpec(
+                  email: true,
+                  phone: a.loginAllowsPhone || a.verifyByPhone,
+                  username: a.loginAllowsUsername,
+                );
+                return IconTextField(
+                  controller: _emailController,
+                  label: spec.labelKey.tr,
+                  icon: spec.icon.data,
+                  keyboard: spec.keyboard,
+                  autocorrect: false,
+                  autofillHints: const [AutofillHints.username, AutofillHints.email],
+                  textInputAction: TextInputAction.send,
+                  onSubmitted: (_) => _submit(),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
 
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // ── Top bar: back + logo + switches ──────────────────────────────
-          const AuthTopBar(showBack: false,),
-          SizedBox(height: heightUnit*2),
+            // ── Hint ───────────────────────────────────────────────────────
+            AuthInfoBanner(text: 'reset_link_hint'.tr, icon: Icons.mark_email_unread_outlined),
+            const SizedBox(height: 24),
 
-          // ── Title block ──────────────────────────────────────────────────
-          AuthHeader(
-            title: 'forget'.tr,
-            subtitle: 'forget_welcome'.tr,
-          ),
-          SizedBox(height: heightUnit * 3.5),
+            // ── Send ───────────────────────────────────────────────────────
+            AuthButton(
+              loading: context.watch<MyAuthProvider>().isLoadingForget,
+              label: 'send_reset_link'.tr,
+              icon: Icons.send_rounded,
+              onPressed: _submit,
+            ),
+            const SizedBox(height: 16),
 
-          // ── Email / phone ────────────────────────────────────────────────
-          Builder(
-            builder: (context) {
-              final a = context.watch<MyAuthProvider>();
-              final phoneOk = a.loginAllowsPhone || a.verifyByPhone;
-              return IconTextField(
-                controller: _emailController,
-                label: phoneOk ? 'email_or_phone'.tr : 'email'.tr,
-                icon: phoneOk ? Icons.person_outline : Icons.email_outlined,
-                keyboard: phoneOk
-                    ? TextInputType.text
-                    : TextInputType.emailAddress,
-              );
-            },
-          ),
-          SizedBox(height: heightUnit * 1.5),
-
-          // ── Hint ─────────────────────────────────────────────────────────
-          AuthInfoBanner(text: 'reset_link_hint'.tr),
-          SizedBox(height: heightUnit * 4),
-
-          // ── Send button ──────────────────────────────────────────────────
-          PrimaryButton(
-            isLoading: context.watch<MyAuthProvider>().isLoadingForget,
-            label: 'send_reset_link'.tr,
-            icon: Icons.send_rounded,
-            onPressed: _submit,
-          ),
-          SizedBox(height: heightUnit * 2.5),
-
-          // ── Register link ────────────────────────────────────────────────
-          LinkRow(
-            message: "doesn't_have_account".tr,
-            linkText: 'register'.tr,
-            onTap: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
-          ),
-        ],
+            // ── Register link ──────────────────────────────────────────────
+            LinkRow(
+              message: 'auth_no_account'.tr,
+              linkText: 'auth_create_account'.tr,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RegisterScreen())),
+            ),
+          ],
+        ),
       ),
     );
   }

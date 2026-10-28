@@ -24,6 +24,8 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/login_screen.dart';
 import '../../auth/register_screen.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // State
@@ -188,7 +190,7 @@ class GuestBanner extends StatelessWidget {
                                 style: TextStyle(
                                   color: c.onHero,
                                   fontWeight: FontWeight.w700,
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   decoration: TextDecoration.none,
                                   fontSize: 13,
                                 ),
@@ -202,11 +204,11 @@ class GuestBanner extends StatelessWidget {
                                 visualDensity: VisualDensity.compact,
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
                               ),
-                              icon: const Icon(Icons.login_rounded, size: 18),
+                              icon: const Icon(DirIcons.login, size: 18),
                               label: Text(
                                 'login'.tr,
-                                style: const TextStyle(
-                                  fontFamily: 'tajawal',
+                                style: TextStyle(
+                                  fontFamily: AppFonts.family,
                                   fontWeight: FontWeight.w800,
                                   fontSize: 12.5,
                                 ),
@@ -280,7 +282,7 @@ class _GuestLoginSheet extends StatelessWidget {
               'guest_login_required'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: c.textDark,
@@ -290,7 +292,7 @@ class _GuestLoginSheet extends StatelessWidget {
             Text(
               reasonKey.tr,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 14, height: 1.5, color: c.textLight),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, height: 1.5, color: c.textLight),
             ),
             const SizedBox(height: 22),
             SizedBox(
@@ -301,10 +303,10 @@ class _GuestLoginSheet extends StatelessWidget {
                   backgroundColor: c.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
-                icon: const Icon(Icons.login_rounded),
+                icon: const Icon(DirIcons.login),
                 label: Text(
                   'login'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
                 ),
                 onPressed: () {
                   Navigator.of(context).pop();
@@ -321,7 +323,7 @@ class _GuestLoginSheet extends StatelessWidget {
               child: Text(
                 'create_account'.tr,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w700,
                   color: c.primary,
                 ),
@@ -331,7 +333,7 @@ class _GuestLoginSheet extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
                 'guest_keep_browsing'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
               ),
             ),
           ],
@@ -418,7 +420,7 @@ class _GuestLocked extends StatelessWidget {
                     'guest_locked_title'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: c.textDark,
@@ -429,7 +431,7 @@ class _GuestLocked extends StatelessWidget {
                     messageKey.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 14,
                       height: 1.5,
                       color: c.textLight,
@@ -442,10 +444,10 @@ class _GuestLocked extends StatelessWidget {
                       minimumSize: const Size(200, 48),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
-                    icon: const Icon(Icons.login_rounded),
+                    icon: const Icon(DirIcons.login),
                     label: Text(
                       'login'.tr,
-                      style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
                     ),
                     onPressed: GuestGuard.goToLogin,
                   ),
@@ -496,7 +498,7 @@ class GuestPromoCard extends StatelessWidget {
                       color: c.onHero,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                     ),
                   ),
                   const SizedBox(height: 6),
@@ -506,7 +508,7 @@ class GuestPromoCard extends StatelessWidget {
                       color: c.onHero.withValues(alpha: 0.85),
                       fontSize: 12.5,
                       height: 1.4,
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -519,7 +521,7 @@ class GuestPromoCard extends StatelessWidget {
                     onPressed: GuestGuard.goToRegister,
                     child: Text(
                       'create_account'.tr,
-                      style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
                     ),
                   ),
                 ],

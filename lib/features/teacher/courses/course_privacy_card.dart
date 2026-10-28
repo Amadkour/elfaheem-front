@@ -14,6 +14,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 
 import '../../../config/app_config.dart';
 import '../../../design/app_switch.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 class CoursePrivacyCard extends StatefulWidget {
@@ -84,12 +85,12 @@ class _CoursePrivacyCardState extends State<CoursePrivacyCard> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text(priv ? 'cas_private_course'.tr : 'pc_public_course'.tr,
-                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
                   Text(
                     priv
                         ? 'pc_private_hint'.tr
                         : 'pc_public_hint'.tr,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
                   ),
                 ]),
               ),

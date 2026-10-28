@@ -24,6 +24,7 @@ import '../org_v3.dart' show orgCall, orgParseUtc, orgUtc;
 import 'gov_api.dart';
 import 'gov_council_ui.dart';
 import 'gov_models.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Vote result
@@ -453,7 +454,7 @@ class AgendaRow extends StatelessWidget {
           ],
           if (a.escalatedItemId != null) ...[
             const SizedBox(height: 8),
-            GovPillRow([AppBadgePill(t('صُعِّد إلى مجلس الكلية', 'Escalated to the faculty council'), icon: Icons.north_east_rounded, color: c.purple)]),
+            GovPillRow([AppBadgePill(t('صُعِّد إلى مجلس الكلية', 'Escalated to the faculty council'), icon: DirIcons.northEast, color: c.purple)]),
           ],
           if ((a.note ?? '').trim().isNotEmpty && !(a.note ?? '').contains('decided_elsewhere')) ...[
             const SizedBox(height: 6),
@@ -484,7 +485,7 @@ class AgendaRow extends StatelessWidget {
                 TextButton.icon(
                   style: TextButton.styleFrom(visualDensity: VisualDensity.compact, foregroundColor: c.primary),
                   onPressed: onEscalate,
-                  icon: const Icon(Icons.north_east_rounded, size: 18),
+                  icon: const Icon(DirIcons.northEast, size: 18),
                   label: Text(t('تصعيد لمجلس الكلية', 'Escalate to the faculty council'), style: orgText(context, size: 12, w: FontWeight.w700, color: c.primary)),
                 ),
             ]),

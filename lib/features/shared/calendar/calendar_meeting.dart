@@ -6,6 +6,11 @@
 //   showMeetingSheet    details: time, place, join (online, the live-session room), invitees with their answer;
 //                       invitee: accept · decline · propose another time; organizer: accept a proposal, move, cancel
 //   showComplaintMeetingSheet   one tap from a complaint: a meeting with its sender (both calendars + notification)
+//   startQuickMeeting   "Meet now" (live-rooms-spec §7): POST …/meetings/quick → the pre-join page joins by itself
+//   openMeetingRoom     the one way into a meeting's room (detail → PreJoinPage); a 402 live_plan_required offers the
+//                       student live-meeting plan and retries once (§8)
+//
+// Students (a role outside the server's staff list) create online, private meetings only (§8).
 library;
 
 import 'dart:async';
@@ -26,6 +31,8 @@ import '../../admin/admin_common.dart' show t, asMap, asMapList, asInt;
 // [meeting-recording] the latest recording's card + the creator's Record right (docs/backend/live-rooms-spec.md §5)
 import '../live/meeting_recording.dart' show MeetingRecording;
 import '../live/meeting_recording_sheets.dart' show MeetingRecordingStatus;
+import '../points/live_plan_sheet.dart' show showLivePlanSheet;
+import '../points/points_api.dart';
 import 'calendar_api.dart';
 import 'calendar_models.dart';
 
@@ -286,11 +293,23 @@ Future<Map<String, dynamic>?> showMeetingForm(BuildContext context,
     showAppSheet<Map<String, dynamic>>(
         context, (ctx) => MeetingForm(api: api, start: start, orgId: orgId, deptId: deptId));
 
+/// Is the signed-in person a "student" for meetings (online + private only, free time without the plan)?
+bool calIsStudent(BuildContext context) {
+  try {
+    return isStudentForMeetings(context.read<MyAuthProvider>().currentUser?.role);
+  } catch (_) {
+    return false; // no auth provider above (tests / previews)
+  }
+}
+
 class MeetingForm extends StatefulWidget {
-  const MeetingForm({super.key, required this.api, required this.start, this.orgId, this.deptId});
+  const MeetingForm({super.key, required this.api, required this.start, this.orgId, this.deptId, this.student});
   final CalendarApi api;
   final DateTime start; // wall
   final int? orgId, deptId;
+
+  /// Online + "Only me" forced, the mode and audience pickers hidden. Null → from the signed-in role.
+  final bool? student;
 
   @override
   State<MeetingForm> createState() => _MeetingFormState();
@@ -303,7 +322,7 @@ class _MeetingFormState extends State<MeetingForm> {
   final _aud = CalAudience();
   late DateTime _s = widget.start, _e = widget.start.add(const Duration(minutes: 30));
   String _mode = 'offline';
-  bool _private = true, _saving = false, _checking = false;
+  bool _private = true, _saving = false, _checking = false, _student = false;
   List<Map<String, dynamic>> _busy = const [];
   String? _error;
   Timer? _debounce;
@@ -312,6 +331,8 @@ class _MeetingFormState extends State<MeetingForm> {
   @override
   void initState() {
     super.initState();
+    _student = widget.student ?? calIsStudent(context);
+    if (_student) _mode = 'online';
     _scheduleCheck();
   }
 
@@ -347,29 +368,32 @@ class _MeetingFormState extends State<MeetingForm> {
   }
 
   Future<void> _save() async {
-    if (_title.text.trim().isEmpty) {
-      setState(() => _error = t('اكتب عنوان الاجتماع', 'Give the meeting a title'));
+    final titleError = calMeetingTitleError(_title.text, _mode);
+    if (titleError != null) {
+      setState(() => _error = titleError);
       return;
     }
-    if (!_private && _aud.isEmpty) {
+    if (!_student && !_private && _aud.isEmpty) {
       setState(() => _error = t('اختر المدعوين أو اجعله خاصاً', 'Pick who is invited, or make it private'));
       return;
     }
     setState(() { _saving = true; _error = null; });
     final othersBusy = _busy.where((b) => asInt(asMap(b['user'])['id']) != _me).isNotEmpty;
     try {
-      final r = await widget.api.create({
-        'title': _title.text.trim(),
-        if (_notes.text.trim().isNotEmpty) 'notes': _notes.text.trim(),
-        'starts_at': _utcIso(_s),
-        'ends_at': _utcIso(_e),
-        'mode': _mode,
-        if (_mode == 'offline' && _place.text.trim().isNotEmpty) 'location': _place.text.trim(),
-        'org_id': ?widget.orgId,
-        'dept_id': ?widget.deptId,
-        'audience': _private ? CalAudience().toJson() : _aud.toJson(),
-        'force': othersBusy, // the warning was on screen: sending is a decision
-      });
+      final r = await widget.api.create(calMeetingBody(
+        title: _title.text, // blank + online → left out: the server names it after its start
+        notes: _notes.text,
+        startsAt: _utcIso(_s),
+        endsAt: _utcIso(_e),
+        mode: _mode,
+        location: _place.text,
+        orgId: widget.orgId,
+        deptId: widget.deptId,
+        audience: _private ? CalAudience().toJson() : _aud.toJson(),
+        emptyAudience: CalAudience().toJson(),
+        student: _student,
+        force: othersBusy, // the warning was on screen: sending is a decision
+      ));
       if (mounted) Navigator.pop(context, asMap(r));
     } catch (e) {
       final busy = calBusyOf(e);
@@ -408,7 +432,13 @@ class _MeetingFormState extends State<MeetingForm> {
       padding: EdgeInsets.fromLTRB(16, 4, 16, 16 + MediaQuery.viewInsetsOf(context).bottom),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
         AppSheetHeader(t('اجتماع جديد', 'New meeting')),
-        AppField(controller: _title, label: t('العنوان', 'Title'), hint: t('مثال: متابعة المشروع', 'e.g. Project check-in')),
+        _mode == 'online'
+            ? AppField(
+                key: const ValueKey('meeting_form.title_optional'),
+                controller: _title,
+                label: t('العنوان (اختياري)', 'Title (optional)'),
+                hint: t('اختياري، يُستخدم التاريخ', 'Optional, the date is used'))
+            : AppField(controller: _title, label: t('العنوان', 'Title'), hint: t('مثال: متابعة المشروع', 'e.g. Project check-in')),
         const SizedBox(height: 12),
         CalTimeFields(
             start: _s,
@@ -418,6 +448,14 @@ class _MeetingFormState extends State<MeetingForm> {
               _scheduleCheck();
             }),
         const SizedBox(height: 14),
+        if (_student)
+          AppBanner(
+              key: const ValueKey('meeting_form.student_note'),
+              icon: Icons.videocam_rounded,
+              text: t('يمكن للطلاب إنشاء اجتماعات خاصة عبر الإنترنت؛ شارك الرابط لدعوة الآخرين',
+                  'Students can create online private meetings; share the link to invite people'),
+              color: c.primary)
+        else ...[
         CalModeChoice(mode: _mode, onChanged: (m) => setState(() => _mode = m)),
         const SizedBox(height: 10),
         if (_mode == 'offline')
@@ -470,6 +508,7 @@ class _MeetingFormState extends State<MeetingForm> {
               },
             ),
           ]),
+        ],
         ],
         const SizedBox(height: 10),
         AppField(controller: _notes, label: t('ملاحظات (اختياري)', 'Notes (optional)'), maxLines: 3),
@@ -613,29 +652,7 @@ class _MeetingSheetState extends State<MeetingSheet> {
   }
 
   Future<void> _join() async {
-    final auth = context.read<MyAuthProvider>();
-    final id = widget.meetingId;
-    final owner = _m?['is_owner'] == true;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PreJoinPage(
-        args: JoinArgs(
-          sessionId: -id, // not a course session: keeps the course-session calls of the room away from real ones
-          roomRef: LiveRoomRef.meeting(id),
-          isHost: owner, // the owner runs the lobby (share link, admission) without being a "teacher"
-          courseId: 0,
-          isTeacher: false,
-          canRecord: _canRecord, // [meeting-recording]
-          userId: auth.currentUser?.id ?? -1,
-          userName: auth.currentUser?.name ?? '--',
-          sessionName: '${_m?['title'] ?? ''}',
-          apiClient: ApiClient(),
-          // POST /meetings/{id}/join: 200 → the room; 202 waiting → PreJoinPage shows "Waiting for the host…"
-          // and polls GET /api/v1/live/requests/{id} until the owner admits (live-rooms-spec §4).
-          onStart: () async => JoinOutcome.parse(await widget.api.join(id)),
-          onEnd: () async {},
-        ),
-      ),
-    ));
+    await openMeetingRoom(context, api: widget.api, meeting: {...?_m, 'id': widget.meetingId}, canRecord: _canRecord);
     // [meeting-recording] back from the room: the latest recording (and the detail) may have changed
     if (!mounted) return;
     setState(() => _recordingRefresh++);
@@ -726,6 +743,30 @@ class _MeetingSheetState extends State<MeetingSheet> {
           const SizedBox(height: 6),
           Text('${m['notes']}', style: appText(13, c: c.textMedium, h: 1.5)),
         ],
+        if (online && m['status'] != 'cancelled')
+          if (MeetingTimeLimit.parse(m['time_limit']) case final limit?)
+            if (!(owner && m['owner_plan_active'] == true)) ...[
+              const SizedBox(height: 12),
+              AppBanner(
+                key: const ValueKey('meeting.free_time'),
+                icon: Icons.timer_outlined,
+                color: c.warning,
+                text: meetingFreeNote(limit, DateTime.now().toUtc(), owner: owner),
+                action: owner
+                    ? ParentComponent(
+                        featureKey: kPointsFeatureKey,
+                        child: TextButton(
+                          onPressed: _busy
+                              ? null
+                              : () async {
+                                  if (await showLivePlanSheet(context) && mounted) unawaited(_load());
+                                },
+                          child: Text(t('ترقية', 'Upgrade')),
+                        ),
+                      )
+                    : null,
+              ),
+            ],
         if (m['can_join'] == true) ...[
           const SizedBox(height: 14),
           AppPrimaryButton(label: t('انضم الآن', 'Join now'), icon: Icons.videocam_rounded, onPressed: _busy ? null : _join),
@@ -885,6 +926,145 @@ class _TimePickSheetState extends State<_TimePickSheet> {
           AppPrimaryButton(label: widget.action, icon: Icons.check_rounded, onPressed: () => Navigator.pop(context, (_s, _e))),
         ]),
       );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  Into the room: a meeting's join · "Meet now"
+// ═════════════════════════════════════════════════════════════════════════════
+
+DateTime? calParseUtc(dynamic v) => _parse(v);
+
+/// The creator may record an online meeting: the server's `can_record`; an older server (no field) → is_owner.
+bool meetingCanRecord(Map<String, dynamic> m) {
+  final v = m['can_record'];
+  if (v is bool) return v;
+  return m['is_owner'] == true && m['mode'] == 'online';
+}
+
+/// POST …/meetings/{id}/join with the student plan (live-rooms-spec §8): a 402 `live_plan_required` (the owner of a
+/// student meeting over its free time) opens the plan sheet and, once subscribed, joins again (once); closing the
+/// sheet stops with [LivePlanDeclined]. A 403 `meeting_time_limit` becomes a [LiveJoinMessage] with a clear text.
+/// 200 → the room; 202 waiting → PreJoinPage shows "Waiting for the host…" (§4).
+Future<JoinOutcome> joinMeetingWithPlan(BuildContext context, CalendarApi api, int id) async {
+  try {
+    return JoinOutcome.parse(await api.join(id));
+  } catch (e) {
+    final code = pointsErrorCode(e);
+    if (code == 'meeting_time_limit') throw LiveJoinMessage(pointsCodeText(code)!);
+    if (code != 'live_plan_required' || !context.mounted) rethrow;
+    if (!await showLivePlanSheet(context)) throw const LivePlanDeclined();
+    try {
+      return JoinOutcome.parse(await api.join(id));
+    } catch (e2) {
+      final c2 = pointsErrorCode(e2);
+      if (pointsCodeText(c2) case final text?) throw LiveJoinMessage(text);
+      rethrow;
+    }
+  }
+}
+
+/// The pre-join page of a meeting (its detail map: id, title, starts_at, owner, is_owner, mode, can_record).
+/// [autoJoin]: the pre-join page presses Join by itself once the devices are ready (the quick meeting).
+Future<void> openMeetingRoom(BuildContext context,
+    {required CalendarApi api, required Map<String, dynamic> meeting, bool autoJoin = false, bool? canRecord, bool? isHost}) async {
+  final auth = context.read<MyAuthProvider>();
+  final id = asInt(meeting['id']);
+  final owner = isHost ?? meeting['is_owner'] == true;
+  await Navigator.of(context).push(MaterialPageRoute(
+    builder: (_) => PreJoinPage(
+      args: JoinArgs(
+        sessionId: -id, // not a course session: keeps the course-session calls of the room away from real ones
+        roomRef: LiveRoomRef.meeting(id),
+        isHost: owner, // the owner runs the lobby (share link, admission) without being a "teacher"
+        courseId: 0,
+        isTeacher: false,
+        canRecord: canRecord ?? meetingCanRecord(meeting), // [meeting-recording]
+        userId: auth.currentUser?.id ?? -1,
+        userName: auth.currentUser?.name ?? '--',
+        sessionName: '${meeting['title'] ?? ''}',
+        apiClient: ApiClient(),
+        autoJoin: autoJoin,
+        startsAt: _parse(meeting['starts_at']),
+        hostName: _strOrNull(asMap(meeting['owner'])['name']),
+        onStart: () => joinMeetingWithPlan(context, api, id),
+        onEnd: () async {},
+      ),
+    ),
+  ));
+}
+
+String? _strOrNull(dynamic v) {
+  final s = '${v ?? ''}'.trim();
+  return s.isEmpty || s == 'null' ? null : s;
+}
+
+/// "Meet now" (live-rooms-spec §7): creates an online, private meeting that starts now (no title: the server names
+/// it after its start) and opens its pre-join page, which joins by itself; the creator is the host. Returns the
+/// meeting (null when it could not be created — the person was told).
+Future<Map<String, dynamic>?> startQuickMeeting(BuildContext context, {int? orgId, CalendarApi api = const RemoteCalendarApi()}) async {
+  final Map<String, dynamic> m;
+  try {
+    m = asMap(await api.quick(orgId: orgId));
+  } catch (e) {
+    appToast(pointsErrorText(e), error: true);
+    return null;
+  }
+  if (asInt(m['id']) <= 0 || !context.mounted) return m.isEmpty ? null : m;
+  await openMeetingRoom(context, api: api, meeting: m, autoJoin: true, canRecord: true, isHost: true);
+  return m;
+}
+
+/// The "Meet now" button (kill switch `live.quick_meeting`); [onDone] runs after the room (reload a list).
+class QuickMeetingButton extends StatefulWidget {
+  const QuickMeetingButton({super.key, this.orgId, this.api = const RemoteCalendarApi(), this.onDone, this.fab = false});
+  final int? orgId;
+  final CalendarApi api;
+  final VoidCallback? onDone;
+
+  /// A floating action button (the calendar) instead of a compact pill (lists).
+  final bool fab;
+
+  @override
+  State<QuickMeetingButton> createState() => _QuickMeetingButtonState();
+}
+
+class _QuickMeetingButtonState extends State<QuickMeetingButton> {
+  bool _busy = false;
+
+  Future<void> _go() async {
+    setState(() => _busy = true);
+    final m = await startQuickMeeting(context, orgId: widget.orgId, api: widget.api);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (m != null) widget.onDone?.call();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final label = t('اجتمع الآن', 'Meet now');
+    return ParentComponent(
+      featureKey: kQuickMeetingFeatureKey,
+      child: widget.fab
+          ? FloatingActionButton.extended(
+              key: const ValueKey('calendar.meet_now'),
+              heroTag: 'cal_meet_now',
+              onPressed: _busy ? null : _go,
+              backgroundColor: c.accent,
+              foregroundColor: c.onHero,
+              icon: _busy
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
+                  : const Icon(Icons.video_call_rounded),
+              label: Text(label, style: appText(14, w: FontWeight.w700, c: c.onHero)),
+            )
+          : AppPill(
+              key: const ValueKey('meetings.meet_now'),
+              icon: Icons.video_call_rounded,
+              label: label,
+              onTap: _busy ? null : _go,
+            ),
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════

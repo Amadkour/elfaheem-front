@@ -43,6 +43,8 @@ import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_required_documents_page.dart';
 import 'admin_send_message_page.dart';
 import 'admin_subscriptions_page.dart';
+import 'admin_points_page.dart';
+import '../shared/points/points_api.dart' show kAdminPointsFeatureKey;
 import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
 import 'admin_versions_page.dart';
@@ -51,6 +53,7 @@ import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
 import 'package:flutter_education_app/features/admin/admin_datacenter_page.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
@@ -258,6 +261,17 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.workspace_premium_rounded,
           colors: AdminPalette.orange,
           onTap: () => push(const AdminSubscriptionsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_points',
+          descKey: 'admin_points_d',
+          label: t('النقاط والمحافظ', 'Points & wallets'),
+          desc: t('طلبات شحن النقاط، أرصدة المستخدمين، وإعدادات باقة الاجتماعات المباشرة',
+              'Points top-ups, user balances and the live-meeting plan settings'),
+          icon: Icons.stars_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: kAdminPointsFeatureKey,
+          onTap: () => push(const AdminPointsPage()),
         ),
         AdminService(
           labelKey: 'apm_title',
@@ -583,7 +597,7 @@ class ServiceCard extends StatelessWidget {
                       count > 99 ? '99+' : '$count',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w800,
                         color: c.onHero,

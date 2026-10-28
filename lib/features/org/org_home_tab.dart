@@ -24,6 +24,7 @@ import 'org_my_exams.dart' show appToday, examPauseBanner, examPauseOn, examPaus
 import 'org_providers.dart' show orgBase;
 import 'org_ui.dart';
 import 'home_org_mix.dart' show showPlatformRequirement;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// 0 = my courses · 1 = my organization (kept while the app runs)
 final ValueNotifier<int> homeTab = ValueNotifier(0);
@@ -97,7 +98,7 @@ class _HomeTabsBarState extends State<HomeTabsBar> {
                   Icon(icon, size: 19, color: on ? c.onHero : c.textMedium),
                   const SizedBox(width: 8),
                   Flexible(child: Text(label, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: on ? c.onHero : c.textMedium))),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: on ? c.onHero : c.textMedium))),
                 ]),
               ),
             ),
@@ -257,8 +258,8 @@ class _OrgHomeTabState extends State<OrgHomeTab> {
                   ),
                   const SizedBox(width: 14),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(orgNameOf(org), style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 18, fontWeight: FontWeight.w800)),
-                    Text(orgTypeLabels()[org['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', color: c.onHero.withValues(alpha: 0.85))),
+                    Text(orgNameOf(org), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 18, fontWeight: FontWeight.w800)),
+                    Text(orgTypeLabels()[org['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero.withValues(alpha: 0.85))),
                   ])),
                   if (orgs.length > 1)
                     PopupMenuButton<int>(

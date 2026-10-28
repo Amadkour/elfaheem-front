@@ -95,6 +95,8 @@ class FakeCalendarApi implements CalendarApi {
   @override
   Future create(Map<String, dynamic> body) async => meetingDetail(1);
   @override
+  Future quick({int? orgId, int? minutes}) async => meetingDetail(2);
+  @override
   Future update(int id, Map<String, dynamic> body) async => meetingDetail(id);
   @override
   Future cancel(int id) async => {'cancelled': true};
@@ -247,6 +249,59 @@ void main() {
       final api = FakeCalendarApi();
       await expectNoLayoutErrors(
           tester, () => MeetingSheet(api: api, meetingId: 5, initial: api.meetingDetail(5)));
+    });
+
+    // live-rooms-spec §7 – §8: optional online title, students online + private, the free-time note
+    testWidgets('new meeting form: online makes the title optional', (tester) async {
+      await expectNoLayoutErrors(
+          tester, () => SingleChildScrollView(child: MeetingForm(api: FakeCalendarApi(), start: wall(0, 9), student: false)),
+          act: (t) async {
+        expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsNothing); // in person by default
+        await t.tap(find.byIcon(Icons.videocam_rounded).first);
+        await t.pump();
+        expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsOneWidget);
+      });
+    });
+
+    testWidgets('student meeting form: online + only me', (tester) async {
+      await expectNoLayoutErrors(
+          tester, () => SingleChildScrollView(child: MeetingForm(api: FakeCalendarApi(), start: wall(0, 9), student: true)),
+          act: (t) async {
+        expect(find.byKey(const ValueKey('meeting_form.student_note')), findsOneWidget);
+        expect(find.byKey(const ValueKey('meeting_form.title_optional')), findsOneWidget);
+        expect(find.byIcon(Icons.group_add_rounded), findsNothing);
+        expect(find.byIcon(Icons.place_rounded), findsNothing);
+      });
+    });
+
+    testWidgets('meeting details: student owner without the plan sees the free time + Upgrade', (tester) async {
+      final api = FakeCalendarApi();
+      await expectNoLayoutErrors(
+          tester,
+          () => MeetingSheet(api: api, meetingId: 5, initial: {
+                ...api.meetingDetail(5),
+                'owner_is_student': true,
+                'owner_plan_active': false,
+                'time_limit': {'ends_at': null, 'free_minutes': 15},
+              }),
+          act: (t) async => expect(find.byKey(const ValueKey('meeting.free_time')), findsOneWidget));
+    });
+
+    testWidgets('meeting details: a planned owner sees no free-time note', (tester) async {
+      final api = FakeCalendarApi();
+      await expectNoLayoutErrors(
+          tester,
+          () => MeetingSheet(api: api, meetingId: 5, initial: {
+                ...api.meetingDetail(5),
+                'owner_plan_active': true,
+                'time_limit': {'ends_at': null, 'free_minutes': 15},
+              }),
+          act: (t) async => expect(find.byKey(const ValueKey('meeting.free_time')), findsNothing));
+    });
+
+    testWidgets('calendar shows Meet now', (tester) async {
+      await expectNoLayoutErrors(tester, () => CalendarView(api: FakeCalendarApi(), initialView: CalView.day),
+          frames: 4, act: (t) async => expect(find.byKey(const ValueKey('calendar.meet_now')), findsOneWidget));
     });
 
     testWidgets('meeting details (invitee)', (tester) async {

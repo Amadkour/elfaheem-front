@@ -27,6 +27,7 @@ import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class _ProfileApi {
   static const me = '/api/v1/admin/me';
@@ -304,7 +305,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 21,
               fontWeight: FontWeight.w800,
               color: c.onHero,
@@ -316,7 +317,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 13,
               color: c.onHero.withValues(alpha: 0.8),
             ),
@@ -345,7 +346,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                       ? 'admin_role_super_admin'.tr
                       : 'admin_role_admin'.tr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12.5,
                     fontWeight: FontWeight.w700,
                     color: c.onHero,
@@ -358,7 +359,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
           Text(
             'admin_tap_photo_to_change'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11.5,
               color: c.onHero.withValues(alpha: 0.7),
             ),
@@ -394,7 +395,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                   child: Text(
                     'admin_email_super_only_hint'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: c.textLight,
                     ),

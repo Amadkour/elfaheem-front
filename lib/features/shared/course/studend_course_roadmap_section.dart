@@ -16,6 +16,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../student/models.dart';
 import 'teacher_course_roadmap_section.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 /// Background derives from the app's own primary color (not an arbitrary
@@ -131,7 +132,7 @@ class CourseRoadmapSection extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       color: context.colors.onHero,
@@ -166,7 +167,7 @@ class CourseRoadmapSection extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: context.colors.onHero,
@@ -405,7 +406,7 @@ class _RoadmapNode extends StatelessWidget {
             Text(
               caption,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: isMuted ? context.colors.onHeroFaint : context.colors.accent,
@@ -418,7 +419,7 @@ class _RoadmapNode extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.visible,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: isMuted ? context.colors.onHeroFaint : context.colors.onHero,
@@ -458,7 +459,7 @@ class _EnrollRoadmapButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                   color: ink,

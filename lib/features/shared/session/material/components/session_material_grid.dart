@@ -31,6 +31,7 @@ import 'session_exam_tile.dart';
 import 'session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Material grid
@@ -1054,7 +1055,7 @@ class MaterialCompletedBadge extends StatelessWidget {
           Text(
             '✓',
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 9,
               fontWeight: FontWeight.w800,
               color: context.colors.onHero,
@@ -1147,7 +1148,7 @@ class MaterialImageViewerDialog extends StatelessWidget {
                       title,
                       style: TextStyle(
                         color: context.colors.onHero,
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontWeight: FontWeight.w700,
                         fontSize: 15,
                       ),

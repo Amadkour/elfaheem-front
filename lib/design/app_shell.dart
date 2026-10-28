@@ -36,6 +36,7 @@ import '../utils/widget/base_page.dart';
 import '../utils/widget/refresh_button.dart';
 import 'app_responsive.dart';
 import 'calendar_entry.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Model
@@ -197,7 +198,7 @@ class WideShell extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                     color: c.onHero,
                                     fontWeight: FontWeight.normal,
                                     fontSize: 17,
@@ -209,7 +210,7 @@ class WideShell extends StatelessWidget {
                                       : 'app_tagline'.tr,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontFamily: 'tajawal', color: c.onHeroFaint, fontSize: 10),
+                                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroFaint, fontSize: 10),
                                 ),
                               ],
                             ),
@@ -329,7 +330,7 @@ class UserChipButton extends StatelessWidget {
                           color: c.onHero,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                         ),
                       ),
               ),
@@ -345,13 +346,13 @@ class UserChipButton extends StatelessWidget {
                           color: c.primaryLight,
                           fontSize: 12,
                           fontWeight: FontWeight.w100,
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         user.role.tr,
-                        style: TextStyle(color: c.accent2, fontSize: 10, fontFamily: 'bahji'),
+                        style: TextStyle(color: c.accent2, fontSize: 10, fontFamily: AppFonts.display),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -406,7 +407,7 @@ class _SidebarTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   color: selected ? c.onHero : c.onHeroFaint,
                   fontWeight: selected ? FontWeight.w500 : FontWeight.normal,
                   fontSize: 14,
@@ -428,7 +429,7 @@ class _SidebarTile extends StatelessWidget {
                             color: c.onHero,
                             fontSize: 10,
                             fontWeight: FontWeight.w800,
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                           ),
                         ),
                       ),
@@ -528,7 +529,7 @@ class NotificationIcon extends StatelessWidget {
                   decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle),
                   child: Text(
                     _badgeText(unreadCount),
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 8, fontWeight: FontWeight.w600, color: c.onHero),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 8, fontWeight: FontWeight.w600, color: c.onHero),
                   ),
                 ),
               ),
@@ -746,7 +747,7 @@ class _BottomTab extends StatelessWidget {
               fontSize: 10,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
               color: active ? c.primary : c.textLight,
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
             ),
           ),
         ],

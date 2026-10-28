@@ -15,6 +15,7 @@ import '../../../../utils/widget/primary_button.dart';
 import 'teacher_payout_provider.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherPayoutsScreen extends StatelessWidget {
   const TeacherPayoutsScreen({super.key});
@@ -94,7 +95,7 @@ class _View extends StatelessWidget {
                       child: Text(
                         'admin_withdrawals_are_not_enabled_for_your'.tr,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           color: c.textDark,
                         ),
                       ),
@@ -117,7 +118,7 @@ class _View extends StatelessWidget {
                 child: Text(
                   '${'admin_minimum_withdrawal'.tr}: ${money(p.minAmount)}',
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.textLight,
                   ),
@@ -129,7 +130,7 @@ class _View extends StatelessWidget {
                 child: Text(
                   'admin_you_have_a_withdrawal_in_progress'.tr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.textLight,
                   ),
@@ -149,7 +150,7 @@ class _View extends StatelessWidget {
                           ? 'admin_add_an_account_to_withdraw_bank'.tr
                           : 'admin_no_accounts'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         color: c.textLight,
                       ),
                     )
@@ -163,7 +164,7 @@ class _View extends StatelessWidget {
                   ? Text(
                       'admin_no_withdrawals_yet'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         color: c.textLight,
                       ),
                     )
@@ -185,7 +186,7 @@ class _View extends StatelessWidget {
         appBar: AppBar(
           title: Text(
             'admin_earnings_payouts'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
         ),
         child: body,
@@ -208,7 +209,7 @@ class _BalanceCard extends StatelessWidget {
           Text(
             money(v),
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w800,
               color: c.onHero,
               fontSize: 15,
@@ -219,7 +220,7 @@ class _BalanceCard extends StatelessWidget {
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: c.onHeroMuted,
               fontSize: 11,
             ),
@@ -238,7 +239,7 @@ class _BalanceCard extends StatelessWidget {
           Text(
             'admin_available_to_withdraw'.tr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               color: c.onHeroMuted,
             ),
           ),
@@ -246,7 +247,7 @@ class _BalanceCard extends StatelessWidget {
           Text(
             money(p.available),
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w900,
               color: c.onHero,
               fontSize: 30,
@@ -299,7 +300,7 @@ class _AccountTile extends StatelessWidget {
             child: Text(
               a.label ?? payoutMethodLabel(a.method),
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w800,
                 color: c.textDark,
               ),
@@ -314,7 +315,7 @@ class _AccountTile extends StatelessWidget {
       subtitle: Text(
         '${payoutMethodLabel(a.method)}${a.currency != null ? ' • ${a.currency}' : ''}\n${a.summary}',
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontSize: 12,
           color: c.textLight,
         ),
@@ -366,7 +367,7 @@ class _WithdrawalTile extends StatelessWidget {
               Text(
                 money(w.amount),
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                   color: c.textDark,
@@ -381,7 +382,7 @@ class _WithdrawalTile extends StatelessWidget {
               Text(
                 shortDate(w.requestedAt),
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 11.5,
                   color: c.textLight,
                 ),
@@ -392,7 +393,7 @@ class _WithdrawalTile extends StatelessWidget {
           Text(
             '${payoutMethodLabel(w.method)} • ${payoutDestinationSummary(w.destination)}',
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               color: c.textMedium,
             ),
@@ -401,7 +402,7 @@ class _WithdrawalTile extends StatelessWidget {
             Text(
               'admin_transfer_in_progress_at_the_payment'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 color: c.primary,
               ),
@@ -410,7 +411,7 @@ class _WithdrawalTile extends StatelessWidget {
             Text(
               'admin_waiting_for_the_admin_to_transfer_it'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 color: c.textLight,
               ),
@@ -419,7 +420,7 @@ class _WithdrawalTile extends StatelessWidget {
             Text(
               '${'admin_reference_2'.tr}: ${w.bankReference}',
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 color: c.success,
               ),
@@ -435,7 +436,7 @@ class _WithdrawalTile extends StatelessWidget {
                 icon: const Icon(Icons.receipt_long_rounded, size: 18),
                 label: Text(
                   'admin_view_receipt'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5),
                 ),
                 onPressed: () async {
                   final p = context.read<TeacherPayoutProvider>();
@@ -449,7 +450,7 @@ class _WithdrawalTile extends StatelessWidget {
             Text(
               '${'admin_reason'.tr}: ${w.rejectedReason}',
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 color: c.danger,
               ),
@@ -515,8 +516,8 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                     children: [
                       Text(
                         '${'admin_available'.tr}: ${money(p.available)}  •  ${'admin_minimum'.tr}: ${money(p.minAmount)}',
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
                           fontSize: 12.5,
                         ),
                       ),
@@ -550,8 +551,8 @@ Future<void> _requestSheet(BuildContext context, TeacherPayoutProvider p) {
                                     .tr
                               : 'admin_after_approval_the_admin_transfers_the'
                                     .tr,
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
+                          style: TextStyle(
+                            fontFamily: AppFonts.family,
                             fontSize: 12.5,
                           ),
                         ),
@@ -790,7 +791,7 @@ Future<void> _accountSheet(
                                   )
                                 : 'admin_manual_transfer_by_the_admin_after'.tr,
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 12.5,
                               color: ctx.colors.textLight,
                             ),

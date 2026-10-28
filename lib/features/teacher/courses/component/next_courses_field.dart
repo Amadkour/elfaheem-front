@@ -12,6 +12,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class NextCoursesField extends StatelessWidget {
   /// Already-chosen steps, in roadmap order — [{'id': int, 'text': String}]
@@ -93,7 +94,7 @@ class NextCoursesField extends StatelessWidget {
                       : 'add_roadmap_step_btn'.tr)
                       : 'add_another_roadmap_step_btn'.tr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: context.colors.primary,
@@ -149,7 +150,7 @@ class _StepRow extends StatelessWidget {
             child: Text(
               '${index + 1}',
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
                 color: context.colors.onHero,
@@ -163,7 +164,7 @@ class _StepRow extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: context.colors.textDark,
@@ -237,7 +238,7 @@ class _NextCoursePickerSheet extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text(
                       options[i]['text'] as String,
-                      style: const TextStyle(fontFamily: 'tajawal', fontSize: 13),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 13),
                     ),
                     onTap: () => Navigator.pop(context, options[i]),
                   ),

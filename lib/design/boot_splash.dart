@@ -41,6 +41,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart' show StorageService;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Facts the splash shows (set by the bootstrap, read by the widget)
@@ -589,7 +590,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontFamily: 'tajawal',
+                                    fontFamily: AppFonts.family,
                                     fontSize: 14,
                                     height: 1.3,
                                     fontWeight: FontWeight.w600,
@@ -607,7 +608,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                   overflow: TextOverflow.ellipsis,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
-                                    fontFamily: 'tajawal',
+                                    fontFamily: AppFonts.family,
                                     fontSize: 15,
                                     height: 1.3,
                                     fontWeight: FontWeight.w700,
@@ -638,7 +639,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                     overflow: TextOverflow.ellipsis,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                      fontFamily: 'tajawal',
+                                      fontFamily: AppFonts.family,
                                       fontSize: 12.5,
                                       height: 1.3,
                                       fontWeight: FontWeight.w600,
@@ -681,7 +682,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
                                 textAlign: TextAlign.center,
                                 textDirection: TextDirection.ltr,
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                   letterSpacing: 0.8,
@@ -749,7 +750,7 @@ class _SplashFooter extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12.5,
               height: 1.3,
               fontWeight: FontWeight.w700,

@@ -10,6 +10,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 
 import 'data_lab_models.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String dlTr(String key, String fallback) {
@@ -18,7 +19,7 @@ String dlTr(String key, String fallback) {
 }
 
 TextStyle dlText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
-    TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: c, height: h);
+    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c, height: h);
 
 /// Traffic-light colour for a 0–100 value, taken from the active theme.
 Color dlScoreColor(BuildContext context, double? v) {

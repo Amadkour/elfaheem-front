@@ -11,6 +11,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../student/models.dart' show AppCurrency, AppCurrencyX;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class CurrencySelector extends StatelessWidget {
   final AppCurrency selected;
@@ -42,7 +43,7 @@ class CurrencySelector extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               color: context.colors.heroShade.withValues(alpha: 0.55),
             ),
           ),
@@ -133,7 +134,7 @@ class _CurrencyChip extends StatelessWidget {
             Text(
               currency.label,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: isSelected ? context.colors.onHero : context.colors.textDark,
@@ -143,7 +144,7 @@ class _CurrencyChip extends StatelessWidget {
             Text(
               currency.symbol,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: isSelected

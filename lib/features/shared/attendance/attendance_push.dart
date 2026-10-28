@@ -16,6 +16,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'attendance_store.dart';
 import 'attendance_strings.dart';
 import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AttendanceEvent {
   AttendanceEvent(this.type, this.courseId) : stamp = DateTime.now().microsecondsSinceEpoch;
@@ -68,8 +69,8 @@ class AttendancePush {
       context: ctx,
       builder: (d) => AlertDialog(
         icon: const Icon(Icons.location_searching_rounded),
-        title: Text(attT('att_t_web_asks_title'), style: const TextStyle(fontFamily: 'tajawal')),
-        content: Text(attT('att_t_web_asks_body'), style: const TextStyle(fontFamily: 'tajawal')),
+        title: Text(attT('att_t_web_asks_title'), style: TextStyle(fontFamily: AppFonts.family)),
+        content: Text(attT('att_t_web_asks_body'), style: TextStyle(fontFamily: AppFonts.family)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(d), child: Text(attT('att_later'))),
           FilledButton(

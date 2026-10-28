@@ -28,6 +28,8 @@ import 'package:flutter/material.dart';
 
 import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data
@@ -140,7 +142,7 @@ Color _slot(BuildContext context, List<Color> palette, int i, Color? own) =>
 String _tx(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
 TextStyle _ink(Color color, {double size = 10.5, FontWeight w = FontWeight.w600}) =>
-    TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: color, height: 1.2);
+    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: color, height: 1.2);
 
 double _niceMax(double v) {
   if (v <= 0) return 1;
@@ -784,7 +786,7 @@ class AppTrendTile extends StatelessWidget {
                         BoxDecoration(color: deltaColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(
-                        up ? Icons.north_east_rounded : (down ? Icons.south_east_rounded : Icons.remove_rounded),
+                        up ? DirIcons.northEast : (down ? Icons.south_east_rounded : Icons.remove_rounded),
                         size: 12,
                         color: deltaColor,
                       ),

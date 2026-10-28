@@ -20,6 +20,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'org_timetable_time.dart';
 import 'org_v3.dart' show orgParseUtc;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Map<String, String> _days() => {
       'saturday': t('السبت', 'Sat'), 'sunday': t('الأحد', 'Sun'), 'monday': t('الاثنين', 'Mon'), 'tuesday': t('الثلاثاء', 'Tue'),
@@ -266,11 +267,11 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
                       gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
                     ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted, fontSize: 12.5)),
+                      Text(orgNameOf(asMap(r['organization'])), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted, fontSize: 12.5)),
                       const SizedBox(height: 4),
-                      Text('${r['title']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
+                      Text('${r['title']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 19, fontWeight: FontWeight.w800)),
                       if ('${r['message'] ?? ''}'.isNotEmpty)
-                        Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero))),
+                        Padding(padding: const EdgeInsets.only(top: 6), child: Text('${r['message']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero))),
                       const SizedBox(height: 10),
                       Wrap(spacing: 8, runSpacing: 6, children: [
                         _chip(Icons.timer_rounded, '${t('قبل', 'Before')} ${_stamp(r['deadline'])}'),
@@ -343,7 +344,7 @@ class _AvailabilityRequestScreenState extends State<AvailabilityRequestScreen> {
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Icon(i, size: 14, color: context.colors.onHero),
           const SizedBox(width: 4),
-          Flexible(child: Text(text, style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 12))),
+          Flexible(child: Text(text, style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 12))),
         ]),
       );
 }

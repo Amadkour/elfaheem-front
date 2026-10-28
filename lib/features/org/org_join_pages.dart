@@ -33,6 +33,8 @@ import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String unitKindLabel(String type) => type == 'program' ? t('قسم علمي', 'Academic department') : t('إدارة خدمية', 'Service department');
 
@@ -102,7 +104,7 @@ class OrgUnitJoinHub extends StatelessWidget {
           labelColor: c.primary,
           indicatorColor: c.primary,
           unselectedLabelColor: c.textMedium,
-          labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
           tabs: [for (final x in tabs) Tab(icon: Icon(x.$2, size: 18), text: x.$1)],
         ),
         Expanded(child: TabBarView(children: [for (final x in tabs) x.$3])),
@@ -259,7 +261,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
                   if (bind == null || e.key == 'select' || e.key == 'multiselect')
                     ChoiceChip(
                       avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
-                      label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? c.onHero : c.textDark)),
+                      label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family, color: f['type'] == e.key ? c.onHero : c.textDark)),
                       selected: f['type'] == e.key,
                       selectedColor: c.primary,
                       showCheckmark: false,
@@ -345,7 +347,7 @@ class _PolicyTabState extends State<_PolicyTab> with AutomaticKeepAliveClientMix
             '${widget.unitType == 'program' ? t('القبول يحدد القسم العلمي للطالب (قسم واحد لكل طالب).', 'Acceptance sets the student\'s academic department (one per student).') : t('القبول يجعل الشخص عضواً في الإدارة، ولا يمنحه صلاحيات موظف.', 'Acceptance makes the person a member of the department — it never grants staff rights.')}'),
         Section(
           title: t('طريقة الانضمام', 'How people join'),
-          icon: Icons.login_rounded,
+          icon: DirIcons.login,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(t('اختر طريقة أو أكثر — الإضافة اليدوية من تبويب الأعضاء متاحة دائماً.',
                     'Pick one or more ways — manual add from the Members tab always works.'),
@@ -544,7 +546,7 @@ class _CodesTabState extends State<_CodesTab> {
             SheetHeader(t('كود الانضمام الجديد', 'New join code')),
             SelectableText(code,
                 textDirection: TextDirection.ltr,
-                style: TextStyle(fontFamily: 'bahji', fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
+                style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: () async {
@@ -679,7 +681,7 @@ class _CodesTabState extends State<_CodesTab> {
         backgroundColor: c.primary,
         onPressed: () => _edit(),
         icon: Icon(Icons.add_rounded, color: c.onHero),
-        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
       ),
       body: OrgAsync(
         loading: rows == null && !_failed,

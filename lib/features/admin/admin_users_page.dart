@@ -24,6 +24,7 @@ import 'admin_mfa_page.dart' show confirmResetUserMfa, mfaResetLabel;
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminUsersPage extends StatelessWidget {
   const AdminUsersPage({super.key, required this.role, this.embedded = false});
@@ -112,7 +113,7 @@ class _UsersView extends StatelessWidget {
       icon: Icon(Icons.person_add_alt_1_rounded, color: c.onHero),
       label: Text(
         isStudent ? 'admin_add_student'.tr : 'admin_add_teacher'.tr,
-        style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+        style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
       ),
     );
 
@@ -231,7 +232,7 @@ class _UserTile extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     color: c.textDark,
                   ),
@@ -242,7 +243,7 @@ class _UserTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.textLight,
                   ),
@@ -593,7 +594,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         child: sub == null
             ? Text(
                 'admin_no_subscription'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
               )
             : Column(
                 children: [
@@ -618,7 +619,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         child: d!.enrollments.isEmpty
             ? Text(
                 'admin_no_courses'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
               )
             : Column(
                 children: [
@@ -631,7 +632,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                             child: Text(
                               asStr(e['course_name']),
                               style: TextStyle(
-                                fontFamily: 'tajawal',
+                                fontFamily: AppFonts.family,
                                 color: c.textDark,
                               ),
                             ),
@@ -717,7 +718,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
         child: d!.devices.isEmpty
             ? Text(
                 'admin_no_registered_devices'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textLight),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.textLight),
               )
             : Column(
                 children: [
@@ -731,12 +732,12 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                       ),
                       title: Text(
                         dev.deviceName,
-                        style: const TextStyle(fontFamily: 'tajawal'),
+                        style: TextStyle(fontFamily: AppFonts.family),
                       ),
                       subtitle: Text(
                         '${'admin_since'.tr} ${shortDate(dev.boundAt)}',
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
                           fontSize: 11.5,
                         ),
                       ),
@@ -773,7 +774,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                         child: Text(
                           '#${pay['id']} • ${paymentMethodLabel(asStrOrNull(pay['method']))} • ${shortDate(asStrOrNull(pay['created_at']))}',
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 12.5,
                             color: c.textMedium,
                           ),
@@ -784,7 +785,7 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
                           asDouble(pay['price_paid'], asDouble(pay['amount'])),
                         ),
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontWeight: FontWeight.w700,
                           color: c.textDark,
                         ),
@@ -824,7 +825,7 @@ Future<void> _grantDialog(
           scrollable: true,
           title: Text(
             'admin_grant_subscription'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -884,21 +885,21 @@ Future<String?> _resubscribeDialog(BuildContext context) {
       child: SimpleDialog(
         title: Text(
           'admin_allow_resubscribe'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         children: [
           SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, 'allow_payment'),
             child: Text(
               'admin_resubscribe_allow_payment'.tr,
-              style: const TextStyle(fontFamily: 'tajawal'),
+              style: TextStyle(fontFamily: AppFonts.family),
             ),
           ),
           SimpleDialogOption(
             onPressed: () => Navigator.pop(ctx, 'reopen'),
             child: Text(
               'admin_resubscribe_reopen'.tr,
-              style: const TextStyle(fontFamily: 'tajawal'),
+              style: TextStyle(fontFamily: AppFonts.family),
             ),
           ),
         ],
@@ -925,7 +926,7 @@ Future<void> _enrollDialog(
       child: SimpleDialog(
         title: Text(
           'admin_choose_a_course'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         children: [
           SizedBox(
@@ -937,12 +938,12 @@ Future<void> _enrollDialog(
                   ListTile(
                     title: Text(
                       c.name,
-                      style: const TextStyle(fontFamily: 'tajawal'),
+                      style: TextStyle(fontFamily: AppFonts.family),
                     ),
                     subtitle: Text(
                       c.teacherName,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
+                      style: TextStyle(
+                        fontFamily: AppFonts.family,
                         fontSize: 12,
                       ),
                     ),

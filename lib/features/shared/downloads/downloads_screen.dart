@@ -20,6 +20,7 @@ import '../attendance/attendance_strings.dart';
 import '../attendance/offline_attendance_tab.dart';
 import '../exam_engine/offline/offline_exam_screen.dart';
 import '../../admin/admin_common.dart' show t;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 // DownloadsScreen — every encrypted video saved on this device.
@@ -314,7 +315,7 @@ class _StatusCard extends StatelessWidget {
                 style: TextStyle(
                     color: color,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'tajawal')),
+                    fontFamily: AppFonts.family)),
           ),
         ),
       ]),
@@ -471,7 +472,7 @@ class _Chip extends StatelessWidget {
                 color: color,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'tajawal')),
+                fontFamily: AppFonts.family)),
       );
 }
 

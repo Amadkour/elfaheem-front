@@ -13,14 +13,8 @@ class InstructorsRow extends StatelessWidget {
     final provider = context.watch<HomeProvider>();
     final instructors = provider.instructors;
 
-    if (instructors.isEmpty) {
-      return SizedBox(
-        height: 128,
-        child: Center(
-          child: Text('لا يوجد مدرسون', style: context.colors.caption),
-        ),
-      );
-    }
+    // nothing to show → nothing drawn (the home hides the section title too)
+    if (instructors.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: 136,

@@ -13,6 +13,7 @@
 // Data: GET /api/v1/me/inbox[?org_id=] (backend routers/organization/org_me_router.py). The same widget is used by
 // the student, teacher (and assistant), parent and organization-member homes:
 //   InboxPreviewCard   compact block for a home screen (summary + the 3 most urgent items) → opens InboxScreen
+//   InboxCompactList   the home preview over rows the caller already has (/me/home): one card, a slim row per item
 //   InboxScreen        the full page
 //   UnifiedInbox       the embeddable list (segments + cards)
 library;
@@ -442,6 +443,98 @@ class InboxCard extends StatelessWidget {
   }
 }
 
+/// The home's inbox preview: ONE card, a slim row per item (kind icon · title · the one line that matters:
+/// countdown, else the date, else where it comes from) and a single urgency tag — the full cards stay on InboxScreen.
+class InboxCompactList extends StatelessWidget {
+  const InboxCompactList({super.key, required this.items, required this.onTap, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  final List<InboxItem> items;
+  final ValueChanged<InboxItem> onTap;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final c = context.colors;
+    return Padding(
+      padding: padding,
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        child: Column(children: [
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, color: c.divider),
+            _InboxCompactRow(item: items[i], onTap: () => onTap(items[i])),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _InboxCompactRow extends StatelessWidget {
+  const _InboxCompactRow({required this.item, required this.onTap});
+  final InboxItem item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final x = item;
+    final now = DateTime.now();
+    final u = inboxUrgency(x, now);
+    final tone = u == 'normal' || u == 'new' ? c.primary : _urgencyColor(context, u);
+    final countdown = inboxCountdown(x, now);
+    final where = _orgLine(x);
+    final line = [
+      _kindLabel(x),
+      if (countdown != null)
+        countdown
+      else if (x.dueAt != null && x.kind != 'ad')
+        AppTime.dateTime(x.dueAt!.toUtc())
+      else if (where.isNotEmpty)
+        where,
+    ].join(' · ');
+    final (String, Color)? tag = u == 'overdue'
+        ? ('inbox_overdue'.tr, c.danger)
+        : x.required && x.segment == InboxSegment.todo
+            ? ('inbox_mandatory'.tr, c.danger)
+            : u == 'due_soon' && x.kind != 'ad' && x.kind != 'exam'
+                ? ('inbox_due_soon'.tr, c.warning)
+                : null;
+    return Semantics(
+      button: true,
+      label: _title(x),
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
+          child: Row(children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(color: tone.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(11)),
+              child: Icon(_kindIcon(x), color: tone, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_title(x), maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark, h: 1.3)),
+                Text(line,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: appText(11.5, w: FontWeight.w600, c: u == 'overdue' ? c.danger : c.textMedium, h: 1.3)),
+              ]),
+            ),
+            if (tag != null) ...[
+              const SizedBox(width: 8),
+              ConstrainedBox(constraints: const BoxConstraints(maxWidth: 110), child: AppTag(tag.$1, tag.$2)),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _Meta extends StatelessWidget {
   const _Meta({required this.icon, required this.text, required this.color, this.ltr = false});
   final IconData icon;
@@ -771,17 +864,18 @@ class _InboxPreviewCardState extends State<InboxPreviewCard> {
                       Icon(Icons.chevron_right_rounded, color: c.primary, size: 20),
                     ]),
                   ),
-                  const SizedBox(height: 10),
-                  for (final x in todo.take(3))
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: InboxCard(item: x, onTap: () async {
-                        if (await openInboxItem(context, x) && mounted) {
-                          _c.load();
-                          AppModeController.instance.refresh();
-                        }
-                      }),
-                    ),
+                  const SizedBox(height: 6),
+                  // slim rows inside this card (a full card per item made the home preview as tall as the inbox)
+                  for (final x in todo.take(3)) ...[
+                    Divider(height: 1, thickness: 1, color: c.divider),
+                    _InboxCompactRow(item: x, onTap: () async {
+                      if (await openInboxItem(context, x) && mounted) {
+                        _c.load();
+                        AppModeController.instance.refresh();
+                      }
+                    }),
+                  ],
+                  if (todo.isNotEmpty) const SizedBox(height: 6),
                   if (todo.isEmpty || news + offers > 0)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 6),

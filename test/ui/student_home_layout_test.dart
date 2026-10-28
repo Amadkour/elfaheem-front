@@ -125,9 +125,23 @@ void main() {
         NextUpHero(next: null, now: now, upcoming: h.firstUpcoming),
         NextUpHero(next: null, now: now),
         UpcomingList(events: h.upcoming, onTap: (_) {}),
-        CourseProgressList(courses: h.coursesProgress, now: now, onTap: (_) {}),
+        StudentCourseSummary(courses: h.coursesProgress, onOpen: (_) {}, onShowAll: () {}),
+        StudentCourseSummary(courses: h.coursesProgress.take(1).toList()),
       ]),
     );
+  });
+
+  test('course summary order: the soonest next lecture, then the furthest along, finished last', () {
+    final order = homeCourseFocus(MeHome.fromJson({
+      'courses_progress': [
+        {'course_id': 1, 'name_en': 'done', 'progress': 100},
+        {'course_id': 2, 'name_en': 'half', 'progress': 50},
+        {'course_id': 3, 'name_en': 'later', 'progress': 10, 'next_lecture': {'id': 1, 'name': 'x', 'scheduled_at': iso(now.add(const Duration(days: 3)))}},
+        {'course_id': 4, 'name_en': 'soon', 'progress': 5, 'next_lecture': {'id': 2, 'name': 'y', 'scheduled_at': iso(now.add(const Duration(days: 1)))}},
+        {'course_id': 5, 'name_en': 'new', 'progress': 0},
+      ],
+    }).coursesProgress);
+    expect(order.map((x) => x.courseId).toList(), [4, 3, 2, 5, 1]);
   });
 
   test('event tags and the next-up choice follow the payload', () {

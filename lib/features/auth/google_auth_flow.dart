@@ -27,6 +27,7 @@ import 'auth_provider.dart';
 import 'mfa_verify_screen.dart';
 import 'auth_widgets.dart';
 import 'verified_screen.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ── Text helper ───────────────────────────────────────────────────────────────
 // Uses your translation key when it exists, otherwise the built-in en/ar text,
@@ -342,7 +343,7 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
               ),
             ),
             const SizedBox(height: 22),
-            _OrDivider(
+            AuthOrDivider(
               label: _t('or_fill_form', 'or fill in the form',
                   'أو املأ البيانات يدوياً'),
             ),
@@ -357,19 +358,17 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _OrDivider(
+          AuthOrDivider(
             label: _t('or_continue_with', 'or continue with', 'أو تابع باستخدام'),
           ),
-          const SizedBox(height: 10),
-          Center(
-            child: ValueListenableBuilder<bool>(
-              valueListenable: _flow.busy,
-              builder: (_, busy, __) => GoogleCircleButton(
-                loading: busy,
-                tooltip: _t('continue_with_google_btn', 'Continue with Google',
-                    'المتابعة عبر جوجل'),
-                onPressed: _start,
-              ),
+          const SizedBox(height: 16),
+          ValueListenableBuilder<bool>(
+            valueListenable: _flow.busy,
+            builder: (_, busy, __) => GoogleAuthButton(
+              label: _t('continue_with_google_btn', 'Continue with Google',
+                  'المتابعة عبر جوجل'),
+              loading: busy,
+              onPressed: _start,
             ),
           ),
           const SizedBox(height: 12),
@@ -387,7 +386,7 @@ class _GoogleAuthSectionState extends State<GoogleAuthSection>
                   ),
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 11.5,
                     color: c.textLight,
                     height: 1.4,
@@ -428,7 +427,7 @@ class _JoinCard extends StatelessWidget {
           Text(
             text,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11.5,
               fontWeight: FontWeight.w700,
               color: c.textDark,
@@ -489,7 +488,7 @@ class _JoinCard extends StatelessWidget {
                       _t('google_join_title', 'Join in one tap',
                           'انضم بضغطة واحدة'),
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 16.5,
                         fontWeight: FontWeight.w800,
                         color: c.textDark,
@@ -503,7 +502,7 @@ class _JoinCard extends StatelessWidget {
                         'أسرع طريقة لإنشاء حسابك',
                       ),
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12.5,
                         color: c.secondText,
                       ),
@@ -531,54 +530,6 @@ class _JoinCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _OrDivider extends StatelessWidget {
-  const _OrDivider({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    Widget line() => Expanded(
-      child: Container(
-        height: 1,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [c.divider.withValues(alpha: 150), c.divider],
-          ),
-        ),
-      ),
-    );
-    return Row(
-      children: [
-        line(),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: c.textLight,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Container(
-            height: 1,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [c.divider, c.divider.withValues(alpha: 150)],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -623,7 +574,7 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
   Widget build(BuildContext context) {
     final c = context.colors;
     final dark = c.isDark;
-    const r = 18.0;
+    const r = 16.0;
     final surface = dark ? c.inputBg : context.colors.onHero;
 
     return AnimatedScale(
@@ -670,7 +621,7 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
               child: Stack(
                 children: [
                   // Light sweep
-                  if (!widget.loading)
+                  if (!widget.loading && !authReduceMotion(context))
                     Positioned.fill(
                       child: IgnorePointer(
                         child: AnimatedBuilder(
@@ -697,9 +648,9 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
                       ),
                     ),
                   SizedBox(
-                    height: 56,
+                    height: 54,
                     child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 10, end: 10),
+                      padding: const EdgeInsetsDirectional.only(start: 8, end: 8),
                       child: widget.loading
                           ? Center(
                         child: SizedBox(
@@ -737,7 +688,7 @@ class _GoogleAuthButtonState extends State<GoogleAuthButton>
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontFamily: 'tajawal',
+                                fontFamily: AppFonts.family,
                                 fontSize: 15.5,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: 0.1,
@@ -1129,7 +1080,7 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                                   'كيف ستستخدم الفهيم؟',
                                 ),
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 21,
                                   fontWeight: FontWeight.w800,
                                   color: c.textDark,
@@ -1144,7 +1095,7 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                                   'اختر دورك لإكمال إنشاء حسابك.',
                                 ),
                                 style: TextStyle(
-                                  fontFamily: 'tajawal',
+                                  fontFamily: AppFonts.family,
                                   fontSize: 13,
                                   color: c.secondText,
                                   height: 1.4,
@@ -1224,7 +1175,7 @@ class _GoogleRoleSheetState extends State<_GoogleRoleSheet> {
                             ),
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 11.5,
                               color: c.textLight,
                               height: 1.4,
@@ -1313,7 +1264,7 @@ class _IdentityChip extends StatelessWidget {
                   ? '?'
                   : String.fromCharCode(shown.runes.first).toUpperCase(),
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontWeight: FontWeight.w800,
                 color: c.primary,
               ),
@@ -1330,7 +1281,7 @@ class _IdentityChip extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                       color: c.textDark,
@@ -1341,7 +1292,7 @@ class _IdentityChip extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.secondText,
                   ),
@@ -1429,7 +1380,7 @@ class _RoleCard extends StatelessWidget {
                         Text(
                           id.tr,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: selected ? c.primary : c.textDark,
@@ -1440,7 +1391,7 @@ class _RoleCard extends StatelessWidget {
                           Text(
                             _isAr ? meta.ar : meta.en,
                             style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 12.5,
                               color: c.secondText,
                               height: 1.4,

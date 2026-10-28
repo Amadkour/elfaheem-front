@@ -22,6 +22,7 @@ import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 /// How long every admin search box waits after the LAST keystroke before it
@@ -104,7 +105,7 @@ void toast(String message, {bool error = false}) {
             Expanded(
               child: Text(message,
                   style: TextStyle(
-                      fontFamily: 'tajawal', color: AdminPalette.ink, fontWeight: FontWeight.w600)),
+                      fontFamily: AppFonts.family, color: AdminPalette.ink, fontWeight: FontWeight.w600)),
             ),
           ]),
         ),
@@ -184,7 +185,7 @@ Future<bool> confirm(
         ),
         content: Text(message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontFamily: 'tajawal', height: 1.5)),
+            style: TextStyle(fontFamily: AppFonts.family, height: 1.5)),
         actionsAlignment: MainAxisAlignment.center,
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
@@ -196,7 +197,7 @@ Future<bool> confirm(
             ),
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('exam_cancel'.tr,
-                style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -207,7 +208,7 @@ Future<bool> confirm(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel ?? 'confirm'.tr,
                 style: TextStyle(
-                    fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w800)),
+                    fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -268,14 +269,14 @@ class _AskTextDialogState extends State<_AskTextDialog> {
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text(widget.title,
-            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
         content: TextField(
           controller: _ctrl,
           autofocus: true,
           maxLines: widget.multiline ? 4 : 1,
           // Enter answers (a multi-line box: Ctrl+Enter on web / desktop, design/app_keyboard.dart)
           onSubmitted: (_) => Navigator.pop(context, _ctrl.text.trim()),
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
           decoration: InputDecoration(
             hintText: widget.hint,
             filled: true,
@@ -372,7 +373,7 @@ class SheetHeader extends StatelessWidget {
         Expanded(
           child: Text(title,
               style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w800,
                   fontSize: 18,
                   color: c.textDark)),
@@ -402,7 +403,7 @@ class StatusChip extends StatelessWidget {
     ),
     child: Text(label,
         style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 11.5,
             fontWeight: FontWeight.w700,
             color: color)),
@@ -456,7 +457,7 @@ class Section extends StatelessWidget {
               Expanded(
                 child: Text(title,
                     style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w800,
                         fontSize: 15.5,
                         color: c.textDark)),
@@ -487,12 +488,12 @@ class KeyValue extends StatelessWidget {
           width: 110,
           child: Text(k,
               style: TextStyle(
-                  fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
+                  fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
         ),
         Expanded(
           child: Text(v.isEmpty ? '—' : v,
               style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: c.textDark)),
@@ -526,7 +527,7 @@ class EmptyState extends StatelessWidget {
           const SizedBox(height: 14),
           Text(message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', height: 1.5, color: c.textMedium)),
+              style: TextStyle(fontFamily: AppFonts.family, height: 1.5, color: c.textMedium)),
         ]),
       ),
     );
@@ -558,7 +559,7 @@ class ErrorRetry extends StatelessWidget {
           const SizedBox(height: 12),
           Text(message,
               textAlign: TextAlign.center,
-              style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+              style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
           const SizedBox(height: 12),
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -613,11 +614,11 @@ class Field extends StatelessWidget {
         maxLines: obscure ? 1 : maxLines,
         textDirection: ltr ? TextDirection.ltr : null,
         validator: validator,
-        style: const TextStyle(fontFamily: 'tajawal'),
+        style: TextStyle(fontFamily: AppFonts.family),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          labelStyle: TextStyle(fontFamily: 'tajawal', color: c.textMedium),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, color: c.textMedium),
           filled: true,
           fillColor: c.inputBg,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -667,14 +668,14 @@ class ChoiceRow<T> extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 6),
             child: Text(label!,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontSize: 12.5, color: c.textLight)),
+                    fontFamily: AppFonts.family, fontSize: 12.5, color: c.textLight)),
           ),
         Wrap(spacing: 8, runSpacing: 6, children: [
           for (final e in options.entries)
             ChoiceChip(
               label: Text(e.value,
                   style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w700,
                       color: e.key == value ? c.onHero : c.textDark)),
               selected: e.key == value,
@@ -733,7 +734,7 @@ class _SearchBoxState extends State<SearchBox> {
       onChanged: _changed,
       onSubmitted: (v) => _debounce.flush(() => _send(v)),
       textInputAction: TextInputAction.search,
-      style: const TextStyle(fontFamily: 'tajawal'),
+      style: TextStyle(fontFamily: AppFonts.family),
       decoration: InputDecoration(
         hintText: widget.hint ?? 'admin_search'.tr,
         prefixIcon: const Icon(Icons.search_rounded),

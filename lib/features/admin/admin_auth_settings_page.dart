@@ -17,6 +17,8 @@ import '../auth/verify_way.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminAuthSettingsPage extends StatefulWidget {
   const AdminAuthSettingsPage({super.key});
@@ -38,6 +40,9 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
   String _default = 'auto'; // auto | a selected way
   String _waDelivery = 'auto'; // auto | link | code
   Map _avail = const {};
+
+  /// "Sign in with username" (`username_login`); null = the server has no such setting yet (tile hidden, not sent).
+  bool? _usernameLogin;
 
   @override
   void initState() {
@@ -64,6 +69,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
         _requireAll = r['verification_require_all'] == true;
         _default = (r['default_verification_way'] ?? 'auto').toString();
         _waDelivery = (r['whatsapp_delivery'] ?? 'auto').toString();
+        if (r.containsKey('username_login')) _usernameLogin = r['username_login'] != false;
         _avail = r['availability'] is Map ? r['availability'] as Map : const {};
       }
     } catch (e) {
@@ -82,6 +88,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
         'default_verification_way': _ways.contains(_default) ? _default : 'auto',
         'whatsapp_delivery': _waDelivery,
         'login_identifiers': ['email', 'phone'].where(_login.contains).toList(),
+        'username_login': ?_usernameLogin,
       });
       if (r is Map && r['availability'] is Map) _avail = r['availability'] as Map;
       toast('auth_saved'.tr);
@@ -196,7 +203,7 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
       label: Text(
         label,
         style: TextStyle(
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontWeight: FontWeight.w700,
           color: selected ? c.onHero : c.textDark,
         ),
@@ -238,6 +245,19 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
       leading: Icon(icon, color: on ? c.primary : c.textLight, size: 24),
       title: titleKey.tr,
       trailing: _switch(on, (v) => _toggleLogin(key, v)),
+    );
+  }
+
+  Widget _usernameTile(bool on) {
+    final c = context.colors;
+    return PremiumSelectTile(
+      selected: on,
+      color: c.primary,
+      onTap: () => setState(() => _usernameLogin = !on),
+      leading: Icon(Icons.person_pin_rounded, color: on ? c.primary : c.textLight, size: 24),
+      title: 'auth_login_username'.tr,
+      subtitle: 'auth_login_username_hint'.tr,
+      trailing: _switch(on, (v) => setState(() => _usernameLogin = v)),
     );
   }
 
@@ -346,13 +366,15 @@ class _AdminAuthSettingsPageState extends State<AdminAuthSettingsPage> {
 
                     // 4 ─ login identifiers
                     PremiumCard(
-                      icon: Icons.login_rounded,
+                      icon: DirIcons.login,
                       colors: AdminPalette.violet,
                       title: 'auth_login_with'.tr,
                       hint: 'auth_login_with_hint'.tr,
                       children: [
                         _loginTile('email', Icons.alternate_email_rounded, 'auth_login_email'),
                         _loginTile('phone', Icons.phone_iphone_rounded, 'auth_login_phone'),
+                        // independent of the two above: a username works next to e-mail and / or phone
+                        if (_usernameLogin != null) _usernameTile(_usernameLogin!),
                       ],
                     ),
                   ],

@@ -46,7 +46,33 @@ final extra = TeacherHomeExtra.fromJson({
   'enrollments_series': [1, 3, 2, 6, 5, 9, 12, 8, 14, 20],
 });
 
+TeacherCourse course(int id, {bool published = true, int students = 0}) => TeacherCourse(
+      id: id,
+      imageUrl: '',
+      totalHours: 0,
+      type: 'live',
+      progress: 0,
+      expectedHours: 0,
+      isPublished: published,
+      studentsCount: students,
+      sessionsCount: 12345,
+      titleAr: longAr,
+      titleEn: longEn,
+    );
+
+final courses = [course(1, students: 5), course(2, published: false, students: 900), course(3, students: 123456), course(4, students: 40)];
+
 void main() {
+  test('course summary order: published by students, drafts last', () {
+    expect(teacherCourseFocus(courses).map((c) => c.id).toList(), [3, 4, 1, 2]);
+  });
+
+  test('needs-you columns: one row from 560, no lone tile on phones', () {
+    expect([for (var n = 1; n <= 7; n++) HomeStatStrip.columnsFor(n, 300)], [1, 2, 3, 2, 3, 3, 2]);
+    expect(HomeStatStrip.columnsFor(5, 900), 5);
+    expect(HomeStatStrip.columnsFor(8, 900), 6);
+  });
+
   setUp(() {
     AppModeController.applyContext = (_) {};
     homeAttentionBadge = (_, child) => child;
@@ -59,6 +85,7 @@ void main() {
     TeacherHomeExtra? extra,
     List<ScheduleSession> schedule = const [],
     Map<String, int> pending = const {},
+    List<TeacherCourse> courses = const [],
   }) =>
       SingleChildScrollView(
         child: TeacherHomeBody(
@@ -69,7 +96,7 @@ void main() {
           stats: const TeacherStats(totalStudents: 123456, totalCourses: 42, overallRating: 4.85),
           schedule: schedule,
           pending: pending,
-          courses: const [],
+          courses: courses,
           extra: extra,
           onTab: (_) {},
           onOpenCourse: (_) {},
@@ -81,15 +108,17 @@ void main() {
         ),
       );
 
-  testWidgets('full: four hero figures, five needs-you cards, agenda, sparkline, inbox preview', (tester) async {
+  testWidgets('full: four hero figures, five needs-you tiles, agenda, live queue, course summary + sparkline, inbox preview', (tester) async {
     await expectNoLayoutErrors(
       tester,
       () => body(
         extra: extra,
         schedule: [session(1, '08:00', '09:30'), session(2, '13:00', '14:30', ongoing: true), session(3, '23:00', '23:50')],
         pending: const {'attendance_missing': 3, 'grading': 1200, 'materials_missing': 0, 'enrollment_requests': 7},
+        courses: courses,
       ),
     );
+    await expectNoLayoutErrors(tester, () => body(courses: courses.take(2).toList()));
     await tester.pumpWidget(layoutHost(body(extra: extra, schedule: [session(1, '08:00', '09:30')])));
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(TeacherInboxPreview), findsOneWidget);

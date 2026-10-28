@@ -34,6 +34,7 @@ import 'certificate_designer_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 final RegExp _arabicChars = RegExp(r'[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]');
 
@@ -224,7 +225,7 @@ class _Wizard extends StatelessWidget {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(c.radiusMedium), boxShadow: c.cardShadow),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 14)),
+            Text(title, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14)),
             const SizedBox(height: 10),
             child,
           ]),
@@ -474,7 +475,7 @@ class _Toolbar extends StatelessWidget {
           child: OutlinedButton.icon(
             onPressed: d.canEdit ? onTap : null,
             icon: Icon(icon, size: 16),
-            label: Text(label, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+            label: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
             style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
           ),
         );
@@ -499,7 +500,7 @@ class _Toolbar extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () {},
                   icon: const Icon(Icons.data_object_rounded, size: 16),
-                  label: Text('cert_add_dynamic'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+                  label: Text('cert_add_dynamic'.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
                   style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
                 ),
               ),
@@ -761,7 +762,7 @@ class _SidePanelState extends State<_SidePanel> with SingleTickerProviderStateMi
       child: Column(children: [
         TabBar(
           controller: _tabs,
-          labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13),
           tabs: [
             Tab(text: 'cert_tab_field'.tr),
             Tab(text: 'cert_tab_layers'.tr),
@@ -879,7 +880,7 @@ class _FieldPanelState extends State<_FieldPanel> {
             for (final ph in kCertPlaceholders)
               ActionChip(
                 visualDensity: VisualDensity.compact,
-                label: Text(ph.labelKey.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 11)),
+                label: Text(ph.labelKey.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11)),
                 onPressed: () => _insert(p, '{${ph.key}}'),
               ),
           ]),
@@ -1077,7 +1078,7 @@ class _LayersPanel extends StatelessWidget {
               selected: f.id == p.selectedId,
               selectedTileColor: c.primary.withValues(alpha: 0.08),
               leading: Icon(icon(f), size: 18),
-              title: Text(label(f), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
+              title: Text(label(f), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontSize: 13)),
               onTap: () => p.select(f.id),
               trailing: d.canEdit
                   ? Row(mainAxisSize: MainAxisSize.min, children: [
@@ -1139,7 +1140,7 @@ class _PagePanelState extends State<_PagePanel> {
     Widget section(String title, Widget child) => Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13)),
+            Text(title, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13)),
             const SizedBox(height: 8),
             child,
           ]),
@@ -1292,7 +1293,7 @@ class _CustomizeBanner extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text('cert_readonly_design'.tr,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w600, color: c.textDark, height: 1.4)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w600, color: c.textDark, height: 1.4)),
         ),
         const SizedBox(width: 8),
         FilledButton.icon(

@@ -31,6 +31,7 @@ import 'rag_chat_sessions.dart';
 import 'rag_library.dart';
 import 'rag_learning.dart';
 import 'rag_library_screen.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 export 'rag_chat_sessions.dart';
 
@@ -853,7 +854,7 @@ class RagAnswerCard extends StatelessWidget {
                         const SizedBox(height: 10),
                         Wrap(spacing: 6, runSpacing: 6, children: [
                           for (final f in answer.followUps)
-                            AppChoiceChip(label: f, selected: false, onTap: () => onFollowUp!(f), icon: Icons.arrow_outward_rounded),
+                            AppChoiceChip(label: f, selected: false, onTap: () => onFollowUp!(f), icon: DirIcons.arrowOutward),
                         ]),
                       ],
                       // a Wrap, not a Row: on a 320 px phone with large text the badge, Copy and the rating share two lines

@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import '../profile/course_instractor_profile.dart';
 import 'course_price_tag.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class CoursesRow extends StatelessWidget {
   final List<CourseModel> courses;
@@ -281,7 +282,7 @@ class CourseCard extends StatelessWidget {
                                         color: context.colors.onHero,
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                       ),
                                     ),
                                   )),
@@ -308,7 +309,7 @@ class CourseCard extends StatelessWidget {
                                         color: context.colors.onHero,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
-                                        fontFamily: 'bahji',
+                                        fontFamily: AppFonts.display,
                                       ),
                                     ),
                                   )),
@@ -434,7 +435,7 @@ class _Thumbnail extends StatelessWidget {
                 color: context.colors.onHero,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
               ),
             ),
           )),
@@ -523,7 +524,7 @@ class _Thumbnail extends StatelessWidget {
                       color: context.colors.onHero.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w600,
                       fontSize: 9,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       decoration: TextDecoration.lineThrough,
                     ),
                   ),
@@ -535,7 +536,7 @@ class _Thumbnail extends StatelessWidget {
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                   ),
                 ),
               ],

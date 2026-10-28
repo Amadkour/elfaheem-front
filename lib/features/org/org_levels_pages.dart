@@ -21,6 +21,8 @@ import 'org_program_form.dart' show CourseSetField, orgAllCourses, orgCourseName
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -531,7 +533,7 @@ class _LevelCard extends StatelessWidget {
               Text(t('${l.students} طالب', '${l.students} students'), style: orgText(context, size: 12, color: c.textMedium)),
               const SizedBox(height: 8),
               Row(children: [
-                Icon(resolved.inherited ? Icons.subdirectory_arrow_left_rounded : Icons.tune_rounded, size: 16,
+                Icon(resolved.inherited ? DirIcons.subArrowLeft : Icons.tune_rounded, size: 16,
                     color: resolved.inherited ? c.textLight : c.primary),
                 const SizedBox(width: 4),
                 Flexible(child: Text(deptNote, style: orgText(context, size: 12, w: FontWeight.w700, color: resolved.inherited ? c.textMedium : c.primary))),
@@ -691,7 +693,7 @@ class _LevelEditorState extends State<_LevelEditor> {
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   AppChoiceChip(
                     label: widget.index == 0 ? t('افتراضي (كل الأقسام)', 'Default (all)') : t('يرث: $inheritText', 'Inherit: $inheritText'),
-                    icon: Icons.subdirectory_arrow_left_rounded,
+                    icon: DirIcons.subArrowLeft,
                     selected: d.programs == 'inherit',
                     onTap: () => setState(() => d.programs = 'inherit'),
                   ),
@@ -712,7 +714,7 @@ class _LevelEditorState extends State<_LevelEditor> {
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       for (final p in widget.programs)
                         FilterChip(
-                          label: Text(_pname(asInt(p['id'])), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+                          label: Text(_pname(asInt(p['id'])), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
                           selected: _progs.contains(asInt(p['id'])),
                           onSelected: (on) => setState(() => on ? _progs.add(asInt(p['id'])) : _progs.remove(asInt(p['id']))),
                         ),

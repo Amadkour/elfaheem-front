@@ -15,6 +15,7 @@ import 'admin_labels.dart';
 import 'admin_list.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 final _semver = RegExp(r'^\d+(\.\d+){0,2}([+-][0-9A-Za-z.\-]+)?$');
 
@@ -61,7 +62,7 @@ class _View extends StatelessWidget {
         icon: Icon(Icons.rocket_launch_rounded, color: c.onHero),
         label: Text(
           'admin_publish_version'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+          style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
         ),
       ),
       child: AdminSimpleList(
@@ -132,7 +133,7 @@ class _VersionCard extends StatelessWidget {
                       'v${asStr(v['version'])}',
                       textDirection: TextDirection.ltr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontWeight: FontWeight.w900,
                         fontSize: 18,
                         color: c.textDark,
@@ -141,7 +142,7 @@ class _VersionCard extends StatelessWidget {
                     Text(
                       platform,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12,
                         color: c.textLight,
                       ),
@@ -195,7 +196,7 @@ class _VersionCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 12.5,
                   color: c.textMedium,
                 ),

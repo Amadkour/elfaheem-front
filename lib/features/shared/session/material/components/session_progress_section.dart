@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry — the whole progress block
@@ -84,7 +85,7 @@ class SessionProgressSection extends StatelessWidget {
                         TextSpan(
                           text: '$done',
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             color: fillStart,
@@ -93,7 +94,7 @@ class SessionProgressSection extends StatelessWidget {
                         TextSpan(
                           text: ' / $total',
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: context.colors.textLight,
@@ -164,7 +165,7 @@ class _LabelRow extends StatelessWidget {
               TextSpan(
                 text: '$done',
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: fillStart,
@@ -173,7 +174,7 @@ class _LabelRow extends StatelessWidget {
               TextSpan(
                 text: ' / $total',
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textLight,
@@ -193,7 +194,7 @@ class _LabelRow extends StatelessWidget {
           child: Text(
             '${(ratio * 100).toInt()}%',
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 14,
               fontWeight: FontWeight.w800,
               color: context.colors.onHero,
@@ -234,7 +235,7 @@ class _CompletedBadgePill extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 10,
             fontWeight: FontWeight.w800,
             color: context.colors.onHero,
@@ -268,7 +269,7 @@ class _InProgressBadgePill extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: fillStart,

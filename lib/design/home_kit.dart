@@ -16,6 +16,8 @@
 //   HomeHeroCard       the gradient hero surface (each role puts its own memorable element inside)
 //   HomeDayRibbon      the instructor's hero element: the day as a ribbon with today's sessions and a "now" marker
 //   HomeTodoCard       "To do" from AttentionService (AttentionTabs.home) → the items sheet with deep links
+//   HomeStatStrip      "Needs you" in ONE card of small count tiles (student · instructor homes)
+//   HomeCourseSummary  a role's courses in ONE card: figures, the 3 that matter now as slim lines, "All n courses"
 library;
 
 import 'dart:math' as math;
@@ -24,6 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Hooks & pure helpers
@@ -780,5 +783,245 @@ class HomeHeroFigure extends StatelessWidget {
           child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w900, c: on, h: 1.1))),
       Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: on.withValues(alpha: 0.8))),
     ]);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Compact summaries ("Needs you", the courses)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One tile of a [HomeStatStrip]: icon, short label and the count; a count above zero tints the tile in [tone].
+/// [value] replaces the drawn number (an amount) while [count] still says whether the tile needs the person.
+class HomeStat {
+  const HomeStat({required this.icon, required this.label, required this.count, this.value, this.tone, this.onTap});
+  final IconData icon;
+  final String label;
+  final int count;
+  final String? value;
+  final Color? tone;
+  final VoidCallback? onTap;
+}
+
+/// "Needs you" as ONE card of small tiles (a tall card per count filled the first screen of a phone).
+class HomeStatStrip extends StatelessWidget {
+  const HomeStatStrip({super.key, required this.items, this.padding = const EdgeInsets.symmetric(horizontal: 20)});
+  final List<HomeStat> items;
+  final EdgeInsetsGeometry padding;
+
+  /// Every tile in one row from 560 (up to 6); on phones 2 columns for two or four tiles, else 3 — never one
+  /// tile alone on the last row when another split avoids it.
+  static int columnsFor(int n, double width) {
+    if (n <= 1) return 1;
+    if (width >= 560) return math.min(n, 6);
+    if (n == 2 || n == 4) return 2;
+    return n % 3 == 1 ? 2 : 3;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: padding,
+      child: AppCard(
+        padding: const EdgeInsets.all(8),
+        child: LayoutBuilder(builder: (context, box) {
+          final cols = columnsFor(items.length, box.maxWidth);
+          const gap = 6.0;
+          final rows = <Widget>[];
+          for (var i = 0; i < items.length; i += cols) {
+            // a shorter last row spreads over the full width (no empty slot)
+            final row = items.sublist(i, math.min(i + cols, items.length));
+            rows.add(IntrinsicHeight(
+              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                for (var k = 0; k < row.length; k++) ...[
+                  if (k > 0) const SizedBox(width: gap),
+                  Expanded(child: _StatTile(row[k])),
+                ],
+              ]),
+            ));
+            if (i + cols < items.length) rows.add(const SizedBox(height: gap));
+          }
+          return Column(children: rows);
+        }),
+      ),
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  const _StatTile(this.s);
+  final HomeStat s;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final color = s.tone ?? c.primary;
+    final hot = s.count > 0;
+    final ink = appInk(context, color);
+    final r = BorderRadius.circular(14);
+    return Material(
+      color: hot ? color.withValues(alpha: 0.09) : c.cardBg,
+      borderRadius: r,
+      child: InkWell(
+        borderRadius: r,
+        onTap: s.onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(s.icon, size: 18, color: hot ? ink : c.textLight),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(s.value ?? (s.count > 999 ? '999+' : '${s.count}'),
+                        maxLines: 1, style: appText(20, w: FontWeight.w900, c: hot ? ink : c.textLight, h: 1)),
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            Text(s.label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: appText(12, w: FontWeight.w700, c: hot ? c.textDark : c.textMedium, h: 1.25)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// One course of a [HomeCourseSummary].
+class HomeCourseLine {
+  const HomeCourseLine({required this.title, this.subtitle, this.imageUrl, this.progress, this.trailing, this.onTap});
+  final String title;
+  final String? subtitle, imageUrl, trailing;
+
+  /// 0–100: a thin bar under the title (students); null = no bar.
+  final double? progress;
+  final VoidCallback? onTap;
+}
+
+/// A role's courses in ONE card: a row of figures, the few courses that matter now as slim lines, and
+/// "All n courses" at the foot — the full course cards live on the courses tab.
+class HomeCourseSummary extends StatelessWidget {
+  const HomeCourseSummary({
+    super.key,
+    required this.figures,
+    required this.lines,
+    this.footer,
+    this.moreLabel,
+    this.onMore,
+    this.padding = const EdgeInsets.symmetric(horizontal: 20),
+  });
+
+  /// (value, label) pairs, drawn side by side.
+  final List<(String, String)> figures;
+  final List<HomeCourseLine> lines;
+
+  /// Under the figures (the instructor's enrollments trend).
+  final Widget? footer;
+  final String? moreLabel;
+  final VoidCallback? onMore;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final divider = Divider(height: 1, thickness: 1, color: c.divider);
+    return Padding(
+      padding: padding,
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          if (figures.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                for (final (value, label) in figures)
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w900, c: c.textDark, h: 1.1)),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11.5, w: FontWeight.w600, c: c.textMedium, h: 1.2)),
+                    ]),
+                  ),
+              ]),
+            ),
+          if (footer != null) Padding(padding: const EdgeInsets.fromLTRB(14, 0, 14, 12), child: footer),
+          for (final x in lines) ...[divider, _CourseLineRow(x)],
+          if (moreLabel != null && onMore != null) ...[
+            divider,
+            InkWell(
+              onTap: onMore,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Flexible(
+                    child: Text(moreLabel!,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w800, c: appInk(context, c.primary))),
+                  ),
+                  Icon(Icons.chevron_right_rounded,
+                      size: 18, color: appInk(context, c.primary)),
+                ]),
+              ),
+            ),
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
+class _CourseLineRow extends StatelessWidget {
+  const _CourseLineRow(this.x);
+  final HomeCourseLine x;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final url = x.imageUrl;
+    return InkWell(
+      onTap: x.onTap,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        child: Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: url != null && url.startsWith('http')
+                  ? AppNetworkImage(url: url, width: 40, height: 40)
+                  : ColoredBox(color: c.primaryTint, child: Icon(Icons.menu_book_rounded, size: 20, color: appInk(context, c.primary))),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(x.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w800, c: c.textDark, h: 1.25)),
+              if (x.subtitle != null && x.subtitle!.isNotEmpty)
+                Text(x.subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11.5, c: c.textMedium, h: 1.3)),
+              if (x.progress != null) ...[
+                const SizedBox(height: 6),
+                // progress is not a grade: the brand colour while under way, success when done
+                AppProgressBar(value: x.progress, height: 4, color: x.progress! >= 100 ? c.success : appChartPalette(context).first),
+              ],
+            ]),
+          ),
+          if (x.trailing != null) ...[
+            const SizedBox(width: 10),
+            Text(x.trailing!, maxLines: 1, style: appText(12.5, w: FontWeight.w800, c: c.textMedium)),
+          ],
+        ]),
+      ),
+    );
   }
 }

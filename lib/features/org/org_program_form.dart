@@ -19,6 +19,8 @@ import 'org_member_form.dart' show OrgMemberPickField;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String orgCourseName(Map c) =>
     '${(c['code'] ?? '').toString().isEmpty ? '' : '${c['code']} · '}${t('${c['name_ar'] ?? c['name_en']}', '${c['name_en'] ?? c['name_ar']}')}';
@@ -207,7 +209,7 @@ class _ProgramFormState extends State<_ProgramForm> {
                 onChanged: (v) => setState(() => _manager = v),
               ),
             ]),
-            _Section(icon: Icons.login_rounded, title: t('الالتحاق', 'Admission'), children: [
+            _Section(icon: DirIcons.login, title: t('الالتحاق', 'Admission'), children: [
               _ErrField(
                 error: _errors['capacity'],
                 child: Field(controller: _cap, label: t('السعة القصوى للطلاب (اختياري)', 'Student capacity (optional)'), keyboard: TextInputType.number, ltr: true),
@@ -479,7 +481,7 @@ class CourseSetField extends StatelessWidget {
           child: Wrap(spacing: 6, runSpacing: 6, children: [
             for (final id in selected)
               InputChip(
-                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+                label: Text(byId[id] == null ? '#$id' : orgCourseName(byId[id]!), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
                 onDeleted: () {
                   selected.remove(id);
                   onChanged();

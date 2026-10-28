@@ -24,7 +24,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -36,6 +35,7 @@ import '../shared/profile/change_password_widget.dart';
 import 'additional_register_screen.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
+import 'username.dart' show identifierLooksLikeEmail;
 import 'verify_way.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
@@ -605,18 +605,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
   Widget build(BuildContext context) {
     return AuthScaffold(
       title: 'verification'.tr,
-      maxWidth: 550,
+      subtitle: _isReg ? 'auth_verify_sub'.tr : 'auth_reset_code_sub'.tr,
+      maxWidth: 480,
       builder: (context, isWide) => FadeTransition(
         opacity: _fadeAnimation,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Top bar: back (when possible) + logo + language / theme switches
-            const AuthTopBar(compact: true),
-            const SizedBox(height: 12),
             if (_isReg) ...[
-              ProgressBar(currentStep: 1, totalSteps: 3),
-              const SizedBox(height: 22),
+              const ProgressBar(currentStep: 1, totalSteps: 3),
+              const SizedBox(height: 24),
             ],
             _content(),
           ],
@@ -638,6 +636,25 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     if (w.isPhone)
       return widget.phoneNumber ?? auth.pendingPhoneMasked ?? widget.email;
     return widget.email;
+  }
+
+  /// A reset asked by @username: the server hides every destination (it must not reveal whether the name
+  /// exists), so the screen says so instead of showing the typed name as if it were an address.
+  bool get _destinationHidden {
+    if (_isReg) return false;
+    final w = _way ?? VerifyWay.email;
+    if (_auth.resetWays.any((r) => r.way == w.name && r.masked != null)) return false;
+    final typed = widget.email.trim();
+    if (typed.isEmpty || identifierLooksLikeEmail(typed)) return false;
+    // a phone number: digits (any script), spaces, +, -, ( )
+    return !RegExp(r'^\+?[0-9٠-٩۰-۹\s\-()]{5,}$').hasMatch(typed);
+  }
+
+  /// "We sent a code to the e-mail or phone on the account @name, if it exists."
+  String get _hiddenDestinationText {
+    var name = widget.email.trim();
+    if (name.startsWith('@')) name = name.substring(1);
+    return 'reset_code_sent_neutral'.tr.replaceAll('{name}', '${String.fromCharCode(0x200E)}@$name');
   }
 
   String get _sentHint => switch (_way) {
@@ -674,16 +691,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
               Text(
                 link ? 'phone_link_title'.tr : 'enter_verification_code'.tr,
                 textAlign: TextAlign.center,
-                style: c.h1,
+                style: authText(22, w: FontWeight.w800, c: c.textDark, h: 1.25, ls: authTracking(-0.2)),
               ),
               const SizedBox(height: 8),
               Text(
-                link ? 'phone_link_hint'.tr : _sentHint,
+                link ? 'phone_link_hint'.tr : (_destinationHidden ? _hiddenDestinationText : _sentHint),
                 textAlign: TextAlign.center,
-                style: c.body,
+                style: authText(14.5, c: c.textMedium, h: 1.5),
               ),
-              const SizedBox(height: 14),
-              VerifyDestinationChip(way: way, text: _destination),
+              if (!_destinationHidden) ...[
+                const SizedBox(height: 14),
+                VerifyDestinationChip(way: way, text: _destination),
+              ],
             ],
           ),
         ),
@@ -750,13 +769,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
           : const SizedBox(width: double.infinity),
     ),
     _buildOtpFields(),
-    const SizedBox(height: 22),
+    const SizedBox(height: 20),
     _buildResendRow(),
-    const SizedBox(height: 26),
-    PrimaryButton(
-      isLoading: _isLoading,
+    const SizedBox(height: 24),
+    AuthButton(
+      loading: _isLoading,
       label: 'confirm'.tr,
-      enable: _isOtpComplete && !_isLoading,
+      enabled: _isOtpComplete && !_isLoading,
       icon: Icons.verified_rounded,
       iconBefore: true,
       onPressed: _onConfirm,
@@ -771,11 +790,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
         final dx = math.sin(t * math.pi * 6) * 10 * (1 - t);
         return Transform.translate(offset: Offset(dx, 0), child: child);
       },
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(otpLength, _buildSingleBox),
+      child: Semantics(
+        label: 'enter_verification_code'.tr,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 340),
+              child: Row(
+                children: List.generate(otpLength, _buildSingleBox),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -783,100 +809,60 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
 
   Widget _buildSingleBox(int index) {
     final c = context.colors;
+    final digit = AuthOtpBox.digitStyle(context);
     return Expanded(
       child: Padding(
-        padding: const EdgeInsets.all(6),
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         child: ListenableBuilder(
           listenable: Listenable.merge([
             _focusNodes[index],
             _controllers[index],
           ]),
-          builder: (context, _) {
-            final isFocused = _focusNodes[index].hasFocus;
-            final isFilled = _controllers[index].text.isNotEmpty;
-            final Color border;
-            final Color bg;
-            if (_hasError) {
-              border = c.danger;
-              bg = c.danger.withValues(alpha: 0.06);
-            } else if (isFocused) {
-              border = c.primary;
-              bg = c.background;
-            } else if (isFilled) {
-              border = c.primary.withValues(alpha: 0.5);
-              bg = c.background;
-            } else {
-              border = c.divider;
-              bg = c.inputBg;
-            }
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(c.radiusMedium),
-                border: Border.all(color: border, width: isFocused ? 2 : 1),
-                boxShadow: isFocused
-                    ? [
-                        BoxShadow(
-                          color: c.primary.withValues(alpha: 0.14),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
+          builder: (context, _) => AuthOtpBox(
+            focused: _focusNodes[index].hasFocus,
+            filled: _controllers[index].text.isNotEmpty,
+            error: _hasError,
+            height: 64,
+            child: Focus(
+              onKeyEvent: (_, e) => _onKeyEvent(index, e),
+              child: TextField(
+                controller: _controllers[index],
+                focusNode: _focusNodes[index],
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                // the field fills the box: text + cursor vertically centered
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                keyboardType: TextInputType.number,
+                textInputAction: index == otpLength - 1 ? TextInputAction.done : TextInputAction.next,
+                autofillHints: index == 0
+                    ? const [AutofillHints.oneTimeCode]
                     : null,
-              ),
-              child: Focus(
-                onKeyEvent: (_, e) => _onKeyEvent(index, e),
-                child: SizedBox(
-                  height: 66,
-                  child: TextField(
-                    controller: _controllers[index],
-                    focusNode: _focusNodes[index],
-                    textAlign: TextAlign.center,
-                    textAlignVertical: TextAlignVertical.center,
-                    // text + cursor vertically centered
-                    expands: true,
-                    // field fills the 66px height
-                    maxLines: null,
-                    // required when expands: true
-                    minLines: null,
-                    // required when expands: true
-                    keyboardType: TextInputType.number,
-                    autofillHints: index == 0
-                        ? const [AutofillHints.oneTimeCode]
-                        : null,
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: c.textDark,
-                      height: 1.0, // line height = font size, no extra space
-                    ),
-                    strutStyle: const StrutStyle(
-                      fontSize: 28,
-                      height: 1.0,
-                      forceStrutHeight:
-                          true, // same line box for every font/digit
-                    ),
-                    cursorColor: c.primary,
-                    cursorHeight: 40,
-                    // cursor length (see note below)
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      counterText: '',
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      fillColor: Colors.transparent,
-                    ),
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    onChanged: (value) => _onOtpChanged(index, value),
-                  ),
+                style: digit,
+                // same line box for every font / digit
+                strutStyle: const StrutStyle(fontSize: 28, height: 1.0, forceStrutHeight: true),
+                cursorColor: c.primary,
+                cursorHeight: 32,
+                cursorWidth: 2,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                  filled: false,
                 ),
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: (value) {
+                  if (value.isNotEmpty) HapticFeedback.selectionClick();
+                  _onOtpChanged(index, value);
+                },
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );
@@ -887,49 +873,55 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen>
     final w = _way;
     final left = _cooldown[w] ?? 0;
     final canResend = left == 0;
+    final ink = c.isDark ? c.primaryLight : c.primary;
     return Center(
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: authDuration(context, 200),
         child: canResend
             ? TextButton.icon(
                 key: const ValueKey('resend'),
                 onPressed: _onResend,
-                icon: Icon(Icons.refresh_rounded, size: 18, color: c.primary),
-                label: Text(
-                  'resend'.tr,
-                  style: TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: c.primary,
-                  ),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 44),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.16 : 0.07),
+                  foregroundColor: ink,
+                  shape: const StadiumBorder(),
                 ),
+                icon: Icon(Icons.refresh_rounded, size: 18, color: ink),
+                label: Text('resend'.tr, style: authText(14, w: FontWeight.w700, c: ink)),
               )
-            : Row(
+            : Container(
                 key: const ValueKey('timer'),
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      value: left / resendSeconds,
-                      strokeWidth: 2.4,
-                      color: (w ?? VerifyWay.email).brand,
-                      backgroundColor: c.divider,
+                constraints: const BoxConstraints(minHeight: 44),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: ShapeDecoration(
+                  color: c.inputBg,
+                  shape: const StadiumBorder(),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        value: left / resendSeconds,
+                        strokeWidth: 2.4,
+                        color: (w ?? VerifyWay.email).brand,
+                        backgroundColor: c.divider,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'resend_in'.tr + _timerText,
-                    style: TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: c.textLight,
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'resend_in'.tr + _timerText,
+                        style: authText(13.5, w: FontWeight.w600, c: c.textMedium)
+                            .copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );

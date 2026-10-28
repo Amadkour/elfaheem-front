@@ -10,6 +10,7 @@ import '../features/teacher/sessions/components/session_form_sheet.dart';
 import '../features/teacher/sessions/sessions_provider.dart';
 import '../main.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Saudi Arabia Timezone  (AST = UTC+3, no DST)
@@ -128,8 +129,8 @@ class Helpers {
               const SizedBox(width: 10),
               Text(
                 message,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
+                style: TextStyle(
+                  fontFamily: AppFonts.family,
                   color: Colors.white,
                   fontWeight: FontWeight.w600,
                 ),
@@ -186,14 +187,14 @@ class Helpers {
         ),
         title: Text(
           confirm ?? 'logout'.tr,
-          style: const TextStyle(
-            fontFamily: 'tajawal',
+          style: TextStyle(
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w700,
           ),
         ),
         content: Text(
           title ?? 'هل أنت متأكد أنك تريد تسجيل الخروج؟',
-          style: TextStyle(fontFamily: 'bahji'),
+          style: TextStyle(fontFamily: AppFonts.display),
         ),
         actions: [
           TextButton(
@@ -207,7 +208,7 @@ class Helpers {
             child: Text(
               cancel ?? 'cancel'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 color: context.colors.textMedium,
               ),
             ),
@@ -228,8 +229,8 @@ class Helpers {
             },
             child: Text(
               confirm ?? 'exit'.tr,
-              style: const TextStyle(
-                fontFamily: 'tajawal',
+              style: TextStyle(
+                fontFamily: AppFonts.family,
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),

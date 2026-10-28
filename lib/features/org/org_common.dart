@@ -12,6 +12,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import 'org_providers.dart';
 import 'org_ui.dart' show orgFileUrl;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Warm, human gradient from the organization's own colour (falls back to the app primary).
 Color orgColor(BuildContext context, Map<String, dynamic>? org) {
@@ -115,7 +116,7 @@ class _ImportResultSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: Text('${t('صف', 'Row')} ${e['row']}: ${e['error']}',
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.danger)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.danger)),
             ),
         ],
         if (creds.isNotEmpty) ...[
@@ -125,7 +126,7 @@ class _ImportResultSheet extends StatelessWidget {
           const SizedBox(height: 6),
           for (final u in creds.take(60))
             SelectableText('${u['email']}   ·   ${u['password']}',
-                textDirection: TextDirection.ltr, style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.textDark)),
+                textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.textDark)),
         ],
       ]),
     );
@@ -185,12 +186,12 @@ class OrgHero extends StatelessWidget {
             Text(OrgSession.nameOf(org),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: 'bahji', fontSize: 18, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                style: TextStyle(fontFamily: AppFonts.display, fontSize: 18, fontWeight: FontWeight.w800, color: context.colors.onHero)),
             if (subtitle != null)
               Padding(
                 padding: const EdgeInsets.only(top: 3),
                 child: Text(subtitle!,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: context.colors.onHero.withValues(alpha: 0.86))),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: context.colors.onHero.withValues(alpha: 0.86))),
               ),
           ]),
         ),
@@ -216,7 +217,7 @@ Future<void> exportData(BuildContext context, String path, [Map<String, dynamic>
           ])
             ListTile(
               leading: Icon(icon),
-              title: Text(label, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               onTap: () => Navigator.pop(ctx, f),
             ),
         ]),

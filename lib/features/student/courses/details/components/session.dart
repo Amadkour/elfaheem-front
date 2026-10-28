@@ -1,4 +1,6 @@
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'dart:math' as math;
+
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -7,10 +9,11 @@ import '../../../analysis/exam/student_course_exams_widget.dart'
 import '../../../analysis/exam/student_exam_provider.dart';
 import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
-import '../../../../shared/session/material/components/session_progress_section.dart';
+import '../../../../shared/course/course_space/course_space.dart';
 import '../../../../shared/session/material/session_material_widget.dart';
 import '../../../models.dart';
 import '../course_detail_provider.dart';
+import '../growth_tr.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
 
@@ -19,10 +22,18 @@ class SessionsTab extends StatelessWidget {
     super.key,
     required this.presented,
     required this.provider,
+    this.title,
+    this.live = false,
   });
 
   final List<SessionModel> presented;
   final CourseDetailProvider provider;
+
+  /// The list header; null → "Sessions".
+  final String? title;
+
+  /// The live tab (its own empty state, the count of what is on air).
+  final bool live;
 
   /// Opens the session's exam directly (passcode sheet first if protected).
   /// Falls back to the exam tab if the exam can't be resolved.
@@ -57,58 +68,37 @@ class SessionsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (provider.isLoading) {
+    if (provider.isLoading && presented.isEmpty) {
       return const AppListSkeleton(items: 4);
     }
     final hasSections = presented.any((s) => s.track == 'section');
     final shown = !hasSections || provider.trackFilter == 'all'
         ? presented
         : presented.where((s) => s.track == provider.trackFilter).toList();
+    final count = live ? presented.length : math.max(provider.course.sessionsCount, presented.length);
+    final header = CourseSectionHeader(title: title ?? 'sessions'.tr, count: count);
     if (presented.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(48),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: context.colors.primaryLight.withValues(alpha: 0.3),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.video_library_outlined,
-                  size: 36,
-                  color: context.colors.primary,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Text('sessions_empty'.tr, style: context.colors.body),
-            ],
+      return Column(
+        children: [
+          header,
+          AppEmpty(
+            icon: live ? Icons.sensors_off_rounded : Icons.video_library_outlined,
+            title: live ? gt('لا يوجد بث مباشر الآن', 'Nothing is live right now') : 'sessions_empty'.tr,
+            message: live
+                ? gt('ستظهر الجلسة هنا فور أن يبدأ المدرس البث', 'The session shows up here as soon as the teacher goes live')
+                : gt('سيضيف المدرس الدروس قريباً', 'The teacher will add lessons soon'),
           ),
-        ),
+        ],
       );
     }
 
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Progress summary banner
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
-          child: ParentComponent(
-              featureKey: 'sessions.progress',
-              child: SessionProgressSection(
-                totalMaterial: provider.course.materialsTotal,
-                completeMaterial: provider.course.materialsCompleted,
-                isTeacher: false,
-                isFull: true,
-              )),
-        ),
+        header,
         if (hasSections)
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+            padding: const EdgeInsets.fromLTRB(kCourseGutter, 0, kCourseGutter, 6),
             child: SessionTrackTabs(
               value: provider.trackFilter,
               lectures: presented.where((s) => s.track != 'section').length,
@@ -117,7 +107,7 @@ class SessionsTab extends StatelessWidget {
             ),
           ),
         ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.fromLTRB(kCourseGutter, 4, kCourseGutter, 4),
           physics: const NeverScrollableScrollPhysics(),
           shrinkWrap: true,
           itemCount: shown.length,
@@ -125,7 +115,7 @@ class SessionsTab extends StatelessWidget {
             final session = shown[i];
             final gate = provider.examGates[session.id];
             return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.only(bottom: 12),
               child: Column(
                 children: [
                   ParentComponent(
@@ -152,10 +142,8 @@ class SessionsTab extends StatelessWidget {
             );
           },
         ),
-        // Footer for the next page of sessions. The actual scroll-position
-        // trigger lives one level up (this list never scrolls itself — see
-        // the NotificationListener around the outer CustomScrollView in
-        // course_detail_screen.dart); this widget only reflects the state.
+        // Footer for the next page of sessions. The scroll-position trigger is the CourseSpace's onNearEnd
+        // (this list never scrolls itself); this widget only reflects the state.
         if (provider.isLoadingMoreSessions)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),

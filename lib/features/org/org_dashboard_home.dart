@@ -49,6 +49,8 @@ import 'org_providers.dart';
 import 'org_schedule_autopilot.dart' show TermNeed, TermTimetableCard;
 import 'org_ui.dart';
 import 'org_v3.dart' show orgCall, orgErrorText, orgParseUtc, orgUtc;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Plain-value specs
@@ -215,7 +217,7 @@ class OrgHero extends StatelessWidget {
     final menu = <(IconData, String, VoidCallback)>[
       if (spec.onEdit != null) (Icons.edit_rounded, t('تعديل البيانات', 'Edit details'), spec.onEdit!),
       if (spec.onSubOrg != null) (Icons.account_tree_rounded, t('مؤسسة فرعية', 'Sub-organization'), spec.onSubOrg!),
-      if (spec.onPersonal != null) (Icons.logout_rounded, 'ctx_personal'.tr, spec.onPersonal!),
+      if (spec.onPersonal != null) (DirIcons.logout, 'ctx_personal'.tr, spec.onPersonal!),
     ];
     final icons = <Widget>[
       if (spec.onCalendar != null) _HeroIcon(Icons.event_rounded, t('التقويم', 'Calendar'), spec.onCalendar!),
@@ -455,7 +457,7 @@ class OrgAttentionCard extends StatelessWidget {
             style: TextButton.styleFrom(
                 foregroundColor: appInk(context, color), padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: const Size(48, 40)),
             child: Text(spec.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
           ),
         ),
       ]),

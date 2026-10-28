@@ -36,6 +36,7 @@ import '../rag/rag_chat_screen.dart' show RagChatScreen;
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import 'change_language_screen.dart';
+import '../display/display_settings_page.dart' show DisplaySettingsTile;
 import 'change_password_widget.dart';
 import 'compalints/complaint_provider.dart';
 import 'compalints/complaints_screen.dart';
@@ -47,6 +48,10 @@ import '../../../utils/helpers.dart';
 import '../../auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
+import '../../admin/admin_common.dart' show t;
+import '../points/points_api.dart' show kPointsFeatureKey;
+import '../points/points_wallet_page.dart' show PointsWalletPage;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -106,6 +111,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       name: p.name,
                       role: p.role,
                       email: p.email,
+                      username: p.username,
                       imageUrl: p.imageUrl,
                       heroTag: 'profile-user-${p.id}',
                       onEdit: () async {           // the avatar opens "edit account" (same as the tile)
@@ -153,6 +159,17 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const CalendarEntryTile(),
+                          // Points wallet + the student live-meeting plan (live-rooms-spec §8 – §9)
+                          ParentComponent(
+                            featureKey: kPointsFeatureKey,
+                            child: AppSettingsTile(
+                              icon: Icons.stars_rounded,
+                              color: c.success,
+                              label: t('محفظة النقاط', 'Points wallet'),
+                              keywords: 'points wallet نقاط محفظة',
+                              onTap: () => _push(const PointsWalletPage()),
+                            ),
+                          ),
                           // Downloaded (encrypted) videos — native apps only.
                           if (!kIsWeb && !context.read<MyAuthProvider>().isTeacher)
                             ParentComponent(
@@ -322,6 +339,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               onTap: () => _push(const ChangeLanguageScreen()),
                             ),
                           ),
+                          const DisplaySettingsTile(),
                           ParentComponent(
                             featureKey: 'profile.dark_mode',
                             child: AppSettingsTile(
@@ -442,13 +460,13 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                       child: AppSettingsGroup(
                         title: 'exit'.tr,
-                        icon: Icons.exit_to_app_rounded,
+                        icon: DirIcons.exitToApp,
                         danger: true,
                         children: [
                           ParentComponent(
                             featureKey: 'profile.logout',
                             child: AppSettingsTile(
-                              icon: Icons.logout_rounded,
+                              icon: DirIcons.logout,
                               color: c.danger,
                               label: 'logout'.tr,
                               onTap: () async {

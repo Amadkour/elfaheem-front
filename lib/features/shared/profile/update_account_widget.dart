@@ -22,8 +22,12 @@ import '../../auth/reauth_sheet.dart';
 import '../../auth/verified_screen.dart';
 import '../../auth/teacher_document_model.dart';
 import '../../auth/teacher_document_provider.dart';
+import '../../auth/username.dart';
+import '../../auth/username_field.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class EditAccountScreen extends StatefulWidget {
   final bool isTeacher;
@@ -40,6 +44,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   final _phoneCtrl = TextEditingController();
   final _dobCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+
+  /// Where the @username check stands, and the save's USERNAME_* error (shown on the field).
+  UsernameStatus _usernameStatus = UsernameStatus.current;
+  UsernameError? _usernameError;
 
   // Teacher-only registration fields (everything except email + documents)
   final _experienceCtrl = TextEditingController();
@@ -65,6 +74,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       _phoneCtrl.text = _p.phone;
       _dobCtrl.text = _p.dob;
       _bioCtrl.text = _p.bio;
+      _usernameCtrl.text = _p.username;
 
       if (widget.isTeacher) {
         // Specializations must be loaded before loadTeacherProfileExtras()
@@ -82,6 +92,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       _dobCtrl,
       _bioCtrl,
       _experienceCtrl,
+      _usernameCtrl,
     ]) {
       c.addListener(_rebuild);
     }
@@ -98,6 +109,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
       _dobCtrl,
       _bioCtrl,
       _experienceCtrl,
+      _usernameCtrl,
     ]) {
       c.dispose();
     }
@@ -115,7 +127,15 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
         auth.selectedPaymentType?['text'] != auth.teacherPaymentType;
   }
 
+  /// The username field is shown (kill switch `auth.username` off).
+  bool get _usernameOn => !Helpers.AppConfig.disableList.contains(kUsernameFeatureKey);
+
+  /// Set, changed or removed ('' = remove).
+  bool get _usernameChanged =>
+      _usernameOn && UsernameRules.normalize(_usernameCtrl.text) != _p.username;
+
   bool get _isChanged =>
+      _usernameChanged ||
       _nameCtrl.text != _p.name ||
       _phoneCtrl.text != _p.phone ||
       _dobCtrl.text != _p.dob ||
@@ -126,6 +146,15 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   // ── Save ──────────────────────────────────────────────────────────────────
   Future<void> _save() async {
     if (!_isChanged || _saving) return;
+    if (_usernameChanged && _usernameStatus.blocksSubmit) {
+      showAppNotice(
+        _usernameStatus == UsernameStatus.checking
+            ? 'username_wait_check'.tr
+            : 'username_fix_first'.tr,
+        error: _usernameStatus != UsernameStatus.checking,
+      );
+      return;
+    }
     if (mounted) setState(() => _saving = true);
 
     try {
@@ -139,6 +168,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
 
       // 2. Update profile fields (if changed)
       final fieldsChanged =
+          _usernameChanged ||
           _nameCtrl.text != _p.name ||
           _phoneCtrl.text != _p.phone ||
           _dobCtrl.text != _p.dob ||
@@ -162,8 +192,11 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           bio: _bioCtrl.text.trim(),
           password: re?.password,
           mfaCode: re?.mfaCode,
+          username: _usernameChanged ? _usernameCtrl.text : null,
         );
         if (user == null) {
+          // taken / reserved / invalid: the field shows why, with the server's suggestions
+          if (mounted && _p.usernameError != null) setState(() => _usernameError = _p.usernameError);
           if (mounted) _showSnack(_p.errorMessage ?? 'generic_error'.tr, context.colors.danger);
           return;
         }
@@ -308,6 +341,19 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
               specCtrl: _specCtrl,
               payCtrl: _payCtrl,
               teachCtrl: _teachCtrl,
+              usernameField: ParentComponent(
+                featureKey: kUsernameFeatureKey,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 14),
+                  child: UsernameField(
+                    controller: _usernameCtrl,
+                    currentUsername: _p.username,
+                    error: _usernameError,
+                    label: 'username_label'.tr,
+                    onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                  ),
+                ),
+              ),
               isChanged: _isChanged,
               isSaving: _saving,
               onSave: _save,
@@ -383,7 +429,7 @@ class _PremiumTabSwitcher extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontFamily: 'bahji',
+                          fontFamily: AppFonts.display,
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isActive ? context.colors.onHero : c.textLight,
@@ -556,7 +602,7 @@ class _MobileHero extends StatelessWidget {
           Text(
             p.name.isNotEmpty ? p.name : '—',
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 20,
               fontWeight: FontWeight.w700,
               color: context.colors.onHero,
@@ -566,7 +612,7 @@ class _MobileHero extends StatelessWidget {
           Text(
             p.email,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 13,
               color: context.colors.onHero.withValues(alpha: 0.75),
             ),
@@ -600,6 +646,9 @@ class _FormCard extends StatelessWidget {
   final Future<void> Function(XFile) onImageChange;
   final bool showAvatar;
 
+  /// The @username field, under the e-mail (null = not shown).
+  final Widget? usernameField;
+
   const _FormCard({
     required this.p,
     required this.c,
@@ -618,6 +667,7 @@ class _FormCard extends StatelessWidget {
     required this.onSave,
     required this.onImageChange,
     this.showAvatar = true,
+    this.usernameField,
   });
 
   @override
@@ -658,6 +708,7 @@ class _FormCard extends StatelessWidget {
             label: 'email_label'.tr,
             enable: false, // email cannot be changed
           ),
+          ?usernameField,
           const SizedBox(height: 14),
           MyTextField(
             controller: phoneCtrl,
@@ -990,7 +1041,7 @@ class _ManagedRequirementRow extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1010,7 +1061,7 @@ class _ManagedRequirementRow extends StatelessWidget {
                   title: Text(
                     'take_photo'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1029,7 +1080,7 @@ class _ManagedRequirementRow extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -1203,7 +1254,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
                   title: Text(
                     'pick_from_gallery'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontWeight: FontWeight.w600,
                       color: c.textDark,
                     ),
@@ -1218,7 +1269,7 @@ class _ManagedCustomEntryRow extends StatelessWidget {
                 title: Text(
                   'browse_file_pdf_or_image'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600,
                     color: c.textDark,
                   ),
@@ -1275,7 +1326,7 @@ class _StatusChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 10.5,
               fontWeight: FontWeight.w600,
               color: color,
@@ -1287,7 +1338,7 @@ class _StatusChip extends StatelessWidget {
           Text(
             doc!.rejectionReason!,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 11,
               color: c.danger,
             ),

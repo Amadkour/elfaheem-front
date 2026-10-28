@@ -19,6 +19,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../shared/exam_engine/exam_engine_api.dart' show EngineResult, ExamEngineApi, engineCall;
 import 'admin_common.dart' show asBool, asInt, shortDateTime, asStrOrNull, t;
 import 'admin_money_p8.dart' show draftErrorText, p8SaveBytes, parseNum;
+import 'package:flutter_education_app/design/app_icons.dart';
 
 const feedbackMaxDays = 3650;
 
@@ -139,7 +140,7 @@ class _FeedbackSettingsFormState extends State<FeedbackSettingsForm> {
             padding: const EdgeInsets.only(bottom: 10),
             child: AppBanner(icon: Icons.info_outline_rounded, text: t('جمع الملاحظات متوقف على مستوى المنصة، فلن يعمل هنا حتى لو فعّلته.', 'Feedback collection is off on the platform, so it will not run here even if you enable it.'))),
       if (!widget.platform && s.inherits)
-        Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: Icons.subdirectory_arrow_right_rounded, text: t('تستخدم المؤسسة الإعداد الافتراضي للمنصة.', 'This organization uses the platform default.'))),
+        Padding(padding: const EdgeInsets.only(bottom: 10), child: AppBanner(icon: DirIcons.subArrowRight, text: t('تستخدم المؤسسة الإعداد الافتراضي للمنصة.', 'This organization uses the platform default.'))),
       AppSwitchTile(
           title: t('جمع ملاحظات الأسئلة', 'Collect question feedback'),
           subtitle: t('تُخزَّن ملاحظات الامتحانات بلا هوية لتحسين الأسئلة', 'Exam feedback is stored without identity to improve questions'),

@@ -16,6 +16,7 @@ import 'admin_list.dart';
 import 'admin_models.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminCategoriesPage extends StatelessWidget {
   const AdminCategoriesPage({super.key});
@@ -64,7 +65,7 @@ class _View extends StatelessWidget {
         onPressed: () => _form(context, p),
         icon: Icon(Icons.add_rounded, color: c.onHero),
         label: Text('admin_add_category'.tr,
-            style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+            style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
       ),
       child: Column(children: [
         AdminFilterBar(
@@ -125,7 +126,7 @@ class _CategoryCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: c.textDark)),
@@ -134,7 +135,7 @@ class _CategoryCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
             const SizedBox(height: 6),
             InfoChip(Icons.menu_book_rounded,
                 '${cat.coursesCount} ${'roadmap_course_unit'.tr}', c.primary),

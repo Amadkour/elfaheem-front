@@ -236,14 +236,21 @@ class _CalendarViewState extends State<CalendarView> {
       PositionedDirectional(
         end: 16,
         bottom: 16,
-        child: FloatingActionButton.extended(
-          heroTag: 'cal_add',
-          onPressed: () => _add(),
-          backgroundColor: c.primary,
-          foregroundColor: context.colors.onHero,
-          icon: const Icon(Icons.add_rounded),
-          label: Text(t('اجتماع', 'Meeting'), style: appText(14, w: FontWeight.w700, c: context.colors.onHero)),
-        ),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+          // "Meet now" (live-rooms-spec §7): an online private meeting that starts now, straight into the room
+          if (!_dept) ...[
+            QuickMeetingButton(fab: true, orgId: widget.orgId, api: widget.api, onDone: _load),
+            const SizedBox(height: 10),
+          ],
+          FloatingActionButton.extended(
+            heroTag: 'cal_add',
+            onPressed: () => _add(),
+            backgroundColor: c.primary,
+            foregroundColor: context.colors.onHero,
+            icon: const Icon(Icons.add_rounded),
+            label: Text(t('اجتماع', 'Meeting'), style: appText(14, w: FontWeight.w700, c: context.colors.onHero)),
+          ),
+        ]),
       ),
     ]);
   }

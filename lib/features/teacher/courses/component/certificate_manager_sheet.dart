@@ -27,6 +27,7 @@ import 'package:flutter_education_app/features/teacher/certificates/designer/cer
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
@@ -318,7 +319,7 @@ class _Header extends StatelessWidget {
               Text(
                 'certificate_manager_title'.tr,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 12,
                   color: context.colors.onHeroMuted,
                   fontWeight: FontWeight.w600,
@@ -329,7 +330,7 @@ class _Header extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 16,
                   color: context.colors.onHero,
                   fontWeight: FontWeight.w800,
@@ -388,7 +389,7 @@ class _TemplatePane extends StatelessWidget {
           Text(
             'certificate_template_label'.tr,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: context.colors.textMedium,
@@ -427,7 +428,7 @@ class _TemplatePane extends StatelessWidget {
                         'certificate_premium_template_hint'.tr,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           color: context.colors.heroEnd(context.colors.accent2, 0.45),
                           fontWeight: FontWeight.w600,
@@ -450,7 +451,7 @@ class _TemplatePane extends StatelessWidget {
                     templateUrl == null
                         ? 'upload_template_btn'.tr
                         : 'change_template_btn'.tr,
-                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: context.colors.primary,
@@ -491,14 +492,14 @@ class _TemplatePane extends StatelessWidget {
                   designName == null ? 'cert_default_template'.tr : '${'cert_current_design'.tr}: $designName',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w700, color: context.colors.textDark),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w700, color: context.colors.textDark),
                 ),
               ),
               if (onRemoveDesign != null)
                 TextButton(
                   onPressed: onRemoveDesign,
                   child: Text('cert_remove_design'.tr,
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.danger)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.danger)),
                 ),
             ]),
           ),
@@ -506,13 +507,13 @@ class _TemplatePane extends StatelessWidget {
             onPressed: onOpenDesigner,
             icon: const Icon(Icons.design_services_rounded, size: 16),
             label: Text((designName == null ? 'cert_design_certificate_btn' : 'cert_edit_design_btn').tr,
-                style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
             style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(42)),
           ),
           TextButton.icon(
             onPressed: onOpenDesignLibrary,
             icon: const Icon(Icons.collections_bookmark_outlined, size: 16),
-            label: Text('cert_choose_saved_design_btn'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+            label: Text('cert_choose_saved_design_btn'.tr, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
           ),
           const SizedBox(height: 18),
           Divider(color: context.colors.heroShade.withValues(alpha: 0.06)),
@@ -542,7 +543,7 @@ class _TemplatePane extends StatelessWidget {
                     Text(
                       'send_to_all_students_btn'.tr,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: context.colors.onHero,
@@ -636,8 +637,8 @@ class _StudentsPane extends StatelessWidget {
                   children: [
                     Text(
                       s.name,
-                      style: const TextStyle(
-                        fontFamily: 'tajawal',
+                      style: TextStyle(
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                       ),
@@ -645,7 +646,7 @@ class _StudentsPane extends StatelessWidget {
                     Text(
                       '${s.progressPercentage.toStringAsFixed(0)}% ${'complete_label'.tr}',
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 11,
                         color: context.colors.textLight,
                       ),
@@ -670,7 +671,7 @@ class _StudentsPane extends StatelessWidget {
                       Text(
                         'certificate_sent_label'.tr,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: context.colors.success,
@@ -696,7 +697,7 @@ class _StudentsPane extends StatelessWidget {
                         Text(
                           'send_btn'.tr,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: context.colors.onHero,

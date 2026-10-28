@@ -24,6 +24,7 @@ import 'attendance_strings.dart';
 import 'relay_host_provider.dart';
 import 'student_checkin_provider.dart';
 import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // Status colours come from the LIVE theme (success / danger / warning), so the sheet follows the app theme
 // and dark mode like every other screen — no fixed colours here.
@@ -52,7 +53,7 @@ class AttendanceStudentButton extends StatelessWidget {
       ),
       icon: const Icon(CupertinoIcons.person_crop_circle_badge_checkmark, size: 18),
       label: Text(attT('att_btn_checkin'),
-          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, fontSize: 13)),
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 13)),
     );
   }
 }
@@ -164,11 +165,11 @@ class _PremiumHeader extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                      fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w800, color: context.colors.onHero)),
               if (subtitle != null) ...[
                 const SizedBox(height: 3),
                 Text(subtitle!,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.85))),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.onHero.withValues(alpha: 0.85))),
               ],
             ]),
           ),
@@ -229,9 +230,9 @@ class _RadiosRow extends StatelessWidget {
             child: Column(children: [
               Icon(icon, color: color, size: 22),
               const SizedBox(height: 4),
-              Text(label, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
+              Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w800, color: color)),
               Text(on == null ? '—' : attT(on ? 'att_radio_on' : 'att_radio_off'),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: color)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, color: color)),
             ]),
           ),
         ),
@@ -296,13 +297,13 @@ class _FixRadios extends StatelessWidget {
                 },
                 icon: Icon(_icons[k]),
                 label: Text(attT('att_turn_on_${k.name}'),
-                    style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
               ),
             ),
           ),
         Text(attT('att_fix_auto_continue'),
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
       ]),
     );
   }
@@ -440,7 +441,7 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
           _CodeBoxes(controller: _ctrl, enabled: !p.busy, onSubmit: p.submit),
           const SizedBox(height: 4),
           Text(attT('att_code_hint'),
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
         ],
         if (p.busy || o != null) ...[
           const SizedBox(height: 14),
@@ -486,7 +487,7 @@ class _StudentSheetState extends State<_StudentSheet> with WidgetsBindingObserve
                   ? SizedBox(
                       width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: context.colors.onHero))
                   : Text(attT(finished ? 'att_done' : (o == null ? 'att_submit' : 'att_retry')),
-                      style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16)),
             ),
           ),
         ),
@@ -511,7 +512,7 @@ class _Banner extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
               child: Text(text,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: color, fontWeight: FontWeight.w700))),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: color, fontWeight: FontWeight.w700))),
         ]),
       );
 }
@@ -554,7 +555,7 @@ class _StageRow extends StatelessWidget {
         const SizedBox(width: 10),
         Text(_text(context),
             style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 13,
                 color: state == StageState.waiting ? context.colors.textLight : null)),
       ]),
@@ -626,10 +627,10 @@ class _OutcomeCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 14.5, color: color)),
+                    fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14.5, color: color)),
             if (body != null) ...[
               const SizedBox(height: 4),
-              Text(body, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5, height: 1.45)),
+              Text(body, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, height: 1.45)),
             ],
             if (outcome.detail != null && outcome.detail!.isNotEmpty) ...[
               const SizedBox(height: 6),
@@ -671,10 +672,10 @@ class RelayHostTile extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(attT('att_relay_title'),
-                  style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 14)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14)),
               const SizedBox(height: 2),
               Text(attT(p.enabled ? 'att_relay_on' : 'att_relay_sub'),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
             ]),
           ),
           p.starting
@@ -687,7 +688,7 @@ class RelayHostTile extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(attT('att_relay_helped', args: {'n': '${p.helped}'}),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.success, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.success, fontWeight: FontWeight.w700)),
             ),
           ),
         if (p.errorKey != null)
@@ -696,7 +697,7 @@ class RelayHostTile extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(attT(p.errorKey!),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.danger)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.danger)),
             ),
           ),
         if (p.needsSettings)
@@ -731,7 +732,7 @@ class AttendanceTeacherButton extends StatelessWidget {
       ),
       icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 18),
       label: Text(attT('att_t_btn'),
-          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, fontSize: 13)),
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, fontSize: 13)),
     );
   }
 }
@@ -764,10 +765,10 @@ class _TeacherSheet extends StatelessWidget {
         child: Align(
           alignment: AlignmentDirectional.centerStart,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(attT(key), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+            Text(attT(key), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
             if (hint != null)
               Text(attT(hint),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
           ]),
         ),
       );
@@ -853,7 +854,7 @@ class _TeacherSheet extends StatelessWidget {
                 child: p.loading
                     ? SizedBox(
                         width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.4, color: context.colors.onHero))
-                    : Text(attT('att_t_start'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                    : Text(attT('att_t_start'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
               ),
             ),
           ] else ...[
@@ -867,7 +868,7 @@ class _TeacherSheet extends StatelessWidget {
                   openAttendanceLiveOn(nav);
                 },
                 icon: const Icon(CupertinoIcons.fullscreen),
-                label: Text(attT('att_t_fullscreen'), style: const TextStyle(fontFamily: 'tajawal')),
+                label: Text(attT('att_t_fullscreen'), style: TextStyle(fontFamily: AppFonts.family)),
               ),
             if (p.host != null && (p.isOpen || p.isClosing)) ...[
               const SizedBox(height: 12),
@@ -877,13 +878,13 @@ class _TeacherSheet extends StatelessWidget {
             if (p.usesCode)
               Text(attT('att_t_show'),
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.textMedium)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.textMedium)),
             if (p.isOpen)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(attT('att_t_move_hint'),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
               ),
             const SizedBox(height: 16),
             if (p.closed || !(p.code?.isOpen ?? true))
@@ -897,7 +898,7 @@ class _TeacherSheet extends StatelessWidget {
                 if (!p.isClosing)
                   TextButton(
                       onPressed: p.clear,
-                      child: Text(attT('att_t_new'), style: const TextStyle(fontFamily: 'tajawal'))),
+                      child: Text(attT('att_t_new'), style: TextStyle(fontFamily: AppFonts.family))),
               ])
             else
               SizedBox(
@@ -910,7 +911,7 @@ class _TeacherSheet extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                   onPressed: p.loading ? null : p.close,
                   icon: const Icon(CupertinoIcons.lock),
-                  label: Text(attT('att_t_close'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                  label: Text(attT('att_t_close'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
                 ),
               ),
           ],
@@ -918,20 +919,20 @@ class _TeacherSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Text(p.error!.startsWith('att_') ? attT(p.error!) : p.error!,
-                  style: TextStyle(color: context.colors.danger, fontFamily: 'tajawal', fontSize: 12)),
+                  style: TextStyle(color: context.colors.danger, fontFamily: AppFonts.family, fontSize: 12)),
             ),
           // The teacher's phone sets the classroom point: give the exact fix, not just an error line.
           if (p.error == 'att_err_gps_off')
             TextButton.icon(
               onPressed: () => AttendanceRadios.fix(RadioKind.gps),
               icon: const Icon(CupertinoIcons.location_solid, size: 18),
-              label: Text(attT('att_turn_on_gps'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+              label: Text(attT('att_turn_on_gps'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
             )
           else if (p.error == 'att_err_location_denied_forever')
             TextButton.icon(
               onPressed: openSettings,
               icon: const Icon(CupertinoIcons.lock_shield, size: 18),
-              label: Text(attT('att_err_perm_settings'), style: const TextStyle(fontFamily: 'tajawal')),
+              label: Text(attT('att_err_perm_settings'), style: TextStyle(fontFamily: AppFonts.family)),
             ),
         ]),
     );
@@ -950,8 +951,8 @@ class _LocationSetup extends StatelessWidget {
     final pick = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(attT('att_t_web_loc_title'), style: const TextStyle(fontFamily: 'tajawal')),
-        content: Text(attT('att_t_web_loc_body'), style: const TextStyle(fontFamily: 'tajawal')),
+        title: Text(attT('att_t_web_loc_title'), style: TextStyle(fontFamily: AppFonts.family)),
+        content: Text(attT('att_t_web_loc_body'), style: TextStyle(fontFamily: AppFonts.family)),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, 'browser'),
@@ -972,7 +973,7 @@ class _LocationSetup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final grey = TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium);
+    final grey = TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       AppSwitchTile(
         value: p.useLocation,
@@ -984,7 +985,7 @@ class _LocationSetup extends StatelessWidget {
         Row(children: [
           Expanded(
             child: Text(attT('att_t_distance'),
-                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
           ),
           Text(attT('att_t_meters', args: {'n': '${p.radiusM}'}),
               style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -1031,7 +1032,7 @@ class _LocationSetup extends StatelessWidget {
                 }
               },
               icon: Icon(p.sharedFromMobile ? CupertinoIcons.checkmark_circle_fill : CupertinoIcons.share, size: 18),
-              label: Text(attT('att_t_share_for_web'), style: const TextStyle(fontFamily: 'tajawal')),
+              label: Text(attT('att_t_share_for_web'), style: TextStyle(fontFamily: AppFonts.family)),
             ),
           ),
       ],
@@ -1092,7 +1093,7 @@ class _CodeDisplay extends StatelessWidget {
             const SizedBox(height: 4),
             if (active)
               Text(attT('att_t_next_code', args: {'n': '${p.secondsLeft}'}),
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: context.colors.textMedium)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: context.colors.textMedium)),
           ]),
         ]),
       ),
@@ -1104,7 +1105,7 @@ class _CodeDisplay extends StatelessWidget {
           Icon(CupertinoIcons.person_3_fill, color: context.colors.success, size: 20),
           const SizedBox(width: 10),
           Text('${attT('att_t_present')}: ${p.code?.presentCount ?? 0}',
-              style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 16, color: context.colors.success)),
+              style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 16, color: context.colors.success)),
         ]),
       ),
     ]);
@@ -1139,7 +1140,7 @@ class AttendanceCourseButton extends StatelessWidget {
         ),
         icon: const Icon(CupertinoIcons.person_crop_circle_badge_checkmark, size: 18),
         label: Text(attT('att_btn_checkin'),
-            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13.5)),
+            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13.5)),
       ),
     );
   }

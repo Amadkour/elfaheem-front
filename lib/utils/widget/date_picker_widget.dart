@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 class MyDatePicker extends StatelessWidget {
   const MyDatePicker(
       {super.key,
@@ -26,7 +27,7 @@ class MyDatePicker extends StatelessWidget {
         textDirection: TextDirection.rtl,
         controller: controller,
         style:  TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w500,
             fontSize: 15,
             color: context.colors.textDark),
@@ -37,7 +38,7 @@ class MyDatePicker extends StatelessWidget {
             hint: Text(
               label,
               style:  TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w600,
                   color: context.colors.textMedium),
               textDirection: TextDirection.rtl,
@@ -80,8 +81,8 @@ class MyDatePicker extends StatelessWidget {
               onSurface: context.colors.textDark, // Day & header text
             ),
             textTheme: TextTheme.of(context).copyWith(
-              displaySmall: const TextStyle(fontFamily: 'tajawal'),
-              titleLarge: const TextStyle(fontFamily: 'tajawal'),
+              displaySmall: TextStyle(fontFamily: AppFonts.family),
+              titleLarge: TextStyle(fontFamily: AppFonts.family),
             ),
           ),
           child: child!,

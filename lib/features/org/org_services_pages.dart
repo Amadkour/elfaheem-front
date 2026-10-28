@@ -32,6 +32,7 @@ import 'governance/gov_forms_assign.dart' show GovFormAssignmentsView, showGovFo
 import 'governance/gov_wiring.dart' show govEnabled;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 /// Shared FAB style.
@@ -42,7 +43,7 @@ Widget _fab(BuildContext context, String tag, String label, IconData icon, VoidC
     backgroundColor: c.primary,
     onPressed: onTap,
     icon: Icon(icon, color: c.onHero),
-    label: Text(label, style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
+    label: Text(label, style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
   );
 }
 
@@ -223,7 +224,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
                 for (final e in fieldTypes().entries)
                   ChoiceChip(
                     avatar: Icon(fieldIcons[e.key], size: 16, color: f['type'] == e.key ? c.onHero : c.textMedium),
-                    label: Text(e.value, style: TextStyle(fontFamily: 'tajawal', color: f['type'] == e.key ? c.onHero : c.textDark)),
+                    label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family, color: f['type'] == e.key ? c.onHero : c.textDark)),
                     selected: f['type'] == e.key,
                     selectedColor: c.primary,
                     showCheckmark: false,
@@ -374,7 +375,7 @@ class _OrgFormBuilderScreenState extends State<OrgFormBuilderScreen> {
           onPressed: _busy ? null : () => _save(),
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-          child: Text(t('حفظ كمسودة', 'Save as draft'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+          child: Text(t('حفظ كمسودة', 'Save as draft'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -793,12 +794,12 @@ class OrgComplaintsPage extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OrgComplaintReportPage(deptId: deptId))),
                   icon: const Icon(Icons.design_services_rounded, size: 18),
-                  label: Text(t('تقرير مصمَّم وإرسال', 'Designed report & send'), style: const TextStyle(fontFamily: 'tajawal')),
+                  label: Text(t('تقرير مصمَّم وإرسال', 'Designed report & send'), style: TextStyle(fontFamily: AppFonts.family)),
                 ),
                 TextButton.icon(
                   onPressed: () => exportData(context, 'complaints/export', {if (deptId != null) 'dept_id': deptId}),
                   icon: const Icon(Icons.file_download_rounded, size: 18),
-                  label: Text(t('تصدير سريع', 'Quick export'), style: const TextStyle(fontFamily: 'tajawal')),
+                  label: Text(t('تصدير سريع', 'Quick export'), style: TextStyle(fontFamily: AppFonts.family)),
                 ),
               ]),
             ),
@@ -928,7 +929,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
           for (final d in depts)
             ListTile(
               leading: IconBadge(deptIcon(d['icon']), hexColor(d['color'], ctx.colors.primary), size: 38),
-              title: Text(orgNameOf(d), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               onTap: () => Navigator.pop(ctx, asInt(d['id'])),
             ),
         ]));
@@ -1006,7 +1007,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                             Wrap(spacing: 6, runSpacing: 6, children: [
                               for (final u in asMapList(d['assignable']))
                                 ChoiceChip(
-                                  label: Text('${u['name']}', style: const TextStyle(fontFamily: 'tajawal')),
+                                  label: Text('${u['name']}', style: TextStyle(fontFamily: AppFonts.family)),
                                   selected: asMap(d['assigned_to'])['id'] == u['id'],
                                   onSelected: (_) => _patch({'assigned_to': u['id']}, t('تم الإسناد', 'Assigned')),
                                 ),
@@ -1025,14 +1026,14 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                     child: Column(children: [
                       Row(children: [
                         ChoiceChip(
-                          label: Text(t('رد على صاحب الشكوى', 'Reply'), style: const TextStyle(fontFamily: 'tajawal')),
+                          label: Text(t('رد على صاحب الشكوى', 'Reply'), style: TextStyle(fontFamily: AppFonts.family)),
                           selected: !_internal,
                           onSelected: (_) => setState(() => _internal = false),
                         ),
                         const SizedBox(width: 8),
                         ChoiceChip(
                           avatar: const Icon(Icons.lock_rounded, size: 15),
-                          label: Text(t('ملاحظة داخلية', 'Internal note'), style: const TextStyle(fontFamily: 'tajawal')),
+                          label: Text(t('ملاحظة داخلية', 'Internal note'), style: TextStyle(fontFamily: AppFonts.family)),
                           selected: _internal,
                           onSelected: (_) => setState(() => _internal = true),
                         ),
@@ -1044,7 +1045,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                             controller: _msg,
                             minLines: 1,
                             maxLines: 4,
-                            style: const TextStyle(fontFamily: 'tajawal'),
+                            style: TextStyle(fontFamily: AppFonts.family),
                             decoration: InputDecoration(
                               hintText: _internal ? t('لا يراها صاحب الشكوى', 'Not visible to the person') : t('اكتب رداً لطيفاً وواضحاً…', 'Write a kind, clear reply…'),
                               filled: true,

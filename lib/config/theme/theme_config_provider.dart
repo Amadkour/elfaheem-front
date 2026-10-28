@@ -28,10 +28,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api_client.dart';
+import '../../core/display/display_settings.dart';
 import '../../core/app_time.dart';
 import '../app_config.dart';
 import 'app_theme.dart';
 import 'theme_config_model.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // v2: drops palettes cached before the new default theme, so offline users
 // get the new default instead of the old cached one.
@@ -207,9 +209,12 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ? (_model?.inputBgDark ?? AppTheme.inputBgDark)
       : (_model?.inputBg ?? AppTheme.inputBg);
 
-  Color get divider => isDark
-      ? (_model?.darkDivider ?? AppTheme.darkDivider)
-      : (_model?.divider ?? AppTheme.divider);
+  Color get divider => _contrast(
+      isDark ? (_model?.darkDivider ?? AppTheme.darkDivider) : (_model?.divider ?? AppTheme.divider), textMedium, 0.35);
+
+  /// "High contrast" (Display & reading settings): muted ink and dividers are pulled toward the main ink.
+  Color _contrast(Color c, Color toward, double t) =>
+      DisplaySettings.instance.prefs.highContrast ? Color.lerp(c, toward, t)! : c;
 
   // ══════════════════════════════════════════════════════════════════════
   // TEXT
@@ -219,13 +224,11 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       ? (_model?.darkTextPrimary ?? AppTheme.darkTextPrimary)
       : (_model?.textDark ?? AppTheme.textDark);
 
-  Color get textMedium => isDark
-      ? (_model?.darkTextMuted ?? AppTheme.darkTextMuted)
-      : (_model?.textMedium ?? AppTheme.textMedium);
+  Color get textMedium => _contrast(
+      isDark ? (_model?.darkTextMuted ?? AppTheme.darkTextMuted) : (_model?.textMedium ?? AppTheme.textMedium), textDark, 0.5);
 
-  Color get textLight => isDark
-      ? (_model?.darkTextLight ?? AppTheme.darkTextLight)
-      : (_model?.textLight ?? AppTheme.textLight);
+  Color get textLight => _contrast(
+      isDark ? (_model?.darkTextLight ?? AppTheme.darkTextLight) : (_model?.textLight ?? AppTheme.textLight), textDark, 0.55);
 
   Color get textAction => _model?.textAction ?? AppTheme.textAction;
 
@@ -571,7 +574,7 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
     final ink = m?.charcoal ?? const Color(0xFF1F2430);
 
     TextStyle ts(double size, [FontWeight w = FontWeight.w600, Color? c]) =>
-        TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: c);
+        TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c);
     final r14 = RoundedRectangleBorder(borderRadius: BorderRadius.circular(14));
     WidgetStateProperty<Color?> on(Color sel, Color off) =>
         WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? sel : off);

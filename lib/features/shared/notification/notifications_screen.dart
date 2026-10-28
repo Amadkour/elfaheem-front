@@ -10,6 +10,7 @@ import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/app_navigator.dart';
 import '../../../utils/widget/base_page.dart';
 import 'notifications_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -329,7 +330,7 @@ class _NewBadgeIcon extends StatelessWidget {
             color: context.colors.onHero,
             fontWeight: FontWeight.w900,
             fontSize: 12,
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
           ),
         ),
       ),

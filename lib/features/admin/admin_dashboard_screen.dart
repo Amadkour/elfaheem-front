@@ -36,6 +36,7 @@ import '../../design/app_switch.dart';
 import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
+import '../shared/display/display_settings_page.dart' show DisplaySettingsTile;
 import '../shared/profile/compalints/complaint_provider.dart';
 import 'admin_common.dart';
 import 'admin_courses_page.dart';
@@ -46,6 +47,7 @@ import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_services_hub.dart';
 import 'admin_users_page.dart';
 import 'enrollment_request/teacher_transfers_provider.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 /// Current tab of the admin shell (the teacher uses TeacherDashboardProvider).
 class AdminDashboardProvider extends ChangeNotifier {
@@ -460,6 +462,7 @@ class _MorePageState extends State<_MorePage> {
               label: 'change_language'.tr,
               onTap: () => _push(const ChangeLanguageScreen()),
             ),
+            const DisplaySettingsTile(),
             AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,
@@ -478,13 +481,13 @@ class _MorePageState extends State<_MorePage> {
         // ── Logout ───────────────────────────────────────────────────────
         AppSettingsGroup(
           title: 'exit'.tr,
-          icon: Icons.exit_to_app_rounded,
+          icon: DirIcons.exitToApp,
           danger: true,
           children: [
             AppSettingsTile(
               key: const ValueKey('profile.logout'),
               featureKey: 'profile.logout',
-              icon: Icons.logout_rounded,
+              icon: DirIcons.logout,
               color: c.danger,
               label: 'logout'.tr,
               onTap: () async {

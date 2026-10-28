@@ -25,6 +25,7 @@ import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -692,7 +693,7 @@ class _EmptyState extends StatelessWidget {
                   style: TextStyle(
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontSize: 14,
                   ),
                 ),
@@ -733,14 +734,14 @@ class _CourseCardState extends State<_CourseCard> {
           ),
           title: Text(
             'delete_course'.tr,
-            style: const TextStyle(
-              fontFamily: 'bahji',
+            style: TextStyle(
+              fontFamily: AppFonts.display,
               fontWeight: FontWeight.w800,
             ),
           ),
           content: Text(
             '${'delete_course_confirm'.tr} "${(AppConfig.lang == 'ar' ? widget.course.titleAr : widget.course.titleEn) ?? ''}"؟',
-            style: const TextStyle(fontFamily: 'bahji'),
+            style: TextStyle(fontFamily: AppFonts.display),
           ),
           actions: [
             TextButton(
@@ -748,7 +749,7 @@ class _CourseCardState extends State<_CourseCard> {
               child: Text(
                 'cancel'.tr,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   color: context.colors.textMedium,
                 ),
               ),
@@ -763,7 +764,7 @@ class _CourseCardState extends State<_CourseCard> {
                 child: Text(
                   'delete'.tr,
                   style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1169,7 +1170,7 @@ class _GlassChip extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
               color: dark ? context.colors.onHero : c,
@@ -1220,7 +1221,7 @@ class _ToolbarAction extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12.5,
                 fontWeight: FontWeight.w800,
                 color: fg,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 class StudentExamsTab extends StatefulWidget {
   const StudentExamsTab({super.key});
 
@@ -66,7 +67,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                 child: Text(
                     'اختبار "${exam.name}" في ${exam.courseName} يبدأ بعد ${exam.minutesLeft} دقيقة!',
                     style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         color: context.colors.onHero,
                         fontWeight: FontWeight.w600,
                         fontSize: 13))),
@@ -76,7 +77,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                 onPressed: () =>
                     ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
                 child: Text('إغلاق',
-                    style: TextStyle(color: context.colors.onHero, fontFamily: 'bahji')))
+                    style: TextStyle(color: context.colors.onHero, fontFamily: AppFonts.display)))
           ],
         ));
         break;
@@ -180,9 +181,9 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                 const SizedBox(height: 16),
                                 ElevatedButton(
                                     onPressed: _load,
-                                    child: const Text('إعادة المحاولة',
+                                    child: Text('إعادة المحاولة',
                                         style:
-                                        TextStyle(fontFamily: 'bahji'))),
+                                        TextStyle(fontFamily: AppFonts.display))),
                               ]))
                           : _exams.isEmpty
                           ?  Center(
@@ -271,7 +272,7 @@ class _ExamCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8)),
                 child: Text(sub ? (passed ? 'ناجح' : 'راسب') : 'لم يُؤَدَّ',
                     style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: color))),
@@ -290,7 +291,7 @@ class _ExamCard extends StatelessWidget {
               const SizedBox(width: 10),
               Text('${pct.toStringAsFixed(0)}%',
                   style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: color)),

@@ -17,6 +17,7 @@ import 'package:provider/provider.dart';
 import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// icon_name (stored in the DB) → icon. Use the same map in
 /// additional_register_screen so the teacher sees the icon the admin picked.
@@ -237,7 +238,7 @@ class _AdminRequiredDocumentsPageState
             icon: const Icon(Icons.add_rounded),
             label: Text(
               'doc_add'.tr,
-              style: const TextStyle(fontFamily: 'tajawal'),
+              style: TextStyle(fontFamily: AppFonts.family),
             ),
             style: FilledButton.styleFrom(
               backgroundColor: c.primary,
@@ -278,7 +279,7 @@ class _AdminRequiredDocumentsPageState
               Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                   color: fg,
@@ -463,8 +464,8 @@ class _AdminRequiredDocumentsPageState
               icon: const Icon(Icons.add_rounded),
               label: Text(
                 'doc_add'.tr,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
+                style: TextStyle(
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -593,8 +594,8 @@ class _DocFormState extends State<_DocForm> {
                             ),
                             label: Text(
                               ar ? p.ar : p.en,
-                              style: const TextStyle(
-                                fontFamily: 'tajawal',
+                              style: TextStyle(
+                                fontFamily: AppFonts.family,
                                 fontSize: 12.5,
                               ),
                             ),
@@ -691,7 +692,7 @@ class _DocFormState extends State<_DocForm> {
                       child: Text(
                         'save'.tr,
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 15.5,
                           fontWeight: FontWeight.w800,
                           color: c.onHero,

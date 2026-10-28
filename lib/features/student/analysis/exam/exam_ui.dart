@@ -6,9 +6,10 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-const kFont = 'bahji';
+String get kFont => AppFonts.display;
 // Legacy palette: the student exam screens read the theme (context.colors.danger / warning / purple /
 // primaryDark) instead; these stay only for the teacher screens that still import them.
 const kDeep = Color(0xFF0D47A1);

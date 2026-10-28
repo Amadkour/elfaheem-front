@@ -29,6 +29,7 @@ import 'admin_common.dart';
 import 'admin_money_p8.dart' show AdminMoneyPage;
 import 'admin_premium_widgets.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminFeeRatesProvider extends BaseProvider {
   AdminFeeRatesProvider({ApiClient? api}) : api = api ?? ApiClient();
@@ -149,10 +150,10 @@ class AdminFeeRatesSection extends StatelessWidget {
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('admin_fee_rates'.tr,
-          style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
       const SizedBox(height: 4),
       Text('admin_fee_rates_hint'.tr,
-          style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
       const SizedBox(height: 8),
       // Phase 8: fee policy, per-organization fees, ledger report
       Align(
@@ -211,7 +212,7 @@ class AdminFeeRatesSection extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 4),
             child: Text(_t('رسوم بوابات الدفع', 'Payment gateway fees'),
-                style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 14, color: c.textDark)),
+                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 14, color: c.textDark)),
           ),
           for (final m in p.items)
             _FeeRateCard(
@@ -270,14 +271,14 @@ class _FeeRateCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text('admin_fee_custom'.tr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.warning)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.warning)),
       )
           : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         KeyValue('admin_fee_percent'.tr, '${_num(m['percent'])}%'),
         if (hasFixed) KeyValue('admin_fee_fixed'.tr, _num(m['fixed'])),
         if (note != null)
-          Text(note!, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+          Text(note!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
         Align(
           alignment: AlignmentDirectional.centerEnd,
           child: TextButton.icon(

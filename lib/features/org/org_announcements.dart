@@ -37,6 +37,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart' show orgParseUtc, orgUtc;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -353,7 +354,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
           TextButton(
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => OrgAnnouncementsFeedScreen(orgId: widget.orgId, deptId: widget.deptId))).then((_) => _load()),
-            child: Text(t('عرض الكل', 'See all'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+            child: Text(t('عرض الكل', 'See all'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
           ),
       ]),
       const SizedBox(height: 6),
@@ -455,7 +456,7 @@ class _OrgAnnouncementFeedState extends State<OrgAnnouncementFeed> {
                   : OutlinedButton.icon(
                       onPressed: () => _load(more: true),
                       icon: const Icon(Icons.expand_more_rounded),
-                      label: Text(t('عرض المزيد', 'Show more'), style: const TextStyle(fontFamily: 'tajawal')),
+                      label: Text(t('عرض المزيد', 'Show more'), style: TextStyle(fontFamily: AppFonts.family)),
                     ),
             );
           }
@@ -728,7 +729,7 @@ class _ActionsBar extends StatelessWidget {
             ),
             icon: Icon(link!.icon, size: 17),
             label: Text(link!.cta,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
           ),
         ),
     ]);
@@ -908,7 +909,7 @@ class _AnnList extends StatelessWidget {
               onPressed: () => showAnnouncementEditor(context, deptId: deptId, onSaved: p.refresh),
               icon: Icon(Icons.add_rounded, color: c.onHero),
               label: Text(t('إعلان جديد', 'New announcement'),
-                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontWeight: FontWeight.w700)),
             )
           : null,
       body: PagedList<OrgPaged>(
@@ -1204,7 +1205,7 @@ Future<void> showAnnouncementEditor(BuildContext context,
                 style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
                 child: Text(canPublish ? t('حفظ كمسودة', 'Save as draft') : t('حفظ وإرسال للاعتماد', 'Save for approval'),
-                    style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               ),
             ],
           ]),
@@ -1412,7 +1413,7 @@ class _DeptAudience extends StatelessWidget {
             for (final d in depts)
               FilterChip(
                 avatar: Icon(deptIcon(d['icon']), size: 16, color: hexColor(d['color'], c.primary)),
-                label: Text(orgNameOf(d), style: const TextStyle(fontFamily: 'tajawal')),
+                label: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family)),
                 selected: value.contains(asInt(d['id'])),
                 onSelected: (on) {
                   final n = [...value];
@@ -1815,7 +1816,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
             ])
               ListTile(
                 leading: Icon(icon),
-                title: Text(label, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                title: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
                 onTap: () => Navigator.pop(ctx, f),
               ),
           ]),
@@ -1874,7 +1875,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
           _debounce?.cancel();
           _debounce = Timer(const Duration(milliseconds: 350), _load);
         },
-        style: const TextStyle(fontFamily: 'tajawal'),
+        style: TextStyle(fontFamily: AppFonts.family),
         decoration: InputDecoration(
           isDense: true,
           prefixIcon: const Icon(Icons.search_rounded),
@@ -1899,7 +1900,7 @@ class _PeopleSectionState extends State<_PeopleSection> {
                     onPressed: () => _load(more: true),
                     icon: const Icon(Icons.expand_more_rounded),
                     label: Text(t('عرض المزيد (${_total - _items!.length})', 'Show more (${_total - _items!.length})'),
-                        style: const TextStyle(fontFamily: 'tajawal')),
+                        style: TextStyle(fontFamily: AppFonts.family)),
                   ),
           ),
       ],

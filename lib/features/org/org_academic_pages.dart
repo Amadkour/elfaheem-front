@@ -27,6 +27,7 @@ import 'org_suggestions.dart' show OrgTermSuggestions;
 import '../shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 Map<String, String> termKinds() => {'term1': t('الفصل الأول', 'Term 1'), 'term2': t('الفصل الثاني', 'Term 2'), 'summer': t('الصيفي', 'Summer')};
@@ -214,7 +215,7 @@ Widget _courseChips(BuildContext ctx, List<Map<String, dynamic>> courses, Set<in
     Wrap(spacing: 6, runSpacing: 6, children: [
       for (final co in courses)
         FilterChip(
-          label: Text(_cname(co), style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5)),
+          label: Text(_cname(co), style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5)),
           selected: sel.contains(asInt(co['id'])),
           onSelected: disabled.contains(asInt(co['id'])) ? null : (on) => set(() => on ? sel.add(asInt(co['id'])) : sel.remove(asInt(co['id']))),
         ),
@@ -884,7 +885,7 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
                   CircleAvatar(radius: 20, backgroundColor: i <= at ? c.onHero : c.heroGlassBorder,
                       child: Icon(steps[i].$3, color: i <= at ? c.primary : c.onHeroMuted, size: 20)),
                   const SizedBox(height: 6),
-                  Text(steps[i].$2, style: TextStyle(fontFamily: 'tajawal', color: i <= at ? c.onHero : c.onHeroMuted,
+                  Text(steps[i].$2, style: TextStyle(fontFamily: AppFonts.family, color: i <= at ? c.onHero : c.onHeroMuted,
                       fontWeight: i == at ? FontWeight.w800 : FontWeight.w500, fontSize: 12.5)),
                 ])),
                 if (i < steps.length - 1) Expanded(child: Container(height: 2, color: i < at ? c.onHero : c.heroGlassBorder)),
@@ -893,13 +894,13 @@ class _MyAcademicPathPageState extends State<MyAcademicPathPage> {
             const SizedBox(height: 16),
             if (p['program'] != null)
               Text('${asMap(p['program'])['code']} · ${t('${asMap(p['program'])['name_ar'] ?? asMap(p['program'])['name_en']}', '${asMap(p['program'])['name_en'] ?? asMap(p['program'])['name_ar']}')}',
-                  style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 16, fontWeight: FontWeight.w800)),
+                  style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 16, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             ClipRRect(borderRadius: BorderRadius.circular(8),
                 child: LinearProgressIndicator(value: pct / 100, minHeight: 8, backgroundColor: c.heroGlassBorder, color: c.accent2)),
             const SizedBox(height: 6),
             Text(stage == 'graduated' ? t('مبروك التخرج 🎓', 'Congratulations, graduate 🎓') : t('أنجزت $pct% من متطلبات التخرج', '$pct% of graduation requirements done'),
-                style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
           ]),
         ),
         const SizedBox(height: 12),

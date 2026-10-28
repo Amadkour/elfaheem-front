@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class MyPrimaryMenu extends StatelessWidget {
   const MyPrimaryMenu(
@@ -34,7 +35,7 @@ class MyPrimaryMenu extends StatelessWidget {
         title: Text(
           initValue == null ? label : initValue!['text'].toString().tr,
           style:  TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontWeight: FontWeight.w100,
             fontSize: 17,
             color: context.colors.textDark,
@@ -61,7 +62,7 @@ class MyPrimaryMenu extends StatelessWidget {
                         title: Text(
                           options[i]['text'].toString().tr,
                           style:  TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontWeight: FontWeight.w100,
                             fontSize: 17,
                             color: context.colors.textMedium,

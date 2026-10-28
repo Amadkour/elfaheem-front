@@ -11,6 +11,7 @@ import '../../../../utils/widget/text_field.dart';
 import 'saved_payment_models.dart';
 import 'saved_methods_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class StudentSavedMethodsScreen extends StatelessWidget {
   const StudentSavedMethodsScreen({super.key});
@@ -74,8 +75,8 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
                 indicatorPadding: const EdgeInsets.all(3),
                 labelColor:   context.colors.onHero,
                 unselectedLabelColor: c.textMedium,
-                labelStyle: const TextStyle(
-                    fontFamily:  'bahji',
+                labelStyle: TextStyle(
+                    fontFamily: AppFonts.display,
                     fontWeight:  FontWeight.w700,
                     fontSize:    13),
                 tabs: [
@@ -246,7 +247,7 @@ class _VisualCardState extends State<_VisualCard>
                                   color:      context.colors.onHero,
                                   fontSize:   13,
                                   fontWeight: FontWeight.w800,
-                                  fontFamily: 'bahji',
+                                  fontFamily: AppFonts.display,
                                 ),
                               ),
                             ),
@@ -261,7 +262,7 @@ class _VisualCardState extends State<_VisualCard>
                             fontSize:    20,
                             fontWeight:  FontWeight.w600,
                             letterSpacing: 3,
-                            fontFamily:  'bahji',
+                            fontFamily: AppFonts.display,
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -275,7 +276,7 @@ class _VisualCardState extends State<_VisualCard>
                                   style: TextStyle(
                                       color: context.colors.onHero.withValues(alpha: .5),
                                       fontSize: 9,
-                                      fontFamily: 'bahji',
+                                      fontFamily: AppFonts.display,
                                       letterSpacing: 1),
                                 ),
                                 const SizedBox(height: 3),
@@ -285,7 +286,7 @@ class _VisualCardState extends State<_VisualCard>
                                     color:      context.colors.onHero,
                                     fontSize:   12,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                   ),
                                 ),
                               ],
@@ -299,7 +300,7 @@ class _VisualCardState extends State<_VisualCard>
                                   style: TextStyle(
                                       color: context.colors.onHero.withValues(alpha: .5),
                                       fontSize: 9,
-                                      fontFamily: 'bahji',
+                                      fontFamily: AppFonts.display,
                                       letterSpacing: 1),
                                 ),
                                 const SizedBox(height: 3),
@@ -309,7 +310,7 @@ class _VisualCardState extends State<_VisualCard>
                                     color:      context.colors.onHero,
                                     fontSize:   13,
                                     fontWeight: FontWeight.w600,
-                                    fontFamily: 'bahji',
+                                    fontFamily: AppFonts.display,
                                   ),
                                 ),
                               ],
@@ -343,7 +344,7 @@ class _VisualCardState extends State<_VisualCard>
                   Text(
                     'default_card_badge'.tr,
                     style: TextStyle(
-                        fontFamily: 'bahji',
+                        fontFamily: AppFonts.display,
                         fontSize:   11,
                         fontWeight: FontWeight.w700,
                         color: context.colors.warning),
@@ -418,18 +419,18 @@ class _VisualCardState extends State<_VisualCard>
     final ok = await showDialog<bool>(
       context: ctx,
       builder: (_) => AlertDialog(
-        title:   Text('delete_card_title'.tr, style: const TextStyle(fontFamily: 'bahji')),
-        content: Text('delete_card_confirm'.tr, style: const TextStyle(fontFamily: 'bahji')),
+        title:   Text('delete_card_title'.tr, style: TextStyle(fontFamily: AppFonts.display)),
+        content: Text('delete_card_confirm'.tr, style: TextStyle(fontFamily: AppFonts.display)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('cancel'.tr, style: const TextStyle(fontFamily: 'bahji')),
+            child: Text('cancel'.tr, style: TextStyle(fontFamily: AppFonts.display)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text('btn_delete'.tr,
                 style: TextStyle(
-                    color: ctx.colors.danger, fontFamily: 'bahji')),
+                    color: ctx.colors.danger, fontFamily: AppFonts.display)),
           ),
         ],
       ),
@@ -617,7 +618,7 @@ class _Step extends StatelessWidget {
               child: Text(n,
                   style: TextStyle(
                       color: c.onHero, fontSize: 11,
-                      fontWeight: FontWeight.w800, fontFamily: 'bahji')),
+                      fontWeight: FontWeight.w800, fontFamily: AppFonts.display)),
             ),
           ),
           const SizedBox(width: 10),
@@ -710,7 +711,7 @@ class _StudentBankTile extends StatelessWidget {
             TextButton(
               onPressed: () => p.setDefault(method.id),
               child: Text('default_label'.tr,
-                  style: TextStyle(fontFamily: 'bahji', color: c.primary, fontSize: 12)),
+                  style: TextStyle(fontFamily: AppFonts.display, color: c.primary, fontSize: 12)),
             ),
           IconButton(
             tooltip: 'btn_delete'.tr,

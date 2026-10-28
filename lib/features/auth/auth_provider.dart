@@ -14,8 +14,10 @@ import '../../utils/widget/view_as_state.dart';
 import '../../core/app_mode.dart';
 import '../shared/category/categories_provider.dart';
 import '../shared/notification/notification_service.dart';
+import '../../config/app_config.dart' show AppConfig;
 import 'mfa.dart';
 import 'teacher_onboarding_token.dart';
+import 'username.dart';
 
 // ── Model ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +34,9 @@ class UserModel {
   final String? registrationStep;
   final DateTime lastLogin;
 
+  /// The optional @username (lowercase, without the "@"); null when the account has none (D-071).
+  final String? username;
+
   const UserModel({
     required this.id,
     required this.name,
@@ -44,6 +49,7 @@ class UserModel {
     this.imageUrl,
     this.registrationStep,
     required this.lastLogin,
+    this.username,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> j) => UserModel(
@@ -60,6 +66,8 @@ class UserModel {
     bio: j['bio'] as String?,
     imageUrl: j['image_url'] as String?,
     registrationStep: j['registration_step'] as String?,
+    // an older server sends no key; an empty string means "none" too
+    username: j['username'] is String && (j['username'] as String).isNotEmpty ? j['username'] as String : null,
   );
 
   /// Convert back to JSON for caching in SharedPreferences.
@@ -75,6 +83,7 @@ class UserModel {
     'last_login': lastLogin.toIso8601String(),
     'image_url': imageUrl,
     'registration_step': registrationStep,
+    'username': username,
   };
 }
 
@@ -203,6 +212,24 @@ class MyAuthProvider extends BaseProvider {
   bool get loginAllowsEmail => loginIdentifiers.contains('email');
   bool get loginAllowsPhone => loginIdentifiers.contains('phone');
 
+  /// The admin lets people sign in with their @username (`username_login` of the policy). Missing from an older
+  /// server = false, so it is never sent an identifier it cannot resolve (D-071).
+  bool usernameLogin = false;
+
+  /// The sign-in / reset forms say "or username": the policy allows it and the kill switch is on.
+  bool get loginAllowsUsername =>
+      usernameLogin && !AppConfig.disableList.contains(kUsernameFeatureKey);
+
+  /// Label / keyboard of the single identifier field of the login and forgot-password forms.
+  IdentifierFieldSpec get identifierSpec => identifierFieldSpec(
+        email: loginAllowsEmail,
+        phone: loginAllowsPhone,
+        username: loginAllowsUsername,
+      );
+
+  /// A USERNAME_* error of the last [register] (shown on the username field with its suggestions).
+  UsernameError? usernameError;
+
   /// Filled by register/login/verify: channels still to verify ("email"/"phone")
   /// and the data the OTP screen needs.
   List<String> pendingChannels = const ['email'];
@@ -248,6 +275,7 @@ class MyAuthProvider extends BaseProvider {
                 'either' => ['email', 'phone'],
                 _ => ['email'],
               };
+        usernameLogin = r['username_login'] == true;
         policyLoaded = true;
         notifyListeners();
       }
@@ -444,25 +472,34 @@ class MyAuthProvider extends BaseProvider {
     String? country,
     String? dob,
     String? way,
+    String? username,
   }) async {
     isLoadingRegistration = true;
+    usernameError = null;
     notifyListeners();
-    final result = await run(
-          () => _api.post(
-        '/api/v1/auth/register',
-        body: {
-      'name': name,
-      'gmail': gmail,
-      'password': password,
-      'role': selectedRole!['text'],
-      'phone': ?phone,
-      'country': ?country,
-      'dob': ?dob,
-      'way': ?way,
-      },
-        auth: false,
-      ),
-    );
+    final handle = UsernameRules.normalize(username ?? '');
+    final result = await run(() async {
+      try {
+        return await _api.post(
+          '/api/v1/auth/register',
+          body: {
+            'name': name,
+            'gmail': gmail,
+            'password': password,
+            'role': selectedRole!['text'],
+            'phone': ?phone,
+            'country': ?country,
+            'dob': ?dob,
+            'way': ?way,
+            if (handle.isNotEmpty) 'username': handle,
+          },
+          auth: false,
+        );
+      } on ApiException catch (e) {
+        usernameError = UsernameError.from(e, submitted: handle); // lands on the username field
+        rethrow;
+      }
+    });
 
     if (result is Map) {
       pendingGmail = result['gmail']?.toString() ?? gmail;
@@ -938,7 +975,7 @@ class MyAuthProvider extends BaseProvider {
           .map((m) => ResetWay(m['way'].toString(), m['masked']?.toString()))
           .toList();
     }
-    if (resetSentVia == 'email' && typed != null && !typed.contains('@')) {
+    if (resetSentVia == 'email' && typed != null && !identifierLooksLikeEmail(typed)) {
       resetEmailMasked = result['email_masked']?.toString();
     }
     notifyListeners();

@@ -23,6 +23,7 @@ import '../../auth/teacher_document_provider.dart';
 import '../../student/models.dart';
 import '../../teacher/courses/component/teacher_stats.dart';
 import '../../teacher/home/home_screen.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCREEN
@@ -1109,7 +1110,7 @@ class DocStatusBadge extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: 'bahji', fontSize: 10, fontWeight: FontWeight.w700, color: color),
+              style: TextStyle(fontFamily: AppFonts.display, fontSize: 10, fontWeight: FontWeight.w700, color: color),
             ),
           ),
         ],

@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// FIX: The original used `_` as the builder's context parameter name,
 /// which shadowed the outer [context] passed into the function.
@@ -23,13 +24,13 @@ Future<void> addItemDialog(
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(context.colors.radiusMedium)),
         title: Text(hint,
-            style: const TextStyle(
-                fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+            style: TextStyle(
+                fontFamily: AppFonts.display, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: ctrl,
           autofocus: true,
           textDirection: TextDirection.rtl,
-          style: const TextStyle(fontFamily: 'bahji'),
+          style: TextStyle(fontFamily: AppFonts.display),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: context.colors.caption,
@@ -43,7 +44,7 @@ Future<void> addItemDialog(
             onPressed: () => Navigator.pop(dialogContext),
             child:  Text('إلغاء',
                 style: TextStyle(
-                    fontFamily: 'bahji', color: context.colors.textMedium)),
+                    fontFamily: AppFonts.display, color: context.colors.textMedium)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -56,7 +57,7 @@ Future<void> addItemDialog(
                 Navigator.pop(dialogContext, ctrl.text.trim()),
             child: Text('إضافة',
                 style: TextStyle(
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: context.colors.onHero,
                     fontWeight: FontWeight.w700)),
           ),

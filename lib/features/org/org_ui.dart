@@ -24,6 +24,7 @@ import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'dart:typed_data';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Colours, icons, labels
@@ -129,7 +130,7 @@ String orgNameOf(Map<String, dynamic>? o) {
 }
 
 TextStyle orgText(BuildContext context, {double size = 13.5, FontWeight w = FontWeight.w500, Color? color}) =>
-    TextStyle(fontFamily: 'tajawal', fontSize: size, fontWeight: w, color: color ?? context.colors.textDark, height: 1.45);
+    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: color ?? context.colors.textDark, height: 1.45);
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Layout pieces
@@ -191,7 +192,7 @@ class OrgStatTile extends StatelessWidget {
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${value ?? 0}',
-                    style: TextStyle(fontFamily: 'bahji', fontSize: 21, fontWeight: FontWeight.w800, color: c.textDark)),
+                    style: TextStyle(fontFamily: AppFonts.display, fontSize: 21, fontWeight: FontWeight.w800, color: c.textDark)),
                 // two lines: one cut "Live even…" / "مهام فش…" on every 3-up strip (docs/polish/visual-review.md)
                 Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: orgText(context, size: 11.5, color: c.textMedium).copyWith(height: 1.2)),
@@ -315,7 +316,7 @@ class OrgPill extends StatelessWidget {
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         // the tint keeps the raw tone; the label is the readable ink of it (warning text on its own tint was 2:1)
         if (icon != null) ...[Icon(icon, size: 13, color: appInk(context, col)), const SizedBox(width: 4)],
-        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: appInk(context, col)))),
+        Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: appInk(context, col)))),
       ]),
     );
   }
@@ -380,7 +381,7 @@ class OrgEmpty extends StatelessWidget {
                   backgroundColor: c.primary, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
               onPressed: onAction,
               icon: const Icon(Icons.add_rounded),
-              label: Text(actionLabel!, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              label: Text(actionLabel!, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
             ),
           ],
         ]),
@@ -438,13 +439,13 @@ class OrgAudiencePicker extends StatelessWidget {
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 6, children: [
         FilterChip(
-          label: Text(t('الجميع', 'Everyone'), style: const TextStyle(fontFamily: 'tajawal')),
+          label: Text(t('الجميع', 'Everyone'), style: TextStyle(fontFamily: AppFonts.family)),
           selected: roles.isEmpty,
           onSelected: (_) => onChanged({'roles': <String>[], 'sub_orgs': sub}),
         ),
         for (final e in memberRoleLabels().entries)
           FilterChip(
-            label: Text(e.value, style: const TextStyle(fontFamily: 'tajawal')),
+            label: Text(e.value, style: TextStyle(fontFamily: AppFonts.family)),
             selected: roles.contains(e.key),
             onSelected: (on) {
               final n = {...roles};
@@ -524,7 +525,7 @@ class OrgPermissionMatrix extends StatelessWidget {
                     if (!readOnly)
                       TextButton(
                         onPressed: () => onChanged({...value, key: full ? <String>{} : {...all}}),
-                        child: Text(full ? t('إلغاء', 'Clear') : t('الكل', 'All'), style: const TextStyle(fontFamily: 'tajawal')),
+                        child: Text(full ? t('إلغاء', 'Clear') : t('الكل', 'All'), style: TextStyle(fontFamily: AppFonts.family)),
                       ),
                   ]),
                   Wrap(spacing: 6, runSpacing: 6, children: [
@@ -536,7 +537,7 @@ class OrgPermissionMatrix extends StatelessWidget {
                         side: BorderSide(color: cur.contains(a) ? col : c.divider),
                         label: Text(actions[a] ?? a,
                             style: TextStyle(
-                                fontFamily: 'tajawal', fontSize: 12, color: cur.contains(a) ? col : c.textMedium,
+                                fontFamily: AppFonts.family, fontSize: 12, color: cur.contains(a) ? col : c.textMedium,
                                 fontWeight: cur.contains(a) ? FontWeight.w800 : FontWeight.w500)),
                         selected: cur.contains(a),
                         onSelected: readOnly
@@ -702,7 +703,7 @@ class OrgPickField<T> extends StatelessWidget {
           isEmpty: text.isEmpty,
           decoration: InputDecoration(
             labelText: label,
-            labelStyle: TextStyle(fontFamily: 'tajawal', color: c.textMedium),
+            labelStyle: TextStyle(fontFamily: AppFonts.family, color: c.textMedium),
             prefixIcon: icon == null ? null : Icon(icon, color: c.textLight),
             suffixIcon: Icon(Icons.unfold_more_rounded, color: c.textLight),
             filled: true,

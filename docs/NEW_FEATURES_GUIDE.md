@@ -229,6 +229,15 @@ Timetable studio → **Create timetable** (or the ladder icon in the toolbar fir
 - **Minimize.** `Minimize` at the top of the room (or the back button) shrinks the live room to a small box that
   floats over the app: you keep hearing and being heard while you open other pages, can drag the box to any
   corner, mute or hang up from it, and tap it to come back full-screen. Leaving is still an explicit End.
+- **Meet now.** One tap on "Meet now" (calendar, My schedule, home header) opens an online meeting that starts
+  at once and joins it without another tap. An online meeting needs no title: it is named after its date.
+- **Quick guest link.** The waiting (lobby) button starts with "Quick guest link": copy, share or show the QR.
+  Whoever opens it joins straight away (a new guest only types a name); the PIN and the guest cap still apply.
+- **Info.** The (i) button at the top shows the meeting's title, host, time, people, recording and free time.
+- **Students and points.** Students create online, private meetings only. Each is free for 15 minutes; then the
+  creator subscribes to the live plan (30 points for 30 days) from the countdown's Upgrade button or Settings →
+  Points wallet. Points are bought with a bank-transfer / InstaPay receipt the admin approves (Admin → Points &
+  wallets, which also grants points and sets every price and limit).
 - **Recording a meeting.** The creator of an online meeting (not a course session: those keep their course
   recording) taps Record, picks Google Drive or OneDrive (connecting it once in the browser) and a quality
   (1080p / 720p / 480p / audio only). The server assembles the file, moves it to the drive and notifies the

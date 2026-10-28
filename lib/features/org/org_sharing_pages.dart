@@ -23,6 +23,7 @@ import 'org_providers.dart';
 import 'org_sharing.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Presentational pieces (plain values → tested by the layout harness)
@@ -757,7 +758,7 @@ class _OrgSharingPageState extends State<OrgSharingPage> with SingleTickerProvid
                     final r = await orgCall(() => ApiClient().post('$_base/grants/${g['id']}/revoke', body: {}), ok: t('تم', 'Done'));
                     if (r.ok) _loadAll();
                   },
-                  icon: const Icon(Icons.logout_rounded, size: 18),
+                  icon: const Icon(DirIcons.logout, size: 18),
                   label: Text(t('تخلٍّ', 'Give up')),
                 ),
             ],

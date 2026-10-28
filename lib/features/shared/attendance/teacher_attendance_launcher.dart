@@ -12,6 +12,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Plain data so this file does not depend on the teacher model classes.
 class LauncherSession {
@@ -44,7 +45,7 @@ class TeacherAttendanceLauncher extends StatelessWidget {
           const SizedBox(width: 6),
           Text(attT('att_launch_btn'),
               style: TextStyle(
-                  color: c, fontWeight: FontWeight.w700, fontFamily: 'tajawal', fontSize: 12)),
+                  color: c, fontWeight: FontWeight.w700, fontFamily: AppFonts.family, fontSize: 12)),
         ]),
       ),
     );
@@ -76,13 +77,13 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
               decoration: BoxDecoration(
                   color: context.colors.textLight.withValues(alpha: 0.4), borderRadius: BorderRadius.circular(2))),
           Text(attT('att_launch_title'),
-              style: const TextStyle(fontFamily: 'tajawal', fontSize: 17, fontWeight: FontWeight.w800)),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 17, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           Expanded(
             child: inverted.isEmpty
                 ? Center(
                     child: Text(attT('att_launch_empty'),
-                        style: TextStyle(fontFamily: 'tajawal', color: context.colors.textMedium)))
+                        style: TextStyle(fontFamily: AppFonts.family, color: context.colors.textMedium)))
                 : ListView.separated(
                     controller: scroll,
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
@@ -103,8 +104,8 @@ Future<void> showSessionPickerSheet(BuildContext context, List<LauncherSession> 
                         title: Text(s.name,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
-                        trailing: const Icon(CupertinoIcons.chevron_forward, size: 16),
+                            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
+                        trailing: const Icon(CupertinoIcons.forward, size: 16),
                         onTap: () {
                           Navigator.of(sheetCtx).pop();
                           showTeacherAttendanceSheet(context, s.id, title: s.name);

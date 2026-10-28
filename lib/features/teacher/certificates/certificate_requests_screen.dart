@@ -14,6 +14,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class CertificateRequestsScreen extends StatelessWidget {
   const CertificateRequestsScreen({super.key});
@@ -136,8 +137,8 @@ class _RequestCard extends StatelessWidget {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(item.studentName,
-                  style: const TextStyle(
-                      fontFamily: 'tajawal', fontSize: 14, fontWeight: FontWeight.w800)),
+                  style: TextStyle(
+                      fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w800)),
               Text('${item.courseName(ar)} · ${item.certificateTitle}',
                   style: c.caption, maxLines: 2, overflow: TextOverflow.ellipsis),
             ]),

@@ -13,6 +13,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 
 import 'live_avatar.dart';
 import 'live_palette.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class NoVideoWidget extends StatelessWidget {
   const NoVideoWidget({
@@ -125,8 +126,8 @@ class _CameraOffChip extends StatelessWidget {
                 label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'tajawal',
+                style: TextStyle(
+                  fontFamily: AppFonts.family,
                   color: LivePalette.textMid,
                   fontSize: 11,
                   fontWeight: FontWeight.w600,

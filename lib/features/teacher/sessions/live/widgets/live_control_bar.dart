@@ -12,6 +12,9 @@
 //
 // The row is always laid out left-to-right so the End button is the rightmost one in Arabic too; labels are
 // plain Text so Arabic shaping is unaffected.
+//
+// A [LiveControlAction.pinned] primary (the meeting creator's red Record / Stop, live-rooms-spec §11) never moves
+// into "More" on phones: the pill makes room for it and its buttons shrink to fit (320 px included).
 library;
 
 import 'package:flutter/material.dart';
@@ -20,6 +23,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'live_palette.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Breakpoint between the mobile pill and the wide bar.
 const double kLiveControlsMobileBreakpoint = 600;
@@ -47,6 +51,7 @@ class LiveControlAction {
     this.menu,
     this.menuTitle,
     this.badge = 0,
+    this.pinned = false,
   });
 
   final IconData icon;
@@ -68,6 +73,8 @@ class LiveControlAction {
   final String? menuTitle;
   /// Count shown as a small bubble on the button's corner (unread chat, raised hands); 0 hides it.
   final int badge;
+  /// Mobile: always in the pill, never in the "More" sheet (the Record / Stop of a meeting creator).
+  final bool pinned;
 
   bool get enabled => onTap != null || (menu != null && menu!.isNotEmpty);
 }
@@ -92,7 +99,7 @@ class _CountBadge extends StatelessWidget {
       child: Text(
         count > 99 ? '99+' : '$count',
         maxLines: 1,
-        style: const TextStyle(fontFamily: 'tajawal', fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: LivePalette.textHigh),
+        style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: LivePalette.textHigh),
       ),
     );
   }
@@ -195,9 +202,14 @@ class LiveControlBar extends StatelessWidget {
     final columns = (inner / 56).floor().clamp(3, 7);
     final needMore = secondary.isNotEmpty || primary.length + 1 > columns;
     final maxPrimary = needMore ? (columns - 2).clamp(1, primary.length) : primary.length;
-    final shown = primary.take(maxPrimary).toList();
-    final overflow = [...primary.skip(maxPrimary), ...secondary];
-    final size = width < 360 ? 46.0 : 52.0;
+    final firstShown = primary.take(maxPrimary).toList();
+    // Pinned actions that did not fit stay in the pill anyway (kept in their order); the buttons shrink to fit.
+    final shown = [for (final a in primary) if (firstShown.contains(a) || a.pinned) a];
+    final overflow = [...primary.where((a) => !shown.contains(a)), ...secondary];
+    final slots = shown.length + (overflow.isNotEmpty ? 1 : 0) + 1;
+    final fit = inner / slots - 4;
+    final base = width < 360 ? 46.0 : 52.0;
+    final size = fit < base ? fit.clamp(34.0, base) : base;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -368,7 +380,7 @@ class _MobileButton extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 10.5,
               height: 1.2,
               fontWeight: FontWeight.w700,
@@ -415,7 +427,7 @@ class _WideButtonState extends State<_WideButton> {
             enabled: false,
             height: 36,
             child: Text(a.menuTitle!,
-                style: const TextStyle(fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w700, color: LiveControlBar._textLow)),
+                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w700, color: LiveControlBar._textLow)),
           ),
         for (final d in menu)
           PopupMenuItem<VoidCallback>(
@@ -429,7 +441,7 @@ class _WideButtonState extends State<_WideButton> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: d.selected ? FontWeight.w700 : FontWeight.w500,
                         color: LiveControlBar._textHigh)),
@@ -459,7 +471,7 @@ class _WideButtonState extends State<_WideButton> {
           message: tip,
           waitDuration: const Duration(milliseconds: 500),
           decoration: BoxDecoration(color: LivePalette.tooltipBg, borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontSize: 12, fontWeight: FontWeight.w600),
+          textStyle: TextStyle(fontFamily: AppFonts.family, color: LivePalette.textHigh, fontSize: 12, fontWeight: FontWeight.w600),
           child: MouseRegion(
             cursor: tap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hover = true),
@@ -564,7 +576,7 @@ class _WideEndButtonState extends State<_WideEndButton> {
                 const SizedBox(width: 8),
                 Text(a.label,
                     maxLines: 1,
-                    style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontSize: 13, fontWeight: FontWeight.w800)),
+                    style: TextStyle(fontFamily: AppFonts.family, color: LivePalette.textHigh, fontSize: 13, fontWeight: FontWeight.w800)),
               ]),
             ),
           ),
@@ -596,7 +608,7 @@ class _RecChip extends StatelessWidget {
             : Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: c, boxShadow: [BoxShadow(color: c, blurRadius: 6)])),
         const SizedBox(width: 5),
         Text(paused ? 'lr_rec_paused_chip'.tr : 'lr_rec'.tr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 10, fontWeight: FontWeight.w800, color: c, letterSpacing: 0.6)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, fontWeight: FontWeight.w800, color: c, letterSpacing: 0.6)),
       ]),
     );
   }
@@ -623,7 +635,7 @@ class _MoreSheet extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
                   child: Text(a.menuTitle ?? a.label,
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12, fontWeight: FontWeight.w700, color: c.textMedium)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, fontWeight: FontWeight.w700, color: c.textMedium)),
                 ),
                 for (final d in a.menu!)
                   _SheetRow(
@@ -691,7 +703,7 @@ class _SheetRow extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: dense ? 13 : 14,
                           fontWeight: a.active ? FontWeight.w800 : FontWeight.w600,
                           color: c.textDark)),
@@ -706,7 +718,7 @@ class _SheetRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(border: Border.all(color: c.divider), borderRadius: BorderRadius.circular(6)),
                     child: Text(a.shortcut!,
-                        style: TextStyle(fontFamily: 'tajawal', fontSize: 11, fontWeight: FontWeight.w700, color: c.textMedium)),
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w700, color: c.textMedium)),
                   ),
                 ],
                 if (a.active && !dense) ...[

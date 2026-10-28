@@ -46,6 +46,7 @@ import 'org_v3.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class OrgSchedulePage extends StatelessWidget {
   const OrgSchedulePage({super.key});
@@ -79,7 +80,7 @@ class _ScheduleView extends StatelessWidget {
               indicator: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(14)),
               labelColor: c.onHero,
               unselectedLabelColor: c.textMedium,
-              labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13),
+              labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13),
               tabs: [
                 Tab(text: t('الجداول', 'Timetables'), height: 40),
                 Tab(text: t('المقررات والهيئة', 'Courses & staff'), height: 40),
@@ -138,7 +139,7 @@ class _SetupTab extends StatelessWidget {
                         ),
                         title: Text(
                           '${x['label']}',
-                          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(periodRange(asMap(x))),
                         trailing: Row(
@@ -192,7 +193,7 @@ class _SetupTab extends StatelessWidget {
                         ),
                         title: Text(
                           '${'${r['code'] ?? ''}'.isEmpty ? '' : '${r['code']} · '}${r['name']}',
-                          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(
                           [
@@ -318,7 +319,7 @@ class _PlanningTab extends StatelessWidget {
                             : null,
                         title: Text(
                           courseName(l),
-                          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
                         ),
                         subtitle: Text(
                           [
@@ -368,7 +369,7 @@ class _PlanningTab extends StatelessWidget {
                         leading: AdminAvatar(name: '${asMap(m['user'])['name']}', url: asMap(m['user'])['image_url'] as String?, size: 36),
                         title: Text(
                           '${asMap(m['user'])['name']}',
-                          style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700),
+                          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700),
                         ),
                         subtitle: Text(
                           {'teacher': t('مدرس', 'Teacher'), 'teacher_assistant': t('معيد', 'Teaching assistant'), 'admin_assistant': t('مساعد إداري', 'Admin assistant')}['${m['role']}'] ?? '',
@@ -516,7 +517,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
               SheetHeader(title),
               Text(
                 sel.isEmpty ? t('غير محدد: متاح في كل الأوقات', 'Not set: available at any time') : t('المحدد فقط هو المتاح', 'Only the highlighted cells are available'),
-                style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: sel.isEmpty ? c.success : c.textMedium),
+                style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: sel.isEmpty ? c.success : c.textMedium),
               ),
               const SizedBox(height: 8),
               SingleChildScrollView(
@@ -533,7 +534,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                             child: Text(
                               labels[d]!,
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w800, color: c.textDark),
+                              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w800, color: c.textDark),
                             ),
                           ),
                       ],
@@ -546,7 +547,7 @@ Future<void> showAvailabilitySheet(BuildContext context, OrgScheduleProvider p, 
                             child: Text(
                               '${per['label']}',
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textMedium),
+                              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textMedium),
                             ),
                           ),
                           for (final d in days)
@@ -729,7 +730,7 @@ class _TimetablesTab extends StatelessWidget {
                                 children: [
                                   Text(
                                     '${x['name']}',
-                                    style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark),
+                                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark),
                                   ),
                                   Text(
                                     [
@@ -737,7 +738,7 @@ class _TimetablesTab extends StatelessWidget {
                                       '${x['slots'] ?? 0} ${t('حصة', 'slots')}',
                                       if (asMap(x['result'])['status'] != null) resultStatusLabels()['${asMap(x['result'])['status']}'] ?? '',
                                     ].join(' · '),
-                                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium),
+                                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium),
                                   ),
                                 ],
                               ),
@@ -780,7 +781,7 @@ class _TimetablesTab extends StatelessWidget {
               icon: Icon(Icons.add_rounded, color: c.onHero),
               label: Text(
                 t('جدول جديد', 'New timetable'),
-                style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+                style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
               ),
             ),
           ),
@@ -1196,7 +1197,7 @@ class _StudioState extends State<_Studio> {
                               '${per['label']}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 12, color: c.textDark),
+                              style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 12, color: c.textDark),
                             ),
                             Text(
                               clockOf(per['start_time']),
@@ -1431,7 +1432,7 @@ class _Cell extends StatelessWidget {
           child: hovering.isNotEmpty && preview == false && previewText != null
               ? Center(
                   child: Text(previewText!, maxLines: 3, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, fontWeight: FontWeight.w800, color: c.danger)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, fontWeight: FontWeight.w800, color: c.danger)),
                 )
               : slots.isEmpty
               ? (onTap == null || hovering.isNotEmpty ? const SizedBox.expand() : Center(child: Icon(Icons.add_rounded, size: 18, color: c.textLight.withValues(alpha: 0.45))))
@@ -1481,7 +1482,7 @@ class _Cell extends StatelessWidget {
           courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, color: c.onHero),
+          style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 11.5, color: c.onHero),
         ),
       ),
     );
@@ -1519,7 +1520,7 @@ class _Cell extends StatelessWidget {
                         courseNames[asInt(x['course_id'])] ?? '#${x['course_id']}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 11.5, height: 1.25, color: c.textDark),
+                        style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 11.5, height: 1.25, color: c.textDark),
                       ),
                     ),
                     if (mark != null) Icon(mark == 'error' ? Icons.error_rounded : Icons.warning_amber_rounded, size: 13, color: markCol),
@@ -1531,7 +1532,7 @@ class _Cell extends StatelessWidget {
                   children: [
                     Text(
                       x['group_no'] == null ? sessionKindLabel(x['kind']) : '${sessionKindLabel(x['kind'])} ${x['group_no']}',
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 9.5, fontWeight: FontWeight.w800, color: col),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 9.5, fontWeight: FontWeight.w800, color: col),
                     ),
                     if (sub.isNotEmpty)
                       Expanded(
@@ -1539,7 +1540,7 @@ class _Cell extends StatelessWidget {
                           ' · $sub',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: 'tajawal', fontSize: 10, color: c.textMedium),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, color: c.textMedium),
                         ),
                       ),
                   ],

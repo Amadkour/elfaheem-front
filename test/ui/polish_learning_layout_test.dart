@@ -29,8 +29,7 @@ import 'package:flutter_education_app/features/teacher/courses/component/gradien
 import 'package:flutter_education_app/features/teacher/courses/component/section_card.dart';
 import 'package:flutter_education_app/features/teacher/courses/course_privacy_card.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/course_details_section.dart';
-import 'package:flutter_education_app/features/teacher/sessions/components/course_stats_row.dart';
+import 'package:flutter_education_app/features/teacher/sessions/components/teacher_course_parts.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/live_palette.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/participant_stats.dart';
 import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_screen_share.dart';
@@ -248,12 +247,20 @@ void main() {
     });
 
     group('teacher course page sections', () {
-      testWidgets('stats row', (t) async {
-        await expectNoLayoutErrors(t, () => SingleChildScrollView(child: CourseStatsRow(course: course(), sessionCount: 18)));
+      testWidgets('status side card', (t) async {
+        await expectNoLayoutErrors(
+          t,
+          () => SingleChildScrollView(child: TeacherCourseStatusCard(course: course(), onAddSession: () {}, onEdit: () {})),
+        );
       });
 
-      testWidgets('details section (schedules via AppTime, certificates, tools)', (t) async {
-        await expectNoLayoutErrors(t, () => SingleChildScrollView(child: CourseDetailsSection(course: course())));
+      testWidgets('details tab (schedules via AppTime, certificates, tools)', (t) async {
+        await expectNoLayoutErrors(
+          t,
+          () => SingleChildScrollView(
+            child: TeacherCourseDetails(course: course(), onManageSchedule: () {}, onManageCertificate: (_) {}),
+          ),
+        );
       });
     });
   });

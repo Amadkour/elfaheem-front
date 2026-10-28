@@ -19,6 +19,7 @@
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
+import '../live/live_time_limit.dart' show parseLiveTimeLimit;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -120,6 +121,7 @@ class GuestLiveInfo {
     this.guestAdmission = LiveGuestAdmission.approve,
     this.signedInJoin = false,
     this.meetingId,
+    this.autoJoin = false,
   });
 
   final int sessionId;
@@ -156,6 +158,10 @@ class GuestLiveInfo {
   /// `meeting_id` (or `id`) when [kind] is `meeting`.
   final int? meetingId;
 
+  /// `auto_join` (spec §10): the link is DIRECT — a signed-in viewer joins with the account at once, a remembered
+  /// guest name joins at once, otherwise only the name field is asked; the pre-join step then presses Join itself.
+  final bool autoJoin;
+
   bool get isMeeting => kind == 'meeting';
 
   /// The room, for JoinArgs.roomRef / RoomPage (a meeting room keeps the `-meetingId` convention).
@@ -187,6 +193,7 @@ class GuestLiveInfo {
       guestAdmission: liveGuestAdmissionFrom(j['guest_admission']),
       signedInJoin: j['signed_in_join'] == true,
       meetingId: kind == 'meeting' ? ((j['meeting_id'] ?? j['id']) as num?)?.toInt() : null,
+      autoJoin: j['auto_join'] == true,
     );
   }
 }
@@ -200,6 +207,7 @@ class GuestJoin {
     required this.canPublish,
     required this.recordingEnabled,
     required this.identity,
+    this.freeEndsAt,
   });
 
   final String wsUrl;
@@ -209,6 +217,9 @@ class GuestJoin {
   final bool recordingEnabled;
   final String identity;
 
+  /// A student meeting's free-time end (`time_limit.ends_at`, UTC), null = unlimited (spec §8).
+  final DateTime? freeEndsAt;
+
   factory GuestJoin.fromJson(Map<String, dynamic> j) => GuestJoin(
         wsUrl: (j['ws_url'] ?? j['url'] ?? '').toString(),
         token: (j['token'] ?? '').toString(),
@@ -216,6 +227,7 @@ class GuestJoin {
         canPublish: j['can_publish'] != false,
         recordingEnabled: j['recording_enabled'] == true,
         identity: (j['identity'] ?? '').toString(),
+        freeEndsAt: parseLiveTimeLimit(j['time_limit']),
       );
 }
 

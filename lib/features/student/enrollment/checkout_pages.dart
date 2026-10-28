@@ -17,6 +17,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 // webview_flutter is imported only on mobile; the stub keeps Flutter Web compiling.
 import 'package:webview_flutter/webview_flutter.dart'
 if (dart.library.html) 'webview_stub.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // Hosted checkout WebView
@@ -122,8 +123,8 @@ class MoyasarApplePayScreen extends StatelessWidget {
       child: Scaffold(
         backgroundColor: c.background,
         appBar: AppBar(
-          title: const Text('Apple Pay',
-              style: TextStyle(fontFamily: 'bahji', fontWeight: FontWeight.w700)),
+          title: Text('Apple Pay',
+              style: TextStyle(fontFamily: AppFonts.display, fontWeight: FontWeight.w700)),
           backgroundColor: c.cardBg,
           surfaceTintColor: Colors.transparent,
           elevation: 0,
@@ -164,7 +165,7 @@ class MoyasarCardPaymentScreen extends StatelessWidget {
         backgroundColor: c.background,
         appBar: AppBar(
           title: Text('card_details_title'.tr,
-              style: TextStyle(fontFamily: 'bahji', color: c.textDark, fontWeight: FontWeight.w700)),
+              style: TextStyle(fontFamily: AppFonts.display, color: c.textDark, fontWeight: FontWeight.w700)),
           backgroundColor: c.cardBg,
           surfaceTintColor: Colors.transparent,
           elevation: 0,

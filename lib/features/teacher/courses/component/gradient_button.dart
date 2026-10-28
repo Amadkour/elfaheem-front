@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class GradientButton extends StatelessWidget {
   final String label;
@@ -45,7 +46,7 @@ class GradientButton extends StatelessWidget {
             color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 14,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
           ),
         ),
       ),

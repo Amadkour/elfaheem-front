@@ -27,6 +27,7 @@ import 'attendance_strings.dart';
 import 'attendance_widgets.dart';
 import 'teacher_attendance_controller.dart';
 import 'teacher_attendance_launcher.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ════════════════════════════════════════════════════════════════════════════
 //  Shared premium surface (gradient + shimmer + optional pulse)
@@ -235,14 +236,14 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontSize: 14, fontWeight: FontWeight.w800, color: context.colors.onHero),
+                    fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w800, color: context.colors.onHero),
               ),
               if (_checked)
                 Text(
                   attT('att_entry_open'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: context.colors.onHero.withValues(alpha: 0.85)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, color: context.colors.onHero.withValues(alpha: 0.85)),
                 ),
             ]),
           ),
@@ -322,14 +323,14 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 14.5, fontWeight: FontWeight.w800, color: context.colors.onHero)),
+                          fontFamily: AppFonts.family, fontSize: 14.5, fontWeight: FontWeight.w800, color: context.colors.onHero)),
                   Text(
                     running
                         ? '${attT('att_t_present')}: ${t.code?.presentCount ?? 0}'
                         : (target?.name ?? attT('att_t_entry_sub')),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.onHero.withValues(alpha: 0.85)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.onHero.withValues(alpha: 0.85)),
                   ),
                 ]),
               ),
@@ -383,7 +384,7 @@ class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(attT('att_t_web_asks_body'),
-                style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 12.5, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 8),
           FilledButton(
@@ -391,7 +392,7 @@ class _WebLocationRequestCardState extends State<_WebLocationRequestCard> {
             onPressed: _busy ? null : _share,
             child: _busy
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : Text(attT('att_t_share_now'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                : Text(attT('att_t_share_now'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
           ),
         ]),
       );

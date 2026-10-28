@@ -9,8 +9,8 @@
 //                            call), today's events and the inbox preview of the SAME payload; AppModeController
 //                            keeps the selection and the older-server copy of the overview.
 //   OrgMemberHomeBody        the presentational body (plain values, layout-tested):
-//                            OrgHero → status banner → stat tiles (to do · due soon · awaiting you · news, once) →
-//                            today agenda → "What needs you" (inbox preview 5) → decisions (managers) → what I
+//                            OrgHero → status banner → HomeStatStrip (to do · due soon · awaiting you · news, once) →
+//                            today agenda → "What needs you" (InboxCompactList, 3) → decisions (managers) → what I
 //                            manage → quick actions GROUPED (My studies · Requests & forms · Manage · Organization,
 //                            ≤ 6 pills each + a "More" sheet) → news (3)
 //   OrgMemberDashboardScreen standalone page (route '/org_member', e.g. org staff without a management dashboard)
@@ -56,6 +56,7 @@ import 'org_registrar_member.dart' show openAdvising, openConsents, openMyWeek, 
 import 'org_services_pages.dart' show OrgAnnouncementsPage, OrgComplaintsPage, OrgFormsPage, OrgMaterialsPage;
 import 'org_ui.dart' show memberRoleLabels, orgNameOf;
 import 'governance/gov_wiring.dart' show govMemberPills;
+import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Small helpers
@@ -450,15 +451,15 @@ class OrgMemberHomeBody extends StatelessWidget {
     final inboxRows = inbox?.map(InboxItem.new).toList();
 
     final soon = asInt(todo['due_soon']) + asInt(todo['overdue']);
-    final stats = <Widget>[
-      AppStatTile(icon: Icons.task_alt_rounded, label: t('مطلوب منك', 'To do'), value: asInt(todo['total']),
-          color: asInt(todo['overdue']) > 0 ? c.danger : c.primary,
+    final stats = <HomeStat>[
+      HomeStat(icon: Icons.task_alt_rounded, label: t('مطلوب منك', 'To do'), count: asInt(todo['total']),
+          tone: asInt(todo['overdue']) > 0 ? c.danger : c.primary,
           onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
-      AppStatTile(icon: Icons.schedule_rounded, label: t('قريب الموعد', 'Due soon'), value: soon, color: soon > 0 ? c.warning : c.success),
+      HomeStat(icon: Icons.schedule_rounded, label: t('قريب الموعد', 'Due soon'), count: soon, tone: c.warning),
       if (manage != null)
-        AppStatTile(icon: Icons.fact_check_rounded, label: t('بانتظار قرارك', 'Awaiting you'), value: asInt(ap['total']),
-            color: asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary),
-      AppStatTile(icon: Icons.campaign_rounded, label: t('أخبار جديدة', 'New news'), value: asInt(entry['news']),
+        HomeStat(icon: Icons.fact_check_rounded, label: t('بانتظار قرارك', 'Awaiting you'), count: asInt(ap['total']),
+            tone: asInt(ap['overdue_complaints']) > 0 ? c.danger : c.primary),
+      HomeStat(icon: Icons.campaign_rounded, label: t('أخبار جديدة', 'New news'), count: asInt(entry['news']), tone: c.accent2,
           onTap: () => _space(context, org, 0)),
     ];
 
@@ -486,8 +487,8 @@ class OrgMemberHomeBody extends StatelessWidget {
           ),
         ),
 
-      // ── the numbers, once
-      AppGrid(minTile: 140, padding: const EdgeInsets.symmetric(horizontal: 16), children: stats),
+      // ── the numbers, once: one card of small tiles (the same strip as the personal homes)
+      HomeStatStrip(items: stats, padding: const EdgeInsets.symmetric(horizontal: 16)),
       const SizedBox(height: 18),
 
     ];
@@ -512,7 +513,7 @@ class OrgMemberHomeBody extends StatelessWidget {
         const SizedBox(height: 18),
       ],
 
-      // ── what needs me (the 5 most urgent rows of THIS organization; the counts sit in the tiles above)
+      // ── what needs me (the 3 most urgent rows of THIS organization; the counts sit in the strip above)
       if (inboxRows == null && inboxFallback != null) ...[
         HomeSectionTitle(t('ما ينتظرك', 'What needs you'),
             padding: _titlePad,
@@ -525,14 +526,8 @@ class OrgMemberHomeBody extends StatelessWidget {
             padding: _titlePad,
             actionLabel: t('عرض الكل', 'See all'),
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InboxScreen(orgId: orgId, title: orgNameOf(org))))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(children: [
-            for (final x in inboxRows)
-              Padding(padding: const EdgeInsets.only(bottom: 8), child: InboxCard(item: x, onTap: () => onOpenInboxItem?.call(x))),
-          ]),
-        ),
-        const SizedBox(height: 8),
+        InboxCompactList(items: inboxRows.take(3).toList(), padding: const EdgeInsets.symmetric(horizontal: 16), onTap: (x) => onOpenInboxItem?.call(x)),
+        const SizedBox(height: 18),
       ],
 
     ];
@@ -742,6 +737,7 @@ class _OrgMemberDashboardScreenState extends State<OrgMemberDashboardScreen> {
               child: const Center(child: ContextSwitcher(compact: true))),
           const ContextExitButton(),
           const SizedBox(width: 4),
+          const QuickMeetingIcon(),
           if (ctl.currentOrgId != null)
             ParentComponent(
               featureKey: 'rag.assistant',

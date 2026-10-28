@@ -20,6 +20,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AppTheme — raw design tokens + ThemeData factories
@@ -232,82 +233,82 @@ class AppTheme {
   ];
 
   // ── Text styles (color from light palette; ThemeConfigProvider overrides per mode) ──
-  static const TextStyle h1 = TextStyle(
+  static TextStyle get h1 => TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     letterSpacing: -0.5,
     height: 1.2,
   );
-  static const TextStyle h2 = TextStyle(
+  static TextStyle get h2 => TextStyle(
     fontSize: 22,
     color: textDark,
     fontWeight:FontWeight.normal,
-    fontFamily: 'bahji',
+    fontFamily: AppFonts.display,
     letterSpacing: -0.3,
   );
-  static const TextStyle h3 = TextStyle(
+  static TextStyle get h3 => TextStyle(
     fontSize: 17,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     letterSpacing: -0.2,
   );
-  static const TextStyle h4 = TextStyle(
+  static TextStyle get h4 => TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle small = TextStyle(
+  static TextStyle get small => TextStyle(
     fontSize: 8,
     fontWeight: FontWeight.w600,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle body = TextStyle(
+  static TextStyle get body => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w400,
     color: textMedium,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.65,
   );
-  static const TextStyle bodyBold = TextStyle(
+  static TextStyle get bodyBold => TextStyle(
     fontSize: 14,
     fontWeight: FontWeight.w700,
     color: textDark,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.65,
   );
-  static const TextStyle caption = TextStyle(
+  static TextStyle get caption => TextStyle(
     fontSize: 12,
     color: textLight,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
     height: 1.4,
   );
-  static const TextStyle label = TextStyle(
+  static TextStyle get label => TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w600,
     color: textMedium,
-    fontFamily: 'tajawal',
+    fontFamily: AppFonts.family,
   );
-  static const TextStyle navLabelSelected = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get navLabelSelected => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w700,
     fontSize: 11,
   );
-  static const TextStyle navLabelUnselected = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get navLabelUnselected => TextStyle(
+    fontFamily: AppFonts.family,
     fontSize: 11,
   );
-  static const TextStyle button = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get button => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w700,
     fontSize: 16,
   );
-  static const TextStyle buttonSmall = TextStyle(
-    fontFamily: 'tajawal',
+  static TextStyle get buttonSmall => TextStyle(
+    fontFamily: AppFonts.family,
     fontWeight: FontWeight.w600,
     fontSize: 14,
   );
@@ -320,7 +321,7 @@ class AppTheme {
   static ThemeData _build(Brightness brightness) {
     final dark = brightness == Brightness.dark;
     return ThemeData(
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
       useMaterial3: true,
       brightness: brightness,
       scaffoldBackgroundColor: dark ? darkBackground : background,
@@ -352,13 +353,13 @@ class AppTheme {
         labelColor: primary,
         unselectedLabelColor: dark ? darkTextMuted : textMedium,
         indicatorColor: primary,
-        labelStyle: const TextStyle(
+        labelStyle: TextStyle(
           fontWeight: FontWeight.w700,
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           fontSize: 14,
         ),
         unselectedLabelStyle:
-        const TextStyle(fontFamily: 'tajawal', fontSize: 14),
+        TextStyle(fontFamily: AppFonts.family, fontSize: 14),
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((s) =>
@@ -406,13 +407,13 @@ class AppTheme {
     ),
     labelStyle: TextStyle(
       color: dark ? darkTextLight : textLight,
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
     ),
     floatingLabelStyle:
-    const TextStyle(color: primary, fontFamily: 'tajawal'),
+    TextStyle(color: primary, fontFamily: AppFonts.family),
     hintStyle: TextStyle(
       color: dark ? darkTextLight : textLight,
-      fontFamily: 'tajawal',
+      fontFamily: AppFonts.family,
     ),
   );
 

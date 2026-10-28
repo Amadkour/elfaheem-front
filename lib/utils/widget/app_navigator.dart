@@ -24,6 +24,8 @@ import 'view_as_state.dart';
 import '../../features/org/governance/gov_wiring.dart' show govOpenAssignmentsLink, govOpenDelegationLink, govOpenItemLink, govOpenSessionLink;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
+import '../../features/shared/points/points_api.dart' show kPointsFeatureKey;
+import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
 
 class AppNavigator {
   AppNavigator._();
@@ -45,7 +47,9 @@ class AppNavigator {
 
   /// module: profile | course | course_profile | notifications | support (the help center) | my_courses | subscription | org_exams | calendar |
   /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft) |
-  /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4)
+  /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4) |
+  /// points (top-up approved / rejected → the wallet) | live_plan (plan bought / free time over → the wallet with
+  /// the live-meeting plan sheet open, live-rooms-spec §8 – §9)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
@@ -112,6 +116,16 @@ class AppNavigator {
         return;
       case 'live_lobby': // someone waits at the door of a room I host → the meeting / session with its lobby sheet
         await openLiveLobby(LiveRoomRef.parse(kind, targetId));
+        return;
+      case 'points':
+      case 'live_plan':
+        if (AppConfig.disableList.contains(kPointsFeatureKey)) {
+          await nav.pushNamed('/notifications');
+          return;
+        }
+        await nav.push(MaterialPageRoute(
+            settings: const RouteSettings(name: '/points'),
+            builder: (_) => PointsWalletPage(openPlan: module == 'live_plan')));
         return;
       case 'profile':
         await nav.pushNamed('/profile');

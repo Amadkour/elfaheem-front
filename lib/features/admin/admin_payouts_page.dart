@@ -28,6 +28,7 @@ import 'admin_models.dart';
 import 'receipt_viewer.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminPayoutsPage extends StatelessWidget {
   const AdminPayoutsPage({super.key});
@@ -41,7 +42,7 @@ class AdminPayoutsPage extends StatelessWidget {
         appBar: AppBar(
           title: Text(
             'admin_teacher_payouts'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
           bottom: TabBar(
             tabs: [
@@ -157,7 +158,7 @@ class _RequestCard extends StatelessWidget {
                 child: Text(
                   w.teacherName.isEmpty ? '#${w.teacherId}' : w.teacherName,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     color: c.textDark,
                   ),
@@ -166,7 +167,7 @@ class _RequestCard extends StatelessWidget {
               Text(
                 money(w.amount),
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w900,
                   fontSize: 17,
                   color: c.primary,
@@ -178,7 +179,7 @@ class _RequestCard extends StatelessWidget {
             w.teacherGmail,
             textDirection: TextDirection.ltr,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12,
               color: c.textLight,
             ),
@@ -237,7 +238,7 @@ class _RequestCard extends StatelessWidget {
               child: Text(
                 w.error!,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 12,
                   color: c.danger,
                 ),
@@ -271,7 +272,7 @@ class _RequestCard extends StatelessWidget {
                             : 'request_approve'.tr,
                         style: TextStyle(
                           color: c.onHero,
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                         ),
                       ),
                       onPressed: () async {
@@ -339,7 +340,7 @@ class _RequestCard extends StatelessWidget {
                         'retry'.tr,
                         style: TextStyle(
                           color: c.onHero,
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                         ),
                       ),
                       onPressed: () async {
@@ -477,14 +478,14 @@ class _ResolveDialogState extends State<_ResolveDialog> {
         scrollable: true,
         title: Text(
           'admin_resolve_unconfirmed_transfer'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'admin_check_the_provider_dashboard_did_the'.tr,
-              style: const TextStyle(fontFamily: 'tajawal'),
+              style: TextStyle(fontFamily: AppFonts.family),
             ),
             const SizedBox(height: 10),
             TextField(
@@ -632,7 +633,7 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
       child: AlertDialog(
         title: Text(
           'admin_transfer_reference_bank_instapay'.tr,
-          style: const TextStyle(fontFamily: 'tajawal'),
+          style: TextStyle(fontFamily: AppFonts.family),
         ),
         content: SingleChildScrollView(
           child: Column(
@@ -675,8 +676,8 @@ class _MarkPaidDialogState extends State<_MarkPaidDialog> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textDirection: TextDirection.ltr,
-                          style: const TextStyle(
-                            fontFamily: 'tajawal',
+                          style: TextStyle(
+                            fontFamily: AppFonts.family,
                             fontSize: 12,
                           ),
                         ),
@@ -796,7 +797,7 @@ class _TeacherTile extends StatelessWidget {
                 Text(
                   asStr(row['name']),
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     color: c.textDark,
                   ),
@@ -805,7 +806,7 @@ class _TeacherTile extends StatelessWidget {
                   asStr(row['gmail']),
                   textDirection: TextDirection.ltr,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12,
                     color: c.textLight,
                   ),
@@ -893,7 +894,7 @@ class _TeacherTile extends StatelessWidget {
                               FilterChip(
                                 label: Text(
                                   payoutMethodLabel(m),
-                                  style: const TextStyle(fontFamily: 'tajawal'),
+                                  style: TextStyle(fontFamily: AppFonts.family),
                                 ),
                                 selected: chosen.contains(m),
                                 onSelected: (s) => setS(
@@ -1035,7 +1036,7 @@ class _SettingsViewState extends State<_SettingsView> {
                   value: p.allowed.contains(asStr(m['id'])),
                   title: Text(
                     t(asStr(m['label_ar']), asStr(m['label_en'])),
-                    style: const TextStyle(fontFamily: 'tajawal'),
+                    style: TextStyle(fontFamily: AppFonts.family),
                   ),
                   subtitle: asBool(m['automatic'])
                       ? Text(
@@ -1043,7 +1044,7 @@ class _SettingsViewState extends State<_SettingsView> {
                         ? '${'admin_ready'.tr} • ${asStr(m['currency'])}'
                         : 'admin_not_configured_on_the_server_falls'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: asBool(m['configured'])
                           ? c.success

@@ -32,6 +32,7 @@ import 'admin_finance_provider.dart';
 import 'admin_money_p8.dart';
 import 'admin_payouts_page.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Entry
@@ -200,7 +201,7 @@ class _SummaryStrip extends StatelessWidget {
     Widget period(int d, String label) => Padding(
       padding: const EdgeInsetsDirectional.only(start: 6),
       child: ChoiceChip(
-        label: Text(label, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+        label: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
         selected: days == d,
         visualDensity: VisualDensity.compact,
         selectedColor: c.primary.withValues(alpha: 0.18),
@@ -219,7 +220,7 @@ class _SummaryStrip extends StatelessWidget {
                 child: Text(
                   t('نظرة عامة', 'Overview'),
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 15,
                     color: c.textDark,
@@ -356,7 +357,7 @@ class _Kpi extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: c.textMedium,
@@ -372,7 +373,7 @@ class _Kpi extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: c.textDark,
@@ -380,7 +381,7 @@ class _Kpi extends StatelessWidget {
               ),
             Text(
               sub,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: c.textLight),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: c.textLight),
             ),
           ],
         ),
@@ -425,7 +426,7 @@ class _Tabs extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: selected ? c.onHero : c.textMedium,
@@ -578,7 +579,7 @@ class _TabBody extends StatelessWidget {
                 if (l.total <= 20)
                   Text(
                     '${l.total} ${t('نتيجة', 'results')}',
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight),
                   ),
                 const Spacer(),
                 if (l.totals.isNotEmpty)
@@ -588,7 +589,7 @@ class _TabBody extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12.5,
                         fontWeight: FontWeight.w800,
                         color: c.textDark,
@@ -760,7 +761,7 @@ class _FilterBar extends StatelessWidget {
                             color: c.primary,
                           ),
                           const SizedBox(width: 8),
-                          Text(_sortLabel(s), style: const TextStyle(fontFamily: 'tajawal')),
+                          Text(_sortLabel(s), style: TextStyle(fontFamily: AppFonts.family)),
                         ],
                       ),
                     ),
@@ -807,7 +808,7 @@ class _FilterBar extends StatelessWidget {
                       padding: const EdgeInsetsDirectional.only(end: 6, top: 6),
                       child: InputChip(
                         label: Text(ch.label,
-                            style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
+                            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12)),
                         onDeleted: ch.onRemove,
                         visualDensity: VisualDensity.compact,
                       ),
@@ -816,7 +817,7 @@ class _FilterBar extends StatelessWidget {
                     padding: const EdgeInsetsDirectional.only(top: 6),
                     child: ActionChip(
                       label: Text(t('مسح الكل', 'Clear all'),
-                          style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.danger)),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.danger)),
                       visualDensity: VisualDensity.compact,
                       onPressed: () => p.resetFilters(tab),
                     ),
@@ -914,13 +915,13 @@ class _FilterSheetState extends State<_FilterSheet> {
       padding: const EdgeInsets.only(top: 14, bottom: 6),
       child: Text(s,
           style: TextStyle(
-              fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13.5, color: c.textDark)),
+              fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13.5, color: c.textDark)),
     );
 
     Widget chip(String text, bool selected, VoidCallback onTap, {Color? color}) => FilterChip(
       label: Text(text,
           style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 12.5,
               color: selected ? c.onHero : c.textDark)),
       selected: selected,
@@ -993,14 +994,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                       _d.range == null || [0, 7, 30, 90].any(isQuick)
                           ? t('مخصص…', 'Custom…')
                           : '${shortDate(_d.range!.start.toIso8601String())} → ${shortDate(_d.range!.end.toIso8601String())}',
-                      style: const TextStyle(fontFamily: 'tajawal', fontSize: 12.5),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5),
                     ),
                     onPressed: _custom,
                   ),
                   if (_d.range != null)
                     ActionChip(
                       label: Text(t('إزالة', 'Remove'),
-                          style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.danger)),
+                          style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.danger)),
                       onPressed: () => setState(() => _d.range = null),
                     ),
                 ]),
@@ -1068,7 +1069,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     Navigator.pop(context);
                   },
                   child: Text(t('تطبيق', 'Apply'),
-                      style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
+                      style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
                 ),
               ),
             ],
@@ -1241,7 +1242,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                   Text(
                     money(asDouble(p['amount']), currency),
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 16.5,
                       fontWeight: FontWeight.w800,
                       color: c.textDark,
@@ -1302,7 +1303,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                     onPressed: widget.ctl!.busy ? null : widget.ctl!.approve,
                     icon: Icon(Icons.check_rounded, size: 18, color: c.onHero),
                     label: Text(t('موافقة', 'Approve'),
-                        style: TextStyle(color: c.onHero, fontFamily: 'tajawal')),
+                        style: TextStyle(color: c.onHero, fontFamily: AppFonts.family)),
                     style: ElevatedButton.styleFrom(backgroundColor: _green),
                   ),
                 ),
@@ -1346,7 +1347,7 @@ class _PaymentCardState extends State<_PaymentCard> {
                 children: [
                   Flexible(child: Text(_open ? t('إخفاء التفاصيل', 'Hide details') : t('عرض التفاصيل', 'Show details'),
                       style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 12.5,
                           fontWeight: FontWeight.w700,
                           color: c.primary))),
@@ -1495,7 +1496,7 @@ class _ProofBlock extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(asStr(proof['rejection_reason']),
-                        style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: _red)),
+                        style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: _red)),
                   ),
               ],
             ),
@@ -1595,7 +1596,7 @@ class _PayoutCardState extends State<_PayoutCard> {
                     Text(
                       money(asDouble(w['amount']), currency),
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 16.5,
                         fontWeight: FontWeight.w800,
                         color: c.textDark,
@@ -1699,7 +1700,7 @@ class _MiniChip extends StatelessWidget {
         const SizedBox(width: 4),
         Text(label,
             style: TextStyle(
-                fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
+                fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w600, color: color)),
       ],
     ),
   );
@@ -1730,13 +1731,13 @@ class _Kv extends StatelessWidget {
             SizedBox(
               width: compact ? 92 : 110,
               child: Text(label,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight)),
             ),
             Expanded(
               child: Text(
                 value,
                 style: TextStyle(
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,
                   color: danger ? _red : c.textDark,
@@ -1777,7 +1778,7 @@ class _ImageViewer extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: Text(title, style: const TextStyle(fontFamily: 'tajawal', fontSize: 15)),
+        title: Text(title, style: TextStyle(fontFamily: AppFonts.family, fontSize: 15)),
         actions: [
           IconButton(
             tooltip: t('نسخ الرابط', 'Copy link'),

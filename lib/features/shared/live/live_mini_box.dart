@@ -10,6 +10,7 @@ import '../../teacher/sessions/live/widgets/live_avatar.dart';
 import '../../teacher/sessions/live/widgets/live_palette.dart';
 import '../../teacher/sessions/live/widgets/participant.dart' show participantPhotoFromMetadata;
 import 'live_room_host.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// One thing the box could show (a person's camera, or their screen share), as plain values.
 class LiveMiniCandidate {
@@ -131,8 +132,8 @@ class LiveMiniBoxLayout extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textScaler: TextScaler.noScaling,
-                        style: const TextStyle(
-                          fontFamily: 'tajawal',
+                        style: TextStyle(
+                          fontFamily: AppFonts.family,
                           fontSize: 11.5,
                           fontWeight: FontWeight.w700,
                           color: LivePalette.textHigh,
@@ -221,11 +222,11 @@ class _LivePill extends StatelessWidget {
             decoration: BoxDecoration(color: LivePalette.danger, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
-          const Text(
+          Text(
             'LIVE',
             textScaler: TextScaler.noScaling,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 9,
               fontWeight: FontWeight.w800,
               letterSpacing: 1,

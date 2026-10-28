@@ -14,6 +14,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'attendance_strings.dart';
 import 'teacher_attendance_controller.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const kAttendanceLiveRoute = '/attendance-live';
 
@@ -68,9 +69,9 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(attT('att_t_close_confirm'), style: const TextStyle(fontFamily: 'tajawal')),
+        title: Text(attT('att_t_close_confirm'), style: TextStyle(fontFamily: AppFonts.family)),
         content: Text(attT('att_t_close_confirm_body', args: {'n': '${t.graceSeconds}'}),
-            style: const TextStyle(fontFamily: 'tajawal')),
+            style: TextStyle(fontFamily: AppFonts.family)),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(attT('att_cancel'))),
           FilledButton(
@@ -150,12 +151,12 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(attT('att_t_next_code', args: {'n': '${t.secondsLeft}'}),
-                        style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero.withValues(alpha: 0.6))),
+                        style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero.withValues(alpha: 0.6))),
                   ] else
                     Icon(CupertinoIcons.person_3_fill, size: 120, color: context.colors.onHeroMuted),
                   const SizedBox(height: 28),
                   Text(attT('att_t_reg_left'),
-                      style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHeroMuted, fontSize: 14)),
+                      style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHeroMuted, fontSize: 14)),
                   Text(_mmss(left),
                       style: TextStyle(
                           color: context.colors.onHero, fontSize: 44, fontWeight: FontWeight.w800, fontFeatures: [FontFeature.tabularFigures()])),
@@ -171,7 +172,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                       onPressed: () => Navigator.of(context).maybePop(),
                       icon: const Icon(CupertinoIcons.fullscreen_exit),
-                      label: Text(attT('att_t_minimize'), style: const TextStyle(fontFamily: 'tajawal')),
+                      label: Text(attT('att_t_minimize'), style: TextStyle(fontFamily: AppFonts.family)),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -185,7 +186,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                               t.clear();
                               Navigator.of(context).maybePop();
                             },
-                            child: Text(attT('att_done'), style: const TextStyle(fontFamily: 'tajawal')),
+                            child: Text(attT('att_done'), style: TextStyle(fontFamily: AppFonts.family)),
                           )
                         : FilledButton.icon(
                             style: FilledButton.styleFrom(
@@ -195,7 +196,7 @@ class _AttendanceLiveScreenState extends State<AttendanceLiveScreen> {
                             onPressed: t.loading ? null : () => _confirmClose(t),
                             icon: const Icon(CupertinoIcons.lock),
                             label: Text(attT('att_t_close'),
-                                style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+                                style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
                           ),
                   ),
                 ]),
@@ -234,6 +235,6 @@ class _Status extends StatelessWidget {
         const SizedBox(height: 16),
         Text(text,
             textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 22, fontWeight: FontWeight.w800)),
+            style: TextStyle(fontFamily: AppFonts.family, color: context.colors.onHero, fontSize: 22, fontWeight: FontWeight.w800)),
       ]);
 }

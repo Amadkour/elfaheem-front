@@ -16,6 +16,7 @@ import 'admin_common.dart';
 import 'admin_models.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -61,7 +62,7 @@ class _View extends StatelessWidget {
             Text(
               'admin_pick_a_ready_theme_or_build_your_own'.tr,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12.5,
                 color: c.textMedium,
               ),
@@ -86,7 +87,7 @@ class _View extends StatelessWidget {
         icon: Icon(Icons.palette_rounded, color: c.onHero),
         label: Text(
           'admin_custom_theme'.tr,
-          style: TextStyle(fontFamily: 'tajawal', color: c.onHero),
+          style: TextStyle(fontFamily: AppFonts.family, color: c.onHero),
         ),
       ),
       child: body,
@@ -127,7 +128,7 @@ class _ThemeCard extends StatelessWidget {
                 child: Text(
                   th.name,
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                     color: c.textDark,
@@ -162,7 +163,7 @@ class _ThemeCard extends StatelessWidget {
                     active ? 'admin_currently_active'.tr : 'admin_activate'.tr,
                     style: TextStyle(
                       color: c.onHero,
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                     ),
                   ),
                   onPressed: active
@@ -486,7 +487,7 @@ class _EditorState extends State<_Editor> {
                               'النص الثانوي ${w.dark ? '(الوضع الداكن) ' : ''}${w.hex} تباينه ${w.ratio.toStringAsFixed(1)}:1 فقط مع الخلفية (المطلوب 4.5:1) — سيعرضه التطبيق بلون ${_hexOf(w.adjusted)}',
                               'Secondary text ${w.dark ? '(dark mode) ' : ''}${w.hex} reaches only ${w.ratio.toStringAsFixed(1)}:1 on its background (4.5:1 needed) — the app will show it as ${_hexOf(w.adjusted)}',
                             ),
-                            style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: context.colors.textMedium),
+                            style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: context.colors.textMedium),
                           ),
                         ),
                       ],
@@ -494,7 +495,7 @@ class _EditorState extends State<_Editor> {
                   ),
                 Text(
                   'admin_all_other_colours_success_danger_dark'.tr,
-                  style: const TextStyle(fontFamily: 'tajawal', fontSize: 12),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12),
                 ),
                 const SizedBox(height: 14),
                 PrimaryButton(
@@ -542,7 +543,7 @@ class _EditorState extends State<_Editor> {
           scrollable: true,
           title: Text(
             'admin_pick_a_colour'.tr,
-            style: const TextStyle(fontFamily: 'tajawal'),
+            style: TextStyle(fontFamily: AppFonts.family),
           ),
           content: Wrap(
             spacing: 10,

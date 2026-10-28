@@ -38,6 +38,9 @@ import 'org_dashboard_screen.dart' show OrgSub;
 import 'org_providers.dart';
 import 'org_terms_pages.dart' show OrgTermsAdminPage;
 import 'org_ui.dart' show orgPickAndUpload, statusColor, statusLabel;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Settings ("More" on phones)
@@ -135,6 +138,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
               color: AdminPalette.violet.last,
               label: 'change_language'.tr,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeLanguageScreen()))),
+          const DisplaySettingsTile(),
           AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,
@@ -145,9 +149,9 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
       footer: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         // two-step verification of the signed-in org admin / staff member (shown when the server allows it)
         const MfaSettingsEntry(),
-        AppSettingsGroup(title: 'exit'.tr, icon: Icons.exit_to_app_rounded, danger: true, children: [
+        AppSettingsGroup(title: 'exit'.tr, icon: DirIcons.exitToApp, danger: true, children: [
           AppSettingsTile(
-              icon: Icons.logout_rounded,
+              icon: DirIcons.logout,
               color: c.danger,
               label: 'logout'.tr,
               onTap: () async {
@@ -180,7 +184,7 @@ class OrgFirstOrganization extends StatelessWidget {
           const SizedBox(height: 6),
           Text(t('جامعة أو كلية أو معهد — ويمكنك إضافة أقسام داخلها لاحقاً.',
               'A university, faculty or institute — you can nest departments inside it later.'),
-              textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+              textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
           const SizedBox(height: 20),
           SizedBox(
             width: 240,
@@ -221,8 +225,8 @@ Future<void> showOrgSwitcher(BuildContext context) async {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark)),
-                  Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textMedium)),
+                  Text(OrgSession.nameOf(o), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark)),
+                  Text(orgTypeLabels()[o['type']] ?? '', style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textMedium)),
                 ]),
               ),
               if ('${o['status'] ?? 'approved'}' != 'approved')
@@ -279,7 +283,7 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
             const SizedBox(height: 10),
             ChoiceRow<String>(label: t('طريقة الانضمام', 'How people join'), options: joinModeLabels(), value: mode, onChanged: (v) => set(() => mode = v)),
             const SizedBox(height: 12),
-            Text(t('لون المؤسسة', 'Brand colour'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+            Text(t('لون المؤسسة', 'Brand colour'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
             const SizedBox(height: 8),
             Wrap(spacing: 10, children: [
               for (final h in palette)
@@ -326,7 +330,7 @@ Future<void> showOrgForm(BuildContext context, {int? parentId, Map<String, dynam
             if (official) ...[
               const SizedBox(height: 6),
               Text(t('بيانات رسمية — تساعد فريق المنصة على اعتماد مؤسستك بسرعة', 'Official details — they help the platform team approve you quickly'),
-                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark)),
               const SizedBox(height: 8),
               Field(controller: license, label: t('رقم القرار / الترخيص', 'Decree / licence number')),
               Field(controller: email, label: t('البريد الرسمي', 'Official e-mail'), ltr: true),
@@ -398,9 +402,9 @@ Future<void> showJoinCode(BuildContext context) async {
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             SheetHeader(t('كود الانضمام', 'Join code')),
             Text(t('شارك هذا الكود مع الطلاب والمدرسين ليدخلوا مؤسستك مباشرة.', 'Share this code so students and teachers can join directly.'),
-                textAlign: TextAlign.center, style: TextStyle(fontFamily: 'tajawal', color: c.textMedium)),
+                textAlign: TextAlign.center, style: TextStyle(fontFamily: AppFonts.family, color: c.textMedium)),
             const SizedBox(height: 16),
-            SelectableText(code, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: 'bahji', fontSize: 34, letterSpacing: 6, fontWeight: FontWeight.w800, color: c.primary)),
+            SelectableText(code, textDirection: TextDirection.ltr, style: TextStyle(fontFamily: AppFonts.display, fontSize: 34, letterSpacing: 6, fontWeight: FontWeight.w800, color: c.primary)),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: () async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class SectionCard extends StatelessWidget {
   final IconData icon;
@@ -107,7 +108,7 @@ class _ItemRow extends StatelessWidget {
     dense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     title: Text(label,
-        style: const TextStyle(fontFamily: 'bahji', fontSize: 13)),
+        style: TextStyle(fontFamily: AppFonts.display, fontSize: 13)),
     trailing: IconButton(
       tooltip: 'remove'.tr,
       onPressed: onRemove,

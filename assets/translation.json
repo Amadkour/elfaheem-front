@@ -11357,6 +11357,118 @@
     "ar": "رقم الهاتف",
     "en": "Phone"
   },
+  "auth_login_username": {
+    "ar": "الدخول باسم المستخدم",
+    "en": "Sign in with username"
+  },
+  "auth_login_username_hint": {
+    "ar": "يستطيع من اختار اسم مستخدم أن يكتبه بدل البريد أو رقم الهاتف",
+    "en": "People who picked a @username can type it instead of their e-mail or phone"
+  },
+  "email_or_username": {
+    "ar": "البريد الإلكتروني أو اسم المستخدم",
+    "en": "Email or username"
+  },
+  "phone_or_username": {
+    "ar": "رقم الهاتف أو اسم المستخدم",
+    "en": "Phone or username"
+  },
+  "email_phone_or_username": {
+    "ar": "البريد أو الهاتف أو اسم المستخدم",
+    "en": "Email, phone or username"
+  },
+  "username_label": {
+    "ar": "اسم المستخدم",
+    "en": "Username"
+  },
+  "username_optional": {
+    "ar": "اسم المستخدم (اختياري)",
+    "en": "Username (optional)"
+  },
+  "username_hint": {
+    "ar": "your.name",
+    "en": "your.name"
+  },
+  "username_rules": {
+    "ar": "من 3 إلى 30 حرفاً: أحرف إنجليزية صغيرة وأرقام و . و _ — يمكنك اختياره لاحقاً من ملفك الشخصي",
+    "en": "3–30 characters: a–z, 0–9, . and _ — you can also pick one later in your profile"
+  },
+  "username_checking": {
+    "ar": "جارٍ التحقق من توفّره…",
+    "en": "Checking availability…"
+  },
+  "username_available": {
+    "ar": "متاح لك",
+    "en": "is available"
+  },
+  "username_current": {
+    "ar": "هذا اسم المستخدم الحالي",
+    "en": "This is your current username"
+  },
+  "username_taken": {
+    "ar": "مستخدم من شخص آخر",
+    "en": "is already taken"
+  },
+  "username_reserved": {
+    "ar": "هذا الاسم محجوز للمنصة، اختر اسماً آخر",
+    "en": "This name is reserved — pick another one"
+  },
+  "username_invalid": {
+    "ar": "اسم المستخدم غير صالح",
+    "en": "That username isn't valid"
+  },
+  "username_unchecked": {
+    "ar": "تعذّر التحقق الآن، سنتأكد منه عند الحفظ",
+    "en": "Couldn't check right now — we'll confirm it when you save"
+  },
+  "username_will_remove": {
+    "ar": "سيُحذف اسم المستخدم عند الحفظ",
+    "en": "Your username will be removed when you save"
+  },
+  "username_try": {
+    "ar": "جرّب:",
+    "en": "Try:"
+  },
+  "username_wait_check": {
+    "ar": "لحظة، ما زلنا نتحقق من اسم المستخدم",
+    "en": "One moment — we're still checking the username"
+  },
+  "username_fix_first": {
+    "ar": "عدّل اسم المستخدم أولاً أو اتركه فارغاً",
+    "en": "Fix the username first, or leave it empty"
+  },
+  "username_rule_chars": {
+    "ar": "استخدم أحرفاً إنجليزية صغيرة (a–z) وأرقاماً و . و _ فقط",
+    "en": "Use only a–z, 0–9, . and _"
+  },
+  "username_rule_short": {
+    "ar": "3 أحرف على الأقل",
+    "en": "At least 3 characters"
+  },
+  "username_rule_long": {
+    "ar": "30 حرفاً على الأكثر",
+    "en": "30 characters at most"
+  },
+  "username_rule_letter": {
+    "ar": "يجب أن يحتوي على حرف واحد على الأقل",
+    "en": "Needs at least one letter"
+  },
+  "username_rule_dot_edge": {
+    "ar": "لا يبدأ بنقطة ولا ينتهي بها",
+    "en": "Can't start or end with a dot"
+  },
+  "username_rule_double_dot": {
+    "ar": "لا يحتوي على نقطتين متتاليتين",
+    "en": "Can't have two dots in a row"
+  },
+  "username_rule_www": {
+    "ar": "لا يبدأ بـ www",
+    "en": "Can't start with www"
+  },
+  "username_rule_domain": {
+    "ar": "لا ينتهي بما يشبه نطاق موقع مثل ‎.com",
+    "en": "Can't end like a web address, such as .com"
+  },
   "required_documents_title": {
     "ar": "المستندات المطلوبة من المعلمين",
     "en": "Teacher required documents"
@@ -16509,6 +16621,34 @@
     "en": "Enrollments over the last days",
     "ar": "الاشتراكات خلال الأيام الأخيرة"
   },
+  "home_courses_going": {
+    "en": "In progress",
+    "ar": "قيد الدراسة"
+  },
+  "home_courses_avg": {
+    "en": "Avg. progress",
+    "ar": "متوسط التقدم"
+  },
+  "home_courses_all": {
+    "en": "All courses ({n})",
+    "ar": "كل الكورسات ({n})"
+  },
+  "home_t_published": {
+    "en": "Published",
+    "ar": "منشورة"
+  },
+  "home_t_drafts": {
+    "en": "Drafts",
+    "ar": "مسودات"
+  },
+  "home_t_enter_room": {
+    "en": "Enter room",
+    "ar": "ادخل القاعة"
+  },
+  "home_t_course_line": {
+    "en": "{s} students · {n} sessions",
+    "ar": "{s} طالب · {n} محاضرة"
+  },
   "home_refresh_failed": {
     "en": "Could not refresh — showing the last data",
     "ar": "تعذّر التحديث — تُعرض آخر بيانات"
@@ -16732,5 +16872,129 @@
   "pl_pause": {
     "en": "Pause",
     "ar": "إيقاف مؤقت"
+  },
+  "auth_welcome_back": {
+    "en": "Welcome back",
+    "ar": "أهلاً بعودتك"
+  },
+  "auth_login_sub": {
+    "en": "Sign in to continue your learning journey.",
+    "ar": "سجّل الدخول لتتابع رحلتك التعليمية."
+  },
+  "auth_forgot": {
+    "en": "Forgot password?",
+    "ar": "نسيت كلمة المرور؟"
+  },
+  "auth_sign_in": {
+    "en": "Sign in",
+    "ar": "تسجيل الدخول"
+  },
+  "auth_no_account": {
+    "en": "New here?",
+    "ar": "جديد هنا؟"
+  },
+  "auth_create_account": {
+    "en": "Create an account",
+    "ar": "أنشئ حساباً"
+  },
+  "auth_reset_title": {
+    "en": "Reset your password",
+    "ar": "استعادة كلمة المرور"
+  },
+  "auth_reset_sub": {
+    "en": "Tell us how you sign in and we'll send you a code to set a new password.",
+    "ar": "اكتب ما تسجّل به الدخول وسنرسل لك رمزاً لتعيين كلمة مرور جديدة."
+  },
+  "auth_register_title": {
+    "en": "Create your account",
+    "ar": "أنشئ حسابك"
+  },
+  "auth_register_sub": {
+    "en": "It takes less than a minute.",
+    "ar": "لن يستغرق الأمر أكثر من دقيقة."
+  },
+  "auth_i_am": {
+    "en": "I am a",
+    "ar": "أنا"
+  },
+  "auth_confirm_password": {
+    "en": "Confirm password",
+    "ar": "تأكيد كلمة المرور"
+  },
+  "auth_create_my_account": {
+    "en": "Create my account",
+    "ar": "إنشاء حسابي"
+  },
+  "auth_verify_sub": {
+    "en": "One quick step to secure your account.",
+    "ar": "خطوة سريعة لتأمين حسابك."
+  },
+  "auth_reset_code_sub": {
+    "en": "Enter the code we sent you to choose a new password.",
+    "ar": "اكتب الرمز الذي أرسلناه لك لتختار كلمة مرور جديدة."
+  },
+  "reset_code_sent_neutral": {
+    "en": "We sent a code to the e-mail or phone on the account {name}, if it exists.",
+    "ar": "أرسلنا رمزاً إلى البريد أو الهاتف المسجَّل في الحساب {name} إن كان موجوداً."
+  },
+  "pw_strength_title": {
+    "en": "Password strength",
+    "ar": "قوة كلمة المرور"
+  },
+  "pw_strength_weak": {
+    "en": "Weak",
+    "ar": "ضعيفة"
+  },
+  "pw_strength_fair": {
+    "en": "Fair",
+    "ar": "مقبولة"
+  },
+  "pw_strength_strong": {
+    "en": "Strong",
+    "ar": "قوية"
+  },
+  "pw_strength_very_strong": {
+    "en": "Very strong",
+    "ar": "قوية جداً"
+  },
+  "pw_req_title": {
+    "en": "Your password needs",
+    "ar": "تحتاج كلمة المرور إلى"
+  },
+  "pw_req_min8": {
+    "en": "At least 8 characters",
+    "ar": "8 أحرف على الأقل"
+  },
+  "pw_req_upper": {
+    "en": "One capital letter (A-Z)",
+    "ar": "حرف كبير واحد على الأقل (A-Z)"
+  },
+  "pw_req_digit": {
+    "en": "One number (0-9)",
+    "ar": "رقم واحد على الأقل (0-9)"
+  },
+  "pw_req_match": {
+    "en": "Both passwords match",
+    "ar": "تطابق كلمتي المرور"
+  },
+  "terms_agree_prefix": {
+    "en": "I agree to the ",
+    "ar": "أوافق على "
+  },
+  "terms_link": {
+    "en": "Terms & Conditions",
+    "ar": "الشروط والأحكام"
+  },
+  "terms_agree_suffix": {
+    "en": " of the platform",
+    "ar": " الخاصة بالمنصة"
+  },
+  "terms_read_now": {
+    "en": "Read",
+    "ar": "اقرأ الآن"
+  },
+  "terms_read_again": {
+    "en": "Read again",
+    "ar": "إعادة القراءة"
   }
 }

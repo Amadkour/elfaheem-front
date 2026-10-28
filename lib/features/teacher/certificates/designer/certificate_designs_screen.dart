@@ -25,6 +25,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
   final ApiClient _api;
@@ -187,7 +188,7 @@ class _DesignCard extends StatelessWidget {
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(design.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13)),
+                Text(design.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13)),
                 Text(
                   '${design.orgId != null ? 'cert_scope_org'.tr : 'cert_scope_personal'.tr} · ${'cert_orientation_${design.orientation}'.tr}',
                   style: c.caption,
@@ -295,7 +296,7 @@ Future<void> showDesignAssignment(BuildContext context, int designId) async {
                       contentPadding: EdgeInsets.zero,
                       value: picked.contains(co['id']),
                       onChanged: (on) => set(() => on == true ? picked.add(co['id'] as int) : picked.remove(co['id'])),
-                      title: Text('${co['title']}', style: const TextStyle(fontFamily: 'tajawal')),
+                      title: Text('${co['title']}', style: TextStyle(fontFamily: AppFonts.family)),
                     ),
                   ),
               ]),

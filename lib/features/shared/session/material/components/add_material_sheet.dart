@@ -20,6 +20,7 @@ import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../utils/helpers.dart';
 import '../../../../teacher/sessions/sessions_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
 // full-width bottom sheet — covers desktop web and tablets in landscape.
@@ -53,7 +54,7 @@ class AddMaterialButton extends StatelessWidget {
             Text(
               'add_material'.tr,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12,
                 color: context.colors.onHero,
                 fontWeight: FontWeight.w700,
@@ -479,7 +480,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
                         child: Text(
                           'paste_url'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                             color: context.colors.primary,
@@ -669,7 +670,7 @@ class _ModeToggle extends StatelessWidget {
             textAlign: TextAlign.center,
 
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 13,
               fontWeight: FontWeight.w700,
               color: sel ? context.colors.onHero : context.colors.secondText,
@@ -748,7 +749,7 @@ class _FileTypeSelector extends StatelessWidget {
                   Text(
                     opt.labelKey.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: selected ? opt.color : context.colors.textLight,
@@ -928,7 +929,7 @@ class _FilePickerZone extends StatelessWidget {
             child: Text(
               errorText!,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 color: context.colors.danger,
               ),
@@ -1037,7 +1038,7 @@ class _PremiumField extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: context.colors.textDark,
@@ -1061,14 +1062,14 @@ class _PremiumField extends StatelessWidget {
             keyboardType: keyboardType,
             onChanged: onChanged,
             style: TextStyle(
-              fontFamily: 'bahji',
+              fontFamily: AppFonts.display,
               fontSize: 13.5,
               color: context.colors.textDark,
             ),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 13,
                 color: context.colors.textLight.withValues(alpha: 0.7),
               ),
@@ -1089,7 +1090,7 @@ class _PremiumField extends StatelessWidget {
             child: Text(
               errorText!,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 11,
                 color: context.colors.danger,
               ),
@@ -1151,7 +1152,7 @@ class _SubmitButton extends StatelessWidget {
                   Text(
                     'add_material_btn'.tr,
                     style: TextStyle(
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       fontSize: 14,
                       color: context.colors.onHero,
                       fontWeight: FontWeight.w700,
@@ -1198,7 +1199,7 @@ class _ErrorBanner extends StatelessWidget {
             child: Text(
               message,
               style: TextStyle(
-                fontFamily: 'bahji',
+                fontFamily: AppFonts.display,
                 fontSize: 12,
                 color: context.colors.danger,
               ),

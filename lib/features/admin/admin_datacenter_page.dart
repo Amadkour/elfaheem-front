@@ -26,6 +26,7 @@ import '../org/org_ui.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class DataCenterPage extends StatefulWidget {
   const DataCenterPage({super.key, this.orgId, this.embedded = false});
@@ -334,8 +335,8 @@ class _DataCenterPageState extends State<DataCenterPage> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: LinearGradient(colors: [c.primary, c.primaryDark])),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(t('الإجمالي', 'Total'), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted)),
-                    Text('${d['total']}', style: TextStyle(fontFamily: 'tajawal', color: c.onHero, fontSize: 32, fontWeight: FontWeight.w800)),
+                    Text(t('الإجمالي', 'Total'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted)),
+                    Text('${d['total']}', style: TextStyle(fontFamily: AppFonts.family, color: c.onHero, fontSize: 32, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 10),
                     // 30-day activity
                     SizedBox(
@@ -355,7 +356,7 @@ class _DataCenterPageState extends State<DataCenterPage> {
                           ),
                       ]),
                     ),
-                    Text(t('آخر 30 يوماً', 'Last 30 days'), style: TextStyle(fontFamily: 'tajawal', color: c.onHeroMuted, fontSize: 11.5)),
+                    Text(t('آخر 30 يوماً', 'Last 30 days'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHeroMuted, fontSize: 11.5)),
                   ]),
                 );
                 final bars = Container(

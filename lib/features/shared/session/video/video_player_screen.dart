@@ -34,6 +34,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../admin/admin_common.dart' show t;
 import 'vod_player_parts.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 // ════════════════════════════════════════════════════════════════════════════
 // VideoPlayerScreen
 // ════════════════════════════════════════════════════════════════════════════
@@ -1661,11 +1662,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               ),
               const SizedBox(height: 4),
               Text(forward ? '+${_seekAccum}s' : '-${_seekAccum}s',
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: VodInk.textHigh,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
-                      fontFamily: 'tajawal')),
+                      fontFamily: AppFonts.family)),
             ]),
           ),
         ),
@@ -1698,7 +1699,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: c.primary.withValues(alpha: 0.6)),
               ),
-              child: const Row(mainAxisSize: MainAxisSize.min, children: [
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.fast_forward_rounded, color: VodInk.textHigh, size: 16),
                 SizedBox(width: 6),
                 Text('2×',
@@ -1706,7 +1707,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                         color: VodInk.textHigh,
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
-                        fontFamily: 'tajawal')),
+                        fontFamily: AppFonts.family)),
               ]),
             ),
           ),
@@ -1931,10 +1932,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         Row(children: [
           Text(
               '${_fmt(_isSeeking ? Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()) : pos)} / ${_fmt(dur)}',
-              style: const TextStyle(
+              style: TextStyle(
                   color: VodInk.textMid,
                   fontSize: 11.5,
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w500)),
           const SizedBox(width: 8),
           // FittedBox: the right-hand group scales down instead of
@@ -2077,10 +2078,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           color: VodInk.textHigh, size: 18),
                       const SizedBox(width: 8),
                       Text('unlock_controls'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: VodInk.textHigh,
                               fontSize: 12,
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontWeight: FontWeight.w700)),
                     ]),
                   ),
@@ -2104,8 +2105,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           const SizedBox(width: 44, height: 44, child: AppLoadingIndicator()),
           const SizedBox(height: 14),
           Text('loading_video'.tr,
-              style: const TextStyle(
-                  color: VodInk.textSoft, fontSize: 13, fontFamily: 'tajawal')),
+              style: TextStyle(
+                  color: VodInk.textSoft, fontSize: 13, fontFamily: AppFonts.family)),
         ]),
       ),
     );
@@ -2161,10 +2162,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                           color: VodInk.textHigh, size: 18),
                       const SizedBox(width: 8),
                       Text('retry'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                               color: VodInk.textHigh,
                               fontWeight: FontWeight.w700,
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontSize: 14)),
                     ]),
                   ),
@@ -2294,11 +2295,11 @@ class _SeekBar extends StatelessWidget {
                       border: Border.all(color: accent.withValues(alpha: 0.6)),
                     ),
                     child: Text(previewLabel,
-                        style: const TextStyle(
+                        style: TextStyle(
                             color: VodInk.textHigh,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
-                            fontFamily: 'tajawal')),
+                            fontFamily: AppFonts.family)),
                   ),
                 ),
             ],
@@ -2580,7 +2581,7 @@ class _QualityBadge extends StatelessWidget {
           color: tierColor,
           fontSize: 10,
           fontWeight: FontWeight.w800,
-          fontFamily: 'tajawal',
+          fontFamily: AppFonts.family,
           letterSpacing: 0.4,
         ),
       ),
@@ -2618,7 +2619,7 @@ class _ActiveStreamBadge extends StatelessWidget {
                 color: color,
                 fontSize: 10,
                 fontWeight: FontWeight.w800,
-                fontFamily: 'tajawal')),
+                fontFamily: AppFonts.family)),
       ]),
     );
   }
@@ -2863,7 +2864,7 @@ class _ControlChip extends StatelessWidget {
               style: TextStyle(
                   color: active ? VodInk.textHigh : VodInk.textMid,
                   fontSize: 11,
-                  fontFamily: 'tajawal',
+                  fontFamily: AppFonts.family,
                   fontWeight: FontWeight.w700)),
         ]),
       ),
@@ -2892,11 +2893,11 @@ class _InfoChip extends StatelessWidget {
         child: Text(label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
+            style: TextStyle(
                 color: VodInk.textMid,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
-                fontFamily: 'tajawal')),
+                fontFamily: AppFonts.family)),
       ),
     ]),
   );
@@ -2925,7 +2926,7 @@ class _GlassPill extends StatelessWidget {
           style: TextStyle(
               color: color,
               fontSize: 12,
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontWeight: FontWeight.w700)),
     ]),
   );

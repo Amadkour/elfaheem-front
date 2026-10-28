@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/main.dart' show navigatorKey;
 import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 OverlayEntry? _current;
 String? _currentMessage;
@@ -125,7 +126,7 @@ class _NoticeState extends State<_Notice> with SingleTickerProviderStateMixin {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(widget.message, maxLines: 4, overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontFamily: 'tajawal', fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark, height: 1.35)),
+                                style: TextStyle(fontFamily: AppFonts.family, fontSize: 14, fontWeight: FontWeight.w600, color: c.textDark, height: 1.35)),
                           ),
                           const SizedBox(width: 6),
                           Icon(Icons.close_rounded, size: 18, color: c.textLight),

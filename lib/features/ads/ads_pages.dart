@@ -23,6 +23,7 @@ import '../admin/admin_common.dart';
 import '../admin/admin_list.dart';
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home slider
@@ -237,7 +238,7 @@ class AdCard extends StatelessWidget {
           PositionedDirectional(
             top: 12,
             end: 12,
-            child: glass(Text(t('إعلان', 'Ad'), style: TextStyle(fontFamily: 'tajawal', fontSize: 10.5, color: c.onHero))),
+            child: glass(Text(t('إعلان', 'Ad'), style: TextStyle(fontFamily: AppFonts.family, fontSize: 10.5, color: c.onHero))),
           ),
           PositionedDirectional(
             start: 18,
@@ -245,15 +246,15 @@ class AdCard extends StatelessWidget {
             bottom: 16,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text('${ad['title']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 18, fontWeight: FontWeight.w800, color: c.onHero)),
               if ('${ad['body'] ?? ''}'.isNotEmpty)
                 Text('${ad['body']}', maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: 0.9))),
+                    style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: 0.9))),
               if (hasTarget) ...[
                 const SizedBox(height: 6),
                 Row(mainAxisSize: MainAxisSize.min, children: [
                   Text(isVideo && '${ad['target_type']}' == 'none' ? t('شاهد الآن', 'Watch now') : t('اكتشف', 'Discover'),
-                      style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, fontWeight: FontWeight.w800, color: c.onHero)),
+                      style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, fontWeight: FontWeight.w800, color: c.onHero)),
                   const SizedBox(width: 4),
                   Icon(Icons.arrow_forward_rounded, size: 15, color: c.onHero),
                 ]),

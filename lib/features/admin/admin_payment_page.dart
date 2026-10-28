@@ -26,6 +26,7 @@ import 'admin_common.dart';
 import 'admin_fee_rates.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Small helpers
@@ -259,11 +260,11 @@ class _Hero extends StatelessWidget {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('admin_payments'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 20, color: c.onHero)),
+                          fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 20, color: c.onHero)),
                   const SizedBox(height: 2),
                   Text('admin_payments_hero_hint'.tr,
                       style: TextStyle(
-                          fontFamily: 'tajawal', fontSize: 12.5, color: c.onHero.withValues(alpha: .85))),
+                          fontFamily: AppFonts.family, fontSize: 12.5, color: c.onHero.withValues(alpha: .85))),
                 ]),
               ),
             ]),
@@ -300,7 +301,7 @@ class _StatTile extends StatelessWidget {
           child: Text(s.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 11, color: context.colors.onHero.withValues(alpha: .85))),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, color: context.colors.onHero.withValues(alpha: .85))),
         ),
       ]),
       const SizedBox(height: 6),
@@ -308,7 +309,7 @@ class _StatTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: TextStyle(
-              fontFamily: 'tajawal', fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero)),
+              fontFamily: AppFonts.family, fontSize: 15, fontWeight: FontWeight.w900, color: context.colors.onHero)),
     ]),
   );
 }
@@ -348,7 +349,7 @@ class _Segments extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                              fontFamily: 'tajawal',
+                              fontFamily: AppFonts.family,
                               fontWeight: FontWeight.w800,
                               fontSize: 13.5,
                               color: i == index ? c.onHero : c.textLight)),
@@ -375,10 +376,10 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(title,
-            style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
+            style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 16, color: c.textDark)),
         if (subtitle != null) ...[
           const SizedBox(height: 3),
-          Text(subtitle!, style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+          Text(subtitle!, style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
         ],
       ]),
     );
@@ -436,7 +437,7 @@ class _MethodsTab extends StatelessWidget {
       Text(
         _t('إنستاباي يظهر للطلاب بالجنيه المصري فقط. Apple Pay / Google Pay تظهر على الجوال فقط، وعندما تدعمها بوابة الدفع. رسومها من تبويب الرسوم.',
             'InstaPay is only shown to students paying in EGP. Apple Pay / Google Pay show on mobile only, and only when the gateway supports them. Set their fees in the Fees tab.'),
-        style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, color: c.textLight),
+        style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, color: c.textLight),
       ),
     ]);
   }
@@ -484,7 +485,7 @@ class _GatewayTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 12.5,
                     fontWeight: selected ? FontWeight.w900 : FontWeight.w600,
                     color: selected ? c.primary : c.textDark)),
@@ -522,7 +523,7 @@ class _FeesTab extends StatelessWidget {
                   'لكل رسم قيمة افتراضية يمكنك الرجوع إليها.',
                   'Every fee can be set as a percent, a fixed amount, or both. '
                       'Each one has a default you can reset to.'),
-              style: TextStyle(fontFamily: 'tajawal', fontSize: 12.5, height: 1.45, color: c.textDark),
+              style: TextStyle(fontFamily: AppFonts.family, fontSize: 12.5, height: 1.45, color: c.textDark),
             ),
           ),
         ]),
@@ -609,7 +610,7 @@ class _MethodCardState extends State<_MethodCard> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(asStr(m['label']),
                         style: TextStyle(
-                            fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 15.5, color: c.textDark)),
+                            fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 15.5, color: c.textDark)),
                     const SizedBox(height: 3),
                     Row(children: [
                       if (summary.incomplete) ...[
@@ -622,7 +623,7 @@ class _MethodCardState extends State<_MethodCard> {
                             overflow: TextOverflow.ellipsis,
                             textDirection: method == 'card' || summary.incomplete ? null : TextDirection.ltr,
                             style: TextStyle(
-                                fontFamily: 'tajawal',
+                                fontFamily: AppFonts.family,
                                 fontSize: 12.5,
                                 color: summary.incomplete ? warn : c.textLight)),
                       ),
@@ -687,7 +688,7 @@ class _StatusPill extends StatelessWidget {
         Container(width: 6, height: 6, decoration: BoxDecoration(shape: BoxShape.circle, color: color)),
         const SizedBox(width: 6),
         Text(enabled ? 'apm_enabled'.tr : 'apm_disabled'.tr,
-            style: TextStyle(fontFamily: 'tajawal', fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
+            style: TextStyle(fontFamily: AppFonts.family, fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
       ]),
     );
   }
@@ -912,7 +913,7 @@ class _MethodFormState extends State<_MethodForm> {
             children: [
               _field(_instapayId, 'apm_instapay_id', ltr: true),
               Text('apm_instapay_egp_note'.tr,
-                  style: TextStyle(fontFamily: 'tajawal', fontSize: 12, color: c.textLight)),
+                  style: TextStyle(fontFamily: AppFonts.family, fontSize: 12, color: c.textLight)),
             ],
           ),
         ],
@@ -979,7 +980,7 @@ class _Group extends StatelessWidget {
           Expanded(
             child: Text(title,
                 style: TextStyle(
-                    fontFamily: 'tajawal', fontWeight: FontWeight.w900, fontSize: 14, color: c.textDark)),
+                    fontFamily: AppFonts.family, fontWeight: FontWeight.w900, fontSize: 14, color: c.textDark)),
           ),
         ]),
         for (final w in children) ...[const SizedBox(height: 12), w],

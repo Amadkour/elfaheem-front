@@ -8,6 +8,7 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../design/app_kit.dart';
 import '../../../admin/admin_common.dart' show t;
 import '../material/session_material_model.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 String vodFmt(Duration d) {
   final h = d.inHours;
@@ -86,7 +87,7 @@ class VodInk {
 }
 
 TextStyle _w(double size, {FontWeight w = FontWeight.w600, Color c = VodInk.textHigh}) =>
-    TextStyle(color: c, fontSize: size, fontWeight: w, fontFamily: 'tajawal');
+    TextStyle(color: c, fontSize: size, fontWeight: w, fontFamily: AppFonts.family);
 
 // ── Next up ────────────────────────────────────────────────────────────────
 

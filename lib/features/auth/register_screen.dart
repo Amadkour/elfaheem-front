@@ -12,23 +12,24 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/auth/verified_screen.dart';
-import 'package:flutter_education_app/utils/widget/date_picker_widget.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
-import '../../utils/widget/primary_button.dart';
 import '../shared/profile/about/about_terms_model.dart';
 import '../shared/profile/about/about_terms_provider.dart';
-import '../shared/profile/change_password_widget.dart';
 import 'auth_provider.dart';
 import '../../utils/helpers.dart';
 import 'auth_shell.dart';
 import 'auth_widgets.dart';
 import 'google_auth_flow.dart';
 import 'verify_way.dart';
+import 'username.dart';
+import 'username_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  Register Screen
@@ -49,7 +50,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmedPasswordController = TextEditingController();
   final _dobController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _rolController = ExpansibleController();
+
+  /// The optional @username: where its check stands, and the submit's USERNAME_* error (shown on the field).
+  UsernameStatus _usernameStatus = UsernameStatus.empty;
+  UsernameError? _usernameError;
+
+  /// The username field is shown (kill switch `auth.username` off).
+  bool get _usernameOn => !AppConfig.disableList.contains(kUsernameFeatureKey);
+
+  /// A typed username that is still being checked, or is taken / reserved / invalid.
+  bool get _usernameBlocks => _usernameOn && _usernameStatus.blocksSubmit;
 
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
@@ -82,6 +94,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _confirmedPasswordController.dispose();
     _dobController.dispose();
+    _usernameController.dispose();
     super.dispose();
   }
 
@@ -123,6 +136,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         msg: 'please select your birth of date',
         timeInSecForIosWeb: 3,
         backgroundColor: context.colors.danger,
+      );
+      return;
+    }
+    if (_usernameBlocks) {
+      showAppNotice(
+        _usernameStatus == UsernameStatus.checking
+            ? 'username_wait_check'.tr
+            : 'username_fix_first'.tr,
+        error: _usernameStatus != UsernameStatus.checking,
       );
       return;
     }
@@ -169,8 +191,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       password: _passwordController.text,
       name: _fullNameController.text.trim(),
       way: pickedWay?.name,
+      username: _usernameOn ? _usernameController.text : null,
     );
     if (!mounted) return;
+    // taken / reserved / invalid at submit: the field shows why, with the server's suggestions
+    if (!success && authProvider.usernameError != null) {
+      setState(() => _usernameError = authProvider.usernameError);
+    }
     if (success) {
       // Open the verification page on the way the student chose (they can still switch there).
       final pendingWays = verifyWaysForChannels(
@@ -202,13 +229,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Consumer<MyAuthProvider>(
       builder: (context, provider, _) {
-        return Scaffold(
-          body: AuthScaffold(
-            title: 'register'.tr,
-            pageKey: const ValueKey('register'),
-            maxWidth: 800,
-            builder: (context, isWide) => _buildForm(provider),
-          ),
+        return AuthScaffold(
+          title: 'auth_register_title'.tr,
+          subtitle: 'auth_register_sub'.tr,
+          pageKey: const ValueKey('register'),
+          maxWidth: 480,
+          builder: (context, isWide) => _buildForm(provider),
         );
       },
     );
@@ -223,227 +249,237 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final selectedWay = ways.contains(_pickedWay)
         ? _pickedWay
         : (ways.isEmpty ? null : ways.first);
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ProgressBar(currentStep: 0, totalSteps: 3),
-          const SizedBox(height: 22),
-          AuthHeader(
-            title: 'create_account'.tr,
-            subtitle: 'registration_welcome'.tr,
-          ),
-          const SizedBox(height: 24),
+    const gap = SizedBox(height: 16);
+    return AutofillGroup(
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const ProgressBar(currentStep: 0, totalSteps: 3),
+            const SizedBox(height: 24),
 
-          // Join with Google: role sheet -> account created -> signed in
-          const GoogleAuthSection(joining: true),
+            // Join with Google: role sheet -> account created -> signed in
+            const GoogleAuthSection(joining: true),
 
-          // Full name
-          IconTextField(
-            controller: _fullNameController,
-            label: 'full_name'.tr,
-            icon: Icons.person_outline_rounded,
-          ),
-          const SizedBox(height: 20),
+            // Full name
+            IconTextField(
+              controller: _fullNameController,
+              label: 'full_name'.tr,
+              icon: Icons.person_outline_rounded,
+              autofillHints: const [AutofillHints.name],
+              textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.words,
+            ),
+            gap,
 
-          // Email
-          AppEmailField(controller: _emailController, label: 'email'.tr),
-          const SizedBox(height: 20),
+            // Email
+            AuthEmailField(controller: _emailController, label: 'email'.tr),
+            gap,
 
-          // Phone — always shown when the admin verifies accounts by phone,
-          // otherwise only if the 'register.phone' feature is enabled.
-          Builder(
-            builder: (context) {
-              final needsPhone =
-                  provider.verifyByPhone || (selectedWay?.isPhone ?? false);
-              final phoneField = Column(
+            // @username — optional, checked while typing (kill switch auth.username)
+            ParentComponent(
+              featureKey: kUsernameFeatureKey,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: UsernameField(
+                  controller: _usernameController,
+                  error: _usernameError,
+                  onStatusChanged: (s) => setState(() => _usernameStatus = s),
+                ),
+              ),
+            ),
+
+            // Phone — always shown when the admin verifies accounts by phone,
+            // otherwise only if the 'register.phone' feature is enabled.
+            Builder(
+              builder: (context) {
+                final needsPhone =
+                    provider.verifyByPhone || (selectedWay?.isPhone ?? false);
+                final phoneField = Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    PhoneInputField(
+                      controller: _phoneController,
+                      label: needsPhone
+                          ? 'phone_with_country_code'.tr
+                          : 'phone'.tr,
+                      required: needsPhone,
+                    ),
+                    gap,
+                  ],
+                );
+                // shown whenever a phone way is allowed (required only when the picked way needs it)
+                return provider.hasPhoneWays
+                    ? phoneField
+                    : ParentComponent(
+                        featureKey: 'register.phone',
+                        child: phoneField,
+                      );
+              },
+            ),
+            // Date of birth
+            ParentComponent(
+              featureKey: 'register.dob',
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  PhoneInputField(
-                    controller: _phoneController,
-                    label: needsPhone
-                        ? 'phone_with_country_code'.tr
-                        : 'phone'.tr,
-                    required: needsPhone,
+                  SectionLabel(label: 'dob'.tr),
+                  const SizedBox(height: 8),
+                  AuthDateField(
+                    onChange: (picked) => setState(() {
+                      selectedDate = picked;
+                      _dobController.text = "${selectedDate.toLocal()}".split(
+                        ' ',
+                      )[0];
+                    }),
+                    selectedDate: selectedDate,
+                    controller: _dobController,
+                    label: 'dob'.tr,
                   ),
+                  gap,
+                ],
+              ),
+            ),
+
+            // Role
+            ParentComponent(
+              featureKey: 'register.role',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SectionLabel(label: 'auth_i_am'.tr),
+                  const SizedBox(height: 10),
+                  RolePicker(provider: provider, rolController: _rolController),
                   const SizedBox(height: 20),
                 ],
-              );
-              // shown whenever a phone way is allowed (required only when the picked way needs it)
-              return provider.hasPhoneWays
-                  ? phoneField
-                  : ParentComponent(
-                      featureKey: 'register.phone',
-                      child: phoneField,
-                    );
-            },
-          ),
-          // Date of birth
-          ParentComponent(
-            featureKey: 'register.dob',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SectionLabel(label: 'dob'.tr),
-                const SizedBox(height: 8),
-                MyDatePicker(
-                  onChange: (picked) => setState(() {
-                    selectedDate = picked;
-                    _dobController.text = "${selectedDate.toLocal()}".split(
-                      ' ',
-                    )[0];
-                  }),
-                  selectedDate: selectedDate,
-                  controller: _dobController,
-                  label: 'dob'.tr,
-                ),
-                const SizedBox(height: 20),
-              ],
+              ),
             ),
-          ),
 
-          // Role
-          ParentComponent(
-            featureKey: 'register.role',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SectionLabel(label: 'role'.tr),
-                const SizedBox(height: 10),
-                RolePicker(provider: provider, rolController: _rolController),
-                const SizedBox(height: 20),
-              ],
+            // Password
+            IconPasswordField(
+              controller: _passwordController,
+              label: 'password'.tr,
+              obscure: _obscurePassword,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.next,
+              onChange: (v) {
+                setState(() {});
+              },
+              onToggle: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
             ),
-          ),
+            AnimatedSize(
+              duration: authDuration(context, 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _passwordController.text.isEmpty
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: ParentComponent(
+                        featureKey: 'register.password_strength',
+                        child: AuthPasswordStrength(
+                          strength: _strength,
+                          color: _strengthColor(c),
+                          label: _strengthLabel(),
+                          title: 'pw_strength_title'.tr,
+                        ),
+                      ),
+                    ),
+            ),
+            gap,
 
-          // Password
-          IconPasswordField(
-            controller: _passwordController,
-            label: 'password'.tr,
-            obscure: _obscurePassword,
-            onChange: (v) {
-              setState(() {});
-            },
-            onToggle: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-          ),
-          const SizedBox(height: 20),
-          if (_passwordController.text.isNotEmpty) ...[
+            // Confirm password
+            IconPasswordField(
+              controller: _confirmedPasswordController,
+              label: 'auth_confirm_password'.tr,
+              obscure: _obscureConfirm,
+              autofillHints: const [AutofillHints.newPassword],
+              textInputAction: TextInputAction.done,
+              onChange: (v) {
+                setState(() {});
+              },
+              onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
+            ),
             const SizedBox(height: 12),
             ParentComponent(
-              featureKey: 'register.password_strength',
-              child: StrengthBar(
-                strength: _strength,
-                strengthColor: _strengthColor(c),
-                strengthLabel: _strengthLabel(),
-                c: c,
+              featureKey: 'register.password_requirements',
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                decoration: BoxDecoration(
+                  color: c.inputBg,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('pw_req_title'.tr, style: authText(12.5, w: FontWeight.w700, c: c.textMedium, h: 1.3)),
+                    const SizedBox(height: 6),
+                    AuthRequirement(met: _reqMinLength, label: 'pw_req_min8'.tr),
+                    AuthRequirement(met: _reqUppercase, label: 'pw_req_upper'.tr),
+                    AuthRequirement(met: _reqDigit, label: 'pw_req_digit'.tr),
+                    AuthRequirement(met: _reqMatch, label: 'pw_req_match'.tr),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Verification way — everything the admin allows; the student picks one here
+            // and can still switch on the verification page.
+            AnimatedSize(
+              duration: authDuration(context, 320),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: ways.isEmpty
+                  ? const SizedBox(width: double.infinity)
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: VerifyWayPicker(
+                        ways: ways,
+                        selected: selectedWay,
+                        provider: provider,
+                        requireAll: provider.requireAll,
+                        onChanged: (w) => setState(() => _pickedWay = w),
+                      ),
+                    ),
+            ),
+
+            // ── Terms acceptance row ─────────────────────────────────────
+            AuthTermsRow(
+              accepted: _termsAccepted,
+              onReadTap: _openTerms,
+              onCheckChanged: (v) {
+                // Only allow manual un-tick; tick only via reading the sheet
+                if (!v) setState(() => _termsAccepted = false);
+              },
+            ),
+            const SizedBox(height: 24),
+
+            // Submit
+            AuthButton(
+              loading: provider.isLoadingRegistration,
+              label: 'auth_create_my_account'.tr,
+              icon: Icons.arrow_forward_rounded,
+              onPressed: _register,
+              enabled: _canSubmit,
+            ),
+            const SizedBox(height: 12),
+
+            ParentComponent(
+              featureKey: 'register.login_link',
+              child: LinkRow(
+                message: 'have_account'.tr,
+                linkText: 'auth_sign_in'.tr,
+                onTap: () => Navigator.pop(context),
               ),
             ),
           ],
-
-          // Confirm password
-          IconPasswordField(
-            controller: _confirmedPasswordController,
-            label: 'confirmed_password'.tr,
-            obscure: _obscureConfirm,
-            onChange: (v) {
-              setState(() {});
-            },
-            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-          ),
-          ParentComponent(
-            featureKey: 'register.password_requirements',
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: c.inputBg,
-                borderRadius: c.brMedium,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('المتطلبات', style: c.label.copyWith(fontSize: 12)),
-                  const SizedBox(height: 10),
-                  PasswordReq(
-                    met: _reqMinLength,
-                    label: '٨ أحرف على الأقل',
-                    c: c,
-                  ),
-                  PasswordReq(
-                    met: _reqUppercase,
-                    label: 'حرف كبير واحد على الأقل (A-Z)',
-                    c: c,
-                  ),
-                  PasswordReq(
-                    met: _reqDigit,
-                    label: 'رقم واحد على الأقل (0-9)',
-                    c: c,
-                  ),
-                  PasswordReq(
-                    met: _reqMatch,
-                    label: 'تطابق كلمة المرور الجديدة',
-                    c: c,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Verification way — everything the admin allows; the student picks one here
-          // and can still switch on the verification page.
-          AnimatedSize(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.topCenter,
-            child: ways.isEmpty
-                ? const SizedBox(width: double.infinity)
-                : Padding(
-                    padding: const EdgeInsets.only(bottom: 24),
-                    child: VerifyWayPicker(
-                      ways: ways,
-                      selected: selectedWay,
-                      provider: provider,
-                      requireAll: provider.requireAll,
-                      onChanged: (w) => setState(() => _pickedWay = w),
-                    ),
-                  ),
-          ),
-
-          // ── Terms acceptance row ─────────────────────────────────────
-          _TermsAcceptRow(
-            accepted: _termsAccepted,
-            onReadTap: _openTerms,
-            onCheckChanged: (v) {
-              // Only allow manual un-tick; tick only via reading the sheet
-              if (!v) setState(() => _termsAccepted = false);
-            },
-          ),
-          const SizedBox(height: 20),
-
-          // Submit
-          PrimaryButton(
-            isLoading: provider.isLoadingRegistration,
-            label: 'confirm'.tr,
-            icon: Icons.check_rounded,
-            onPressed: _register,
-            enable: _canSubmit,
-          ),
-          const SizedBox(height: 20),
-
-          ParentComponent(
-            featureKey: 'register.login_link',
-            child: LinkRow(
-              message: 'have_account'.tr,
-              linkText: 'login'.tr,
-              onTap: () => Navigator.pop(context),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -459,7 +495,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _passwordController.text.isNotEmpty &&
       _passwordController.text == _confirmedPasswordController.text;
 
-  bool get _canSubmit => _reqMinLength && _reqMatch && _termsAccepted;
+  bool get _canSubmit =>
+      _reqMinLength && _reqMatch && _termsAccepted && !_usernameBlocks;
 
   int get _strength {
     if (_passwordController.text.isEmpty) return 0;
@@ -475,25 +512,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     1 => c.danger,
     2 => c.warning,
     3 => c.success,
-    4 => c.primary,
+    4 => c.success,
     _ => c.divider,
   };
 
   String _strengthLabel() => switch (_strength) {
-    1 => 'ضعيف',
-    2 => 'مقبول',
-    3 => 'قوي',
-    4 => 'قوي جداً',
+    1 => 'pw_strength_weak'.tr,
+    2 => 'pw_strength_fair'.tr,
+    3 => 'pw_strength_strong'.tr,
+    4 => 'pw_strength_very_strong'.tr,
     _ => '',
   };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  Terms Accept Row  (inside the form)
+//  Terms Accept Row  (inside the form) — plain values, pumped by the layout tests
 // ══════════════════════════════════════════════════════════════════════════════
 
-class _TermsAcceptRow extends StatelessWidget {
-  const _TermsAcceptRow({
+class AuthTermsRow extends StatelessWidget {
+  const AuthTermsRow({
+    super.key,
     required this.accepted,
     required this.onReadTap,
     required this.onCheckChanged,
@@ -506,95 +544,80 @@ class _TermsAcceptRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    final link = c.isDark ? c.primaryLight : c.primary;
+    return AnimatedContainer(
+      duration: authDuration(context, 240),
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 6, 6, 6),
       decoration: BoxDecoration(
         color: accepted
-            ? c.success.withValues(alpha: 0.07)
-            : c.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(14),
+            ? c.success.withValues(alpha: c.isDark ? 0.14 : 0.07)
+            : c.inputBg,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: accepted
-              ? c.success.withValues(alpha: 0.35)
-              : c.primary.withValues(alpha: 0.2),
-          width: 1.5,
+              ? c.success.withValues(alpha: 0.45)
+              : c.divider.withValues(alpha: c.isDark ? 0.9 : 0.75),
+          width: 1.2,
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Checkbox
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: Checkbox(
-              value: accepted,
-              onChanged: (v) => onCheckChanged(v ?? false),
-              activeColor: c.success,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
-              ),
-              side: BorderSide(
-                color: accepted ? c.success : c.textLight,
-                width: 1.5,
-              ),
-            ),
+          // Checkbox (48 dp target)
+          Checkbox(
+            value: accepted,
+            onChanged: (v) => onCheckChanged(v ?? false),
+            activeColor: c.success,
+            checkColor: c.onHero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            side: BorderSide(color: accepted ? c.success : c.textLight, width: 1.5),
           ),
-          const SizedBox(width: 10),
           // Text + link
           Expanded(
             child: Text.rich(
               TextSpan(
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 13,
-                  color: c.textMedium,
-                  height: 1.5,
-                ),
+                style: authText(13.5, c: c.textMedium, h: 1.5),
                 children: [
-                  const TextSpan(text: 'أوافق على '),
+                  TextSpan(text: 'terms_agree_prefix'.tr),
                   WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
+                    alignment: PlaceholderAlignment.baseline,
+                    baseline: TextBaseline.alphabetic,
                     child: GestureDetector(
                       onTap: onReadTap,
                       child: Text(
-                        'الشروط والأحكام',
-                        style: TextStyle(
-                          fontFamily: 'tajawal',
-                          fontSize: 13,
-                          color: c.primary,
-                          fontWeight: FontWeight.w700,
+                        'terms_link'.tr,
+                        style: authText(13.5, w: FontWeight.w700, c: link, h: 1.5).copyWith(
                           decoration: TextDecoration.underline,
-                          decorationColor: c.primary,
+                          decorationColor: link,
                         ),
                       ),
                     ),
                   ),
-                  const TextSpan(text: ' الخاصة بالمنصة'),
+                  TextSpan(text: 'terms_agree_suffix'.tr),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           // Read button
-          GestureDetector(
-            onTap: onReadTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: c.primaryGradient,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                accepted ? 'إعادة القراءة' : 'اقرأ الآن',
-                style: TextStyle(
-                  fontFamily: 'tajawal',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: context.colors.onHero,
-                ),
-              ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 112),
+            child: TextButton(
+            onPressed: onReadTap,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(48, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              backgroundColor: c.primary.withValues(alpha: c.isDark ? 0.20 : 0.09),
+              foregroundColor: link,
+              shape: const StadiumBorder(),
             ),
+            child: Text(
+              accepted ? 'terms_read_again'.tr : 'terms_read_now'.tr,
+              maxLines: 2,
+              textAlign: TextAlign.center,
+              style: authText(12.5, w: FontWeight.w700, c: link, h: 1.2),
+            ),
+          ),
           ),
         ],
       ),
@@ -777,9 +800,9 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
             FilledButton.icon(
               onPressed: () => p.loadTerms(context, forceRefresh: true),
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text(
-                'إعادة المحاولة',
-                style: TextStyle(fontFamily: 'tajawal'),
+              label: Text(
+                'retry'.tr,
+                style: TextStyle(fontFamily: AppFonts.family),
               ),
             ),
           ],
@@ -978,7 +1001,7 @@ class _ScrollHintState extends State<_ScrollHint>
             child: Text(
               'يرجى قراءة جميع الشروط والتمرير إلى الأسفل لتفعيل زر القبول',
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 color: c.primary,
                 fontWeight: FontWeight.w600,
@@ -1056,7 +1079,7 @@ class _BottomBar extends StatelessWidget {
                         child: Text(
                           'لقد قرأت جميع الشروط، يمكنك الموافقة الآن',
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 12,
                             color: c.success,
                             fontWeight: FontWeight.w600,
@@ -1085,7 +1108,7 @@ class _BottomBar extends StatelessWidget {
                     label: Text(
                       'أوافق على الشروط والأحكام',
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: context.colors.onHero,
@@ -1114,7 +1137,7 @@ class _BottomBar extends StatelessWidget {
                 label: Text(
                   'انتقل إلى نهاية الشروط',
                   style: TextStyle(
-                    fontFamily: 'tajawal',
+                    fontFamily: AppFonts.family,
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: c.primary,

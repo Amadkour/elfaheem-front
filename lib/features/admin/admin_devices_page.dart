@@ -14,6 +14,7 @@ import 'admin_common.dart';
 import 'admin_premium_widgets.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminDevicesPage extends StatelessWidget {
   const AdminDevicesPage({super.key});
@@ -144,7 +145,7 @@ class _ViewState extends State<_View> {
                   child: Text(
                     'admin_a_student_may_request_one_device'.tr,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       color: c.textLight,
                     ),
@@ -230,7 +231,7 @@ class _PremiumCounter extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontWeight: FontWeight.w700,
                       color: enabled ? colors.textDark: colors.textLight,
                     ),
@@ -239,7 +240,7 @@ class _PremiumCounter extends StatelessWidget {
                   Text(
                     'Min $minValue • Max $maxValue',
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 11,
                       color: colors.textLight,
                     ),

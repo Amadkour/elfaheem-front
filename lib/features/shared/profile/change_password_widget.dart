@@ -26,6 +26,7 @@ import '../../auth/auth_widgets.dart';
 import '../../auth/login_screen.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen(
@@ -480,7 +481,7 @@ class StrengthBar extends StatelessWidget {
               strengthLabel,
               key: ValueKey(strengthLabel),
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: strengthColor,
@@ -525,7 +526,7 @@ class PasswordReq extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 12,
             color: met ? c.textDark : c.textLight,
             fontWeight: met ? FontWeight.w600 : FontWeight.w400,

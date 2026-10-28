@@ -23,6 +23,7 @@ import 'org_common.dart' show dayLabels;
 import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 Widget _errorBox(BuildContext context, String text) => Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -579,7 +580,7 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
   await showAdminSheet<void>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
         final c = ctx.colors;
         Widget stepper(String label, int v, int min, int max, ValueChanged<int> on) => Row(children: [
-              Expanded(child: Text(label, style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700, color: c.textDark))),
+              Expanded(child: Text(label, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700, color: c.textDark))),
               IconButton(tooltip: t('تقليل', 'Decrease'), onPressed: v > min ? () => set(() => on(v - 1)) : null, icon: const Icon(Icons.remove_circle_outline_rounded)),
               Text('$v', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               IconButton(tooltip: t('زيادة', 'Increase'), onPressed: v < max ? () => set(() => on(v + 1)) : null, icon: const Icon(Icons.add_circle_outline_rounded)),
@@ -641,7 +642,7 @@ Future<bool> showLoadForm(BuildContext context, OrgScheduleProvider p, Map<Strin
                 Row(children: [
                   Icon(Icons.science_rounded, color: c.purple, size: 20),
                   const SizedBox(width: 6),
-                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, color: c.textDark))),
+                  Flexible(child: Text(t('السكشن / المعمل', 'Section / lab'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, color: c.textDark))),
                 ]),
                 stepper(t('عدد السكاشن أسبوعياً (0 = لا يوجد)', 'Labs per week (0 = none)'), labSessions, 0, 14, (v) => labSessions = v),
                 if (labSessions > 0) ...[

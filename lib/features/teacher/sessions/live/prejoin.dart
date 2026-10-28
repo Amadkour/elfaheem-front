@@ -24,6 +24,7 @@ import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dar
 import 'package:flutter_education_app/features/shared/live/live_mini_box.dart' show LiveMiniTile;
 import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appToast;
+import 'package:flutter_education_app/features/shared/points/points_api.dart' show LivePlanDeclined;
 // ─────────────────────────────────────────────────────────────────────────────
 // JoinArgs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,7 +55,20 @@ class JoinArgs {
     this.isHost,
     this.onPoll,
     this.canRecord = false,
+    this.autoJoin = false,
+    this.startsAt,
+    this.hostName,
   });
+
+  /// Part 2 (docs/backend/live-rooms-spec.md §7, §10): press Join by itself as soon as the devices are ready —
+  /// "Meet now" and a direct guest link. Once only: never again after a failure or a back.
+  final bool autoJoin;
+
+  /// The meeting's scheduled start (UTC), shown in the room's info sheet.
+  final DateTime? startsAt;
+
+  /// Who hosts the room, shown in the room's info sheet.
+  final String? hostName;
 
   /// [meeting-recording] The creator of a calendar meeting may record it to a cloud drive (RoomPage.canRecord).
   final bool canRecord;
@@ -174,6 +188,21 @@ class _PreJoinPageState extends State<PreJoinPage> {
 
   bool get _canPublish => widget.args.canPublish;
 
+  /// [JoinArgs.autoJoin] was used up (pressed once, or given up because the devices need the person's attention).
+  bool _autoJoinDone = false;
+
+  /// Presses Join once the devices are ready (JoinArgs.autoJoin). A refused permission leaves the page to the person
+  /// (they may want to fix it first; no camera / mic at all joins anyway); a failed or cancelled join is never
+  /// retried by itself.
+  void _maybeAutoJoin() {
+    if (!widget.args.autoJoin || _autoJoinDone || _busy || !mounted) return;
+    _autoJoinDone = true;
+    if (_issue == PreJoinIssue.permissionDenied) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_busy) unawaited(_join(context));
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -182,9 +211,10 @@ class _PreJoinPageState extends State<PreJoinPage> {
       // Listen-only guest: no tracks are ever created, no permission prompt.
       _enableAudio = false;
       _enableVideo = false;
+      _maybeAutoJoin();
       return;
     }
-    unawaited(_initDevices());
+    unawaited(_initDevices().whenComplete(_maybeAutoJoin));
     if (lkPlatformIs(PlatformType.android)) unawaited(_checkPermissions());
   }
 
@@ -489,6 +519,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
         roomRef: args.ref,
         isHost: args.isHost,
         canRecord: args.canRecord, // [meeting-recording]
+        freeEndsAt: data.freeEndsAt,
+        startsAt: args.startsAt,
+        hostName: args.hostName,
       );
       await _showRoom(context, page, room);
 
@@ -499,6 +532,8 @@ class _PreJoinPageState extends State<PreJoinPage> {
         LocalDebugSave.start();
       }
     } catch (error) {
+      // The owner closed the live-plan sheet without subscribing: stay here quietly (spec §8).
+      if (error is LivePlanDeclined) return;
       log('PreJoinPage._join error: $error');
       if (!context.mounted) return;
       await context.showErrorDialog(error);
@@ -604,6 +639,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
   }
 
   Future<void> _back() async {
+    _autoJoinDone = true;
     if (_enableVideo) await _toggleCamera();
     if (_enableAudio) await _toggleAudio();
     if (mounted) Navigator.of(context).pop();

@@ -18,6 +18,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 enum CropShape { square, circle, wide }
 
@@ -101,14 +102,14 @@ class _CropperPageState extends State<_CropperPage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
-        title: Text(_t('تعديل الصورة', 'Edit photo'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800)),
+        title: Text(_t('تعديل الصورة', 'Edit photo'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
         actions: [
           // backgrounds, signatures, documents … sometimes must stay exactly as they are
           if (widget.allowOriginal)
             TextButton(
               onPressed: () => Navigator.pop(context, widget.bytes),
               child: Text(_t('استخدام الأصل', 'Use original'),
-                  style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+                  style: TextStyle(fontFamily: AppFonts.family, color: Colors.white, fontWeight: FontWeight.w700)),
             ),
           IconButton(
             tooltip: _t('تدوير', 'Rotate'),
@@ -177,7 +178,7 @@ class _CropperPageState extends State<_CropperPage> {
                     ])
                       ChoiceChip(
                         avatar: Icon(icon, size: 16),
-                        label: Text(label, style: const TextStyle(fontFamily: 'tajawal')),
+                        label: Text(label, style: TextStyle(fontFamily: AppFonts.family)),
                         selected: _shape == s,
                         onSelected: (_) => setState(() {
                           _shape = s;
@@ -194,7 +195,7 @@ class _CropperPageState extends State<_CropperPage> {
                     (2048, _t('عالي', 'High')),
                   ])
                     ChoiceChip(
-                      label: Text('$label · $px', style: const TextStyle(fontFamily: 'tajawal')),
+                      label: Text('$label · $px', style: TextStyle(fontFamily: AppFonts.family)),
                       selected: _size == px,
                       onSelected: (_) => setState(() => _size = px),
                     ),

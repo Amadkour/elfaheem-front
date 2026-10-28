@@ -18,6 +18,7 @@ import 'org_schedule_grid.dart' show sessionKindColor, sessionKindIcon, sessionK
 import 'org_schedule_insights.dart' show WhyHere, WhyHereSection;
 import 'org_ui.dart';
 import 'org_v3.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Height of a grid row whose fullest cell holds [maxSessions] sessions (text scale included).
 double boardRowHeight(int maxSessions, double textScale) => (maxSessions <= 1 ? 76.0 : 14.0 + 56.0 * maxSessions) * textScale.clamp(1.0, 2.0);
@@ -98,7 +99,7 @@ class _TimetableBoardState extends State<TimetableBoard> {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800, fontSize: 13, color: d == widget.today ? c.primary : c.textDark),
+                  style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800, fontSize: 13, color: d == widget.today ? c.primary : c.textDark),
                 ),
               ),
             ),

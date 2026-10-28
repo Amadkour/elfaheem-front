@@ -20,6 +20,10 @@
 //   LiveLobbyEvents         the silent push `live_join_request` lands here (notification_service.dart); the room's
 //                           lobby controller listens and refreshes at once.
 //   liveRoomErrorText       server codes → bilingual text (t(ar, en), no translation.json edits).
+//
+// Part 2 (spec §8, §10): LiveLink.direct (a DIRECT link lets guests straight in; `PUT …/link {direct}` through
+// LiveRoomApi.updateLink) and JoinOutcome.freeEndsAt (`time_limit.ends_at` of a student meeting's join payload,
+// carried to the room as LiveResponseModel.freeEndsAt — countdown rules in live_time_limit.dart).
 library;
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
@@ -27,6 +31,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier;
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/model/live_response_model.dart';
+import 'live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit;
 
 /// Kill-switch keys of the feature (ParentComponent / AppConfig.disableList).
 const String kLiveLobbyFeatureKey = 'live.lobby';
@@ -115,6 +120,7 @@ class LiveLink {
     this.maxGuests,
     this.hasPin = false,
     this.createdAt,
+    this.direct = false,
   });
 
   final String url;
@@ -124,6 +130,9 @@ class LiveLink {
   final bool hasPin;
   final DateTime? createdAt;
 
+  /// Direct entry (spec §10): a guest through this link is admitted at once, as if `guest_admission = auto`.
+  final bool direct;
+
   factory LiveLink.fromJson(Map<String, dynamic> j) => LiveLink(
         url: '${j['url'] ?? ''}',
         token: '${j['token'] ?? ''}',
@@ -131,6 +140,7 @@ class LiveLink {
         maxGuests: (j['max_guests'] as num?)?.toInt(),
         hasPin: j['has_pin'] == true,
         createdAt: DateTime.tryParse('${j['created_at'] ?? ''}'),
+        direct: j['direct'] == true,
       );
 }
 
@@ -320,9 +330,15 @@ class JoinOutcome {
     return v.isEmpty ? null : v;
   }
 
+  /// When a student meeting's free time ends (`time_limit.ends_at`, UTC); null = unlimited.
+  DateTime? get freeEndsAt => parseLiveTimeLimit(payload['time_limit']);
+
+  /// `time_limit.free_minutes`, or null.
+  int? get freeMinutes => parseLiveFreeMinutes(payload['time_limit']);
+
   /// The room credentials for PreJoinPage / RoomPage; [sessionId] is the room screen's id (negative for meetings).
-  LiveResponseModel live({required int sessionId}) =>
-      LiveResponseModel(sessionId: sessionId, url: url, token: token, recordingEnabled: recordingEnabled);
+  LiveResponseModel live({required int sessionId}) => LiveResponseModel(
+      sessionId: sessionId, url: url, token: token, recordingEnabled: recordingEnabled, freeEndsAt: freeEndsAt);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -383,6 +399,10 @@ String? liveRoomCodeText(String? code) => switch (code) {
       'consent_required' => t('يجب الموافقة قبل الانضمام.', 'You have to agree before joining.'),
       'lobby_disabled' => t('غرفة الانتظار غير متاحة.', 'The lobby is switched off.'),
       'too_many_requests' => t('محاولات كثيرة — انتظر دقيقة ثم أعد المحاولة.', 'Too many attempts — wait a minute and try again.'),
+      'meeting_time_limit' => t('انتهى الوقت المجاني لهذا الاجتماع.', 'The free time of this meeting is over.'),
+      'live_plan_required' =>
+        t('انتهى الوقت المجاني. اشترك في باقة الاجتماعات المباشرة لتكمل.', 'The free time is over. Subscribe to the live-meeting plan to go on.'),
+      'guest_blocked' => t('لا يمكنك الانضمام إلى هذه الغرفة.', 'You cannot join this room.'),
       _ => null,
     };
 
@@ -443,6 +463,17 @@ class LiveRoomApi {
       if (e.statusCode == 404) return null;
       rethrow;
     }
+  }
+
+  /// Changes the link in place (`PUT …/link`, spec §10): only the fields given are sent. `direct: true` lets guests
+  /// straight in; on a room without a link the server creates it. Answers the link (bare or inside the policy).
+  Future<LiveLink> updateLink({bool? direct, bool? canPublish}) async {
+    final r = _map(await _api.put('/api/v1/live/$_kind/$_id/link', body: {
+      'direct': ?direct,
+      'can_publish': ?canPublish,
+    }));
+    final link = r['link'];
+    return LiveLink.fromJson(link is Map ? Map<String, dynamic>.from(link) : r);
   }
 
   Future<void> deleteLink() => _api.delete('/api/v1/live/$_kind/$_id/link');

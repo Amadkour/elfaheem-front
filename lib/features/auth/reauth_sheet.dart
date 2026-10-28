@@ -12,8 +12,10 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
+import '../../config/theme/theme_config_provider.dart';
 import '../../design/app_inputs.dart';
 import '../../design/app_kit.dart';
+import 'auth_widgets.dart' show ScreenIcon, authText;
 
 /// What the person typed: the password, and the two-step code when they gave one.
 class Reauth {
@@ -72,8 +74,18 @@ class _ReauthSheetBodyState extends State<ReauthSheetBody> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('reauth_body'.tr, style: Theme.of(context).textTheme.bodyMedium),
-                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const ScreenIcon(icon: Icons.verified_user_rounded),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text('reauth_body'.tr,
+                          style: authText(14, c: context.colors.textMedium, h: 1.55)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
                 // minLength 1: an existing password may predate the 8-character rule
                 AppPasswordField(controller: _password, label: 'current_password'.tr, minLength: 1),
                 if (widget.showMfa)

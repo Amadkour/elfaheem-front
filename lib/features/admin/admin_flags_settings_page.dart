@@ -15,6 +15,7 @@ import '../../design/app_switch.dart';
 import '../../utils/widget/base_page.dart';
 import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class AdminFlagsSettingsPage extends StatelessWidget {
   const AdminFlagsSettingsPage({super.key});
@@ -142,7 +143,7 @@ class _ViewState extends State<_View> {
                         child: Text(
                           'admin_flags_limit_hint'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             color: context.colors.textLight,
                           ),
@@ -174,7 +175,7 @@ class _ViewState extends State<_View> {
                         child: Text(
                           'admin_flags_teacher_hint'.tr,
                           style: TextStyle(
-                            fontFamily: 'bahji',
+                            fontFamily: AppFonts.display,
                             fontSize: 12,
                             color: context.colors.textLight,
                           ),
@@ -199,8 +200,8 @@ class _ViewState extends State<_View> {
                           : const Icon(Icons.save_rounded),
                       label: Text(
                         'admin_flags_save'.tr,
-                        style: const TextStyle(
-                          fontFamily: 'bahji',
+                        style: TextStyle(
+                          fontFamily: AppFonts.display,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -250,8 +251,8 @@ class _Section extends StatelessWidget {
                 const SizedBox(width: 8),
                 Flexible(child: Text(
                   title,
-                  style: const TextStyle(
-                    fontFamily: 'bahji',
+                  style: TextStyle(
+                    fontFamily: AppFonts.display,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
@@ -313,7 +314,7 @@ class _NumField extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontFamily: 'bahji',
+                  fontFamily: AppFonts.display,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: enabled ? null : context.colors.textLight,

@@ -21,6 +21,7 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppRefresh;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// The catalog is the same for the whole app session: fetch once.
 Map<String, dynamic>? _catalogCache;
@@ -41,7 +42,7 @@ class OrgAccessPage extends StatelessWidget {
           labelColor: c.primary,
           indicatorColor: c.primary,
           unselectedLabelColor: c.textMedium,
-          labelStyle: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w800),
+          labelStyle: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800),
           tabs: [
             Tab(icon: const Icon(Icons.badge_rounded), text: t('الأدوار', 'Roles')),
             Tab(icon: const Icon(Icons.manage_accounts_rounded), text: t('الأشخاص والصلاحيات', 'People & access')),
@@ -103,7 +104,7 @@ class _RolesTabState extends State<_RolesTab> {
               backgroundColor: c.primary,
               onPressed: () => _open(),
               icon: Icon(Icons.add_rounded, color: c.onHero),
-              label: Text(t('دور جديد', 'New role'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+              label: Text(t('دور جديد', 'New role'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
             )
           : null,
       body: OrgAsync(
@@ -371,13 +372,13 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
           if (allowOrg)
             ListTile(
               leading: IconBadge(Icons.domain_rounded, c2.colors.primary, size: 38),
-              title: Text(t('كل المؤسسة (وما تحتها)', 'Whole organization (and below)'), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              title: Text(t('كل المؤسسة (وما تحتها)', 'Whole organization (and below)'), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               onTap: () => Navigator.pop(c2, 0),
             ),
           for (final d in _depts)
             ListTile(
               leading: IconBadge(deptIcon(d['icon']), hexColor(d['color'], c2.colors.primary), size: 38),
-              title: Text(orgNameOf(d), style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+              title: Text(orgNameOf(d), style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
               onTap: () => Navigator.pop(c2, asInt(d['id'])),
             ),
         ],
@@ -393,7 +394,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
               ListTile(
                 leading: IconBadge(Icons.badge_rounded, hexColor(r['color'], ctx.colors.primary), size: 38),
                 title: Text(t('${r['name_ar'] ?? r['name_en']}', '${r['name_en'] ?? r['name_ar']}'),
-                    style: const TextStyle(fontFamily: 'tajawal', fontWeight: FontWeight.w700)),
+                    style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w700)),
                 subtitle: Text('${r['description'] ?? ''}', maxLines: 2),
                 onTap: () => Navigator.pop(ctx, r),
               ),
@@ -425,7 +426,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.event_busy_rounded),
                 title: Text(until == null ? t('بدون تاريخ انتهاء', 'No end date') : '${t('تنتهي في', 'Ends on')} ${until!.toString().substring(0, 10)}',
-                    style: const TextStyle(fontFamily: 'tajawal')),
+                    style: TextStyle(fontFamily: AppFonts.family)),
                 trailing: TextButton(
                   onPressed: () async {
                     final d = await showDatePicker(context: ctx, firstDate: DateTime.now().add(const Duration(days: 1)),
@@ -494,7 +495,7 @@ class _OrgPersonAccessState extends State<OrgPersonAccess> {
                               InputChip(
                                 avatar: CircleAvatar(backgroundColor: hexColor(a['color'], c.primary), radius: 6),
                                 label: Text('${t('${a['role_name_ar'] ?? a['role_name_en']}', '${a['role_name_en'] ?? a['role_name_ar']}')} · ${_deptName(a['dept_id'])}',
-                                    style: const TextStyle(fontFamily: 'tajawal')),
+                                    style: TextStyle(fontFamily: AppFonts.family)),
                                 onDeleted: canEdit && a['inherited'] != true
                                     ? () async {
                                         if (await OrgApi.i.del('$_base/access/assignments/${a['id']}', t('سُحب الدور', 'Role removed')) != null) _load();

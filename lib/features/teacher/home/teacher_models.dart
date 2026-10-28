@@ -28,17 +28,28 @@ class CourseSchedule {
     required this.endTime,
   });
 
+  /// The day's name in the app language (`day` is the server's English key).
   String get dayLabel =>
-      const {
-        'monday': 'الإثنين',
-        'tuesday': 'الثلاثاء',
-        'wednesday': 'الأربعاء',
-        'thursday': 'الخميس',
-        'friday': 'الجمعة',
-        'saturday': 'السبت',
-        'sunday': 'الأحد',
-      }[day] ??
-          day;
+      (AppConfig.lang == 'ar' ? _dayAr : _dayEn)[day.toLowerCase()] ?? day;
+
+  static const _dayAr = {
+    'monday': 'الإثنين',
+    'tuesday': 'الثلاثاء',
+    'wednesday': 'الأربعاء',
+    'thursday': 'الخميس',
+    'friday': 'الجمعة',
+    'saturday': 'السبت',
+    'sunday': 'الأحد',
+  };
+  static const _dayEn = {
+    'monday': 'Monday',
+    'tuesday': 'Tuesday',
+    'wednesday': 'Wednesday',
+    'thursday': 'Thursday',
+    'friday': 'Friday',
+    'saturday': 'Saturday',
+    'sunday': 'Sunday',
+  };
 
   /// Lightweight constructor for pending (not-yet-saved) entries.
   factory CourseSchedule.pending({
@@ -400,7 +411,7 @@ class TeacherCourse with DiscountInfo {
     id: j['id'] as int,
     imageUrl: j['image_url'] as String? ?? '',
     studentsCount: (j['students_count'] as num?)?.toInt() ?? 0,
-    expectedHours: j['expected_hours'] as double? ?? 0.0,
+    expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
     isPrivate: j['is_private'] as bool? ?? false,
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0,

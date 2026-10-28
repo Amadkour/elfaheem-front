@@ -14,6 +14,7 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../student/models.dart' show CourseStatus, CourseStatusX;
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class CourseProgressStatusCard extends StatelessWidget {
   final CourseStatus status;
@@ -81,7 +82,7 @@ class CourseProgressStatusCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      fontFamily: 'bahji',
+                      fontFamily: AppFonts.display,
                       color: context.colors.textDark,
                     ),
                   ),
@@ -169,7 +170,7 @@ class _SegmentButton extends StatelessWidget {
               status.label,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: isSelected ? color : context.colors.textMedium,
@@ -213,7 +214,7 @@ class _StatusPill extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'tajawal',
+                fontFamily: AppFonts.family,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 color: color,

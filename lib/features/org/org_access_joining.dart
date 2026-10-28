@@ -30,6 +30,8 @@ import 'org_providers.dart';
 import 'org_ui.dart';
 import 'org_v3.dart';
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton;
+import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const _pub = '$orgBase/public';
 
@@ -476,7 +478,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
             FittedBox(
               child: SelectableText(code,
                   textDirection: TextDirection.ltr,
-                  style: TextStyle(fontFamily: 'bahji', fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
+                  style: TextStyle(fontFamily: AppFonts.display, fontSize: 30, letterSpacing: 5, fontWeight: FontWeight.w800, color: c.primary)),
             ),
             const SizedBox(height: 6),
             Wrap(spacing: 6, runSpacing: 6, alignment: WrapAlignment.center, children: [
@@ -674,7 +676,7 @@ class _OrgCodesTabState extends State<_OrgCodesTab> with AutomaticKeepAliveClien
         backgroundColor: c.primary,
         onPressed: () => _edit(),
         icon: Icon(Icons.add_rounded, color: c.onHero),
-        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: 'tajawal', color: c.onHero)),
+        label: Text(t('كود جديد', 'New code'), style: TextStyle(fontFamily: AppFonts.family, color: c.onHero)),
       ),
       body: AppRefresh(
         onRefresh: _load,
@@ -1145,7 +1147,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                 autocorrect: false,
                 onSubmitted: (_) => _joinCode(),
                 onChanged: (_) => _codeError == null ? null : setState(() => _codeError = null),
-                style: TextStyle(fontFamily: 'bahji', fontSize: 20, letterSpacing: 4, fontWeight: FontWeight.w800, color: c.textDark),
+                style: TextStyle(fontFamily: AppFonts.display, fontSize: 20, letterSpacing: 4, fontWeight: FontWeight.w800, color: c.textDark),
                 decoration: InputDecoration(
                   hintText: 'ABCD2345XY',
                   errorText: _codeError,
@@ -1156,7 +1158,7 @@ class _OrgJoinPageState extends State<OrgJoinPage> {
                 ),
               ),
               const SizedBox(height: 10),
-              AppPrimaryButton(label: t('انضمام', 'Join'), icon: Icons.login_rounded, busy: _busy, onPressed: _busy ? null : _joinCode),
+              AppPrimaryButton(label: t('انضمام', 'Join'), icon: DirIcons.login, busy: _busy, onPressed: _busy ? null : _joinCode),
               if (joinScannerAvailable) ...[
                 const SizedBox(height: 8),
                 SizedBox(

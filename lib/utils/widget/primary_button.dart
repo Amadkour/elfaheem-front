@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../config/theme/theme_config_provider.dart';
 import 'app_loading_indicator.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class PrimaryButton extends StatelessWidget {
   final bool isLoading;
@@ -69,8 +70,8 @@ class PrimaryButton extends StatelessWidget {
                             label,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontFamily: 'tajawal',
+                            style: TextStyle(
+                              fontFamily: AppFonts.family,
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,

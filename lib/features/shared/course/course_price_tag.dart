@@ -16,6 +16,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'discount_info.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Compact price block: shows the discounted price, with the original price
 /// struck through above/beside it when a discount is active. Falls back to
@@ -94,7 +95,7 @@ class CoursePriceTag extends StatelessWidget {
           color: priceColor,
           fontWeight: FontWeight.w800,
           fontSize: fontSize,
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
         ),
       );
     }
@@ -109,7 +110,7 @@ class CoursePriceTag extends StatelessWidget {
             color: strikeColor,
             fontWeight: FontWeight.w600,
             fontSize: originalFontSize,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
             decoration: TextDecoration.lineThrough,
             decorationColor: context.colors.danger,
           ),
@@ -120,7 +121,7 @@ class CoursePriceTag extends StatelessWidget {
             color: priceColor,
             fontWeight: FontWeight.w800,
             fontSize: fontSize,
-            fontFamily: 'bahji',
+            fontFamily: AppFonts.display,
           ),
         ),
       ],
@@ -171,7 +172,7 @@ class DiscountRibbon extends StatelessWidget {
           color: context.colors.onHero,
           fontWeight: FontWeight.w800,
           fontSize: 10,
-          fontFamily: 'bahji',
+          fontFamily: AppFonts.display,
         ),
       ),
     );
@@ -202,7 +203,7 @@ class DiscountCountdown extends StatelessWidget {
       label,
       style: TextStyle(
         fontSize: 11,
-        fontFamily: 'tajawal',
+        fontFamily: AppFonts.family,
         color: context.colors.danger,
         fontWeight: FontWeight.w600,
       ),
@@ -318,7 +319,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
               color: context.colors.onHero,
               fontWeight: FontWeight.w800,
               fontSize: widget.compact ? 9 : 10.5,
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
             ),
           ),
         ],

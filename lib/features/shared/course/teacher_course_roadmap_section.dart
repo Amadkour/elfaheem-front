@@ -20,6 +20,7 @@ import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../student/models.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 
 class CourseRecommendationsSection extends StatelessWidget {
@@ -226,7 +227,7 @@ class _CategoryLabel extends StatelessWidget {
         Text(
           text,
           style: TextStyle(
-            fontFamily: 'tajawal',
+            fontFamily: AppFonts.family,
             fontSize: 13,
             fontWeight: FontWeight.w800,
             color: context.colors.textDark,
@@ -242,7 +243,7 @@ class _CategoryLabel extends StatelessWidget {
           child: Text(
             caption,
             style: TextStyle(
-              fontFamily: 'tajawal',
+              fontFamily: AppFonts.family,
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: color,
@@ -303,7 +304,7 @@ class _NextStepsTimeline extends StatelessWidget {
                     child: Text(
                       '${i + 1}',
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
                         color: context.colors.onHero,
@@ -318,7 +319,7 @@ class _NextStepsTimeline extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.visible,
                       style: TextStyle(
-                        fontFamily: 'tajawal',
+                        fontFamily: AppFonts.family,
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
                         color: context.colors.textDark,
@@ -415,7 +416,7 @@ class RecommendCourseCard extends StatelessWidget {
                         Text(
                           badgeText,
                           style: TextStyle(
-                            fontFamily: 'tajawal',
+                            fontFamily: AppFonts.family,
                             fontSize: 9,
                             fontWeight: FontWeight.w800,
                             color: badgeColor,
@@ -439,7 +440,7 @@ class RecommendCourseCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontFamily: 'tajawal',
+                      fontFamily: AppFonts.family,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
                       color: context.colors.textDark,
@@ -457,7 +458,7 @@ class RecommendCourseCard extends StatelessWidget {
                       Text(
                         course.averageRating.toStringAsFixed(1),
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: context.colors.textMedium,
@@ -467,7 +468,7 @@ class RecommendCourseCard extends StatelessWidget {
                       Text(
                         course.currency.format(course.price),
                         style: TextStyle(
-                          fontFamily: 'tajawal',
+                          fontFamily: AppFonts.family,
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: context.colors.primary,

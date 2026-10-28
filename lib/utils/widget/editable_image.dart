@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
+import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 class EditableImage extends StatelessWidget {
   const EditableImage(
@@ -115,7 +116,7 @@ class EditableImage extends StatelessWidget {
             color: const Color(0xFFE8F0FE),
 
   ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.add_photo_alternate_rounded,
@@ -125,7 +126,7 @@ class EditableImage extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 9,
                     color: Color(0xFF0D6EFD),
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     fontWeight: FontWeight.w600)),
           ],
         ),
@@ -189,7 +190,7 @@ class _ImageSourceSheet extends StatelessWidget {
                 style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    fontFamily: 'bahji',
+                    fontFamily: AppFonts.display,
                     color: context.colors.textDark)),
             const SizedBox(height: 16),
             _SheetTile(
@@ -237,6 +238,6 @@ class _SheetTile extends StatelessWidget {
           child: Icon(icon, color: color, size: 20),
         ),
         title: Text(label,
-            style: const TextStyle(fontFamily: 'bahji', fontSize: 14)),
+            style: TextStyle(fontFamily: AppFonts.display, fontSize: 14)),
       );
 }
