@@ -75,6 +75,8 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | Backend static gate | 8 ruff errors (pre-existing) | | `ruff check .` in `../back` |
 | Polling call sites / intervals | 7 new-data polls (attention 60 s, lobby 15/4 s, guest 10 s, quiz 30 s, exam tab 5 min, attendance 5 s) + 12 job-progress polls (1–8 s); 0 SSE/WS | SSE stream + silent FCM; attention 5 min, lobby 60/16 s, quiz 0 (LiveKit + event, 5 min fallback), exam tab 0, attendance 30 s; job polls 10–30 s fallbacks only while the stream is down | `docs/polish/realtime-inventory.md` |
 | RAG eval, 71 q (`bench/rag/answer_eval`, laptop, shared CPU) — extractive | correct 52% (28/54) · found 65% · retrieval@5 96% · not-found 100% · small talk 0% · injection 100% · halluc 0 · leaks 0 · p50/p95 3.0/4.8 s · RSS 1.9 GB | | `run_answer_eval.py --generator none` |
+| RAG eval AFTER E.3 — extractive | correct **82 %** (44/54, was 52 %) · found 83 % · retrieval@5 96 % · not-found 100 % · small talk **100 %** (was 0 %) · injection 100 % · halluc 0 · leaks 0 · p50/p95 2.6/4.2 s | | `results/20261027-232904-none.json` |
+| RAG eval AFTER E.3 — qwen3-0.6b | correct 59 % (32/54; generation misses 13) · found 83 % · small talk 100 % · halluc 0 · leaks 0 · p50/p95 15.8/38.8 s (was 22/44) | | `results/20261027-235030-qwen3-0.6b.json` |
 | RAG eval — qwen3-0.6b INT4 light | correct 59% (32/54) · found 78% · retrieval@5 96% · not-found 100% · small talk 100% · injection 100% · halluc 0 · leaks 0 · p50/p95 22/44 s · RSS 4.2 GB · 17/48 writer calls failed · ar 52% / en 64% | | `run_answer_eval.py --generator onnx --model qwen3-0.6b` (25 min) |
 | Dashboard requests on open | pending | | count of API calls per dashboard open |
 
@@ -107,7 +109,7 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 | D.4 | Real-time | Tests: backend e2e for emit + SSE replay; app unit tests for the client (dedupe, reconnect) | verified | with D.1 / D.2 | `e2e_live_events.py`, `live_events_client_test.dart` | |
 | E.1 | RAG | `bench/rag/answer_eval/` (71 q over the features guide, seeded terms / about, synthetic org rules; scores retrieval, correctness, hallucination, not-found, injection, leak, latency, RSS) | verified | back 5e522ca | §3 before rows | diagnosis: gate threshold 7.31 (calibrated on the synthetic bench) rejects 17 right answers whose top logit is −1.3…5.8 because ar/en twins split the margin; writer fails 17/48 calls; no small-talk path without the model |
 | E.2 | RAG | `rag_service/qa.py` + `routers/qa.py` + migration `rag_0007` (RLS); match inside SQL before the planner; direct ≥ 0.955 (no model call), examples ≥ 0.91 (calibrated: 0/30 false directs); `/api/v1/rag/qa` CRUD, toggle, `from-query`; overview `qa` counters + `query_id` on not_found / unhelpful | verified | back dbbab24, front 2842b80 (`rag_qa_admin.dart`: list / sheet / promote-to-Q&A / console tab / library entry, key `rag.qa_admin`) | backend 8/8 + 7/7 PG; app `rag_qa_test.dart` + `rag_qa_layout_test.dart` 35 passed | chat side: open a `qa` citation's `deep_link`, label for stage `qa` (E.5) |
-| E.3 | RAG | Answer cache; budget cut; **gate recalibration on the real corpus (ar/en twins as one section)**; small-talk / greeting path without the model; writer failure analysis | in progress (agent) | | | |
+| E.3 | RAG | Gate recalibrated on both benches (`bench/rag/calibrate_gate.py`, ar/en twins as one section), extractive small-talk path, light budget cut + token guard, writer retry, answer cache `rag_0008` keyed by library version | verified | back ccbc1bc (committed by the owner as "RAG ENHANCEMENT") | rag e2e 14/14, qa 8/8, cache 7/7, premium 14/14, examgen 8/8, check_thresholds 27/27 | **finding: the 0.6B writer now LOWERS correctness (82 % extractive vs 59 % with the model; 13 generation misses) → E.6 decides the default by measurement** |
 | E.4 | RAG | Real BM25 on Postgres + Arabic normalisation; data-driven router (glossary / rules in settings, feature-guide deep links) | todo | | | |
 | E.5 | RAG | App side DONE (front 2ea31da: `rag_chat_sessions.dart`, New chat, sessions panel / sheet, reopen + paging, rename / delete, retention notice, thumbs-down comment, `qa` deep link, older-server fallback; 27 tests). Backend pending: `rag.conversations` table + `queries.conversation_id`, routes `GET/POST /api/v1/rag/conversations`, `PATCH/DELETE /{id}`, `GET /{id}/messages` (`before` = id cursors), `ask.conversation_id`, `history_of` by conversation, retention tick + `conversation_retention_days` admin setting (default 90), console field | in progress (app verified, backend after E.3) | | | remove the 5 `knownMissing` entries when the snapshot regenerates |
 | E.6 | RAG | CPU benchmark ONNX INT4 vs llama.cpp GGUF for 0.6B / 1.7B (tok/s, TTFT, memory); streaming partial answers; INT-only model fetch in prod | todo | | | |
@@ -135,6 +137,9 @@ By nature (recorded, no action): offline downloads / exam sittings, QR scan (cou
 _written at the end._
 
 ## 7. Resume note
+
+2026-10-28 ~06:00: the Fable usage limit stopped four agents mid-task (B.3, B.4, B.5, E.3). E.3 was complete (owner committed it); B.3–B.5 left near-finished code with 5 layout overflows — a follow-up agent finishes them. The session continues on Opus.
+
 
 If this session stopped on the usage limit: automatic resume from inside the session is not possible in this
 environment. Reply `continue` and the next session resumes from the first non-done row above.
