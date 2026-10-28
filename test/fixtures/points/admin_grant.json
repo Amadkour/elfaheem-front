@@ -1,0 +1,11 @@
+{
+ "_source": {
+  "route": "POST /api/v1/admin/points/grant",
+  "status": 200,
+  "uid": 4
+ },
+ "payload": {
+  "user_id": 1,
+  "balance": 20
+ }
+}

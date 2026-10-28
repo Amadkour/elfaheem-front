@@ -335,7 +335,7 @@ class _HubViewState extends State<_HubView>
                       _MiniStat(
                         '${prov.attemptedCount}',
                         'stat_answered'.tr,
-                        kAmber,
+                        c.warning,
                       ),
                       _MiniStat(
                         '${prov.passedCount}',
@@ -345,7 +345,7 @@ class _HubViewState extends State<_HubView>
                       _MiniStat(
                         '${prov.avgScore.toStringAsFixed(0)}%',
                         'stat_average'.tr,
-                        kViolet,
+                        c.purple,
                       ),
                     ],
                   ),
@@ -569,7 +569,7 @@ class _ExamCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final accent = exam.isPublished ? c.success : kAmber;
+    final accent = exam.isPublished ? c.success : c.warning;
 
     return ExamCard(
       borderColor: accent.withValues(alpha: .22),
@@ -709,7 +709,7 @@ class _ExamCard extends StatelessWidget {
                   child: ExamChip(
                     Icons.filter_list_rounded,
                     '${'chip_random_questions_label'.tr}: ${exam.questionsPerStudent} / ${exam.questionCount}',
-                    kViolet,
+                    c.purple,
                   ),
                 ),
               if (exam.shuffleQuestions || exam.shuffleOptions)
@@ -718,7 +718,7 @@ class _ExamCard extends StatelessWidget {
                   child: ExamChip(
                     Icons.shuffle_rounded,
                     'chip_shuffled_label'.tr,
-                    kViolet,
+                    c.purple,
                   ),
                 ),
               if (exam.passcode != null)
@@ -731,7 +731,7 @@ class _ExamCard extends StatelessWidget {
                 ExamChip(
                   Icons.schedule_rounded,
                   _fmtDate(exam.startDate!),
-                  kAmber,
+                  c.warning,
                 ),
             ],
           ),
@@ -775,7 +775,7 @@ class _ExamCard extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Material(
-                color: kDanger.withValues(alpha: .10),
+                color: c.danger.withValues(alpha: .10),
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),
@@ -810,7 +810,7 @@ class _ExamCard extends StatelessWidget {
                               style: examT(
                                 13.5,
                                 w: FontWeight.w800,
-                                c: kDanger,
+                                c: c.danger,
                               ),
                             ),
                           ),
@@ -818,12 +818,12 @@ class _ExamCard extends StatelessWidget {
                       ),
                     );
                   },
-                  child: const SizedBox(
+                  child: SizedBox(
                     width: 48,
                     height: 48,
                     child: Icon(
                       Icons.delete_outline_rounded,
-                      color: kDanger,
+                      color: c.danger,
                       size: 22,
                     ),
                   ),
@@ -2544,7 +2544,7 @@ class _ResultTile extends StatelessWidget {
     final color = passed == true
         ? c.success
         : passed == false
-        ? kDanger
+        ? c.danger
         : context.colors.primary;
     final initial = result.studentName.isEmpty ? '?' : result.studentName[0];
 
@@ -2605,7 +2605,7 @@ class _ResultTile extends StatelessWidget {
                       result.isAttended
                           ? 'attended_badge'.tr
                           : 'absent_badge'.tr,
-                      result.isAttended ? c.success : kDanger,
+                      result.isAttended ? c.success : c.danger,
                     ),
                     if (result.attempted)
                       _StatusBadge(

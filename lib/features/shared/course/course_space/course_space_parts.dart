@@ -29,6 +29,7 @@ import '../private_flag.dart';
 import '../topbar.dart' show GlassBtn;
 import 'course_space.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
@@ -658,6 +659,12 @@ class _LiveDot extends StatefulWidget {
 class _LiveDotState extends State<_LiveDot> with SingleTickerProviderStateMixin {
   late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
     ..repeat(reverse: true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _a, reverse: true); // reduce motion parks this decorative loop
+  }
 
   @override
   void dispose() {

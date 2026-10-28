@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../main.dart';           // navigatorKey
 import 'api_client.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 class VersionCheckService {
   VersionCheckService._();
@@ -91,8 +92,8 @@ class VersionCheckService {
             textDirection: Helpers.pageDirection,
             child: Row(
               children: [
-                const Icon(Icons.system_update_rounded,
-                    color: Color(0xFF5B8FFF), size: 28),
+                Icon(Icons.system_update_rounded,
+                    color: context.colors.primary, size: 28),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -145,7 +146,7 @@ class VersionCheckService {
               ),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF5B8FFF),
+                backgroundColor: context.colors.primary,
                 padding: EdgeInsets.symmetric(horizontal: 6),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),

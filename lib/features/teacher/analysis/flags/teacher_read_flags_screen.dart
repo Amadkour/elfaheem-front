@@ -162,7 +162,7 @@ class _View extends StatelessWidget {
     final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
     final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
     return ExamHero(
-      colors: [context.colors.heroEnd(kDanger, 0.55), kDanger],
+      colors: [context.colors.heroEnd(context.colors.danger, 0.55), context.colors.danger],
       child: Column(children: [
         ExamHeroBar(
           title: courseTitle,
@@ -285,7 +285,7 @@ class _FlagCard extends StatelessWidget {
             ]),
           ),
           const Spacer(),
-          ExamBadge(tx('flag_score', {'n': item.score.toStringAsFixed(1)}), kAmber),
+          ExamBadge(tx('flag_score', {'n': item.score.toStringAsFixed(1)}), c.warning),
         ]),
         const SizedBox(height: 12),
         Text(item.title,
@@ -294,9 +294,9 @@ class _FlagCard extends StatelessWidget {
         const SizedBox(height: 12),
         Wrap(spacing: 8, runSpacing: 8, children: [
           ExamChip(Icons.groups_rounded,
-              tx('tflag_students_failed', {'n': item.studentsFailed}), kDanger),
+              tx('tflag_students_failed', {'n': item.studentsFailed}), c.danger),
           ExamChip(Icons.repeat_rounded,
-              tx('tflag_max_tries', {'n': item.maxWrongTries}), kViolet),
+              tx('tflag_max_tries', {'n': item.maxWrongTries}), c.purple),
           ExamChip(Icons.functions_rounded,
               tx('tflag_avg_tries', {'n': item.avgWrongTries.toStringAsFixed(1)}),
               context.colors.success),
@@ -359,9 +359,9 @@ class _FlagCard extends StatelessWidget {
                       child: Row(children: [
                         CircleAvatar(
                           radius: 15,
-                          backgroundColor: kDanger.withValues(alpha: .10),
+                          backgroundColor: c.danger.withValues(alpha: .10),
                           child: Text(s.name.isEmpty ? '?' : s.name[0],
-                              style: examT(12, w: FontWeight.w800, c: kDanger)),
+                              style: examT(12, w: FontWeight.w800, c: c.danger)),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -369,7 +369,7 @@ class _FlagCard extends StatelessWidget {
                               style: examT(13, c: c.textDark)),
                         ),
                         ExamBadge(
-                            tx('flag_wrong_times', {'n': s.wrongCount}), kDanger),
+                            tx('flag_wrong_times', {'n': s.wrongCount}), c.danger),
                         const SizedBox(width: 4),
                         Icon(Icons.chevron_right_rounded, size: 18, color: c.textLight),
                       ]),

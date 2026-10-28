@@ -180,6 +180,9 @@ void main() {
         'points_price': 0.75,
         'points_currency': 'SAR',
         'points_topup_min': 5,
+        // Part 3 defaults when an older server does not send them
+        'live_meeting_free_minutes_daily': 30,
+        'points_card_enabled': true,
       });
       expect(s.planMoney, 30);
       expect(s.error, isNull);
@@ -242,6 +245,203 @@ void main() {
       expect(isPdfBytes(Uint8List.fromList('%PDF-1.7'.codeUnits)), isTrue);
       expect(isPdfBytes(Uint8List.fromList([0x89, 0x50, 0x4E, 0x47])), isFalse);
       expect(isPdfBytes(Uint8List(0)), isFalse);
+    });
+  });
+
+  group('Part 3: card top-ups (§13)', () {
+    test('card is a method with a label; the wallet knows it is offered', () {
+      expect(pointsMethodText('card'), 'Card');
+      final w = PointsWallet.fromJson({'methods': ['card', 'bank_transfer']});
+      expect(w.hasCard, isTrue);
+      expect(PointsWallet.fromJson({'methods': ['bank_transfer']}).hasCard, isFalse);
+      expect(PointsWallet.fromJson({'methods': [{'id': 'card'}]}).hasCard, isTrue);
+    });
+
+    test('a card top-up: provider, payment id, no receipt, its own status text', () {
+      final x = PointsTopup.fromJson({
+        'id': 31,
+        'points': 50,
+        'amount': 50,
+        'currency': 'SAR',
+        'method': 'card',
+        'provider': 'moyasar',
+        'payment_id': 'pay_abc123',
+        'status': 'pending',
+        'created_at': '2026-10-28T10:00:00',
+      });
+      expect(x.isCard, isTrue);
+      expect(x.provider, 'moyasar');
+      expect(x.paymentId, 'pay_abc123');
+      expect(x.hasReceipt, isFalse);
+      expect(x.methodText, 'Card · Moyasar');
+      expect(x.statusText, 'Waiting for payment');
+      final approved = PointsTopup.fromJson({'id': 31, 'method': 'card', 'status': 'approved'});
+      expect(approved.statusText, 'Approved');
+      // a transfer keeps its receipt (has_receipt absent = true; false when the server says so)
+      expect(PointsTopup.fromJson({'id': 1, 'method': 'bank_transfer'}).hasReceipt, isTrue);
+      expect(PointsTopup.fromJson({'id': 1, 'method': 'bank_transfer', 'has_receipt': false}).hasReceipt, isFalse);
+      expect(PointsTopup.fromJson({'id': 1, 'method': 'instapay', 'status': 'pending'}).statusText, 'Under review');
+      expect(pointsProviderText('paymob'), 'Paymob');
+      expect(pointsProviderText(null), '');
+    });
+
+    test('checkout: the fields that open the payment page', () {
+      final c = PointsCheckout.fromJson({
+        'topup_id': 31,
+        'provider': 'moyasar',
+        'amount': 62.5,
+        'currency': 'SAR',
+        'points': 50,
+        'checkout_url': 'https://nextbrain.site/api/api/v1/payments/moyasar/form?t=abc',
+      });
+      expect(c.topupId, 31);
+      expect(c.provider, 'moyasar');
+      expect(c.amount, 62.5);
+      expect(c.points, 50);
+      expect(c.canOpen, isTrue);
+      expect(c.alreadyPaid, isFalse);
+      // nested top-up, another url key
+      final n = PointsCheckout.fromJson({'topup': {'id': 9, 'points': 10, 'status': 'pending'}, 'payment_url': 'https://p.example/x'});
+      expect(n.topupId, 9);
+      expect(n.checkoutUrl, 'https://p.example/x');
+      expect(PointsCheckout.fromJson({'topup_id': 1}).canOpen, isFalse);
+      expect(PointsCheckout.fromJson({'topup_id': 1, 'already_paid': true}).alreadyPaid, isTrue);
+    });
+
+    test('polling: until decided, a failed read is retried, a timeout says so', () async {
+      final slept = <Duration>[];
+      Future<void> sleep(Duration d) async => slept.add(d);
+      PointsTopup st(String s) => PointsTopup.fromJson({'id': 1, 'method': 'card', 'status': s});
+
+      var calls = 0;
+      final answers = [st('pending'), st('pending'), st('approved')];
+      final ok = await pollTopup(() async => answers[calls++], sleep: sleep);
+      expect(ok.approved, isTrue);
+      expect(calls, 3);
+      expect(slept.length, 2);
+
+      calls = 0;
+      final r = await pollTopup(() async {
+        calls++;
+        if (calls == 1) throw ApiException(statusCode: 500, message: 'boom');
+        return st('rejected');
+      }, sleep: sleep);
+      expect(r.rejected, isTrue);
+      expect(r.error, isNull);
+
+      slept.clear();
+      final late = await pollTopup(() async => st('pending'),
+          every: const Duration(seconds: 3), timeout: const Duration(seconds: 9), sleep: sleep);
+      expect(late.timedOut, isTrue);
+      expect(late.topup!.isPending, isTrue);
+      expect(slept.length, 3);
+
+      // zero wait = one read (the payment page was closed)
+      slept.clear();
+      final once = await pollTopup(() async => st('pending'), timeout: Duration.zero, sleep: sleep);
+      expect(once.timedOut, isTrue);
+      expect(slept, isEmpty);
+
+      final down = await pollTopup(() async => throw ApiException(statusCode: 503, message: 'down'), timeout: Duration.zero, sleep: sleep);
+      expect(down.topup, isNull);
+      expect(down.error, isNotNull);
+    });
+
+    test('settings: daily minutes and the card switch', () {
+      final s = PointsSettings.fromJson({'live_meeting_free_minutes_daily': 0, 'points_card_enabled': false});
+      expect(s.freeMinutesDaily, 0);
+      expect(s.cardEnabled, isFalse);
+      expect(s.error, isNull); // 0 = no daily cap
+      expect(s.toJson()['live_meeting_free_minutes_daily'], 0);
+      expect(s.toJson()['points_card_enabled'], false);
+      expect(const PointsSettings(freeMinutesDaily: -1).error, isNotNull);
+      expect(const PointsSettings(freeMinutesDaily: 2000).error, isNotNull);
+    });
+  });
+
+  group('Part 3: daily cap (§14) and auto-renew (§15)', () {
+    test('plan: daily free minutes / left, auto_renew, days_left', () {
+      final p = LivePlan.fromJson({
+        'active': false,
+        'needed': true,
+        'free_minutes': 15,
+        'daily_free_minutes': 30,
+        'daily_free_left': 12,
+        'auto_renew': true,
+        'days_left': 0,
+      });
+      expect(p.dailyFreeMinutes, 30);
+      expect(p.dailyFreeLeft, 12);
+      expect(p.hasDailyCap, isTrue);
+      expect(p.dailyLeft, 12);
+      expect(p.dailyUsedUp, isFalse);
+      expect(p.autoRenew, isTrue);
+      expect(p.copyWith(autoRenew: false).autoRenew, isFalse);
+      expect(p.copyWith(balance: 3).dailyFreeLeft, 12);
+
+      final used = LivePlan.fromJson({'needed': true, 'daily_free_minutes': 30, 'daily_free_left': 0});
+      expect(used.dailyUsedUp, isTrue);
+      // an active plan or no cap: no daily limit
+      expect(LivePlan.fromJson({'active': true, 'needed': true, 'daily_free_minutes': 30, 'daily_free_left': 0}).dailyUsedUp, isFalse);
+      expect(LivePlan.fromJson({'needed': true, 'daily_free_minutes': 0}).hasDailyCap, isFalse);
+      expect(LivePlan.fromJson({'needed': true}).hasDailyCap, isFalse); // an older server
+
+      final now = DateTime.utc(2026, 10, 28, 12);
+      final a = LivePlan.fromJson({'active': true, 'ends_at': '2026-10-31T12:00:00', 'days_left': 3});
+      expect(a.daysLeft(now), 3);
+      expect(planDaysLeftText(a.daysLeft(now)), '3 days left');
+      expect(planDaysLeftText(1), '1 day left');
+      expect(planDaysLeftText(0), 'Ends today');
+      // without days_left the app computes it
+      expect(LivePlan.fromJson({'active': true, 'ends_at': '2026-10-31T12:00:00'}).daysLeft(now), 3);
+      expect(dailyFreeLeftText(12, 30), '12 of 30 free minutes left today');
+      expect(dailyFreeLeftText(0, 30), contains('used up'));
+    });
+
+    test('meeting time limit: daily minutes / left and the window', () {
+      final l = MeetingTimeLimit.parse({'ends_at': null, 'free_minutes': 15, 'daily_minutes': 30, 'daily_left': 10})!;
+      expect(l.dailyMinutes, 30);
+      expect(l.dailyLeft, 10);
+      expect(l.hasDailyCap, isTrue);
+      expect(l.windowMinutes, 10); // min(free, daily left)
+      final note = meetingFreeNote(l, DateTime.utc(2026), owner: true);
+      expect(note, contains('first 10 live minutes'));
+      expect(note, contains('10 of 30 free minutes left today'));
+      expect(meetingFreeNote(l, DateTime.utc(2026)), isNot(contains('today'))); // not the owner's business
+
+      final used = MeetingTimeLimit.parse({'ends_at': null, 'free_minutes': 15, 'daily_minutes': 30, 'daily_left': 0})!;
+      expect(used.windowMinutes, 0);
+      expect(meetingFreeNote(used, DateTime.utc(2026), owner: true), contains("Today's free time is used up"));
+      expect(meetingFreeNote(used, DateTime.utc(2026)), contains('for today is used up'));
+
+      final plenty = MeetingTimeLimit.parse({'free_minutes': 15, 'daily_minutes': 30, 'daily_left': 25})!;
+      expect(plenty.windowMinutes, 15);
+      // no daily fields (older server): the plain free minutes
+      final old = MeetingTimeLimit.parse({'free_minutes': 15})!;
+      expect(old.hasDailyCap, isFalse);
+      expect(old.windowMinutes, 15);
+      expect(meetingFreeNote(old, DateTime.utc(2026), owner: true), isNot(contains('today')));
+    });
+
+    test('402 live_plan_required with reason daily_limit', () {
+      final e = coded(402, 'live_plan_required', {'reason': 'daily_limit', 'price_points': 30, 'balance': 0});
+      expect(pointsErrorCode(e), 'live_plan_required');
+      expect(pointsErrorDetail(e)['reason'], kDailyLimitReason);
+      expect(livePlanReasonText('daily_limit'), "Today's free time is used up");
+      expect(livePlanReasonText(null), isNull);
+      expect(livePlanReasonText('meeting_limit'), isNull);
+      AppConfig.lang = 'ar';
+      expect(livePlanReasonText('daily_limit'), isNotEmpty);
+    });
+
+    test('notification types → the wallet / plan module', () {
+      for (final t in ['live_plan', 'live_plan_required', 'live_plan_expiring', 'live_plan_renewed', 'live_plan_renew_failed']) {
+        expect(pointsModuleFor(t), 'live_plan', reason: t);
+      }
+      expect(pointsModuleFor('points'), 'points');
+      expect(pointsModuleFor('points_topup'), 'points');
+      expect(pointsModuleFor('course'), isNull);
+      expect(pointsModuleFor(null), isNull);
     });
   });
 

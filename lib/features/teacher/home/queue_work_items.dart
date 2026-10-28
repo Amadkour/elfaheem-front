@@ -53,6 +53,7 @@ import '../sessions/live/prejoin.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Parses 'HH:MM' from [session] fields and combines with [session.scheduledDate]
@@ -476,10 +477,12 @@ class ScheduleSessionCard extends StatelessWidget {
     this.background,
   });
 
-  Color _accentFor({required bool isOngoing}) {
-    if (isOngoing) return const Color(0xFFE24B4A);
-    if (session.isToday) return const Color(0xFF378ADD);
-    return const Color(0xFF1D9E75);
+  // live = danger · today = primary · later = success (the theme's roles, so dark mode and high contrast follow)
+  Color _accentFor(BuildContext context, {required bool isOngoing}) {
+    final c = context.colors;
+    if (isOngoing) return c.danger;
+    if (session.isToday) return c.primary;
+    return c.success;
   }
 
   @override
@@ -500,7 +503,7 @@ class ScheduleSessionCard extends StatelessWidget {
         // refreshes.
         final isOngoing = now.isAfter(start) && now.isBefore(end);
         final isUpcoming = !isOngoing && untilStart.inSeconds > 0;
-        final accent = _accentFor(isOngoing: isOngoing);
+        final accent = _accentFor(context, isOngoing: isOngoing);
 
         return Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -756,26 +759,10 @@ class _InlineStartButton extends StatelessWidget {
     return 'qw_start_now'.tr;
   }
 
-  LinearGradient get _gradient {
-    if (session.isOngoing) {
-      return const LinearGradient(
-        colors: [Color(0xFFE24B4A), Color(0xFFA32D2D)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    }
-    if (session.isToday) {
-      return const LinearGradient(
-        colors: [Color(0xFF378ADD), Color(0xFF185FA5)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-    }
-    return const LinearGradient(
-      colors: [Color(0xFF1D9E75), Color(0xFF0F6E56)],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    );
+  LinearGradient _gradient(BuildContext context) {
+    final c = context.colors;
+    final base = session.isOngoing ? c.danger : (session.isToday ? c.primary : c.success);
+    return LinearGradient(colors: [base, c.heroEnd(base)], begin: Alignment.topCenter, end: Alignment.bottomCenter);
   }
 
   @override
@@ -785,7 +772,7 @@ class _InlineStartButton extends StatelessWidget {
       // long-press → the guest link (the tile is too small for a second button)
       onLongPress: () => openTeacherGuestLink(context, session),
       child: Container(
-        decoration: BoxDecoration(gradient: _gradient),
+        decoration: BoxDecoration(gradient: _gradient(context)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -910,7 +897,7 @@ class _CourseInfo extends StatelessWidget {
             _MetaChip(Icons.group_rounded, students),
           ],
         ),
-        Divider(color: Color(0xFF1D9E75)),
+        Divider(color: context.colors.success),
         _StatusBadge(session: session, accent: accent, isOngoing: isOngoing??false),
       ],
     );
@@ -1005,6 +992,12 @@ class _LiveDotState extends State<_LiveDot>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _ctrl, reverse: true); // reduce motion parks this decorative loop
+  }
+
+  @override
   void dispose() {
     _ctrl.dispose();
     super.dispose();
@@ -1016,8 +1009,8 @@ class _LiveDotState extends State<_LiveDot>
     child: Container(
       width: 7,
       height: 7,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE24B4A),
+      decoration: BoxDecoration(
+        color: context.colors.danger,
         shape: BoxShape.circle,
       ),
     ),

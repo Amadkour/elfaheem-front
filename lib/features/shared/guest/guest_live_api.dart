@@ -19,7 +19,7 @@
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
-import '../live/live_time_limit.dart' show parseLiveTimeLimit;
+import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Models
@@ -208,6 +208,7 @@ class GuestJoin {
     required this.recordingEnabled,
     required this.identity,
     this.freeEndsAt,
+    this.liveStartedAt,
   });
 
   final String wsUrl;
@@ -220,6 +221,9 @@ class GuestJoin {
   /// A student meeting's free-time end (`time_limit.ends_at`, UTC), null = unlimited (spec §8).
   final DateTime? freeEndsAt;
 
+  /// When the room went live (`live_started_at`, UTC; spec §16), null when not sent.
+  final DateTime? liveStartedAt;
+
   factory GuestJoin.fromJson(Map<String, dynamic> j) => GuestJoin(
         wsUrl: (j['ws_url'] ?? j['url'] ?? '').toString(),
         token: (j['token'] ?? '').toString(),
@@ -228,6 +232,7 @@ class GuestJoin {
         recordingEnabled: j['recording_enabled'] == true,
         identity: (j['identity'] ?? '').toString(),
         freeEndsAt: parseLiveTimeLimit(j['time_limit']),
+        liveStartedAt: parseNaiveUtc(j['live_started_at']),
       );
 }
 

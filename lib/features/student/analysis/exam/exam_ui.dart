@@ -10,12 +10,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 String get kFont => AppFonts.display;
-// Legacy palette: the student exam screens read the theme (context.colors.danger / warning / purple /
-// primaryDark) instead; these stay only for the teacher screens that still import them.
-const kDeep = Color(0xFF0D47A1);
-const kDanger = Color(0xFFEF4444);
-const kAmber = Color(0xFFF59E0B);
-const kViolet = Color(0xFF6C5CE7);
+// Colours: context.colors.danger / warning / purple / primaryDark (the old kDanger … palette is gone).
 
 TextStyle examT(double size,
         {FontWeight w = FontWeight.w500, Color? c, double? h}) =>

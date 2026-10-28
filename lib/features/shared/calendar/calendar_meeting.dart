@@ -769,7 +769,13 @@ class _MeetingSheetState extends State<MeetingSheet> {
                           onPressed: _busy
                               ? null
                               : () async {
-                                  if (await showLivePlanSheet(context) && mounted) unawaited(_load());
+                                  // Under the daily cap with nothing left today (§14), the sheet says so up front.
+                                  final usedUp = limit.hasDailyCap &&
+                                      limit.windowMinutes <= 0 &&
+                                      limit.minutesLeft(DateTime.now().toUtc()) <= 0;
+                                  if (await showLivePlanSheet(context, reason: usedUp ? kDailyLimitReason : null) && mounted) {
+                                    unawaited(_load());
+                                  }
                                 },
                           child: Text(t('ترقية', 'Upgrade')),
                         ),
@@ -962,7 +968,9 @@ Future<JoinOutcome> joinMeetingWithPlan(BuildContext context, CalendarApi api, i
     final code = pointsErrorCode(e);
     if (code == 'meeting_time_limit') throw LiveJoinMessage(pointsCodeText(code)!);
     if (code != 'live_plan_required' || !context.mounted) rethrow;
-    if (!await showLivePlanSheet(context)) throw const LivePlanDeclined();
+    // `reason: daily_limit` (§14): today's free minutes are used up — the sheet's header says so.
+    final reason = pointsErrorDetail(e)['reason'];
+    if (!await showLivePlanSheet(context, reason: reason == null ? null : '$reason')) throw const LivePlanDeclined();
     try {
       return JoinOutcome.parse(await api.join(id));
     } catch (e2) {

@@ -32,6 +32,7 @@ import 'session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Material grid
@@ -886,6 +887,12 @@ class _LiveDotBadgeState extends State<_LiveDotBadge>
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
     _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _ctrl, reverse: true); // reduce motion parks this decorative loop
   }
 
   @override

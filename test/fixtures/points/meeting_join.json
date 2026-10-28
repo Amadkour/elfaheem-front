@@ -1,0 +1,20 @@
+{
+ "_source": {
+  "route": "POST /api/v1/me/calendar/meetings/1/join",
+  "status": 200,
+  "uid": 2
+ },
+ "payload": {
+  "meeting_id": 1,
+  "url": "ws://localhost:7880",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJuYW1lIjoiU3R1ZGVudDIiLCJ2aWRlbyI6eyJyb29tQWRtaW4iOnRydWUsInJvb21Kb2luIjp0cnVlLCJyb29tIjoibWVldF8xXzIxOWRmODI2OTkiLCJjYW5QdWJsaXNoIjp0cnVlLCJjYW5TdWJzY3JpYmUiOnRydWUsImNhblB1Ymxpc2hEYXRhIjp0cnVlfSwic3ViIjoibWVldF8yIiwiaXNzIjoiZGV2a2V5IiwibmJmIjoxNzkzMjA0MDQxLCJleHAiOjE3OTMyMjU2NDF9.zh7W4cMnav1a54yDmF-mPEkordq87q_Love3_KyIY_4",
+  "room": "meet_1_219df82699",
+  "time_limit": {
+   "ends_at": "2026-10-28T16:29:01.069986",
+   "free_minutes": 15,
+   "daily_minutes": 15,
+   "daily_left": 0
+  },
+  "live_started_at": "2026-10-28T16:14:01.069986"
+ }
+}

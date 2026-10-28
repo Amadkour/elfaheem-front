@@ -65,7 +65,7 @@ class PlScoreRing extends StatelessWidget {
           Column(mainAxisSize: MainAxisSize.min, children: [
             Text('${value.round()}',
                 style: TextStyle(fontSize: size * 0.30, fontWeight: FontWeight.w900, color: light ? Colors.white : color)),
-            Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? Colors.white70 : context.colors.textLight)),
+            Text('/100', style: TextStyle(fontSize: size * 0.12, color: light ? context.colors.onHeroMuted : context.colors.textLight)),
           ]),
         ]),
       );

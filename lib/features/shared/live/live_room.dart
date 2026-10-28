@@ -24,6 +24,8 @@
 // Part 2 (spec §8, §10): LiveLink.direct (a DIRECT link lets guests straight in; `PUT …/link {direct}` through
 // LiveRoomApi.updateLink) and JoinOutcome.freeEndsAt (`time_limit.ends_at` of a student meeting's join payload,
 // carried to the room as LiveResponseModel.freeEndsAt — countdown rules in live_time_limit.dart).
+// Part 3 (spec §16): JoinOutcome.liveStartedAt (`live_started_at`, the room's first join / the course session's
+// start) → LiveResponseModel.liveStartedAt → RoomPage.liveStartedAt → the info sheet's "Live for".
 library;
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
@@ -31,7 +33,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier;
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/model/live_response_model.dart';
-import 'live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit;
+import 'live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit, parseNaiveUtc;
 
 /// Kill-switch keys of the feature (ParentComponent / AppConfig.disableList).
 const String kLiveLobbyFeatureKey = 'live.lobby';
@@ -336,9 +338,17 @@ class JoinOutcome {
   /// `time_limit.free_minutes`, or null.
   int? get freeMinutes => parseLiveFreeMinutes(payload['time_limit']);
 
+  /// When the room went live (`live_started_at`, naive UTC → UTC); null when the payload does not say.
+  DateTime? get liveStartedAt => parseNaiveUtc(payload['live_started_at']);
+
   /// The room credentials for PreJoinPage / RoomPage; [sessionId] is the room screen's id (negative for meetings).
   LiveResponseModel live({required int sessionId}) => LiveResponseModel(
-      sessionId: sessionId, url: url, token: token, recordingEnabled: recordingEnabled, freeEndsAt: freeEndsAt);
+      sessionId: sessionId,
+      url: url,
+      token: token,
+      recordingEnabled: recordingEnabled,
+      freeEndsAt: freeEndsAt,
+      liveStartedAt: liveStartedAt);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

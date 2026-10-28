@@ -16,6 +16,7 @@ import '../../student/courses/details/course_detail_screen.dart';
 import '../../student/models.dart';
 import 'categories_provider.dart';
 import 'model.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 const double _kWideBreakpoint = 840;
 
@@ -843,6 +844,12 @@ class _ShimmerBaseState extends State<_ShimmerBase>
     vsync: this,
     duration: const Duration(milliseconds: 1100),
   )..repeat(reverse: true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _ctrl, reverse: true); // reduce motion parks this decorative loop
+  }
 
   @override
   void dispose() {

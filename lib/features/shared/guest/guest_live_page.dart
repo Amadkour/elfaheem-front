@@ -354,6 +354,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
               token: j.token,
               recordingEnabled: j.recordingEnabled,
               freeEndsAt: j.freeEndsAt,
+              liveStartedAt: j.liveStartedAt,
             ),
             onEnd: () async {},
             sessionName: info.displayTitle,

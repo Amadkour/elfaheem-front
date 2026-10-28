@@ -520,6 +520,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         isHost: args.isHost,
         canRecord: args.canRecord, // [meeting-recording]
         freeEndsAt: data.freeEndsAt,
+        liveStartedAt: data.liveStartedAt,
         startsAt: args.startsAt,
         hostName: args.hostName,
       );

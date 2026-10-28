@@ -10,6 +10,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../features/shared/guest/guest_state.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 // ══════════════════════════════════════════════
 //  ENUM  (mirrors Python RateType)
 // ══════════════════════════════════════════════
@@ -838,6 +839,12 @@ class _SkeletonState extends State<_Skeleton>
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
     _shimmer = CurvedAnimation(parent: _anim, curve: Curves.easeInOut);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _anim, reverse: true); // reduce motion parks this decorative loop
   }
 
   @override

@@ -70,113 +70,149 @@ class DisplaySettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final presetId = DisplaySettings.presets.where((p) => p.prefs == prefs).firstOrNull?.id;
+    // One child per row, so the list builds (and each font tile loads its font) only when it scrolls in:
+    // on web a font is a download.
+    Widget w(Widget child, {double bottom = 8}) => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: Padding(padding: EdgeInsets.only(bottom: bottom), child: child),
+          ),
+        );
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
       children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _Preview(prefs: prefs),
-              const SizedBox(height: 20),
-              AppSectionTitle(t('أوضاع جاهزة', 'Quick setups')),
-              const SizedBox(height: 8),
-              _Presets(selected: presetId, onPick: (p) => onChanged(p.prefs)),
-              const SizedBox(height: 24),
-              AppSectionTitle(t('الخط العربي', 'Arabic font')),
-              const SizedBox(height: 8),
-              _FontList(
-                options: AppFonts.catalog.where((f) => f.arabic).toList(),
-                selected: prefs.arabicFont,
-                sample: 'خطٌّ واضحٌ لقراءةٍ مريحة ١٢٣',
-                loadFonts: loadFonts,
-                onPick: (id) => onChanged(prefs.copyWith(arabicFont: id)),
+        w(_Preview(prefs: prefs), bottom: 20),
+        w(AppSectionTitle(t('أوضاع جاهزة', 'Quick setups'))),
+        w(_Presets(selected: presetId, onPick: (p) => onChanged(p.prefs)), bottom: 24),
+        w(AppSectionTitle(t('الخط العربي', 'Arabic font'))),
+        for (final f in AppFonts.catalog.where((f) => f.arabic))
+          w(_FontOptionTile(
+              option: f,
+              selected: f.id == prefs.arabicFont,
+              sample: 'خطٌّ واضحٌ لقراءةٍ مريحة ١٢٣',
+              load: loadFonts,
+              onTap: () => onChanged(prefs.copyWith(arabicFont: f.id)))),
+        w(const SizedBox(height: 16), bottom: 0),
+        w(AppSectionTitle(t('الخط الإنجليزي', 'English font'))),
+        for (final f in AppFonts.optionsFor('en'))
+          w(_FontOptionTile(
+              option: f,
+              selected: f.id == prefs.latinFont,
+              sample: 'The quick brown fox · 0123',
+              load: loadFonts,
+              onTap: () => onChanged(prefs.copyWith(latinFont: f.id)))),
+        w(const SizedBox(height: 16), bottom: 0),
+        w(AppSectionTitle(t('الحجم', 'Size'))),
+        w(
+          AppCard(
+            child: Column(children: [
+              _ScaleRow(
+                icon: Icons.format_size_rounded,
+                title: t('حجم النص', 'Text size'),
+                hint: t('يُضاف إلى حجم النص في إعدادات جهازك', "On top of your device's text size"),
+                value: prefs.textScale,
+                min: DisplayPrefs.minText,
+                max: DisplayPrefs.maxText,
+                onChanged: (v) => onChanged(prefs.copyWith(textScale: v)),
               ),
-              const SizedBox(height: 24),
-              AppSectionTitle(t('الخط الإنجليزي', 'English font')),
-              const SizedBox(height: 8),
-              _FontList(
-                options: AppFonts.optionsFor('en'),
-                selected: prefs.latinFont,
-                sample: 'The quick brown fox · 0123',
-                loadFonts: loadFonts,
-                onPick: (id) => onChanged(prefs.copyWith(latinFont: id)),
+              const Divider(height: 28),
+              _ScaleRow(
+                icon: Icons.zoom_in_rounded,
+                title: t('تكبير الواجهة', 'Interface zoom'),
+                hint: t('يكبّر كل شيء: النص والأيقونات والأزرار والمسافات', 'Enlarges everything: text, icons, buttons and spacing'),
+                value: prefs.zoom,
+                min: DisplayPrefs.minZoom,
+                max: DisplayPrefs.maxZoom,
+                onChanged: (v) => onChanged(prefs.copyWith(zoom: v)),
               ),
-              const SizedBox(height: 24),
-              AppSectionTitle(t('الحجم', 'Size')),
-              const SizedBox(height: 8),
-              AppCard(
-                child: Column(children: [
-                  _ScaleRow(
-                    icon: Icons.format_size_rounded,
-                    title: t('حجم النص', 'Text size'),
-                    hint: t('يُضاف إلى حجم النص في إعدادات جهازك', "On top of your device's text size"),
-                    value: prefs.textScale,
-                    min: DisplayPrefs.minText,
-                    max: DisplayPrefs.maxText,
-                    onChanged: (v) => onChanged(prefs.copyWith(textScale: v)),
-                  ),
-                  const Divider(height: 28),
-                  _ScaleRow(
-                    icon: Icons.zoom_in_rounded,
-                    title: t('تكبير الواجهة', 'Interface zoom'),
-                    hint: t('يكبّر كل شيء: النص والأيقونات والأزرار والمسافات', 'Enlarges everything: text, icons, buttons and spacing'),
-                    value: prefs.zoom,
-                    min: DisplayPrefs.minZoom,
-                    max: DisplayPrefs.maxZoom,
-                    onChanged: (v) => onChanged(prefs.copyWith(zoom: v)),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 24),
-              AppSectionTitle(t('الراحة', 'Comfort')),
-              const SizedBox(height: 8),
-              AppCard(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                child: Column(children: [
-                  AppSwitchTile(
-                    icon: Icons.format_bold_rounded,
-                    title: t('نص عريض', 'Bold text'),
-                    subtitle: t('كل النصوص بخط أثقل', 'Every text drawn heavier'),
-                    value: prefs.boldText,
-                    onChanged: (v) => onChanged(prefs.copyWith(boldText: v)),
-                  ),
-                  AppSwitchTile(
-                    icon: Icons.contrast_rounded,
-                    title: t('تباين عالٍ', 'High contrast'),
-                    subtitle: t('النصوص الباهتة والفواصل أوضح', 'Faint text and dividers made darker'),
-                    value: prefs.highContrast,
-                    onChanged: (v) => onChanged(prefs.copyWith(highContrast: v)),
-                  ),
-                  AppSwitchTile(
-                    icon: Icons.motion_photos_off_rounded,
-                    title: t('تقليل الحركة', 'Reduce motion'),
-                    subtitle: t('بلا انتقالات بين الصفحات وحركة أقل', 'No page transitions, fewer animations'),
-                    value: prefs.reduceMotion,
-                    onChanged: (v) => onChanged(prefs.copyWith(reduceMotion: v)),
-                  ),
-                  AppSwitchTile(
-                    icon: Icons.touch_app_rounded,
-                    title: t('أزرار أكبر للمس', 'Larger touch targets'),
-                    subtitle: t('مساحة ضغط أوسع للأزرار والقوائم', 'Roomier buttons, chips and list rows'),
-                    value: prefs.largeTargets,
-                    onChanged: (v) => onChanged(prefs.copyWith(largeTargets: v)),
-                  ),
-                ]),
-              ),
-              const SizedBox(height: 20),
-              if (!prefs.isDefault)
-                Center(
-                  child: TextButton.icon(
-                    onPressed: () => onChanged(const DisplayPrefs()),
-                    icon: const Icon(Icons.restart_alt_rounded),
-                    label: Text(t('استعادة الإعدادات الافتراضية', 'Restore the defaults')),
-                  ),
-                ),
             ]),
           ),
+          bottom: 24,
         ),
+        w(AppSectionTitle(t('الراحة', 'Comfort'))),
+        w(
+          AppCard(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _SpacingRow(value: prefs.spacing, onChanged: (v) => onChanged(prefs.copyWith(spacing: v))),
+              AppSwitchTile(
+                icon: Icons.format_bold_rounded,
+                title: t('نص عريض', 'Bold text'),
+                subtitle: t('كل النصوص بخط أثقل', 'Every text drawn heavier'),
+                value: prefs.boldText,
+                onChanged: (v) => onChanged(prefs.copyWith(boldText: v)),
+              ),
+              AppSwitchTile(
+                icon: Icons.contrast_rounded,
+                title: t('تباين عالٍ', 'High contrast'),
+                subtitle: t('النصوص الباهتة والفواصل أوضح', 'Faint text and dividers made darker'),
+                value: prefs.highContrast,
+                onChanged: (v) => onChanged(prefs.copyWith(highContrast: v)),
+              ),
+              AppSwitchTile(
+                icon: Icons.motion_photos_off_rounded,
+                title: t('تقليل الحركة', 'Reduce motion'),
+                subtitle: t('بلا انتقالات ولا حركة في الصفحات', 'No page transitions or moving effects'),
+                value: prefs.reduceMotion,
+                onChanged: (v) => onChanged(prefs.copyWith(reduceMotion: v)),
+              ),
+              AppSwitchTile(
+                icon: Icons.touch_app_rounded,
+                title: t('أزرار أكبر للمس', 'Larger touch targets'),
+                subtitle: t('مساحة ضغط أوسع للأزرار والقوائم', 'Roomier buttons, chips and list rows'),
+                value: prefs.largeTargets,
+                onChanged: (v) => onChanged(prefs.copyWith(largeTargets: v)),
+              ),
+            ]),
+          ),
+          bottom: 20,
+        ),
+        if (!prefs.isDefault)
+          w(
+            Center(
+              child: TextButton.icon(
+                onPressed: () => onChanged(const DisplayPrefs()),
+                icon: const Icon(Icons.restart_alt_rounded),
+                label: Text(t('استعادة الإعدادات الافتراضية', 'Restore the defaults')),
+              ),
+            ),
+          ),
       ],
+    );
+  }
+}
+
+/// Reading spacing: Normal · Comfortable · Wide.
+class _SpacingRow extends StatelessWidget {
+  const _SpacingRow({required this.value, required this.onChanged});
+  final int value;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final labels = [t('عادي', 'Normal'), t('مريح', 'Comfortable'), t('واسع', 'Wide')];
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(Icons.format_line_spacing_rounded, size: 20, color: c.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(t('تباعد القراءة', 'Reading spacing'), style: appText(14, w: FontWeight.w700, c: c.textDark))),
+        ]),
+        const SizedBox(height: 2),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 30),
+          child: Text(
+              t('سطور أعلى ومسافات أوسع بين الكلمات — أسهل للقرّاء الصغار ولعُسر القراءة',
+                  'Taller lines and wider gaps between words — easier for young readers and dyslexia'),
+              style: appText(11.5, c: c.textLight, h: 1.35)),
+        ),
+        const SizedBox(height: 10),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (var i = 0; i < labels.length; i++) AppChoiceChip(label: labels[i], selected: value == i, onTap: () => onChanged(i)),
+        ]),
+      ]),
     );
   }
 }
@@ -266,23 +302,6 @@ class _Presets extends StatelessWidget {
       );
     });
   }
-}
-
-class _FontList extends StatelessWidget {
-  const _FontList({required this.options, required this.selected, required this.sample, required this.onPick, required this.loadFonts});
-  final List<AppFontOption> options;
-  final String selected, sample;
-  final ValueChanged<String> onPick;
-  final bool loadFonts;
-
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        for (final f in options)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: _FontOptionTile(option: f, selected: f.id == selected, sample: sample, load: loadFonts, onTap: () => onPick(f.id)),
-          ),
-      ]);
 }
 
 class _FontOptionTile extends StatefulWidget {

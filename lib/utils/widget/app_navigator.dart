@@ -25,7 +25,7 @@ import 'view_as_state.dart';
 import '../../features/org/governance/gov_wiring.dart' show govOpenAssignmentsLink, govOpenDelegationLink, govOpenItemLink, govOpenSessionLink;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
-import '../../features/shared/points/points_api.dart' show kPointsFeatureKey;
+import '../../features/shared/points/points_api.dart' show kPointsFeatureKey, pointsModuleFor;
 import '../../features/shared/points/points_wallet_page.dart' show PointsWalletPage;
 
 class AppNavigator {
@@ -58,7 +58,8 @@ class AppNavigator {
   /// org_reports | org_timetable (needs [orgId]: the organization's Timetable section, on that draft) |
   /// live_lobby ([kind] `session` | `meeting` + [targetId]: that room's admission lobby, live-rooms-spec §4) |
   /// points (top-up approved / rejected → the wallet) | live_plan (plan bought / free time over → the wallet with
-  /// the live-meeting plan sheet open, live-rooms-spec §8 – §9)
+  /// the live-meeting plan sheet open, live-rooms-spec §8 – §9; also live_plan_expiring · live_plan_renewed ·
+  /// live_plan_renew_failed, Part 3 §15)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
     final nav = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
@@ -135,13 +136,16 @@ class AppNavigator {
         return;
       case 'points':
       case 'live_plan':
+      case 'live_plan_expiring': // Part 3 §15: the plan ends within 3 days · renewed · could not renew → the plan
+      case 'live_plan_renewed':
+      case 'live_plan_renew_failed':
         if (AppConfig.disableList.contains(kPointsFeatureKey)) {
           await nav.pushNamed('/notifications');
           return;
         }
         await nav.push(MaterialPageRoute(
             settings: const RouteSettings(name: '/points'),
-            builder: (_) => PointsWalletPage(openPlan: module == 'live_plan')));
+            builder: (_) => PointsWalletPage(openPlan: pointsModuleFor(module) == 'live_plan')));
         return;
       case 'profile':
         await nav.pushNamed('/profile');
@@ -163,7 +167,8 @@ class AppNavigator {
     try {
       final r = await ApiClient().get('/api/v1/notifications/$notificationId/target');
       if (r is! Map) return;
-      final module = r['module']?.toString();
+      // the wallet / plan notifications (points_topup, live_plan*) when the server names no module
+      final module = r['module']?.toString() ?? pointsModuleFor((r['type'] ?? r['related_type'])?.toString());
       final courseId = int.tryParse('${r['course_id'] ?? ''}');
       final orgId = int.tryParse('${r['org_id'] ?? ''}');
       if (orgId != null && await _openOrgFirst(orgId, module == null && courseId == null)) return;
@@ -228,7 +233,9 @@ class AppNavigator {
     // course-profile notifications carry {type: course_profile, id: <course id>} (services/organization notify_users)
     final profile = data['type'] == 'course_profile';
     final timetable = data['type'] == 'org_timetable';        // a draft timetable is ready (schedule_auto / autopilot)
-    final module = data['module']?.toString() ?? (profile ? 'course_profile' : (timetable ? 'org_timetable' : null));
+    // the wallet and the plan push {type: points | live_plan | live_plan_expiring | live_plan_renewed | …} (spec §9, §15)
+    final module = data['module']?.toString() ??
+        (profile ? 'course_profile' : (timetable ? 'org_timetable' : pointsModuleFor(data['type']?.toString())));
     final govPush = (module ?? '').startsWith('org_');        // governance pushes carry {module, id}
     final target = int.tryParse('${data['target_id'] ?? data['course_id'] ?? (profile || timetable || govPush ? data['id'] : null) ?? ''}');
     final orgId = int.tryParse('${data['org_id'] ?? ''}');

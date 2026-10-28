@@ -42,6 +42,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart' show StorageService;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import '../core/display/display_settings.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Facts the splash shows (set by the bootstrap, read by the widget)
@@ -303,7 +304,8 @@ abstract final class SplashArt {
   /// Reduced motion from the platform: the hand-off overlay sits ABOVE
   /// MaterialApp, where there is no MediaQuery.
   static bool get reduceMotion =>
-      WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+      WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations ||
+      DisplaySettings.instance.prefs.reduceMotion; // the app's own "Reduce motion" (loaded right after storage)
 
   static Future<void> preload() async {
     if (image != null) return; // retry after a fatal start: keep the decoded art (no second, leaked copy)
@@ -410,7 +412,7 @@ class _BootSplashState extends State<BootSplash> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.maybeOf(context);
-    final reduce = mq?.disableAnimations ?? SplashArt.reduceMotion;
+    final reduce = (mq?.disableAnimations ?? false) || SplashArt.reduceMotion;
     final dark = SplashTheme.dark.value ??
         ((mq?.platformBrightness ?? ui.PlatformDispatcher.instance.platformBrightness) == Brightness.dark);
     final bg = dark ? splashEmerald : splashCream;
@@ -942,7 +944,7 @@ class _SplashHandOffState extends State<SplashHandOff> with SingleTickerProvider
     // Let the app paint its first frame underneath, then dissolve the splash.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (MediaQuery.maybeOf(context)?.disableAnimations ?? SplashArt.reduceMotion) {
+      if ((MediaQuery.maybeOf(context)?.disableAnimations ?? false) || SplashArt.reduceMotion) {
         _out.duration = const Duration(milliseconds: 220);
       }
       _out.forward().whenComplete(() {

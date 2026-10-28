@@ -5,6 +5,9 @@
 //                                               history (ledger), my top-ups
 //   POST /api/v1/me/points/topups               multipart: points · method · receipt
 //   GET  /api/v1/me/live-plan · POST …/subscribe   the live-meeting plan (402 points_insufficient)
+//   PUT  /api/v1/me/live-plan {auto_renew}          Part 3 §15: renew automatically from the points
+//   POST /api/v1/me/points/checkout {points}        Part 3 §13: buy points by card → the provider's payment page
+//   GET  /api/v1/me/points/topups/{id}              the top-up, polled after the payment page closes (pollTopup)
 //   Admin:  /api/v1/admin/points/users · /grant · /users/{uid}/history · /topups[?status] · /topups/{id}/approve |
 //           reject | receipt · /settings
 //
@@ -106,7 +109,16 @@ String pointsMethodText(String method) => switch (method) {
       'instapay' => t('إنستاباي', 'InstaPay'),
       'wallet' => t('محفظة إلكترونية', 'Mobile wallet'),
       'cash' => t('نقداً', 'Cash'),
+      'card' => t('بطاقة بنكية', 'Card'),
       _ => method,
+    };
+
+/// A payment provider's name as shown (`moyasar` → Moyasar).
+String pointsProviderText(String? provider) => switch ((provider ?? '').toLowerCase()) {
+      'moyasar' => 'Moyasar',
+      'paymob' => 'Paymob',
+      '' => '',
+      final p => p[0].toUpperCase() + p.substring(1),
     };
 
 /// One ledger row's kind as text; a spend on the live plan says so.
@@ -161,6 +173,31 @@ String? pointsCodeText(String? code) => switch (code) {
       'points_zero' => t('اكتب عدداً غير الصفر', 'Enter a number other than zero'),
       'user_not_found' => t('المستخدم غير موجود', 'User not found'),
       'topup_not_found' => t('طلب الشحن غير موجود', 'Top-up not found'),
+      'card_disabled' || 'points_card_disabled' || 'card_not_available' || 'card_unavailable' =>
+        t('الدفع بالبطاقة غير متاح الآن', 'Paying by card is not available right now'),
+      'provider_not_configured' || 'no_payment_provider' || 'payment_provider_unavailable' || 'bad_provider' =>
+        t('بوابة الدفع غير متاحة الآن', 'The payment gateway is not available right now'),
+      'gateway_error' => t('تعذّر فتح صفحة الدفع الآن، حاول بعد قليل', 'The payment page could not be opened now, try again shortly'),
+      'topup_by_card' => t('طلبات البطاقة يقرّرها مزوّد الدفع', 'Card top-ups are decided by the payment provider'),
+      'checkout_failed' || 'payment_session_failed' => t('تعذّر فتح صفحة الدفع، حاول مرة أخرى', 'The payment page could not be opened, try again'),
+      'card_topup_readonly' || 'topup_card' =>
+        t('طلبات البطاقة يقرّرها مزوّد الدفع', 'Card top-ups are decided by the payment provider'),
+      _ => null,
+    };
+
+/// `reason` of a 402 `live_plan_required` (spec §14): `daily_limit` = the owner's free minutes of today are used up.
+const String kDailyLimitReason = 'daily_limit';
+
+/// The plan sheet's header for a 402 reason (null = the usual title).
+String? livePlanReasonText(String? reason) =>
+    reason == kDailyLimitReason ? t('انتهى وقتك المجاني لليوم', "Today's free time is used up") : null;
+
+/// A notification / push type of the wallet and the plan → the AppNavigator module (null = not ours).
+/// `live_plan_expiring` · `live_plan_renewed` · `live_plan_renew_failed` (§15) open the plan like `live_plan`.
+String? pointsModuleFor(String? type) => switch ((type ?? '').trim()) {
+      'points' || 'points_topup' => 'points',
+      'live_plan' || 'live_plan_required' || 'live_plan_expiring' || 'live_plan_renewed' || 'live_plan_renew_failed' =>
+        'live_plan',
       _ => null,
     };
 
@@ -188,7 +225,8 @@ String pointsErrorText(Object e) {
 // Models
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// GET /me/live-plan — {active, ends_at|null, price_points, days, free_minutes, balance, needed}.
+/// GET /me/live-plan — {active, ends_at|null, price_points, days, free_minutes, balance, needed} + Part 3:
+/// `daily_free_minutes`, `daily_free_left` (§14), `auto_renew`, `days_left` (§15).
 class LivePlan {
   const LivePlan({
     this.active = false,
@@ -198,6 +236,10 @@ class LivePlan {
     this.freeMinutes = 15,
     this.balance = 0,
     this.needed = true,
+    this.dailyFreeMinutes = 0,
+    this.dailyFreeLeft,
+    this.autoRenew = false,
+    this.serverDaysLeft,
   });
 
   final bool active;
@@ -210,6 +252,18 @@ class LivePlan {
   /// False for staff: their meetings are unlimited, the plan is never shown to them.
   final bool needed;
 
+  /// The daily cap of free live minutes over all of the person's meetings (`daily_free_minutes`; 0 = no cap).
+  final int dailyFreeMinutes;
+
+  /// Free minutes left today (`daily_free_left`); null when the server does not say (an older server / no cap).
+  final int? dailyFreeLeft;
+
+  /// Renew the plan from the points when it ends (`auto_renew`, `PUT /me/live-plan {auto_renew}`).
+  final bool autoRenew;
+
+  /// The server's `days_left` (null on an older server: [daysLeft] computes it).
+  final int? serverDaysLeft;
+
   factory LivePlan.fromJson(dynamic json) {
     final j = _map(json);
     return LivePlan(
@@ -220,6 +274,10 @@ class LivePlan {
       freeMinutes: _int(j['free_minutes'], 15),
       balance: _int(j['balance']),
       needed: j['needed'] != false,
+      dailyFreeMinutes: _int(j['daily_free_minutes']),
+      dailyFreeLeft: _intOrNull(j['daily_free_left']),
+      autoRenew: j['auto_renew'] == true,
+      serverDaysLeft: _intOrNull(j['days_left']),
     );
   }
 
@@ -227,14 +285,27 @@ class LivePlan {
 
   int get shortfall => pointsShortfall(balance, pricePoints);
 
-  /// Whole days left of an active plan (0 when it ends today or is inactive / unlimited).
+  /// A daily cap applies (a student without an active plan, the setting above 0).
+  bool get hasDailyCap => needed && !active && dailyFreeMinutes > 0;
+
+  /// Free minutes left today under the cap (the whole cap when the server does not say), never negative.
+  int get dailyLeft => (dailyFreeLeft ?? dailyFreeMinutes).clamp(0, dailyFreeMinutes < 0 ? 0 : dailyFreeMinutes);
+
+  /// Today's free minutes are all used: a new meeting cannot go live until tomorrow (or the plan).
+  bool get dailyUsedUp => hasDailyCap && dailyLeft <= 0;
+
+  /// Whole days left of an active plan (0 when it ends today or is inactive / unlimited). The server's `days_left`
+  /// wins when it sent one.
   int daysLeft(DateTime nowUtc) {
     final e = endsAt;
-    if (!active || e == null || !e.isAfter(nowUtc)) return 0;
+    if (!active || e == null) return 0;
+    final s = serverDaysLeft;
+    if (s != null) return s < 0 ? 0 : s;
+    if (!e.isAfter(nowUtc)) return 0;
     return e.difference(nowUtc).inHours ~/ 24;
   }
 
-  LivePlan copyWith({int? balance}) => LivePlan(
+  LivePlan copyWith({int? balance, bool? autoRenew}) => LivePlan(
         active: active,
         endsAt: endsAt,
         pricePoints: pricePoints,
@@ -242,20 +313,54 @@ class LivePlan {
         freeMinutes: freeMinutes,
         balance: balance ?? this.balance,
         needed: needed,
+        dailyFreeMinutes: dailyFreeMinutes,
+        dailyFreeLeft: dailyFreeLeft,
+        autoRenew: autoRenew ?? this.autoRenew,
+        serverDaysLeft: serverDaysLeft,
       );
 }
 
+/// "3 days left" / "1 day left" / "Ends today".
+String planDaysLeftText(int days) => days <= 0
+    ? t('ينتهي اليوم', 'Ends today')
+    : days == 1
+        ? t('متبقٍ يوم واحد', '1 day left')
+        : t('متبقٍ $days يوم', '$days days left');
+
+/// "12 of 30 free minutes left today" (the daily cap, §14).
+String dailyFreeLeftText(int left, int cap) => left <= 0
+    ? t('انتهت دقائقك المجانية لليوم ($cap دقيقة)', 'Your $cap free minutes of today are used up')
+    : t('متبقٍ $left من $cap دقيقة مجانية اليوم', '$left of $cap free minutes left today');
+
 /// A meeting's free-time limit (`time_limit` of the join payload and the meeting detail); null = unlimited.
 class MeetingTimeLimit {
-  const MeetingTimeLimit({this.endsAt, this.freeMinutes = 15});
+  const MeetingTimeLimit({this.endsAt, this.freeMinutes = 15, this.dailyMinutes = 0, this.dailyLeft});
 
   final DateTime? endsAt;
   final int freeMinutes;
 
+  /// The owner's daily cap (`daily_minutes`, §14; 0 = none) and what is left of it today (`daily_left`).
+  final int dailyMinutes;
+  final int? dailyLeft;
+
   static MeetingTimeLimit? parse(dynamic v) {
     if (v is! Map) return null;
     final j = Map<String, dynamic>.from(v);
-    return MeetingTimeLimit(endsAt: pointsParseUtc(j['ends_at']), freeMinutes: _int(j['free_minutes'], 15));
+    return MeetingTimeLimit(
+      endsAt: pointsParseUtc(j['ends_at']),
+      freeMinutes: _int(j['free_minutes'], 15),
+      dailyMinutes: _int(j['daily_minutes']),
+      dailyLeft: _intOrNull(j['daily_left']),
+    );
+  }
+
+  bool get hasDailyCap => dailyMinutes > 0 && dailyLeft != null;
+
+  /// The free window this meeting will get when it goes live: `min(free_minutes, daily_left)` under a cap.
+  int get windowMinutes {
+    final d = dailyLeft;
+    if (!hasDailyCap || d == null) return freeMinutes;
+    return d < freeMinutes ? (d < 0 ? 0 : d) : freeMinutes;
   }
 
   /// Minutes of free time left at [nowUtc] (the full allowance before the room was first joined).
@@ -353,6 +458,10 @@ class PointsTopup {
     this.createdAt,
     this.decidedAt,
     this.user,
+    this.provider,
+    this.paymentId,
+    this.hasReceipt = true,
+    this.failureReason,
   });
 
   final int id;
@@ -366,20 +475,46 @@ class PointsTopup {
   final DateTime? decidedAt;
   final PointsUser? user;
 
-  factory PointsTopup.fromJson(Map<String, dynamic> j) => PointsTopup(
-        id: _int(j['id']),
-        points: _int(j['points']),
-        amount: _double(j['amount']),
-        currency: '${j['currency'] ?? ''}',
-        method: '${j['method'] ?? ''}',
-        status: topupStatusFrom(j['status']),
-        note: _strOrNull(j['note']),
-        createdAt: pointsParseUtc(j['created_at']),
-        decidedAt: pointsParseUtc(j['decided_at']),
-        user: j['user'] is Map ? PointsUser.fromJson(j['user']) : null,
-      );
+  /// Card top-ups (§13): the payment provider (`moyasar` | `paymob`) and its payment id.
+  final String? provider;
+  final String? paymentId;
+
+  /// A transfer's receipt is on the server (`has_receipt`; a card top-up has none).
+  final bool hasReceipt;
+
+  /// Why the provider refused a card payment (`failure_reason`), when it said.
+  final String? failureReason;
+
+  factory PointsTopup.fromJson(Map<String, dynamic> j) {
+    final method = '${j['method'] ?? ''}';
+    return PointsTopup(
+      id: _int(j['id'] ?? j['topup_id']),
+      points: _int(j['points']),
+      amount: _double(j['amount']),
+      currency: '${j['currency'] ?? ''}',
+      method: method,
+      status: topupStatusFrom(j['status']),
+      note: _strOrNull(j['note']),
+      createdAt: pointsParseUtc(j['created_at']),
+      decidedAt: pointsParseUtc(j['decided_at']),
+      user: j['user'] is Map ? PointsUser.fromJson(j['user']) : null,
+      provider: _strOrNull(j['provider']),
+      paymentId: _strOrNull(j['payment_id']),
+      hasReceipt: j['has_receipt'] is bool ? j['has_receipt'] == true : method != 'card',
+      failureReason: _strOrNull(j['failure_reason']),
+    );
+  }
 
   bool get isPending => status == TopupStatus.pending;
+
+  /// Paid by card: decided by the provider, never by an admin (§13).
+  bool get isCard => method == 'card';
+
+  /// "Card · Moyasar" / "Bank transfer".
+  String get methodText => [pointsMethodText(method), if (isCard && provider != null) pointsProviderText(provider)].join(' · ');
+
+  /// The status as the owner reads it: a pending card top-up waits for the payment, not for a review.
+  String get statusText => isCard && isPending ? t('بانتظار الدفع', 'Waiting for payment') : topupStatusText(status);
 
   String get amountText => moneyText(amount, currency);
 
@@ -438,6 +573,96 @@ class PointsWallet {
   double priceOf(int points) => pointsMoney(points, pricePerPoint);
 
   int get pendingTopups => topups.where((x) => x.isPending).length;
+
+  /// The server offers paying by card (`methods` has `card`: the setting is on and a provider is configured).
+  bool get hasCard => methods.contains('card');
+}
+
+/// `POST /me/points/checkout` (§13): the card top-up row and what opens the provider's payment page — the same
+/// `checkout_url` the course checkout returns (opened in the WebView on mobile, the iframe on web).
+class PointsCheckout {
+  const PointsCheckout({
+    required this.topupId,
+    required this.checkoutUrl,
+    this.provider,
+    this.amount = 0,
+    this.currency = '',
+    this.points = 0,
+    this.alreadyPaid = false,
+  });
+
+  final int topupId;
+  final String checkoutUrl;
+  final String? provider;
+  final double amount;
+  final String currency;
+  final int points;
+
+  /// The server credited the points without a payment page (a repeated call on a paid top-up).
+  final bool alreadyPaid;
+
+  factory PointsCheckout.fromJson(dynamic json) {
+    final j = _map(json);
+    final topup = _map(j['topup']);
+    return PointsCheckout(
+      topupId: _int(j['topup_id'] ?? topup['id'] ?? j['id']),
+      checkoutUrl: '${j['checkout_url'] ?? j['payment_url'] ?? j['url'] ?? j['redirect_url'] ?? ''}'.trim(),
+      provider: _strOrNull(j['provider'] ?? topup['provider']),
+      amount: _double(j['amount'] ?? topup['amount']),
+      currency: '${j['currency'] ?? topup['currency'] ?? ''}',
+      points: _int(j['points'] ?? topup['points']),
+      alreadyPaid: j['already_paid'] == true || '${j['status'] ?? topup['status'] ?? ''}' == 'approved',
+    );
+  }
+
+  /// The payment page can be opened.
+  bool get canOpen => checkoutUrl.startsWith('https://') || checkoutUrl.startsWith('http://');
+}
+
+/// What polling a card top-up ended with.
+class TopupPollResult {
+  const TopupPollResult({this.topup, this.timedOut = false, this.error});
+
+  /// The latest top-up read (null when no read succeeded).
+  final PointsTopup? topup;
+
+  /// Still pending when the time ran out: the screen offers "Check again".
+  final bool timedOut;
+
+  /// The last read failed (and nothing was read after it).
+  final Object? error;
+
+  bool get approved => topup?.status == TopupStatus.approved;
+
+  bool get rejected => topup?.status == TopupStatus.rejected;
+}
+
+/// Polls [fetch] every [every] until the top-up is no longer pending, or [timeout] passes. A failed read is retried
+/// (it never ends the wait early); [sleep] is the test seam.
+Future<TopupPollResult> pollTopup(
+  Future<PointsTopup> Function() fetch, {
+  Duration every = const Duration(seconds: 3),
+  Duration timeout = const Duration(minutes: 2),
+  Future<void> Function(Duration)? sleep,
+  bool Function()? cancelled,
+}) async {
+  final wait = sleep ?? (d) => Future<void>.delayed(d);
+  var waited = Duration.zero;
+  PointsTopup? last;
+  Object? error;
+  while (true) {
+    if (cancelled?.call() == true) return TopupPollResult(topup: last, timedOut: true, error: error);
+    try {
+      last = await fetch();
+      error = null;
+      if (!last.isPending) return TopupPollResult(topup: last);
+    } catch (e) {
+      error = e;
+    }
+    if (waited >= timeout) return TopupPollResult(topup: last, timedOut: true, error: error);
+    await wait(every);
+    waited += every;
+  }
 }
 
 /// One row of the admin's user search.
@@ -457,7 +682,7 @@ class PointsUserRow {
   }
 }
 
-/// The six app settings of §9 (super admin).
+/// The app settings of §9 + Part 3 (`live_meeting_free_minutes_daily` §14, `points_card_enabled` §13).
 class PointsSettings {
   const PointsSettings({
     this.freeMinutes = 15,
@@ -466,6 +691,8 @@ class PointsSettings {
     this.pointPrice = 1.0,
     this.currency = 'SAR',
     this.topupMin = 10,
+    this.freeMinutesDaily = 30,
+    this.cardEnabled = true,
   });
 
   final int freeMinutes;
@@ -474,6 +701,12 @@ class PointsSettings {
   final double pointPrice;
   final String currency;
   final int topupMin;
+
+  /// A student's free live minutes per day over all meetings (0 = no daily cap).
+  final int freeMinutesDaily;
+
+  /// Offer "Card" in Buy points (when a payment provider is configured).
+  final bool cardEnabled;
 
   factory PointsSettings.fromJson(dynamic json) {
     final j = _map(json);
@@ -485,6 +718,8 @@ class PointsSettings {
       pointPrice: _double(s['points_price'], 1),
       currency: '${s['points_currency'] ?? 'SAR'}',
       topupMin: _int(s['points_topup_min'], 10),
+      freeMinutesDaily: _int(s['live_meeting_free_minutes_daily'], 30),
+      cardEnabled: s['points_card_enabled'] is bool ? s['points_card_enabled'] == true : '${s['points_card_enabled']}' != 'false',
     );
   }
 
@@ -495,6 +730,8 @@ class PointsSettings {
         'points_price': pointPrice,
         'points_currency': currency,
         'points_topup_min': topupMin,
+        'live_meeting_free_minutes_daily': freeMinutesDaily,
+        'points_card_enabled': cardEnabled,
       };
 
   /// What the plan costs in money at the current point price.
@@ -510,6 +747,9 @@ class PointsSettings {
     if (pointPrice <= 0) return t('سعر النقطة يجب أن يكون أكبر من صفر', 'The point price must be above zero');
     if (currency.trim().isEmpty) return t('اكتب العملة', 'Enter the currency');
     if (topupMin <= 0) return t('أقل شحن يجب أن يكون نقطة على الأقل', 'The minimum top-up must be at least one point');
+    if (freeMinutesDaily < 0 || freeMinutesDaily > 1440) {
+      return t('الدقائق المجانية اليومية بين 0 و1440', 'Daily free minutes must be between 0 and 1440');
+    }
     return null;
   }
 }
@@ -533,6 +773,18 @@ class PointsApi {
 
   Future<LivePlan> subscribe() async =>
       LivePlan.fromJson(await _api.post('$_me/live-plan/subscribe').timeout(pointsTimeout));
+
+  /// Renew automatically from the points when the plan ends (§15). Answers the plan.
+  Future<LivePlan> setAutoRenew(bool on) async =>
+      LivePlan.fromJson(await _api.put('$_me/live-plan', body: {'auto_renew': on}).timeout(pointsTimeout));
+
+  /// Buy [points] by card (§13): creates the pending card top-up and the provider's payment session.
+  Future<PointsCheckout> checkout({required int points, String? provider}) async => PointsCheckout.fromJson(
+      await _api.post('$_me/points/checkout', body: {'points': points, 'provider': ?provider}).timeout(pointsTimeout));
+
+  /// One of my top-ups (polled after the payment page closes).
+  Future<PointsTopup> topup(int id) async =>
+      PointsTopup.fromJson(_map(await _api.get('$_me/points/topups/$id').timeout(pointsTimeout)));
 
   Future<PointsTopup> createTopup({
     required int points,
@@ -602,20 +854,31 @@ class LiveJoinMessage implements Exception {
 }
 
 /// The meeting detail's free-time line for a student-owned meeting without a plan; [owner] words it for the owner.
+/// Under the daily cap (§14) the owner also reads how much free time is left today.
 String meetingFreeNote(MeetingTimeLimit l, DateTime nowUtc, {bool owner = false}) {
   final e = l.endsAt;
+  final daily = l.hasDailyCap && owner ? ' ${dailyFreeLeftText(l.dailyLeft ?? 0, l.dailyMinutes)}.' : '';
   if (e == null) {
+    if (l.hasDailyCap && l.windowMinutes <= 0) {
+      return owner
+          ? t('انتهى وقتك المجاني لليوم (${l.dailyMinutes} دقيقة). اشترك في باقة الاجتماعات لتبدأ الآن، أو عد غداً.',
+              "Today's free time is used up (${l.dailyMinutes} minutes). Get the live-meeting plan to start now, or come back tomorrow.")
+          : t('انتهى الوقت المجاني لمنظّم هذا الاجتماع لهذا اليوم.', "The organizer's free time for today is used up.");
+    }
+    final w = l.windowMinutes;
     return owner
-        ? t('اجتماعك مجاني لأول ${l.freeMinutes} دقيقة من البث، ثم يتوقف. اشترك في باقة الاجتماعات لإزالة الحد.',
-            'Your meeting is free for its first ${l.freeMinutes} live minutes, then it stops. Get the live-meeting plan to remove the limit.')
-        : t('هذا الاجتماع مجاني لأول ${l.freeMinutes} دقيقة من البث.', 'This meeting is free for its first ${l.freeMinutes} live minutes.');
+        ? t('اجتماعك مجاني لأول $w دقيقة من البث، ثم يتوقف. اشترك في باقة الاجتماعات لإزالة الحد.',
+                'Your meeting is free for its first $w live minutes, then it stops. Get the live-meeting plan to remove the limit.') +
+            daily
+        : t('هذا الاجتماع مجاني لأول $w دقيقة من البث.', 'This meeting is free for its first $w live minutes.');
   }
   final left = l.minutesLeft(nowUtc);
   if (left <= 0) {
     return owner
         ? t('انتهى الوقت المجاني لهذا الاجتماع. اشترك في باقة الاجتماعات للمتابعة.',
-            "This meeting's free time is over. Get the live-meeting plan to continue.")
+                "This meeting's free time is over. Get the live-meeting plan to continue.") +
+            daily
         : t('انتهى الوقت المجاني لهذا الاجتماع.', "This meeting's free time is over.");
   }
-  return t('متبقٍ $left دقيقة من الوقت المجاني لهذا الاجتماع.', '$left free minutes left in this meeting.');
+  return t('متبقٍ $left دقيقة من الوقت المجاني لهذا الاجتماع.', '$left free minutes left in this meeting.') + daily;
 }

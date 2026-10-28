@@ -4,7 +4,9 @@
 //
 //   PointsWalletPage({openPlan})   the page; `openPlan` opens the plan sheet on arrival (the `live_plan` deep link)
 //   PointsWalletView               the plain-values body (test/ui/points_layout_test.dart)
-//   TopupForm                      "Buy points": amount (≥ topup_min, its money price), method, receipt → submit
+//   TopupForm                      "Buy points": amount (≥ topup_min, its money price), method, receipt → submit;
+//                                  method "Card" (Part 3 §13) → POST /me/points/checkout → the provider's payment
+//                                  page and the status sheet (points_card_checkout.dart)
 library;
 
 import 'dart:async';
@@ -20,6 +22,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import '../../admin/admin_common.dart' show t;
 import 'live_plan_sheet.dart';
 import 'points_api.dart';
+import 'points_card_checkout.dart' show runCardTopup;
 
 class PointsWalletPage extends StatefulWidget {
   const PointsWalletPage({super.key, this.openPlan = false, this.api = const PointsApi()});
@@ -66,16 +69,20 @@ class _PointsWalletPageState extends State<PointsWalletPage> {
   Future<void> _buy() async {
     final w = _wallet;
     if (w == null) return;
-    final done = await showAppSheet<bool>(
+    final done = await showAppSheet<Object>(
         context,
         (ctx) => TopupForm(
               wallet: w,
               submit: (points, method, name, bytes) =>
                   widget.api.createTopup(points: points, method: method, fileName: name, bytes: bytes),
+              checkout: (points) => widget.api.checkout(points: points),
             ));
     if (done == true) {
       appToast(t('أُرسل طلب الشحن، سيُضاف الرصيد بعد المراجعة', 'Top-up sent — the points are added after review'));
       if (mounted) await _load();
+    } else if (done is PointsCheckout && mounted) {
+      await runCardTopup(context, widget.api, done);
+      if (mounted) await _load(); // the balance and the top-up's status, whatever the outcome
     }
   }
 
@@ -235,7 +242,7 @@ class TopupTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.add_card_rounded, color: col, size: 22),
+            Icon(x.isCard ? Icons.credit_card_rounded : Icons.add_card_rounded, color: col, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -243,15 +250,23 @@ class TopupTile extends StatelessWidget {
                   Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: c.textDark)),
                 Text('${x.points} ${t('نقطة', 'points')} · ${x.amountText}',
                     maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(showUser ? 13 : 14, w: FontWeight.w700, c: c.textDark)),
-                Text([pointsMethodText(x.method), if (when.isNotEmpty) when].join(' · '),
+                Text([x.methodText, if (when.isNotEmpty) when].join(' · '),
                     maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
+                if (showUser && x.isCard && x.paymentId != null)
+                  Text('${t('رقم العملية', 'Payment id')}: ${x.paymentId}',
+                      key: ValueKey('topup.payment_id.${x.id}'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      style: appText(12, c: c.textLight)),
                 if (showUser && user != null && user.contact.isNotEmpty)
                   Text(user.contact, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textLight)),
                 if (x.note != null) Text(x.note!, maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
               ]),
             ),
             const SizedBox(width: 8),
-            AppBadgePill(topupStatusText(x.status), color: col),
+            // a long status ("Waiting for payment") ellipsizes instead of pushing the amount off a phone
+            ConstrainedBox(constraints: const BoxConstraints(maxWidth: 130), child: AppBadgePill(x.statusText, color: col)),
           ]),
           if (trailing != null) ...[const SizedBox(height: 8), trailing!],
         ]),
@@ -303,12 +318,16 @@ class LedgerTile extends StatelessWidget {
 /// Sends a top-up (the multipart call); throws an API error the form shows.
 typedef TopupSubmit = Future<Object?> Function(int points, String method, String fileName, Uint8List bytes);
 
-/// "Buy points": amount (≥ topup_min, with its money price), method, receipt. Pops true once sent.
+/// "Buy points": amount (≥ topup_min, with its money price), method, receipt. Pops true once a transfer is sent;
+/// with the method "Card" it calls [checkout] and pops the [PointsCheckout] (the caller opens the payment page).
 class TopupForm extends StatefulWidget {
-  const TopupForm({super.key, required this.wallet, required this.submit, this.pickReceipt});
+  const TopupForm({super.key, required this.wallet, required this.submit, this.pickReceipt, this.checkout});
 
   final PointsWallet wallet;
   final TopupSubmit submit;
+
+  /// `POST /me/points/checkout` for the method "Card"; null hides nothing but refuses the card.
+  final Future<PointsCheckout> Function(int points)? checkout;
 
   /// Test seam; null → the file picker (image or PDF).
   final Future<(String, Uint8List)?> Function()? pickReceipt;
@@ -353,9 +372,27 @@ class _TopupFormState extends State<TopupForm> {
     });
   }
 
+  bool get _card => _method == 'card';
+
+  Future<void> _payByCard(int? n) async {
+    final err = topupAmountError(n, widget.wallet.topupMin) ?? (widget.checkout == null ? pointsCodeText('card_disabled') : null);
+    if (err != null) return setState(() => _error = err);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final r = await widget.checkout!(n!);
+      if (mounted) Navigator.pop(context, r);
+    } catch (e) {
+      if (mounted) setState(() { _saving = false; _error = pointsErrorText(e); });
+    }
+  }
+
   Future<void> _send() async {
     final w = widget.wallet;
     final n = parsePoints(_points.text);
+    if (_card) return _payByCard(n);
     final err = topupAmountError(n, w.topupMin) ??
         (_method == null ? pointsCodeText('invalid_method') : null) ??
         (_receipt == null ? pointsCodeText('receipt_required') : null);
@@ -406,26 +443,42 @@ class _TopupFormState extends State<TopupForm> {
           value: _method,
           decoration: InputDecoration(labelText: t('طريقة الدفع', 'Payment method')),
           items: [for (final m in w.methods) DropdownMenuItem(value: m, child: Text(pointsMethodText(m)))],
-          onChanged: (v) => setState(() => _method = v),
+          onChanged: _saving ? null : (v) => setState(() { _method = v; _error = null; }),
         ),
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: _saving ? null : _pick,
-          icon: Icon(_receipt == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
-              color: _receipt == null ? c.primary : c.success),
-          label: Text(_receipt == null ? t('إرفاق إيصال الدفع (صورة أو PDF)', 'Attach the payment receipt (image or PDF)') : _receipt!.$1,
-              maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
-        const SizedBox(height: 6),
-        Text(t('حوّل المبلغ ثم أرفق الإيصال؛ تُضاف النقاط بعد مراجعة الإدارة.',
-                'Transfer the amount, then attach the receipt; the points are added once the admin reviews it.'),
-            style: appText(12, c: c.textLight, h: 1.4)),
+        if (_card)
+          Text(
+              t('ستنتقل إلى صفحة الدفع الآمنة لمزوّد الدفع؛ تُضاف النقاط فور تأكيد الدفع، دون إيصال أو مراجعة.',
+                  "You go to the payment provider's secure page; the points are added as soon as the payment is confirmed, no receipt or review needed."),
+              key: const ValueKey('topup_form.card_note'),
+              style: appText(12, c: c.textLight, h: 1.4))
+        else ...[
+          OutlinedButton.icon(
+            onPressed: _saving ? null : _pick,
+            icon: Icon(_receipt == null ? Icons.upload_file_rounded : Icons.check_circle_rounded,
+                color: _receipt == null ? c.primary : c.success),
+            label: Text(_receipt == null ? t('إرفاق إيصال الدفع (صورة أو PDF)', 'Attach the payment receipt (image or PDF)') : _receipt!.$1,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(height: 6),
+          Text(t('حوّل المبلغ ثم أرفق الإيصال؛ تُضاف النقاط بعد مراجعة الإدارة.',
+                  'Transfer the amount, then attach the receipt; the points are added once the admin reviews it.'),
+              style: appText(12, c: c.textLight, h: 1.4)),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 10),
           AppBanner(icon: Icons.error_outline_rounded, text: _error!, color: c.danger),
         ],
         const SizedBox(height: 16),
-        AppPrimaryButton(label: t('إرسال الطلب', 'Send request'), icon: Icons.send_rounded, busy: _saving, onPressed: _saving ? null : _send),
+        if (_card)
+          AppPrimaryButton(
+              key: const ValueKey('topup_form.pay_card'),
+              label: price == null ? t('ادفع بالبطاقة', 'Pay by card') : t('ادفع $price بالبطاقة', 'Pay $price by card'),
+              icon: Icons.credit_card_rounded,
+              busy: _saving,
+              onPressed: _saving ? null : _send)
+        else
+          AppPrimaryButton(label: t('إرسال الطلب', 'Send request'), icon: Icons.send_rounded, busy: _saving, onPressed: _saving ? null : _send),
       ]),
     );
   }

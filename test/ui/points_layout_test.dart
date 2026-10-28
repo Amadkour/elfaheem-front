@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart';
 import 'package:flutter_education_app/features/shared/points/points_api.dart';
+import 'package:flutter_education_app/features/shared/points/points_card_checkout.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/shared/points/points_wallet_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -66,6 +68,39 @@ LivePlan plan({bool active = false, bool needed = true, int balance = 12}) => Li
 
 Widget sheet(Widget child) => SingleChildScrollView(padding: const EdgeInsets.all(16), child: child);
 
+PointsWallet cardWallet() => PointsWallet.fromJson({
+      'balance': 5,
+      'price_per_point': 1.25,
+      'currency': 'SAR',
+      'topup_min': 10,
+      'methods': ['card', 'bank_transfer', 'instapay'],
+      'history': [],
+      'topups': [
+        for (final st in ['pending', 'approved', 'rejected'])
+          {
+            'id': st.length,
+            'points': 100000,
+            'amount': 125000.5,
+            'currency': 'SAR',
+            'method': 'card',
+            'provider': 'moyasar',
+            'payment_id': 'pay_0123456789abcdef0123456789abcdef',
+            'status': st,
+            'note': st == 'rejected' ? '$longAr $longEn' : null,
+            'created_at': iso(now),
+          }
+      ],
+    });
+
+LivePlan dailyPlan({int left = 12, bool autoRenew = false}) => LivePlan(
+    pricePoints: 30000,
+    days: 365,
+    freeMinutes: 15,
+    balance: 12,
+    dailyFreeMinutes: 30,
+    dailyFreeLeft: left,
+    autoRenew: autoRenew);
+
 void main() {
   group('wallet', () {
     testWidgets('loading', (tester) async {
@@ -113,6 +148,137 @@ void main() {
         act: (t) async {
           await t.enterText(find.byType(TextField).first, '9999999');
           await t.tap(find.byIcon(Icons.upload_file_rounded));
+        },
+      );
+    });
+  });
+
+  group('Part 3: card top-ups', () {
+    testWidgets('card top-ups in the wallet (waiting for payment / approved / rejected)', (tester) async {
+      await expectNoLayoutErrors(tester, () => PointsWalletView(wallet: cardWallet(), nowUtc: now, onBuy: () {}),
+          act: (t) async => expect(find.text('Waiting for payment').evaluate().isNotEmpty || find.text('بانتظار الدفع').evaluate().isNotEmpty, isTrue));
+    });
+
+    testWidgets('the form with Card: no receipt, Pay by card; a checkout error', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => sheet(TopupForm(
+            wallet: cardWallet(),
+            submit: (_, _, _, _) async => null,
+            checkout: (_) async => throw Exception('$longAr $longEn'))),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('topup_form.card_note')), findsOneWidget);
+          expect(find.byIcon(Icons.upload_file_rounded), findsNothing);
+          await t.enterText(find.byType(TextField).first, '9999999');
+          await t.pump();
+          await t.ensureVisible(find.byKey(const ValueKey('topup_form.pay_card')));
+          await t.tap(find.byKey(const ValueKey('topup_form.pay_card')));
+        },
+      );
+    });
+
+    testWidgets('Card hands the checkout back to the page', (tester) async {
+      Object? popped;
+      AppConfig.lang = 'en';
+      await tester.pumpWidget(layoutHost(
+        scaffold: false,
+        Builder(
+          builder: (ctx) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () async {
+                  popped = await Navigator.of(ctx).push<Object>(MaterialPageRoute(
+                      builder: (_) => Scaffold(
+                          body: sheet(TopupForm(
+                              wallet: cardWallet(),
+                              submit: (_, _, _, _) async => null,
+                              checkout: (p) async => PointsCheckout(topupId: 7, checkoutUrl: 'https://pay.example/$p', points: p))))));
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const ValueKey('topup_form.pay_card')));
+      await tester.tap(find.byKey(const ValueKey('topup_form.pay_card')));
+      await tester.pumpAndSettle();
+      expect(popped, isA<PointsCheckout>());
+      expect((popped! as PointsCheckout).checkoutUrl, 'https://pay.example/10');
+    });
+
+    for (final phase in CardTopupPhase.values) {
+      testWidgets('status sheet: ${phase.name}', (tester) async {
+        await expectNoLayoutErrors(
+          tester,
+          () => sheet(CardTopupStatusView(
+              phase: phase,
+              points: 1000000,
+              amountText: '1250000.75 SAR',
+              reason: phase == CardTopupPhase.rejected ? '$longAr $longEn' : null,
+              error: phase == CardTopupPhase.error ? '$longAr $longEn' : null,
+              onCheckAgain: () {},
+              onClose: () {})),
+          act: (t) async {
+            final recheck = phase == CardTopupPhase.waiting || phase == CardTopupPhase.error;
+            expect(find.byKey(const ValueKey('card_topup.check_again')), recheck ? findsOneWidget : findsNothing);
+          },
+        );
+      });
+    }
+  });
+
+  group('Part 3: daily cap and auto-renew', () {
+    testWidgets('daily minutes left today + the auto-renew switch', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => sheet(LivePlanView(plan: dailyPlan(autoRenew: true), nowUtc: now, onSubscribe: () {}, onWallet: () {}, onAutoRenew: (_) {})),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('live_plan.daily_left')), findsOneWidget);
+          expect(find.byKey(const ValueKey('live_plan.daily_left_text')), findsOneWidget);
+          expect(find.byKey(const ValueKey('live_plan.auto_renew')), findsOneWidget);
+          expect(find.byKey(const ValueKey('live_plan.daily_used_up')), findsNothing);
+        },
+      );
+    });
+
+    testWidgets('402 daily_limit: today is used up; renew switch busy', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => sheet(LivePlanView(
+            plan: dailyPlan(left: 0),
+            nowUtc: now,
+            reason: kDailyLimitReason,
+            autoRenewBusy: true,
+            onSubscribe: () {},
+            onWallet: () {},
+            onAutoRenew: (_) {})),
+        act: (t) async => expect(find.byKey(const ValueKey('live_plan.daily_used_up')), findsOneWidget),
+      );
+    });
+
+    testWidgets('active plan: days left and renews automatically', (tester) async {
+      final p = LivePlan.fromJson({
+        'active': true,
+        'ends_at': iso(now.add(const Duration(days: 3))),
+        'days_left': 3,
+        'auto_renew': true,
+        'price_points': 30000,
+        'days': 365,
+        'balance': 99999,
+        'needed': true,
+        'daily_free_minutes': 30,
+        'daily_free_left': 30,
+      });
+      await expectNoLayoutErrors(
+        tester,
+        () => sheet(LivePlanView(plan: p, nowUtc: now, onSubscribe: () {}, onWallet: () {}, onAutoRenew: (_) {})),
+        act: (t) async {
+          // an active plan has no daily cap
+          expect(find.byKey(const ValueKey('live_plan.daily_left')), findsNothing);
+          expect(find.textContaining(RegExp('3 days left|متبقٍ 3 يوم')), findsOneWidget);
         },
       );
     });

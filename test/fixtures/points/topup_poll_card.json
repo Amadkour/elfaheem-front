@@ -1,0 +1,22 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/points/topups/2",
+  "status": 200,
+  "uid": 1
+ },
+ "payload": {
+  "id": 2,
+  "points": 30,
+  "amount": 30.0,
+  "currency": "SAR",
+  "method": "card",
+  "status": "approved",
+  "note": null,
+  "has_receipt": false,
+  "decided_at": "2026-10-28T16:13:58.597835",
+  "created_at": "2026-10-28T16:13:58.215662",
+  "provider": "moyasar",
+  "payment_id": "pay_capture_1",
+  "failure_reason": null
+ }
+}

@@ -262,7 +262,7 @@ class _ChildReportCard extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800))),
           ]),
-          Text(range, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          Text(range, style: TextStyle(color: context.colors.onHeroMuted, fontSize: 12)),
           const SizedBox(height: 14),
           Row(children: [
             PlScoreRing(value: _n(_score, 'value'), color: Colors.white, size: 96, light: true),

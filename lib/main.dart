@@ -68,6 +68,7 @@ import 'features/parent/parent_dashboard_screen.dart';
 import 'features/shared/profile/profile_provider.dart';
 import 'firebase_options.dart';
 import 'core/display/display_settings.dart';
+import 'core/display/display_sync.dart';
 import 'design/app_display.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -146,6 +147,9 @@ Future<void> _initCore() async {
   // Essential: the app cannot run without storage.
   _storage = await StorageService.getInstance();
   await ApiClient().primeSession(); // load the token store so MyAuthProvider.isAuthenticated is answered synchronously
+  // Display & reading (fonts per language, text size, zoom, contrast, reduce motion …): early, so the splash
+  // already honours reduce motion and the first real frame has the chosen fonts (D-072)
+  await _safe('display', DisplaySettings.instance.load, seconds: 4);
   // The splash greets the returning user by name and paces its bar by this device's usual boot time.
   SplashState.instance.setUser(ApiClient().hasSession ? _storage.savedUser : null);
   await _safe('pacing', SplashPacing.load, seconds: 2);
@@ -153,8 +157,6 @@ Future<void> _initCore() async {
   await _safe('identity', _initIdentity, seconds: 3);
 
   await _safe('language', () => readLanguage(), seconds: 8);
-  // Display & reading (fonts per language, text size, zoom, contrast …) before the first real frame (D-072)
-  await _safe('display', DisplaySettings.instance.load, seconds: 4);
   timeago.setLocaleMessages('ar', timeago.ArShortMessages());
   timeago.setLocaleMessages('en', timeago.EnShortMessages());
 
@@ -421,6 +423,11 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       }
 
       await _refreshMe();
+      // Display & reading follows the account: pull at every sign-in, push every change (display_sync.dart)
+      if (!mounted) return;
+      final auth = context.read<MyAuthProvider>();
+      DisplaySync.instance.bind(auth,
+          signedIn: () => auth.isAuthenticated, skip: () => GuestState.active || ViewAsState.active);
     });
   }
 
@@ -1039,7 +1046,7 @@ class _NotFoundScreen extends StatelessWidget {
                 'home'.tr,
                 style: TextStyle(
                   fontFamily: AppFonts.family,
-                  color: Color(0xFF5B8FFF),
+                  color: context.colors.primary,
                 ),
               ),
             ),

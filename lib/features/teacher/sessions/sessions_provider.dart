@@ -31,6 +31,7 @@ import '../home/teacher_models.dart';
 import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
 import '../../shared/live/live_room.dart' show JoinOutcome;
+import '../../shared/live/live_time_limit.dart' show parseNaiveUtc;
 
 class TeacherCourseScreenProvider extends BaseProvider {
   TeacherCourseScreenProvider({
@@ -734,6 +735,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         url: result['ws_url'] as String? ?? '',
         token: result['token'] as String? ?? '',
         recordingEnabled: result['recording_enabled'] as bool? ?? record,
+        liveStartedAt: parseNaiveUtc(result['live_started_at']), // the session's start (spec Part 3 §16)
       );
       _updateSessionLiveState(sessionId, isLive: true, roomUrl: live.url);
       return live;
@@ -909,6 +911,7 @@ class TeacherCourseScreenProvider extends BaseProvider {
         url: result['ws_url'] as String? ?? '',
         token: result['token'] as String? ?? '',
         recordingEnabled: result['recording_enabled'] as bool? ?? true,
+        liveStartedAt: outcome.liveStartedAt,
       );
     }
     return null;

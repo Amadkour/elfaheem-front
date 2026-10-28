@@ -213,8 +213,9 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
       isDark ? (_model?.darkDivider ?? AppTheme.darkDivider) : (_model?.divider ?? AppTheme.divider), textMedium, 0.35);
 
   /// "High contrast" (Display & reading settings): muted ink and dividers are pulled toward the main ink.
-  Color _contrast(Color c, Color toward, double t) =>
-      DisplaySettings.instance.prefs.highContrast ? Color.lerp(c, toward, t)! : c;
+  Color _contrast(Color c, Color toward, double t) => _hc ? Color.lerp(c, toward, t)! : c;
+
+  bool get _hc => DisplaySettings.instance.prefs.highContrast;
 
   // ══════════════════════════════════════════════════════════════════════
   // TEXT
@@ -257,9 +258,8 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Color get purple => _model?.purple ?? AppTheme.purple;
 
   /// Secondary copy (subtitles, hints, unselected labels): WCAG AA on this mode's surfaces.
-  Color get secondText => isDark
-      ? (_model?.darkSecondText ?? AppTheme.darkSecondText)
-      : (_model?.secondText ?? AppTheme.secondText);
+  Color get secondText => _contrast(
+      isDark ? (_model?.darkSecondText ?? AppTheme.darkSecondText) : (_model?.secondText ?? AppTheme.secondText), textDark, 0.5);
 
   // ══════════════════════════════════════════════════════════════════════
   // CHARCOAL TONES  (same in both modes)
@@ -309,16 +309,16 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   Color get onHero => _model?.onHero ?? _model?.surfaceCard ?? AppTheme.surfaceCard;
 
   /// Secondary text over a hero (the old `Colors.white70`).
-  Color get onHeroMuted => onHero.withValues(alpha: 0.72);
+  Color get onHeroMuted => onHero.withValues(alpha: _hc ? 0.92 : 0.72);
 
   /// Unselected icons / labels over the sidebar (the old `white.withValues(alpha: .42)`).
-  Color get onHeroFaint => onHero.withValues(alpha: 0.45);
+  Color get onHeroFaint => onHero.withValues(alpha: _hc ? 0.75 : 0.45);
 
   /// A glass chip / button / logo well over a hero.
   Color get heroGlass => onHero.withValues(alpha: 0.16);
 
   /// The hairline of a glass chip.
-  Color get heroGlassBorder => onHero.withValues(alpha: 0.24);
+  Color get heroGlassBorder => onHero.withValues(alpha: _hc ? 0.45 : 0.24);
 
   /// A hairline divider over the sidebar.
   Color get heroDivider => onHero.withValues(alpha: 0.08);

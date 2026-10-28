@@ -1,0 +1,17 @@
+{
+ "_source": {
+  "route": "PUT /api/v1/live/meeting/1/link",
+  "status": 200,
+  "uid": 2
+ },
+ "payload": {
+  "url": "https://nextbrain.site/live/oZMSHOVXL-vOxCeW_5Bvy8RHAyEukASE",
+  "token": "oZMSHOVXL-vOxCeW_5Bvy8RHAyEukASE",
+  "can_publish": false,
+  "max_guests": null,
+  "has_pin": false,
+  "created_at": "2026-10-28T16:14:01.410677",
+  "guests_joined": 0,
+  "direct": true
+ }
+}

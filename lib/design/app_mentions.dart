@@ -14,8 +14,10 @@
 //                                      Up / Down / Enter / Tab / Esc while it is open (on the web through
 //                                      AppKeyboard.keyClaim, so Enter picks instead of submitting the form)
 //   MentionTextField                   a plain TextField inside [Mentions]
-//   MentionText(text)                  the text with each "@name" highlighted; a tap opens that public profile
-//                                      (AppNavigator.openProfile, D-074) unless `profile.public_link` is off
+//   MentionText(text)                  the text with each "@name" highlighted; a tap opens a small card
+//                                      (showMentionCard): a teacher's name, photo and "Open profile"
+//                                      (AppNavigator.openProfile, D-074), "no public page" for anyone else;
+//                                      nothing while `profile.public_link` is off
 //
 // Kill switch `mentions` (and `auth.username`): the fields are plain text fields and the text is plain text.
 // Tests: test/ui/app_mentions_test.dart.
@@ -32,6 +34,7 @@ import '../config/theme/theme_config_provider.dart';
 import '../core/api_client.dart';
 import '../core/display/app_fonts.dart';
 import '../features/auth/username.dart' show UsernameRules;
+import '../features/shared/public_profile/mention_card.dart' show showMentionCard;
 import '../utils/widget/app_navigator.dart' show AppNavigator;
 import 'app_keyboard.dart' show AppKeyboard;
 
@@ -548,7 +551,7 @@ class MentionTextField extends StatelessWidget {
 
 // ── Read views ────────────────────────────────────────────────────────────────
 
-/// [text] with every "@name" highlighted and tappable (opens that person's public profile, D-074). Plain [Text] /
+/// [text] with every "@name" highlighted and tappable (opens that person's card, D-074). Plain [Text] /
 /// [SelectableText] when mentions are switched off or the text mentions nobody.
 class MentionText extends StatefulWidget {
   const MentionText(
@@ -573,7 +576,7 @@ class MentionText extends StatefulWidget {
   final TextAlign? textAlign;
   final bool selectable;
 
-  /// A tap on a mention (the username, no "@"); null = open the public profile when profile links are on.
+  /// A tap on a mention (the username, no "@"); null = the person's card when profile links are on.
   final ValueChanged<String>? onTap;
 
   @override
@@ -600,7 +603,8 @@ class _MentionTextState extends State<MentionText> {
     final tap = widget.onTap;
     if (tap != null) return tap(username);
     if (AppConfig.disableList.contains('profile.public_link')) return;
-    unawaited(AppNavigator.openProfile(username));
+    // a card, not the page: most mentions are students / staff, who have no public page (only teachers do)
+    unawaited(showMentionCard(context, username, onOpenProfile: () => unawaited(AppNavigator.openProfile(username))));
   }
 
   @override

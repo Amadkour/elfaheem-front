@@ -1,0 +1,73 @@
+{
+ "_source": {
+  "route": "GET /api/v1/me/calendar/meetings/1",
+  "status": 200,
+  "uid": 2
+ },
+ "payload": {
+  "id": 1,
+  "title": "2026-10-28 19:14",
+  "notes": null,
+  "starts_at": "2026-10-28T16:14:00",
+  "ends_at": "2026-10-28T17:14:00",
+  "mode": "online",
+  "location": null,
+  "room_id": null,
+  "visibility": "private",
+  "status": "scheduled",
+  "org_id": null,
+  "dept_id": null,
+  "org": null,
+  "dept": null,
+  "source_type": null,
+  "source_id": null,
+  "audience": {
+   "user_ids": [],
+   "dept_ids": [],
+   "head_dept_ids": [],
+   "course_ids": []
+  },
+  "owner": {
+   "id": 2,
+   "name": "Student2",
+   "image_url": null
+  },
+  "is_owner": true,
+  "my_status": "owner",
+  "can_join": true,
+  "recording": null,
+  "can_record": true,
+  "owner_is_student": true,
+  "owner_plan_active": false,
+  "time_limit": {
+   "ends_at": "2026-10-28T16:29:01.069986",
+   "free_minutes": 15,
+   "daily_minutes": 15,
+   "daily_left": 0
+  },
+  "live_started_at": "2026-10-28T16:14:01.069986",
+  "counts": {
+   "pending": 0,
+   "accepted": 1,
+   "declined": 0,
+   "proposed": 0
+  },
+  "attendees": [
+   {
+    "id": 1,
+    "user": {
+     "id": 3,
+     "name": "Teacher",
+     "image_url": null
+    },
+    "status": "accepted",
+    "note": null,
+    "proposed_start": null,
+    "proposed_end": null,
+    "responded_at": null
+   }
+  ],
+  "created_at": "2026-10-28T16:14:00.575864",
+  "updated_at": "2026-10-28T16:14:01.073585"
+ }
+}

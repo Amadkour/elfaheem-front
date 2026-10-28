@@ -1,0 +1,15 @@
+{
+ "_source": {
+  "route": "POST /api/v1/me/live-plan/subscribe",
+  "status": 402,
+  "uid": 2
+ },
+ "payload": {
+  "detail": {
+   "code": "points_insufficient",
+   "message": "رصيد النقاط لا يكفي",
+   "balance": 0,
+   "price_points": 30
+  }
+ }
+}

@@ -69,6 +69,36 @@ void main() {
     expect(mq.disableAnimations, isTrue);
   });
 
+  test('reading spacing: taller lines, wider words, letter spacing only outside Arabic', () {
+    const base = TextStyle(fontSize: 14, height: 1.2);
+    expect(spacedStyle(base, ReadingSpacing.of(0), 'en'), base);
+    final wide = spacedStyle(base, ReadingSpacing.of(2), 'en');
+    expect(wide.height, closeTo(1.2 * 1.3, 1e-9));
+    expect(wide.wordSpacing, 3);
+    expect(wide.letterSpacing, 0.5);
+    final ar = spacedStyle(const TextStyle(fontSize: 14), ReadingSpacing.of(1), 'ar');
+    expect(ar.height, closeTo(kNaturalLineHeight * 1.15, 1e-9)); // no height → the natural line, spaced
+    expect(ar.letterSpacing, isNull); // spaced Arabic letters lose their joins
+    expect(ReadingSpacing.of(9), ReadingSpacing.steps.last);
+    expect(DisplayPrefs.fromJson(const DisplayPrefs(spacing: 2).toJson()).spacing, 2);
+  });
+
+  testWidgets('a decorative loop parks under reduce motion and runs again without it', (tester) async {
+    late AnimationController c;
+    Widget host(bool still) => MediaQuery(
+          data: MediaQueryData(disableAnimations: still),
+          child: _Loop(onController: (x) => c = x),
+        );
+    await tester.pumpWidget(host(false));
+    expect(c.isAnimating, isTrue);
+    await tester.pumpWidget(host(true));
+    expect(c.isAnimating, isFalse);
+    expect(c.value, 1.0);
+    await tester.pumpWidget(host(false));
+    expect(c.isAnimating, isTrue);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('DisplayZoom lays the child out smaller and draws it at full size', (tester) async {
     tester.view.physicalSize = const Size(400, 800);
     tester.view.devicePixelRatio = 1;
@@ -124,4 +154,33 @@ void main() {
       ),
     );
   });
+}
+
+/// A minimal decorative loop, as the app's shimmers and pulses use syncMotionLoop.
+class _Loop extends StatefulWidget {
+  const _Loop({required this.onController});
+  final ValueChanged<AnimationController> onController;
+
+  @override
+  State<_Loop> createState() => _LoopState();
+}
+
+class _LoopState extends State<_Loop> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(seconds: 1));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _c, reverse: true);
+    widget.onController(_c);
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(opacity: _c, child: const SizedBox(width: 10, height: 10));
 }

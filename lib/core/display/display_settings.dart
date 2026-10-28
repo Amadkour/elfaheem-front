@@ -9,6 +9,9 @@
 //   highContrast            muted / faint text and dividers pulled toward the main ink (ThemeConfigProvider)
 //   reduceMotion            no page transitions, MediaQuery.disableAnimations for widgets that honour it
 //   largeTargets            padded tap targets and roomier density for buttons, chips and list tiles
+//                           (also kept on the account when the server has GET/PUT /api/v1/me/ui-prefs: display_sync.dart)
+//   spacing                 reading spacing 0 normal · 1 comfortable · 2 wide: line height and word spacing (and
+//                           letter spacing for English only — it would break Arabic joins); `ReadingSpacing`
 //
 // `presets` are one-tap bundles ("Young learners", "Easy reading") of the same fields. AppDisplayScope
 // (lib/design/app_display.dart, in MaterialApp.builder) applies everything; this file holds no widgets.
@@ -32,6 +35,7 @@ class DisplayPrefs {
     this.highContrast = false,
     this.reduceMotion = false,
     this.largeTargets = false,
+    this.spacing = 0,
   });
 
   static const minText = 0.85, maxText = 1.6, minZoom = 0.9, maxZoom = 1.4;
@@ -39,6 +43,9 @@ class DisplayPrefs {
   final String arabicFont, latinFont;
   final double textScale, zoom;
   final bool boldText, highContrast, reduceMotion, largeTargets;
+
+  /// 0 normal · 1 comfortable · 2 wide (ReadingSpacing).
+  final int spacing;
 
   bool get isDefault => this == const DisplayPrefs();
 
@@ -51,6 +58,7 @@ class DisplayPrefs {
     bool? highContrast,
     bool? reduceMotion,
     bool? largeTargets,
+    int? spacing,
   }) =>
       DisplayPrefs(
         arabicFont: arabicFont ?? this.arabicFont,
@@ -61,6 +69,7 @@ class DisplayPrefs {
         highContrast: highContrast ?? this.highContrast,
         reduceMotion: reduceMotion ?? this.reduceMotion,
         largeTargets: largeTargets ?? this.largeTargets,
+        spacing: (spacing ?? this.spacing).clamp(0, 2).toInt(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -72,6 +81,7 @@ class DisplayPrefs {
         'contrast': highContrast,
         'motion': reduceMotion,
         'targets': largeTargets,
+        'spacing': spacing,
       };
 
   /// Unknown or broken values fall back to the defaults field by field.
@@ -87,6 +97,7 @@ class DisplayPrefs {
       highContrast: bool_(j['contrast']),
       reduceMotion: bool_(j['motion']),
       largeTargets: bool_(j['targets']),
+      spacing: j['spacing'] is int ? j['spacing'] as int : 0,
     );
   }
 
@@ -100,10 +111,34 @@ class DisplayPrefs {
       other.boldText == boldText &&
       other.highContrast == highContrast &&
       other.reduceMotion == reduceMotion &&
-      other.largeTargets == largeTargets;
+      other.largeTargets == largeTargets &&
+      other.spacing == spacing;
 
   @override
-  int get hashCode => Object.hash(arabicFont, latinFont, textScale, zoom, boldText, highContrast, reduceMotion, largeTargets);
+  int get hashCode => Object.hash(arabicFont, latinFont, textScale, zoom, boldText, highContrast, reduceMotion, largeTargets, spacing);
+}
+
+/// What a reading-spacing step does to text (DisplayPrefs.spacing). Read by AppDisplayApply (the default text
+/// style and the theme) and by appText / AppTheme, whose explicit line heights it multiplies.
+@immutable
+class ReadingSpacing {
+  const ReadingSpacing(this.lineFactor, this.wordSpacing, this.letterSpacing);
+  final double lineFactor, wordSpacing, letterSpacing;
+
+  static const steps = [ReadingSpacing(1.0, 0, 0), ReadingSpacing(1.15, 1.5, 0.25), ReadingSpacing(1.3, 3, 0.5)];
+
+  static ReadingSpacing of(int step) => steps[step.clamp(0, steps.length - 1)];
+
+  /// The current person's step (1.0 / 0 / 0 until DisplaySettings loads).
+  static ReadingSpacing get current => of(DisplaySettings.instance.prefs.spacing);
+
+  bool get isNormal => lineFactor == 1.0;
+
+  /// [h] (an explicit height, or null = inherit) under this step.
+  double? height(double? h) => h == null || isNormal ? h : h * lineFactor;
+
+  /// Letter spacing only outside Arabic (spaced Arabic letters lose their joins).
+  double? letters(String lang) => isNormal || lang == 'ar' ? null : letterSpacing;
 }
 
 /// A one-tap bundle of preferences.
@@ -127,7 +162,7 @@ class DisplaySettings extends ChangeNotifier {
         'الإعدادات الافتراضية', 'The default look', DisplayPrefs()),
     DisplayPreset('young', Icons.child_care_rounded, 'للمتعلمين الصغار', 'Young learners',
         'خط ودود، نص أكبر قليلاً، أزرار أوسع', 'Friendly fonts, slightly bigger text, roomier buttons',
-        DisplayPrefs(arabicFont: 'almarai', latinFont: 'lexend', textScale: 1.1, zoom: 1.05, largeTargets: true)),
+        DisplayPrefs(arabicFont: 'baloo', latinFont: 'lexend', textScale: 1.1, zoom: 1.05, largeTargets: true, spacing: 1)),
     DisplayPreset('easy', Icons.visibility_rounded, 'قراءة مريحة', 'Easy reading',
         'لكبار السن وضعاف البصر: نص وواجهة أكبر، تباين أعلى، حركة أقل',
         'For older eyes: bigger text and interface, stronger contrast, less motion',
@@ -139,11 +174,21 @@ class DisplaySettings extends ChangeNotifier {
             boldText: true,
             highContrast: true,
             reduceMotion: true,
-            largeTargets: true)),
+            largeTargets: true,
+            spacing: 1)),
   ];
+
+  static const _atKey = 'display_prefs_at_v1';
 
   DisplayPrefs _prefs = const DisplayPrefs();
   DisplayPrefs get prefs => _prefs;
+
+  /// When the preferences last changed on this device or were taken from the account (UTC); null = never.
+  DateTime? _updatedAt;
+  DateTime? get updatedAt => _updatedAt;
+
+  /// Called after every change the person makes here (not one taken from the account): DisplaySync pushes it.
+  VoidCallback? onLocalChange;
 
   /// The id of the preset the current preferences equal, null = custom.
   String? get presetId => presets.where((p) => p.prefs == _prefs).firstOrNull?.id;
@@ -151,8 +196,10 @@ class DisplaySettings extends ChangeNotifier {
   /// Reads the saved preferences and loads the chosen fonts (start-up; never throws).
   Future<void> load() async {
     try {
-      final raw = (await SharedPreferences.getInstance()).getString(_key);
+      final sp = await SharedPreferences.getInstance();
+      final raw = sp.getString(_key);
       if (raw != null && raw.isNotEmpty) _prefs = DisplayPrefs.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      _updatedAt = DateTime.tryParse(sp.getString(_atKey) ?? '')?.toUtc();
     } catch (e) {
       debugPrint('[DisplaySettings] load failed: $e');
     }
@@ -164,21 +211,28 @@ class DisplaySettings extends ChangeNotifier {
   /// Applies and saves. A font change loads the files first; a font or contrast change then rebuilds every
   /// mounted widget (TextStyles read AppFonts.family and colours read the palette in their build, without
   /// depending on anything that would tell them).
-  Future<void> update(DisplayPrefs next) async {
+  ///
+  /// [at] is set when the change comes from the account (DisplaySync): it keeps the account's time and does not
+  /// push the change back.
+  Future<void> update(DisplayPrefs next, {DateTime? at}) async {
     if (next == _prefs) return;
     final fontChanged = next.arabicFont != _prefs.arabicFont || next.latinFont != _prefs.latinFont;
-    final contrastChanged = next.highContrast != _prefs.highContrast;
+    final contrastChanged = next.highContrast != _prefs.highContrast || next.spacing != _prefs.spacing;
     _prefs = next;
     if (fontChanged) {
       await AppFonts.select(arabic: next.arabicFont, latin: next.latinFont);
     }
     notifyListeners();
     if (fontChanged || contrastChanged) rebuildAll();
+    _updatedAt = (at ?? DateTime.now()).toUtc();
     try {
-      await (await SharedPreferences.getInstance()).setString(_key, jsonEncode(next.toJson()));
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(_key, jsonEncode(next.toJson()));
+      await sp.setString(_atKey, _updatedAt!.toIso8601String());
     } catch (e) {
       debugPrint('[DisplaySettings] save failed: $e');
     }
+    if (at == null) onLocalChange?.call();
   }
 
   Future<void> reset() => update(const DisplayPrefs());

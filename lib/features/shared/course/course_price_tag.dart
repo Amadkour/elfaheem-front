@@ -17,6 +17,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'discount_info.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 /// Compact price block: shows the discounted price, with the original price
 /// struck through above/beside it when a discount is active. Falls back to
@@ -250,6 +251,12 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _pulse, reverse: true); // reduce motion parks this decorative loop
   }
 
   @override

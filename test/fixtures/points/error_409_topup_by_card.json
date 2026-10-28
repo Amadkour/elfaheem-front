@@ -1,0 +1,14 @@
+{
+ "_source": {
+  "route": "POST /api/v1/admin/points/topups/2/approve",
+  "status": 409,
+  "uid": 4
+ },
+ "payload": {
+  "detail": {
+   "code": "topup_by_card",
+   "message": "شحن بالبطاقة تحدده بوابة الدفع",
+   "topup_status": "approved"
+  }
+ }
+}

@@ -9,6 +9,9 @@
 //   showMeetingInfoSheet opens it over the room: a 1 s ticker re-reads the room's snapshot, and for the host the
 //                        policy (link + admission) is fetched once through LiveRoomApi.
 //
+// Part 3 (spec §16): "Live for" counts from the room's real start (`live_started_at` → RoomPage.liveStartedAt →
+// MeetingInfo.liveFor, meetingLiveFor) and falls back to the person's own time in the room when it is unknown.
+//
 // Strings: t(ar, en). Times: AppTime.
 library;
 
@@ -29,6 +32,15 @@ enum LiveRoomRole { host, member, guest }
 /// What the room's recorder is doing.
 enum LiveInfoRecording { off, recording, paused, server }
 
+/// How long the room has been live at [nowUtc], from its real start [liveStartedAt] (the server's
+/// `live_started_at`); never less than [own] (the person's own time in it — a device clock behind the server's would
+/// otherwise show less, or a negative). Null when the start is unknown: the sheet then shows [own].
+Duration? meetingLiveFor(DateTime? liveStartedAt, DateTime nowUtc, {Duration own = Duration.zero}) {
+  if (liveStartedAt == null) return null;
+  final d = nowUtc.toUtc().difference(liveStartedAt.toUtc());
+  return d < own ? own : d;
+}
+
 class MeetingInfo {
   const MeetingInfo({
     required this.title,
@@ -37,6 +49,7 @@ class MeetingInfo {
     this.hostName,
     this.startsAt,
     this.elapsed = Duration.zero,
+    this.liveFor,
     this.participants = 1,
     this.recording = LiveInfoRecording.off,
     this.freeLeft,
@@ -57,6 +70,9 @@ class MeetingInfo {
 
   /// Time spent in the room so far.
   final Duration elapsed;
+
+  /// How long the room has been live (from `live_started_at`, [meetingLiveFor]); null = unknown → [elapsed].
+  final Duration? liveFor;
   final int participants;
   final LiveInfoRecording recording;
 
@@ -87,6 +103,7 @@ class MeetingInfo {
         hostName: hostName,
         startsAt: startsAt,
         elapsed: elapsed,
+        liveFor: liveFor,
         participants: participants,
         recording: recording,
         freeLeft: freeLeft,
@@ -225,12 +242,20 @@ class MeetingInfoSheet extends StatelessWidget {
             if (i.startsAt != null)
               _InfoLine(icon: Icons.event_rounded, label: t('الموعد', 'Scheduled'), value: AppTime.dateTime(i.startsAt!)),
             _InfoLine(
-              key: const ValueKey('meeting_info.elapsed'),
-              icon: Icons.schedule_rounded,
-              label: t('مدة وجودك في الغرفة', 'Time in the room'),
-              value: _elapsed(i.elapsed),
+              key: const ValueKey('meeting_info.live_for'),
+              icon: Icons.sensors_rounded,
+              label: t('مدة البث', 'Live for'),
+              value: _elapsed(i.liveFor ?? i.elapsed),
               ltrValue: true,
             ),
+            if (i.liveFor != null)
+              _InfoLine(
+                key: const ValueKey('meeting_info.elapsed'),
+                icon: Icons.schedule_rounded,
+                label: t('مدة وجودك في الغرفة', 'Your time in the room'),
+                value: _elapsed(i.elapsed),
+                ltrValue: true,
+              ),
             _InfoLine(
               key: const ValueKey('meeting_info.participants'),
               icon: Icons.people_alt_rounded,

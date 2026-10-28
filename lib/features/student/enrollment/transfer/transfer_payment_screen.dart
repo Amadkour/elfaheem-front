@@ -25,6 +25,7 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../enrollment_models.dart';
 import '../enrollment_widgets.dart';
 import 'transfer_payment_provider.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 class TransferPaymentScreen extends StatelessWidget {
   final int courseId;
@@ -320,6 +321,12 @@ class _TransferTimeWarningBannerState
     vsync: this,
     duration: const Duration(milliseconds: 800),
   )..repeat(reverse: true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _pulseController, reverse: true); // reduce motion parks this decorative loop
+  }
 
   @override
   void dispose() {

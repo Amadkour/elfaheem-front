@@ -9,6 +9,8 @@ import '../../../../design/app_kit.dart';
 import '../../../admin/admin_common.dart' show t;
 import '../material/session_material_model.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/core/display/display_settings.dart';
 
 String vodFmt(Duration d) {
   final h = d.inHours;
@@ -69,9 +71,11 @@ class VodInk {
   VodInk._();
   static const Color letterbox = Color(0xFF000000);
   static const Color textHigh = Color(0xFFFFFFFF);
-  static const Color textMid = Color(0xB3FFFFFF);
-  static const Color textSoft = Color(0x99FFFFFF);
-  static const Color textLow = Color(0x66FFFFFF);
+  // high contrast (Display & reading) lifts the dimmer labels: time, chapter, hints
+  static Color get textMid => _hc ? const Color(0xE6FFFFFF) : const Color(0xB3FFFFFF);
+  static Color get textSoft => _hc ? const Color(0xD9FFFFFF) : const Color(0x99FFFFFF);
+  static Color get textLow => _hc ? const Color(0xB3FFFFFF) : const Color(0x66FFFFFF);
+  static bool get _hc => DisplaySettings.instance.prefs.highContrast;
   static const Color glass = Color(0x1AFFFFFF);
   static const Color glassFaint = Color(0x0DFFFFFF);
   static const Color glassBorder = Color(0x3DFFFFFF);
@@ -371,6 +375,12 @@ class _Bar extends StatefulWidget {
 class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
     ..repeat(reverse: true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _c, reverse: true); // reduce motion parks this decorative loop
+  }
 
   @override
   void dispose() {

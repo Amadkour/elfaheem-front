@@ -90,6 +90,12 @@ abstract final class AppFonts {
       weights: _w('almarai', 'Almarai', [400, 700, 800]),
     ),
     AppFontOption(
+      id: 'baloo', family: 'uiBaloo', arabic: true,
+      nameAr: 'بالو بهيجان', nameEn: 'Baloo Bhaijaan 2',
+      noteAr: 'حروف مستديرة مرحة — للأطفال', noteEn: 'Round, playful letters — for children',
+      weights: _w('baloo', 'BalooBhaijaan2', [400, 500, 600, 700, 800]),
+    ),
+    AppFontOption(
       id: 'cairo', family: 'uiCairo', arabic: true,
       nameAr: 'القاهرة', nameEn: 'Cairo',
       noteAr: 'عصري ومضغوط', noteEn: 'Contemporary and compact',

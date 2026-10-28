@@ -365,19 +365,21 @@ class TeacherProfileData {
     this.teacherProfile,
   });
 
+  /// A course's / the doctors list's `teacher` block. The server blanks a teacher's contact fields there (`gmail`
+  /// "", `phone` null) and may drop them and the account fields later, so none of them is required.
   factory TeacherProfileData.fromJson(Map<String, dynamic> j) =>
       TeacherProfileData(
         id: j['id'] as int,
         name: j['name'] as String,
-        gmail: j['gmail'] as String,
+        gmail: j['gmail'] as String? ?? '',
         phone: j['phone'] as String?,
-        role: j['role'] as String,
+        role: j['role'] as String? ?? 'teacher',
         country: j['country'] as String?,
         imageUrl: j['image_url'] as String?,
-        isVerified: j['is_verified'] as bool,
-        isActive: j['is_active'] as bool,
-        loginTimes: j['login_times'] as int,
-        registrationStep: j['registration_step'] as String,
+        isVerified: j['is_verified'] as bool? ?? false,
+        isActive: j['is_active'] as bool? ?? true,
+        loginTimes: (j['login_times'] as num?)?.toInt() ?? 0,
+        registrationStep: j['registration_step'] as String? ?? '',
         createdAt: (j['created_at'] as String).toLocalSaTime,
         teacherProfile: j['teacher_profile'] != null
             ? TeacherProfileDetail.fromJson(

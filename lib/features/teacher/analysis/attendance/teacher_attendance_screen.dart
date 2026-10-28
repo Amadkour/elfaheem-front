@@ -326,7 +326,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                 if (!context.mounted) return;
                 _showSnack(
                   ok ? 'attendance_saved'.tr : 'save_failed'.tr,
-                  ok ? c.success : kDanger,
+                  ok ? c.success : c.danger,
                 );
               },
             ),
@@ -341,14 +341,14 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
               if (!context.mounted) return;
               _showSnack(
                 ok ? 'attendance_saved'.tr : 'save_failed'.tr,
-                ok ? c.success : kDanger,
+                ok ? c.success : c.danger,
               );
             },
           ),
           const SizedBox(width: 8),
           _QuickActionBtn(
             label: 'mark_all_absent'.tr,
-            color: kDanger,
+            color: c.danger,
             icon: Icons.remove_done_rounded,
             onTap: () => prov.markAll(false),
           ),
@@ -394,7 +394,7 @@ class _SessionFlag extends StatelessWidget {
               ? LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
-            colors: [kDeep, c.primary],
+            colors: [c.primaryDark, c.primary],
           )
               : null,
           color: isSelected ? null : c.cardBg,
@@ -465,7 +465,7 @@ class _StudentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final present = student.isPresent;
-    final statusColor = present ? c.success : kDanger;
+    final statusColor = present ? c.success : c.danger;
     final initial = student.name.isEmpty ? '?' : student.name[0];
 
     return AnimatedContainer(
@@ -556,7 +556,7 @@ class _StudentTile extends StatelessWidget {
         AppSwitch(
           value: present,
           activeColor: c.success,
-          inactiveColor: kDanger,
+          inactiveColor: c.danger,
           onChanged: onToggle,
           semanticLabel: student.name,
         ),

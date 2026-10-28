@@ -11,6 +11,8 @@ import 'package:flutter_education_app/core/app_time.dart';
 
 import 'data_lab_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/display/display_settings.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 /// Translation with a friendly English fallback while a key is not in the language files yet.
 String dlTr(String key, String fallback) {
@@ -18,8 +20,20 @@ String dlTr(String key, String fallback) {
   return (v.isEmpty || v == key) ? fallback : v;
 }
 
-TextStyle dlText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) =>
-    TextStyle(fontFamily: AppFonts.family, fontSize: size, fontWeight: w, color: c, height: h);
+/// The kit's text style (appText): the person's font, and their reading spacing on an explicit height
+/// (an inherited height gets it from AppDisplayScope's default style).
+TextStyle dlText(double size, {FontWeight w = FontWeight.w500, Color? c, double? h}) {
+  final sp = ReadingSpacing.current;
+  return TextStyle(
+    fontFamily: AppFonts.family,
+    fontSize: size,
+    fontWeight: w,
+    color: c,
+    height: sp.height(h),
+    wordSpacing: sp.isNormal ? null : sp.wordSpacing,
+    letterSpacing: sp.letters(AppConfig.lang),
+  );
+}
 
 /// Traffic-light colour for a 0–100 value, taken from the active theme.
 Color dlScoreColor(BuildContext context, double? v) {
@@ -554,6 +568,12 @@ class DlShimmer extends StatefulWidget {
 class _DlShimmerState extends State<DlShimmer> with SingleTickerProviderStateMixin {
   late final AnimationController _a = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))
     ..repeat(reverse: true);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _a, reverse: true); // reduce motion parks this decorative loop
+  }
 
   @override
   void dispose() {

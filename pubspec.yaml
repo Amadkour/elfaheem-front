@@ -122,6 +122,7 @@ flutter:
     - assets/fonts/ui/noto_kufi/
     - assets/fonts/ui/almarai/
     - assets/fonts/ui/cairo/
+    - assets/fonts/ui/baloo/
     - assets/fonts/ui/jakarta/
     - assets/fonts/ui/lexend/
     - assets/fonts/ui/atkinson/

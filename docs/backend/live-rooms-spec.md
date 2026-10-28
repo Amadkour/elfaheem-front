@@ -434,3 +434,46 @@ A meeting recording left in `uploading` (or `assembling`) longer than 30 minutes
 the worker died. The existing retry tick takes it back with the same compare-and-set as a retry: it is treated as a
 transient failure (attempt counted, `last_error` "worker_lost"), so it either uploads again or, after the last
 attempt, fails with the usual notification. Never two workers on one row.
+
+
+### Deviations recorded by the backend (Part 3, 2026-10-28)
+
+- Revision `0023_points_card_renew` (Revises `0022`; `0024` users.ui_prefs now sits on top of it). Besides the
+  columns named above it adds `points_topups.checkout_token` (unique; our token in the callback URL and the gateway's
+  merchant order id) and `points_topups.meta` (JSON: the Paymob signed order id, the Moyasar id, the sanitized gateway
+  object), a unique index on `(provider, payment_id)` (one gateway transaction pays one top-up), and
+  `live_recordings.updated_at` (bumped on every write; the §17 clock).
+- §13 browser return: `GET /api/v1/payments/callback/points/{provider}?token=…` (an HTML page, under the already-open
+  `/api/v1/payments/callback` prefix) with the course checkout's handshake: it redirects after 2.5 s to
+  `FLUTTER_APP_URL/#/payment/callback?status=paid|initiated|failed&topup_id=…[&message=…]` and posts
+  `{paymentStatus, moyasarStatus, topupId}` to `window.parent`; the app may simply poll `GET /me/points/topups/{id}` as planned. Plus `POST
+  /api/v1/payments/callback/points/moyasar/attach {token, id}` (the Moyasar page reports its payment id; stored only,
+  then `GET /me/points/topups/{id}` asks Moyasar with the secret key at most once a minute after the first minute).
+- §13 checkout response, exactly like the course checkout plus the top-up: `{status: "checkout", already_paid: false,
+  topup_id, provider, points, amount, currency, checkout_url, session_token, amount_minor, is_sandbox, topup}`.
+  Codes: 409 `card_unavailable {providers}` (switch off, card method closed in Admin → Payment methods, or no
+  configured provider charging in `points_currency`), 422 `bad_provider`, 422 `points_below_min`, 502 `gateway_error`.
+  `GET /me/points` also returns `card_providers` (default provider first). Top-up items gain `provider`, `payment_id`,
+  `failure_reason`; a rejected card row carries the provider's reason in `note` too (what the app shows).
+  `failure_reason` is `declined: <provider message>`, `amount_mismatch expected=… actual=…`,
+  `currency_mismatch …` or `transaction_reused`. Admin approve / reject of a card row → 409 `topup_by_card
+  {topup_status}`. A later VERIFIED success repairs a `declined` row (the money moved); a mismatch never.
+- §14 the 402 `live_plan_required` and the 403 `meeting_time_limit` always carry `reason`: `daily_limit` or
+  `meeting_limit` (the per-meeting window); the 402 also `daily_minutes` and `daily_left`. With no cap
+  (`daily_minutes: 0`) `time_limit.daily_left` and the plan's `daily_free_left` are null; for staff
+  `daily_free_left` is null. A meeting that went live while its owner had a plan has no fixed window: if the plan
+  lapses it gets the per-meeting minutes and does not count against the day. Two of one student's meetings going live
+  in the same instant can together exceed the day's cap by one window (not serialized).
+- §15 `PUT /me/live-plan` by staff → 409 `plan_not_needed`. `days_left` = whole days left (floor), 0 without a plan,
+  null for staff. Auto-renew: a renewal within 2 h of the old end starts at the old end; a later one (e.g. after a
+  top-up following `live_plan_renew_failed`) starts NOW, so the student never pays for days already lost. Plans
+  that ended more than 7 days ago are not renewed by the tick any more. The debit holds the wallet row and the
+  "no newer plan" check runs after it, so a manual purchase at the same moment wins and nothing is charged twice.
+  The tick is `_live_plan_renew_tick` (hourly).
+- §16 also in the admitted guest / member lobby poll payloads (they are join payloads).
+- §17 an upload that was in progress already counted its attempt; a lost assembly counts one. A stuck `assembling`
+  row with its chunks still on disk is re-assembled (not only re-uploaded). The recovery uses the real clock (not the
+  tick's `now` used for due retries).
+- Notification taps: `GET /api/v1/notifications/{id}/target` answers `{module: "live_plan"}` for the types `live_plan`,
+  `live_plan_required` (although its related_type is `meeting`), `live_plan_expiring`, `live_plan_renewed`,
+  `live_plan_renew_failed`, and `{module: "points"}` for `points_topup` (`target_id` = the related id).

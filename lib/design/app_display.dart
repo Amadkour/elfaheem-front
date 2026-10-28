@@ -12,6 +12,8 @@
 //                 ThemeConfigProvider (textMedium / textLight / divider)
 //   reduce motion MediaQuery.disableAnimations + no page transitions
 //   large targets padded tap targets + a roomier visual density for Material buttons, chips and tiles
+//   spacing       reading spacing (ReadingSpacing): taller lines and wider word gaps for every inherited style,
+//                 the theme's text styles and appText; letter spacing in English only
 //   fonts         the theme's text styles carry AppFonts.family + AppFonts.fallback (the other language's
 //                 font for mixed text); explicit styles read AppFonts.family themselves
 //
@@ -22,6 +24,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../core/display/app_fonts.dart';
+import '../config/app_config.dart';
 import '../core/display/display_settings.dart';
 
 /// The system's text scaler times the person's factor (keeps Android's non-linear scaling).
@@ -99,9 +102,11 @@ class _NoTransitions extends PageTransitionsBuilder {
 /// [theme] with the preferences' fonts, motion and target size.
 ThemeData displayTheme(ThemeData theme, DisplayPrefs p) {
   final family = AppFonts.family, fallback = AppFonts.fallback;
+  final sp = ReadingSpacing.of(p.spacing);
+  TextTheme text(TextTheme t) => spacedTextTheme(t.apply(fontFamily: family, fontFamilyFallback: fallback), sp, AppConfig.lang);
   return theme.copyWith(
-    textTheme: theme.textTheme.apply(fontFamily: family, fontFamilyFallback: fallback),
-    primaryTextTheme: theme.primaryTextTheme.apply(fontFamily: family, fontFamilyFallback: fallback),
+    textTheme: text(theme.textTheme),
+    primaryTextTheme: text(theme.primaryTextTheme),
     pageTransitionsTheme: p.reduceMotion
         ? const PageTransitionsTheme(builders: {
             TargetPlatform.android: _NoTransitions(),
@@ -114,6 +119,43 @@ ThemeData displayTheme(ThemeData theme, DisplayPrefs p) {
         : null,
     materialTapTargetSize: p.largeTargets ? MaterialTapTargetSize.padded : null,
     visualDensity: p.largeTargets ? const VisualDensity(horizontal: 1, vertical: 1) : null,
+  );
+}
+
+/// For a DECORATIVE loop (shimmer, pulse, shine, live dot): runs it only while motion is allowed and parks it at
+/// [rest] while the person (or the system) asked for less motion. Call it from didChangeDependencies — it sees the
+/// MediaQuery change, so turning the setting on stops loops already on screen. Loops that tell something (a
+/// spinner, a recording indicator, a typing cursor) keep moving.
+void syncMotionLoop(BuildContext context, AnimationController c, {bool reverse = false, double rest = 1}) {
+  if (MediaQuery.maybeDisableAnimationsOf(context) ?? false) {
+    c.stop();
+    c.value = rest;
+  } else if (!c.isAnimating) {
+    c.repeat(reverse: reverse);
+  }
+}
+
+/// The line height a style without one gets under a spacing step (≈ the fonts' natural line).
+const kNaturalLineHeight = 1.4;
+
+/// [style] under the reading spacing [sp] (taller lines, wider words, English letter spacing).
+TextStyle spacedStyle(TextStyle style, ReadingSpacing sp, String lang) => sp.isNormal
+    ? style
+    : style.copyWith(
+        height: (style.height ?? kNaturalLineHeight) * sp.lineFactor,
+        wordSpacing: (style.wordSpacing ?? 0) + sp.wordSpacing,
+        letterSpacing: lang == 'ar' ? style.letterSpacing : (style.letterSpacing ?? 0) + sp.letterSpacing,
+      );
+
+TextTheme spacedTextTheme(TextTheme t, ReadingSpacing sp, String lang) {
+  if (sp.isNormal) return t;
+  TextStyle? f(TextStyle? s) => s == null ? null : spacedStyle(s, sp, lang);
+  return t.copyWith(
+    displayLarge: f(t.displayLarge), displayMedium: f(t.displayMedium), displaySmall: f(t.displaySmall),
+    headlineLarge: f(t.headlineLarge), headlineMedium: f(t.headlineMedium), headlineSmall: f(t.headlineSmall),
+    titleLarge: f(t.titleLarge), titleMedium: f(t.titleMedium), titleSmall: f(t.titleSmall),
+    bodyLarge: f(t.bodyLarge), bodyMedium: f(t.bodyMedium), bodySmall: f(t.bodySmall),
+    labelLarge: f(t.labelLarge), labelMedium: f(t.labelMedium), labelSmall: f(t.labelSmall),
   );
 }
 
@@ -149,7 +191,8 @@ class AppDisplayApply extends StatelessWidget {
       child: Theme(
         data: displayTheme(theme, prefs),
         child: DefaultTextStyle.merge(
-          style: TextStyle(fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback),
+          style: spacedStyle(TextStyle(fontFamily: AppFonts.family, fontFamilyFallback: AppFonts.fallback),
+              ReadingSpacing.of(prefs.spacing), AppConfig.lang),
           child: DisplayZoom(zoom: prefs.zoom, child: child),
         ),
       ),

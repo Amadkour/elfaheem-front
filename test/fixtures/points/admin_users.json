@@ -1,0 +1,36 @@
+{
+ "_source": {
+  "route": "GET /api/v1/admin/points/users",
+  "status": 200,
+  "uid": 4
+ },
+ "payload": {
+  "items": [
+   {
+    "user": {
+     "id": 1,
+     "name": "Student",
+     "email": "student@capture.test",
+     "phone": "+201007897215",
+     "username": null,
+     "role": "student"
+    },
+    "balance": 70
+   },
+   {
+    "user": {
+     "id": 2,
+     "name": "Student2",
+     "email": "student2@capture.test",
+     "phone": "+201008281298",
+     "username": null,
+     "role": "student"
+    },
+    "balance": 0
+   }
+  ],
+  "total": 2,
+  "page": 1,
+  "size": 20
+ }
+}

@@ -4,6 +4,8 @@
 //   Top-ups    pending first; approve / reject with a note; the receipt (image in the app, PDF saved)
 //   Users      search, balance, grant / deduct with a note, the history
 //   Settings   the six app settings: free minutes, plan price (points), plan days, point price, currency, minimum
+//              + Part 3: daily free minutes (§14, 0 = no cap) and "Buy points by card" (§13, AppSwitch)
+//   Card top-ups (§13) are listed read-only: the provider decided them; the row shows the provider and payment id.
 //
 // The bodies take plain values (AdminTopupsView, AdminPointsUsersView, PointsSettingsForm, PointsGrantForm) so
 // test/ui/admin_points_layout_test.dart pumps them without the network.
@@ -220,11 +222,22 @@ class AdminTopupsView extends StatelessWidget {
             TopupTile(
               topup: x,
               showUser: true,
-              trailing: Wrap(spacing: 8, runSpacing: 8, children: [
-                AppPill(
-                    icon: Icons.receipt_long_rounded,
-                    label: t('الإيصال', 'Receipt'),
-                    onTap: busyId == x.id || onReceipt == null ? null : () => onReceipt!(x)),
+              trailing: x.isCard
+                  // Decided by the payment provider: nothing to approve, reject or open (§13).
+                  ? Text(
+                      x.isPending
+                          ? t('بالبطاقة · بانتظار تأكيد مزوّد الدفع', 'Card · waiting for the payment provider')
+                          : t('بالبطاقة · قرّره مزوّد الدفع', 'Card · decided by the payment provider'),
+                      key: ValueKey('admin_topup.card.${x.id}'),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: appText(12, c: c.textLight))
+                  : Wrap(spacing: 8, runSpacing: 8, children: [
+                if (x.hasReceipt)
+                  AppPill(
+                      icon: Icons.receipt_long_rounded,
+                      label: t('الإيصال', 'Receipt'),
+                      onTap: busyId == x.id || onReceipt == null ? null : () => onReceipt!(x)),
                 if (x.isPending) ...[
                   AppPill(
                       icon: Icons.check_rounded,
@@ -758,12 +771,14 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
   late final _point = TextEditingController(text: moneyText(widget.initial.pointPrice, ''));
   late final _currency = TextEditingController(text: widget.initial.currency);
   late final _min = TextEditingController(text: '${widget.initial.topupMin}');
+  late final _daily = TextEditingController(text: '${widget.initial.freeMinutesDaily}');
+  late bool _cardEnabled = widget.initial.cardEnabled;
   bool _saving = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_free, _price, _days, _point, _currency, _min]) {
+    for (final c in [_free, _price, _days, _point, _currency, _min, _daily]) {
       c.dispose();
     }
     super.dispose();
@@ -776,6 +791,8 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
         pointPrice: double.tryParse(_point.text.trim().replaceAll(',', '.')) ?? 0,
         currency: _currency.text.trim().toUpperCase(),
         topupMin: parsePoints(_min.text) ?? 0,
+        freeMinutesDaily: parsePoints(_daily.text) ?? -1,
+        cardEnabled: _cardEnabled,
       );
 
   Future<void> _save() async {
@@ -812,6 +829,9 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
       AppSectionTitle(t('باقة الاجتماعات المباشرة للطلاب', 'Student live-meeting plan')),
       _num(_free, t('الدقائق المجانية لكل اجتماع', 'Free minutes per meeting'),
           helper: t('وقت البث المجاني لاجتماع ينشئه طالب بلا باقة', 'Live time a student without the plan gets per meeting')),
+      _num(_daily, t('الدقائق المجانية في اليوم', 'Free minutes per day'),
+          helper: t('مجموع الوقت المجاني لكل اجتماعات الطالب في اليوم؛ 0 = بلا حد يومي',
+              "A student's free live time per day over all meetings; 0 = no daily cap")),
       _num(_price, t('سعر الباقة (نقاط)', 'Plan price (points)')),
       _num(_days, t('مدة الباقة (أيام)', 'Plan length (days)')),
       AppSectionTitle(t('النقاط', 'Points')),
@@ -821,6 +841,16 @@ class _PointsSettingsFormState extends State<PointsSettingsForm> {
         child: AppField(controller: _currency, label: t('العملة', 'Currency'), hint: 'SAR', ltr: true),
       ),
       _num(_min, t('أقل عدد نقاط للشحن', 'Minimum top-up (points)')),
+      AppSwitchTile(
+        key: const ValueKey('points_settings.card'),
+        icon: Icons.credit_card_rounded,
+        title: t('شراء النقاط بالبطاقة', 'Buy points by card'),
+        subtitle: t('يظهر خيار «بطاقة» عند شراء النقاط إذا كانت بوابة دفع مهيأة؛ تُضاف النقاط فور تأكيد الدفع.',
+            'Offers "Card" in Buy points when a payment gateway is set up; the points are added once the payment is confirmed.'),
+        value: _cardEnabled,
+        onChanged: _saving ? null : (v) => setState(() { _cardEnabled = v; _error = null; }),
+      ),
+      const SizedBox(height: 4),
       if (v.error == null)
         AppBanner(
           icon: Icons.calculate_rounded,

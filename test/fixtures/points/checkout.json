@@ -1,0 +1,35 @@
+{
+ "_source": {
+  "route": "POST /api/v1/me/points/checkout",
+  "status": 201,
+  "uid": 1
+ },
+ "payload": {
+  "status": "checkout",
+  "already_paid": false,
+  "topup_id": 2,
+  "provider": "moyasar",
+  "points": 30,
+  "amount": 30.0,
+  "currency": "SAR",
+  "checkout_url": "https://nextbrain.site/api/checkout?token=edfb84fb3198420abef6c5ad57770875",
+  "session_token": "edfb84fb3198420abef6c5ad57770875",
+  "amount_minor": 3000,
+  "is_sandbox": true,
+  "topup": {
+   "id": 2,
+   "points": 30,
+   "amount": 30.0,
+   "currency": "SAR",
+   "method": "card",
+   "status": "pending",
+   "note": null,
+   "has_receipt": false,
+   "decided_at": null,
+   "created_at": "2026-10-28T16:13:58.215662",
+   "provider": "moyasar",
+   "payment_id": null,
+   "failure_reason": null
+  }
+ }
+}

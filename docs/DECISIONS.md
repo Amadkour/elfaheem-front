@@ -558,6 +558,20 @@ Documents keep their own fonts (PDF / Word / certificates / the export designer)
 would freeze the font: make it a getter. Icons: `DirIcons` (`lib/design/app_icons.dart`) for logout / login /
 exit / subdirectory / north-east / outward, never a language ternary over an icon that mirrors by itself
 (`test/ui/rtl_icons_test.dart` reads lib/ for both).
+**Added the same day.** Reading spacing (Normal · Comfortable · Wide, `ReadingSpacing`): taller lines and wider
+word gaps through AppDisplayScope's default style, the theme's text styles and `appText` (letter spacing in English
+only — spaced Arabic loses its joins). Baloo Bhaijaan 2 (rounded, for children) joins the Arabic catalog and the
+"Young learners" preset. Reduce motion also parks the decorative loops (shimmers, pulses, live dots, the card
+shine) through `syncMotionLoop` and the boot splash's float; spinners, recording indicators and the typing cursor
+keep moving, since they tell something. The font tiles are separate list children, so the page loads a font only
+when its tile scrolls in. The preferences also follow the account: `GET/PUT /api/v1/me/ui-prefs` (`users.ui_prefs`,
+revision 0024), pulled at every sign-in and pushed 2 s after a change, the newer copy winning
+(`displaySyncDecision`); a server without the route keeps them on the device. High contrast now also lifts
+`secondText`, the on-hero muted / faint / border ink and the video player's dim labels, and the screens whose
+UI colours were hard-coded (teacher queue card, exam-analysis kDanger … constants, image upload placeholder,
+update dialog, parent report hero) read the palette. What stays hard-coded on purpose: palette definitions,
+the admin's theme swatches, Google / card-network / Excel-Word brand colours, certificate and paper artwork, the
+splash, payment-card art, file-type colours, and the always-dark video / live-room / cropper chrome.
 
 ## D-073 — One design language for the sign-in module · 2026-10-28 · accepted
 

@@ -12,6 +12,7 @@ import 'saved_payment_models.dart';
 import 'saved_methods_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 
 class StudentSavedMethodsScreen extends StatelessWidget {
   const StudentSavedMethodsScreen({super.key});
@@ -162,6 +163,12 @@ class _VisualCardState extends State<_VisualCard>
       ..repeat();
     _anim = Tween<double>(begin: -2, end: 3)
         .animate(CurvedAnimation(parent: _shimmer, curve: Curves.easeInOut));
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _shimmer, rest: 0.0); // reduce motion parks this decorative loop
   }
 
   @override

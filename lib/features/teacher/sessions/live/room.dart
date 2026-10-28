@@ -284,6 +284,10 @@ class RoomPage extends StatefulWidget {
   final DateTime? startsAt;
   final String? hostName;
 
+  /// Part 3 (spec §16): when the room really went live (`live_started_at`, UTC; a meeting's first join, a course
+  /// session's start). The (i) sheet's "Live for" counts from it; null → the person's own time in the room.
+  final DateTime? liveStartedAt;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -306,6 +310,7 @@ class RoomPage extends StatefulWidget {
         this.freeEndsAt,
         this.startsAt,
         this.hostName,
+        this.liveStartedAt,
       });
 
   @override
@@ -679,6 +684,7 @@ class _RoomPageState extends State<RoomPage>
       hostName: widget.hostName,
       startsAt: widget.startsAt,
       elapsed: Duration(seconds: _sessionElapsedSeconds),
+      liveFor: meetingLiveFor(widget.liveStartedAt, DateTime.now().toUtc(), own: Duration(seconds: _sessionElapsedSeconds)),
       participants: widget.room.remoteParticipants.length + 1,
       recording: _infoRecording,
       freeLeft: limit == null || limit.lifted ? null : limit.remaining(DateTime.now()),

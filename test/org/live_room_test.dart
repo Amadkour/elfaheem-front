@@ -4,6 +4,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/features/shared/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
+import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart' show meetingLiveFor;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -323,6 +324,44 @@ void main() {
       AppConfig.lang = 'ar';
       expect(liveRoomCodeText('meeting_time_limit'), contains('الوقت المجاني'));
       AppConfig.lang = 'en';
+    });
+  });
+
+  group('Part 3: live_started_at (§16)', () {
+    test('a meeting join payload carries live_started_at (naive UTC) to the room', () {
+      final o = JoinOutcome.parse({'url': 'wss://lk', 'token': 'tok', 'live_started_at': '2026-10-28T09:58:30'});
+      expect(o.liveStartedAt, DateTime.utc(2026, 10, 28, 9, 58, 30));
+      expect(o.liveStartedAt!.isUtc, isTrue);
+      final live = o.live(sessionId: -9);
+      expect(live.liveStartedAt, DateTime.utc(2026, 10, 28, 9, 58, 30));
+      expect(live.toJson['live_started_at'], '2026-10-28T09:58:30.000Z');
+    });
+
+    test('absent / null / junk → unknown; an offset is honoured; the admitted poll carries it too', () {
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't'}).liveStartedAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't', 'live_started_at': null}).liveStartedAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't', 'live_started_at': 'soon'}).liveStartedAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't'}).live(sessionId: 1).liveStartedAt, isNull);
+      expect(JoinOutcome.parse({'url': 'u', 'token': 't', 'live_started_at': '2026-10-28T12:00:00+02:00'}).liveStartedAt,
+          DateTime.utc(2026, 10, 28, 10));
+      final polled = JoinOutcome.parse({'status': 'admitted', 'url': 'u', 'token': 't', 'live_started_at': '2026-10-28T10:00:00'});
+      expect(polled.isAdmitted, isTrue);
+      expect(polled.liveStartedAt, DateTime.utc(2026, 10, 28, 10));
+      expect(JoinOutcome.parse({'status': 'waiting', 'request_id': 3}).liveStartedAt, isNull);
+    });
+
+    test('the guest join payload carries live_started_at', () {
+      final j = GuestJoin.fromJson({'url': 'wss://a', 'token': 't', 'live_started_at': '2026-10-28T10:00:00'});
+      expect(j.liveStartedAt, DateTime.utc(2026, 10, 28, 10));
+      expect(GuestJoin.fromJson({'url': 'wss://a', 'token': 't'}).liveStartedAt, isNull);
+    });
+
+    test('"Live for" counts from the room start, never below your own time, null when unknown', () {
+      final now = DateTime.utc(2026, 10, 28, 10, 30);
+      expect(meetingLiveFor(DateTime.utc(2026, 10, 28, 10), now, own: const Duration(minutes: 5)), const Duration(minutes: 30));
+      // the device clock behind the server's: the start looks like the future → your own time
+      expect(meetingLiveFor(DateTime.utc(2026, 10, 28, 10, 31), now, own: const Duration(seconds: 40)), const Duration(seconds: 40));
+      expect(meetingLiveFor(null, now, own: const Duration(minutes: 5)), isNull);
     });
   });
 }

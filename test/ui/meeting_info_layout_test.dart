@@ -35,6 +35,38 @@ void main() {
     }
   });
 
+  testWidgets('Part 3 §16: "Live for" from the room start, your own time beside it; fallback without it', (tester) async {
+    await expectNoLayoutErrors(
+      tester,
+      () => const MeetingInfoSheet(
+        info: MeetingInfo(
+          title: 'Weekly sync',
+          isMeeting: true,
+          role: LiveRoomRole.member,
+          elapsed: Duration(minutes: 4, seconds: 2),
+          liveFor: Duration(hours: 12, minutes: 34, seconds: 56),
+          participants: 2,
+        ),
+      ),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('meeting_info.live_for')), findsOneWidget);
+        expect(find.byKey(const ValueKey('meeting_info.elapsed')), findsOneWidget);
+        expect(find.text('12:34:56'), findsOneWidget);
+      },
+    );
+    await expectNoLayoutErrors(
+      tester,
+      () => const MeetingInfoSheet(
+        info: MeetingInfo(title: 'Weekly sync', isMeeting: true, role: LiveRoomRole.guest, elapsed: Duration(minutes: 4, seconds: 2)),
+      ),
+      act: (t) async {
+        expect(find.byKey(const ValueKey('meeting_info.live_for')), findsOneWidget);
+        expect(find.byKey(const ValueKey('meeting_info.elapsed')), findsNothing);
+        expect(find.text('04:02'), findsOneWidget);
+      },
+    );
+  });
+
   testWidgets('host: share link with Copy and the admission rules; loading; no link', (tester) async {
     await expectNoLayoutErrors(
       tester,
