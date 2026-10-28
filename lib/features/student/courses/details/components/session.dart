@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -57,10 +58,7 @@ class SessionsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (provider.isLoading) {
-      return Padding(
-        padding: EdgeInsets.all(48),
-        child: Center(child: AppLoadingIndicator()),
-      );
+      return const AppListSkeleton(items: 4);
     }
     final hasSections = presented.any((s) => s.track == 'section');
     final shown = !hasSections || provider.trackFilter == 'all'
@@ -306,11 +304,11 @@ class _SessionExamBannerState extends State<_SessionExamBanner> {
                 ),
               ),
               child: _opening
-                  ? const SizedBox(
+                  ? SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                    strokeWidth: 2, color: c.onHero),
               )
                   : Text(
                 exam.attempted

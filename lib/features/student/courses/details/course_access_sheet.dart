@@ -21,7 +21,7 @@ class CourseAccessSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.6),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.6),
       builder: (_) => CourseAccessSheet(courseId: courseId, courseName: courseName),
     );
     return ok == true;
@@ -33,12 +33,14 @@ class CourseAccessSheet extends StatefulWidget {
 
 class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTickerProviderStateMixin {
   static const _len = 6;
-  static const _surface = Color(0xFF15151F);
-  static const _gold = Color(0xFFC9A84C);
-  static const _empty = Color(0xFF2A2A3A);
-  static const _red = Color(0xFFE05C5C);
-  static const _text = Color(0xFFF4F0E8);
-  static const _muted = Color(0xFF8A8498);
+  // Theme roles (the sheet follows the live theme, light or dark).
+  ThemeConfigProvider get _c => context.colors;
+  Color get _surface => _c.cardBg;
+  Color get _gold => _c.accent2;
+  Color get _empty => _c.divider;
+  Color get _red => _c.danger;
+  Color get _text => _c.textDark;
+  Color get _muted => _c.textLight;
 
   String _entered = '';
   bool _checking = false;
@@ -105,7 +107,7 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
     return Container(
       width: w > 500 ? 500 : w,
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
-      decoration: const BoxDecoration(color: _surface, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
+      decoration: BoxDecoration(color: _surface, borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -113,27 +115,27 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
             Container(
               margin: const EdgeInsets.only(top: 14, bottom: 14),
               width: 40, height: 4,
-              decoration: BoxDecoration(color: const Color(0xFF3A3A4A), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: _c.divider, borderRadius: BorderRadius.circular(2)),
             ),
             Container(
               width: 60, height: 60,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(colors: [_gold, Color(0xFF8B6914)]),
+                gradient: LinearGradient(colors: [_gold, _c.heroEnd(_gold, 0.45)]),
                 boxShadow: [BoxShadow(color: _gold.withValues(alpha: 0.35), blurRadius: 24, offset: const Offset(0, 8))],
               ),
-              child: const Icon(Icons.lock_outline_rounded, color: Color(0xFF0D0D14), size: 28),
+              child: Icon(Icons.lock_outline_rounded, color: _c.onHero, size: 28),
             ),
             const SizedBox(height: 14),
             Text('cas_private_course'.tr,
-                style: const TextStyle(color: _text, fontSize: 21, fontWeight: FontWeight.w700, fontFamily: 'tajawal')),
+                style: TextStyle(color: _text, fontSize: 21, fontWeight: FontWeight.w700, fontFamily: 'tajawal')),
             const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
               child: Text(
                 'cas_enter_code'.tr.replaceAll('{name}', widget.courseName),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: _muted, fontSize: 13, height: 1.5, fontFamily: 'tajawal'),
+                style: TextStyle(color: _muted, fontSize: 13, height: 1.5, fontFamily: 'tajawal'),
               ),
             ),
             const SizedBox(height: 22),
@@ -166,14 +168,15 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
               height: 34,
               child: Center(
                 child: _checking
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: _gold))
                     : Text(_error ?? '', textAlign: TextAlign.center,
-                    style: const TextStyle(color: _red, fontSize: 12.5, fontFamily: 'tajawal')),
+                    style: TextStyle(color: _red, fontSize: 12.5, fontFamily: 'tajawal')),
               ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(32, 0, 32, 20),
-              child: Column(children: [
+              // A keypad keeps the phone order 1-2-3 in Arabic too.
+              child: Directionality(textDirection: TextDirection.ltr, child: Column(children: [
                 for (final row in const [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['x', '0', 'del']])
                   Row(children: [
                     for (final k in row)
@@ -181,16 +184,16 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
                         child: Padding(
                           padding: const EdgeInsets.all(5),
                           child: k == 'x'
-                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: context.colors.danger,
-                              child: const Icon(Icons.clear, color: Colors.white, size: 22))
+                              ? _Key(onTap: () => Navigator.of(context).pop(false), bg: context.colors.danger, label: 'cancel'.tr,
+                              child: Icon(Icons.clear, color: context.colors.onHero, size: 22))
                               : k == 'del'
-                              ? _Key(onTap: _del, child: const Icon(Icons.backspace_outlined, color: _muted, size: 22))
+                              ? _Key(onTap: _del, label: 'delete'.tr, child: Icon(Icons.backspace_outlined, color: _muted, size: 22))
                               : _Key(onTap: () => _key(k),
-                              child: Text(k, style: const TextStyle(color: _text, fontSize: 24, fontWeight: FontWeight.w300))),
+                              child: Text(k, style: TextStyle(color: _text, fontSize: 24, fontWeight: FontWeight.w300))),
                         ),
                       ),
                   ]),
-              ]),
+              ])),
             ),
           ]),
         ),
@@ -200,24 +203,32 @@ class _CourseAccessSheetState extends State<CourseAccessSheet> with SingleTicker
 }
 
 class _Key extends StatelessWidget {
-  const _Key({required this.child, required this.onTap, this.bg});
+  const _Key({required this.child, required this.onTap, this.bg, this.label});
   final Widget child;
   final VoidCallback onTap;
   final Color? bg;
+  final String? label;   // icon-only keys (cancel / delete) are announced by screen readers
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      height: 60,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: bg ?? const Color(0xFF1E1E2C),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFF2E2E40)),
-        boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8, offset: Offset(0, 4))],
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      button: true,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 60,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: bg ?? c.inputBg,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: c.divider),
+            boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.12), blurRadius: 8, offset: const Offset(0, 4))],
+          ),
+          child: child,
+        ),
       ),
-      child: child,
-    ),
-  );
+    );
+  }
 }

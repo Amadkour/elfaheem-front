@@ -20,8 +20,11 @@ import '../schedules/schedules_screen.dart';
 import '../sessions/sessions_provider.dart';
 import '../sessions/sessions_screen.dart';
 import 'course_form_screen.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class TeacherCoursesScreen extends StatefulWidget {
   const TeacherCoursesScreen({super.key});
@@ -71,7 +74,7 @@ class _TeacherCoursesScreenState extends State<TeacherCoursesScreen> {
       child: SafeArea(
         bottom: false,
         child: p.isLoading && p.allCourses.isEmpty
-            ? Center(child: AppLoadingIndicator())
+            ? const AppListSkeleton(withAvatar: false)
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -175,7 +178,7 @@ class _FloatingAddBtn extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: context.colors.primaryShadow,
       ),
-      child: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+      child: Icon(Icons.add_rounded, color: context.colors.onHero, size: 26),
     ),
   );
 }
@@ -262,7 +265,7 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
               child: Icon(
                 Icons.search_rounded,
                 size: 20,
-                color: focused ? Colors.white : c.primary,
+                color: focused ? c.onHero : c.primary,
               ),
             ),
             const SizedBox(width: 10),
@@ -294,7 +297,11 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
             ),
             ),
             if (controller.text.isNotEmpty)
-              GestureDetector(
+              Semantics(
+                button: true,
+                label: 'clear'.tr,
+                child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   controller.clear();
                   p.setQuery('');
@@ -302,6 +309,7 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
                 child: Container(
                   width: 26,
                   height: 26,
+                  margin: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
                     color: c.textLight.withValues(alpha: 0.16),
                     shape: BoxShape.circle,
@@ -311,6 +319,7 @@ class _CourseSearchBarState extends State<_CourseSearchBar> {
                     size: 15,
                     color: c.textMedium,
                   ),
+                ),
                 ),
               ),
           ],
@@ -395,7 +404,7 @@ class _FilterTabs extends StatelessWidget {
                     child: Center(
                       child: TweenAnimationBuilder<Color?>(
                         tween: ColorTween(
-                          end: active ? Colors.white : c.textMedium,
+                          end: active ? c.onHero : c.textMedium,
                         ),
                         duration: const Duration(milliseconds: 260),
                         builder: (_, col, _) => Row(
@@ -484,14 +493,19 @@ class _CourseListState extends State<_CourseList> {
     });
 
     if (p.isLoading && p.filteredCourses.isEmpty) {
-      return Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(withAvatar: false);
+    }
+
+    // A failed first page used to fall through to "no courses yet": say it failed and offer a retry.
+    if (p.hasError && p.allCourses.isEmpty) {
+      return ErrorRetry(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: p.refresh);
     }
 
     final courses = p.filteredCourses;
     if (courses.isEmpty) {
       // Still looking through further pages for this filter.
       if (p.hasMore && !p.loadMoreFailed) {
-        return Center(child: AppLoadingIndicator());
+        return const AppListSkeleton(withAvatar: false);
       }
       return _EmptyState(
         searching:
@@ -505,8 +519,7 @@ class _CourseListState extends State<_CourseList> {
       hasMore: p.hasMore,
     );
 
-    return RefreshIndicator(
-      color: context.colors.primary,
+    return AppRefresh(
       // Pull-to-refresh means "get me the latest": reload the first page.
       onRefresh: p.refresh,
       child: NotificationListener<ScrollNotification>(
@@ -676,8 +689,8 @@ class _EmptyState extends StatelessWidget {
                 ),
                 child: Text(
                   'add_new_course'.tr,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'bahji',
                     fontSize: 14,
@@ -749,9 +762,9 @@ class _CourseCardState extends State<_CourseCard> {
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(
                   'delete'.tr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'bahji',
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -799,7 +812,7 @@ class _CourseCardState extends State<_CourseCard> {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: context.colors.heroShade.withValues(alpha: 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -832,7 +845,7 @@ class _CourseCardState extends State<_CourseCard> {
                       stops: const [0.55, 1.0],
                       colors: [
                         Colors.transparent,
-                        Colors.black.withValues(alpha: 0.45),
+                        context.colors.heroShade.withValues(alpha: 0.45),
                       ],
                     ),
                   ),
@@ -1073,7 +1086,7 @@ class _StatsGrid extends StatelessWidget {
               final isLastInRow = item == row.last;
               return Expanded(
                 child: Padding(
-                  padding: EdgeInsets.only(left: isLastInRow ? 0 : 4),
+                  padding: EdgeInsetsDirectional.only(end: isLastInRow ? 0 : 4),
                   child: _StatCell(icon, label ?? '', color),
                 ),
               );
@@ -1143,15 +1156,15 @@ class _GlassChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: dark
-            ? Colors.black.withValues(alpha: 0.45)
-            : Colors.white.withValues(alpha: 0.94),
+            ? context.colors.heroShade.withValues(alpha: 0.45)
+            : context.colors.onHero.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: c.withValues(alpha: dark ? 0.55 : 0.35)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 11, color: dark ? Colors.white : c),
+          Icon(icon, size: 11, color: dark ? context.colors.onHero : c),
           const SizedBox(width: 4),
           Text(
             label,
@@ -1159,7 +1172,7 @@ class _GlassChip extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 10.5,
               fontWeight: FontWeight.w800,
-              color: dark ? Colors.white : c,
+              color: dark ? context.colors.onHero : c,
             ),
           ),
         ],
@@ -1191,7 +1204,7 @@ class _ToolbarAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? Colors.white : color;
+    final fg = filled ? context.colors.onHero : color;
     final radius = BorderRadius.circular(14);
 
     final content = Row(
@@ -1229,7 +1242,7 @@ class _ToolbarAction extends StatelessWidget {
               ? LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [color, Color.lerp(color, Colors.black, 0.18)!],
+                  colors: [color, context.colors.heroEnd(color, 0.18)],
                 )
               : null,
           color: filled ? null : color.withValues(alpha: 0.10),
@@ -1300,7 +1313,7 @@ class _ExtrasPanel extends StatelessWidget {
               Icons.calendar_month_rounded,
               'weekly_schedule'.tr,
               course.schedules
-                  .map((s) => '${s.dayLabel}  ${s.startTime} – ${s.endTime}')
+                  .map((s) => '${s.dayLabel}  ${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}')
                   .toList(),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(
@@ -1388,7 +1401,7 @@ class _ExtRow extends StatelessWidget {
             .take(3)
             .map(
               (item) => Padding(
-                padding: const EdgeInsets.only(right: 29, bottom: 3),
+                padding: const EdgeInsetsDirectional.only(start: 29, bottom: 3),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1411,7 +1424,7 @@ class _ExtRow extends StatelessWidget {
             ),
         if (items.length > 3)
           Padding(
-            padding: const EdgeInsets.only(right: 29, top: 2),
+            padding: const EdgeInsetsDirectional.only(start: 29, top: 2),
             child: Text(
               '+ ${items.length - 3} ${'others'.tr}',
               style: context.colors.caption.copyWith(

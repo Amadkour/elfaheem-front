@@ -19,6 +19,7 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty, AppTime;
 import '../../../core/base_provider.dart';
 import '../../shared/calendar/calendar_models.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 // ══════════════════════════════════════════════════════════════════════════════
 //  ScheduleTabBody
 // ══════════════════════════════════════════════════════════════════════════════
@@ -158,8 +159,7 @@ class _ScheduleTabBodyState extends State<ScheduleTabBody>
             : <ScheduleSession>[];
         final meetings = widget.getMeetings?.call() ?? const <CalEvent>[];
 
-        return RefreshIndicator(
-          color: context.colors.primary,
+        return AppRefresh(
           onRefresh: _doRefresh,
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
@@ -385,8 +385,8 @@ class _NextBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final isNow    = slot.isOngoing;
     final gradient = isNow
-        ? const LinearGradient(
-        colors: [Color(0xFFB71C1C), Color(0xFFEF5350)],
+        ? LinearGradient(
+        colors: [context.colors.danger, context.colors.danger],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight)
         : context.colors.primaryGradient;
@@ -416,12 +416,12 @@ class _NextBanner extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
+                        color: context.colors.onHero.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(20)),
                     child: Text(
                       isNow ? '🔴 ${'play-now'.tr}' : '🕐 ${'next-lesson'.tr}',
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: context.colors.onHero,
                           fontSize: 11,
                           fontFamily: 'bahji',
                           fontWeight: FontWeight.w700),
@@ -429,8 +429,8 @@ class _NextBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(slot.courseName,
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: context.colors.onHero,
                           fontSize: 17,
                           fontFamily: 'bahji',
                           fontWeight: FontWeight.w800),
@@ -438,12 +438,12 @@ class _NextBanner extends StatelessWidget {
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(children: [
-                    const Icon(Icons.access_time_rounded,
-                        color: Colors.white70, size: 13),
+                    Icon(Icons.access_time_rounded,
+                        color: context.colors.onHeroMuted, size: 13),
                     const SizedBox(width: 4),
-                    Text('${slot.startTime}  —  ${slot.endTime}',
-                        style: const TextStyle(
-                            color: Colors.white70,
+                    Text('${AppTime.clock(slot.startTime)}  —  ${AppTime.clock(slot.endTime)}',
+                        style: TextStyle(
+                            color: context.colors.onHeroMuted,
                             fontSize: 12,
                             fontFamily: 'bahji')),
                     if (slot.calcDuration > 0) ...[
@@ -451,11 +451,11 @@ class _NextBanner extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                         decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: context.colors.onHero.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(8)),
                         child: Text(trp('sched_duration_min', {'n': '${slot.calcDuration}'}),
-                            style: const TextStyle(
-                                color: Colors.white70,
+                            style: TextStyle(
+                                color: context.colors.onHeroMuted,
                                 fontSize: 11,
                                 fontFamily: 'bahji')),
                       ),
@@ -467,12 +467,12 @@ class _NextBanner extends StatelessWidget {
                     padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.22),
+                        color: context.colors.onHero.withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(20)),
                     child: Text(
                       slot.countdownLabel(ongoingSecondsLeft),
-                      style: const TextStyle(
-                          color: Colors.white,
+                      style: TextStyle(
+                          color: context.colors.onHero,
                           fontSize: 13,
                           fontFamily: 'bahji',
                           fontWeight: FontWeight.w700),
@@ -492,10 +492,10 @@ class _NextBanner extends StatelessWidget {
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
+                        color: context.colors.onHero.withValues(alpha: 0.18),
                         shape: BoxShape.circle),
-                    child: const Icon(Icons.notifications_active_rounded,
-                        color: Colors.white, size: 30)),
+                    child: Icon(Icons.notifications_active_rounded,
+                        color: context.colors.onHero, size: 30)),
             ]),
           ),
 
@@ -508,8 +508,8 @@ class _NextBanner extends StatelessWidget {
                 const BorderRadius.vertical(bottom: Radius.circular(20)),
                 child: LinearProgressIndicator(
                   value: slot.progressFraction(ongoingSecondsLeft),
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
-                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                  backgroundColor: context.colors.onHero.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation(context.colors.onHero),
                   minHeight: 4,
                 ),
               ),
@@ -536,7 +536,7 @@ class _GlassCircle extends StatelessWidget {
       Container(
           width: size, height: size,
           decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.07),
+              color: context.colors.onHero.withValues(alpha: 0.07),
               shape: BoxShape.circle));
 }
 
@@ -550,17 +550,17 @@ class _ProgressRing extends StatelessWidget {
           child: Stack(alignment: Alignment.center, children: [
             CustomPaint(
                 size: const Size(60, 60),
-                painter: _RingPainter(progress)),
+                painter: _RingPainter(progress, context.colors.onHero)),
             Column(mainAxisSize: MainAxisSize.min, children: [
               Text('${(progress * 100).toInt()}%',
-                  style: const TextStyle(
-                      color: Colors.white,
+                  style: TextStyle(
+                      color: context.colors.onHero,
                       fontSize: 11,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'bahji')),
               Text('completed'.tr,
                   style: TextStyle(
-                      color: Colors.white60,
+                      color: context.colors.onHeroMuted,
                       fontSize: 9,
                       fontFamily: 'bahji')),
             ]),
@@ -569,7 +569,8 @@ class _ProgressRing extends StatelessWidget {
 
 class _RingPainter extends CustomPainter {
   final double progress;
-  _RingPainter(this.progress);
+  final Color ink;
+  _RingPainter(this.progress, this.ink);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -577,7 +578,7 @@ class _RingPainter extends CustomPainter {
     final r = size.width / 2 - 5;
     canvas.drawCircle(c, r,
         Paint()
-          ..color       = Colors.white.withValues(alpha: 0.2)
+          ..color       = ink.withValues(alpha: 0.2)
           ..strokeWidth = 5
           ..style       = PaintingStyle.stroke);
     if (progress > 0) {
@@ -587,7 +588,7 @@ class _RingPainter extends CustomPainter {
           2 * math.pi * progress,
           false,
           Paint()
-            ..color       = Colors.white
+            ..color       = ink
             ..strokeWidth = 5
             ..style       = PaintingStyle.stroke
             ..strokeCap   = StrokeCap.round);
@@ -595,7 +596,7 @@ class _RingPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RingPainter old) => old.progress != progress;
+  bool shouldRepaint(_RingPainter old) => old.progress != progress || old.ink != ink;
 }
 
 // ── Week strip ────────────────────────────────────────────────────────────────
@@ -681,7 +682,7 @@ class _WeekStrip extends StatelessWidget {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isSel
-                              ? Colors.white
+                              ? context.colors.onHero
                               : isToday
                               ? context.colors.primary
                               : isActive
@@ -700,9 +701,9 @@ class _WeekStrip extends StatelessWidget {
                               height: 6,
                               decoration: BoxDecoration(
                                 color: hasOngoing
-                                    ? (isSel ? Colors.white : context.colors.danger)
+                                    ? (isSel ? context.colors.onHero : context.colors.danger)
                                     : isSel
-                                    ? Colors.white.withValues(alpha: 0.8)
+                                    ? context.colors.onHero.withValues(alpha: 0.8)
                                     : isToday
                                     ? context.colors.primary
                                     : context.colors.textLight,
@@ -915,8 +916,8 @@ class _ManageCard extends StatelessWidget {
         child: Center(
           child: Text(
             slotDayShort(schedule.day),
-            style: const TextStyle(
-                color: Colors.white,
+            style: TextStyle(
+                color: context.colors.onHero,
                 fontSize: 15,
                 fontWeight: FontWeight.w800,
                 fontFamily: 'bahji'),
@@ -937,7 +938,7 @@ class _ManageCard extends StatelessWidget {
                     size: 14, color: context.colors.primary),
                 const SizedBox(width: 5),
                 Text(
-                    '${schedule.startTime}  —  ${schedule.endTime}',
+                    '${AppTime.clock(schedule.startTime)}  —  ${AppTime.clock(schedule.endTime)}',
                     style: context.colors.label.copyWith(
                         color: context.colors.textDark, fontSize: 13)),
               ]),
@@ -945,17 +946,19 @@ class _ManageCard extends StatelessWidget {
       ),
       // Delete
       GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: () => _confirmDelete(context, schedule),
         child: Container(
             width: 38,
             height: 38,
+            margin: const EdgeInsets.all(5),
             decoration: BoxDecoration(
                 color: context.colors.danger.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                     color: context.colors.danger.withValues(alpha: 0.2))),
             child:  Icon(Icons.delete_outline_rounded,
-                color: context.colors.danger, size: 18)),
+                color: context.colors.danger, size: 18, semanticLabel: 'delete'.tr)),
       ),
     ]),
   );
@@ -974,7 +977,7 @@ class _ManageCard extends StatelessWidget {
                     fontFamily: 'bahji',
                     fontWeight: FontWeight.w700)),
             content: Text(
-                trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': s.startTime}),
+                trp('appointment_delete_confirm', {'day': slotDayLabel(s.day), 'time': AppTime.clock(s.startTime)}),
 
                 style: const TextStyle(fontFamily: 'bahji')),
             actions: [
@@ -993,7 +996,7 @@ class _ManageCard extends StatelessWidget {
                 child:  Text('delete'.tr,
                     style: TextStyle(
                         fontFamily: 'bahji',
-                        color: Colors.white,
+                        color: context.colors.onHero,
                         fontWeight: FontWeight.w700)),
               ),
             ],
@@ -1019,8 +1022,8 @@ class _ManageEmptyState extends StatelessWidget {
                 gradient: context.colors.primaryGradient,
                 shape: BoxShape.circle,
                 boxShadow: context.colors.primaryShadow),
-            child: const Icon(Icons.calendar_month_rounded,
-                color: Colors.white, size: 44)),
+            child: Icon(Icons.calendar_month_rounded,
+                color: context.colors.onHero, size: 44)),
         const SizedBox(height: 20),
         Text('no-appointment'.tr, style: context.colors.h3),
         const SizedBox(height: 6),
@@ -1044,7 +1047,7 @@ class _ManageEmptyState extends StatelessWidget {
                 boxShadow: context.colors.primaryShadow),
             child:  Text('add-weekly-appointment'.tr,
                 style: TextStyle(
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'bahji',
                     fontSize: 14)),
@@ -1122,7 +1125,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                     child:  Text('add'.tr,
                         style: TextStyle(
                             fontFamily: 'bahji',
-                            color: Colors.white,
+                            color: context.colors.onHero,
                             fontWeight: FontWeight.w700)),
                   ),
                 ],
@@ -1212,7 +1215,7 @@ class _AddScheduleSheetState extends State<AddScheduleSheet> {
                       child: Text(l,
                           style: context.colors.label.copyWith(
                               color: sel
-                                  ? Colors.white
+                                  ? context.colors.onHero
                                   : context.colors.textMedium,
                               fontWeight: sel
                                   ? FontWeight.w700
@@ -1297,7 +1300,7 @@ class _TimePicker extends StatelessWidget {
                   hasError ? context.colors.danger : context.colors.primary),
               const SizedBox(width: 8),
               Text(
-                  '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                  AppTime.clockMinutes(time.hour * 60 + time.minute),
                   style: context.colors.h3.copyWith(fontSize: 18)),
             ]),
           ),
@@ -1311,16 +1314,17 @@ class _AddBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
     onTap: onTap,
     child: Container(
         width: 40,
         height: 40,
-        margin: const EdgeInsets.only(left: 4),
+        margin: const EdgeInsetsDirectional.fromSTEB(8, 4, 4, 4),
         decoration: BoxDecoration(
             gradient: context.colors.primaryGradient,
             shape: BoxShape.circle,
             boxShadow: context.colors.primaryShadow),
-        child: const Icon(Icons.add_rounded,
-            color: Colors.white, size: 22)),
+        child: Icon(Icons.add_rounded,
+            color: context.colors.onHero, size: 22, semanticLabel: 'add_schedule'.tr)),
   );
 }

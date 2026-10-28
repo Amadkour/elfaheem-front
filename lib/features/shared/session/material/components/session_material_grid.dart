@@ -18,7 +18,7 @@ import '../../../../../config/app_config.dart';
 import '../../../../../config/theme/theme_config_provider.dart';
 import '../../../../../core/api_client.dart';
 import '../../../../../core/live/event_wait.dart';
-import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText;
+import '../../../../../design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, appText, AppListSkeleton;
 import '../../../../../utils/helpers.dart';
 import '../../../../../utils/widget/rating_widget.dart';
 import '../../../../student/courses/details/course_detail_provider.dart';
@@ -77,15 +77,25 @@ class SessionMaterialGrid extends StatelessWidget {
   };
 
   // ── Colors per type ────────────────────────────────────────────────────────
-  static const _typeColors = {
-    SessionMaterialType.image: Color(0xFF4CAF50), // green
-    SessionMaterialType.video: Color(0xFF2196F3), // blue
-    SessionMaterialType.pdf: Color(0xFFF44336), // red
-    SessionMaterialType.document: Color(0xFFFF9800), // orange
-    SessionMaterialType.link: Color(0xFF9C27B0), // purple
-    SessionMaterialType.recorded: Color(0xFF5C6BC0), // indigo – archive feel
-    SessionMaterialType.recording: Color(0xFFE53935), // vivid red – live/active
-  };
+  static Color _typeColor(BuildContext context, SessionMaterialType t) {
+    final c = context.colors;
+    switch (t) {
+      case SessionMaterialType.image:
+        return c.success; // green
+      case SessionMaterialType.video:
+        return c.primary; // blue
+      case SessionMaterialType.pdf:
+        return c.danger; // red
+      case SessionMaterialType.document:
+        return c.warning; // orange
+      case SessionMaterialType.link:
+        return c.purple; // purple
+      case SessionMaterialType.recorded:
+        return c.primaryLight; // indigo – archive feel
+      case SessionMaterialType.recording:
+        return c.danger; // vivid red – live/active
+    }
+  }
 
   // ── Label keys ─────────────────────────────────────────────────────────────
   static const _typeLabelKeys = {
@@ -101,7 +111,7 @@ class SessionMaterialGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(items: 4, padding: EdgeInsets.symmetric(vertical: 8));
     }
     if (!_hasExam) return _buildMaterialsList(context);
 
@@ -136,10 +146,12 @@ class SessionMaterialGrid extends StatelessWidget {
               color: context.colors.textLight,
             ),
             const SizedBox(width: 8),
-            Text(
-              'no_attachments_yet'.tr,
-              style: context.colors.caption.copyWith(
-                color: context.colors.textLight,
+            Flexible(
+              child: Text(
+                'no_attachments_yet'.tr,
+                style: context.colors.caption.copyWith(
+                  color: context.colors.textLight,
+                ),
               ),
             ),
           ],
@@ -216,7 +228,7 @@ class SessionMaterialGrid extends StatelessWidget {
         : null;
     final icon = _typeIcons[m.type] ?? Icons.attach_file_rounded;
     final color =
-        fileStyle?.color ?? _typeColors[m.type] ?? context.colors.primary;
+        fileStyle?.color ?? _typeColor(context, m.type);
     final labelKey = _typeLabelKeys[m.type] ?? 'material_type_link';
     final isCompleted = m.completed;
 
@@ -240,14 +252,14 @@ class SessionMaterialGrid extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isCompleted
-                  ? const Color(0xFF00C48C).withValues(alpha: 0.35)
+                  ? context.colors.success.withValues(alpha: 0.35)
                   : color.withValues(alpha: 0.18),
               width: isCompleted ? 1.5 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
                 color: isCompleted
-                    ? const Color(0xFF00C48C).withValues(alpha: 0.10)
+                    ? context.colors.success.withValues(alpha: 0.10)
                     : color.withValues(alpha: 0.06),
                 blurRadius: 8,
                 offset: const Offset(0, 3),
@@ -262,9 +274,9 @@ class SessionMaterialGrid extends StatelessWidget {
                 if (isCompleted)
                   Container(
                     height: 3,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                        colors: [context.colors.success, context.colors.success],
                       ),
                     ),
                   )
@@ -489,13 +501,13 @@ class SessionMaterialGrid extends StatelessWidget {
                                     ),
                                   ),
                               child: isCompleted
-                                  ? const Padding(
+                                  ? Padding(
                                       key: ValueKey('check'),
-                                      padding: EdgeInsets.only(right: 5),
+                                      padding: EdgeInsetsDirectional.only(end: 5),
                                       child: Icon(
                                         Icons.check_circle_rounded,
                                         size: 15,
-                                        color: Color(0xFF00C48C),
+                                        color: context.colors.success,
                                       ),
                                     )
                                   : const SizedBox.shrink(
@@ -944,7 +956,7 @@ class MaterialIconWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveColor = isCompleted ? const Color(0xFF00C48C) : color;
+    final effectiveColor = isCompleted ? context.colors.success : color;
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -953,8 +965,8 @@ class MaterialIconWidget extends StatelessWidget {
           height: 38,
           decoration: BoxDecoration(
             gradient: isCompleted
-                ? const LinearGradient(
-                    colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+                ? LinearGradient(
+                    colors: [context.colors.success, context.colors.success],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   )
@@ -968,7 +980,7 @@ class MaterialIconWidget extends StatelessWidget {
             boxShadow: isCompleted
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+                      color: context.colors.success.withValues(alpha: 0.30),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -980,7 +992,7 @@ class MaterialIconWidget extends StatelessWidget {
                   child: Text(
                     badge!,
                     style: TextStyle(
-                      color: badgeTextColor ?? Colors.white,
+                      color: badgeTextColor ?? context.colors.onHero,
                       fontWeight: FontWeight.w900,
                       fontSize: badge!.length > 2 ? 11 : 18,
                       letterSpacing: 0.3,
@@ -989,7 +1001,7 @@ class MaterialIconWidget extends StatelessWidget {
                 )
               : Icon(
                   isCompleted ? Icons.check_rounded : icon,
-                  color: isCompleted ? Colors.white : effectiveColor,
+                  color: isCompleted ? context.colors.onHero : effectiveColor,
                   size: 20,
                 ),
         ),
@@ -999,7 +1011,7 @@ class MaterialIconWidget extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
-                  color: const Color(0xFF00C48C).withValues(alpha: 0.25),
+                  color: context.colors.success.withValues(alpha: 0.25),
                   width: 2,
                 ),
               ),
@@ -1022,22 +1034,22 @@ class MaterialCompletedBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+        gradient: LinearGradient(
+          colors: [context.colors.success, context.colors.success],
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00C48C).withValues(alpha: 0.30),
+            color: context.colors.success.withValues(alpha: 0.30),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: const Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.check_rounded, size: 9, color: Colors.white),
+          Icon(Icons.check_rounded, size: 9, color: context.colors.onHero),
           SizedBox(width: 3),
           Text(
             '✓',
@@ -1045,7 +1057,7 @@ class MaterialCompletedBadge extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 9,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: context.colors.onHero,
             ),
           ),
         ],
@@ -1085,9 +1097,9 @@ class MaterialImageViewerDialog extends StatelessWidget {
                 loadingBuilder: (_, child, progress) => progress == null
                     ? child
                     : const Center(child: AppLoadingIndicator()),
-                errorBuilder: (_, _, _) => const Icon(
+                errorBuilder: (_, _, _) => Icon(
                   Icons.broken_image_rounded,
-                  color: Colors.white54,
+                  color: context.colors.onHeroMuted,
                   size: 64,
                 ),
               ),
@@ -1098,11 +1110,11 @@ class MaterialImageViewerDialog extends StatelessWidget {
             left: 0,
             right: 0,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Colors.black87, Colors.transparent],
+                  colors: [context.colors.textDark, Colors.transparent],
                 ),
               ),
               padding: EdgeInsets.only(
@@ -1119,12 +1131,12 @@ class MaterialImageViewerDialog extends StatelessWidget {
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: Colors.white12,
+                        color: context.colors.heroGlass,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close_rounded,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                         size: 20,
                       ),
                     ),
@@ -1133,8 +1145,8 @@ class MaterialImageViewerDialog extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.colors.onHero,
                         fontFamily: 'bahji',
                         fontWeight: FontWeight.w700,
                         fontSize: 15,

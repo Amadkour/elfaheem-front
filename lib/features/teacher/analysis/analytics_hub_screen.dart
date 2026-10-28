@@ -13,7 +13,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
@@ -29,6 +28,8 @@ import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 String _courseTitle(TeacherCourse c) => (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? c.titleAr ?? c.titleEn ?? '';
 
@@ -136,8 +137,8 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
       child: ColoredBox(
         color: context.colors.background,
         child: prov.isLoading && all.isEmpty
-            ? const Center(child: AppLoadingIndicator())
-            : RefreshIndicator(
+            ? const AppListSkeleton()
+            : AppRefresh(
           onRefresh: () => _store.load([for (final c in all) c.id], force: true),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -191,13 +192,13 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
             Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('analytics_hub_title'.tr, style: anText(21, w: FontWeight.w800, c: Colors.white)),
+                  Text('analytics_hub_title'.tr, style: anText(21, w: FontWeight.w800, c: context.colors.onHero)),
                   const SizedBox(height: 3),
                   Text(
                     risk > 0
                         ? anFmt('ta_hero_risk', {'n': risk}, '{n} students could use your attention this week.')
                         : (_store.byCourse.isEmpty ? 'analytics_hub_subtitle'.tr : anTr('ta_hero_ok', 'Every class is on track — nice work!')),
-                    style: anText(12.5, c: Colors.white70, h: 1.5),
+                    style: anText(12.5, c: context.colors.onHeroMuted, h: 1.5),
                   ),
                 ]),
               ),
@@ -297,6 +298,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
               prefixIcon: Icon(Icons.search_rounded, color: c.textMedium, size: 21),
               suffixIcon: _search.isNotEmpty
                   ? IconButton(
+                tooltip: 'clear'.tr,
                 icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
                 onPressed: () {
                   _searchCtrl.clear();
@@ -330,7 +332,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _attentionFirst ? c.warning : c.divider),
                 ),
-                child: Icon(Icons.volunteer_activism_rounded, color: _attentionFirst ? Colors.white : c.warning),
+                child: Icon(Icons.volunteer_activism_rounded, color: _attentionFirst ? c.onHero : c.warning),
               ),
             ),
           ),
@@ -376,7 +378,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         // ── title ──
         Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 14, 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: AlignmentDirectional.topStart,
@@ -392,7 +394,7 @@ class _CourseAnalyticsCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(15),
                 gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: AlignmentDirectional.topStart, end: AlignmentDirectional.bottomEnd),
               ),
-              child: const Icon(Icons.menu_book_rounded, color: Colors.white, size: 24),
+              child: Icon(Icons.menu_book_rounded, color: c.onHero, size: 24),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -519,24 +521,24 @@ class _DataLabButton extends StatelessWidget {
             Container(
               width: 36,
               height: 36,
-              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
-              child: const Icon(Icons.science_rounded, color: Colors.white, size: 20),
+              decoration: BoxDecoration(color: c.onHero.withValues(alpha: 0.18), borderRadius: BorderRadius.circular(12)),
+              child: Icon(Icons.science_rounded, color: c.onHero, size: 20),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('dl_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13.5, w: FontWeight.w800, c: Colors.white)),
+                Text('dl_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(13.5, w: FontWeight.w800, c: c.onHero)),
                 Text(
                   published > 0
                       ? anFmt('ta_dl_published', {'n': published}, '{n} columns shared with students')
                       : anTr('ta_dl_sub', 'Grades, formulas, imports and certificates — in one sheet'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: anText(10.5, c: Colors.white70),
+                  style: anText(10.5, c: c.onHeroMuted),
                 ),
               ]),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 13, color: Colors.white70),
+            Icon(Icons.arrow_forward_ios_rounded, size: 13, color: c.onHeroMuted),
           ]),
         ),
       ),

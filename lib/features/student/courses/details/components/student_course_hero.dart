@@ -97,17 +97,17 @@ class StudentCourseHero extends StatelessWidget {
               children: [
                 _background(c),
                 // cinematic scrim: dark top (buttons) + strong bottom (text)
-                const DecoratedBox(
+                DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      stops: [0, 0.28, 0.55, 1],
+                      stops: const [0, 0.28, 0.55, 1],
                       colors: [
-                        Color(0x99000000),
-                        Color(0x00000000),
-                        Color(0x33000000),
-                        Color(0xF0080814),
+                        c.heroShade.withValues(alpha: 0.60),
+                        c.heroShade.withValues(alpha: 0),
+                        c.heroShade.withValues(alpha: 0.20),
+                        c.heroShade.withValues(alpha: 0.94),
                       ],
                     ),
                   ),
@@ -155,10 +155,10 @@ class StudentCourseHero extends StatelessWidget {
                                   fontSize: wide ? 30 : 23,
                                   fontWeight: FontWeight.w800,
                                   height: 1.25,
-                                  color: Colors.white,
-                                  shadows: const [
+                                  color: c.onHero,
+                                  shadows: [
                                     Shadow(
-                                      color: Colors.black54,
+                                      color: c.textMedium,
                                       blurRadius: 12,
                                     ),
                                   ],
@@ -173,7 +173,7 @@ class StudentCourseHero extends StatelessWidget {
                                       style: TextStyle(
                                         fontFamily: 'tajawal',
                                         fontSize: 12,
-                                        color: Colors.white.withValues(alpha: 0.80),
+                                        color: c.onHero.withValues(alpha: 0.80),
                                         height: 1.45,
                                       ),
                                       maxLines: 2,
@@ -191,7 +191,7 @@ class StudentCourseHero extends StatelessWidget {
                                 ),
                               ],
                               const SizedBox(height: 14),
-                              ParentComponent(featureKey: 'course_hero.stats', child: _statsStrip()),
+                              ParentComponent(featureKey: 'course_hero.stats', child: _statsStrip(context)),
                               if (_showAttendance) ...[
                                 const SizedBox(height: 10),
                                 ParentComponent(
@@ -269,14 +269,14 @@ class StudentCourseHero extends StatelessWidget {
       child: Icon(
         Icons.school_rounded,
         size: 84,
-        color: Colors.white.withValues(alpha: 0.14),
+        color: c.onHero.withValues(alpha: 0.14),
       ),
     ),
   );
 
   // ── Stats strip ───────────────────────────────────────────────────────────
 
-  Widget _statsStrip() {
+  Widget _statsStrip(BuildContext context) {
     final items = <_Stat>[
       _Stat(
         Icons.groups_rounded,
@@ -301,9 +301,9 @@ class StudentCourseHero extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.13),
+            color: context.colors.onHero.withValues(alpha: 0.13),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.22)),
           ),
           child: Row(
             children: [
@@ -313,14 +313,14 @@ class StudentCourseHero extends StatelessWidget {
                   Container(
                     width: 1,
                     height: 28,
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: context.colors.onHero.withValues(alpha: 0.2),
                   ),
               ],
               if (course.isEnrolled) ...[
                 Container(
                   width: 1,
                   height: 28,
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: context.colors.onHero.withValues(alpha: 0.2),
                 ),
                 const SizedBox(width: 12),
                 ParentComponent(
@@ -349,15 +349,15 @@ class _Stat extends StatelessWidget {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, size: 15, color: Colors.white70),
+          Icon(icon, size: 15, color: context.colors.onHeroMuted),
           const SizedBox(width: 5),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 16,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: context.colors.onHero,
             ),
           ),
         ],
@@ -365,10 +365,10 @@ class _Stat extends StatelessWidget {
       const SizedBox(height: 2),
       Text(
         label,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: 'tajawal',
           fontSize: 10.5,
-          color: Colors.white70,
+          color: context.colors.onHeroMuted,
         ),
       ),
     ],
@@ -390,16 +390,16 @@ class _ProgressRing extends StatelessWidget {
         CircularProgressIndicator(
           value: percent,
           strokeWidth: 3.5,
-          backgroundColor: Colors.white24,
-          valueColor: const AlwaysStoppedAnimation(Color(0xFF5CE0A8)),
+          backgroundColor: context.colors.heroGlassBorder,
+          valueColor: AlwaysStoppedAnimation(context.colors.success),
         ),
         Text(
           '${(percent * 100).round()}%',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 9.5,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: context.colors.onHero,
           ),
         ),
       ],
@@ -419,14 +419,14 @@ class _TeacherChip extends StatelessWidget {
     children: [
       CircleAvatar(
         radius: 13,
-        backgroundColor: Colors.white24,
+        backgroundColor: context.colors.heroGlassBorder,
         backgroundImage: (imageUrl != null && imageUrl!.isNotEmpty)
             ? NetworkImage(imageUrl!)
             : null,
         child: (imageUrl == null || imageUrl!.isEmpty)
             ? Text(
           name.isNotEmpty ? name[0] : '?',
-          style: const TextStyle(color: Colors.white, fontSize: 12),
+          style: TextStyle(color: context.colors.onHero, fontSize: 12),
         )
             : null,
       ),
@@ -436,11 +436,11 @@ class _TeacherChip extends StatelessWidget {
           name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: context.colors.onHero,
           ),
         ),
       ),
@@ -458,7 +458,7 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const fg = Colors.white;
+    final fg = context.colors.onHero;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

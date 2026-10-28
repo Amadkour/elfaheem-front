@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../../config/app_config.dart';
@@ -8,6 +9,7 @@ import '../course_detail_provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'issued_certificate.dart';
+import '../growth_tr.dart';
 
 class AboutTab extends StatelessWidget {
   const AboutTab({super.key});
@@ -34,7 +36,7 @@ class AboutTab extends StatelessWidget {
             ),
             const SizedBox(height: 22),
           ],
-          if (c.teacher != Null) ...[
+          if (c.teacher != null) ...[   // was `!= Null` (the Type) — always true, then `c.teacher!` threw
             InkWell(
               onTap: () {
                 Navigator.push(
@@ -45,18 +47,18 @@ class AboutTab extends StatelessWidget {
                   ),
                 );
               },
-              child: _InstructorCard(
+              child: CourseInstructorCard(
                 name: c.teacher?.name??'' ,
-                category: AppConfig.lang == 'ar'
-                    ? c.category!.nameAr
-                    : c.category!.nameEn,
+                category: (AppConfig.lang == 'ar'
+                    ? c.category?.nameAr
+                    : c.category?.nameEn) ?? '',
               ),
             ),
             const SizedBox(height: 26),
           ],
           if (((AppConfig.lang=='ar'? c.descriptionAr:c.descriptionEn)?? '').isNotEmpty) ...[
-            const _SectionTitle(
-              title: 'عن الكورس',
+            _SectionTitle(
+              title: gt('عن الكورس', 'About the course'),
               icon: Icons.info_outline_rounded,
             ),
             const SizedBox(height: 10),
@@ -69,7 +71,7 @@ class AboutTab extends StatelessWidget {
           ],
           if (c.schedules.isNotEmpty) ...[
             _SectionTitle(
-              title: 'المواعيد الأسبوعية',
+              title: gt('المواعيد الأسبوعية', 'Weekly schedule'),
               icon: Icons.calendar_month_rounded,
               color: context.colors.primary,
             ),
@@ -84,7 +86,7 @@ class AboutTab extends StatelessWidget {
           ],
           if (c.certificates.isNotEmpty) ...[
             _SectionTitle(
-              title: 'الشهادات',
+              title: gt('الشهادات', 'Certificates'),
               icon: Icons.workspace_premium_rounded,
               color: context.colors.accent,
             ),
@@ -92,7 +94,7 @@ class AboutTab extends StatelessWidget {
             ...c.certificates.map(
               (x) => _InfoCard(
                 icon: Icons.verified_rounded,
-                iconBg: const Color(0xFFFAEEDA),
+                iconBg: context.colors.accentTint,
                 iconColor: context.colors.accent,
                 title: x.title,
                 subtitle: x.description,
@@ -101,12 +103,12 @@ class AboutTab extends StatelessWidget {
             const SizedBox(height: 22),
           ],
           if (c.tools.isNotEmpty) ...[
-            _SectionTitle(title: 'الأدوات المطلوبة', icon: Icons.build_rounded),
+            _SectionTitle(title: gt('الأدوات المطلوبة', 'Required tools'), icon: Icons.build_rounded),
             const SizedBox(height: 12),
             ...c.tools.map(
               (x) => _InfoCard(
                 icon: Icons.settings_rounded,
-                iconBg: const Color(0xFFEEEDFE),
+                iconBg: context.colors.primaryTint,
                 iconColor: context.colors.primary,
                 title: x.name,
                 subtitle: x.description,
@@ -116,7 +118,7 @@ class AboutTab extends StatelessWidget {
           ],
           if (c.prerequisites.isNotEmpty) ...[
             _SectionTitle(
-              title: 'المتطلبات المسبقة',
+              title: gt('المتطلبات المسبقة', 'Prerequisites'),
               icon: Icons.checklist_rounded,
               color: context.colors.accent2,
             ),
@@ -124,7 +126,7 @@ class AboutTab extends StatelessWidget {
             ...c.prerequisites.map(
               (x) => _InfoCard(
                 icon: Icons.check_circle_outline_rounded,
-                iconBg: const Color(0xFFE1F5EE),
+                iconBg: context.colors.successTint,
                 iconColor: context.colors.accent2,
                 title: x.title,
                 subtitle: x.description,
@@ -233,10 +235,11 @@ class ScheduleChip extends StatelessWidget {
 
 // ── Instructor card ───────────────────────────────────────────────────────────
 
-class _InstructorCard extends StatelessWidget {
+/// The instructor strip of the About tab (plain values; tested by the layout harness).
+class CourseInstructorCard extends StatelessWidget {
   final String name, category;
 
-  const _InstructorCard({required this.name, required this.category});
+  const CourseInstructorCard({super.key, required this.name, required this.category});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -258,10 +261,10 @@ class _InstructorCard extends StatelessWidget {
           width: 58,
           height: 58,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: context.colors.onHero.withValues(alpha: 0.2),
             shape: BoxShape.circle,
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: context.colors.onHero.withValues(alpha: 0.4),
               width: 2,
             ),
           ),
@@ -269,14 +272,14 @@ class _InstructorCard extends StatelessWidget {
           child: name.isNotEmpty
               ? Text(
                   name[0],
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onHero,
                     fontSize: 24,
                     fontWeight: FontWeight.w900,
                     fontFamily: 'bahji',
                   ),
                 )
-              : const Icon(Icons.person_rounded, color: Colors.white, size: 28),
+              : Icon(Icons.person_rounded, color: context.colors.onHero, size: 28),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -284,9 +287,11 @@ class _InstructorCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                name.isNotEmpty ? name : 'المدرس',
+                name.isNotEmpty ? name : gt('المدرس', 'Instructor'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: context.colors.h3.copyWith(
-                  color: Colors.white,
+                  color: context.colors.onHero,
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
                 ),
@@ -295,36 +300,41 @@ class _InstructorCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   category,
-                  style: context.colors.caption.copyWith(color: Colors.white70),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.colors.caption.copyWith(color: context.colors.onHeroMuted),
                 ),
               ],
             ],
           ),
         ),
-        Container(
+        const SizedBox(width: 8),
+        Flexible(child: Container(   // the badge gives way on a narrow phone instead of overflowing
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: context.colors.onHero.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.3)),
           ),
-          child: const Row(
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.verified_rounded, color: Colors.white, size: 13),
-              SizedBox(width: 5),
-              Text(
-                'مدرس',
+              Icon(Icons.verified_rounded, color: context.colors.onHero, size: 13),
+              const SizedBox(width: 5),
+              Flexible(child: Text(
+                gt('مدرس', 'Instructor'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: context.colors.onHero,
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'bahji',
                 ),
-              ),
+              )),
             ],
           ),
-        ),
+        )),
       ],
     ),
   );
@@ -356,7 +366,7 @@ class _InfoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: context.colors.heroShade.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -469,7 +479,7 @@ class _IssuedCertificateCard extends StatelessWidget {
             border: Border.all(color: c.accent.withValues(alpha: 0.35)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: c.heroShade.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 2),
               ),
@@ -543,7 +553,7 @@ class _CertificateImage extends StatelessWidget {
     fit: fit,
     loadingBuilder: (_, child, progress) => progress == null
         ? child
-        : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        : AppShimmer(child: ColoredBox(color: context.colors.divider.withValues(alpha: 0.7), child: const SizedBox.expand())),
     errorBuilder: (_, _, _) => Container(
       color: context.colors.primaryLight.withValues(alpha: 0.2),
       alignment: Alignment.center,
@@ -573,7 +583,7 @@ class _CertificateViewerState extends State<_CertificateViewer> {
   Widget build(BuildContext context) {
     final cert = widget.cert;
     return Dialog(
-      backgroundColor: Colors.black,
+      backgroundColor: context.colors.heroShade,
       insetPadding: const EdgeInsets.all(12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       clipBehavior: Clip.antiAlias,
@@ -589,8 +599,8 @@ class _CertificateViewerState extends State<_CertificateViewer> {
                     cert.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontWeight: FontWeight.w700,
                       fontSize: 14,
                     ),
@@ -610,7 +620,8 @@ class _CertificateViewerState extends State<_CertificateViewer> {
                   ),
                 ],
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  icon: Icon(Icons.close_rounded, color: context.colors.onHero),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -654,13 +665,13 @@ class _LangChip extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFC49A47) : Colors.white12,
+        color: selected ? context.colors.accent2 : context.colors.heroGlass,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: selected ? Colors.black : Colors.white70,
+          color: selected ? context.colors.charcoalDark : context.colors.onHeroMuted,
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),

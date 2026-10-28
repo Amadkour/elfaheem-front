@@ -5,6 +5,7 @@
 /// a new card, and free enrollment.
 library;
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/student/enrollment/saved_cards/saved_payment_models.dart';
@@ -13,14 +14,12 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../shared/profile/course_instractor_profile.dart';
 import '../../student/models.dart';
 import 'enrollment_models.dart';
 import 'enrollment_provider.dart';
 import 'enrollment_widgets.dart';
 
-const _kNewCardColor = Color(0xFF0F4C81);
 
 class EnrollmentScreen extends StatelessWidget {
   final CourseModel course;
@@ -53,7 +52,7 @@ class _EnrollView extends StatelessWidget {
 
     return EnrollScaffold(
       child: enroll.isLoading
-          ? Center(child: AppLoadingIndicator())
+          ? const AppListSkeleton(items: 4)
           : switch (enroll.step) {
               EnrollStep.method => const _MethodStep(key: ValueKey('method')),
               EnrollStep.verifying => const PaymentVerifyingView(
@@ -149,10 +148,7 @@ class _MethodStep extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   if (!enroll.optionsLoaded)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(child: AppLoadingIndicator()),
-                    )
+                    const AppListSkeleton(items: 3, padding: EdgeInsets.zero)
                   else if (enroll.isFree)
                     const _FreeCourseBanner()
                   else ...[
@@ -215,7 +211,7 @@ class _SectionHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, size: 18, color: Colors.white),
+          child: Icon(icon, size: 18, color: c.onHero),
         ),
         const SizedBox(width: 10),
         Text(title, style: c.h3.copyWith(fontSize: 15)),
@@ -268,7 +264,7 @@ class _CourseSummaryCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: .14),
+                  color: c.heroShade.withValues(alpha: .14),
                   blurRadius: 14,
                   offset: const Offset(0, 6),
                 ),
@@ -750,7 +746,7 @@ class _RadioDot extends StatelessWidget {
         border: Border.all(color: selected ? c.primary : c.divider, width: 2),
       ),
       child: selected
-          ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+          ? Icon(Icons.check_rounded, size: 14, color: c.onHero)
           : null,
     );
   }
@@ -831,7 +827,7 @@ class _PaymentMethodPicker extends StatelessWidget {
             _MethodTile(
               selected: enroll.selectedCard?.id == card.id,
               icon: Icons.credit_card_rounded,
-              iconColor: _brandColor(card.cardBrand?.apiKey),
+              iconColor: _brandColor(context, card.cardBrand?.apiKey),
               title: card.displayTitle,
               // Expiry, not CardBrand.feeLabel: that label is a hard-coded rate that drifts from the
               // admin-managed fees. The real fee of the selected card is in the server-quoted breakdown below.
@@ -843,7 +839,7 @@ class _PaymentMethodPicker extends StatelessWidget {
             _MethodTile(
               selected: newCardSelected,
               icon: Icons.add_card_rounded,
-              iconColor: _kNewCardColor,
+              iconColor: context.colors.primary,
               title: 'new_card_title'.tr,
               subtitle: 'new_card_subtitle'.tr,
               customBadge: const _SecureBadge(),
@@ -857,7 +853,7 @@ class _PaymentMethodPicker extends StatelessWidget {
                   ? Icons.apple
                   : Icons.account_balance_wallet_rounded,
               iconColor: w.type == 'apple_pay'
-                  ? Colors.black87
+                  ? context.colors.textDark
                   : context.colors.primary,
               title:
                   g.labelFor(w.type) ??
@@ -872,7 +868,7 @@ class _PaymentMethodPicker extends StatelessWidget {
             _MethodTile(
               selected: enroll.selectedManualMethod == 'bank_transfer',
               icon: Icons.account_balance_rounded,
-              iconColor: const Color(0xFF2E7D32),
+              iconColor: context.colors.success,
               title: g.labelFor('bank_transfer') ?? 'transfer_bank_title'.tr,
               subtitle: 'bank_transfer_subtitle'.tr,
               onTap: () => enroll.selectManualMethod('bank_transfer'),
@@ -892,13 +888,13 @@ class _PaymentMethodPicker extends StatelessWidget {
   }
 }
 
-/// Tile colour per card network (falls back to the "new card" blue).
-Color _brandColor(String? apiKey) => switch (apiKey?.toLowerCase()) {
+/// Tile colour per card network: the networks' own brand colours (falls back to the theme's primary).
+Color _brandColor(BuildContext context, String? apiKey) => switch (apiKey?.toLowerCase()) {
   'mada' => const Color(0xFF0B8A4F),
   'visa' => const Color(0xFF1A1F71),
   'mastercard' || 'master' => const Color(0xFFEB001B),
   'amex' || 'american_express' => const Color(0xFF2E77BB),
-  _ => _kNewCardColor,
+  _ => context.colors.primary,
 };
 
 /// Shown when the admin has closed every method (or the config could not be loaded).
@@ -1086,10 +1082,10 @@ class _MethodTile extends StatelessWidget {
                 ),
               ),
               child: selected
-                  ? const Icon(
+                  ? Icon(
                       Icons.check_rounded,
                       size: 13,
-                      color: Colors.white,
+                      color: c.onHero,
                     )
                   : null,
             ),

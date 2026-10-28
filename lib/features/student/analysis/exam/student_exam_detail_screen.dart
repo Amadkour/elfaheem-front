@@ -4,6 +4,7 @@
 // Shows "Try Again" when maxSubmissions allows more rounds.
 library;
 
+import 'package:flutter_education_app/core/app_time.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -56,8 +57,8 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
     );
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  // Platform / organization timezone and 12h/24h (the server sends UTC).
+  String _fmtDate(DateTime d) => AppTime.dateTime(d);
 
   @override
   Widget build(BuildContext context) {
@@ -77,16 +78,16 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
 
     final Color accent;
     if (isDone) {
-      accent = exam.passed == true ? c.success : kDanger;
+      accent = exam.passed == true ? c.success : context.colors.danger;
     } else if (isScheduled) {
-      accent = kAmber;
+      accent = context.colors.warning;
     } else {
       accent = c.primary;
     }
 
     final heroColors = isDone || isScheduled
-        ? [Color.lerp(accent, Colors.black, .35)!, accent]
-        : [kDeep, c.primary];
+        ? [Color.lerp(accent, context.colors.heroShade, .35)!, accent]
+        : [context.colors.primaryDark, c.primary];
 
     final remaining = exam.computedRemainingSubmissions ?? 0;
 
@@ -110,12 +111,12 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   center: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('${exam.percentage!.toStringAsFixed(0)}%',
                         style:
-                        examT(30, w: FontWeight.w800, c: Colors.white)),
+                        examT(30, w: FontWeight.w800, c: context.colors.onHero)),
                     Text(
                         exam.passed == true
                             ? tx('exam_passed_mark')
                             : tx('exam_failed_mark'),
-                        style: examT(12, c: Colors.white70)),
+                        style: examT(12, c: c.onHeroMuted)),
                   ]),
                 )
               else
@@ -123,13 +124,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   width: 92,
                   height: 92,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
+                    color: c.onHero.withValues(alpha: 0.16),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30, width: 2),
+                    border: Border.all(color: c.onHeroFaint, width: 2),
                   ),
                   child: Icon(
                     isScheduled ? Icons.schedule_rounded : Icons.quiz_rounded,
-                    color: Colors.white,
+                    color: c.onHero,
                     size: 44,
                   ),
                 ),
@@ -138,14 +139,14 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: examT(19, w: FontWeight.w800, c: Colors.white, h: 1.4)),
+                  style: examT(19, w: FontWeight.w800, c: context.colors.onHero, h: 1.4)),
               if (exam.description != null && exam.description!.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(exam.description!,
                     textAlign: TextAlign.center,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
-                    style: examT(12.5, c: Colors.white70, h: 1.6)),
+                    style: examT(12.5, c: c.onHeroMuted, h: 1.6)),
               ],
               const SizedBox(height: 18),
               Row(children: [
@@ -159,7 +160,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.star_rounded,
-                    color: const Color(0xFFFFD740),
+                    color: context.colors.accent,
                     value: '${exam.passingScore!.toInt()}%',
                     label: tx('exam_passing_score'),
                   ),
@@ -168,7 +169,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.grade_rounded,
-                    color: const Color(0xFF69F0AE),
+                    color: c.success,
                     value: '${exam.totalMarks!.toInt()}',
                     label: tx('exam_total_marks'),
                   ),
@@ -199,14 +200,14 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                   child: Column(children: [
                     if (exam.startDate != null)
                       ExamInfoRow(Icons.schedule_rounded,
-                          tx('exam_start_time'), _fmtDate(exam.startDate!), kAmber),
+                          tx('exam_start_time'), _fmtDate(exam.startDate!), context.colors.warning),
                     if (exam.endDate != null) ...[
                       if (exam.startDate != null) const _Gap(),
                       ExamInfoRow(
                         Icons.hourglass_bottom_rounded,
                         tx('exam_deadline'),
                         _fmtDate(exam.endDate!),
-                        exam.isDeadlineFrozen ? kDanger : kAmber,
+                        exam.isDeadlineFrozen ? context.colors.danger : context.colors.warning,
                       ),
                     ],
                     if (exam.maxSubmissions != null &&
@@ -217,13 +218,13 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                           Icons.repeat_rounded,
                           tx('exam_used_attempts'),
                           '${exam.submissionCount} / ${exam.maxSubmissions}',
-                          kViolet),
+                          context.colors.purple),
                       const _Gap(),
                       ExamInfoRow(
                         Icons.replay_circle_filled_rounded,
                         tx('exam_remaining_attempts'),
                         '$remaining',
-                        remaining > 0 ? c.success : kDanger,
+                        remaining > 0 ? c.success : context.colors.danger,
                       ),
                     ],
                   ]),
@@ -236,7 +237,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               if (_entryError != null) ...[
                 ExamBanner(
                     icon: Icons.error_outline_rounded,
-                    color: kDanger,
+                    color: context.colors.danger,
                     text: _entryError!),
                 const SizedBox(height: 16),
               ],
@@ -244,7 +245,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
               if ((!isDone && !isScheduled) || canRetry) ...[
                 ExamBanner(
                     icon: Icons.warning_amber_rounded,
-                    color: kAmber,
+                    color: context.colors.warning,
                     text: tx('exam_start_warning')),
                 const SizedBox(height: 18),
               ],
@@ -265,7 +266,7 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
                       loading: _starting,
                       label: tx('exam_retry'),
                       icon: Icons.replay_rounded,
-                      color: kViolet,
+                      color: context.colors.purple,
                       subtitle: tx('exam_n_attempts_left', {'n': remaining}),
                       onTap: _start,
                     ),
@@ -305,7 +306,7 @@ class _ScoreCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final color = exam.passed == true ? c.success : kDanger;
+    final color = exam.passed == true ? c.success : context.colors.danger;
     final pct = exam.percentage ?? 0;
 
     return ExamSectionCard(
@@ -381,7 +382,7 @@ class _CountdownCardState extends State<_CountdownCard> {
   @override
   Widget build(BuildContext context) => ExamSectionCard(
     icon: Icons.hourglass_top_rounded,
-    accent: kAmber,
+    accent: context.colors.warning,
     title: tx('exam_starts_in'),
     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       _TimeBox(_remaining.inHours.toString().padLeft(2, '0'),
@@ -409,13 +410,13 @@ class _TimeBox extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [kAmber.withValues(alpha: 0.22), kAmber.withValues(alpha: 0.08)],
+          colors: [context.colors.warning.withValues(alpha: 0.22), context.colors.warning.withValues(alpha: 0.08)],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: kAmber.withValues(alpha: 0.25)),
+        border: Border.all(color: context.colors.warning.withValues(alpha: 0.25)),
       ),
       child: Center(
-        child: Text(value, style: examT(25, w: FontWeight.w900, c: kAmber)),
+        child: Text(value, style: examT(25, w: FontWeight.w900, c: context.colors.warning)),
       ),
     ),
     const SizedBox(height: 6),
@@ -429,6 +430,6 @@ class _Colon extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(left: 8, right: 8, bottom: 22),
-    child: Text(':', style: examT(26, w: FontWeight.w900, c: kAmber)),
+    child: Text(':', style: examT(26, w: FontWeight.w900, c: context.colors.warning)),
   );
 }

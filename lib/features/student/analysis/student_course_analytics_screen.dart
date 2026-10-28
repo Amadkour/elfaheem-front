@@ -5,11 +5,12 @@
 //   Exams      every exam with its result
 //   My marks   what the teacher published from the Data Lab (with the class average), progress and saved flags
 // Open on a given tab with [initialTab] (0 overview · 1 attendance · 2 exams · 3 marks).
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_education_app/utils/widget/search_text_field.dart';
@@ -168,6 +169,7 @@ class _Hero extends StatelessWidget {
             Row(children: [
               _GlassIcon(
                 icon: Icons.arrow_back_ios_rounded,
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
                 onTap: () => Navigator.pop(context),
               ),
               const SizedBox(width: 12),
@@ -178,14 +180,14 @@ class _Hero extends StatelessWidget {
                     Text(title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: _t(18, w: FontWeight.w800, c: Colors.white)),
+                        style: _t(18, w: FontWeight.w800, c: context.colors.onHero)),
                     const SizedBox(height: 2),
                     Text('sa_report_title'.tr,
-                        style: _t(12, c: Colors.white70)),
+                        style: _t(12, c: context.colors.onHeroMuted)),
                   ],
                 ),
               ),
-              _GlassIcon(icon: Icons.refresh_rounded, onTap: prov.loadAll),
+              _GlassIcon(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, onTap: prov.loadAll),
             ]),
             const SizedBox(height: 22),
             Row(children: [
@@ -199,28 +201,28 @@ class _Hero extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.16),
+                        color: context.colors.onHero.withValues(alpha: 0.16),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white24),
+                        border: Border.all(color: context.colors.heroGlassBorder),
                       ),
                       child: Text(loading ? '...' : _level(overall),
                           style:
-                          _t(13, w: FontWeight.w700, c: Colors.white)),
+                          _t(13, w: FontWeight.w700, c: context.colors.onHero)),
                     ),
                     const SizedBox(height: 10),
                     Text(
                       prov.progress != null
                           ? anTr('sa_overall_hint_full', 'An average of your progress, attendance and exam results.')
                           : 'sa_overall_hint'.tr,
-                      style: _t(12, c: Colors.white70, h: 1.6),
+                      style: _t(12, c: context.colors.onHeroMuted, h: 1.6),
                     ),
                     if (prov.progress != null) ...[
                       const SizedBox(height: 10),
                       Row(children: [
-                        const Icon(Icons.trending_up_rounded, size: 16, color: Colors.white),
+                        Icon(Icons.trending_up_rounded, size: 16, color: context.colors.onHero),
                         const SizedBox(width: 6),
                         Text('${anTr('an_course_progress', 'Course progress')}: ${anPct(prov.progress)}',
-                            style: _t(12.5, w: FontWeight.w700, c: Colors.white)),
+                            style: _t(12.5, w: FontWeight.w700, c: context.colors.onHero)),
                       ]),
                     ],
                   ],
@@ -232,7 +234,7 @@ class _Hero extends StatelessWidget {
               _HeroStat(
                 onTap: () => onOpenTab(1),
                 icon: Icons.check_circle_rounded,
-                color: Colors.white,
+                color: context.colors.onHero,
                 value: '${prov.attendanceRate.toStringAsFixed(0)}%',
                 label: 'attendance_rate'.tr,
               ),
@@ -240,7 +242,7 @@ class _Hero extends StatelessWidget {
               _HeroStat(
                 onTap: () => onOpenTab(2),
                 icon: Icons.emoji_events_rounded,
-                color: Colors.white,
+                color: context.colors.onHero,
                 value: '${prov.passedCount}/${prov.attemptedCount}',
                 label: 'sa_passed_exams'.tr,
               ),
@@ -248,7 +250,7 @@ class _Hero extends StatelessWidget {
               _HeroStat(
                 onTap: () => onOpenTab(2),
                 icon: Icons.bar_chart_rounded,
-                color: Colors.white,
+                color: context.colors.onHero,
                 value: '${prov.avgScore.toStringAsFixed(0)}%',
                 label: 'sa_avg_score'.tr,
               ),
@@ -263,22 +265,40 @@ class _Hero extends StatelessWidget {
 class _GlassIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _GlassIcon({required this.icon, required this.onTap});
+  final String? tooltip;
+  const _GlassIcon({required this.icon, required this.onTap, this.tooltip});
 
   @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.white.withValues(alpha: 0.16),
-    shape: const CircleBorder(side: BorderSide(color: Colors.white24)),
-    child: InkWell(
-      customBorder: const CircleBorder(),
-      onTap: onTap,
-      child: SizedBox(
-        width: 40,
-        height: 40,
-        child: Icon(icon, color: Colors.white, size: 19),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    // 40 px glass circle inside a 48 px tap target; announced by its tooltip.
+    final b = Semantics(
+      button: true,
+      label: tooltip,
+      excludeSemantics: tooltip != null,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: c.onHero.withValues(alpha: 0.16),
+                border: Border.all(color: c.heroGlassBorder),
+              ),
+              child: Icon(icon, color: c.onHero, size: 19),
+            ),
+          ),
+        ),
       ),
-    ),
-  );
+    );
+    return tooltip == null ? b : Tooltip(message: tooltip!, child: b);
+  }
 }
 
 class _HeroStat extends StatelessWidget {
@@ -298,19 +318,19 @@ class _HeroStat extends StatelessWidget {
     child: GestureDetector(onTap: onTap, child: Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.12),
+        color: context.colors.onHero.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+        border: Border.all(color: context.colors.onHero.withValues(alpha: 0.18)),
       ),
       child: Column(children: [
         Icon(icon, color: color, size: 20),
         const SizedBox(height: 6),
-        Text(value, style: _t(16, w: FontWeight.w800, c: Colors.white)),
+        Text(value, style: _t(16, w: FontWeight.w800, c: context.colors.onHero)),
         const SizedBox(height: 2),
         Text(label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: _t(10, c: Colors.white70)),
+            style: _t(10, c: context.colors.onHeroMuted)),
       ]),
     )),
   );
@@ -336,7 +356,7 @@ class _ScoreRing extends StatelessWidget {
           child: CircularProgressIndicator(
             value: 1,
             strokeWidth: 10,
-            color: Colors.white.withValues(alpha: 0.16),
+            color: context.colors.onHero.withValues(alpha: 0.16),
           ),
         ),
         SizedBox(
@@ -346,13 +366,13 @@ class _ScoreRing extends StatelessWidget {
             value: v,
             strokeWidth: 10,
             strokeCap: StrokeCap.round,
-            color: Colors.white,
+            color: context.colors.onHero,
           ),
         ),
         Column(mainAxisSize: MainAxisSize.min, children: [
           Text('${(v * 100).round()}%',
-              style: _t(size * 0.24, w: FontWeight.w800, c: Colors.white)),
-          Text('stat_total'.tr, style: _t(10, c: Colors.white70)),
+              style: _t(size * 0.24, w: FontWeight.w800, c: context.colors.onHero)),
+          Text('stat_total'.tr, style: _t(10, c: context.colors.onHeroMuted)),
         ]),
       ]),
     ),
@@ -403,7 +423,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
+                  color: context.colors.heroShade.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 3))
             ],
@@ -419,7 +439,7 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
               gradient: LinearGradient(
                   colors: [context.colors.primaryDark, primary]),
             ),
-            labelColor: Colors.white,
+            labelColor: context.colors.onHero,
             unselectedLabelColor: inactive,
             labelStyle: _t(12.5, w: FontWeight.w700),
             unselectedLabelStyle: _t(12.5),
@@ -523,11 +543,11 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (prov.loadingAtt && prov.loadingExams) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton();
     }
     final insights = _insights(context);
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: prov.loadAll,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -695,7 +715,7 @@ class _OverviewTab extends StatelessWidget {
                               ? Icons.check_rounded
                               : Icons.close_rounded,
                           size: 14,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                         ),
                       ),
                     ),
@@ -881,7 +901,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
   @override
   Widget build(BuildContext context) {
     final prov = widget.prov;
-    if (prov.loadingAtt) return const Center(child: AppLoadingIndicator());
+    if (prov.loadingAtt) return const AppListSkeleton();
     if (prov.attError != null) {
       return _ErrorRetry(message: prov.attError!, onRetry: prov.loadAttendance);
     }
@@ -898,7 +918,7 @@ class _AttendanceTabState extends State<_AttendanceTab> {
       return true;
     }).toList();
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: prov.loadAttendance,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -1037,7 +1057,7 @@ class _AttendanceTile extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.22)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: context.colors.heroShade.withValues(alpha: 0.03),
               blurRadius: 6,
               offset: const Offset(0, 2))
         ],
@@ -1149,7 +1169,7 @@ class _ExamsTabState extends State<_ExamsTab> {
   @override
   Widget build(BuildContext context) {
     final prov = widget.prov;
-    if (prov.loadingExams) return const Center(child: AppLoadingIndicator());
+    if (prov.loadingExams) return const AppListSkeleton();
     if (prov.examsError != null) {
       return _ErrorRetry(message: prov.examsError!, onRetry: prov.loadExams);
     }
@@ -1171,7 +1191,7 @@ class _ExamsTabState extends State<_ExamsTab> {
       }
     }).toList();
 
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: prov.loadExams,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -1378,9 +1398,9 @@ class _MarksTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final b = prov.block;
-    if (b == null && prov.loadingBlock) return const Center(child: AppLoadingIndicator());
+    if (b == null && prov.loadingBlock) return const AppListSkeleton();
     if (b == null) {
-      return RefreshIndicator(
+      return AppRefresh(
         onRefresh: prov.loadBlock,
         child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: [
           const SizedBox(height: 40),
@@ -1393,7 +1413,7 @@ class _MarksTab extends StatelessWidget {
       );
     }
     final marks = b.extraColumns;
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: prov.loadBlock,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -1517,7 +1537,7 @@ class _Card extends StatelessWidget {
           color: context.colors.divider.withValues(alpha: 0.5), width: 0.6),
       boxShadow: [
         BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: context.colors.heroShade.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 4))
       ],
@@ -1593,7 +1613,7 @@ class _FilterChips extends StatelessWidget {
                   style: _t(12.5,
                       w: i == selected ? FontWeight.w700 : FontWeight.w500,
                       c: i == selected
-                          ? Colors.white
+                          ? context.colors.onHero
                           : context.colors.textMedium)),
             ),
           ),

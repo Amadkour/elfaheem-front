@@ -9,12 +9,14 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
 import '../../../../utils/widget/base_page.dart';
 import 'teacher_device_requests_provider.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_notice.dart';
 
 class TeacherDeviceRequestsScreen extends StatefulWidget {
   const TeacherDeviceRequestsScreen({super.key});
@@ -56,8 +58,8 @@ class _View extends StatelessWidget {
       maxWith: 1100,
       appBar: ScreenAppBar(title: 'device_switch_requests'.tr),
       child: !p.hasLoaded && !failedFirstLoad
-          ? const Center(child: AppLoadingIndicator(showLogo: false))
-          : RefreshIndicator(
+          ? const AppListSkeleton()
+          : AppRefresh(
         onRefresh: p.load,
         child: failedFirstLoad
             ? RequestStateView(
@@ -100,25 +102,17 @@ class _Card extends StatelessWidget {
 
   Future<bool> _approve(BuildContext context) async {
     final p = context.read<TeacherDeviceRequestsProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final c = context.colors;
 
     final ok = await p.approve(item.id);
-    showRequestSnack(
-      messenger,
-      ok
-          ? 'device_request_approved'.tr
-          : (p.errorMessage ?? 'device_approve_failed'.tr),
-      color: ok ? c.success : c.danger,
-      icon: ok ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+    showAppNotice(
+      ok ? 'device_request_approved'.tr : (p.errorMessage ?? 'device_approve_failed'.tr),
+      error: !ok,
     );
     return ok;
   }
 
   Future<bool> _reject(BuildContext context) async {
     final p = context.read<TeacherDeviceRequestsProvider>();
-    final messenger = ScaffoldMessenger.of(context);
-    final c = context.colors;
 
     final reason = await showReasonDialog(
       context,
@@ -130,11 +124,9 @@ class _Card extends StatelessWidget {
     if (reason == null) return false; // cancelled → card springs back
 
     final ok = await p.reject(item.id, reason);
-    showRequestSnack(
-      messenger,
+    showAppNotice(
       ok ? 'request_rejected'.tr : (p.errorMessage ?? 'request_reject_failed'.tr),
-      color: c.danger,
-      icon: ok ? Icons.cancel_rounded : Icons.error_outline_rounded,
+      error: !ok,
     );
     return ok;
   }

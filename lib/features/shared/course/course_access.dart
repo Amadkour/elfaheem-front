@@ -5,6 +5,7 @@ import 'package:flutter_education_app/features/student/models.dart';
 
 import '../guest/guest_state.dart';
 import '../passcode/passcode_screen.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 
 /// Opens the course detail screen, asking for the access code first when the
 /// course is private.
@@ -35,7 +36,7 @@ Future<void> openCourse(BuildContext context, CourseModel c,ApiClient api) async
         );
         return  r['unlocked']??false;
       },
-      errorText: (e) => e.toString(),
+      errorText: (e) => apiErrorText(ApiException.from(e)),
     );
 
     if (!unlocked || !context.mounted) return;

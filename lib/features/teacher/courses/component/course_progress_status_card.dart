@@ -48,7 +48,7 @@ class CourseProgressStatusCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: context.colors.heroShade.withValues(alpha: 0.06),
             blurRadius: 18,
             offset: const Offset(0, 4),
           ),
@@ -68,21 +68,21 @@ class CourseProgressStatusCard extends StatelessWidget {
                     gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.timeline_rounded,
                     size: 17,
-                    color: Colors.white,
+                    color: context.colors.onHero,
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'course_progress_status_title'.tr,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'bahji',
-                      color: Color(0xFF1A1A2E),
+                      color: context.colors.textDark,
                     ),
                   ),
                 ),
@@ -95,7 +95,7 @@ class CourseProgressStatusCard extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+          Divider(height: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Row(
@@ -138,7 +138,7 @@ class _SegmentButton extends StatelessWidget {
 
   Color _color(BuildContext context) => status == CourseStatus.completed
       ? context.colors.accent2
-      : const Color(0xFF4DA6FF);
+      : context.colors.primary;
 
   IconData get _icon => status == CourseStatus.completed
       ? Icons.check_circle_rounded
@@ -207,13 +207,17 @@ class _StatusPill extends StatelessWidget {
             color: color,
           ),
           const SizedBox(width: 4),
-          Text(
-            status.label,
-            style: TextStyle(
-              fontFamily: 'tajawal',
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: color,
+          Flexible(
+            child: Text(
+              status.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontFamily: 'tajawal',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
             ),
           ),
         ],

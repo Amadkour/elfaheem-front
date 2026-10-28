@@ -28,6 +28,9 @@ import '../../../../utils/widget/search_text_field.dart';
 import '../../../teacher/home/teacher_models.dart';
 import 'course_student_provider.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class EnrolledStudentsScreen extends StatefulWidget {
   final TeacherCourse course;
@@ -76,8 +79,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
     return BasePage(
       useWebCard: true,
       child: SafeArea(
-        child: RefreshIndicator(
-          color: context.colors.primary,
+        child: AppRefresh(
           onRefresh: _load,
           child: NotificationListener<ScrollNotification>(
             onNotification: _onScrollNotification,
@@ -117,7 +119,7 @@ class _EnrolledStudentsScreenState extends State<EnrolledStudentsScreen> {
                     child: _SendToAllButton(course: widget.course),
                   ),
                 ),
-                _StudentsSliver(course: widget.course),
+                _StudentsSliver(course: widget.course, onRetry: _load),
               ],
             ),
           ),
@@ -156,18 +158,18 @@ class _HeroHeader extends StatelessWidget {
                 icon: Icons.arrow_back_ios_new_rounded,
                 onTap: () => Navigator.maybePop(context),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'enrolled_students_title'.tr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -179,7 +181,7 @@ class _HeroHeader extends StatelessWidget {
                       style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.78),
+                        color: context.colors.onHero.withValues(alpha: 0.78),
                       ),
                     ),
                   ],
@@ -219,8 +221,8 @@ class _ProgressRing extends StatelessWidget {
                 value: animated,
                 strokeWidth: 9,
                 strokeCap: StrokeCap.round,
-                backgroundColor: Colors.white.withValues(alpha: 0.22),
-                valueColor: const AlwaysStoppedAnimation(Colors.white),
+                backgroundColor: context.colors.onHero.withValues(alpha: 0.22),
+                valueColor: AlwaysStoppedAnimation(context.colors.onHero),
               ),
             ),
           ),
@@ -229,11 +231,11 @@ class _ProgressRing extends StatelessWidget {
             children: [
               Text(
                 '${value.toStringAsFixed(0)}%',
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: context.colors.onHero,
                   height: 1,
                 ),
               ),
@@ -244,7 +246,7 @@ class _ProgressRing extends StatelessWidget {
                   fontFamily: 'tajawal',
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: context.colors.onHero.withValues(alpha: 0.85),
                 ),
               ),
             ],
@@ -264,16 +266,18 @@ class _CircleBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         width: 36,
         height: 36,
+        margin: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
+          color: context.colors.onHero.withValues(alpha: 0.18),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+          border: Border.all(color: context.colors.onHero.withValues(alpha: 0.25)),
         ),
-        child: Icon(icon, size: 16, color: Colors.white),
+        child: Icon(icon, size: 16, color: context.colors.onHero, semanticLabel: MaterialLocalizations.of(context).backButtonTooltip),
       ),
     );
   }
@@ -297,7 +301,7 @@ class _FloatingStatsCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
+            color: context.colors.heroShade.withValues(alpha: 0.10),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -319,7 +323,7 @@ class _FloatingStatsCard extends StatelessWidget {
               icon: Icons.workspace_premium_rounded,
               label: 'stat_completed'.tr,
               value: '${p.completedCount}',
-              color: const Color(0xFFFF9F43),
+              color: context.colors.warning,
             ),
           ),
         ],
@@ -390,17 +394,23 @@ class _StatTile extends StatelessWidget {
 
 class _StudentsSliver extends StatelessWidget {
   final TeacherCourse course;
+  final VoidCallback onRetry;
 
-  const _StudentsSliver({required this.course});
+  const _StudentsSliver({required this.course, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<EnrolledStudentsProvider>();
 
     if (p.isLoading && p.students.isEmpty) {
-      return const SliverFillRemaining(
+      return const SliverToBoxAdapter(child: AppListSkeleton());
+    }
+
+    // A failed first load used to show "no students yet": say it failed and offer a retry.
+    if (p.students.isEmpty && p.hasError) {
+      return SliverFillRemaining(
         hasScrollBody: false,
-        child: Center(child: AppLoadingIndicator()),
+        child: ErrorRetry(message: p.errorMessage ?? 'failed_to_load'.tr, onRetry: onRetry),
       );
     }
 
@@ -579,10 +589,10 @@ class _StudentCard extends StatelessWidget {
 
   const _StudentCard({required this.student, required this.course});
 
-  Color get _progressColor {
-    if (student.progressPercentage >= 80) return const Color(0xFF1DB954);
-    if (student.progressPercentage >= 40) return const Color(0xFFFF9F43);
-    return const Color(0xFF5B8FFF);
+  Color _progressColor(BuildContext context) {
+    if (student.progressPercentage >= 80) return context.colors.success;
+    if (student.progressPercentage >= 40) return context.colors.warning;
+    return context.colors.primary;
   }
 
   @override
@@ -592,7 +602,7 @@ class _StudentCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () => _showStudentDialog(context, student, course, _progressColor),
+        onTap: () => _showStudentDialog(context, student, course, _progressColor(context)),
         child: Ink(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -601,7 +611,7 @@ class _StudentCard extends StatelessWidget {
           ),
           child: Row(
             children: [
-              _RingAvatar(student: student, color: _progressColor),
+              _RingAvatar(student: student, color: _progressColor(context)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -630,7 +640,7 @@ class _StudentCard extends StatelessWidget {
                             fontFamily: 'tajawal',
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: _progressColor,
+                            color: _progressColor(context),
                           ),
                         ),
                       ],
@@ -683,15 +693,12 @@ class _RingAvatar extends StatelessWidget {
 
   const _RingAvatar({required this.student, required this.color});
 
-  static const List<Color> _palette = [
-    Color(0xFF5B8FFF),
-    Color(0xFF1DB954),
-    Color(0xFFFF9F43),
-    Color(0xFFE84393),
-    Color(0xFF9B59B6),
-  ];
-
-  Color get _avatarColor => _palette[student.id % _palette.length];
+  // One stable colour per student, from the theme's roles.
+  Color _avatarColor(BuildContext context) {
+    final c = context.colors;
+    final palette = [c.primary, c.success, c.warning, c.accent2, c.purple];
+    return palette[student.id % palette.length];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -727,9 +734,9 @@ class _RingAvatar extends StatelessWidget {
                 width: 42,
                 height: 42,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => _initials,
+                errorBuilder: (_, _, _) => _initials(context),
               )
-                  : _initials,
+                  : _initials(context),
             ),
           ),
         ],
@@ -737,10 +744,10 @@ class _RingAvatar extends StatelessWidget {
     );
   }
 
-  Widget get _initials => Container(
+  Widget _initials(BuildContext context) => Container(
     width: 42,
     height: 42,
-    color: _avatarColor.withValues(alpha: 0.15),
+    color: _avatarColor(context).withValues(alpha: 0.15),
     alignment: Alignment.center,
     child: Text(
       student.initials,
@@ -748,7 +755,7 @@ class _RingAvatar extends StatelessWidget {
         fontFamily: 'tajawal',
         fontSize: 14,
         fontWeight: FontWeight.w700,
-        color: _avatarColor,
+        color: _avatarColor(context),
       ),
     ),
   );
@@ -797,7 +804,7 @@ class _CertificateAction extends StatelessWidget {
 
     // Always visible, labeled button. After a send it turns green and reads
     // "Resend", but stays tappable so the certificate can go out again.
-    final color = isSent ? context.colors.success : const Color(0xFFB8860B);
+    final color = isSent ? context.colors.success : context.colors.accent2;
     return GestureDetector(
       onTap: provider.isBulkSending ? null : () => _handleTap(context),
       child: Container(
@@ -857,7 +864,7 @@ class _CertificatePickerSheet extends StatelessWidget {
                 color: Colors.transparent,
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700)),
+                  leading: Icon(Icons.workspace_premium_rounded, color: context.colors.accent2),
                   title: Text(c.title, style: const TextStyle(fontFamily: 'tajawal', fontSize: 13)),
                   onTap: () => Navigator.pop(context, c),
                 ),
@@ -940,7 +947,7 @@ class _SendToAllButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.watch<EnrolledStudentsProvider>();
     final busy = p.isBulkSending;
-    const gold = Color(0xFFB8860B);
+    final gold = context.colors.accent2;
 
     return SizedBox(
       width: double.infinity,
@@ -1024,8 +1031,8 @@ class _StudentDetailsDialog extends StatelessWidget {
                   onTap: () => Navigator.pop(context),
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(Icons.close_rounded, size: 20, color: c.textMedium),
+                    padding: const EdgeInsets.all(14),
+                    child: Icon(Icons.close_rounded, size: 20, color: c.textMedium, semanticLabel: 'close'.tr),
                   ),
                 ),
               ),
@@ -1165,7 +1172,7 @@ class _CertificateRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700)),
+          Icon(Icons.workspace_premium_rounded, color: context.colors.accent2),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

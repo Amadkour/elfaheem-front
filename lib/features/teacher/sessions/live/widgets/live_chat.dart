@@ -203,11 +203,11 @@ class LiveChatPanel extends StatefulWidget {
 }
 
 class _LiveChatPanelState extends State<LiveChatPanel> {
-  static const _textHigh = Color(0xFFFFFFFF);
-  static const _textMid = Color(0xB3FFFFFF);
-  static const _textLow = Color(0x66FFFFFF);
-  static const _glassBdr = Color(0x30FFFFFF);
-  static const _glass10 = Color(0x1AFFFFFF);
+  static const _textHigh = LivePalette.textHigh;
+  static const _textMid = LivePalette.textMid;
+  static const _textLow = LivePalette.textLow;
+  static const _glassBdr = LivePalette.glassBorder;
+  static const _glass10 = LivePalette.glass;
 
   late final TextEditingController _input = widget.inputController ?? TextEditingController();
   final _scroll = ScrollController();
@@ -286,7 +286,6 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
               IconButton(
                 key: const ValueKey('live_chat.clear'),
                 tooltip: 'lr_clear_chat'.tr,
-                visualDensity: VisualDensity.compact,
                 onPressed: widget.controller.clear,
                 icon: const Icon(Icons.delete_sweep_outlined, size: 20, color: _textMid),
               ),
@@ -294,7 +293,6 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
               IconButton(
                 key: const ValueKey('live_chat.close'),
                 tooltip: 'lr_close'.tr,
-                visualDensity: VisualDensity.compact,
                 onPressed: widget.onClose,
                 icon: const Icon(Icons.close_rounded, size: 18, color: _textMid),
               ),
@@ -389,7 +387,7 @@ class _LiveChatPanelState extends State<LiveChatPanel> {
                     child: Semantics(
                       button: true,
                       label: 'lr_send'.tr,
-                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                      child: const Icon(Icons.send_rounded, color: LivePalette.textHigh, size: 20),
                     ),
                   ),
                 ),
@@ -412,8 +410,8 @@ class _Bubble extends StatelessWidget {
     final m = message;
     final mine = m.mine;
     final accent = LivePalette.accent;
-    final fill = mine ? accent.withValues(alpha: 0.26) : const Color(0x1AFFFFFF);
-    final border = mine ? accent.withValues(alpha: 0.5) : const Color(0x26FFFFFF);
+    final fill = mine ? accent.withValues(alpha: 0.26) : LivePalette.glass;
+    final border = mine ? accent.withValues(alpha: 0.5) : LivePalette.glassBorder;
     return Align(
       alignment: mine ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
       child: ConstrainedBox(
@@ -460,10 +458,10 @@ class _Bubble extends StatelessWidget {
                     ]),
                   ),
                 Text(m.text,
-                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5, height: 1.35, color: Colors.white)),
+                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 13.5, height: 1.35, color: LivePalette.textHigh)),
                 const SizedBox(height: 2),
                 Text(liveChatTime(m.ts),
-                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 9.5, color: Color(0x80FFFFFF))),
+                    style: const TextStyle(fontFamily: 'tajawal', fontSize: 9.5, color: LivePalette.textSoft)),
               ],
             ),
         ),

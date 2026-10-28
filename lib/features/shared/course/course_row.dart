@@ -151,7 +151,7 @@ class CourseCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
+              color: context.colors.heroShade.withValues(alpha: 0.07),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -277,8 +277,8 @@ class CourseCard extends StatelessWidget {
                                           : course.category!.nameEn,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.colors.onHero,
                                         fontSize: 9,
                                         fontWeight: FontWeight.w700,
                                         fontFamily: 'bahji',
@@ -304,8 +304,8 @@ class CourseCard extends StatelessWidget {
                                       course.isPublished
                                           ? 'published'.tr
                                           : 'draft'.tr,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: context.colors.onHero,
                                         fontSize: 10,
                                         fontWeight: FontWeight.w700,
                                         fontFamily: 'bahji',
@@ -408,7 +408,7 @@ class _Thumbnail extends StatelessWidget {
               gradient: LinearGradient(
                 colors: [
                   Colors.transparent,
-                  Colors.black.withValues(alpha: 0.36),
+                  context.colors.heroShade.withValues(alpha: 0.36),
                 ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
@@ -424,14 +424,14 @@ class _Thumbnail extends StatelessWidget {
           child: ParentComponent(featureKey: 'course_card.type_badge', child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
+              color: context.colors.heroShade.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(8),
-              border: BoxBorder.all(color: Colors.white, width: 0.75),
+              border: BoxBorder.all(color: context.colors.onHero, width: 0.75),
             ),
             child: Text(
               course.type.tr,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'bahji',
@@ -449,7 +449,7 @@ class _Thumbnail extends StatelessWidget {
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.88),
+                color: context.colors.onHero.withValues(alpha: 0.88),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -458,8 +458,8 @@ class _Thumbnail extends StatelessWidget {
                     : Icons.favorite_border_rounded,
                 size: 15,
                 color: course.isFavorite
-                    ? const Color(0xFFE24B4A)
-                    : Colors.grey.shade400,
+                    ? context.colors.danger
+                    : context.colors.textLight,
               ),
             )),
           ),
@@ -497,14 +497,14 @@ class _Thumbnail extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: course.effectivePrice == 0
-                  ? const Color(0xFF0F6E56)
+                  ? context.colors.success
                   : context.colors.primary,
               borderRadius: BorderRadius.circular(10),
               boxShadow: [
                 BoxShadow(
                   color:
                   (course.effectivePrice == 0
-                      ? const Color(0xFF0F6E56)
+                      ? context.colors.success
                       : context.colors.primary)
                       .withValues(alpha: 0.35),
                   blurRadius: 8,
@@ -520,7 +520,7 @@ class _Thumbnail extends StatelessWidget {
                   Text(
                     course.currency.format(course.price),
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
+                      color: context.colors.onHero.withValues(alpha: 0.75),
                       fontWeight: FontWeight.w600,
                       fontSize: 9,
                       fontFamily: 'bahji',
@@ -531,8 +531,8 @@ class _Thumbnail extends StatelessWidget {
                 ],
                 Text(
                   course.currency.format(course.effectivePrice),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                     fontFamily: 'bahji',
@@ -578,7 +578,7 @@ class _CardDivider extends StatelessWidget {
       child: Divider(
         height: 0.5,
         thickness: 0.5,
-        color: Colors.black.withValues(alpha: 0.07),
+        color: context.colors.heroShade.withValues(alpha: 0.07),
       ),
     );
   }

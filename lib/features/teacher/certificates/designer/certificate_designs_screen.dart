@@ -22,6 +22,9 @@ import '../../../../design/app_switch.dart';
 import 'certificate_design_models.dart';
 import 'certificate_designer_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class CertificateDesignsProvider extends BaseProvider {
   final ApiClient _api;
@@ -99,17 +102,18 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton(withAvatar: false);
+    } else if (p.hasError && p.items.isEmpty) {
+      // A failed first load used to show "no designs yet" — say it failed and offer a retry instead.
+      body = ErrorRetry(message: p.errorMessage ?? 'pl_designs_load_failed'.tr, onRetry: () => p.load(orgId: orgId));
     } else if (p.items.isEmpty) {
-      body = Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.workspace_premium_outlined, size: 52, color: c.textLight),
-          const SizedBox(height: 12),
-          Text('cert_no_designs'.tr, style: c.body),
-        ]),
+      body = AppRefresh(
+        onRefresh: () => p.load(orgId: orgId),
+        scrollable: false,
+        child: AppEmpty(icon: Icons.workspace_premium_outlined, title: 'cert_no_designs'.tr),
       );
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: () => p.load(orgId: orgId),
         child: GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -163,13 +167,13 @@ class _DesignCard extends StatelessWidget {
           child: InkWell(
             onTap: onOpen,
             child: Container(
-              color: Colors.grey.shade200,
+              color: c.textLight,
               alignment: Alignment.center,
               padding: const EdgeInsets.all(10),
               child: AspectRatio(
                 aspectRatio: design.logicalW / design.logicalH,
                 child: Container(
-                  decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6)]),
+                  decoration: BoxDecoration(color: c.cardBg, boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.2), blurRadius: 6)]),
                   child: design.backgroundUrl == null
                       ? Icon(Icons.workspace_premium_outlined, color: c.textLight)
                       : Image.network(design.backgroundUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
@@ -179,7 +183,7 @@ class _DesignCard extends StatelessWidget {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+          padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 4, 4),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

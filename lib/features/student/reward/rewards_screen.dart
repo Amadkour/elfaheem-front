@@ -88,7 +88,7 @@ class _OverviewView extends StatelessWidget {
                                 height: 140,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.08),
+                                  color: context.colors.onHero.withValues(alpha: 0.08),
                                 ),
                               ),
                             ),
@@ -100,7 +100,7 @@ class _OverviewView extends StatelessWidget {
                                 height: 100,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.06),
+                                  color: context.colors.onHero.withValues(alpha: 0.06),
                                 ),
                               ),
                             ),
@@ -289,8 +289,8 @@ class _UserTrophy extends StatelessWidget {
               ),
               child: Text(
                 'أحمد محمد',
-                style: const TextStyle(
-                  color:      Colors.white,
+                style: TextStyle(
+                  color:      context.colors.onHero,
                   fontWeight: FontWeight.w800,
                   fontSize:   13,
                   fontFamily: 'bahji',

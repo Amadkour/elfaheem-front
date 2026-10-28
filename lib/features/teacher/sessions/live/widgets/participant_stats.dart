@@ -157,7 +157,7 @@ class ParticipantStatsPanel extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         constraints: const BoxConstraints(maxWidth: 260, maxHeight: 300),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
+          color: LivePalette.shade(0.6),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: LivePalette.glassBorder),
         ),

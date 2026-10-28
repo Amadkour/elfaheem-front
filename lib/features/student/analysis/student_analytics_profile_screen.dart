@@ -10,12 +10,14 @@
 // so existing imports keep working.
 library;
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../../teacher/data_lab/data_lab_api.dart';
@@ -75,7 +77,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
         if (_scope != null && !p.courses.any((b) => b.courseId == _scope)) _scope = null;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = e is ApiException ? e.message : '$e');
+      if (mounted) setState(() => _error = apiErrorText(ApiException.from(e)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -88,7 +90,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
     final c = context.colors;
     Widget body;
     if (_loading && _profile == null) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (_error != null && _profile == null) {
       body = AnErrorRetry(message: _error!, onRetry: _load);
     } else if (_profile == null || _profile!.courses.isEmpty) {
@@ -100,7 +102,7 @@ class _State extends State<StudentAnalyticsProfileScreen> {
       final prog = single ? blocks.first.progress : p.progress;
       final att = single ? blocks.first.attendance : p.attendance;
       final ex = single ? blocks.first.examAvg : p.examAvg;
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -183,15 +185,15 @@ class _State extends State<StudentAnalyticsProfileScreen> {
         Row(children: [
           Container(
             padding: const EdgeInsets.all(3),
-            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white24),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.heroGlassBorder),
             child: DlAvatar(name: name, url: p.imageUrl, size: 58),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(19, w: FontWeight.w800, c: Colors.white)),
+              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(19, w: FontWeight.w800, c: context.colors.onHero)),
               const SizedBox(height: 4),
-              Text(anInsightSentence(prog, att, ex, mine: !widget.teacherMode), style: anText(12.5, c: Colors.white70, h: 1.5)),
+              Text(anInsightSentence(prog, att, ex, mine: !widget.teacherMode), style: anText(12.5, c: context.colors.onHeroMuted, h: 1.5)),
             ]),
           ),
         ]),
@@ -221,7 +223,7 @@ class _ScopeChip extends StatelessWidget {
       selected: selected,
       showCheckmark: false,
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: anText(12.5, w: FontWeight.w700, c: selected ? Colors.white : c.textDark)),
+          style: anText(12.5, w: FontWeight.w700, c: selected ? c.onHero : c.textDark)),
       selectedColor: c.primary,
       backgroundColor: c.cardBg,
       side: BorderSide(color: selected ? c.primary : c.divider),

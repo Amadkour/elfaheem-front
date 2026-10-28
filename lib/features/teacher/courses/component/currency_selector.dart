@@ -43,7 +43,7 @@ class CurrencySelector extends StatelessWidget {
               fontSize: 12,
               fontWeight: FontWeight.w600,
               fontFamily: 'bahji',
-              color: Colors.black.withValues(alpha: 0.55),
+              color: context.colors.heroShade.withValues(alpha: 0.55),
             ),
           ),
           const SizedBox(height: 8),
@@ -110,7 +110,7 @@ class _CurrencyChip extends StatelessWidget {
               ? context.colors.primaryShadow
               : [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
+              color: context.colors.heroShade.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -125,7 +125,7 @@ class _CurrencyChip extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isSelected
-                    ? Colors.white
+                    ? context.colors.cardBg
                     : context.colors.textLight.withValues(alpha: 0.4),
               ),
             ),
@@ -136,7 +136,7 @@ class _CurrencyChip extends StatelessWidget {
                 fontFamily: 'tajawal',
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : context.colors.textDark,
+                color: isSelected ? context.colors.onHero : context.colors.textDark,
               ),
             ),
             const SizedBox(width: 6),
@@ -147,7 +147,7 @@ class _CurrencyChip extends StatelessWidget {
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.85)
+                    ? context.colors.onHero.withValues(alpha: 0.85)
                     : context.colors.textMedium,
               ),
             ),

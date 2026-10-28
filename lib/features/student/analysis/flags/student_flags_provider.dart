@@ -1,4 +1,5 @@
 // features/student/analysis/flags/student_flags_provider.dart
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'student_flags_api.dart';
@@ -38,7 +39,7 @@ class StudentFlagsProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       error = e.message;
     } catch (e) {
-      error = e.toString();
+      error = apiErrorText(ApiException.from(e));
     } finally {
       loading = false;
       notifyListeners();

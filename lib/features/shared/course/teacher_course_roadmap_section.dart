@@ -21,8 +21,6 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/parent_component.dart';
 import '../../student/models.dart';
 
-const _kPickGold = Color(0xFFC9971F);
-const _kPickGoldBg = Color(0xFFFFF6DF);
 
 class CourseRecommendationsSection extends StatelessWidget {
   final List<CourseSummary> nextCourses;
@@ -68,7 +66,7 @@ class CourseRecommendationsSection extends StatelessWidget {
           border: Border.all(color: context.colors.divider, width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: context.colors.heroShade.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -86,10 +84,10 @@ class CourseRecommendationsSection extends StatelessWidget {
                     gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.route_rounded,
                     size: 17,
-                    color: Colors.white,
+                    color: context.colors.onHero,
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -116,7 +114,7 @@ class CourseRecommendationsSection extends StatelessWidget {
             if (recommendedCourses.isNotEmpty) ParentComponent(featureKey: 'roadmap.teacher_picks', child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               _CategoryLabel(
                 icon: Icons.star_rounded,
-                color: _kPickGold,
+                color: context.colors.accent2,
                 text: 'teacher_picks_section_title'.tr,
                 caption: 'teacher_picks_hint'.tr,
               ),
@@ -138,8 +136,8 @@ class CourseRecommendationsSection extends StatelessWidget {
                       course: recommendedCourses[i],
                       onTap: () => onTapOwnCourse(recommendedCourses[i]),
                       badgeText: 'teacher_pick_badge'.tr,
-                      badgeColor: _kPickGold,
-                      badgeBg: _kPickGoldBg,
+                      badgeColor: context.colors.accent2,
+                      badgeBg: context.colors.accent.withValues(alpha: 0.35),
                       badgeIcon: Icons.star_rounded,
                       isDark: false,
                     ),
@@ -304,11 +302,11 @@ class _NextStepsTimeline extends StatelessWidget {
                     ),
                     child: Text(
                       '${i + 1}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                     ),
                   ),
@@ -380,7 +378,7 @@ class RecommendCourseCard extends StatelessWidget {
           border: Border.all(color: context.colors.divider, width: 0.8),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: context.colors.heroShade.withValues(alpha: 0.05),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -450,10 +448,10 @@ class RecommendCourseCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.star_rounded,
                         size: 13,
-                        color: Color(0xFFFFD700),
+                        color: context.colors.accent2,
                       ),
                       const SizedBox(width: 2),
                       Text(

@@ -2,11 +2,12 @@
 //
 // Per-course banks:  [Review bank]  — questions the student bookmarked in exams
 //                    [Read flags]   — questions answered wrongly (score = wrong tries × points)
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import '../exam/exam_tr.dart';
 import '../exam/exam_ui.dart';
@@ -74,20 +75,20 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
           headerSliverBuilder: (ctx, _) => [
             SliverToBoxAdapter(
               child: ExamHero(
-                colors: [context.colors.purple, kViolet],
+                colors: [context.colors.purple, context.colors.purple],
                 child: Column(children: [
                   ExamHeroBar(
                     title: widget.courseTitle,
                     subtitle: tx('flag_review_bank'),
                     actions: [
-                      GlassIcon(icon: Icons.refresh_rounded, onTap: p.load),
+                      GlassIcon(icon: Icons.refresh_rounded, tooltip: 'refresh'.tr, onTap: p.load),
                     ],
                   ),
                   const SizedBox(height: 20),
                   Row(children: [
                     HeroStat(
                       icon: Icons.bookmark_rounded,
-                      color: const Color(0xFFFFD740),
+                      color: context.colors.accent,
                       value: '${p.review.length}',
                       label: tx('flag_review_bank'),
                     ),
@@ -101,7 +102,7 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
                     const SizedBox(width: 10),
                     HeroStat(
                       icon: Icons.close_rounded,
-                      color: const Color(0xFFFF8A80),
+                      color: c.danger,
                       value: '${p.readTotalWrong}',
                       label: tx('flag_total_wrong'),
                     ),
@@ -123,7 +124,7 @@ class _ViewState extends State<_View> with SingleTickerProviderStateMixin {
             ),
           ],
           body: p.loading
-              ? const Center(child: AppLoadingIndicator())
+              ? const AppListSkeleton()
               : p.error != null
               ? ExamError(
             message: p.error!,
@@ -156,7 +157,7 @@ class _ReviewTab extends StatelessWidget {
       return ExamEmpty(
           icon: Icons.bookmark_border_rounded, text: 'flag_empty_review'.tr);
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: p.load,
       child: ListView.separated(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -166,12 +167,12 @@ class _ReviewTab extends StatelessWidget {
         itemBuilder: (_, i) => _QuestionTile(
           q: p.review[i],
           trailing: Material(
-            color: kDanger.withValues(alpha: 0.10),
+            color: context.colors.danger.withValues(alpha: 0.10),
             shape: const CircleBorder(),
             child: IconButton(
               tooltip: 'flag_remove'.tr,
-              icon: const Icon(Icons.bookmark_remove_rounded,
-                  color: kDanger, size: 20),
+              icon: Icon(Icons.bookmark_remove_rounded,
+                  color: context.colors.danger, size: 20),
               onPressed: () => p.removeReview(p.review[i]),
             ),
           ),
@@ -195,17 +196,17 @@ class _ReadTab extends StatelessWidget {
     if (p.read.isEmpty) {
       return ExamEmpty(icon: Icons.task_alt_rounded, text: 'flag_empty_read'.tr);
     }
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: p.load,
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           Row(children: [
-            ExamStatBox('${p.readTotalWrong}', 'flag_total_wrong'.tr, kDanger),
+            ExamStatBox('${p.readTotalWrong}', 'flag_total_wrong'.tr, context.colors.danger),
             const SizedBox(width: 12),
             ExamStatBox(p.readTotalScore.toStringAsFixed(1),
-                'flag_total_score'.tr, kAmber),
+                'flag_total_score'.tr, context.colors.warning),
           ]),
           const SizedBox(height: 14),
           for (final q in p.read) ...[
@@ -213,10 +214,10 @@ class _ReadTab extends StatelessWidget {
               q: q,
               showWrong: true,
               trailing: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                ExamBadge(tx('flag_wrong_times', {'n': q.wrongCount}), kDanger),
+                ExamBadge(tx('flag_wrong_times', {'n': q.wrongCount}), context.colors.danger),
                 const SizedBox(height: 6),
                 ExamBadge(
-                    tx('flag_score', {'n': q.score.toStringAsFixed(1)}), kAmber),
+                    tx('flag_score', {'n': q.score.toStringAsFixed(1)}), context.colors.warning),
               ]),
             ),
             const SizedBox(height: 12),
@@ -287,7 +288,7 @@ class _QuestionTile extends StatelessWidget {
             _AnswerLine(
                 label: 'flag_your_wrong_answer'.tr,
                 text: q.lastWrongAnswer!,
-                color: kDanger),
+                color: context.colors.danger),
         ],
       ]),
     );
@@ -306,7 +307,7 @@ class _OptionRow extends StatelessWidget {
     final c = context.colors;
     final correct = q.correctAnswer != null && q.correctAnswer == option;
     final wrong = showWrong && q.lastWrongAnswer == option && !correct;
-    final color = correct ? c.success : (wrong ? kDanger : c.textMedium);
+    final color = correct ? c.success : (wrong ? context.colors.danger : c.textMedium);
     final marked = correct || wrong;
     return Container(
       width: double.infinity,

@@ -318,7 +318,7 @@ class _OfflineExamPanelState extends State<OfflineExamPanel> {
       appBar: AppBar(title: Text(widget.title, overflow: TextOverflow.ellipsis)),
       child: ov == null && _error == null
           ? const AppListSkeleton(items: 4)
-          : RefreshIndicator(
+          : AppRefresh(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), physics: const AlwaysScrollableScrollPhysics(), children: [
                 if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),

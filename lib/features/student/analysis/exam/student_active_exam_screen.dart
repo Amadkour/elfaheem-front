@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../../config/theme/theme_config_provider.dart';
@@ -109,23 +110,23 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   width: 88,
                   height: 88,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.16),
+                    color: c.onHero.withValues(alpha: 0.16),
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30, width: 2),
+                    border: Border.all(color: c.onHeroFaint, width: 2),
                   ),
-                  child: const Icon(Icons.quiz_rounded,
-                      color: Colors.white, size: 42),
+                  child: Icon(Icons.quiz_rounded,
+                      color: c.onHero, size: 42),
                 ),
                 const SizedBox(height: 14),
                 Text(exam.name,
                     textAlign: TextAlign.center,
                     style:
-                    examT(20, w: FontWeight.w800, c: Colors.white, h: 1.4)),
+                    examT(20, w: FontWeight.w800, c: context.colors.onHero, h: 1.4)),
                 if (exam.description != null) ...[
                   const SizedBox(height: 8),
                   Text(exam.description!,
                       textAlign: TextAlign.center,
-                      style: examT(12.5, c: Colors.white70, h: 1.6)),
+                      style: examT(12.5, c: c.onHeroMuted, h: 1.6)),
                 ],
                 const SizedBox(height: 18),
                 Row(children: [
@@ -138,14 +139,14 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.star_rounded,
-                    color: const Color(0xFFFFD740),
+                    color: context.colors.accent,
                     value: '${exam.passingScore?.toInt() ?? 0}%',
                     label: 'exam_passing_score'.tr,
                   ),
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.help_outline_rounded,
-                    color: const Color(0xFF69F0AE),
+                    color: c.success,
                     value: '${exam.questionCount}',
                     label: 'exam_question_count'.tr,
                   ),
@@ -159,7 +160,7 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   ExamCard(
                     padding: const EdgeInsets.all(16),
                     child: ExamInfoRow(Icons.schedule_rounded,
-                        'exam_start_time'.tr, _fmtDate(exam.startDate!), kAmber),
+                        'exam_start_time'.tr, _fmtDate(exam.startDate!), context.colors.warning),
                   ),
                   const SizedBox(height: 16),
                 ],
@@ -205,13 +206,13 @@ class _StudentExamEntryScreenState extends State<StudentExamEntryScreen> {
                   if (_error != null && !_needsPasscode) ...[
                     ExamBanner(
                         icon: Icons.error_outline_rounded,
-                        color: kDanger,
+                        color: context.colors.danger,
                         text: _error!),
                     const SizedBox(height: 16),
                   ],
                   ExamBanner(
                       icon: Icons.warning_amber_rounded,
-                      color: kAmber,
+                      color: context.colors.warning,
                       text: 'exam_warning'.tr),
                   const SizedBox(height: 18),
                   GradientButton(
@@ -311,7 +312,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
       if (!mounted) return;
       // Even on error we mark submitted so they see a result screen
       setState(() {
-        _submitError = e is ApiException ? e.message : e.toString();
+        _submitError = apiErrorText(ApiException.from(e));
         _submitting = false;
         _submitted = true;
       });
@@ -335,9 +336,9 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
   }
 
   Color get _timerColor => _secondsLeft < 120
-      ? kDanger
+      ? context.colors.danger
       : _secondsLeft < 300
-      ? kAmber
+      ? context.colors.warning
       : context.colors.primary;
 
   int get _answeredCount => _answers.values.where((v) => v != null).length;
@@ -382,7 +383,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               const BorderRadius.vertical(bottom: Radius.circular(28)),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: c.heroShade.withValues(alpha: 0.06),
                     blurRadius: 18,
                     offset: const Offset(0, 6)),
               ],
@@ -458,7 +459,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 Icons.grade_rounded,
                                 _fmt('exam_n_marks',
                                     {'n': q.marks.toInt()}),
-                                kAmber),
+                                context.colors.warning),
                             const SizedBox(height: 14),
                             Text(q.title,
                                 textDirection: Helpers.textDirOf(q.title),
@@ -499,7 +500,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 BoxShadow(
                                     color: selected
                                         ? c.primary.withValues(alpha: 0.16)
-                                        : Colors.black.withValues(alpha: 0.04),
+                                        : c.heroShade.withValues(alpha: 0.04),
                                     blurRadius: selected ? 14 : 10,
                                     offset: const Offset(0, 4)),
                               ],
@@ -512,7 +513,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                 decoration: BoxDecoration(
                                   gradient: selected
                                       ? LinearGradient(
-                                      colors: [kDeep, c.primary])
+                                      colors: [context.colors.primaryDark, c.primary])
                                       : null,
                                   color: selected
                                       ? null
@@ -524,7 +525,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                       style: examT(14,
                                           w: FontWeight.w800,
                                           c: selected
-                                              ? Colors.white
+                                              ? context.colors.onHero
                                               : c.textMedium)),
                                 ),
                               ),
@@ -582,7 +583,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                             height: 36,
                             decoration: BoxDecoration(
                               gradient: isCurrent
-                                  ? LinearGradient(colors: [kDeep, c.primary])
+                                  ? LinearGradient(colors: [context.colors.primaryDark, c.primary])
                                   : null,
                               color: isCurrent
                                   ? null
@@ -603,7 +604,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                                     style: examT(12,
                                         w: FontWeight.w700,
                                         c: isCurrent
-                                            ? Colors.white
+                                            ? context.colors.onHero
                                             : answered
                                             ? c.success
                                             : c.textMedium))),
@@ -624,7 +625,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
               const BorderRadius.vertical(top: Radius.circular(24)),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.07),
+                    color: c.heroShade.withValues(alpha: 0.07),
                     blurRadius: 18,
                     offset: const Offset(0, -4)),
               ],
@@ -681,7 +682,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                       ? Icons.warning_amber_rounded
                       : Icons.check_circle_outline_rounded,
                   _answeredCount < widget.questions.length
-                      ? kAmber
+                      ? context.colors.warning
                       : dctx.colors.success,
                   size: 68,
                 ),
@@ -740,7 +741,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
     (_serverResult?['marks_obtained'] as num?)?.toDouble();
     final totalMarks = (_serverResult?['total_marks'] as num?)?.toDouble() ??
         widget.questions.fold(0.0, (s, q) => (s ?? 0) + q.marks);
-    final accent = passed ? c.success : kDanger;
+    final accent = passed ? c.success : context.colors.danger;
 
     return Directionality(
       textDirection: Helpers.pageDirection,
@@ -750,7 +751,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
           physics: const BouncingScrollPhysics(),
           child: Column(children: [
             ExamHero(
-              colors: [Color.lerp(accent, Colors.black, .35)!, accent],
+              colors: [Color.lerp(accent, context.colors.heroShade, .35)!, accent],
               child: Column(children: [
                 ExamHeroBar(title: 'exam_result'.tr, showBack: false),
                 const SizedBox(height: 22),
@@ -759,19 +760,19 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                   size: 140,
                   center: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text('${pct.toStringAsFixed(0)}%',
-                        style: examT(32, w: FontWeight.w800, c: Colors.white)),
+                        style: examT(32, w: FontWeight.w800, c: context.colors.onHero)),
                     Text(
                         passed
                             ? 'exam_passed_mark'.tr
                             : 'exam_failed_mark'.tr,
-                        style: examT(13, c: Colors.white70)),
+                        style: examT(13, c: c.onHeroMuted)),
                   ]),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   passed ? 'congratulations_passed'.tr : 'sorry_failed'.tr,
                   textAlign: TextAlign.center,
-                  style: examT(17, w: FontWeight.w800, c: Colors.white, h: 1.5),
+                  style: examT(17, w: FontWeight.w800, c: context.colors.onHero, h: 1.5),
                 ),
               ]),
             ),
@@ -781,7 +782,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                 if (_submitError != null) ...[
                   ExamBanner(
                     icon: Icons.warning_amber_rounded,
-                    color: kAmber,
+                    color: context.colors.warning,
                     text: _fmt('exam_submit_partial_error',
                         {'error': _submitError}),
                   ),
@@ -810,7 +811,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         Icons.task_alt_rounded,
                         'questions_answered'.tr,
                         '$_answeredCount / ${widget.questions.length}',
-                        Colors.teal),
+                        context.colors.success),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Divider(
@@ -820,7 +821,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
                         Icons.star_rounded,
                         'exam_passing_score'.tr,
                         '${widget.exam.passingScore?.toInt() ?? 60}%',
-                        kAmber),
+                        context.colors.warning),
                   ]),
                 ),
                 const SizedBox(height: 22),
@@ -875,12 +876,12 @@ class _CountdownBannerState extends State<_CountdownBanner> {
       width: 62,
       height: 62,
       decoration: BoxDecoration(
-        color: kAmber.withValues(alpha: 0.12),
+        color: context.colors.warning.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: kAmber.withValues(alpha: 0.25)),
+        border: Border.all(color: context.colors.warning.withValues(alpha: 0.25)),
       ),
       child: Center(
-          child: Text(v, style: examT(24, w: FontWeight.w900, c: kAmber))),
+          child: Text(v, style: examT(24, w: FontWeight.w900, c: context.colors.warning))),
     ),
     const SizedBox(height: 6),
     Text(label, style: examT(11, c: context.colors.textMedium)),
@@ -888,13 +889,13 @@ class _CountdownBannerState extends State<_CountdownBanner> {
 
   Widget get _colon => Padding(
     padding: const EdgeInsets.only(left: 8, right: 8, bottom: 22),
-    child: Text(':', style: examT(26, w: FontWeight.w900, c: kAmber)),
+    child: Text(':', style: examT(26, w: FontWeight.w900, c: context.colors.warning)),
   );
 
   @override
   Widget build(BuildContext context) => ExamSectionCard(
     icon: Icons.hourglass_top_rounded,
-    accent: kAmber,
+    accent: context.colors.warning,
     title: 'exam_starts_in'.tr,
     child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
       _box(_remaining.inHours.toString().padLeft(2, '0'),

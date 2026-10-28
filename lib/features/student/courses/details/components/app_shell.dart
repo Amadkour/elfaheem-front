@@ -133,9 +133,9 @@ class _Sidebar extends StatelessWidget {
 
     return Container(
       width: Breakpoints.sidebarW,
-      decoration: const BoxDecoration(
-        color: Color(0xFF12102A),
-        border: Border(left: BorderSide(color: Color(0x22FFFFFF), width: 0.5)),
+      decoration: BoxDecoration(
+        color: context.colors.heroShade,
+        border: BorderDirectional(end: BorderSide(color: context.colors.heroDivider, width: 0.5)),
       ),
       child: Column(
         children: [
@@ -158,17 +158,17 @@ class _Sidebar extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.school_rounded,
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     size: 20,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   'EduApp',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onHero,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     fontFamily: 'bahji',
@@ -178,7 +178,7 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          Container(height: 0.5, color: Colors.white.withValues(alpha: 0.08)),
+          Container(height: 0.5, color: context.colors.onHero.withValues(alpha: 0.08)),
           const SizedBox(height: 12),
 
           // Nav items
@@ -195,7 +195,7 @@ class _Sidebar extends StatelessWidget {
           }),
 
           const Spacer(),
-          Container(height: 0.5, color: Colors.white.withValues(alpha: 0.08)),
+          Container(height: 0.5, color: context.colors.onHero.withValues(alpha: 0.08)),
 
           // User footer
           Padding(
@@ -212,8 +212,8 @@ class _Sidebar extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Text(
                     initial,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontSize: 15,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'bahji',
@@ -227,8 +227,8 @@ class _Sidebar extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: context.colors.onHero,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'bahji',
@@ -238,7 +238,7 @@ class _Sidebar extends StatelessWidget {
                       Text(
                         'طالب',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: context.colors.onHero.withValues(alpha: 0.5),
                           fontSize: 10,
                           fontFamily: 'bahji',
                         ),
@@ -291,7 +291,7 @@ class _SideNavItem extends StatelessWidget {
                 height: 34,
                 decoration: BoxDecoration(
                   gradient: active ? context.colors.primaryGradient : null,
-                  color: active ? null : Colors.white.withValues(alpha: 0.07),
+                  color: active ? null : context.colors.onHero.withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(10),
                   boxShadow: active
                       ? [
@@ -309,8 +309,8 @@ class _SideNavItem extends StatelessWidget {
                   icon,
                   size: 18,
                   color: active
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.5),
+                      ? context.colors.onHero
+                      : context.colors.onHero.withValues(alpha: 0.5),
                 ),
               ),
               const SizedBox(width: 12),
@@ -318,8 +318,8 @@ class _SideNavItem extends StatelessWidget {
                 label,
                 style: TextStyle(
                   color: active
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.55),
+                      ? context.colors.onHero
+                      : context.colors.onHero.withValues(alpha: 0.55),
                   fontSize: 13,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                   fontFamily: 'bahji',
@@ -378,13 +378,13 @@ class _BottomNav extends StatelessWidget {
         color: context.colors.cardBg,
         border: Border(
           top: BorderSide(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: context.colors.heroShade.withValues(alpha: 0.07),
             width: 0.5,
           ),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: context.colors.heroShade.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
@@ -420,7 +420,7 @@ class _BottomNav extends StatelessWidget {
                           active ? p.activeIcon : p.icon,
                           size: 20,
                           color: active
-                              ? Colors.white
+                              ? context.colors.onHero
                               : context.colors.textLight,
                         ),
                       ),

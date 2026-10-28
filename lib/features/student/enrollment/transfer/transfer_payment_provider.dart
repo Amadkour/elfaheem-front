@@ -6,6 +6,8 @@
 ///   POST /api/v1/payments/transfer                      -> submit proof (multipart)
 library;
 
+import 'package:flutter_education_app/config/app_config.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'dart:typed_data';
 
 import 'package:cross_file/cross_file.dart';
@@ -77,7 +79,7 @@ class TransferPaymentProvider extends BaseProvider {
     String? transferReference,
   }) async {
     if (_proofImage == null) {
-      _failureReason = 'الرجاء إرفاق صورة إيصال التحويل';
+      _failureReason = 'transfer_proof_required'.tr;
       notifyListeners();
       return false;
     }
@@ -109,7 +111,7 @@ class TransferPaymentProvider extends BaseProvider {
       return true;
     } catch (e) {
       _step = TransferSubmitStep.failed;
-      _failureReason = 'تعذّر إرسال طلب التحويل: $e';
+      _failureReason = '${'transfer_submit_failed'.tr}: ${apiErrorText(ApiException.from(e))}';
       notifyListeners();
       return false;
     }

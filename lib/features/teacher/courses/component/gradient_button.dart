@@ -41,8 +41,8 @@ class GradientButton extends StatelessWidget {
             height: 20,
             child: AppLoadingIndicator()): Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 14,
             fontFamily: 'bahji',

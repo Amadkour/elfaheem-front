@@ -6,6 +6,7 @@
 ///     builder: (_) => RoadmapEnrollmentScreen(courseId: course.id, courseName: course.name)));
 library;
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +14,6 @@ import 'package:provider/provider.dart';
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
 import '../../../utils/widget/app_network_image.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../org/org_levels_pages.dart' show showEnrollBlock;
 import 'enrollment_models.dart';
 import 'enrollment_widgets.dart';
@@ -115,7 +115,7 @@ class _RoadmapBody extends StatelessWidget {
         ]),
       );
     } else if (quote == null) {
-      content = const Center(child: AppLoadingIndicator());
+      content = const AppListSkeleton(items: 4);
     } else {
       content = SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -305,7 +305,7 @@ class _RoadmapItemTile extends StatelessWidget {
                 border: Border.all(color: owned ? c.success : c.primary, width: 1.5),
               ),
               child: Icon(owned ? Icons.check_rounded : Icons.circle,
-                  size: owned ? 13 : 6, color: owned ? Colors.white : c.primary),
+                  size: owned ? 13 : 6, color: owned ? c.onHero : c.primary),
             ),
             if (!isLast) Expanded(child: Container(width: 2, color: c.divider)),
           ]),

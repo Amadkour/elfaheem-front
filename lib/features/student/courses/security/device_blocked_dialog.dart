@@ -60,7 +60,7 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
     final canSend = p.canRequest && !p.hasPending && !_sent;
 
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: pageDirection,   // was always RTL, also in English
       child: AlertDialog(
         scrollable: true,
         backgroundColor: c.cardBg,
@@ -71,7 +71,7 @@ class _DeviceBlockedDialogState extends State<_DeviceBlockedDialog> {
           Expanded(child: Text('dev_blocked_title'.tr, style: c.h3)),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Align( alignment:Alignment.centerRight ,child: Text(body, style: c.body)),
+          Align(alignment: AlignmentDirectional.centerStart, child: Text(body, style: c.body)),
           if (_msg != null) ...[const SizedBox(height: 10), Text(_msg!, style: c.caption.copyWith(color: context.colors.danger,fontSize: 14,fontWeight: FontWeight.w600))],
         ]),
         actions: [

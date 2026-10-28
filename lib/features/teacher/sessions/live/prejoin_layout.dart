@@ -374,7 +374,7 @@ class PreJoinPreviewCard extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: LivePalette.bg,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border.all(color: LivePalette.ink(0.08)),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Stack(fit: StackFit.expand, children: [
@@ -395,7 +395,7 @@ class PreJoinPreviewCard extends StatelessWidget {
                     gradient: LinearGradient(
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.black.withValues(alpha: 0.45)],
+                      colors: [Colors.transparent, LivePalette.shade(0.45)],
                     ),
                   ),
                 ),
@@ -406,7 +406,7 @@ class PreJoinPreviewCard extends StatelessWidget {
             PositionedDirectional(
               top: 10,
               start: 10,
-              child: _Chip(icon: Icons.visibility_outlined, label: 'lr_preview'.tr, color: Colors.white),
+              child: _Chip(icon: Icons.visibility_outlined, label: 'lr_preview'.tr, color: LivePalette.textHigh),
             ),
 
             // Mic / camera state chips
@@ -473,7 +473,7 @@ class _CameraOff extends StatelessWidget {
                     )
                   : Text(
                       _initials(name),
-                      style: appText(avatar * 0.36, w: FontWeight.w800, c: Colors.white),
+                      style: appText(avatar * 0.36, w: FontWeight.w800, c: LivePalette.textHigh),
                     ),
             ),
             const SizedBox(height: 8),
@@ -482,7 +482,7 @@ class _CameraOff extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: appText(12, w: FontWeight.w600, c: Colors.white.withValues(alpha: 0.72)),
+              style: appText(12, w: FontWeight.w600, c: LivePalette.ink(0.72)),
             ),
           ]),
         ),
@@ -509,7 +509,7 @@ class _Chip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.45),
+          color: LivePalette.shade(0.45),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: color.withValues(alpha: 0.45)),
         ),
@@ -518,7 +518,7 @@ class _Chip extends StatelessWidget {
           const SizedBox(width: 5),
           Flexible(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: appText(11, w: FontWeight.w700, c: Colors.white)),
+                style: appText(11, w: FontWeight.w700, c: LivePalette.textHigh)),
           ),
         ]),
       );
@@ -609,7 +609,7 @@ class _TogglePill extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: enabled && on ? tone : tone.withValues(alpha: 0.16),
                 ),
-                child: Icon(on ? onIcon : offIcon, size: 20, color: enabled && on ? Colors.white : tone),
+                child: Icon(on ? onIcon : offIcon, size: 20, color: enabled && on ? LivePalette.textHigh : tone),
               ),
               const SizedBox(width: 10),
               Expanded(

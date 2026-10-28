@@ -219,8 +219,8 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                           ),
                           child: Text(
                             '${q.fmt(q.total)} $symbol',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: c.onHero,
                               fontWeight: FontWeight.w800,
                               fontSize: 16,
                               fontFamily: 'bahji',
@@ -361,17 +361,17 @@ class _PaymentResultViewState extends State<PaymentResultView>
     final (Color c1, Color c2, IconData icon) = switch (widget.kind) {
       ResultKind.success => (
         c.success,
-        const Color(0xFF2ECC71),
+        c.success,
         Icons.check_rounded,
       ),
       ResultKind.pending => (
         c.accent,
-        const Color(0xFFF39C12),
+        c.warning,
         Icons.hourglass_top_rounded,
       ),
       ResultKind.failed => (
         c.danger,
-        const Color(0xFFE74C3C),
+        c.danger,
         Icons.error_outline_rounded,
       ),
     };
@@ -406,7 +406,7 @@ class _PaymentResultViewState extends State<PaymentResultView>
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: 60),
+                  child: Icon(icon, color: c.onHero, size: 60),
                 ),
               ),
             ),

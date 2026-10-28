@@ -37,7 +37,7 @@ class SectionCard extends StatelessWidget {
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 12, 12),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 12, 12),
             child: Row(
               children: [
                 Container(
@@ -108,10 +108,10 @@ class _ItemRow extends StatelessWidget {
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     title: Text(label,
         style: const TextStyle(fontFamily: 'bahji', fontSize: 13)),
-    trailing: GestureDetector(
-      onTap: onRemove,
-      child:
-      Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
+    trailing: IconButton(
+      tooltip: 'remove'.tr,
+      onPressed: onRemove,
+      icon: Icon(Icons.close_rounded, size: 18, color: context.colors.danger),
     ),
   );
 }

@@ -72,28 +72,28 @@ class StudentAttendanceWidget extends StatelessWidget {
                       decoration: BoxDecoration(
                           gradient: inSession
                               ? LinearGradient(
-                              colors: [context.colors.danger, Color(0xFFFF6B6B)])
+                              colors: [context.colors.danger, context.colors.danger])
                               : context.colors.primaryGradient,
                           borderRadius: BorderRadius.circular(22),
                           boxShadow: inSession ? [] : context.colors.primaryShadow),
                       child: provider.isLoading
-                          ? const Center(
+                          ? Center(
                           child: SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2)))
+                                  color: context.colors.onHero, strokeWidth: 2)))
                           : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                         Icon(
                             inSession
                                 ? Icons.logout_rounded
                                 : Icons.login_rounded,
-                            color: Colors.white,
+                            color: context.colors.onHero,
                             size: 18),
                         const SizedBox(width: 8),
                         Text(inSession ? 'att_check_out'.tr : 'att_check_in'.tr,
-                            style: const TextStyle(
-                                color: Colors.white,
+                            style: TextStyle(
+                                color: context.colors.onHero,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
                                 fontFamily: 'bahji'))

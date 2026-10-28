@@ -535,7 +535,7 @@ class GuestLinkBody extends StatelessWidget {
           child: Container(
             key: const ValueKey('guest_link.qr_image'),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(16)),
             child: QrImageView(data: l.url, version: QrVersions.auto, size: 200, backgroundColor: Colors.white),
           ),
         ),

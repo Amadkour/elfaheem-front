@@ -4,6 +4,7 @@
 ///   POST /api/v1/devices/switch-request
 library;
 
+import 'package:flutter_education_app/core/api_error_text.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
 
@@ -49,7 +50,7 @@ class DeviceSecurityProvider extends BaseProvider {
     } on ApiException catch (e) {
       switchError = e.message; // "لا يوجد مدرس مرتبط بحسابك ..."
     } catch (e) {
-      switchError = e.toString();
+      switchError = apiErrorText(ApiException.from(e));
     }
     notifyListeners();
     return false;

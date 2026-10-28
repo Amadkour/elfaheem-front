@@ -72,7 +72,7 @@ class _StudentMethodsViewState extends State<_StudentMethodsView>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 indicatorPadding: const EdgeInsets.all(3),
-                labelColor:   Colors.white,
+                labelColor:   context.colors.onHero,
                 unselectedLabelColor: c.textMedium,
                 labelStyle: const TextStyle(
                     fontFamily:  'bahji',
@@ -212,7 +212,7 @@ class _VisualCardState extends State<_VisualCard>
                           end:   Alignment(_anim.value + 0.8,  0.3),
                           colors: [
                             Colors.transparent,
-                            Colors.white.withValues(alpha: .09),
+                            context.colors.onHero.withValues(alpha: .09),
                             Colors.transparent,
                           ],
                         ),
@@ -220,7 +220,7 @@ class _VisualCardState extends State<_VisualCard>
                     ),
                   ),
                   // Arc pattern
-                  Positioned.fill(child: CustomPaint(painter: _ArcPainter())),
+                  Positioned.fill(child: CustomPaint(painter: _ArcPainter(context.colors.onHero))),
                   // Content
                   Padding(
                     padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
@@ -237,13 +237,13 @@ class _VisualCardState extends State<_VisualCard>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
-                                color:        Colors.white.withValues(alpha: .15),
+                                color:        context.colors.onHero.withValues(alpha: .15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 m.cardBrand?.label ?? 'card_label'.tr,
-                                style: const TextStyle(
-                                  color:      Colors.white,
+                                style: TextStyle(
+                                  color:      context.colors.onHero,
                                   fontSize:   13,
                                   fontWeight: FontWeight.w800,
                                   fontFamily: 'bahji',
@@ -256,8 +256,8 @@ class _VisualCardState extends State<_VisualCard>
                         // Card number
                         Text(
                           '•••• •••• •••• ${m.cardLast4 ?? ''}',
-                          style: const TextStyle(
-                            color:       Colors.white,
+                          style: TextStyle(
+                            color:       context.colors.onHero,
                             fontSize:    20,
                             fontWeight:  FontWeight.w600,
                             letterSpacing: 3,
@@ -273,7 +273,7 @@ class _VisualCardState extends State<_VisualCard>
                                 Text(
                                   'card_holder_label'.tr,
                                   style: TextStyle(
-                                      color: Colors.white.withValues(alpha: .5),
+                                      color: context.colors.onHero.withValues(alpha: .5),
                                       fontSize: 9,
                                       fontFamily: 'bahji',
                                       letterSpacing: 1),
@@ -281,8 +281,8 @@ class _VisualCardState extends State<_VisualCard>
                                 const SizedBox(height: 3),
                                 Text(
                                   m.cardHolderName ?? '—',
-                                  style: const TextStyle(
-                                    color:      Colors.white,
+                                  style: TextStyle(
+                                    color:      context.colors.onHero,
                                     fontSize:   12,
                                     fontWeight: FontWeight.w600,
                                     fontFamily: 'bahji',
@@ -297,7 +297,7 @@ class _VisualCardState extends State<_VisualCard>
                                 Text(
                                   'expires_label'.tr,
                                   style: TextStyle(
-                                      color: Colors.white.withValues(alpha: .5),
+                                      color: context.colors.onHero.withValues(alpha: .5),
                                       fontSize: 9,
                                       fontFamily: 'bahji',
                                       letterSpacing: 1),
@@ -305,8 +305,8 @@ class _VisualCardState extends State<_VisualCard>
                                 const SizedBox(height: 3),
                                 Text(
                                   '${m.cardExpiryMonth}/${m.cardExpiryYear?.substring(2) ?? ''}',
-                                  style: const TextStyle(
-                                    color:      Colors.white,
+                                  style: TextStyle(
+                                    color:      context.colors.onHero,
                                     fontSize:   13,
                                     fontWeight: FontWeight.w600,
                                     fontFamily: 'bahji',
@@ -332,13 +332,13 @@ class _VisualCardState extends State<_VisualCard>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color:        Colors.white,
+                color:        context.colors.cardBg,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.star_rounded, size: 12, color: Colors.amber[700]),
+                  Icon(Icons.star_rounded, size: 12, color: context.colors.warning),
                   const SizedBox(width: 4),
                   Text(
                     'default_card_badge'.tr,
@@ -346,7 +346,7 @@ class _VisualCardState extends State<_VisualCard>
                         fontFamily: 'bahji',
                         fontSize:   11,
                         fontWeight: FontWeight.w700,
-                        color: Colors.amber[800]),
+                        color: context.colors.warning),
                   ),
                 ],
               ),
@@ -458,11 +458,11 @@ class _CardAction extends StatelessWidget {
       width:  34,
       height: 34,
       decoration: BoxDecoration(
-        color:  Colors.white.withValues(alpha: .9),
+        color:  context.colors.onHero.withValues(alpha: .9),
         shape:  BoxShape.circle,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: .15),
+              color: context.colors.heroShade.withValues(alpha: .15),
               blurRadius: 6),
         ],
       ),
@@ -615,8 +615,8 @@ class _Step extends StatelessWidget {
             ),
             child: Center(
               child: Text(n,
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 11,
+                  style: TextStyle(
+                      color: c.onHero, fontSize: 11,
                       fontWeight: FontWeight.w800, fontFamily: 'bahji')),
             ),
           ),
@@ -713,6 +713,7 @@ class _StudentBankTile extends StatelessWidget {
                   style: TextStyle(fontFamily: 'bahji', color: c.primary, fontSize: 12)),
             ),
           IconButton(
+            tooltip: 'btn_delete'.tr,
             onPressed: () => p.delete(method.id),
             icon: Icon(Icons.close_rounded, size: 18, color: c.textLight),
           ),
@@ -818,10 +819,13 @@ class _AddStudentBankFormState extends State<_AddStudentBankForm> {
 // ── Custom painters ───────────────────────────────────────────────────────────
 
 class _ArcPainter extends CustomPainter {
+  _ArcPainter(this.ink);
+  final Color ink;
+
   @override
   void paint(Canvas canvas, Size size) {
     final p = Paint()
-      ..color       = Colors.white.withValues(alpha: .05)
+      ..color       = ink.withValues(alpha: .05)
       ..style       = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (var r = 60.0; r < 300; r += 45) {
@@ -831,7 +835,7 @@ class _ArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_) => false;
+  bool shouldRepaint(_ArcPainter old) => old.ink != ink;
 }
 
 class _Chip extends StatelessWidget {

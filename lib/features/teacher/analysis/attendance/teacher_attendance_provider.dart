@@ -1,6 +1,7 @@
 // features/teacher/attendance/teacher_attendance_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_api.dart';
 
@@ -72,7 +73,7 @@ class TeacherAttendanceProvider extends ChangeNotifier {
       _errorMessage = e.message;
       _setState(AttendanceLoadState.error);
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = apiErrorText(ApiException.from(e));
       _setState(AttendanceLoadState.error);
     }
   }
@@ -93,7 +94,7 @@ class TeacherAttendanceProvider extends ChangeNotifier {
       _errorMessage = e.message;
       _setState(AttendanceLoadState.error);
     } catch (e) {
-      _errorMessage = e.toString();
+      _errorMessage = apiErrorText(ApiException.from(e));
       _setState(AttendanceLoadState.error);
     }
   }

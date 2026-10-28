@@ -109,10 +109,10 @@ class _HubViewState extends State<_HubView>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              icon: Icon(Icons.add_rounded, color: context.colors.onHero),
               label: Text(
                 'new_exam'.tr,
-                style: examT(14, w: FontWeight.w800, c: Colors.white),
+                style: examT(14, w: FontWeight.w800, c: context.colors.onHero),
               ),
             )
           : null,
@@ -151,21 +151,21 @@ class _HubViewState extends State<_HubView>
             children: [
               HeroStat(
                 icon: Icons.quiz_rounded,
-                color: const Color(0xFF80D8FF),
+                color: context.colors.heroTint(context.colors.primaryLight, 0.5),
                 value: '${prov.exams.length}',
                 label: 'tab_exams'.tr,
               ),
               const SizedBox(width: 10),
               HeroStat(
                 icon: Icons.public_rounded,
-                color: const Color(0xFF69F0AE),
+                color: context.colors.success,
                 value: '$published',
                 label: 'exam_published_badge'.tr,
               ),
               const SizedBox(width: 10),
               HeroStat(
                 icon: Icons.help_outline_rounded,
-                color: const Color(0xFFFFD740),
+                color: context.colors.accent,
                 value: '$questions',
                 label: 'btn_questions'.tr,
               ),
@@ -188,7 +188,7 @@ class _HubViewState extends State<_HubView>
 
   Widget _legacyExamsTab(TeacherExamProvider prov) {
     if (prov.loadingExams) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(withAvatar: false);
     }
     if (prov.examsError != null && prov.exams.isEmpty) {
       return _ErrorView(message: prov.examsError, onRetry: prov.loadExams);
@@ -255,7 +255,7 @@ class _HubViewState extends State<_HubView>
       );
     }
     if (prov.loadingResults) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(withAvatar: false);
     }
     if (prov.resultsError != null) {
       return _ErrorView(
@@ -270,7 +270,7 @@ class _HubViewState extends State<_HubView>
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: ExamCard(
-            padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 8, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -339,7 +339,7 @@ class _HubViewState extends State<_HubView>
                       _MiniStat(
                         '${prov.passedCount}',
                         'stat_passed'.tr,
-                        Colors.teal,
+                        c.primaryLight,
                       ),
                       _MiniStat(
                         '${prov.avgScore.toStringAsFixed(0)}%',
@@ -388,8 +388,8 @@ class _HubViewState extends State<_HubView>
               ? 'exam_published_snack'.tr
               : 'exam_unpublished_snack'.tr),
       err != null
-          ? Colors.redAccent
-          : (exam.isPublished ? context.colors.success : Colors.orange),
+          ? context.colors.danger
+          : (exam.isPublished ? context.colors.success : context.colors.warning),
     );
   }
 
@@ -425,7 +425,7 @@ class _HubViewState extends State<_HubView>
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                backgroundColor: context.colors.danger,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -444,7 +444,7 @@ class _HubViewState extends State<_HubView>
       if (context.mounted) {
         _snack(
           deleted ? 'exam_deleted_snack'.tr : 'exam_delete_failed_snack'.tr,
-          deleted ? context.colors.success : Colors.redAccent,
+          deleted ? context.colors.success : context.colors.danger,
         );
       }
     }
@@ -490,7 +490,7 @@ class _HubViewState extends State<_HubView>
           (newId == null
               ? 'exam_session_detached'.tr
               : 'exam_session_attached'.tr),
-      err == null ? context.colors.success : Colors.redAccent,
+      err == null ? context.colors.success : context.colors.danger,
     );
   }
 
@@ -835,8 +835,10 @@ class _ExamCard extends StatelessWidget {
     );
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.day}/${d.month}/${d.year}  ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+  // The server sends naive UTC (no "Z"), which DateTime.tryParse reads as a local wall time: shown as-is it was
+  // the UTC clock. Read it as UTC and show it in the platform zone + 12h/24h.
+  String _fmtDate(DateTime d) => AppTime.dateTime(
+      d.isUtc ? d : DateTime.utc(d.year, d.month, d.day, d.hour, d.minute, d.second));
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -878,7 +880,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
 
             // Title row
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 14, 12, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 12, 0),
               child: Row(
                 children: [
                   Icon(
@@ -976,7 +978,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
             // Body
             Expanded(
               child: loading || prov.saving
-                  ? const Center(child: AppLoadingIndicator())
+                  ? const AppListSkeleton(items: 4, withAvatar: false)
                   : error != null
                   ? Center(
                       child: Column(
@@ -1120,7 +1122,7 @@ class _ManageQuestionsSheet extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.redAccent,
+                backgroundColor: ctx.colors.danger,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1158,12 +1160,12 @@ class _QuestionTile extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(bottom: 10),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.colors.cardBg,
       borderRadius: BorderRadius.circular(14),
       border: Border.all(color: context.colors.inputBg),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
+          color: context.colors.heroShade.withValues(alpha: 0.04),
           blurRadius: 6,
           offset: const Offset(0, 2),
         ),
@@ -1174,7 +1176,7 @@ class _QuestionTile extends StatelessWidget {
       children: [
         // Question header
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1264,7 +1266,7 @@ class _QuestionTile extends StatelessWidget {
         // MCQ options (if any)
         if (question.isMcq)
           Padding(
-            padding: const EdgeInsets.fromLTRB(50, 0, 14, 4),
+            padding: const EdgeInsetsDirectional.fromSTEB(50, 0, 14, 4),
             child: Wrap(
               spacing: 6,
               runSpacing: 4,
@@ -1319,7 +1321,7 @@ class _QuestionTile extends StatelessWidget {
 
         // Marks row
         Padding(
-          padding: const EdgeInsets.fromLTRB(50, 2, 14, 10),
+          padding: const EdgeInsetsDirectional.fromSTEB(50, 2, 14, 10),
           child: Text(
             '${question.marks.toStringAsFixed(question.marks % 1 == 0 ? 0 : 1)} ${'marks_label'.tr}',
             style: TextStyle(
@@ -1435,7 +1437,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
         Navigator.pop(context);
         _snack('question_added_snack'.tr, context.colors.success);
       } else {
-        _snack('question_add_failed_snack'.tr, Colors.redAccent);
+        _snack('question_add_failed_snack'.tr, context.colors.danger);
       }
     } else {
       // EDIT
@@ -1452,7 +1454,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
         Navigator.pop(context);
         _snack('question_updated_snack'.tr, context.colors.success);
       } else {
-        _snack('question_update_failed_snack'.tr, Colors.redAccent);
+        _snack('question_update_failed_snack'.tr, context.colors.danger);
       }
     }
   }
@@ -1470,8 +1472,8 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
+        decoration: BoxDecoration(
+          color: context.colors.cardBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         padding: EdgeInsets.only(
@@ -1640,6 +1642,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                                 if (_optionCtrls.length > 2) ...[
                                   const SizedBox(width: 6),
                                   IconButton(
+                                    tooltip: 'remove'.tr,
                                     onPressed: () => _removeOption(i),
                                     icon: Icon(
                                       Icons.remove_circle_outline,
@@ -1688,7 +1691,7 @@ class _QuestionFormSheetState extends State<_QuestionFormSheet> {
                           onPressed: prov.saving ? null : _submit,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: context.colors.primary,
-                            foregroundColor: Colors.white,
+                            foregroundColor: context.colors.onHero,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -2101,13 +2104,13 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     Text(
                                       _scheduleDate != null
                                           ? '${_scheduleDate!.day}/${_scheduleDate!.month}/${_scheduleDate!.year}  '
-                                                '${_scheduleDate!.hour.toString().padLeft(2, '0')}:${_scheduleDate!.minute.toString().padLeft(2, '0')}'
+                                                '${AppTime.clockMinutes(_scheduleDate!.hour * 60 + _scheduleDate!.minute)}'
                                           : 'pick_start_datetime'.tr,
                                       style: TextStyle(
                                         fontFamily: 'bahji',
                                         fontSize: 14,
                                         color: _scheduleDate != null
-                                            ? Colors.black87
+                                            ? context.colors.textDark
                                             : context.colors.textLight,
                                       ),
                                     ),
@@ -2154,7 +2157,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                                     Text(
                                       _deadlineDate != null
                                           ? '${_deadlineDate!.day}/${_deadlineDate!.month}/${_deadlineDate!.year}  '
-                                                '${_deadlineDate!.hour.toString().padLeft(2, '0')}:${_deadlineDate!.minute.toString().padLeft(2, '0')}'
+                                                '${AppTime.clockMinutes(_deadlineDate!.hour * 60 + _deadlineDate!.minute)}'
                                           : 'pick_deadline'.tr,
                                       style: TextStyle(
                                         fontFamily: 'bahji',
@@ -2183,7 +2186,7 @@ class _CreateExamSheetState extends State<_CreateExamSheet> {
                         onPressed: widget.provider.saving ? null : _submit,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: context.colors.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: context.colors.onHero,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -2332,7 +2335,7 @@ class _SessionPickerSheet extends StatelessWidget {
     IconData icon,
     bool selected,
   ) => ListTile(
-    leading: Icon(icon, color: selected ? context.colors.primary : Colors.grey),
+    leading: Icon(icon, color: selected ? context.colors.primary : context.colors.textLight),
     title: Text(
       label,
       style: TextStyle(
@@ -2871,16 +2874,16 @@ class _ModernActionBtn extends StatelessWidget {
 PopupMenuItem<String> _menuItem(String value, IconData icon, String label) =>
     PopupMenuItem<String>(
       value: value,
-      child: Row(
+      child: Builder(builder: (context) => Row(
         children: [
-          Icon(icon, size: 18, color: Colors.grey.shade700),
+          Icon(icon, size: 18, color: context.colors.textLight),
           const SizedBox(width: 10),
           Text(
             label,
             style: const TextStyle(fontFamily: 'bahji', fontSize: 13),
           ),
         ],
-      ),
+      )),
     );
 
 void _toast(BuildContext context, String msg, Color color) {
@@ -2899,7 +2902,7 @@ Future<void> _importQuestionsFlow(
   final out = await prov.importQuestions(exam.id, file);
   if (!context.mounted) return;
   if (out.result == null) {
-    _toast(context, out.error ?? 'import_failed_snack'.tr, Colors.redAccent);
+    _toast(context, out.error ?? 'import_failed_snack'.tr, context.colors.danger);
     return;
   }
   await showDialog(
@@ -2916,7 +2919,7 @@ Future<void> _downloadTemplateFlow(
   _toast(
     context,
     err ?? 'template_saved_snack'.tr,
-    err == null ? context.colors.success : Colors.redAccent,
+    err == null ? context.colors.success : context.colors.danger,
   );
 }
 
@@ -2931,7 +2934,7 @@ Future<void> _exportFlow(
   _toast(
     context,
     err ?? 'export_saved_snack'.tr,
-    err == null ? context.colors.success : Colors.redAccent,
+    err == null ? context.colors.success : context.colors.danger,
   );
 }
 
@@ -3232,7 +3235,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
     _toast(
       context,
       err ?? 'exam_rules_saved_snack'.tr,
-      err == null ? context.colors.success : Colors.redAccent,
+      err == null ? context.colors.success : context.colors.danger,
     );
     if (err == null) Navigator.pop(context);
   }
@@ -3310,7 +3313,7 @@ class _ExamRulesSheetState extends State<_ExamRulesSheet> {
                         onPressed: _busy ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: context.colors.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: context.colors.onHero,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),

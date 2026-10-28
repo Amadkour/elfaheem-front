@@ -1314,7 +1314,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         if (!popped && _isFullScreen) _exitFullScreen();
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: VodInk.letterbox,
         body: _buildBody(),
       ),
     );
@@ -1353,7 +1353,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     if (_inPip) {
       return Directionality(
         textDirection: TextDirection.ltr,
-        child: Container(color: Colors.black, child: _buildBackground()),
+        child: Container(color: VodInk.letterbox, child: _buildBackground()),
       );
     }
 
@@ -1369,7 +1369,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         fit: StackFit.expand,
         children: [
           _buildBackground(),
-          if (_dim > 0) IgnorePointer(child: ColoredBox(color: Colors.black.withValues(alpha: _dim))),
+          if (_dim > 0) IgnorePointer(child: ColoredBox(color: VodInk.shade(_dim))),
           if (_captionsOn)
             IgnorePointer(
               child: _withVc((v) => AnimatedPadding(
@@ -1495,7 +1495,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             child: IgnorePointer(
               child: Container(
                 height: 2.5,
-                color: Colors.white.withValues(alpha: 0.12),
+                color: VodInk.ink(0.12),
                 alignment: Alignment.centerLeft,
                 child: FractionallySizedBox(
                   widthFactor: fraction,
@@ -1512,7 +1512,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 width: 46,
                 height: 46,
                 child: CircularProgressIndicator(
-                    strokeWidth: 3, color: Colors.white),
+                    strokeWidth: 3, color: VodInk.textHigh),
               ),
             ),
           ),
@@ -1542,7 +1542,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: RadialGradient(
           center: Alignment.topCenter,
           radius: 1.6,
-          colors: [c.primaryDark.withValues(alpha: 0.6), Colors.black],
+          colors: [c.primaryDark.withValues(alpha: 0.6), VodInk.letterbox],
         ),
       ),
       child: Center(
@@ -1579,7 +1579,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 52),
             child: Text(_mat.name,
-                style: c.h3.copyWith(color: Colors.white),
+                style: c.h3.copyWith(color: VodInk.textHigh),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis),
@@ -1589,7 +1589,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 52),
               child: Text(_mat.description!,
-                  style: c.body.copyWith(color: Colors.white54),
+                  style: c.body.copyWith(color: VodInk.textSoft),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
@@ -1645,7 +1645,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               center: forward ? Alignment.centerRight : Alignment.centerLeft,
               radius: 1.2,
               colors: [
-                Colors.white.withValues(alpha: 0.16),
+                VodInk.ink(0.16),
                 Colors.transparent
               ],
             ),
@@ -1656,13 +1656,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 forward
                     ? Icons.fast_forward_rounded
                     : Icons.fast_rewind_rounded,
-                color: Colors.white,
+                color: VodInk.textHigh,
                 size: 44,
               ),
               const SizedBox(height: 4),
               Text(forward ? '+${_seekAccum}s' : '-${_seekAccum}s',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: VodInk.textHigh,
                       fontWeight: FontWeight.w800,
                       fontSize: 15,
                       fontFamily: 'tajawal')),
@@ -1694,16 +1694,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.6),
+                color: VodInk.shade(0.6),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: c.primary.withValues(alpha: 0.6)),
               ),
               child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.fast_forward_rounded, color: Colors.white, size: 16),
+                Icon(Icons.fast_forward_rounded, color: VodInk.textHigh, size: 16),
                 SizedBox(width: 6),
                 Text('2×',
                     style: TextStyle(
-                        color: Colors.white,
+                        color: VodInk.textHigh,
                         fontWeight: FontWeight.w800,
                         fontSize: 13,
                         fontFamily: 'tajawal')),
@@ -1749,17 +1749,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.black.withValues(alpha: 0.78), Colors.transparent],
+          colors: [VodInk.shade(0.78), Colors.transparent],
         ),
       ),
       // Respect notch / camera cut-out in landscape.
       padding: EdgeInsets.fromLTRB(6 + mq.left, top, 10 + mq.right, 24),
       child: Row(children: [
         IconButton(
+          tooltip: t('رجوع', 'Back'),
           onPressed: () =>
           _isFullScreen ? _exitFullScreen() : Navigator.maybePop(context),
           icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              color: Colors.white, size: 20),
+              color: VodInk.textHigh, size: 20),
         ),
         Expanded(
           // Titles follow the app language direction (Arabic = right aligned).
@@ -1770,12 +1771,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(_mat.name,
-                    style: c.h4.copyWith(color: Colors.white),
+                    style: c.h4.copyWith(color: VodInk.textHigh),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 if (_mat.description != null)
                   Text(_mat.description!,
-                      style: c.caption.copyWith(color: Colors.white54),
+                      style: c.caption.copyWith(color: VodInk.textSoft),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                 if (_isOffline)
@@ -1830,12 +1831,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return Center(
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         _CircleCtrlBtn(
+          label: t('رجوع 10 ثوانٍ', 'Back 10 seconds'),
           icon: Icons.replay_10_rounded,
           size: 32,
           onTap: () => _seekRelative(10, forward: false),
         ),
         const SizedBox(width: 28),
-        _PressScale(
+        Semantics(
+          button: true,
+          label: finished ? t('إعادة التشغيل', 'Replay') : (isPlaying ? t('إيقاف مؤقت', 'Pause') : t('تشغيل', 'Play')),
+          child: _PressScale(
           onTap: finished ? _replay : _togglePlayPause,
           child: Container(
             width: 78,
@@ -1844,18 +1849,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               shape: BoxShape.circle,
               color: c.primary.withValues(alpha: 0.92),
               border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                  color: VodInk.ink(0.25), width: 1.5),
               boxShadow: [
                 ...c.primaryShadow,
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.4), blurRadius: 24),
+                    color: VodInk.shade(0.4), blurRadius: 24),
               ],
             ),
             child: buffering
                 ? const Padding(
               padding: EdgeInsets.all(24),
               child: CircularProgressIndicator(
-                  strokeWidth: 3, color: Colors.white),
+                  strokeWidth: 3, color: VodInk.textHigh),
             )
                 : AnimatedSwitcher(
               duration: const Duration(milliseconds: 180),
@@ -1866,14 +1871,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     ? Icons.pause_rounded
                     : Icons.play_arrow_rounded),
                 key: ValueKey('$finished$isPlaying'),
-                color: Colors.white,
+                color: VodInk.textHigh,
                 size: 44,
               ),
             ),
           ),
-        ),
+        )),
         const SizedBox(width: 28),
         _CircleCtrlBtn(
+          label: t('تقديم 10 ثوانٍ', 'Forward 10 seconds'),
           icon: Icons.forward_10_rounded,
           size: 32,
           onTap: () => _seekRelative(10, forward: true),
@@ -1902,7 +1908,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         gradient: LinearGradient(
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
-          colors: [Colors.black.withValues(alpha: 0.88), Colors.transparent],
+          colors: [VodInk.shade(0.88), Colors.transparent],
         ),
       ),
       padding: EdgeInsets.fromLTRB(16 + mq.left, 28, 16 + mq.right, bot),
@@ -1926,7 +1932,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
           Text(
               '${_fmt(_isSeeking ? Duration(milliseconds: (_seekFraction * dur.inMilliseconds).round()) : pos)} / ${_fmt(dur)}',
               style: const TextStyle(
-                  color: Colors.white70,
+                  color: VodInk.textMid,
                   fontSize: 11.5,
                   fontFamily: 'tajawal',
                   fontWeight: FontWeight.w500)),
@@ -1982,9 +1988,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     child: _PressScale(
                       onTap: _toggleMute,
                       child: Padding(
-                        padding: const EdgeInsets.all(2),
+                        padding: const EdgeInsets.all(12),
                         child: Icon(_volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                            color: Colors.white, size: 24),
+                            color: VodInk.textHigh, size: 24),
                       ),
                     ),
                   ),
@@ -1996,8 +2002,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     child: _PressScale(
                       onTap: _playNext,
                       child: const Padding(
-                        padding: EdgeInsets.all(2),
-                        child: Icon(Icons.skip_next_rounded, color: Colors.white, size: 26),
+                        padding: EdgeInsets.all(12),
+                        child: Icon(Icons.skip_next_rounded, color: VodInk.textHigh, size: 26),
                       ),
                     ),
                   ),
@@ -2006,19 +2012,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
                 // Rotation: auto (sensor, left/right/portrait) vs locked.
                 if (!kIsWeb) ...[
-                  _PressScale(
+                  Tooltip(
+                    message: t('تدوير الشاشة تلقائياً', 'Auto-rotate'),
+                    child: _PressScale(
                     onTap: _toggleAutoRotate,
                     child: Padding(
-                      padding: const EdgeInsets.all(2),
+                      padding: const EdgeInsets.all(12),
                       child: Icon(
                         _autoRotate
                             ? Icons.screen_rotation_rounded
                             : Icons.screen_lock_rotation_rounded,
-                        color: _autoRotate ? Colors.white : c.primary,
+                        color: _autoRotate ? VodInk.textHigh : c.primary,
                         size: 24,
                       ),
                     ),
-                  ),
+                  )),
                   const SizedBox(width: 10),
                 ],
 
@@ -2059,18 +2067,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     padding:
                     const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.14),
+                      color: VodInk.ink(0.14),
                       borderRadius: BorderRadius.circular(30),
                       border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.24)),
+                          color: VodInk.ink(0.24)),
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.lock_rounded,
-                          color: Colors.white, size: 18),
+                          color: VodInk.textHigh, size: 18),
                       const SizedBox(width: 8),
                       Text('unlock_controls'.tr,
                           style: const TextStyle(
-                              color: Colors.white,
+                              color: VodInk.textHigh,
                               fontSize: 12,
                               fontFamily: 'tajawal',
                               fontWeight: FontWeight.w700)),
@@ -2090,14 +2098,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget _buildLoadingState() {
     return Container(
       // Dim the last frame while switching quality so the change is obvious.
-      color: _vcReady ? Colors.black.withValues(alpha: 0.45) : Colors.transparent,
+      color: _vcReady ? VodInk.shade(0.45) : Colors.transparent,
       child: Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const SizedBox(width: 44, height: 44, child: AppLoadingIndicator()),
           const SizedBox(height: 14),
           Text('loading_video'.tr,
               style: const TextStyle(
-                  color: Colors.white60, fontSize: 13, fontFamily: 'tajawal')),
+                  color: VodInk.textSoft, fontSize: 13, fontFamily: 'tajawal')),
         ]),
       ),
     );
@@ -2106,18 +2114,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget _buildErrorState() {
     final c = context.colors;
     return Container(
-      color: Colors.black.withValues(alpha: 0.88),
+      color: VodInk.shade(0.88),
       child: SafeArea(
         child: Stack(children: [
           // Back button always reachable on the error screen.
           Align(
-            alignment: Alignment.topLeft,
+            alignment: AlignmentDirectional.topStart,
             child: IconButton(
+              tooltip: t('رجوع', 'Back'),
               onPressed: () => _isFullScreen
                   ? _exitFullScreen()
                   : Navigator.maybePop(context),
               icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white, size: 20),
+                  color: VodInk.textHigh, size: 20),
             ),
           ),
           Center(
@@ -2135,7 +2144,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                 ),
                 const SizedBox(height: 20),
                 Text('video_load_error'.tr,
-                    style: c.h4.copyWith(color: Colors.white),
+                    style: c.h4.copyWith(color: VodInk.textHigh),
                     textAlign: TextAlign.center),
                 const SizedBox(height: 28),
                 _PressScale(
@@ -2149,11 +2158,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                         boxShadow: c.primaryShadow),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       const Icon(Icons.refresh_rounded,
-                          color: Colors.white, size: 18),
+                          color: VodInk.textHigh, size: 18),
                       const SizedBox(width: 8),
                       Text('retry'.tr,
                           style: const TextStyle(
-                              color: Colors.white,
+                              color: VodInk.textHigh,
                               fontWeight: FontWeight.w700,
                               fontFamily: 'tajawal',
                               fontSize: 14)),
@@ -2228,7 +2237,7 @@ class _SeekBar extends StatelessWidget {
                 height: trackH,
                 width: w,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.18),
+                  color: VodInk.ink(0.18),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -2238,7 +2247,7 @@ class _SeekBar extends StatelessWidget {
                 height: trackH,
                 width: w * buffered,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.34),
+                  color: VodInk.ink(0.34),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -2261,7 +2270,7 @@ class _SeekBar extends StatelessWidget {
                   height: thumb,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white,
+                    color: VodInk.textHigh,
                     boxShadow: [
                       BoxShadow(
                           color: accent.withValues(alpha: 0.55),
@@ -2280,13 +2289,13 @@ class _SeekBar extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.75),
+                      color: VodInk.shade(0.75),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: accent.withValues(alpha: 0.6)),
                     ),
                     child: Text(previewLabel,
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: VodInk.textHigh,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                             fontFamily: 'tajawal')),
@@ -2552,8 +2561,8 @@ class _QualityBadge extends StatelessWidget {
     final tierColor = variant.isAudio
         ? accent
         : switch (variant.tier) {
-      QualityTier.high => const Color(0xFFFFB300),
-      QualityTier.medium => const Color(0xFF4CAF50),
+      QualityTier.high => c.warning,
+      QualityTier.medium => c.success,
       QualityTier.low => c.textLight,
     };
 
@@ -2631,8 +2640,8 @@ class _ProgressIconBtn extends StatelessWidget {
     height: 38,
     decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: Colors.white.withValues(alpha: 0.10),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      color: VodInk.ink(0.10),
+      border: Border.all(color: VodInk.ink(0.18)),
     ),
     alignment: Alignment.center,
     child: Stack(alignment: Alignment.center, children: [
@@ -2643,12 +2652,12 @@ class _ProgressIconBtn extends StatelessWidget {
           // 0 → indeterminate until the first bytes arrive
           value: progress > 0 ? progress : null,
           strokeWidth: 2.5,
-          color: Colors.white,
-          backgroundColor: Colors.white24,
+          color: VodInk.textHigh,
+          backgroundColor: VodInk.glassBorder,
         ),
       ),
       const Icon(Icons.arrow_downward_rounded,
-          size: 11, color: Colors.white),
+          size: 11, color: VodInk.textHigh),
     ]),
   );
 }
@@ -2686,26 +2695,30 @@ class _PressScaleState extends State<_PressScale> {
 
 class _CircleCtrlBtn extends StatelessWidget {
   const _CircleCtrlBtn(
-      {required this.icon, required this.size, required this.onTap});
+      {required this.icon, required this.size, required this.onTap, required this.label});
 
+  final String label;
   final IconData icon;
   final double size;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => _PressScale(
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: label,
+    child: _PressScale(
     onTap: onTap,
     child: Container(
       width: 54,
       height: 54,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        color: VodInk.ink(0.12),
+        border: Border.all(color: VodInk.ink(0.14)),
       ),
-      child: Icon(icon, color: Colors.white, size: size),
+      child: Icon(icon, color: VodInk.textHigh, size: size),
     ),
-  );
+  ));
 }
 
 /// Premium fullscreen toggle: glass tile that lights up in the accent colour
@@ -2742,14 +2755,14 @@ class _FullscreenButton extends StatelessWidget {
             colors: active
                 ? [accent, deep]
                 : [
-              Colors.white.withValues(alpha: 0.18),
-              Colors.white.withValues(alpha: 0.06),
+              VodInk.ink(0.18),
+              VodInk.ink(0.06),
             ],
           ),
           border: Border.all(
             color: active
-                ? Colors.white.withValues(alpha: 0.35)
-                : Colors.white.withValues(alpha: 0.22),
+                ? VodInk.ink(0.35)
+                : VodInk.ink(0.22),
           ),
           boxShadow: active
               ? [
@@ -2772,7 +2785,7 @@ class _FullscreenButton extends StatelessWidget {
                 ? Icons.fullscreen_exit_rounded
                 : Icons.fullscreen_rounded,
             key: ValueKey(active),
-            color: Colors.white,
+            color: VodInk.textHigh,
             size: 26,
           ),
         ),
@@ -2793,15 +2806,20 @@ class _GlassIconBtn extends StatelessWidget {
     message: tooltip ?? '',
     child: _PressScale(
       onTap: onTap,
-      child: Container(
+      // 38 px glass disc inside a 48 px touch target.
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(child: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.10),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+          color: VodInk.ink(0.10),
+          border: Border.all(color: VodInk.ink(0.18)),
         ),
-        child: Icon(icon, color: Colors.white70, size: 18),
+        child: Icon(icon, color: VodInk.textMid, size: 18),
+      )),
       ),
     ),
   );
@@ -2831,19 +2849,19 @@ class _ControlChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: active
               ? c.primary.withValues(alpha: 0.90)
-              : Colors.white.withValues(alpha: 0.12),
+              : VodInk.ink(0.12),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
               color: active
                   ? c.primary.withValues(alpha: 0.60)
-                  : Colors.white.withValues(alpha: 0.20)),
+                  : VodInk.ink(0.20)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 13, color: active ? Colors.white : Colors.white70),
+          Icon(icon, size: 13, color: active ? VodInk.textHigh : VodInk.textMid),
           const SizedBox(width: 4),
           Text(label,
               style: TextStyle(
-                  color: active ? Colors.white : Colors.white70,
+                  color: active ? VodInk.textHigh : VodInk.textMid,
                   fontSize: 11,
                   fontFamily: 'tajawal',
                   fontWeight: FontWeight.w700)),
@@ -2863,19 +2881,19 @@ class _InfoChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.10),
+      color: VodInk.ink(0.10),
       borderRadius: BorderRadius.circular(10),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+      border: Border.all(color: VodInk.ink(0.16)),
     ),
     child: Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 11, color: Colors.white70),
+      Icon(icon, size: 11, color: VodInk.textMid),
       const SizedBox(width: 4),
       Flexible(
         child: Text(label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-                color: Colors.white70,
+                color: VodInk.textMid,
                 fontSize: 10,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'tajawal')),
@@ -2954,7 +2972,7 @@ class _SpeedSheet extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(label,
                     style: c.bodyBold.copyWith(
-                        color: sel ? Colors.white : c.textMedium,
+                        color: sel ? c.onHero : c.textMedium,
                         fontSize: 13)),
               ),
             );

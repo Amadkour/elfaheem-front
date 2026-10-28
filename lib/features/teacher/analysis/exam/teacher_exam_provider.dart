@@ -3,6 +3,7 @@ import 'package:flutter_education_app/features/teacher/analysis/exam/teacher_exa
 
 import '../../../../config/app_config.dart';
 import '../../../../core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import '../../../shared/models/exam_model.dart';
 import '../../sessions/live/widgets/live_quiz.dart';
 import 'exam_files.dart';
@@ -114,7 +115,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _examsError = e.message;
     } catch (e) {
-      _examsError = e.toString();
+      _examsError = apiErrorText(ApiException.from(e));
     } finally {
       _loadingExams = false;
       if(exams.isNotEmpty){
@@ -165,7 +166,7 @@ class TeacherExamProvider extends ChangeNotifier {
       _examsError = e.message;
       return false;
     } catch (e) {
-      _examsError = e.toString();
+      _examsError = apiErrorText(ApiException.from(e));
       return false;
     } finally {
       _saving = false;
@@ -189,7 +190,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     }
   }
 
@@ -205,7 +206,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     } finally {
       _saving = false;
       notifyListeners();
@@ -227,7 +228,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     }
   }
 
@@ -267,7 +268,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _resultsError = e.message;
     } catch (e) {
-      _resultsError = e.toString();
+      _resultsError = apiErrorText(ApiException.from(e));
     } finally {
       _loadingResults = false;
       notifyListeners();
@@ -287,7 +288,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _questionErrorByExam[examId] = e.message;
     } catch (e) {
-      _questionErrorByExam[examId] = e.toString();
+      _questionErrorByExam[examId] = apiErrorText(ApiException.from(e));
     } finally {
       _loadingQuestionsByExam[examId] = false;
       notifyListeners();
@@ -391,7 +392,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     }
   }
 
@@ -411,7 +412,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return (result: null, error: e.message);
     } catch (e) {
-      return (result: null, error: e.toString());
+      return (result: null, error: apiErrorText(ApiException.from(e)));
     } finally {
       _saving = false;
       notifyListeners();
@@ -427,7 +428,7 @@ class TeacherExamProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     }
   }
 

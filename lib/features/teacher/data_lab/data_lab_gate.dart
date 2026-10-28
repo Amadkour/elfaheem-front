@@ -24,6 +24,7 @@ import 'package:provider/provider.dart';
 import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -159,7 +160,7 @@ class _GatePage extends StatelessWidget {
                       gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
                       boxShadow: c.primaryShadow,
                     ),
-                    child: Icon(icon, color: Colors.white, size: 42),
+                    child: Icon(icon, color: c.onHero, size: 42),
                   ),
                   const SizedBox(height: 20),
                   Text(title, textAlign: TextAlign.center, style: dlText(21, w: FontWeight.w800, c: c.textDark)),
@@ -178,10 +179,7 @@ class _GatePage extends StatelessWidget {
   }
 }
 
-String _errText(Object e) {
-  if (e is ApiException) return e.message;
-  return '$e';
-}
+String _errText(Object e) => apiErrorText(ApiException.from(e));
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. Account setup
@@ -357,7 +355,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
           height: 26,
           alignment: Alignment.center,
           decoration: BoxDecoration(shape: BoxShape.circle, color: on ? c.primary : c.divider),
-          child: Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: Colors.white)),
+          child: Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: c.onHero)),
         ),
       ],
     ]);
@@ -476,6 +474,7 @@ class _AccountSetupScreenState extends State<AccountSetupScreen> {
                   obscure: _hide,
                   suffix: IconButton(
                     icon: Icon(_hide ? Icons.visibility_rounded : Icons.visibility_off_rounded, color: c.textMedium),
+                    tooltip: _hide ? (AppConfig.lang == 'ar' ? 'إظهار كلمة المرور' : 'Show password') : (AppConfig.lang == 'ar' ? 'إخفاء كلمة المرور' : 'Hide password'),
                     onPressed: () => setState(() => _hide = !_hide),
                   )),
               _field(_pass2, _tr('dl_setup_pass2', 'Confirm the password'), Icons.lock_reset_rounded, obscure: _hide),

@@ -36,6 +36,7 @@ import '../../../design/app_kit.dart';
 import '../../../utils/live_events.dart';
 import '../../admin/admin_common.dart' show t;
 import '../guest/guest_live_api.dart' show guestPinValid;
+import '../../teacher/sessions/live/widgets/live_palette.dart';
 import 'live_room.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -507,7 +508,7 @@ class LobbyBody extends StatelessWidget {
                 icon: Icons.wifi_off_rounded,
                 text: error!,
                 color: c.danger,
-                action: IconButton(onPressed: onRefresh, icon: Icon(Icons.refresh_rounded, color: c.danger)),
+                action: IconButton(tooltip: t('إعادة المحاولة', 'Retry'), onPressed: onRefresh, icon: Icon(Icons.refresh_rounded, color: c.danger)),
               )
             else if (waiting.isEmpty)
               AppEmpty(
@@ -607,7 +608,7 @@ class LobbyRequestRow extends StatelessWidget {
             key: ValueKey('lobby.admit.${r.id}'),
             tooltip: t('قبول', 'Admit'),
             onPressed: onAdmit,
-            style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: Colors.white),
+            style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: c.onHero),
             icon: const Icon(Icons.check_rounded),
           ),
         ],
@@ -849,7 +850,7 @@ class ShareLinkBody extends StatelessWidget {
                 icon: Icons.error_outline_rounded,
                 text: error!,
                 color: c.danger,
-                action: IconButton(onPressed: onRetry, icon: Icon(Icons.refresh_rounded, color: c.danger)),
+                action: IconButton(tooltip: t('إعادة المحاولة', 'Retry'), onPressed: onRetry, icon: Icon(Icons.refresh_rounded, color: c.danger)),
               )
             else if (link == null)
               _createForm(context)
@@ -990,6 +991,7 @@ class ShareLinkBody extends StatelessWidget {
           child: Container(
             key: const ValueKey('share_link.qr_image'),
             padding: const EdgeInsets.all(12),
+            // The QR's quiet zone stays pure white in both themes: phone scanners need the contrast.
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: QrImageView(data: l.url, version: QrVersions.auto, size: 200, backgroundColor: Colors.white),
           ),
@@ -1318,10 +1320,11 @@ class LobbyBanner extends StatelessWidget {
   final int othersWaiting;
   final bool busy;
 
-  static const _text = Color(0xFFFFFFFF);
-  static const _muted = Color(0xB3FFFFFF);
-  static const _glass = Color(0xE6151A2B);
-  static const _border = Color(0x33FFFFFF);
+  // Drawn over the live room (always dark): the room palette, not the app surface colours.
+  static const _text = LivePalette.textHigh;
+  static const _muted = LivePalette.textMid;
+  static Color get _glass => LivePalette.surface.withValues(alpha: 0.92);
+  static const _border = LivePalette.glassBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -1334,12 +1337,12 @@ class LobbyBanner extends StatelessWidget {
       color: Colors.transparent,
       child: Container(
         constraints: const BoxConstraints(maxWidth: 520),
-        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 10),
         decoration: BoxDecoration(
           color: _glass,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(color: _border),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 6))],
+          boxShadow: [BoxShadow(color: LivePalette.shade(0.4), blurRadius: 20, offset: const Offset(0, 6))],
         ),
         child: Row(children: [
           AppAvatar(name: r.displayName, url: r.imageUrl, size: 36),
@@ -1375,15 +1378,13 @@ class LobbyBanner extends StatelessWidget {
               key: const ValueKey('lobby.banner.reject'),
               tooltip: t('رفض', 'Reject'),
               onPressed: onReject,
-              visualDensity: VisualDensity.compact,
               icon: Icon(Icons.close_rounded, color: c.danger),
             ),
             IconButton.filled(
               key: const ValueKey('lobby.banner.admit'),
               tooltip: t('قبول', 'Admit'),
               onPressed: onAdmit,
-              visualDensity: VisualDensity.compact,
-              style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: Colors.white),
+              style: IconButton.styleFrom(backgroundColor: c.success, foregroundColor: c.onHero),
               icon: const Icon(Icons.check_rounded, size: 20),
             ),
           ],
@@ -1392,7 +1393,6 @@ class LobbyBanner extends StatelessWidget {
               key: const ValueKey('lobby.banner.dismiss'),
               tooltip: t('إخفاء', 'Hide'),
               onPressed: onDismiss,
-              visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.expand_less_rounded, color: _muted, size: 20),
             ),
         ]),

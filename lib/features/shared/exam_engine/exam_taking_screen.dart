@@ -22,6 +22,8 @@ import 'exam_integrity.dart';
 import 'exam_result_screen.dart';
 import 'exam_taking.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 
 /// Entry point from an exam list: consent → attempt → taking screen. Shows the server's refusal when there is one.
 Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {String? passcode}) async {
@@ -293,7 +295,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
       final f = widget.paperFile;
       await p8SaveBytes(bytes, '${f?['name'] ?? 'exam.pdf'}', mime: '${f?['content_type'] ?? 'application/octet-stream'}');
     } catch (e) {
-      appToast('$e', error: true);
+      appToast(apiErrorText(ApiException.from(e)), error: true);
     }
   }
 
@@ -707,7 +709,7 @@ class ExamNavBar extends StatelessWidget {
             FilledButton.icon(
               key: const ValueKey('exam.submit'),
               onPressed: submitting ? null : onSubmit,
-              icon: submitting ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send_rounded, size: 18),
+              icon: submitting ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: context.colors.onHero)) : const Icon(Icons.send_rounded, size: 18),
               label: Text(t('تسليم', 'Submit')),
             ),
         ]),

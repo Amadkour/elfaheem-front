@@ -436,14 +436,14 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                           gradient: LinearGradient(
                             begin: AlignmentDirectional.topStart,
                             end: AlignmentDirectional.bottomEnd,
-                            colors: [accent, Color.lerp(accent, Colors.black, 0.25)!],
+                            colors: [accent, Color.lerp(accent, context.colors.heroShade, 0.25)!],
                           ),
                           borderRadius: BorderRadius.circular(13),
                           boxShadow: [BoxShadow(color: accent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 4))],
                         ),
                         child: Text(
                           (widget.sessionNumber < 10 ? '0' : '') + widget.sessionNumber.toString(),
-                          style: c.h4.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                          style: c.h4.copyWith(color: c.onHero, fontWeight: FontWeight.w800),
                         ),
                       ),
                       Flexible(
@@ -622,10 +622,10 @@ class _SessionMaterialCardState extends State<SessionMaterialCard>
                   vertical: 9,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
+                  color: c.heroShade.withValues(alpha: 0.7),
                   borderRadius: BorderRadius.circular(30),
                 ),
-                child: Icon(Icons.lock_rounded, color: Colors.white, size: 16),
+                child: Icon(Icons.lock_rounded, color: c.onHero, size: 16),
               ),
             ),
           ),

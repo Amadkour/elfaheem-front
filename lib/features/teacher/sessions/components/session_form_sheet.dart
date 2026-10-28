@@ -9,6 +9,7 @@ import '../../../../utils/widget/primary_button.dart';
 import '../../../student/models.dart';
 import '../sessions_provider.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 // Screens at/above this width get the centered "card" treatment instead of a
 // full-width bottom sheet — covers desktop web and tablets in landscape.
@@ -37,7 +38,7 @@ Future<void> showSessionFormSheet(
   if (isWide) {
     await showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.45),
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(24),
@@ -251,7 +252,7 @@ class _SessionFormSheetState extends State<SessionFormSheet> {
           boxShadow: widget.isWide
               ? [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: context.colors.heroShade.withValues(alpha: 0.25),
               blurRadius: 32,
               offset: const Offset(0, 12),
             ),
@@ -425,7 +426,7 @@ class _Header extends StatelessWidget {
           ),
           child: Icon(
             isEdit ? Icons.edit_rounded : Icons.add_rounded,
-            color: Colors.white,
+            color: context.colors.onHero,
             size: 19,
           ),
         ),
@@ -613,7 +614,7 @@ class _PremiumField extends StatelessWidget {
         if (hasError) ...[
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4),
             child: Text(
               errorText!,
               style: TextStyle(
@@ -685,7 +686,7 @@ class _LiveDateTimePicker extends StatelessWidget {
               Expanded(
                 child: Text(
                   picked
-                      ? '${scheduled!.day.toString().padLeft(2, '0')}/${scheduled!.month.toString().padLeft(2, '0')}/${scheduled!.year}  ${scheduled!.hour.toString().padLeft(2, '0')}:${scheduled!.minute.toString().padLeft(2, '0')}'
+                      ? '${scheduled!.day.toString().padLeft(2, '0')}/${scheduled!.month.toString().padLeft(2, '0')}/${scheduled!.year}  ${AppTime.clockMinutes(scheduled!.hour * 60 + scheduled!.minute)}'
                       : 'pick_live_datetime'.tr,
                   style: context.colors.label.copyWith(
                     color: picked
@@ -705,7 +706,7 @@ class _LiveDateTimePicker extends StatelessWidget {
         if (hasError) ...[
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4),
             child: Text(
               errorText!,
               style: TextStyle(
@@ -804,7 +805,7 @@ class _TypeSelector extends StatelessWidget {
                           i,
                           size: 17,
                           color: isSelected
-                              ? Colors.white
+                              ? context.colors.onHero
                               : context.colors.textMedium,
                         ),
                         const SizedBox(width: 7),
@@ -812,7 +813,7 @@ class _TypeSelector extends StatelessWidget {
                           l,
                           style: context.colors.label.copyWith(
                             color: isSelected
-                                ? Colors.white
+                                ? context.colors.onHero
                                 : context.colors.textMedium,
                             fontWeight: isSelected
                                 ? FontWeight.w700

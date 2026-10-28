@@ -59,9 +59,9 @@ class RtlDialog extends StatelessWidget {
             onPressed: onConfirm,
             child: Text(
               confirmLabel,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'bahji',
-                color: Colors.white,
+                color: context.colors.onHero,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -206,7 +206,7 @@ class SessionActionBtn extends StatelessWidget {
         ? Colors.transparent
         : color.withValues(alpha: 0.09);
 
-    final textColor = filled ? Colors.white : color;
+    final textColor = filled ? context.colors.onHero : color;
 
     return GestureDetector(
       onTap:loading? null:onTap,

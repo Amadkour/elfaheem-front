@@ -2,6 +2,7 @@
 library;
 
 
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
@@ -184,7 +185,7 @@ class CourseDetailProvider extends BaseProvider {
       }
       Helpers.showMessage(e.message);
     } catch (e) {
-      Helpers.showMessage(e.toString());
+      Helpers.showMessage(apiErrorText(ApiException.from(e)));
       return;
     }
     notifyListeners();

@@ -92,7 +92,7 @@ class _CountBadge extends StatelessWidget {
       child: Text(
         count > 99 ? '99+' : '$count',
         maxLines: 1,
-        style: const TextStyle(fontFamily: 'tajawal', fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: Colors.white),
+        style: const TextStyle(fontFamily: 'tajawal', fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: LivePalette.textHigh),
       ),
     );
   }
@@ -158,10 +158,10 @@ class LiveControlBar extends StatelessWidget {
   /// Called on any pointer-down inside the bar (used to restart the auto-hide timer).
   final VoidCallback? onInteraction;
 
-  static const _textHigh = Color(0xFFFFFFFF);
-  static const _textLow = Color(0x80FFFFFF);
-  static const _glass = Color(0x1AFFFFFF);
-  static const _glassBdr = Color(0x30FFFFFF);
+  static const _textHigh = LivePalette.textHigh;
+  static const _textLow = LivePalette.textSoft;
+  static const _glass = LivePalette.glass;
+  static const _glassBdr = LivePalette.glassBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -183,7 +183,7 @@ class LiveControlBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         border: Border.all(color: _glassBdr),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.45), blurRadius: 24, offset: const Offset(0, 6)),
+          BoxShadow(color: LivePalette.shade(0.45), blurRadius: 24, offset: const Offset(0, 6)),
           BoxShadow(color: LivePalette.accent.withValues(alpha: 0.06), blurRadius: 20),
         ],
       );
@@ -274,7 +274,7 @@ class LiveControlBar extends StatelessWidget {
 class _Look {
   _Look(LiveControlAction a, {bool danger = false})
       : fg = danger
-            ? Colors.white
+            ? LivePalette.textHigh
             : !a.enabled && !a.loading
                 ? LiveControlBar._textLow
                 : a.off
@@ -285,7 +285,7 @@ class _Look {
         fill = danger
             ? LivePalette.danger
             : !a.enabled && !a.loading
-                ? const Color(0x0DFFFFFF)
+                ? LivePalette.glassFaint
                 : a.off
                     ? LivePalette.danger.withValues(alpha: 0.18)
                     : a.active
@@ -359,7 +359,7 @@ class _MobileButton extends StatelessWidget {
               ),
               child: a.loading ? _spinner(look.fg, size * 0.4) : Icon(a.icon, color: look.fg, size: size * 0.46),
             ),
-            if (a.badge > 0) Positioned(top: -4, right: -6, child: _CountBadge(a.badge)),
+            if (a.badge > 0) PositionedDirectional(top: -4, end: -6, child: _CountBadge(a.badge)),
           ]),
           const SizedBox(height: 5),
           Text(
@@ -448,7 +448,7 @@ class _WideButtonState extends State<_WideButton> {
     final hasMenu = a.menu != null && a.menu!.isNotEmpty;
     final VoidCallback? tap = a.loading ? null : a.onTap ?? (hasMenu ? () => _openMenu(context) : null);
     final tip = a.shortcut == null ? a.label : '${a.label}  ·  ${a.shortcut}';
-    final hoverFill = Color.alphaBlend(Colors.white.withValues(alpha: 0.08), look.fill);
+    final hoverFill = Color.alphaBlend(LivePalette.ink(0.08), look.fill);
 
     return Semantics(
       button: true,
@@ -458,8 +458,8 @@ class _WideButtonState extends State<_WideButton> {
         Tooltip(
           message: tip,
           waitDuration: const Duration(milliseconds: 500),
-          decoration: BoxDecoration(color: const Color(0xF0101420), borderRadius: BorderRadius.circular(10)),
-          textStyle: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+          decoration: BoxDecoration(color: LivePalette.tooltipBg, borderRadius: BorderRadius.circular(10)),
+          textStyle: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontSize: 12, fontWeight: FontWeight.w600),
           child: MouseRegion(
             cursor: tap == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
             onEnter: (_) => setState(() => _hover = true),
@@ -483,14 +483,14 @@ class _WideButtonState extends State<_WideButton> {
                   ),
                   child: a.loading ? _spinner(look.fg, 18) : Icon(a.icon, color: look.fg, size: 22),
                 ),
-                if (a.badge > 0) Positioned(top: -6, right: -6, child: _CountBadge(a.badge)),
+                if (a.badge > 0) PositionedDirectional(top: -6, end: -6, child: _CountBadge(a.badge)),
               ]),
             ),
           ),
         ),
         if (hasMenu)
           Padding(
-            padding: const EdgeInsets.only(left: 2),
+            padding: const EdgeInsetsDirectional.only(start: 2),
             child: Tooltip(
               message: a.menuTitle ?? a.label,
               waitDuration: const Duration(milliseconds: 500),
@@ -506,7 +506,7 @@ class _WideButtonState extends State<_WideButton> {
                     width: 22,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: _hoverChevron ? Color.alphaBlend(Colors.white.withValues(alpha: 0.08), look.fill) : look.fill,
+                      color: _hoverChevron ? Color.alphaBlend(LivePalette.ink(0.08), look.fill) : look.fill,
                       borderRadius: const BorderRadius.horizontal(left: Radius.circular(4), right: Radius.circular(14)),
                       border: Border.all(color: look.border),
                     ),
@@ -555,16 +555,16 @@ class _WideEndButtonState extends State<_WideEndButton> {
               height: 44,
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: _hover ? Color.alphaBlend(Colors.white.withValues(alpha: 0.12), red) : red,
+                color: _hover ? Color.alphaBlend(LivePalette.ink(0.12), red) : red,
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: [BoxShadow(color: red.withValues(alpha: _hover ? 0.5 : 0.35), blurRadius: 16)],
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.call_end_rounded, color: Colors.white, size: 22),
+                const Icon(Icons.call_end_rounded, color: LivePalette.textHigh, size: 22),
                 const SizedBox(width: 8),
                 Text(a.label,
                     maxLines: 1,
-                    style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
+                    style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontSize: 13, fontWeight: FontWeight.w800)),
               ]),
             ),
           ),

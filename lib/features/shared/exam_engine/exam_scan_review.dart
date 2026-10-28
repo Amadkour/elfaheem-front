@@ -331,7 +331,7 @@ class _ExamScansScreenState extends State<ExamScansScreen> {
     return BasePage(
       key: const ValueKey('exam.scans'),
       appBar: AppBar(title: Text(t('الأوراق الممسوحة', 'Scanned pages'))),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.all(16), children: [
           PaperToolsPanel(busy: _busy, onSheets: _sheets, onUpload: _upload, onMapping: _mapping, onMarks: _marks),

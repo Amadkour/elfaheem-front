@@ -1,4 +1,6 @@
 
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../config/theme/theme_config_provider.dart';
@@ -58,14 +60,14 @@ class _StudentExamsTabState extends State<StudentExamsTab>
         ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
           backgroundColor: context.colors.accent.withValues(alpha: 0.95),
           content: Row(children: [
-            const Icon(Icons.alarm_rounded, color: Colors.white, size: 20),
+            Icon(Icons.alarm_rounded, color: context.colors.onHero, size: 20),
             const SizedBox(width: 10),
             Expanded(
                 child: Text(
                     'اختبار "${exam.name}" في ${exam.courseName} يبدأ بعد ${exam.minutesLeft} دقيقة!',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontFamily: 'bahji',
-                        color: Colors.white,
+                        color: context.colors.onHero,
                         fontWeight: FontWeight.w600,
                         fontSize: 13))),
           ]),
@@ -73,8 +75,8 @@ class _StudentExamsTabState extends State<StudentExamsTab>
             TextButton(
                 onPressed: () =>
                     ScaffoldMessenger.of(context).hideCurrentMaterialBanner(),
-                child: const Text('إغلاق',
-                    style: TextStyle(color: Colors.white, fontFamily: 'bahji')))
+                child: Text('إغلاق',
+                    style: TextStyle(color: context.colors.onHero, fontFamily: 'bahji')))
           ],
         ));
         break;
@@ -98,7 +100,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        _error = apiErrorText(ApiException.from(e));
         _loading = false;
       });
     }
@@ -198,8 +200,7 @@ class _StudentExamsTabState extends State<StudentExamsTab>
                                     style: context.colors.caption,
                                     textAlign: TextAlign.center),
                               ]))
-                          : RefreshIndicator(
-                          color: context.colors.primary,
+                          : AppRefresh(
                           onRefresh: _refresh,
                           child: ListView.separated(
                               padding: const EdgeInsets.fromLTRB(

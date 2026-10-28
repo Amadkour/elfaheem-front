@@ -1,6 +1,7 @@
 // student_exam_quiz_screen.dart — Premium redesign (analytics style)
 library;
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -91,7 +92,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                     warn
                         ? Icons.warning_amber_rounded
                         : Icons.check_circle_outline_rounded,
-                    warn ? kAmber : dctx.colors.success,
+                    warn ? context.colors.warning : dctx.colors.success,
                     size: 68,
                   ),
                   const SizedBox(height: 18),
@@ -160,7 +161,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
 
     // Session might be null briefly on hot-reload — guard
     if (s == null) {
-      return const BasePage( useWebCard: true,maxWith: 1100, child:Center(child: AppLoadingIndicator()));
+      return const BasePage( useWebCard: true,maxWith: 1100, child: AppListSkeleton(items: 4, withAvatar: false));
     }
 
     // Navigate to the result screen once, right after submitting.
@@ -213,7 +214,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                 const BorderRadius.vertical(bottom: Radius.circular(28)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: c.heroShade.withValues(alpha: 0.06),
                     blurRadius: 18,
                     offset: const Offset(0, 6),
                   ),
@@ -330,7 +331,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen>
                 const BorderRadius.vertical(top: Radius.circular(24)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.07),
+                    color: c.heroShade.withValues(alpha: 0.07),
                     blurRadius: 18,
                     offset: const Offset(0, -4),
                   ),
@@ -446,9 +447,9 @@ class _TimerChipState extends State<_TimerChip>
         final critical = secs < 120;
         final warning = secs < 300 && !critical;
         final color = critical
-            ? kDanger
+            ? context.colors.danger
             : warning
-            ? kAmber
+            ? context.colors.warning
             : c.primary;
         final text =
             '${(secs ~/ 60).toString().padLeft(2, '0')}:${(secs % 60).toString().padLeft(2, '0')}';
@@ -492,7 +493,7 @@ class _CounterBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [kDeep, c.primary]),
+        gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -504,7 +505,7 @@ class _CounterBadge extends StatelessWidget {
       ),
       child: Text(
         tx('exam_quiz_counter', {'current': current, 'total': total}),
-        style: examT(12.5, w: FontWeight.w800, c: Colors.white),
+        style: examT(12.5, w: FontWeight.w800, c: context.colors.onHero),
       ),
     );
   }
@@ -534,19 +535,19 @@ class _QuestionCard extends StatelessWidget {
                 padding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [kDeep, c.primary]),
+                  gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   tx('exam_question_n', {'n': index + 1}),
-                  style: examT(11.5, w: FontWeight.w700, c: Colors.white),
+                  style: examT(11.5, w: FontWeight.w700, c: context.colors.onHero),
                 ),
               ),
               const Spacer(),
               ExamChip(
                 Icons.grade_rounded,
                 tx('exam_n_marks', {'n': question.marks.toStringAsFixed(0)}),
-                kAmber,
+                context.colors.warning,
               ),
               const SizedBox(width: 6),
               _ReviewFlagButton(question: question),
@@ -663,7 +664,7 @@ class _OptionTile extends StatelessWidget {
           ]
               : [
             BoxShadow(
-              color: Colors.black.withValues(alpha: .04),
+              color: c.heroShade.withValues(alpha: .04),
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
@@ -677,7 +678,7 @@ class _OptionTile extends StatelessWidget {
               height: 38,
               decoration: BoxDecoration(
                 gradient: selected
-                    ? LinearGradient(colors: [kDeep, c.primary])
+                    ? LinearGradient(colors: [context.colors.primaryDark, c.primary])
                     : null,
                 color: selected ? null : c.divider.withValues(alpha: .45),
                 borderRadius: BorderRadius.circular(12),
@@ -687,7 +688,7 @@ class _OptionTile extends StatelessWidget {
                   letter,
                   style: examT(14,
                       w: FontWeight.w800,
-                      c: selected ? Colors.white : c.textMedium),
+                      c: selected ? context.colors.onHero : c.textMedium),
                 ),
               ),
             ),
@@ -826,7 +827,7 @@ class _QuestionGridSheet extends StatelessWidget {
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: .1), blurRadius: 24),
+                color: c.heroShade.withValues(alpha: .1), blurRadius: 24),
           ],
         ),
         child: Column(
@@ -890,7 +891,7 @@ class _QuestionGridSheet extends StatelessWidget {
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         gradient: isCurrent
-                            ? LinearGradient(colors: [kDeep, c.primary])
+                            ? LinearGradient(colors: [context.colors.primaryDark, c.primary])
                             : null,
                         color: isCurrent
                             ? null
@@ -922,7 +923,7 @@ class _QuestionGridSheet extends StatelessWidget {
                             14,
                             w: FontWeight.w800,
                             c: isCurrent
-                                ? Colors.white
+                                ? context.colors.onHero
                                 : answered
                                 ? c.primary
                                 : c.textMedium,

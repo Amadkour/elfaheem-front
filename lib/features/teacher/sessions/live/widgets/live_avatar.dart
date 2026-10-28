@@ -143,7 +143,7 @@ class _Initials extends StatelessWidget {
             fontWeight: FontWeight.w800,
             height: 1,
             letterSpacing: size * 0.01,
-            shadows: [Shadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: size * 0.08)],
+            shadows: [Shadow(color: LivePalette.shade(0.25), blurRadius: size * 0.08)],
           ),
         ),
       );

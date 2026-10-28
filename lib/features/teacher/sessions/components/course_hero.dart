@@ -103,11 +103,11 @@ class CourseHero extends StatelessWidget {
                                       ? course.category!.nameAr
                                       : course.category!.nameEn,
 
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'tajawal',
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                    color: context.colors.onHero,
                                   ),
                                 ),
                               ),
@@ -120,11 +120,11 @@ class CourseHero extends StatelessWidget {
                                   ? course.titleAr
                                   : course.titleEn) ??
                               '',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'tajawal',
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: context.colors.onHero,
                             height: 1.3,
                           ),
                           maxLines: 2,
@@ -138,7 +138,7 @@ class CourseHero extends StatelessWidget {
                             style: TextStyle(
                               fontFamily: 'tajawal',
                               fontSize: 12,
-                              color: Colors.white.withValues(alpha: 0.80),
+                              color: context.colors.onHero.withValues(alpha: 0.80),
                               height: 1.45,
                             ),
                             maxLines: 2,
@@ -176,8 +176,8 @@ class CourseHero extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withValues(alpha: 0.25),
-                Colors.black.withValues(alpha: 0.75),
+                context.colors.heroShade.withValues(alpha: 0.25),
+                context.colors.heroShade.withValues(alpha: 0.75),
               ],
             ),
           ),
@@ -205,7 +205,7 @@ class _GradientBackground extends StatelessWidget {
       child: Icon(
         Icons.school_rounded,
         size: 72,
-        color: Colors.white.withValues(alpha: 0.12),
+        color: context.colors.onHero.withValues(alpha: 0.12),
       ),
     ),
   );

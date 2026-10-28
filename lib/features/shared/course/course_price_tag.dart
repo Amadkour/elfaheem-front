@@ -80,12 +80,12 @@ class CoursePriceTag extends StatelessWidget {
 
   Widget _featureContent(BuildContext context) {
     final priceColor = onColoredBackground
-        ? Colors.white
+        ? context.colors.onHero
         : color ??
-        (finalPrice == 0 ? const Color(0xFF0F6E56) : context.colors.primary);
+        (finalPrice == 0 ? context.colors.success : context.colors.primary);
     final strikeColor = onColoredBackground
-        ? Colors.white.withValues(alpha: 0.75)
-        : Colors.grey.shade500;
+        ? context.colors.onHero.withValues(alpha: 0.75)
+        : context.colors.textLight;
 
     if (!discountActive) {
       return Text(
@@ -111,7 +111,7 @@ class CoursePriceTag extends StatelessWidget {
             fontSize: originalFontSize,
             fontFamily: 'bahji',
             decoration: TextDecoration.lineThrough,
-            decorationColor: Colors.redAccent,
+            decorationColor: context.colors.danger,
           ),
         ),
         Text(
@@ -155,11 +155,11 @@ class DiscountRibbon extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFE24B4A),
+        color: context.colors.danger,
         borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE24B4A).withValues(alpha: 0.35),
+            color: context.colors.danger.withValues(alpha: 0.35),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -167,8 +167,8 @@ class DiscountRibbon extends StatelessWidget {
       ),
       child: Text(
         '-${percentage.toStringAsFixed(0)}%',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: context.colors.onHero,
           fontWeight: FontWeight.w800,
           fontSize: 10,
           fontFamily: 'bahji',
@@ -203,7 +203,7 @@ class DiscountCountdown extends StatelessWidget {
       style: TextStyle(
         fontSize: 11,
         fontFamily: 'tajawal',
-        color: Colors.redAccent.shade200,
+        color: context.colors.danger,
         fontWeight: FontWeight.w600,
       ),
     );
@@ -280,7 +280,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
         ? '${'discount_ends_in'.tr} $hours${'hour'.tr}'
         : '${'discount_ends_in'.tr} $days${'day_unit'.tr}';
 
-    final bg = urgent ? const Color(0xFFE24B4A) : const Color(0xFFFF9F1C);
+    final bg = urgent ? context.colors.danger : context.colors.warning;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -307,7 +307,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
                 : const AlwaysStoppedAnimation(1.0),
             child: Icon(
               Icons.local_fire_department_rounded,
-              color: Colors.white,
+              color: context.colors.onHero,
               size: widget.compact ? 11 : 13,
             ),
           ),
@@ -315,7 +315,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
           Text(
             label,
             style: TextStyle(
-              color: Colors.white,
+              color: context.colors.onHero,
               fontWeight: FontWeight.w800,
               fontSize: widget.compact ? 9 : 10.5,
               fontFamily: 'tajawal',

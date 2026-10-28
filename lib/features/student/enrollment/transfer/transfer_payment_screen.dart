@@ -11,6 +11,7 @@
 /// Needs the `image_picker` package (add to pubspec.yaml if not present).
 library;
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -21,7 +22,6 @@ import 'package:provider/provider.dart';
 
 import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../enrollment_models.dart';
 import '../enrollment_widgets.dart';
 import 'transfer_payment_provider.dart';
@@ -168,7 +168,7 @@ class _TransferViewState extends State<_TransferView> {
             ),
             Expanded(
               child: d == null
-                  ? const Center(child: AppLoadingIndicator())
+                  ? const AppListSkeleton(items: 4, withAvatar: false)
                   : SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 child: Form(

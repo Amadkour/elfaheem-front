@@ -28,7 +28,7 @@ class SessionExamTile extends StatelessWidget {
   });
 
   /// Attention colour for an exam that still blocks the next session.
-  static const attention = Color(0xFFFF6D00);
+  static Color attention(BuildContext context) => context.colors.warning;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +39,7 @@ class SessionExamTile extends StatelessWidget {
     final IconData icon;
     final String status;
     if (isTeacher) {
-      color = attention;
+      color = attention(context);
       icon = Icons.quiz_rounded;
       status = 'session_exam_title'.tr;
     } else if (exam.passed) {
@@ -55,11 +55,11 @@ class SessionExamTile extends StatelessWidget {
       icon = Icons.event_busy_rounded;
       status = 'session_exam_closed'.tr;
     } else if (exam.attempted) {
-      color = attention;
+      color = attention(context);
       icon = Icons.refresh_rounded;
       status = 'session_exam_failed_retry'.tr;
     } else {
-      color = attention;
+      color = attention(context);
       icon = Icons.lock_clock_rounded;
       status = 'session_exam_must_pass'.tr;
     }
@@ -138,7 +138,7 @@ class SessionExamTile extends StatelessWidget {
                             ),
                           ],
                         ),
-                        child: Icon(icon, color: Colors.white, size: 20),
+                        child: Icon(icon, color: c.onHero, size: 20),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -173,6 +173,8 @@ class SessionExamTile extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               status,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                               style: c.caption.copyWith(
                                 color: color,
                                 fontWeight: FontWeight.w700,
@@ -202,7 +204,8 @@ class SessionExamTile extends StatelessWidget {
                       ),
                       if (canAct) ...[
                         const SizedBox(width: 8),
-                        FilledButton(
+                        Flexible(
+                          child: FilledButton(
                           onPressed: onOpen,
                           style: FilledButton.styleFrom(
                             backgroundColor: color,
@@ -219,11 +222,14 @@ class SessionExamTile extends StatelessWidget {
                             exam.attempted
                                 ? 'session_exam_retry'.tr
                                 : 'session_exam_start'.tr,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
+                        ),
                         ),
                       ] else if (isTeacher) ...[
                         const SizedBox(width: 6),

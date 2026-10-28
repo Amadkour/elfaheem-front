@@ -48,14 +48,14 @@ class AddMaterialButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_rounded, size: 15, color: Colors.white),
+            Icon(Icons.add_rounded, size: 15, color: context.colors.onHero),
             const SizedBox(width: 5),
             Text(
               'add_material'.tr,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'bahji',
                 fontSize: 12,
-                color: Colors.white,
+                color: context.colors.onHero,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -78,7 +78,7 @@ Future<void> showAddMaterialSheet(
   if (isWide) {
     await showDialog(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.45),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.45),
       builder: (_) => ChangeNotifierProvider.value(
         value: provider,
         child: Dialog(
@@ -141,24 +141,27 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
   final _descCtrl = TextEditingController();
   final _urlCtrl = TextEditingController();
 
-  static const _fileTypeOptions = [
+  // The colours follow the live theme, so the list is built on read (it is tiny).
+  List<_FileTypeOption> get _fileTypeOptions {
+    final c = context.colors;
+    return [
     _FileTypeOption(
       labelKey: 'material_type_image',
       icon: Icons.image_rounded,
       fileType: FileType.image,
-      color: Color(0xFF4CAF50),
+      color: c.success,
     ),
     _FileTypeOption(
       labelKey: 'material_type_video',
       icon: Icons.play_circle_rounded,
       fileType: FileType.video,
-      color: Color(0xFF2196F3),
+      color: c.primary,
     ),
     _FileTypeOption(
       labelKey: 'pdf_document',
       icon: Icons.description_rounded,
       fileType: FileType.custom,
-      color: Color(0xFFF44336),
+      color: c.danger,
     ),
     // ANY other file: .py .java .txt .zip .csv ... (no extension filter).
     // Add the translation key 'other_file' (e.g. "ملف آخر" / "Other file").
@@ -166,9 +169,10 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
       labelKey: 'other_file',
       icon: Icons.insert_drive_file_rounded,
       fileType: FileType.any,
-      color: Color(0xFF607D8B),
+      color: c.textMedium,
     ),
   ];
+  }
 
   static const _documentExtensions = [
     'pdf',
@@ -397,7 +401,7 @@ class _AddMaterialSheetState extends State<AddMaterialSheet> {
           boxShadow: widget.isWide
               ? [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.25),
+              color: context.colors.heroShade.withValues(alpha: 0.25),
               blurRadius: 32,
               offset: const Offset(0, 12),
             ),
@@ -570,9 +574,9 @@ class _Header extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             boxShadow: context.colors.primaryShadow,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.upload_file_rounded,
-            color: Colors.white,
+            color: context.colors.onHero,
             size: 20,
           ),
         ),
@@ -668,7 +672,7 @@ class _ModeToggle extends StatelessWidget {
               fontFamily: 'bahji',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: sel ? Colors.white : context.colors.secondText,
+              color: sel ? context.colors.onHero : context.colors.secondText,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -678,7 +682,7 @@ class _ModeToggle extends StatelessWidget {
                 Icon(
                   icon,
                   size: 15,
-                  color: sel ? Colors.white : context.colors.secondText,
+                  color: sel ? context.colors.onHero : context.colors.secondText,
                 ),
                 const SizedBox(width: 5),
                 Text(label),
@@ -718,7 +722,7 @@ class _FileTypeSelector extends StatelessWidget {
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               curve: Curves.easeOut,
-              margin: EdgeInsets.only(left: i < options.length - 1 ? 8 : 0),
+              margin: EdgeInsetsDirectional.only(end: i < options.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: selected
@@ -920,7 +924,7 @@ class _FilePickerZone extends StatelessWidget {
         if (errorText != null) ...[
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4),
             child: Text(
               errorText!,
               style: TextStyle(
@@ -1081,7 +1085,7 @@ class _PremiumField extends StatelessWidget {
         if (hasError) ...[
           const SizedBox(height: 6),
           Padding(
-            padding: const EdgeInsets.only(left: 4),
+            padding: const EdgeInsetsDirectional.only(start: 4),
             child: Text(
               errorText!,
               style: TextStyle(
@@ -1138,18 +1142,18 @@ class _SubmitButton extends StatelessWidget {
                 key: const ValueKey('label'),
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.add_rounded,
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     size: 18,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     'add_material_btn'.tr,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'bahji',
                       fontSize: 14,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

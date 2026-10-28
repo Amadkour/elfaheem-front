@@ -32,12 +32,12 @@ class _AddButton extends StatelessWidget {
               boxShadow: context.colors.primaryShadow,
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+              Icon(Icons.add_rounded, color: context.colors.onHero, size: 18),
               const SizedBox(width: 6),
               Text(
                 'add_schedule'.tr,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: context.colors.onHero,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'tajawal',
                   fontSize: 12,
@@ -103,7 +103,7 @@ class CourseDetailsSection extends StatelessWidget {
           expanded: false,
           icon: Icons.calendar_month_rounded,
           title: 'weekly_schedule'.tr,
-          color: const Color(0xFF4DA6FF),
+          color: context.colors.primary,
           children:course.schedules.isEmpty? <Widget>[_AddButton(onTap: ()  {Navigator.push(context, MaterialPageRoute(builder: (_)=>TeacherSchedulesScreen(course: course,))); })]: course.schedules
               .map((s) => _ScheduleRow(schedule: s))
               .toList(),
@@ -115,7 +115,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.checklist_rounded,
             title: 'prerequisites'.tr,
-            color: const Color(0xFFFF9F43),
+            color: context.colors.warning,
             children: course.prerequisites
                 .map((p) => _BulletRow(text: p.title))
                 .toList(),
@@ -128,7 +128,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.build_rounded,
             title: 'required_tools'.tr,
-            color: const Color(0xFF1DB954),
+            color: context.colors.success,
             children: course.tools
                 .map((t) => _BulletRow(text: t.name))
                 .toList(),
@@ -141,7 +141,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.workspace_premium_rounded,
             title: 'certificates'.tr,
-            color: const Color(0xFFFFD700),
+            color: context.colors.accent2,
             children: course.certificates
                 .map((c) => _CertificateRow(cert: c, courseId: course.id))
                 .toList(),
@@ -227,7 +227,7 @@ class _DetailCardState extends State<DetailCard>
           BoxShadow(
             color: _expanded
                 ? widget.color.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.04),
+                : context.colors.heroShade.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -424,7 +424,7 @@ class _CertificateRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFD700)),
+        Icon(Icons.star_rounded, size: 16, color: context.colors.accent2),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -468,21 +468,21 @@ class _CertificateRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.14),
+              color: context.colors.accent2.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.send_rounded, size: 12, color: Color(0xFFB8860B)),
+                Icon(Icons.send_rounded, size: 12, color: context.colors.accent2),
                 const SizedBox(width: 4),
                 Text(
                   'manage_certificate_btn'.tr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFB8860B),
+                    color: context.colors.accent2,
                   ),
                 ),
               ],

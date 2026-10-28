@@ -90,7 +90,7 @@ class LiveMiniBoxLayout extends StatelessWidget {
       child: Material(
         color: LivePalette.surface,
         elevation: 10,
-        shadowColor: Colors.black54,
+        shadowColor: LivePalette.scrimLight,
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
@@ -111,7 +111,7 @@ class LiveMiniBoxLayout extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0xB3000000)],
+                    colors: [Colors.transparent, LivePalette.scrimHeavy],
                   ),
                 ),
                 child: Padding(
@@ -213,7 +213,7 @@ class _LivePill extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-        decoration: BoxDecoration(color: const Color(0x8A000000), borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(color: LivePalette.scrimLight, borderRadius: BorderRadius.circular(999)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
             width: 6,
@@ -248,7 +248,7 @@ class _TinyButton extends StatelessWidget {
         button: true,
         label: label,
         child: Material(
-          color: const Color(0x8A000000),
+          color: LivePalette.scrimLight,
           shape: const CircleBorder(),
           child: InkWell(
             customBorder: const CircleBorder(),

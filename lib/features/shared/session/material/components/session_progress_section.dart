@@ -37,10 +37,10 @@ class SessionProgressSection extends StatelessWidget {
     final isFinished = done == total;
 
     final Color fillStart = isFinished
-        ? const Color(0xFF00C48C)
+        ? context.colors.success
         : context.colors.primaryLight;
     final Color fillEnd = isFinished
-        ? const Color(0xFF00E5A0)
+        ? context.colors.success
         : context.colors.primaryLight;
 
     return Padding(
@@ -138,7 +138,10 @@ class _LabelRow extends StatelessWidget {
     return Row(
       children: [
         // Status badge (completed vs in-progress)
-        AnimatedSwitcher(
+        Expanded(
+          child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 350),
           transitionBuilder: (child, anim) => ScaleTransition(
             scale: anim,
@@ -150,8 +153,10 @@ class _LabelRow extends StatelessWidget {
                   key: const ValueKey('progress'),
                   fillStart: fillStart,
                 ),
+          ),
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         // Fraction counter
         RichText(
           text: TextSpan(
@@ -187,11 +192,11 @@ class _LabelRow extends StatelessWidget {
           ),
           child: Text(
             '${(ratio * 100).toInt()}%',
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'bahji',
               fontSize: 14,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: context.colors.onHero,
             ),
           ),
         ),
@@ -207,13 +212,13 @@ class _CompletedBadgePill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
     decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF00C48C), Color(0xFF00E5A0)],
+      gradient: LinearGradient(
+        colors: [context.colors.success, context.colors.success],
       ),
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: const Color(0xFF00C48C).withValues(alpha: 0.35),
+          color: context.colors.success.withValues(alpha: 0.35),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
@@ -222,17 +227,19 @@ class _CompletedBadgePill extends StatelessWidget {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.verified_rounded, size: 12, color: Colors.white),
+        Icon(Icons.verified_rounded, size: 12, color: context.colors.onHero),
         const SizedBox(width: 4),
-        Text(
+        Flexible(child: Text(
           'completed'.tr,
-          style: const TextStyle(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
             fontFamily: 'bahji',
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: context.colors.onHero,
           ),
-        ),
+        )),
       ],
     ),
   );
@@ -256,15 +263,17 @@ class _InProgressBadgePill extends StatelessWidget {
       children: [
         Icon(Icons.auto_stories_rounded, size: 11, color: fillStart),
         const SizedBox(width: 4),
-        Text(
+        Flexible(child: Text(
           'you_progress_in_course'.tr,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             fontFamily: 'bahji',
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: fillStart,
           ),
-        ),
+        )),
       ],
     ),
   );
@@ -298,14 +307,14 @@ class SegmentedProgressBar extends StatelessWidget {
           final isLast = i == total - 1;
           return Expanded(
             child: Container(
-              margin: EdgeInsets.only(right: isLast ? 0 : 3),
+              margin: EdgeInsetsDirectional.only(end: isLast ? 0 : 3),
               height: 7,
               decoration: BoxDecoration(
                 gradient: filled
                     ? LinearGradient(
                         colors: [fillStart, fillEnd],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
+                        begin: AlignmentDirectional.centerStart,
+                        end: AlignmentDirectional.centerEnd,
                       )
                     : null,
                 color: filled
@@ -349,8 +358,8 @@ class SegmentedProgressBar extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [fillStart, fillEnd],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
+                  begin: AlignmentDirectional.centerStart,
+                  end: AlignmentDirectional.centerEnd,
                 ),
                 borderRadius: BorderRadius.circular(8),
                 boxShadow: [

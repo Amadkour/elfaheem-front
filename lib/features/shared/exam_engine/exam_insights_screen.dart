@@ -230,7 +230,7 @@ class _ExamAppealsScreenState extends State<ExamAppealsScreen> {
     return BasePage(
       key: const ValueKey('exam.appeals'),
       appBar: AppBar(title: Text(t('التظلمات', 'Appeals'))),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
           AppHero(title: widget.examTitle, subtitle: t('طلبات إعادة التصحيح — كل قرار مسجل', 'Regrade requests — every decision is recorded'), icon: Icons.gavel_rounded),
@@ -436,7 +436,7 @@ class _ExamAnalyticsScreenState extends State<ExamAnalyticsScreen> {
       appBar: AppBar(title: Text(t('تحليلات الاختبار', 'Exam analytics')), actions: [
         IconButton(onPressed: _busy ? null : _refresh, icon: const Icon(Icons.refresh_rounded), tooltip: t('إعادة الحساب', 'Recompute')),
       ]),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
           AppHero(title: widget.examTitle, subtitle: d?.computedAt == null ? t('لم تُحسب بعد', 'Not computed yet') : t('آخر حساب: ${AppTime.dateTime(DateTime.parse(d!.computedAt!))}', 'Computed: ${AppTime.dateTime(DateTime.parse(d.computedAt!))}'),

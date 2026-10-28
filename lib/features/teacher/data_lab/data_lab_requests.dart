@@ -18,7 +18,9 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -123,7 +125,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
       await widget.p.load(silent: true, keep: true); // the new answer columns appear in the sheet
       await _load();
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -136,7 +138,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
       toast(on ? _tr('dl_q_on', 'Question switched on — students who did not answer are asked again') : _tr('dl_q_off', 'Question switched off'));
       await _load();
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _working.remove('q${q.id}'));
     }
@@ -148,7 +150,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
       final n = await _api.remindForm(widget.p.courseId, form.key);
       toast(n == 0 ? dlTr('dl_req_all_answered', 'Everyone has already answered 🎉') : '$n ${dlTr('dl_req_reminded', 'students reminded')}');
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _working.remove(form.key));
     }
@@ -163,7 +165,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
       }
       await _load();
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _working.remove(form.key));
     }
@@ -182,7 +184,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
     return Column(mainAxisSize: MainAxisSize.min, children: [
       SheetHeader('dl_ask_students'.tr),
       Flexible(
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: _load,
           child: ListView(
             shrinkWrap: true,
@@ -204,14 +206,14 @@ class _RequestsSheetState extends State<_RequestsSheet> {
                     ),
                     onPressed: () => setState(() => _composing = true),
                     icon: const Icon(Icons.add_rounded),
-                    label: Text(_tr('dl_form_new', 'New form'), style: dlText(14, w: FontWeight.w800, c: Colors.white)),
+                    label: Text(_tr('dl_form_new', 'New form'), style: dlText(14, w: FontWeight.w800, c: c.onHero)),
                   ),
                 ),
                 secondChild: _composer(c),
               ),
               DlSectionTitle('dl_req_list'.tr),
               if (_loading)
-                const Padding(padding: EdgeInsets.all(20), child: const Center(child: AppLoadingIndicator(size: 56)))
+                const AppListSkeleton(items: 3)
               else if (_forms.isEmpty)
                 Padding(padding: const EdgeInsets.all(10), child: Text('dl_req_none'.tr, style: dlText(12.5, c: c.textMedium)))
               else
@@ -232,7 +234,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
         const SizedBox(width: 8),
         Expanded(child: Text(_tr('dl_form_new', 'New form'), style: dlText(15, w: FontWeight.w800, c: c.textDark))),
         if (_forms.isNotEmpty)
-          IconButton(visualDensity: VisualDensity.compact, icon: Icon(Icons.close_rounded, color: c.textMedium), onPressed: () => setState(() => _composing = false)),
+          IconButton(visualDensity: VisualDensity.compact, tooltip: AppConfig.lang == 'ar' ? 'إغلاق' : 'Close', icon: Icon(Icons.close_rounded, color: c.textMedium), onPressed: () => setState(() => _composing = false)),
       ]),
       const SizedBox(height: 10),
       DlField(controller: _formTitle, label: _tr('dl_form_title', 'Form title (optional)'), hint: _tr('dl_form_title_hint', 'e.g. A few details for the exam')),
@@ -259,7 +261,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
     if (d.columnKey != null && !targets.any((t) => t.key == d.columnKey)) d.columnKey = null;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 10, 8, 12),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(16), border: Border.all(color: c.divider)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -268,13 +270,14 @@ class _RequestsSheetState extends State<_RequestsSheet> {
             height: 26,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
-            child: Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: Colors.white)),
+            child: Text('${i + 1}', style: dlText(12, w: FontWeight.w800, c: context.colors.onHero)),
           ),
           const SizedBox(width: 8),
           Expanded(child: Text(_tr('dl_q_n', 'Question'), style: dlText(13, w: FontWeight.w800, c: c.textDark))),
           if (_drafts.length > 1)
             IconButton(
               visualDensity: VisualDensity.compact,
+              tooltip: AppConfig.lang == 'ar' ? 'حذف السؤال' : 'Delete question',
               icon: Icon(Icons.delete_outline_rounded, size: 19, color: c.danger),
               onPressed: () => setState(() => _drafts.removeAt(i).dispose()),
             ),

@@ -119,8 +119,8 @@ class ParticipantInfoWidget extends StatelessWidget {
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.72),
-            Colors.black.withValues(alpha: 0.28),
+            LivePalette.shade(0.72),
+            LivePalette.shade(0.28),
             Colors.transparent,
           ],
         ),
@@ -172,7 +172,7 @@ class _NameChip extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 9, vertical: compact ? 3 : 5),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.38),
+          color: LivePalette.shade(0.38),
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: LivePalette.glassBorder, width: 0.8),
         ),
@@ -236,7 +236,7 @@ class _MicPill extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: on ? 0 : (compact ? 5 : 8)),
       constraints: BoxConstraints(minWidth: d),
       decoration: BoxDecoration(
-        color: on ? Colors.black.withValues(alpha: 0.38) : LivePalette.danger.withValues(alpha: 0.85),
+        color: on ? LivePalette.shade(0.38) : LivePalette.danger.withValues(alpha: 0.85),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
           color: on ? LivePalette.glassBorder : LivePalette.danger.withValues(alpha: 0.9),
@@ -329,7 +329,7 @@ class _QualityDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: color,
-        border: Border.all(color: Colors.black.withValues(alpha: 0.35), width: 1),
+        border: Border.all(color: LivePalette.shade(0.35), width: 1),
         boxShadow: [BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 6)],
       ),
     );
@@ -349,7 +349,7 @@ class _StatusPill extends StatelessWidget {
       width: d,
       height: d,
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.38),
+        color: LivePalette.shade(0.38),
         shape: BoxShape.circle,
         border: Border.all(color: color.withValues(alpha: 0.55), width: 0.8),
       ),

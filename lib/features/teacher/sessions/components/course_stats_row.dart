@@ -51,7 +51,7 @@ class CourseStatsRow extends StatelessWidget {
         icon: Icons.sell_rounded,
         label: 'cost'.tr,
         value: course.currency.format(course.finalPrice??0),
-        color: const Color(0xFF1DB954),
+        color: context.colors.success,
         valueBuilder: course.discountActive??false
             ? (context) => CoursePriceTag(
           originalPrice: course.price,
@@ -70,7 +70,7 @@ class CourseStatsRow extends StatelessWidget {
         icon: Icons.timer_rounded,
         label: 'duration'.tr,
         value: '${course.totalHours} ${'h'.tr}',
-        color: const Color(0xFFFF9F43),
+        color: context.colors.warning,
       ),
     ];
 
@@ -83,7 +83,7 @@ class CourseStatsRow extends StatelessWidget {
         border: Border.all(color: context.colors.divider, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: context.colors.heroShade.withValues(alpha: 0.06),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),

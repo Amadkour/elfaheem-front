@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 import 'data_lab_models.dart';
 
@@ -87,9 +88,9 @@ class DlHero extends StatelessWidget {
         Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: dlText(20, w: FontWeight.w800, c: Colors.white)),
+              Text(title, style: dlText(20, w: FontWeight.w800, c: c.onHero)),
               const SizedBox(height: 4),
-              Text(subtitle, style: dlText(12.5, c: Colors.white70, h: 1.5)),
+              Text(subtitle, style: dlText(12.5, c: c.onHero.withValues(alpha: 0.70), h: 1.5)),
             ]),
           ),
           const SizedBox(width: 12),
@@ -97,11 +98,11 @@ class DlHero extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
+              color: c.onHero.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white24),
+              border: Border.all(color: c.heroGlassBorder),
             ),
-            child: Icon(icon, color: Colors.white, size: 26),
+            child: Icon(icon, color: c.onHero, size: 26),
           ),
         ]),
         if (stats.isNotEmpty) ...[
@@ -128,15 +129,15 @@ class DlHeroStat extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
     decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: 0.14),
+      color: context.colors.onHero.withValues(alpha: 0.14),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white12),
+      border: Border.all(color: context.colors.onHero.withValues(alpha: 0.12)),
     ),
     child: Column(children: [
-      Icon(icon, color: Colors.white, size: 18),
+      Icon(icon, color: context.colors.onHero, size: 18),
       const SizedBox(height: 4),
-      Text(value, style: dlText(17, w: FontWeight.w800, c: Colors.white)),
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: Colors.white70)),
+      Text(value, style: dlText(17, w: FontWeight.w800, c: context.colors.onHero)),
+      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(10.5, c: context.colors.onHero.withValues(alpha: 0.70))),
     ]),
   );
 }
@@ -389,10 +390,10 @@ class DlPrimaryButton extends StatelessWidget {
         ),
         onPressed: busy ? null : onPressed,
         child: busy
-            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+            ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: c.onHero))
             : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           if (icon != null) ...[Icon(icon, size: 19), const SizedBox(width: 8)],
-          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: Colors.white))),
+          Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(14.5, w: FontWeight.w800, c: c.onHero))),
         ]),
       ),
     );
@@ -484,12 +485,12 @@ class DlChoiceChip extends StatelessWidget {
             border: Border.all(color: selected ? c.primary : c.divider),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (icon != null) ...[Icon(icon, size: 16, color: selected ? Colors.white : c.textMedium), const SizedBox(width: 6)],
+            if (icon != null) ...[Icon(icon, size: 16, color: selected ? c.onHero : c.textMedium), const SizedBox(width: 6)],
             Flexible(
               child: Text(label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: dlText(12.5, w: FontWeight.w700, c: selected ? Colors.white : c.textDark)),
+                  style: dlText(12.5, w: FontWeight.w700, c: selected ? c.onHero : c.textDark)),
             ),
           ]),
         ),
@@ -706,8 +707,7 @@ String dlAgo(DateTime? t) {
   if (d.inHours < 24) return '${d.inHours} ${dlTr('dl_ago_hours', 'h ago')}';
   if (d.inDays == 1) return dlTr('dl_ago_yesterday', 'yesterday');
   if (d.inDays < 7) return '${d.inDays} ${dlTr('dl_ago_days', 'days ago')}';
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${t.year}-${two(t.month)}-${two(t.day)}';
+  return AppTime.date(t.toUtc());   // platform / organization timezone, localized month
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -790,7 +790,7 @@ class DlSwatches extends StatelessWidget {
           ),
           child: col == null
               ? Icon(Icons.format_color_reset_rounded, size: size * 0.55, color: c.textMedium)
-              : (on ? Icon(Icons.check_rounded, size: size * 0.6, color: Colors.white) : null),
+              : (on ? Icon(Icons.check_rounded, size: size * 0.6, color: c.onHero) : null),
         ),
       );
     }

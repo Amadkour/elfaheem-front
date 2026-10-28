@@ -10,11 +10,12 @@
 //
 // Uses the dashboard's StudentAnalyticsProvider when there is one (so the dashboard's refresh button refreshes what
 // you see), otherwise creates its own.
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
@@ -96,7 +97,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
 
     final List<Widget> body;
     if (prov.loading && !prov.loadedOnce) {
-      body = [const SliverFillRemaining(hasScrollBody: false, child: Center(child: AppLoadingIndicator()))];
+      body = [const SliverToBoxAdapter(child: AppListSkeleton())];
     } else if (prov.error != null && prov.courses.isEmpty) {
       body = [SliverFillRemaining(hasScrollBody: false, child: AnErrorRetry(message: prov.error!, onRetry: prov.loadCourses))];
     } else if (prov.courses.isEmpty) {
@@ -151,7 +152,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
       useWebCard: true,
       child: ColoredBox(
         color: c.background,
-        child: RefreshIndicator(
+        child: AppRefresh(
           onRefresh: prov.loadCourses,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -176,8 +177,8 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
         child: ChoiceChip(
           selected: on,
           showCheckmark: false,
-          avatar: Icon(icon, size: 16, color: on ? Colors.white : c.textMedium),
-          label: Text(label, style: anText(12, w: FontWeight.w700, c: on ? Colors.white : c.textDark)),
+          avatar: Icon(icon, size: 16, color: on ? c.onHero : c.textMedium),
+          label: Text(label, style: anText(12, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
           selectedColor: c.primary,
           backgroundColor: c.cardBg,
           side: BorderSide(color: on ? c.primary : c.divider),
@@ -201,6 +202,7 @@ class _StudentAnalyticsViewState extends State<_StudentAnalyticsView> with Autom
             prefixIcon: Icon(Icons.search_rounded, color: c.textMedium, size: 20),
             suffixIcon: prov.search.isNotEmpty
                 ? IconButton(
+              tooltip: MaterialLocalizations.of(context).clearButtonTooltip,
               icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
               onPressed: () {
                 _searchCtrl.clear();
@@ -254,7 +256,7 @@ class _Header extends StatelessWidget {
               if (p != null) ...[
                 Container(
                   padding: const EdgeInsets.all(2.5),
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white24),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.heroGlassBorder),
                   child: _HeroAvatar(name: p.name, url: p.imageUrl, size: 46),
                 ),
                 const SizedBox(width: 12),
@@ -265,12 +267,12 @@ class _Header extends StatelessWidget {
                     first.isEmpty ? 'an_title'.tr : anFmt('an_hello', {'name': first}, 'Hello, {name} 👋'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: anText(21, w: FontWeight.w800, c: Colors.white),
+                    style: anText(21, w: FontWeight.w800, c: context.colors.onHero),
                   ),
                   const SizedBox(height: 3),
                   Text(
                     p != null ? anInsightSentence(p.progress, p.attendance, p.examAvg, mine: true) : 'an_subtitle'.tr,
-                    style: anText(12.5, c: Colors.white70, h: 1.5),
+                    style: anText(12.5, c: context.colors.onHeroMuted, h: 1.5),
                   ),
                 ]),
               ),
@@ -329,7 +331,7 @@ class _HeroAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: c.onHero),
       child: Text(letter, style: anText(size * 0.42, w: FontWeight.w800, c: c.primary)),
     );
     if (url == null || url!.isEmpty) return fallback;

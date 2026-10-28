@@ -1,5 +1,6 @@
 library;
 
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -138,7 +139,7 @@ class StudentExamProvider extends BaseProvider {
     } on ApiException catch (e) {
       _listError = e.message;
     } catch (e) {
-      _listError = e.toString();
+      _listError = apiErrorText(ApiException.from(e));
     } finally {
       _loadingList = false;
       notifyListeners();
@@ -163,7 +164,7 @@ class StudentExamProvider extends BaseProvider {
     } on ApiException catch (e) {
       _courseExamsError[courseId] = e.message;
     } catch (e) {
-      _courseExamsError[courseId] = e.toString();
+      _courseExamsError[courseId] = apiErrorText(ApiException.from(e));
     } finally {
       _loadingCourseExams[courseId] = false;
       notifyListeners();
@@ -199,7 +200,7 @@ class StudentExamProvider extends BaseProvider {
       _questionsError = e.message;
       return false;
     } catch (e) {
-      _questionsError = e.toString();
+      _questionsError = apiErrorText(ApiException.from(e));
       return false;
     } finally {
       _loadingQuestions = false;
@@ -294,7 +295,7 @@ class StudentExamProvider extends BaseProvider {
       s.submitted = true;
       _markSubmittedInList(s.exam.id, s.result);
     } catch (e) {
-      s.submitError = e is ApiException ? e.message : e.toString();
+      s.submitError = apiErrorText(ApiException.from(e));
     } finally {
       s.submitting = false;
       notifyListeners();
@@ -354,7 +355,7 @@ class StudentExamProvider extends BaseProvider {
       }
       return e.message;
     } catch (e) {
-      return e.toString();
+      return apiErrorText(ApiException.from(e));
     } finally {
       flagBusy = false;
       notifyListeners();

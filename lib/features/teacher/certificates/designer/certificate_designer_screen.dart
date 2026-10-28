@@ -193,7 +193,7 @@ class _DesignerViewState extends State<_DesignerView> {
                   if (p.busy || p.saving)
                     Positioned.fill(
                       child: ColoredBox(
-                        color: Colors.black.withValues(alpha: 0.25),
+                        color: c.heroShade.withValues(alpha: 0.25),
                         child: const Center(child: AppLoadingIndicator()),
                       ),
                     ),
@@ -313,7 +313,7 @@ class _Wizard extends StatelessWidget {
       ),
       if (p.busy)
         Positioned.fill(
-          child: ColoredBox(color: Colors.black.withValues(alpha: 0.25), child: const Center(child: AppLoadingIndicator())),
+          child: ColoredBox(color: c.heroShade.withValues(alpha: 0.25), child: const Center(child: AppLoadingIndicator())),
         ),
     ]);
   }
@@ -337,7 +337,7 @@ class _ImageRow extends StatelessWidget {
         width: 64,
         height: 64,
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: c.textLight,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: c.divider),
         ),
@@ -351,7 +351,7 @@ class _ImageRow extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Wrap(spacing: 8, children: [
             OutlinedButton.icon(onPressed: onUpload, icon: const Icon(Icons.upload_rounded, size: 16), label: Text(uploadLabel)),
-            if (url != null) IconButton(onPressed: onRemove, icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
+            if (url != null) IconButton(tooltip: 'remove'.tr, onPressed: onRemove, icon: Icon(Icons.delete_outline_rounded, color: c.danger)),
           ]),
           if (hint != null) Padding(padding: const EdgeInsets.only(top: 4), child: Text(hint!, style: c.caption)),
         ]),
@@ -415,7 +415,7 @@ class _SignatureEditorState extends State<_SignatureEditor> {
                   shape: BoxShape.circle,
                   border: Border.all(color: p.signatureInk == e.key ? c.primary : c.divider, width: p.signatureInk == e.key ? 3 : 1),
                 ),
-                child: e.key == null ? const Icon(Icons.palette_outlined, size: 16, color: Colors.white) : null,
+                child: e.key == null ? Icon(Icons.palette_outlined, size: 16, color: c.onHero) : null,
               ),
             ),
         ]),
@@ -549,7 +549,7 @@ class _CanvasArea extends StatelessWidget {
     final dark = d.theme['dark'] == true;
 
     return ColoredBox(
-      color: Colors.grey.shade300,
+      color: c.textLight,
       child: LayoutBuilder(builder: (context, box) {
         const pad = 14.0;
         final scale = ((box.maxWidth - pad * 2) / d.logicalW).clamp(0.05, 10.0).toDouble();
@@ -566,8 +566,8 @@ class _CanvasArea extends StatelessWidget {
               width: pageW,
               height: pageH,
               decoration: BoxDecoration(
-                color: dark ? const Color(0xFF101014) : Colors.white,
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 14)],
+                color: dark ? c.heroShade : c.cardBg,
+                boxShadow: [BoxShadow(color: c.heroShade.withValues(alpha: 0.25), blurRadius: 14)],
               ),
               child: Stack(clipBehavior: Clip.none, children: [
                 if (d.backgroundUrl != null)
@@ -615,7 +615,7 @@ class _CanvasField extends StatelessWidget {
           child: Opacity(
             opacity: f.opacity,
             child: url == null
-                ? Container(color: Colors.black12, child: const Icon(Icons.image_not_supported_outlined, size: 18))
+                ? Container(color: c.heroShade.withValues(alpha: 0.12), child: const Icon(Icons.image_not_supported_outlined, size: 18))
                 : Image.network(url, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image_outlined)),
           ),
         );
@@ -635,7 +635,7 @@ class _CanvasField extends StatelessWidget {
               color: const Color(0xFFD6DCE2),
               shape: f.shape == 'rounded' ? BoxShape.rectangle : BoxShape.circle,
               borderRadius: f.shape == 'rounded' ? BorderRadius.circular(side * 0.16) : null,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(color: c.onHero, width: 2),
             ),
             child: Icon(Icons.person_rounded, size: side * 0.62, color: const Color(0xFFAAB2BC)),
           ),
@@ -673,7 +673,7 @@ class _CanvasField extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.primary,
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(color: c.onHero, width: 2),
                     ),
                   ),
                 ),
@@ -916,6 +916,7 @@ class _FieldPanelState extends State<_FieldPanel> {
             const SizedBox(width: 10),
             for (final a in const [('left', Icons.format_align_left_rounded), ('center', Icons.format_align_center_rounded), ('right', Icons.format_align_right_rounded)])
               IconButton(
+                tooltip: 'pl_align_${a.$1}'.tr,
                 visualDensity: VisualDensity.compact,
                 onPressed: () => edit((x) => x.copyWith(align: a.$1)),
                 icon: Icon(a.$2, color: f.align == a.$1 ? c.primary : c.textLight),
@@ -931,9 +932,9 @@ class _FieldPanelState extends State<_FieldPanel> {
           Row(children: [
             Text('cert_max_lines'.tr, style: c.caption),
             const Spacer(),
-            IconButton(visualDensity: VisualDensity.compact, onPressed: f.maxLines > 1 ? () => edit((x) => x.copyWith(maxLines: x.maxLines - 1)) : null, icon: const Icon(Icons.remove_circle_outline)),
+            IconButton(tooltip: 'pl_fewer_lines'.tr, visualDensity: VisualDensity.compact, onPressed: f.maxLines > 1 ? () => edit((x) => x.copyWith(maxLines: x.maxLines - 1)) : null, icon: const Icon(Icons.remove_circle_outline)),
             Text('${f.maxLines}', style: c.body),
-            IconButton(visualDensity: VisualDensity.compact, onPressed: f.maxLines < 6 ? () => edit((x) => x.copyWith(maxLines: x.maxLines + 1)) : null, icon: const Icon(Icons.add_circle_outline)),
+            IconButton(tooltip: 'pl_more_lines'.tr, visualDensity: VisualDensity.compact, onPressed: f.maxLines < 6 ? () => edit((x) => x.copyWith(maxLines: x.maxLines + 1)) : null, icon: const Icon(Icons.add_circle_outline)),
           ]),
         ],
         _LabeledSlider(label: 'cert_opacity'.tr, value: f.opacity, min: 0.1, max: 1, decimals: 2, onChanged: (v) => edit((x) => x.copyWith(opacity: v))),
@@ -998,7 +999,7 @@ class _ColorPickerState extends State<_ColorPicker> {
                 color: hexToColor(s),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: widget.value.toUpperCase() == s.toUpperCase() ? c.primary : Colors.black26,
+                  color: widget.value.toUpperCase() == s.toUpperCase() ? c.primary : c.heroShade.withValues(alpha: 0.26),
                   width: widget.value.toUpperCase() == s.toUpperCase() ? 3 : 1,
                 ),
               ),
@@ -1081,11 +1082,13 @@ class _LayersPanel extends StatelessWidget {
               trailing: d.canEdit
                   ? Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
+                        tooltip: (f.visible ? 'pl_hide' : 'pl_show').tr,
                         visualDensity: VisualDensity.compact,
                         onPressed: () => p.updateField(f.id, (x) => x.copyWith(visible: !x.visible)),
                         icon: Icon(f.visible ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 18),
                       ),
                       IconButton(
+                        tooltip: 'delete'.tr,
                         visualDensity: VisualDensity.compact,
                         onPressed: () => p.removeField(f.id),
                         icon: Icon(Icons.delete_outline_rounded, size: 18, color: c.danger),
@@ -1235,7 +1238,7 @@ class _PreviewDialog extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 980, maxHeight: 760),
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 8, 8),
             child: Row(children: [
               Expanded(child: Text('cert_preview'.tr, style: c.h2.copyWith(fontSize: 15))),
               SegmentedButton<bool>(
@@ -1248,7 +1251,7 @@ class _PreviewDialog extends StatelessWidget {
                   p.preview(arabic: s.first);
                 },
               ),
-              IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+              IconButton(tooltip: 'close'.tr, onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
             ]),
           ),
           Flexible(

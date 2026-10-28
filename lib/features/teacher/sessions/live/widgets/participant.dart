@@ -455,7 +455,7 @@ class _GlassMenuButton extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsetsDirectional.only(start: 4),
         child: Material(
-          color: Colors.black.withValues(alpha: 0.38),
+          color: LivePalette.shade(0.38),
           shape: const CircleBorder(side: BorderSide(color: LivePalette.glassBorder, width: 0.8)),
           clipBehavior: Clip.antiAlias,
           child: PopupMenuButton<Function>(

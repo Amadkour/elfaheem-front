@@ -4,12 +4,14 @@
 // Hero with overall stats, pinned segmented tabs, rich exam cards.
 library;
 
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../../utils/widget/base_page.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
@@ -85,6 +87,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                   actions: [
                     GlassIcon(
                       icon: Icons.refresh_rounded,
+                      tooltip: 'refresh'.tr,
                       onTap: () => prov.loadMyExams(),
                     ),
                   ],
@@ -100,14 +103,14 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.emoji_events_rounded,
-                    color: const Color(0xFFFFD740),
+                    color: context.colors.accent,
                     value: '$passed/${submitted.length}',
                     label: 'sa_passed_exams'.tr,
                   ),
                   const SizedBox(width: 10),
                   HeroStat(
                     icon: Icons.bar_chart_rounded,
-                    color: const Color(0xFF69F0AE),
+                    color: context.colors.success,
                     value: '${avg.toStringAsFixed(0)}%',
                     label: 'sa_avg_score'.tr,
                   ),
@@ -134,7 +137,7 @@ class _StudentExamListScreenState extends State<StudentExamListScreen>
           ),
         ],
         body: prov.loadingList
-            ? const Center(child: AppLoadingIndicator())
+            ? const AppListSkeleton()
             : prov.listError != null
             ? ExamError(
           message: prov.listError!,
@@ -179,7 +182,7 @@ class _ExamList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (exams.isEmpty) return ExamEmpty(icon: icon, text: emptyMsg);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: () => context.read<StudentExamProvider>().loadMyExams(),
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(
@@ -200,12 +203,12 @@ class _ExamCard extends StatelessWidget {
   const _ExamCard({required this.exam});
 
   Color _accent(BuildContext context) {
-    if (exam.isFrozen && !exam.isSubmitted) return Colors.blueGrey;
+    if (exam.isFrozen && !exam.isSubmitted) return context.colors.textMedium;
     if (exam.isSubmitted) {
-      return exam.passed == true ? context.colors.success : kDanger;
+      return exam.passed == true ? context.colors.success : context.colors.danger;
     }
     if (exam.startDate != null && exam.startDate!.isAfter(DateTime.now())) {
-      return kAmber;
+      return context.colors.warning;
     }
     return context.colors.primary;
   }
@@ -293,7 +296,7 @@ class _ExamCard extends StatelessWidget {
               Icons.repeat_rounded,
               tx('exam_attempts_of',
                   {'used': exam.submissionCount, 'max': exam.maxSubmissions}),
-              kViolet,
+              context.colors.purple,
             ),
             if (!exam.isFrozen)
               ExamChip(
@@ -302,7 +305,7 @@ class _ExamCard extends StatelessWidget {
                     {'n': exam.computedRemainingSubmissions ?? 0}),
                 (exam.computedRemainingSubmissions ?? 0) > 0
                     ? c.success
-                    : kDanger,
+                    : context.colors.danger,
               ),
           ],
           if (exam.endDate != null)
@@ -311,7 +314,7 @@ class _ExamCard extends StatelessWidget {
         if (hasScore) ...[
           const SizedBox(height: 14),
           Row(children: [
-            const Icon(Icons.emoji_events_rounded, size: 14, color: kAmber),
+            Icon(Icons.emoji_events_rounded, size: 14, color: context.colors.warning),
             const SizedBox(width: 5),
             Text(tx('exam_best_score'), style: examT(11.5, c: c.textMedium)),
             const Spacer(),
@@ -325,7 +328,7 @@ class _ExamCard extends StatelessWidget {
           const SizedBox(height: 12),
           ExamBanner(
             icon: Icons.replay_rounded,
-            color: kViolet,
+            color: context.colors.purple,
             text: tx('exam_retry_hint',
                 {'n': exam.computedRemainingSubmissions}),
           ),
@@ -373,14 +376,14 @@ class _DeadlineChipState extends State<_DeadlineChip> {
     final isDead = widget.frozen || _remaining.isNegative;
     final isUrgent = !isDead && _remaining.inHours < 3;
     final color = isDead
-        ? kDanger
+        ? context.colors.danger
         : isUrgent
-        ? kAmber
+        ? context.colors.warning
         : context.colors.primary;
     final label = isDead
         ? tx('exam_deadline_ended')
         : _remaining.inHours >= 24
-        ? '${widget.endDate.day}/${widget.endDate.month}'
+        ? AppTime.date(widget.endDate, pattern: 'd/M')
         : isUrgent
         ? tx('exam_hm_short', {
       'h': _remaining.inHours,

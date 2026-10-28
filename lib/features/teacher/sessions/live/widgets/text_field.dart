@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'live_palette.dart';
 
 class LKTextField extends StatelessWidget {
   final String label;
@@ -31,7 +32,7 @@ class LKTextField extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border.all(
                 width: 1,
-                color: Colors.white.withValues(alpha: .3),
+                color: LivePalette.ink(.3),
               ),
               borderRadius: BorderRadius.circular(8),
             ),

@@ -42,6 +42,17 @@ class LivePalette {
   static const Color glass = Color(0x1AFFFFFF);
   static const Color glassBorder = Color(0x30FFFFFF);
   static const Color scrim = Color(0x99000000);
+  static const Color textSoft = Color(0x80FFFFFF);      // timestamps, idle labels
+  static const Color glassFaint = Color(0x0DFFFFFF);    // resting fill of a control on the bar
+  static const Color hairline = Color(0x14FFFFFF);      // dividers inside room panels
+  static const Color scrimLight = Color(0x8A000000);    // pill behind a label drawn over video
+  static const Color scrimHeavy = Color(0xB3000000);    // bottom fade over video
+  static const Color tooltipBg = Color(0xF0101420);     // tooltips on the bar
+
+  /// Shade (black at [a]) / highlight (white at [a]) over the always-dark room and its video: scrims, shadows,
+  /// hover washes. Every such tone in the room goes through these two, not Colors.black / Colors.white.
+  static Color shade(double a) => Colors.black.withValues(alpha: a);
+  static Color ink(double a) => textHigh.withValues(alpha: a);
 
   // ── Per-participant colour ─────────────────────────────────────────────────
 

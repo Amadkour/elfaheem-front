@@ -73,13 +73,13 @@ class _CoursePrivacyCardState extends State<CoursePrivacyCard> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: priv ? const Color(0xFFC9A84C).withValues(alpha: 0.08) : c.cardBg,
+            color: priv ? c.accent2.withValues(alpha: 0.08) : c.cardBg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: priv ? const Color(0xFFC9A84C).withValues(alpha: 0.5) : Colors.black12),
+            border: Border.all(color: priv ? c.accent2.withValues(alpha: 0.5) : c.heroShade.withValues(alpha: 0.12)),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
-              Icon(priv ? Icons.lock_rounded : Icons.public_rounded, color: priv ? const Color(0xFFC9A84C) : c.primary),
+              Icon(priv ? Icons.lock_rounded : Icons.public_rounded, color: priv ? c.accent2 : c.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

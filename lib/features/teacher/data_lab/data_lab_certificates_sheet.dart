@@ -18,7 +18,8 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 Future<void> showCertificatesSheet(BuildContext context, DataLabProvider p) =>
     showAdminSheet(context, (_) => _CertSheet(p: p));
@@ -64,7 +65,7 @@ class _CertSheetState extends State<_CertSheet> {
       });
       await _check();
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -87,7 +88,7 @@ class _CertSheetState extends State<_CertSheet> {
       if (mounted && gen == _checkGen) setState(() => _plan = r);
     } catch (e) {
       if (mounted && gen == _checkGen) setState(() => _plan = null);
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted && gen == _checkGen) setState(() => _checking = false);
     }
@@ -112,7 +113,7 @@ class _CertSheetState extends State<_CertSheet> {
       toast('${r['queued'] ?? 0} ${'dl_cert_queued'.tr}');
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -128,7 +129,7 @@ class _CertSheetState extends State<_CertSheet> {
       SheetHeader('dl_certificates'.tr),
       Flexible(
         child: _loading
-            ? const Padding(padding: EdgeInsets.all(40), child: const Center(child: AppLoadingIndicator(size: 56)))
+            ? const AppListSkeleton(items: 4, withAvatar: false)
             : ListView(
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
@@ -175,11 +176,13 @@ class _CertSheetState extends State<_CertSheet> {
                 Expanded(child: Text('${'dl_cert_pass_mark'.tr}: ${_mark.round()}%', style: dlText(13.5, w: FontWeight.w800, c: c.textDark))),
                 IconButton(
                   visualDensity: VisualDensity.compact,
+                  tooltip: AppConfig.lang == 'ar' ? 'إنقاص' : 'Decrease',
                   onPressed: _mark <= 0 ? null : () => _nudge(-1),
                   icon: Icon(Icons.remove_circle_outline_rounded, color: c.textMedium),
                 ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
+                  tooltip: AppConfig.lang == 'ar' ? 'زيادة' : 'Increase',
                   onPressed: _mark >= 100 ? null : () => _nudge(1),
                   icon: Icon(Icons.add_circle_outline_rounded, color: c.textMedium),
                 ),

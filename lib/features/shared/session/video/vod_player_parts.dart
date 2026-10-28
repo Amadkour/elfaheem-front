@@ -60,7 +60,32 @@ SessionMaterialModel? vodNextOf(List<SessionMaterialModel> list, SessionMaterial
   return i < 0 || i + 1 >= list.length ? null : list[i + 1];
 }
 
-TextStyle _w(double size, {FontWeight w = FontWeight.w600, Color c = Colors.white}) =>
+/// Ink of the player chrome. Everything here is drawn OVER the video (controls, HUD, captions, next-up card), so it
+/// is fixed white / black at set alphas — readable on any frame in both app themes; the theme's primary still
+/// colours buttons and progress. [letterbox] is the pure black behind the picture (bars around a 4:3 video) and stays
+/// black on purpose. Every colour of the player goes through this class or context.colors, never Colors.*.
+class VodInk {
+  VodInk._();
+  static const Color letterbox = Color(0xFF000000);
+  static const Color textHigh = Color(0xFFFFFFFF);
+  static const Color textMid = Color(0xB3FFFFFF);
+  static const Color textSoft = Color(0x99FFFFFF);
+  static const Color textLow = Color(0x66FFFFFF);
+  static const Color glass = Color(0x1AFFFFFF);
+  static const Color glassFaint = Color(0x0DFFFFFF);
+  static const Color glassBorder = Color(0x3DFFFFFF);
+  static const Color hairline = Color(0x14FFFFFF);
+  static const Color scrim = Color(0x99000000);
+  static const Color scrimLight = Color(0x8A000000);
+  static const Color scrimHeavy = Color(0xB3000000);
+  static const Color tooltipBg = Color(0xF0101420);
+
+  /// Black / white at [a]: scrims, shadows and glass over the video.
+  static Color shade(double a) => letterbox.withValues(alpha: a);
+  static Color ink(double a) => textHigh.withValues(alpha: a);
+}
+
+TextStyle _w(double size, {FontWeight w = FontWeight.w600, Color c = VodInk.textHigh}) =>
     TextStyle(color: c, fontSize: size, fontWeight: w, fontFamily: 'tajawal');
 
 // ── Next up ────────────────────────────────────────────────────────────────
@@ -83,24 +108,24 @@ class VodNextUpCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.72),
+          color: VodInk.shade(0.72),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          border: Border.all(color: VodInk.ink(0.14)),
         ),
         child: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           Text(seconds == null ? t('التالي', 'Up next') : t('التالي خلال $seconds ث', 'Up next in ${seconds}s'),
-              style: _w(12, c: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+              style: _w(12, c: VodInk.textMid), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 6),
           Text(next.name, style: _w(15, w: FontWeight.w800), maxLines: 2, overflow: TextOverflow.ellipsis),
           if (next.durationSeconds != null)
-            Text(vodFmt(Duration(seconds: next.durationSeconds!)), style: _w(12, c: Colors.white60)),
+            Text(vodFmt(Duration(seconds: next.durationSeconds!)), style: _w(12, c: VodInk.textSoft)),
           const SizedBox(height: 12),
           Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.end, children: [
             if (seconds != null)
-              TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: _w(13, c: Colors.white70))),
+              TextButton(onPressed: onCancel, child: Text(t('إلغاء', 'Cancel'), style: _w(13, c: VodInk.textMid))),
             FilledButton.icon(
-              style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: Colors.white),
+              style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: VodInk.textHigh),
               onPressed: onPlay,
               icon: const Icon(Icons.skip_next_rounded, size: 18),
               label: Text(t('تشغيل الآن', 'Play now'), style: _w(13, w: FontWeight.w700)),
@@ -152,7 +177,7 @@ class VodLectureList extends StatelessWidget {
                     color: on ? c.primary : c.divider.withValues(alpha: 0.6),
                   ),
                   child: on
-                      ? const Icon(Icons.equalizer_rounded, color: Colors.white, size: 18)
+                      ? const Icon(Icons.equalizer_rounded, color: VodInk.textHigh, size: 18)
                       : Text('${i + 1}', style: appText(12, w: FontWeight.w700, c: c.textDark)),
                 ),
                 const SizedBox(width: 12),
@@ -211,12 +236,12 @@ class VodResumeChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(14, 4, 4, 4),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.7),
+        color: VodInk.shade(0.7),
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
+        border: Border.all(color: VodInk.ink(0.16)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.history_rounded, color: Colors.white, size: 16),
+        const Icon(Icons.history_rounded, color: VodInk.textHigh, size: 16),
         const SizedBox(width: 6),
         Flexible(
           child: Text(t('استكمال من ${vodFmt(at)}', 'Resumed at ${vodFmt(at)}'),
@@ -248,9 +273,9 @@ class VodLevelHud extends StatelessWidget {
     return Container(
       width: 150,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(color: VodInk.shade(0.65), borderRadius: BorderRadius.circular(16)),
       child: Row(children: [
-        Icon(icon, color: Colors.white, size: 20),
+        Icon(icon, color: VodInk.textHigh, size: 20),
         const SizedBox(width: 10),
         Expanded(
           child: ClipRRect(
@@ -259,7 +284,7 @@ class VodLevelHud extends StatelessWidget {
               value: value.clamp(0.0, 1.0),
               minHeight: 4,
               color: context.colors.primary,
-              backgroundColor: Colors.white24,
+              backgroundColor: VodInk.glassBorder,
             ),
           ),
         ),
@@ -282,8 +307,8 @@ class VodCaption extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 720),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(6)),
-        child: Text(text, textAlign: TextAlign.center, style: _w(15, w: FontWeight.w600, c: Colors.white), maxLines: 3),
+        decoration: BoxDecoration(color: VodInk.shade(0.7), borderRadius: BorderRadius.circular(6)),
+        child: Text(text, textAlign: TextAlign.center, style: _w(15, w: FontWeight.w600, c: VodInk.textHigh), maxLines: 3),
       ),
     );
   }
@@ -300,7 +325,7 @@ class VodPlayerSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.black,
+      color: VodInk.letterbox,
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -310,8 +335,9 @@ class VodPlayerSkeleton extends StatelessWidget {
                 const SizedBox(width: 36)
               else
                 IconButton(
+                  tooltip: t('رجوع', 'Back'),
                   onPressed: onBack,
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: VodInk.textHigh, size: 20),
                 ),
               Expanded(
                 child: title == null
@@ -357,7 +383,7 @@ class _BarState extends State<_Bar> with SingleTickerProviderStateMixin {
         child: Container(
           width: widget.width,
           height: widget.height,
-          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(widget.radius)),
+          decoration: BoxDecoration(color: VodInk.glassBorder, borderRadius: BorderRadius.circular(widget.radius)),
         ),
       );
 }

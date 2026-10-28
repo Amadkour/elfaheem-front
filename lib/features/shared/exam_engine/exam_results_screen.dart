@@ -15,6 +15,8 @@ import 'exam_quick.dart';
 import 'exam_review.dart' show ExamReviewApi;
 import 'exam_review_screen.dart' show ExamReviewScreen;
 import 'exam_taking.dart' show examCodeText;
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/api_client.dart';
 
 /// A student's answer as one line of text (choice ids, text, file name …).
 String answerSummary(Map<String, dynamic> answer) {
@@ -95,7 +97,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
       final bytes = await _api.paperFile(widget.examId);
       await p8SaveBytes(bytes, '${f['name'] ?? 'exam'}', mime: '${f['content_type'] ?? 'application/octet-stream'}');
     } catch (e) {
-      appToast('$e', error: true);
+      appToast(apiErrorText(ApiException.from(e)), error: true);
     }
   }
 
@@ -125,7 +127,7 @@ class _ExamResultsScreenState extends State<ExamResultsScreen> {
     return BasePage(
       key: const ValueKey('exam.results'),
       appBar: AppBar(title: Text(widget.examTitle, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
           if (_error != null) AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: _error!),
@@ -263,7 +265,7 @@ class _AttemptAnswersSheetState extends State<AttemptAnswersSheet> {
       final bytes = await widget.api.answerFile(widget.attemptId, asInt(it['question_id']));
       await p8SaveBytes(bytes, '${f['name'] ?? 'answer'}', mime: '${f['content_type'] ?? 'application/octet-stream'}');
     } catch (e) {
-      appToast('$e', error: true);
+      appToast(apiErrorText(ApiException.from(e)), error: true);
     }
   }
 
@@ -304,7 +306,7 @@ class AnswerGradeCard extends StatelessWidget {
     final proposal = item['auto_score'] == null ? null : asDouble(item['auto_score']);
     final waiting = const {'needs_review', 'queued', 'proposed', 'second_pending', 'moderation'}.contains('${item['review_state']}');
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Text('${item['prompt'] ?? ''}', maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(13.5, w: FontWeight.w700, c: c.textDark)),
         const SizedBox(height: 6),

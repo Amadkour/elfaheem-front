@@ -6,6 +6,8 @@
 //   • available / rejected → "Request certificate" (teacher must approve)
 //   • finished courses get their certificate automatically (+ notification)
 
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppShimmer;
+import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -29,7 +31,7 @@ class MyCertificatesScreen extends StatelessWidget {
 bool _isArabic(BuildContext c) => Localizations.localeOf(c).languageCode == 'ar';
 
 void _toast(BuildContext context, String msg, {bool error = false}) {
-  showAppNotice(msg, error: true);
+  showAppNotice(msg, error: error);   // was always `error: true`: "saved" showed as an error
 }
 
 class _View extends StatelessWidget {
@@ -42,7 +44,7 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (p.loading && p.items.isEmpty) {
-      body = const Center(child: AppLoadingIndicator());
+      body = const AppListSkeleton();
     } else if (p.loadFailed && p.items.isEmpty) {
       body = _Message(
         icon: Icons.cloud_off_rounded,
@@ -52,7 +54,7 @@ class _View extends StatelessWidget {
     } else if (p.items.isEmpty) {
       body = _Message(icon: Icons.workspace_premium_outlined, text: 'my_certificates_empty'.tr);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.load,
         child: ListView.separated(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -117,13 +119,13 @@ class _Summary extends StatelessWidget {
           borderRadius: BorderRadius.circular(context.colors.radiusMedium),
         ),
         child: Row(children: [
-          const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 32),
+          Icon(Icons.workspace_premium_rounded, color: context.colors.onHero, size: 32),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               '${'certificates_earned'.tr}: $issued / $total',
-              style: const TextStyle(
-                  fontFamily: 'tajawal', color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800),
+              style: TextStyle(
+                  fontFamily: 'tajawal', color: context.colors.onHero, fontSize: 15, fontWeight: FontWeight.w800),
             ),
           ),
         ]),
@@ -159,7 +161,7 @@ class _CertificateCard extends StatelessWidget {
                 cert.urlFor(ar)!,
                 fit: BoxFit.cover,
                 loadingBuilder: (_, child, prog) =>
-                    prog == null ? child : const Center(child: AppLoadingIndicator()),
+                    prog == null ? child : AppShimmer(child: ColoredBox(color: c.divider.withValues(alpha: 0.7), child: const SizedBox.expand())),
                 errorBuilder: (_, _, _) => Center(
                     child: Icon(Icons.broken_image_outlined, color: c.textLight, size: 40)),
               ),
@@ -211,15 +213,16 @@ class _CertificateCard extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => Dialog(
-        backgroundColor: Colors.black,
+        backgroundColor: context.colors.heroShade,
         insetPadding: const EdgeInsets.all(12),
         child: Stack(children: [
           InteractiveViewer(child: Image.network(cert.urlFor(ar)!, fit: BoxFit.contain)),
-          Positioned(
+          PositionedDirectional(
             top: 4,
-            right: 4,
+            end: 4,
             child: IconButton(
-              icon: const Icon(Icons.close_rounded, color: Colors.white),
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              icon: Icon(Icons.close_rounded, color: context.colors.onHero),
               onPressed: () => Navigator.pop(context),
             ),
           ),
@@ -239,7 +242,7 @@ class _StateChip extends StatelessWidget {
     final c = context.colors;
     final (label, color) = switch (state) {
       MyCertState.issued => ('cert_state_issued'.tr, c.success),
-      MyCertState.pending => ('cert_state_pending'.tr, const Color(0xFFE59A1F)),
+      MyCertState.pending => ('cert_state_pending'.tr, c.warning),
       MyCertState.readySoon => ('cert_state_ready_soon'.tr, c.primary),
       MyCertState.rejected => ('cert_state_rejected'.tr, c.danger),
       MyCertState.available => ('cert_state_available'.tr, c.textMedium),
@@ -303,7 +306,7 @@ class _Actions extends StatelessWidget {
               label: Text('request_certificate'.tr),
               style: ElevatedButton.styleFrom(
                 backgroundColor: c.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: c.onHero,
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
@@ -382,7 +385,7 @@ class _DownloadButton extends StatelessWidget {
         onPressed: () => go(false),
         icon: const Icon(Icons.download_rounded, size: 18),
         label: Text('download_certificate'.tr),
-        style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: Colors.white),
+        style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero),
       );
     }
 
@@ -392,7 +395,7 @@ class _DownloadButton extends StatelessWidget {
           onPressed: () => go(_isArabic(context)),
           icon: const Icon(Icons.download_rounded, size: 18),
           label: Text('download_certificate'.tr),
-          style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: Colors.white),
+          style: ElevatedButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero),
         ),
       ),
       const SizedBox(width: 8),

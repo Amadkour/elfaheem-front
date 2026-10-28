@@ -103,7 +103,7 @@ class _EntryTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             gradient: LinearGradient(colors: [c.primary, c.primaryDark]),
           ),
-          child: Icon(icon, color: Colors.white, size: 26),
+          child: Icon(icon, color: c.onHero, size: 26),
         ),
         const SizedBox(width: 14),
         Expanded(

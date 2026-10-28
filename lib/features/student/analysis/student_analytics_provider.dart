@@ -6,6 +6,7 @@
 //
 // The profile is optional: when the admin switched Data Lab off (or the course hides it) everything still works with
 // the platform data only — the extra numbers (progress, published marks, class averages, flags) simply do not show.
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 
@@ -133,7 +134,7 @@ class StudentAnalyticsProvider extends BaseProvider {
     } on ApiException catch (e) {
       if (gen == _gen) _error = e.message;
     } catch (e) {
-      if (gen == _gen) _error = e.toString();
+      if (gen == _gen) _error = apiErrorText(ApiException.from(e));
     } finally {
       if (gen == _gen) {
         _loading = false;
@@ -251,7 +252,7 @@ class StudentCourseAnalyticsProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _attError = e.message;
     } catch (e) {
-      _attError = e.toString();
+      _attError = apiErrorText(ApiException.from(e));
     } finally {
       _loadingAtt = false;
       _notify();
@@ -267,7 +268,7 @@ class StudentCourseAnalyticsProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       _examsError = e.message;
     } catch (e) {
-      _examsError = e.toString();
+      _examsError = apiErrorText(ApiException.from(e));
     } finally {
       _loadingExams = false;
       _notify();

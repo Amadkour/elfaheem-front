@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../config/app_config.dart';
+import '../../../config/theme/theme_config_provider.dart';
 
 class PrivateFlag extends StatelessWidget {
   const PrivateFlag({super.key,  this.label});
@@ -10,11 +11,11 @@ class PrivateFlag extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE24B4A),
+        color: context.colors.danger,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE24B4A).withValues(alpha: 0.35),
+            color: context.colors.danger.withValues(alpha: 0.35),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -26,14 +27,14 @@ class PrivateFlag extends StatelessWidget {
           Icon(
             Icons.lock_rounded,
             size: 13,
-            color: Colors.white,
+            color: context.colors.onHero,
           ),
           const SizedBox(width: 3,),
            Text(
            label?? 'private'.tr,
             maxLines: 1,
             style: TextStyle(
-                color: Colors.white,
+                color: context.colors.onHero,
                 fontSize: 10,
                 fontFamily: 'bahji'
             ),

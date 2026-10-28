@@ -32,6 +32,9 @@ import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'live_palette.dart';
+import 'package:flutter_education_app/core/api_client.dart' show ApiException;
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/services.dart';
 import '../../../../admin/admin_common.dart';
 import 'recorder_web_stub.dart'
@@ -244,7 +247,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         }
       } catch (e) {
         log('[SS] Android start error: $e');
-        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
+        showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
       }
     } else {
       // ── STOP screen share ─────────────────────────────────────────────────
@@ -376,7 +379,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         log('[SS] Web: screen share active (single capture)');
       } catch (e) {
         log('[SS] Web start error: $e');
-        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
+        showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
       }
     } else {
       try {
@@ -562,7 +565,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
           recorder?.onBroadcastEvent = null;
         }
         _isBroadcastActive = false;
-        showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
+        showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
       }
 
     } else {
@@ -654,7 +657,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       }
     } catch (e) {
       log('[SS] Desktop error: $e');
-      showSnack(trp('lr_screen_share_failed', {'e': '$e'}));
+      showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
     }
   }
 
@@ -728,28 +731,28 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
     final String subtitle;
 
     if (widget.isPaused) {
-      dotColor    = const Color(0xFFFFB800);
-      borderColor = const Color(0xFFFFB800).withValues(alpha: 0.45);
-      shadowColor = const Color(0xFFFFB800).withValues(alpha: 0.12);
-      iconColor   = const Color(0xFFFFB800);
+      dotColor    = LivePalette.warning;
+      borderColor = LivePalette.warning.withValues(alpha: 0.45);
+      shadowColor = LivePalette.warning.withValues(alpha: 0.12);
+      iconColor   = LivePalette.warning;
       icon        = Icons.pause_circle_outline;
       title       = 'lr_rec_paused_title'.tr;
       subtitle    = 'lr_rec_paused_sub'.tr;
     } else if (widget.isScreenRecording) {
-      dotColor    = const Color(0xFF22C55E);
-      borderColor = const Color(0xFF22C55E).withValues(alpha: 0.45);
-      shadowColor = const Color(0xFF22C55E).withValues(alpha: 0.12);
-      iconColor   = const Color(0xFF22C55E);
+      dotColor    = LivePalette.success;
+      borderColor = LivePalette.success.withValues(alpha: 0.45);
+      shadowColor = LivePalette.success.withValues(alpha: 0.12);
+      iconColor   = LivePalette.success;
       icon        = Icons.videocam;
       title       = 'lr_rec_va_title'.tr;
       subtitle    = widget.isSharing
           ? 'lr_rec_va_shared_sub'.tr
           : 'lr_rec_va_sub'.tr;
     } else {
-      dotColor    = const Color(0xFFF59E0B);
-      borderColor = const Color(0xFFF59E0B).withValues(alpha: 0.45);
-      shadowColor = const Color(0xFFF59E0B).withValues(alpha: 0.12);
-      iconColor   = const Color(0xFFF59E0B);
+      dotColor    = LivePalette.warning;
+      borderColor = LivePalette.warning.withValues(alpha: 0.45);
+      shadowColor = LivePalette.warning.withValues(alpha: 0.12);
+      iconColor   = LivePalette.warning;
       icon        = Icons.mic;
       title       = 'lr_rec_audio_title'.tr;
       subtitle    = 'lr_rec_audio_sub'.tr;
@@ -759,7 +762,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E1120),
+        color: LivePalette.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor, width: 1.2),
         boxShadow: [BoxShadow(color: shadowColor, blurRadius: 20)],
@@ -789,7 +792,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
                   title,
                   style: const TextStyle(
                     fontFamily: 'tajawal',
-                    color: Color(0xFFFFFFFF),
+                    color: LivePalette.textHigh,
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
@@ -799,7 +802,7 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
                   subtitle,
                   style: TextStyle(
                     fontFamily: 'tajawal',
-                    color: const Color(0xFFFFFFFF).withValues(alpha: 0.55),
+                    color: LivePalette.ink(0.55),
                     fontSize: 11,
                   ),
                 ),
@@ -826,4 +829,11 @@ class _RecordingStatusBannerState extends State<RecordingStatusBanner>
       ),
     );
   }
+}
+
+/// The reason shown after "Screen share failed:" — the platform's short message, never the raw exception dump.
+String shareErrorText(Object e) {
+  if (e is PlatformException) return (e.message ?? '').trim().isNotEmpty ? e.message!.trim() : e.code;
+  if (e is ApiException) return apiErrorText(e);
+  return t('حاول مرة أخرى', 'try again');
 }

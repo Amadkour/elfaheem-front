@@ -7,7 +7,6 @@ import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
 import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../../shared/guest/guest_state.dart';

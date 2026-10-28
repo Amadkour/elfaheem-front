@@ -5,6 +5,7 @@
 /// Provider-agnostic — it just opens whatever `checkout_url` the backend returns.
 library;
 
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -123,7 +124,7 @@ abstract class PaymentFlowProvider extends BaseProvider {
       );
       _handleCheckoutResult(result ?? 'cancelled');
     } catch (e) {
-      setStep(EnrollStep.failed, reason: '${'payment_open_failed'.tr}: $e');
+      setStep(EnrollStep.failed, reason: '${'payment_open_failed'.tr}: ${apiErrorText(ApiException.from(e))}');
     } finally {
       stopLoading();
       safeNotify();

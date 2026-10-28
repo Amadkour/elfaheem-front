@@ -13,8 +13,8 @@ import '../../../../config/theme/theme_config_provider.dart';
 import '../../../shared/session/material/session_material_widget.dart';
 import '../../home/teacher_models.dart';
 import '../sessions_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/shared/session/session_track_tabs.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// [SliverList] + header that lives inside the parent [CustomScrollView].
@@ -28,10 +28,7 @@ List<Widget> buildSessionsSlivers(
   if (provider.loadingAllPage) {
     return [
       SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 28.0),
-          child: Center(child: AppLoadingIndicator()),
-        ),
+        child: const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(16, 20, 16, 0)),
       ),
     ];
   }
@@ -163,12 +160,12 @@ class _AddButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+            Icon(Icons.add_rounded, color: context.colors.onHero, size: 18),
             const SizedBox(width: 6),
             Text(
               'add_session_btn'.tr,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontWeight: FontWeight.w700,
                 fontFamily: 'tajawal',
                 fontSize: 12,
@@ -189,21 +186,7 @@ class _LoadingState extends StatelessWidget {
   const _LoadingState();
 
   @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 48),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(width: 40, height: 40, child: AppLoadingIndicator()),
-            const SizedBox(height: 16),
-            Text('loading_sessions'.tr, style: context.colors.body),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const AppListSkeleton(items: 3, padding: EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -231,10 +214,10 @@ class _EmptyState extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: context.colors.primaryShadow,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.video_library_rounded,
                 size: 40,
-                color: Colors.white,
+                color: context.colors.onHero,
               ),
             ),
             const SizedBox(height: 20),
@@ -264,16 +247,16 @@ class _EmptyState extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.add_rounded,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'add_first_session_btn'.tr,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: context.colors.onHero,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'tajawal',
                         fontSize: 15,

@@ -284,7 +284,7 @@ class _OfflineExamsListState extends State<OfflineExamsList> {
       ),
     ];
     if (widget.shrinkWrap) return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
-    return RefreshIndicator(
+    return AppRefresh(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), physics: const AlwaysScrollableScrollPhysics(), children: children),
     );

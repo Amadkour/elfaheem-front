@@ -385,7 +385,7 @@ class _ExamReviewScreenState extends State<ExamReviewScreen> {
                 .then((_) => _load()),
             icon: const Icon(Icons.offline_pin_rounded), tooltip: t('الاختبار دون اتصال', 'Offline sitting')),
       ]),
-      child: RefreshIndicator(
+      child: AppRefresh(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
           AppHero(title: widget.examTitle, subtitle: t('يقترح المصحح الآلي وتقرر أنت · الأقل ثقة أولاً', 'The grader proposes, you decide · lowest confidence first'),
@@ -477,7 +477,7 @@ class _EngineReviewSectionState extends State<EngineReviewSection> {
             for (final e in _items)
               AppCard(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+                padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 10),
                 onTap: e['status'] == 'draft'
                     ? () => _edit(asInt(e['id']))
                     : () => _open(ExamResultsScreen(examId: asInt(e['id']), examTitle: '${e['title'] ?? ''}', courseId: widget.courseId)),

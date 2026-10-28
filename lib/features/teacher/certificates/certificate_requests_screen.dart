@@ -11,6 +11,9 @@ import '../../../config/theme/theme_config_provider.dart';
 import 'certificate_requests_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppEmpty;
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 
 class CertificateRequestsScreen extends StatelessWidget {
   const CertificateRequestsScreen({super.key});
@@ -30,29 +33,13 @@ class _View extends StatelessWidget {
     final p = context.watch<CertificateRequestsProvider>();
     final c = context.colors;
 
-    Widget body;
-    if (p.loading && p.items.isEmpty) {
-      body = const Center(child: AppLoadingIndicator());
-    } else if (p.items.isEmpty) {
-      body = Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.mark_email_read_outlined, size: 52, color: c.textLight),
-          const SizedBox(height: 12),
-          Text('no_certificate_requests'.tr, style: c.body),
-        ]),
-      );
-    } else {
-      body = RefreshIndicator(
-        onRefresh: p.load,
-        child: ListView.separated(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          itemCount: p.items.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 10),
-          itemBuilder: (_, i) => _RequestCard(item: p.items[i]),
-        ),
-      );
-    }
+    final body = CertificateRequestsBody(
+      loading: p.loading,
+      error: p.hasError ? (p.errorMessage ?? 'pl_requests_load_failed'.tr) : null,
+      count: p.items.length,
+      onRefresh: p.load,
+      itemBuilder: (_, i) => _RequestCard(item: p.items[i]),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -64,6 +51,48 @@ class _View extends StatelessWidget {
           alignment: Alignment.topCenter,
           child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 760), child: body),
         ),
+      ),
+    );
+  }
+}
+
+/// The page body from plain values (loading · error · empty · list), so the layout harness can pump it.
+class CertificateRequestsBody extends StatelessWidget {
+  const CertificateRequestsBody({
+    super.key,
+    required this.loading,
+    required this.error,
+    required this.count,
+    required this.onRefresh,
+    required this.itemBuilder,
+  });
+
+  final bool loading;
+  final String? error;
+  final int count;
+  final Future<void> Function() onRefresh;
+  final IndexedWidgetBuilder itemBuilder;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && count == 0) return const AppListSkeleton();
+    // A failed first load used to show "no requests" — say it failed and offer a retry instead.
+    if (error != null && count == 0) return ErrorRetry(message: error!, onRetry: () => onRefresh());
+    if (count == 0) {
+      return AppRefresh(
+        onRefresh: onRefresh,
+        scrollable: false,
+        child: AppEmpty(icon: Icons.mark_email_read_outlined, title: 'no_certificate_requests'.tr),
+      );
+    }
+    return AppRefresh(
+      onRefresh: onRefresh,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: count,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: itemBuilder,
       ),
     );
   }
@@ -160,7 +189,7 @@ class _RequestCard extends StatelessWidget {
                 },
                 icon: const Icon(Icons.check_rounded, size: 16),
                 label: Text('approve_and_send'.tr),
-                style: ElevatedButton.styleFrom(backgroundColor: c.success, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: c.success, foregroundColor: c.onHero),
               ),
             ),
           ]),

@@ -1,8 +1,9 @@
+import 'package:flutter_education_app/core/app_time.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import '../../../../utils/widget/app_loading_indicator.dart';
 import '../../../shared/passcode/passcode_screen.dart';
 import 'exam_tr.dart';
 import 'exam_ui.dart';
@@ -124,7 +125,7 @@ class _SessionExamButtonState extends State<SessionExamButton> {
           ? tx('exam_session_exam_pct',
           {'pct': exam.percentage!.toStringAsFixed(0)})
           : tx('exam_session_exam');
-      color = exam.passed == true ? context.colors.success : kDanger;
+      color = exam.passed == true ? context.colors.success : context.colors.danger;
     } else if (closed) {
       label = tx('exam_closed');
       color = context.colors.textLight;
@@ -176,17 +177,14 @@ class _StudentCourseExamsWidgetState extends State<StudentCourseExamsWidget> {
     // Show the spinner on the very first frame too (before the post-frame
     // load starts) so "no exams yet" never flashes.
     if (loading || (!loaded && error == null)) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
-        child: Center(child: AppLoadingIndicator()),
-      );
+      return const AppListSkeleton(items: 3);
     }
 
     if (error != null) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: ExamBanner(
-            icon: Icons.error_outline_rounded, color: kDanger, text: error),
+            icon: Icons.error_outline_rounded, color: context.colors.danger, text: error),
       ).withRetry(
         label: tx('exam_redo'),
         onTap: () => prov.loadCourseExams(widget.courseId),
@@ -278,7 +276,7 @@ class _CourseExamTile extends StatelessWidget {
     if (isFrozen && !isDone) {
       accent = context.colors.primary;
     } else if (isDone) {
-      accent = exam.passed == true ? c.success : kDanger;
+      accent = exam.passed == true ? c.success : context.colors.danger;
     } else {
       accent = c.primary;
     }
@@ -362,7 +360,7 @@ class _MetaRow extends StatelessWidget {
               ? tx('exam_attempts_zero', {'max': exam.maxSubmissions})
               : tx('exam_attempts_of',
               {'used': exam.submissionCount, 'max': exam.maxSubmissions}),
-          exam.isSubmissionsFrozen ? kDanger : kViolet));
+          exam.isSubmissionsFrozen ? context.colors.danger : context.colors.purple));
     }
 
     if (exam.endDate != null) {
@@ -371,12 +369,12 @@ class _MetaRow extends StatelessWidget {
       final Color color;
       if (exam.isDeadlineFrozen) {
         label = tx('exam_deadline_ended');
-        color = kDanger;
+        color = context.colors.danger;
       } else if (diff.inHours < 24) {
         label = tx('exam_ends_in_h', {'h': diff.inHours});
-        color = diff.inHours < 3 ? kDanger : kAmber;
+        color = diff.inHours < 3 ? context.colors.danger : context.colors.warning;
       } else {
-        label = '${exam.endDate!.day}/${exam.endDate!.month}';
+        label = AppTime.date(exam.endDate!, pattern: 'd/M');
         color = context.colors.primary;
       }
       parts.add(_Meta(Icons.hourglass_bottom_rounded, label, color));

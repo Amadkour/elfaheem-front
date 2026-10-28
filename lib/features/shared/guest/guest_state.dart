@@ -178,15 +178,15 @@ class GuestBanner extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         child: Row(
                           children: [
-                            const Icon(Icons.explore_rounded, color: Colors.white, size: 18),
+                            Icon(Icons.explore_rounded, color: c.onHero, size: 18),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'guest_banner'.tr,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: c.onHero,
                                   fontWeight: FontWeight.w700,
                                   fontFamily: 'tajawal',
                                   decoration: TextDecoration.none,
@@ -197,7 +197,7 @@ class GuestBanner extends StatelessWidget {
                             const SizedBox(width: 8),
                             FilledButton.icon(
                               style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
+                                backgroundColor: c.onHero,
                                 foregroundColor: c.primary,
                                 visualDensity: VisualDensity.compact,
                                 padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -362,7 +362,7 @@ class _GradientIcon extends StatelessWidget {
         ),
       ],
     ),
-    child: Icon(icon, color: Colors.white, size: size * 0.46),
+    child: Icon(icon, color: context.colors.onHero, size: size * 0.46),
   );
 }
 
@@ -492,8 +492,8 @@ class GuestPromoCard extends StatelessWidget {
                 children: [
                   Text(
                     'guest_promo_title'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: c.onHero,
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                       fontFamily: 'bahji',
@@ -503,7 +503,7 @@ class GuestPromoCard extends StatelessWidget {
                   Text(
                     'guest_promo_sub'.tr,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: c.onHero.withValues(alpha: 0.85),
                       fontSize: 12.5,
                       height: 1.4,
                       fontFamily: 'tajawal',
@@ -512,7 +512,7 @@ class GuestPromoCard extends StatelessWidget {
                   const SizedBox(height: 14),
                   FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white,
+                      backgroundColor: c.onHero,
                       foregroundColor: c.primary,
                       visualDensity: VisualDensity.compact,
                     ),
@@ -530,10 +530,10 @@ class GuestPromoCard extends StatelessWidget {
               width: 58,
               height: 58,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: c.onHero.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.school_rounded, color: Colors.white, size: 28),
+              child: Icon(Icons.school_rounded, color: c.onHero, size: 28),
             ),
           ],
         ),

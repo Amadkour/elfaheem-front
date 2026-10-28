@@ -31,6 +31,7 @@ import 'course_privacy_card.dart';
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public entry point  — wraps the inner screen in a scoped provider
@@ -722,7 +723,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   fontFamily: 'bahji',
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.black.withValues(alpha: 0.55),
+                                  color: context.colors.heroShade.withValues(alpha: 0.55),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -791,7 +792,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                   _discountPercentCtrl.text.trim().isNotEmpty) ...[
                                 const SizedBox(height: 8),
                                 Align(
-                                  alignment: Alignment.centerLeft,
+                                  alignment: AlignmentDirectional.centerEnd,
                                   child: TextButton(
                                     onPressed: () => setState(() {
                                       _discountPercentCtrl.clear();
@@ -831,7 +832,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                           fontFamily: 'bahji',
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.black.withValues(alpha: 0.55),
+                                          color: context.colors.heroShade.withValues(alpha: 0.55),
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -859,7 +860,7 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                           fontFamily: 'bahji',
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.black.withValues(alpha: 0.55),
+                                          color: context.colors.heroShade.withValues(alpha: 0.55),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
@@ -884,11 +885,11 @@ class _CourseFormInnerState extends State<_CourseFormInner>
                                 items: [
                                   ...provider.form.schedules.map(
                                         (s) =>
-                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                    '${slotDayLabel(s.day)} • ${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}',
                                   ),
                                   ...provider.pendingSchedules.map(
                                         (s) =>
-                                    '${slotDayLabel(s.day)} • ${s.startTime} – ${s.endTime}',
+                                    '${slotDayLabel(s.day)} • ${AppTime.clock(s.startTime)} – ${AppTime.clock(s.endTime)}',
                                   ),
                                 ],
                                 onAdd: _showAddAppointmentSheet,
@@ -1077,7 +1078,7 @@ class _HeroHeader extends StatelessWidget {
               height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
+                color: context.colors.onHero.withValues(alpha: 0.06),
               ),
             ),
           ),
@@ -1089,7 +1090,7 @@ class _HeroHeader extends StatelessWidget {
               height: 90,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: context.colors.onHero.withValues(alpha: 0.08),
               ),
             ),
           ),
@@ -1101,29 +1102,32 @@ class _HeroHeader extends StatelessWidget {
             child: Row(
               children: [
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () => Navigator.pop(context),
                   child: Container(
                     width: 38,
                     height: 38,
+                    margin: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: context.colors.onHero.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.arrow_back_ios_rounded,
-                      color: Colors.white,
+                      color: context.colors.onHero,
                       size: 16,
+                      semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 7),
                 Expanded(
                   child: Text(
                     isEdit
                         ? 'edit_course_title'.tr
                         : 'create_new_course_title'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       fontFamily: 'bahji',
@@ -1137,17 +1141,17 @@ class _HeroHeader extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
+                    color: context.colors.onHero.withValues(alpha: 0.18),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: context.colors.onHero.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
                   child: Text(
                     isEdit ? 'edit_badge'.tr : 'new_badge'.tr,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'bahji',
@@ -1195,7 +1199,7 @@ class _FormCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
+          color: context.colors.heroShade.withValues(alpha: 0.06),
           blurRadius: 18,
           offset: const Offset(0, 4),
         ),
@@ -1215,22 +1219,22 @@ class _FormCard extends StatelessWidget {
                   gradient: context.colors.primaryGradient,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, size: 17, color: Colors.white),
+                child: Icon(icon, size: 17, color: context.colors.onHero),
               ),
               const SizedBox(width: 10),
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                   fontFamily: 'bahji',
-                  color: Color(0xFF1A1A2E),
+                  color: context.colors.textDark,
                 ),
               ),
             ],
           ),
         ),
-        Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+        Divider(height: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
           child: Column(
@@ -1403,16 +1407,16 @@ class _EditCertificateTemplateCardState
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
+                        color: context.colors.textMedium,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         'change_template_btn'.tr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          color: context.colors.onHero,
                         ),
                       ),
                     ),
@@ -1469,7 +1473,7 @@ class _LabeledField extends StatelessWidget {
           fontSize: 12,
           fontWeight: FontWeight.w600,
           fontFamily: 'bahji',
-          color: Colors.black.withValues(alpha: 0.55),
+          color: context.colors.heroShade.withValues(alpha: 0.55),
         ),
       ),
       const SizedBox(height: 6),
@@ -1530,7 +1534,7 @@ class _CourseTypeSelector extends StatelessWidget {
                         border: Border.all(
                           color: selected == value
                               ? Colors.transparent
-                              : Colors.black.withValues(alpha: 0.08),
+                              : context.colors.heroShade.withValues(alpha: 0.08),
                         ),
                       ),
                       child: Column(
@@ -1539,7 +1543,7 @@ class _CourseTypeSelector extends StatelessWidget {
                             icon,
                             size: 20,
                             color: selected == value
-                                ? Colors.white
+                                ? context.colors.onHero
                                 : context.colors.textMedium,
                           ),
                           const SizedBox(height: 4),
@@ -1550,7 +1554,7 @@ class _CourseTypeSelector extends StatelessWidget {
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: selected == value
-                                  ? Colors.white
+                                  ? context.colors.onHero
                                   : context.colors.textDark,
                             ),
                           ),
@@ -1603,7 +1607,7 @@ class _CollapsibleSection extends StatelessWidget {
       borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.06),
+          color: context.colors.heroShade.withValues(alpha: 0.06),
           blurRadius: 18,
           offset: const Offset(0, 4),
         ),
@@ -1626,7 +1630,7 @@ class _CollapsibleSection extends StatelessWidget {
                     gradient: context.colors.primaryGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, size: 17, color: Colors.white),
+                  child: Icon(icon, size: 17, color: context.colors.onHero),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -1635,11 +1639,11 @@ class _CollapsibleSection extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                           fontFamily: 'bahji',
-                          color: Color(0xFF1A1A2E),
+                          color: context.colors.textDark,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -1724,7 +1728,7 @@ class _StickyFooter extends StatelessWidget {
         color: context.colors.cardBg,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: context.colors.heroShade.withValues(alpha: 0.08),
             blurRadius: 24,
             offset: const Offset(0, -4),
           ),
@@ -1803,8 +1807,8 @@ class _StickyFooter extends StatelessWidget {
                         : (isEdit
                         ? 'no_changes_to_save'.tr
                         : 'enter_course_title_first'.tr),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: context.colors.onHero,
                       fontWeight: FontWeight.w800,
                       fontSize: 14,
                       fontFamily: 'bahji',
@@ -1859,7 +1863,7 @@ class _StatusCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = isPublished
         ? context.colors.accent2
-        : const Color(0xFFF59E0B);
+        : context.colors.warning;
     return _FormCard(
       icon: Icons.visibility_rounded,
       title: 'course_status_title'.tr,
@@ -1998,9 +2002,9 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                 onPressed: () => Navigator.pop(context, true),
                 child: Text(
                   'add'.tr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'bahji',
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -2086,7 +2090,7 @@ class _LocalAddScheduleSheetState extends State<_LocalAddScheduleSheet> {
                     child: Text(
                       l,
                       style: context.colors.label.copyWith(
-                        color: sel ? Colors.white : context.colors.textMedium,
+                        color: sel ? context.colors.onHero : context.colors.textMedium,
                         fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
@@ -2186,7 +2190,7 @@ class _TimeField extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(
-                '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+                AppTime.clockMinutes(time.hour * 60 + time.minute),
                 style: context.colors.h3.copyWith(fontSize: 18),
               ),
             ],

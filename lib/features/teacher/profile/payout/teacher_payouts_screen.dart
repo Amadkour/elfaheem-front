@@ -13,7 +13,8 @@ import '../../../../design/app_switch.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/primary_button.dart';
 import 'teacher_payout_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 class TeacherPayoutsScreen extends StatelessWidget {
   const TeacherPayoutsScreen({super.key});
@@ -63,7 +64,7 @@ class _View extends StatelessWidget {
 
     Widget body;
     if (!p.loaded) {
-      body = const Center(child: AppLoadingIndicator(size: 56));
+      body = const AppListSkeleton(withAvatar: false);
     } else if (p.error != null && p.summary.isEmpty) {
       body = ErrorRetry(message: p.error!, onRetry: p.load);
     } else {
@@ -72,7 +73,7 @@ class _View extends StatelessWidget {
           p.accounts.isNotEmpty &&
           !p.hasOpenRequest &&
           p.available >= p.minAmount;
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 40),
@@ -206,10 +207,10 @@ class _BalanceCard extends StatelessWidget {
         children: [
           Text(
             money(v),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: c.onHero,
               fontSize: 15,
             ),
           ),
@@ -217,9 +218,9 @@ class _BalanceCard extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
-              color: Colors.white70,
+              color: c.onHeroMuted,
               fontSize: 11,
             ),
           ),
@@ -236,22 +237,22 @@ class _BalanceCard extends StatelessWidget {
         children: [
           Text(
             'admin_available_to_withdraw'.tr,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
-              color: Colors.white70,
+              color: c.onHeroMuted,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             money(p.available),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'tajawal',
               fontWeight: FontWeight.w900,
-              color: Colors.white,
+              color: c.onHero,
               fontSize: 30,
             ),
           ),
-          const Divider(color: Colors.white24, height: 24),
+          Divider(color: c.heroGlassBorder, height: 24),
           Row(
             children: [
               cell('admin_total_net'.tr, p.totalNet),

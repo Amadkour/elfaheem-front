@@ -46,14 +46,14 @@ class CourseDetailsTopBar extends StatelessWidget {
           icon: isFavorite
               ? Icons.favorite_rounded
               : Icons.favorite_border_rounded,
-          iconColor: isFavorite ? const Color(0xFFFF5A7A) : Colors.white,
+          iconColor: isFavorite ? context.colors.danger : null,
           tooltip: 'course_hero_favourite'.tr,
           onTap: onLike!,
         ),
       if (onSetting != null)
         GlassBtn(
           icon: CupertinoIcons.settings,
-          iconColor: isFavorite ? const Color(0xFFFF5A7A) : Colors.white,
+          iconColor: isFavorite ? context.colors.danger : null,
           tooltip: 'course_hero_setting'.tr,
           onTap: onSetting!,
         ),
@@ -64,7 +64,7 @@ class CourseDetailsTopBar extends StatelessWidget {
           if(onBack!=null)
             GlassBtn(
               icon: Icons.arrow_back_ios_rounded,
-              tooltip: 'course_hero_share'.tr,
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
               onTap: onBack!,
             ),
           Spacer(),
@@ -84,13 +84,13 @@ class GlassBtn extends StatelessWidget {
   const GlassBtn({
     required this.icon,
     required this.onTap,
-    this.iconColor = Colors.white,
+    this.iconColor,
     this.tooltip,
   });
 
   final IconData icon;
   final VoidCallback onTap;
-  final Color iconColor;
+  final Color? iconColor;   // null → the on-hero ink of the theme
   final String? tooltip;
 
   @override
@@ -110,9 +110,9 @@ class GlassBtn extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white24, width: 1.7),
+                  border: Border.all(color: context.colors.heroGlassBorder, width: 1.7),
                 ),
-                child: Icon(icon, size: 24, color: iconColor),
+                child: Icon(icon, size: 24, color: iconColor ?? context.colors.onHero),
               ),
             ),
           ),

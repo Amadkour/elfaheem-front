@@ -119,11 +119,19 @@ class RecommendedCoursesField extends StatelessWidget {
                         color: context.colors.primary,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap: () => onToggle(c['id'] as int),
-                      child: Icon(Icons.close_rounded,
-                          size: 14, color: context.colors.primary),
+                    const SizedBox(width: 2),
+                    Semantics(
+                      button: true,
+                      label: 'remove'.tr,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onToggle(c['id'] as int),
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(Icons.close_rounded,
+                              size: 14, color: context.colors.primary),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -170,7 +178,7 @@ class _RecommendedCoursesPickerState extends State<_RecommendedCoursesPicker> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 12, 8),
               child: Row(
                 children: [
                   Expanded(

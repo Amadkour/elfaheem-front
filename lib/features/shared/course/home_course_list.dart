@@ -6,6 +6,7 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import '../../student/courses/details/components/app_responsive.dart';
 import 'course_row.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 class HomeCourseList extends StatefulWidget {
   const HomeCourseList({
@@ -133,7 +134,7 @@ class _HomeCourseListState extends State<HomeCourseList> {
         ],
       );
       if (widget.onRefresh != null) {
-        body = RefreshIndicator(onRefresh: widget.onRefresh!, child: body);
+        body = AppRefresh(onRefresh: widget.onRefresh!, child: body);
       }
     } else {
       // Old behaviour (home screen etc.)

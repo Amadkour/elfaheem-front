@@ -54,10 +54,10 @@ Future<void> addItemDialog(
             // FIX: use dialogContext and pass trimmed text result
             onPressed: () =>
                 Navigator.pop(dialogContext, ctrl.text.trim()),
-            child: const Text('إضافة',
+            child: Text('إضافة',
                 style: TextStyle(
                     fontFamily: 'bahji',
-                    color: Colors.white,
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700)),
           ),
         ],

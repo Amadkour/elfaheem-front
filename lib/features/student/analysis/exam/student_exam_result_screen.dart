@@ -10,7 +10,6 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/theme/app_theme.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/base_page.dart';
 import 'student_exam_provider.dart';
@@ -101,10 +100,10 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
 
   bool get _isBestEver => s.isCurrentBest;
 
-  Color get _primary => _passed ? AppTheme.success : Colors.redAccent;
+  Color get _primary => _passed ? context.colors.success : context.colors.danger;
 
   Color get _secondary =>
-      _passed ? const Color(0xFF2ECC71) : const Color(0xFFE74C3C);
+      _passed ? context.colors.success : context.colors.danger;
 
   @override
   Widget build(BuildContext context) {
@@ -148,10 +147,10 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                               child: CircularProgressIndicator(
                                 value: _scoreAnim.value * (_pct / 100),
                                 strokeWidth: 10,
-                                backgroundColor: Colors.white.withValues(
+                                backgroundColor: context.colors.onHero.withValues(
                                   alpha: .25,
                                 ),
-                                color: Colors.white,
+                                color: context.colors.onHero,
                               ),
                             ),
                             Column(
@@ -159,22 +158,22 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                               children: [
                                 Text(
                                   '${(_scoreAnim.value * _pct).toStringAsFixed(0)}%',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'bahji',
                                     fontSize: 32,
                                     fontWeight: FontWeight.w900,
-                                    color: Colors.white,
+                                    color: context.colors.onHero,
                                   ),
                                 ),
                                 Text(
                                   _passed
                                       ? tx('exam_passed_mark')
                                       : tx('exam_failed_mark'),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'bahji',
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
-                                    color: Colors.white,
+                                    color: context.colors.onHero,
                                   ),
                                 ),
                               ],
@@ -185,10 +184,10 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
                       const SizedBox(height: 10),
                       Text(
                         s.exam.name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'bahji',
                           fontSize: 14,
-                          color: Colors.white70,
+                          color: context.colors.onHeroMuted,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -199,10 +198,10 @@ class _StudentExamResultScreenState extends State<StudentExamResultScreen>
             ),
             title: Text(
               tx('exam_result_title'),
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'bahji',
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
+                color: context.colors.onHero,
               ),
             ),
           ),
@@ -369,7 +368,7 @@ class _ResultBanner extends StatelessWidget {
               passed
                   ? Icons.emoji_events_rounded
                   : Icons.sentiment_dissatisfied_rounded,
-              color: Colors.white,
+              color: c.onHero,
               size: 28,
             ),
           ),
@@ -401,27 +400,27 @@ class _ResultBanner extends StatelessWidget {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                          gradient: LinearGradient(
+                            colors: [c.accent2, c.warning],
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star_rounded,
                               size: 12,
-                              color: Colors.white,
+                              color: c.onHero,
                             ),
                             const SizedBox(width: 3),
                             Text(
                               tx('exam_best_score'),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'bahji',
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: c.onHero,
                               ),
                             ),
                           ],
@@ -496,21 +495,21 @@ class _StatsCard extends StatelessWidget {
             color,
             Icons.grade_rounded,
           ),
-          _div(),
+          _div(context),
           _StatRow(
             tx('exam_answered_questions'),
             '$answered / $total',
             context.colors.success,
             Icons.help_outline_rounded,
           ),
-          _div(),
+          _div(context),
           _StatRow(
             tx('exam_passing_score'),
             '${passingScore.toInt()}%',
             context.colors.warning,
             Icons.star_outline_rounded,
           ),
-          _div(),
+          _div(context),
           _StatRow(
             tx('exam_attempt_number'),
             '$submissionCount${maxSubmissions != null ? ' / $maxSubmissions' : ''}',
@@ -518,7 +517,7 @@ class _StatsCard extends StatelessWidget {
             Icons.repeat_rounded,
           ),
           if (remaining != null && maxSubmissions != null) ...[
-            _div(),
+            _div(context),
             _StatRow(
               tx('exam_remaining_attempts_short'),
               '$remaining',
@@ -531,9 +530,9 @@ class _StatsCard extends StatelessWidget {
     );
   }
 
-  Widget _div() => Padding(
+  Widget _div(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 2),
-    child: Divider(height: 20, color: Colors.grey.shade100),
+    child: Divider(height: 20, color: context.colors.divider),
   );
 }
 
@@ -602,27 +601,27 @@ class _RetryButton extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.replay_rounded, color: Colors.white, size: 20),
+          Icon(Icons.replay_rounded, color: context.colors.onHero, size: 20),
           const SizedBox(width: 10),
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 tx('exam_retry'),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'bahji',
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: context.colors.onHero,
                 ),
               ),
               if (remaining != null)
                 Text(
                   tx('exam_attempts_remaining_n', {'n': remaining}),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'bahji',
                     fontSize: 10,
-                    color: Colors.white70,
+                    color: context.colors.onHeroMuted,
                   ),
                 ),
             ],
@@ -796,8 +795,8 @@ class _GradBtn extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 16,
             fontFamily: 'bahji',

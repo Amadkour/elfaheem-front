@@ -157,17 +157,17 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
     final (Color c1, Color c2, IconData icon) = switch (_cbState) {
       _CbState.success => (
       c.success,
-      const Color(0xFF2ECC71),
+      c.success,
       Icons.check_rounded,
       ),
       _CbState.pending => (
       c.accent,
-      const Color(0xFFF39C12),
+      c.warning,
       Icons.hourglass_top_rounded,
       ),
       _CbState.failed => (
       c.danger,
-      const Color(0xFFE74C3C),
+      c.danger,
       Icons.error_outline_rounded,
       ),
     };
@@ -204,7 +204,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage>
                           ),
                         ],
                       ),
-                      child: Icon(icon, color: Colors.white, size: 60),
+                      child: Icon(icon, color: c.onHero, size: 60),
                     ),
                   ),
                 ),
@@ -298,8 +298,8 @@ class _GradBtn extends StatelessWidget {
       child: Center(
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: context.colors.onHero,
             fontWeight: FontWeight.w800,
             fontSize: 16,
             fontFamily: 'bahji',

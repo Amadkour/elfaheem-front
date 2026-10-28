@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'data_lab_api.dart';
 import 'data_lab_formula.dart';
 import 'data_lab_models.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 
 /// How numbers are drawn in the sheet.
 enum DlView { value, bar, both }
@@ -401,7 +402,7 @@ class DataLabProvider extends ChangeNotifier {
   /// Columns the teacher locked (approved results).
   int get lockedCount => columns.where((c) => c.isLocked).length;
 
-  String _msg(Object e) => e is ApiException ? e.message : '$e';
+  String _msg(Object e) => apiErrorText(ApiException.from(e));
 
   // ── values (all calculated by the server) ───────────────────────────────
 

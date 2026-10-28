@@ -27,7 +27,8 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -114,7 +115,7 @@ class _ImportWizardState extends State<_ImportWizard> {
     super.dispose();
   }
 
-  String _err(Object e) => e is ApiException ? e.message : '$e';
+  String _err(Object e) => apiErrorText(ApiException.from(e));
 
   void _goTo(int step) => setState(() {
     _step = step;
@@ -377,7 +378,7 @@ class _ImportWizardState extends State<_ImportWizard> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               onPressed: _busy ? null : _back,
-              icon: Icon(Directionality.of(context) == TextDirection.rtl ? Icons.arrow_forward_rounded : Icons.arrow_back_rounded, size: 18),
+              icon: const Icon(Icons.arrow_back_rounded, size: 18),   // auto-mirrored in RTL
               label: Text('dl_back'.tr, style: dlText(13, w: FontWeight.w700, c: c.textDark)),
             ),
           ),
@@ -571,7 +572,7 @@ class _ImportWizardState extends State<_ImportWizard> {
                   Text(h.sample.join('  ·  '), maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(11, c: c.textLight)),
               ]),
             ),
-            Icon(Directionality.of(context) == TextDirection.rtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded, size: 16, color: c.textLight),
+            Icon(Icons.arrow_forward_rounded, size: 16, color: c.textLight),   // auto-mirrored in RTL
             const SizedBox(width: 6),
             InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -645,7 +646,7 @@ class _ImportWizardState extends State<_ImportWizard> {
     final accounts = _policy == 'create_accounts' && !_ask;
     return [
       if (pl == null)
-        const Padding(padding: EdgeInsets.all(30), child: const Center(child: AppLoadingIndicator(size: 56)))
+        const AppListSkeleton(items: 3, withAvatar: false)
       else ...[
         Row(children: [
           Expanded(child: _Count(Icons.check_circle_rounded, c.success, '${pl.matched}', 'dl_plan_matched'.tr)),
@@ -912,8 +913,8 @@ class _FixCard extends StatelessWidget {
       return ChoiceChip(
         selected: on,
         showCheckmark: false,
-        avatar: Icon(icon, size: 15, color: on ? Colors.white : c.textMedium),
-        label: Text(label, style: dlText(11.5, w: FontWeight.w700, c: on ? Colors.white : c.textDark)),
+        avatar: Icon(icon, size: 15, color: on ? c.onHero : c.textMedium),
+        label: Text(label, style: dlText(11.5, w: FontWeight.w700, c: on ? c.onHero : c.textDark)),
         selectedColor: a == 'skip' ? c.danger : c.textMedium,
         backgroundColor: c.cardBg,
         side: BorderSide(color: on ? Colors.transparent : c.divider),

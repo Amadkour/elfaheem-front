@@ -13,7 +13,8 @@ import 'data_lab_api.dart';
 import 'data_lab_models.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 Future<void> showHistorySheet(BuildContext context, DataLabProvider p, {int? rowId, String? columnKey, String? title}) =>
     showAdminSheet(context, (_) => _HistorySheet(p: p, rowId: rowId, columnKey: columnKey, title: title));
@@ -59,7 +60,7 @@ class _HistorySheetState extends State<_HistorySheet> {
         _error = null;
       });
     } catch (e) {
-      if (mounted) setState(() => _error = e is ApiException ? e.message : '$e');
+      if (mounted) setState(() => _error = apiErrorText(ApiException.from(e)));
     } finally {
       if (mounted) {
         setState(() {
@@ -92,7 +93,7 @@ class _HistorySheetState extends State<_HistorySheet> {
       SheetHeader(widget.title ?? dlTr('dl_history', 'Change history')),
       Flexible(
         child: _loading
-            ? const Padding(padding: EdgeInsets.all(40), child: const Center(child: AppLoadingIndicator(size: 56)))
+            ? const AppListSkeleton(items: 5)
             : NotificationListener<ScrollNotification>(
           onNotification: (n) {
             if (n.metrics.extentAfter < 300) _load(next: true);
@@ -167,7 +168,7 @@ class _HistorySheetState extends State<_HistorySheet> {
                 const SizedBox(height: 6),
                 Wrap(crossAxisAlignment: WrapCrossAlignment.center, spacing: 6, runSpacing: 4, children: [
                   _ValuePill(e.oldValue, c.textMedium, strike: true),
-                  Icon(Directionality.of(context) == TextDirection.rtl ? Icons.arrow_back_rounded : Icons.arrow_forward_rounded,
+                  Icon(Icons.arrow_forward_rounded,   // auto-mirrored in RTL
                       size: 14, color: c.textLight),
                   _ValuePill(e.newValue, c.primary),
                 ]),

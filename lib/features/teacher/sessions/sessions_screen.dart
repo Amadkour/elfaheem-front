@@ -67,6 +67,7 @@ import 'package:flutter_education_app/design/app_kit.dart' show AppBanner;
 import 'components/course_hero.dart';
 import 'components/course_stats_row.dart';
 import 'components/sessions_section.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
 
 /// Opens one of the teacher's OWN courses (next course / manually
 /// recommended — both are guaranteed by the backend to belong to this
@@ -191,12 +192,10 @@ class _TeacherSessionsView extends StatelessWidget {
       useWebCard: true,
       child: SafeArea(
         top: false,
-        child: RefreshIndicator(
-          color: context.colors.primary,
-          backgroundColor: context.colors.primary,
+        child: AppRefresh(
           onRefresh: () => provider.refresh(),
           child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
             slivers: [
               // ── Hero — rebuilds only when `course` changes ────────────
               SliverToBoxAdapter(

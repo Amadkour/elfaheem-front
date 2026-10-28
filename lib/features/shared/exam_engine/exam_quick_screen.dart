@@ -432,7 +432,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return AppCard(
-      padding: const EdgeInsets.fromLTRB(14, 10, 6, 14),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 6, 14),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           AppBadgePill('${widget.index + 1}', color: c.primary),
@@ -496,7 +496,7 @@ class _QuickQuestionCardState extends State<QuickQuestionCard> {
               onChanged: (v) => o.text = v,
             ),
           ),
-          if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+          if (q.options.length > 2) IconButton(onPressed: () => _removeOption(o), tooltip: t('حذف الخيار', 'Remove option'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
         ]),
       Align(
         alignment: AlignmentDirectional.centerStart,
@@ -615,8 +615,9 @@ class _QuickAdvancedPanelState extends State<QuickAdvancedPanel> {
               final d = await pickEngineDateTime(context, v);
               if (d != null) _set(() => set(d));
             },
+            tooltip: t('اختيار الموعد', 'Pick a date'),
             icon: Icon(Icons.edit_calendar_rounded, color: c.primary)),
-        if (v != null) IconButton(onPressed: () => _set(() => set(null)), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
+        if (v != null) IconButton(onPressed: () => _set(() => set(null)), tooltip: t('مسح', 'Clear'), icon: Icon(Icons.close_rounded, size: 18, color: c.textLight)),
       ]),
     );
   }

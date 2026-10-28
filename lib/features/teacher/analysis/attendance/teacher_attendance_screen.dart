@@ -9,9 +9,9 @@ import '../../../../config/app_config.dart';
 import '../../../../design/app_switch.dart';
 import 'attendance_model.dart';
 import 'teacher_attendance_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import '../../../student/analysis/student_analytics_profile_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -93,21 +93,21 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
             child: Row(children: [
               HeroStat(
                 icon: Icons.people_rounded,
-                color: const Color(0xFF80D8FF),
+                color: context.colors.heroTint(context.colors.primaryLight, 0.5),
                 value: '${prov.allStudents.length}',
                 label: 'total_students'.tr,
               ),
               const SizedBox(width: 10),
               HeroStat(
                 icon: Icons.check_circle_rounded,
-                color: const Color(0xFF69F0AE),
+                color: context.colors.success,
                 value: '${prov.presentCount}',
                 label: 'present'.tr,
               ),
               const SizedBox(width: 10),
               HeroStat(
                 icon: Icons.cancel_rounded,
-                color: const Color(0xFFFF8A80),
+                color: context.colors.danger,
                 value: '${prov.absentCount}',
                 label: 'absent'.tr,
               ),
@@ -137,7 +137,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
       ),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
-          const Expanded(child: Center(child: AppLoadingIndicator()))
+          const Expanded(child: AppListSkeleton())
         else if (prov.hasError)
           Expanded(
             child: ExamError(
@@ -162,14 +162,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
     ]);
   }
 
-  Widget _buildLoadingState() => Center(
-    child: Column(mainAxisSize: MainAxisSize.min, children: [
-      const SizedBox(width: 52, height: 52, child: AppLoadingIndicator()),
-      const SizedBox(height: 16),
-      Text('loading_attendance'.tr,
-          style: examT(14, c: context.colors.textMedium)),
-    ]),
-  );
+  Widget _buildLoadingState() => const AppListSkeleton();
 
   Widget _buildSelectSessionHint() => ExamEmpty(
     icon: Icons.touch_app_rounded,
@@ -237,6 +230,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
             Icon(Icons.search_rounded, color: c.textMedium, size: 21),
             suffixIcon: prov.search.isNotEmpty
                 ? IconButton(
+                tooltip: 'clear'.tr,
                 icon: Icon(Icons.close_rounded,
                     color: c.textMedium, size: 18),
                 onPressed: () {
@@ -306,7 +300,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .07),
+            color: c.heroShade.withValues(alpha: .07),
             blurRadius: 18,
             offset: const Offset(0, -4),
           ),
@@ -414,7 +408,7 @@ class _SessionFlag extends StatelessWidget {
             BoxShadow(
               color: isSelected
                   ? c.primary.withValues(alpha: .35)
-                  : Colors.black.withValues(alpha: .04),
+                  : c.heroShade.withValues(alpha: .04),
               blurRadius: isSelected ? 14 : 8,
               offset: const Offset(0, 4),
             ),
@@ -428,7 +422,7 @@ class _SessionFlag extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: .22)
+                    ? c.onHero.withValues(alpha: .22)
                     : c.primary.withValues(alpha: .10),
                 shape: BoxShape.circle,
               ),
@@ -436,7 +430,7 @@ class _SessionFlag extends StatelessWidget {
                 child: Text('${index + 1}',
                     style: examT(12,
                         w: FontWeight.w800,
-                        c: isSelected ? Colors.white : c.primary)),
+                        c: isSelected ? c.onHero : c.primary)),
               ),
             ),
             const SizedBox(height: 6),
@@ -449,7 +443,7 @@ class _SessionFlag extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: examT(11,
                     w: FontWeight.w700,
-                    c: isSelected ? Colors.white : c.textDark,
+                    c: isSelected ? c.onHero : c.textDark,
                     h: 1.3),
               ),
             ),
@@ -483,7 +477,7 @@ class _StudentTile extends StatelessWidget {
         border: Border.all(color: statusColor.withValues(alpha: .25), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: .04),
+            color: c.heroShade.withValues(alpha: .04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),

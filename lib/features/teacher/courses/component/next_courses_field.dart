@@ -148,11 +148,11 @@ class _StepRow extends StatelessWidget {
             ),
             child: Text(
               '${index + 1}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'tajawal',
                 fontSize: 12,
                 fontWeight: FontWeight.w800,
-                color: Colors.white,
+                color: context.colors.onHero,
               ),
             ),
           ),
@@ -171,6 +171,7 @@ class _StepRow extends StatelessWidget {
             ),
           ),
           IconButton(
+            tooltip: 'pl_move_up'.tr,
             onPressed: isFirst ? null : onMoveUp,
             icon: const Icon(Icons.keyboard_arrow_up_rounded),
             iconSize: 20,
@@ -179,6 +180,7 @@ class _StepRow extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
           ),
           IconButton(
+            tooltip: 'pl_move_down'.tr,
             onPressed: isLast ? null : onMoveDown,
             icon: const Icon(Icons.keyboard_arrow_down_rounded),
             iconSize: 20,
@@ -187,6 +189,7 @@ class _StepRow extends StatelessWidget {
             constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
           ),
           IconButton(
+            tooltip: 'remove'.tr,
             onPressed: onRemove,
             icon: Icon(Icons.close_rounded, color: context.colors.danger),
             iconSize: 18,

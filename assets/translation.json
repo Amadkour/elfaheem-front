@@ -16704,5 +16704,29 @@
   "pl_designs_load_failed": {
     "en": "Could not load the designs",
     "ar": "تعذّر تحميل التصاميم"
+  },
+  "transfer_submit_failed": {
+    "en": "Could not send the transfer request",
+    "ar": "تعذّر إرسال طلب التحويل"
+  },
+  "transfer_proof_required": {
+    "en": "Please attach a photo of the transfer receipt",
+    "ar": "الرجاء إرفاق صورة إيصال التحويل"
+  },
+  "pl_mute": {
+    "en": "Mute",
+    "ar": "كتم الصوت"
+  },
+  "pl_unmute": {
+    "en": "Unmute",
+    "ar": "تشغيل الصوت"
+  },
+  "pl_play": {
+    "en": "Play",
+    "ar": "تشغيل"
+  },
+  "pl_pause": {
+    "en": "Pause",
+    "ar": "إيقاف مؤقت"
   }
 }

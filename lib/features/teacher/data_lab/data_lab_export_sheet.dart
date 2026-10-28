@@ -18,6 +18,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show toa
 import 'data_lab_api.dart';
 import 'data_lab_provider.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 
 String _tr(String key, String fallback) => dlTr(key, fallback);
 
@@ -127,7 +128,7 @@ class _ExportSheetState extends State<_ExportSheet> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -349,7 +350,7 @@ class _FileReadyState extends State<_FileReady> {
       setState(() => _savedPath = path);
       if (path != null) toast(_tr('dl_file_saved', 'Saved to your Downloads'));
     } catch (e) {
-      toast('$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -417,7 +418,7 @@ class _FileReadyState extends State<_FileReady> {
                       side: BorderSide(color: c.divider),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    onPressed: () => f.share().catchError((Object e) => toast('$e', error: true)),
+                    onPressed: () => f.share().catchError((Object e) => toast(apiErrorText(ApiException.from(e)), error: true)),
                     icon: const Icon(Icons.share_rounded, size: 18),
                     label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w700, c: c.textDark)),
                   ),

@@ -7,14 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_tr.dart';
 import 'package:flutter_education_app/features/student/analysis/exam/exam_ui.dart';
 import 'package:flutter_education_app/features/student/analysis/student_analytics_profile_screen.dart';
 
 import '../../../../utils/widget/base_page.dart';
+import 'package:flutter_education_app/design/app_refresh.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 // ── models ────────────────────────────────────────────────────────────────────
 
@@ -129,7 +131,7 @@ class TeacherReadFlagsProvider extends ChangeNotifier {
     } on ApiException catch (e) {
       error = e.message;
     } catch (e) {
-      error = e.toString();
+      error = apiErrorText(ApiException.from(e));
     } finally {
       loading = false;
       notifyListeners();
@@ -152,17 +154,15 @@ class TeacherReadFlagsScreen extends StatelessWidget {
   );
 }
 
-const _flagHero = [Color(0xFF7F1D1D), kDanger];
-
 class _View extends StatelessWidget {
   final String courseTitle;
   const _View({required this.courseTitle});
 
-  Widget _hero(TeacherReadFlagsProvider p) {
+  Widget _hero(BuildContext context, TeacherReadFlagsProvider p) {
     final failed = p.items.fold<int>(0, (s, i) => s + i.studentsFailed);
     final wrong = p.items.fold<int>(0, (s, i) => s + i.totalWrong);
     return ExamHero(
-      colors: _flagHero,
+      colors: [context.colors.heroEnd(kDanger, 0.55), kDanger],
       child: Column(children: [
         ExamHeroBar(
           title: courseTitle,
@@ -173,21 +173,21 @@ class _View extends StatelessWidget {
         Row(children: [
           HeroStat(
             icon: Icons.flag_rounded,
-            color: const Color(0xFFFFD740),
+            color: context.colors.accent,
             value: '${p.items.length}',
             label: 'tflag_btn'.tr,
           ),
           const SizedBox(width: 10),
           HeroStat(
             icon: Icons.groups_rounded,
-            color: const Color(0xFF80D8FF),
+            color: context.colors.heroTint(context.colors.primaryLight, 0.5),
             value: '$failed',
             label: 'tflag_students'.tr,
           ),
           const SizedBox(width: 10),
           HeroStat(
             icon: Icons.close_rounded,
-            color: const Color(0xFFFF8A80),
+            color: context.colors.danger,
             value: '$wrong',
             label: 'flag_total_wrong'.tr,
           ),
@@ -204,26 +204,26 @@ class _View extends StatelessWidget {
     final Widget body;
     if (p.loading) {
       body = Column(children: [
-        _hero(p),
-        const Expanded(child: Center(child: AppLoadingIndicator())),
+        _hero(context, p),
+        const Expanded(child: AppListSkeleton()),
       ]);
     } else if (p.error != null) {
       body = Column(children: [
-        _hero(p),
+        _hero(context, p),
         Expanded(
           child: ExamError(
               message: p.error!, retryLabel: 'retry'.tr, onRetry: p.load),
         ),
       ]);
     } else {
-      body = RefreshIndicator(
+      body = AppRefresh(
         onRefresh: p.load,
         child: ListView(
           padding: EdgeInsets.zero,
           physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics()),
           children: [
-            _hero(p),
+            _hero(context, p),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               child: Column(children: [

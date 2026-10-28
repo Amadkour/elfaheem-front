@@ -26,6 +26,7 @@ import 'certificate_manager_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designer_screen.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 /// Call this to open the manager. `certificateId`/`certificateTitle` come
 /// from the course's CourseCertificate list; `templateUrl` may be null.
@@ -183,7 +184,7 @@ class _CertificateManagerBodyState extends State<_CertificateManagerBody> {
                 color: context.colors.cardBg,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withValues(alpha: 0.25), blurRadius: 40),
+                  BoxShadow(color: context.colors.heroShade.withValues(alpha: 0.25), blurRadius: 40),
                 ],
               ),
               clipBehavior: Clip.antiAlias,
@@ -272,14 +273,14 @@ class _Content extends StatelessWidget {
               ? Row(
             children: [
               SizedBox(width: 320, child: templatePane),
-              VerticalDivider(width: 1, color: Colors.black.withValues(alpha: 0.06)),
+              VerticalDivider(width: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
               Expanded(child: studentsPane),
             ],
           )
               : Column(
             children: [
               templatePane,
-              Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+              Divider(height: 1, color: context.colors.heroShade.withValues(alpha: 0.06)),
               Expanded(child: studentsPane),
             ],
           ),
@@ -296,7 +297,7 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(20, 18, 12, 14),
+    padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 12, 14),
     decoration: BoxDecoration(gradient: context.colors.primaryGradient),
     child: Row(
       children: [
@@ -304,10 +305,10 @@ class _Header extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.18),
+            color: context.colors.onHero.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.workspace_premium_rounded, color: Colors.white, size: 20),
+          child: Icon(Icons.workspace_premium_rounded, color: context.colors.onHero, size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -316,10 +317,10 @@ class _Header extends StatelessWidget {
             children: [
               Text(
                 'certificate_manager_title'.tr,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'bahji',
                   fontSize: 12,
-                  color: Colors.white70,
+                  color: context.colors.onHeroMuted,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -327,10 +328,10 @@ class _Header extends StatelessWidget {
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'tajawal',
                   fontSize: 16,
-                  color: Colors.white,
+                  color: context.colors.onHero,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -338,8 +339,9 @@ class _Header extends StatelessWidget {
           ),
         ),
         IconButton(
+          tooltip: 'close'.tr,
           onPressed: () => Navigator.maybePop(context),
-          icon: const Icon(Icons.close_rounded, color: Colors.white),
+          icon: Icon(Icons.close_rounded, color: context.colors.onHero),
         ),
       ],
     ),
@@ -400,8 +402,8 @@ class _TemplatePane extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: context.colors.divider, width: 1.2),
                 gradient: templateUrl == null
-                    ? const LinearGradient(
-                  colors: [Color(0xFFFDF8EF), Color(0xFFF3E9D2)],
+                    ? LinearGradient(
+                  colors: [context.colors.accentTint, context.colors.accent.withValues(alpha: 0.55)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -416,18 +418,18 @@ class _TemplatePane extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.auto_awesome_rounded,
-                        size: 28, color: Color(0xFFC49A47)),
+                    Icon(Icons.auto_awesome_rounded,
+                        size: 28, color: context.colors.accent2),
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Text(
                         'certificate_premium_template_hint'.tr,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'tajawal',
                           fontSize: 11,
-                          color: Color(0xFF8A6D2E),
+                          color: context.colors.heroEnd(context.colors.accent2, 0.45),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -513,7 +515,7 @@ class _TemplatePane extends StatelessWidget {
             label: Text('cert_choose_saved_design_btn'.tr, style: const TextStyle(fontFamily: 'tajawal', fontSize: 12)),
           ),
           const SizedBox(height: 18),
-          Divider(color: Colors.black.withValues(alpha: 0.06)),
+          Divider(color: context.colors.heroShade.withValues(alpha: 0.06)),
           const SizedBox(height: 12),
           GestureDetector(
             onTap: provider.issuingAll ? null : onIssueAll,
@@ -535,15 +537,15 @@ class _TemplatePane extends StatelessWidget {
                     : Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                    Icon(Icons.send_rounded, size: 16, color: context.colors.onHero),
                     const SizedBox(width: 8),
                     Text(
                       'send_to_all_students_btn'.tr,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'tajawal',
                         fontSize: 13,
                         fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                        color: context.colors.onHero,
                       ),
                     ),
                   ],
@@ -571,7 +573,7 @@ class _StudentsPane extends StatelessWidget {
     final provider = context.watch<CertificateManagerProvider>();
 
     if (provider.loadingStudents) {
-      return const Center(child: AppLoadingIndicator());
+      return const AppListSkeleton(items: 4);
     }
 
     if (provider.students.isEmpty) {
@@ -689,15 +691,15 @@ class _StudentsPane extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.send_rounded, size: 13, color: Colors.white),
+                        Icon(Icons.send_rounded, size: 13, color: context.colors.onHero),
                         const SizedBox(width: 4),
                         Text(
                           'send_btn'.tr,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'tajawal',
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: context.colors.onHero,
                           ),
                         ),
                       ],

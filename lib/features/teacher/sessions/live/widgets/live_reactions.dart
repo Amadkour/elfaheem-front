@@ -213,14 +213,14 @@ class _Bubble extends StatelessWidget {
                 margin: const EdgeInsets.only(top: 2),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.45),
+                  color: LivePalette.shade(0.45),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   reaction.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 9, color: LivePalette.textHigh, fontWeight: FontWeight.w600),
                 ),
               ),
           ],
@@ -249,8 +249,8 @@ class LiveReactionPicker extends StatelessWidget {
           decoration: BoxDecoration(
             color: LivePalette.surfaceHi.withValues(alpha: 0.95),
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0x30FFFFFF)),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 18)],
+            border: Border.all(color: LivePalette.glassBorder),
+            boxShadow: [BoxShadow(color: LivePalette.shade(0.4), blurRadius: 18)],
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -275,8 +275,7 @@ class LiveReactionPicker extends StatelessWidget {
                   IconButton(
                     key: const ValueKey('live_reaction.close'),
                     tooltip: 'lr_close'.tr,
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.close_rounded, color: Color(0xB3FFFFFF), size: 20),
+                    icon: const Icon(Icons.close_rounded, color: LivePalette.textMid, size: 20),
                     onPressed: onClose,
                   ),
               ],

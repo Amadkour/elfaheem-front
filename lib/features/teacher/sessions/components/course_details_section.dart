@@ -12,6 +12,7 @@ import '../../../../config/app_config.dart';
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../courses/component/certificate_manager_sheet.dart';
 import '../../home/teacher_models.dart';
+import 'package:flutter_education_app/core/app_time.dart';
 
 class _AddButton extends StatelessWidget {
   final VoidCallback onTap;
@@ -36,12 +37,12 @@ class _AddButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                Icon(Icons.add_rounded, color: context.colors.onHero, size: 18),
                 const SizedBox(width: 6),
                 Text(
                   'add_schedule'.tr,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.colors.onHero,
                     fontWeight: FontWeight.w700,
                     fontFamily: 'tajawal',
                     fontSize: 12,
@@ -138,7 +139,7 @@ class CourseDetailsSection extends StatelessWidget {
             icon: Icons.checklist_rounded,
             title: 'prerequisites'.tr,
             course: course,
-            color: const Color(0xFFFF9F43),
+            color: context.colors.warning,
             children: course.prerequisites
                 .map((p) => _BulletRow(text: p.title))
                 .toList(),
@@ -152,7 +153,7 @@ class CourseDetailsSection extends StatelessWidget {
             icon: Icons.build_rounded,
             title: 'required_tools'.tr,
             course: course,
-            color: const Color(0xFF1DB954),
+            color: context.colors.success,
             children: course.tools
                 .map((t) => _BulletRow(text: t.name))
                 .toList(),
@@ -165,7 +166,7 @@ class CourseDetailsSection extends StatelessWidget {
             expanded: false,
             icon: Icons.workspace_premium_rounded,
             title: 'certificates'.tr,
-            color: const Color(0xFFFFD700),
+            color: context.colors.accent2,
              course: course,
             children: course.certificates
                 .map((c) => _CertificateRow(cert: c, courseId: course.id))
@@ -267,7 +268,7 @@ class _DetailCardState extends State<DetailCard>
           BoxShadow(
             color: _expanded
                 ? widget.color.withValues(alpha: 0.08)
-                : Colors.black.withValues(alpha: 0.04),
+                : context.colors.heroShade.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -314,10 +315,12 @@ class _DetailCardState extends State<DetailCard>
                             TeacherSchedulesScreen(course: widget.course),
                       ),
                     ),
+                    behavior: HitTestBehavior.opaque,
                     child: Icon(
                      CupertinoIcons.settings,
                      size: 25,
                      color: widget.color,
+                     semanticLabel: 'settings'.tr,
                                               ),
                   ),
                   SizedBox(width: 15,),
@@ -401,7 +404,8 @@ class _ScheduleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(
+        Flexible(
+          child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: context.colors.primaryLight.withValues(alpha: 0.10),
@@ -409,6 +413,8 @@ class _ScheduleRow extends StatelessWidget {
           ),
           child: Text(
             schedule.dayLabel,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontFamily: 'tajawal',
               fontSize: 12,
@@ -417,6 +423,7 @@ class _ScheduleRow extends StatelessWidget {
             ),
           ),
         ),
+        ),
         const SizedBox(width: 10),
         Icon(
           Icons.access_time_rounded,
@@ -424,14 +431,17 @@ class _ScheduleRow extends StatelessWidget {
           color: context.colors.textMedium,
         ),
         const SizedBox(width: 4),
-        Text(
-          '${schedule.startTime} – ${schedule.endTime}',
+        Flexible(
+          flex: 2,
+          child: Text(
+          '${AppTime.clock(schedule.startTime)} – ${AppTime.clock(schedule.endTime)}',
           style: TextStyle(
             fontFamily: 'tajawal',
             fontSize: 12,
             fontWeight: FontWeight.w600,
             color: context.colors.textDark,
           ),
+        ),
         ),
       ],
     );
@@ -480,7 +490,7 @@ class _CertificateRow extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFFD700)),
+        Icon(Icons.star_rounded, size: 16, color: context.colors.accent2),
         const SizedBox(width: 8),
         Expanded(
           child: Column(
@@ -511,7 +521,8 @@ class _CertificateRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        GestureDetector(
+        Flexible(
+          child: GestureDetector(
           onTap: () => showCertificateManagerSheet(
             context,
             courseId: courseId,
@@ -524,30 +535,35 @@ class _CertificateRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFD700).withValues(alpha: 0.14),
+              color: context.colors.accent2.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
+                Flexible(
+                  child: Text(
                   'manage_certificate_btn'.tr,
-                  style: const TextStyle(
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
                     fontFamily: 'tajawal',
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFFB8860B),
+                    color: context.colors.accent2,
                   ),
                 ),
+                ),
                 const SizedBox(width: 4),
-                const Icon(
+                Icon(
                   Icons.send_rounded,
                   size: 12,
-                  color: Color(0xFFB8860B),
+                  color: context.colors.accent2,
                 ),
               ],
             ),
           ),
+        ),
         ),
       ],
     );

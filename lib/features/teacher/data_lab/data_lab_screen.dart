@@ -45,6 +45,7 @@ import 'data_lab_provider.dart';
 import 'data_lab_requests.dart';
 import 'data_lab_style_sheet.dart';
 import 'data_lab_widgets.dart';
+import 'package:flutter_education_app/core/api_error_text.dart';
 
 // Base sizes at 100% zoom. Everything in the sheet is multiplied by the zoom factor,
 // so rows and columns always stay perfectly aligned.
@@ -275,7 +276,7 @@ class _DataLabViewState extends State<_DataLabView> {
               ),
               boxShadow: c.primaryShadow,
             ),
-            child: const Icon(Icons.science_rounded, color: Colors.white, size: 20),
+            child: Icon(Icons.science_rounded, color: c.onHero, size: 20),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -370,6 +371,7 @@ class _DataLabViewState extends State<_DataLabView> {
                     builder: (_, __) => _searchCtrl.text.isEmpty
                         ? const SizedBox.shrink()
                         : IconButton(
+                      tooltip: AppConfig.lang == 'ar' ? 'مسح البحث' : 'Clear search',
                       icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
                       onPressed: () {
                         _searchCtrl.clear();
@@ -491,7 +493,7 @@ class _DataLabViewState extends State<_DataLabView> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: c.primaryShadow,
         ),
-        child: const Icon(Icons.auto_awesome_motion_rounded, color: Colors.white, size: 22),
+        child: Icon(Icons.auto_awesome_motion_rounded, color: c.onHero, size: 22),
       ),
     );
   }
@@ -566,15 +568,15 @@ class _SelectionBar extends StatelessWidget {
       padding: const EdgeInsetsDirectional.only(start: 6),
       child: TextButton.icon(
         style: TextButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.white.withValues(alpha: 0.14),
-          disabledForegroundColor: Colors.white54,
+          foregroundColor: c.onHero,
+          backgroundColor: c.onHero.withValues(alpha: 0.14),
+          disabledForegroundColor: c.onHeroMuted,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         onPressed: onTap,
         icon: Icon(icon, size: 17),
-        label: Text(label, style: dlText(12.5, w: FontWeight.w800, c: Colors.white)),
+        label: Text(label, style: dlText(12.5, w: FontWeight.w800, c: c.onHero)),
       ),
     );
     return Center(
@@ -592,12 +594,12 @@ class _SelectionBar extends StatelessWidget {
             child: Row(children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(20)),
                 child: Text('${p.selected.length}', style: dlText(13, w: FontWeight.w800, c: c.primary)),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('dl_selected'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w700, c: Colors.white)),
+                child: Text('dl_selected'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: dlText(13, w: FontWeight.w700, c: c.onHero)),
               ),
               Flexible(
                 flex: 3,
@@ -615,7 +617,7 @@ class _SelectionBar extends StatelessWidget {
               IconButton(
                 tooltip: _tr('dl_clear_selection', 'Clear selection'),
                 onPressed: p.clearSelection,
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                icon: Icon(Icons.close_rounded, color: c.onHero),
               ),
             ]),
           ),
@@ -666,7 +668,7 @@ class _BarButton extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                 decoration: BoxDecoration(color: c.warning, borderRadius: BorderRadius.circular(10)),
-                child: Text('$badge', style: dlText(9.5, w: FontWeight.w800, c: Colors.white)),
+                child: Text('$badge', style: dlText(9.5, w: FontWeight.w800, c: c.onHero)),
               ),
             ),
         ]),
@@ -705,7 +707,7 @@ class _SquareButton extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(color: c.warning, borderRadius: BorderRadius.circular(10)),
-                child: Text('$badge', style: dlText(10, w: FontWeight.w800, c: Colors.white)),
+                child: Text('$badge', style: dlText(10, w: FontWeight.w800, c: c.onHero)),
               ),
             ),
         ]),
@@ -786,10 +788,10 @@ class _ViewToggle extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(color: on ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(12)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: on ? Colors.white : c.textMedium),
+            Icon(icon, size: 16, color: on ? c.onHero : c.textMedium),
             if (on) ...[
               const SizedBox(width: 5),
-              Text(label, style: dlText(11.5, w: FontWeight.w700, c: Colors.white)),
+              Text(label, style: dlText(11.5, w: FontWeight.w700, c: c.onHero)),
             ],
           ]),
         ),
@@ -1007,7 +1009,7 @@ class _SheetTable extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.cardBg,
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(2, 0)),
+                      BoxShadow(color: c.heroShade.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(2, 0)),
                     ],
                   ),
                   foregroundDecoration: BoxDecoration(
@@ -1468,7 +1470,7 @@ Future<void> _rowActions(BuildContext context, DataLabProvider p, DlRow row) asy
       final r = await DataLabApi().newLoginDetails(p.courseId, row.rowId);
       if (context.mounted) await _showLoginDetails(context, r, p.grid?.title ?? '');
     } catch (e) {
-      toast(e is ApiException ? e.message : '$e', error: true);
+      toast(apiErrorText(ApiException.from(e)), error: true);
     }
   }
 }
@@ -1551,7 +1553,7 @@ Future<void> _showLoginDetails(BuildContext context, Map<String, dynamic> r, Str
                       ),
                       onPressed: () => SharePlus.instance.share(ShareParams(text: msg)),
                       icon: const Icon(Icons.share_rounded, size: 18),
-                      label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w800, c: Colors.white)),
+                      label: Text(_tr('dl_file_share', 'Share'), style: dlText(13, w: FontWeight.w800, c: context.colors.onHero)),
                     ),
                   ),
                 ]),
@@ -1604,7 +1606,7 @@ void showPinSheet(BuildContext context, DataLabProvider p) {
                           height: 22,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(color: c.primary, shape: BoxShape.circle),
-                          child: Text('$order', style: dlText(11, w: FontWeight.w800, c: Colors.white)),
+                          child: Text('$order', style: dlText(11, w: FontWeight.w800, c: context.colors.onHero)),
                         )
                       else
                         Icon(Icons.push_pin_outlined, size: 18, color: c.textLight),
@@ -1736,9 +1738,9 @@ class _HeadCell extends StatelessWidget {
                               boxShadow: c.primaryShadow,
                             ),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              const Icon(Icons.drag_indicator_rounded, size: 16, color: Colors.white),
+                              Icon(Icons.drag_indicator_rounded, size: 16, color: c.onHero),
                               const SizedBox(width: 6),
-                              Text(col.label, style: dlText(12.5, w: FontWeight.w800, c: Colors.white)),
+                              Text(col.label, style: dlText(12.5, w: FontWeight.w800, c: c.onHero)),
                             ]),
                           ),
                         ),
@@ -1821,7 +1823,7 @@ void showColumnSettings(BuildContext context, DataLabProvider p, DlColumn col) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withValues(alpha: 0.35),
+    barrierColor: context.colors.heroShade.withValues(alpha: 0.35),
     constraints: const BoxConstraints(maxWidth: 540),
     builder: (_) => Directionality(
       textDirection: pageDirection,
@@ -1907,7 +1909,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
         child: Material(
           color: c.cardBg,
           elevation: 8,
-          shadowColor: Colors.black.withValues(alpha: 0.25),
+          shadowColor: c.heroShade.withValues(alpha: 0.25),
           borderRadius: BorderRadius.circular(28),
           clipBehavior: Clip.antiAlias,
           child: ConstrainedBox(
@@ -1928,7 +1930,7 @@ class _ColumnSheetState extends State<_ColumnSheet> {
                       borderRadius: BorderRadius.circular(15),
                       gradient: LinearGradient(colors: [c.primary, c.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
                     ),
-                    child: Icon(col.isCalculated ? Icons.functions_rounded : Icons.view_column_rounded, color: Colors.white, size: 22),
+                    child: Icon(col.isCalculated ? Icons.functions_rounded : Icons.view_column_rounded, color: c.onHero, size: 22),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2149,7 +2151,7 @@ class _ToggleTile extends StatelessWidget {
     final c = context.colors;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 220),
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
       decoration: BoxDecoration(
         color: on ? color.withValues(alpha: 0.10) : c.textLight.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
@@ -2389,7 +2391,7 @@ class _ValueCell extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.35),
       constraints: const BoxConstraints(maxWidth: 520),
       builder: (_) => Directionality(
         textDirection: pageDirection,

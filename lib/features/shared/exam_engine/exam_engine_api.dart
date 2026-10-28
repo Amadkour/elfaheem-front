@@ -43,7 +43,7 @@ Future<EngineResult> engineCall(Future<dynamic> Function() fn) async {
     }
     return EngineResult.fail(e.statusCode, code, msg, detail);
   } catch (e) {
-    return EngineResult.fail(0, null, '$e');
+    return EngineResult.fail(0, null, ApiException.from(e).message);
   }
 }
 

@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 const kFont = 'bahji';
+// Legacy palette: the student exam screens read the theme (context.colors.danger / warning / purple /
+// primaryDark) instead; these stay only for the teacher screens that still import them.
 const kDeep = Color(0xFF0D47A1);
 const kDanger = Color(0xFFEF4444);
 const kAmber = Color(0xFFF59E0B);
@@ -22,8 +24,8 @@ TextStyle examT(double size,
 Color examScoreColor(BuildContext context, double v) => v >= 75
     ? context.colors.success
     : v >= 50
-        ? kAmber
-        : kDanger;
+        ? context.colors.warning
+        : context.colors.danger;
 
 /// Replaces `{name}` placeholders in an already translated string.
 String examFill(String text, Map<String, Object?> params) {
@@ -75,7 +77,7 @@ class ExamCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: c.heroShade.withValues(alpha: 0.05),
               blurRadius: 14,
               offset: const Offset(0, 4)),
         ],
@@ -145,7 +147,7 @@ class ExamHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = context.colors.primary;
-    final cs = colors ?? [kDeep, primary];
+    final cs = colors ?? [context.colors.primaryDark, primary];
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -194,6 +196,7 @@ class ExamHeroBar extends StatelessWidget {
         if (showBack && Navigator.of(context).canPop()) ...[
           GlassIcon(
             icon: Icons.arrow_back_ios_rounded,
+            tooltip: MaterialLocalizations.of(context).backButtonTooltip,
             onTap: () => Navigator.maybePop(context),
           ),
           const SizedBox(width: 12),
@@ -205,13 +208,13 @@ class ExamHeroBar extends StatelessWidget {
               Text(title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: examT(18, w: FontWeight.w800, c: Colors.white)),
+                  style: examT(18, w: FontWeight.w800, c: context.colors.onHero)),
               if (subtitle != null) ...[
                 const SizedBox(height: 2),
                 Text(subtitle!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: examT(12, c: Colors.white70)),
+                    style: examT(12, c: context.colors.onHeroMuted)),
               ],
             ],
           ),
@@ -223,22 +226,40 @@ class ExamHeroBar extends StatelessWidget {
 class GlassIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
-  const GlassIcon({super.key, required this.icon, this.onTap});
+  final String? tooltip;
+  const GlassIcon({super.key, required this.icon, this.onTap, this.tooltip});
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: Colors.white.withValues(alpha: 0.16),
-        shape: const CircleBorder(side: BorderSide(color: Colors.white24)),
-        child: InkWell(
-          customBorder: const CircleBorder(),
-          onTap: onTap,
-          child: SizedBox(
-            width: 40,
-            height: 40,
-            child: Icon(icon, color: Colors.white, size: 19),
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    // 40 px glass circle inside a 48 px tap target; announced by its tooltip.
+    final b = Semantics(
+      button: true,
+      label: tooltip,
+      excludeSemantics: tooltip != null,
+      child: InkResponse(
+        onTap: onTap,
+        radius: 24,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: c.onHero.withValues(alpha: 0.16),
+                border: Border.all(color: c.heroGlassBorder),
+              ),
+              child: Icon(icon, color: c.onHero, size: 19),
+            ),
           ),
         ),
-      );
+      ),
+    );
+    return tooltip == null ? b : Tooltip(message: tooltip!, child: b);
+  }
 }
 
 class HeroStat extends StatelessWidget {
@@ -259,9 +280,9 @@ class HeroStat extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
+            color: context.colors.onHero.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+            border: Border.all(color: context.colors.onHero.withValues(alpha: 0.18)),
           ),
           child: Column(children: [
             Icon(icon, color: color, size: 20),
@@ -269,13 +290,13 @@ class HeroStat extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(value,
-                  style: examT(16, w: FontWeight.w800, c: Colors.white)),
+                  style: examT(16, w: FontWeight.w800, c: context.colors.onHero)),
             ),
             const SizedBox(height: 2),
             Text(label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: examT(10, c: Colors.white70)),
+                style: examT(10, c: context.colors.onHeroMuted)),
           ]),
         ),
       );
@@ -290,19 +311,19 @@ class HeroPill extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.16),
+          color: context.colors.onHero.withValues(alpha: 0.16),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: context.colors.heroGlassBorder),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           if (icon != null) ...[
-            Icon(icon, size: 14, color: Colors.white),
+            Icon(icon, size: 14, color: context.colors.onHero),
             const SizedBox(width: 5),
           ],
           Flexible(
             child: Text(text,
                 overflow: TextOverflow.ellipsis,
-                style: examT(12.5, w: FontWeight.w700, c: Colors.white)),
+                style: examT(12.5, w: FontWeight.w700, c: context.colors.onHero)),
           ),
         ]),
       );
@@ -316,7 +337,9 @@ class ExamRing extends StatelessWidget {
   final double value; // 0..100
   final double size;
   final double stroke;
-  final Color color;
+
+  /// Ring + percent colour; null = the on-hero ink (the ring usually sits on a gradient hero).
+  final Color? color;
   final Color? track;
   final Widget? center;
   final bool showPercent;
@@ -326,14 +349,16 @@ class ExamRing extends StatelessWidget {
     required this.value,
     required this.size,
     this.stroke = 10,
-    this.color = Colors.white,
+    this.color,
     this.track,
     this.center,
     this.showPercent = true,
   });
 
   @override
-  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+  Widget build(BuildContext context) {
+    final color = this.color ?? context.colors.onHero;
+    return TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: (value / 100).clamp(0.0, 1.0)),
         duration: const Duration(milliseconds: 900),
         curve: Curves.easeOutCubic,
@@ -369,6 +394,7 @@ class ExamRing extends StatelessWidget {
           ]),
         ),
       );
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -426,7 +452,7 @@ class ExamBadge extends StatelessWidget {
         child: Text(text,
             style: examT(12,
                 w: filled ? FontWeight.w900 : FontWeight.w700,
-                c: filled ? Colors.white : color)),
+                c: filled ? context.colors.onHero : color)),
       );
 }
 
@@ -559,7 +585,7 @@ class GradientButton extends StatelessWidget {
     final disabled = onTap == null && !loading;
     final cs = disabled
         ? [context.colors.divider, context.colors.textLight]
-        : [color ?? kDeep, base];
+        : [color ?? context.colors.primaryDark, base];
     return GestureDetector(
       onTap: loading ? null : onTap,
       child: AnimatedContainer(
@@ -585,11 +611,11 @@ class GradientButton extends StatelessWidget {
         child: Center(
           child: loading
               ? (loader ??
-                  const SizedBox(
+                  SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2.4, color: Colors.white),
+                        strokeWidth: 2.4, color: context.colors.onHero),
                   ))
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -598,20 +624,20 @@ class GradientButton extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, color: Colors.white, size: 20),
+                          Icon(icon, color: context.colors.onHero, size: 20),
                           const SizedBox(width: 8),
                         ],
                         Flexible(
                           child: Text(label,
                               overflow: TextOverflow.ellipsis,
                               style: examT(15.5,
-                                  w: FontWeight.w800, c: Colors.white)),
+                                  w: FontWeight.w800, c: context.colors.onHero)),
                         ),
                       ],
                     ),
                     if (subtitle != null) ...[
                       const SizedBox(height: 2),
-                      Text(subtitle!, style: examT(11, c: Colors.white70)),
+                      Text(subtitle!, style: examT(11, c: context.colors.onHeroMuted)),
                     ],
                   ],
                 ),
@@ -686,7 +712,7 @@ class ExamTabBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: c.heroShade.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 3)),
         ],
@@ -701,9 +727,9 @@ class ExamTabBar extends StatelessWidget {
         splashBorderRadius: BorderRadius.circular(12),
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(colors: [kDeep, c.primary]),
+          gradient: LinearGradient(colors: [context.colors.primaryDark, c.primary]),
         ),
-        labelColor: Colors.white,
+        labelColor: context.colors.onHero,
         unselectedLabelColor: c.textMedium,
         labelStyle: examT(12.5, w: FontWeight.w700),
         unselectedLabelStyle: examT(12.5),
@@ -797,11 +823,11 @@ class ExamError extends StatelessWidget {
               width: 88,
               height: 88,
               decoration: BoxDecoration(
-                color: kDanger.withValues(alpha: 0.08),
+                color: context.colors.danger.withValues(alpha: 0.08),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.wifi_off_rounded,
-                  size: 40, color: kDanger.withValues(alpha: 0.7)),
+                  size: 40, color: context.colors.danger.withValues(alpha: 0.7)),
             ),
             const SizedBox(height: 14),
             Text(message,

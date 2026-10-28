@@ -18,6 +18,7 @@ import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
+import 'package:flutter_education_app/core/app_time.dart';
 import 'widgets/controls.dart';
 import 'widgets/live_chat.dart';
 import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
@@ -56,12 +57,12 @@ Color get _cyan => LivePalette.accent;
 Color get _indigo => LivePalette.accent2;
 Color get _emerald => LivePalette.success;
 Color get _rose => LivePalette.danger;
-const _textHigh = Color(0xFFFFFFFF);
-const _textMid = Color(0xB3FFFFFF);
-const _textLow = Color(0x66FFFFFF);
-const _glass10 = Color(0x1AFFFFFF);
-const _glass15 = Color(0x26FFFFFF);
-const _glassBdr = Color(0x30FFFFFF);
+const _textHigh = LivePalette.textHigh;
+const _textMid = LivePalette.textMid;
+const _textLow = LivePalette.textLow;
+const _glass10 = LivePalette.glass;
+const _glass15 = LivePalette.glassBorder;
+const _glassBdr = LivePalette.glassBorder;
 Color get _recRed => LivePalette.danger;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,7 +459,7 @@ class _RoomPageState extends State<RoomPage>
       if (okMsg != null) _showSnack(okMsg);
       return true;
     } catch (e) {
-      showAppNotice(_guestErrorText(e), error: true);
+      _showSnack(_guestErrorText(e), error: true);
       return false;
     } finally {
       _setGuestBusy(null);
@@ -491,7 +492,7 @@ class _RoomPageState extends State<RoomPage>
       final n = r is Map ? (r['muted'] ?? 0) : 0;
       _showSnack(trp('lr_guests_muted_n', {'n': '$n'}));
     } catch (e) {
-      showAppNotice(_guestErrorText(e), error: true);
+      _showSnack(_guestErrorText(e), error: true);
     } finally {
       _setGuestBusy(null);
     }
@@ -507,7 +508,7 @@ class _RoomPageState extends State<RoomPage>
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.screen_share_rounded, color: Colors.white, size: 16),
+              Icon(Icons.screen_share_rounded, color: LivePalette.textHigh, size: 16),
               SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -1021,11 +1022,11 @@ class _RoomPageState extends State<RoomPage>
         if (reconnecting)
           SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: _cyan))
         else
-          const Icon(Icons.wifi_rounded, color: Colors.white, size: 20),
+          const Icon(Icons.wifi_rounded, color: LivePalette.textHigh, size: 20),
         const SizedBox(width: 12),
         Expanded(
           child: Text((reconnecting ? 'lr_reconnecting' : 'lr_reconnected').tr,
-              style: const TextStyle(fontFamily: 'tajawal', color: Colors.white, fontWeight: FontWeight.w700)),
+              style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontWeight: FontWeight.w700)),
         ),
       ]),
     );
@@ -1927,8 +1928,21 @@ class _RoomPageState extends State<RoomPage>
           participantTracks.first.type == ParticipantTrackType.kScreenShare;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  void _showSnack(String msg) {
-    showAppNotice(msg);
+  void _showSnack(String msg, {bool error = false}) {
+    // Full-screen in LiveRoomLayer the room is painted ABOVE the app Navigator, and that Navigator's overlay is where
+    // showAppNotice draws — the notice would sit hidden behind the room. Use the room's own Scaffold then.
+    final scope = LiveRoomScope.maybeOf(context);
+    final m = ScaffoldMessenger.maybeOf(context);
+    if (scope != null && !scope.minimized && m != null) {
+      m.showSnackBar(SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: error ? _rose : _surfaceHi,
+        content: Text(msg,
+            style: const TextStyle(fontFamily: 'tajawal', color: LivePalette.textHigh, fontWeight: FontWeight.w600)),
+      ));
+      return;
+    }
+    showAppNotice(msg, error: error);
   }
 
   Future<void> _toggleParticipantPanel() async {
@@ -2122,7 +2136,7 @@ class _RoomPageState extends State<RoomPage>
               // prematurely and blocks UI interaction during the wait.
               if (_endingSession)
                 Container(
-                  color: Colors.black.withValues(alpha: 0.72),
+                  color: LivePalette.shade(0.72),
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -2130,7 +2144,7 @@ class _RoomPageState extends State<RoomPage>
                         vertical: 28,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1A2E),
+                        color: LivePalette.surface,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: _cyan.withValues(alpha: 0.35),
@@ -2155,7 +2169,7 @@ class _RoomPageState extends State<RoomPage>
                             'lr_saving_recording'.tr,
                             style: TextStyle(
                               fontFamily: 'tajawal',
-                              color: Colors.white,
+                              color: LivePalette.textHigh,
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
@@ -2172,7 +2186,7 @@ class _RoomPageState extends State<RoomPage>
                                 trp('lr_chunk_mb', {'n': '${r.uploadedChunks}', 'mb': mb}),
                                 style: TextStyle(
                                   fontFamily: 'tajawal',
-                                  color: Colors.white.withValues(alpha: 0.55),
+                                  color: LivePalette.ink(0.55),
                                   fontSize: 13,
                                 ),
                               );
@@ -2390,7 +2404,7 @@ class _RoomPageState extends State<RoomPage>
             boxShadow: [
               BoxShadow(color: _cyan.withValues(alpha: 0.18), blurRadius: 20),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.55),
+                color: LivePalette.shade(0.55),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -2429,7 +2443,7 @@ class _RoomPageState extends State<RoomPage>
 
                 // My own raised hand, so I can see it is still up
                 if (!_pipSwapped && _hands.localUp)
-                  const Positioned(top: 4, left: 4, child: LiveHandBadge(compact: true)),
+                  const PositionedDirectional(top: 4, start: 4, child: LiveHandBadge(compact: true)),
 
                 // Swap icon — always visible so intent is clear
                 Positioned(
@@ -2438,13 +2452,13 @@ class _RoomPageState extends State<RoomPage>
                   child: Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
+                      color: LivePalette.shade(0.45),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
                       Icons.swap_calls_rounded,
                       size: 13,
-                      color: Colors.white.withValues(alpha: 0.85),
+                      color: LivePalette.ink(0.85),
                     ),
                   ),
                 ),
@@ -2459,7 +2473,7 @@ class _RoomPageState extends State<RoomPage>
                       width: 28,
                       height: 3,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: LivePalette.ink(0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -2526,7 +2540,7 @@ class _RoomPageState extends State<RoomPage>
                   'lr_sharing_screen'.tr,
                   style: TextStyle(
                     fontFamily: 'tajawal',
-                    color: Colors.white,
+                    color: LivePalette.textHigh,
                     fontWeight: FontWeight.w700,
                     fontSize: 12,
                   ),
@@ -2535,7 +2549,7 @@ class _RoomPageState extends State<RoomPage>
               // Elapsed recording time shown here too
               if (_recElapsedSeconds > 0)
                 Padding(
-                  padding: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsetsDirectional.only(end: 10),
                   child: Text(
                     _recElapsedLabel,
                     style: TextStyle(
@@ -2908,7 +2922,7 @@ class _RoomPageState extends State<RoomPage>
     return Positioned.fill(
       child: GestureDetector(
         onTap: _toggleParticipantPanel,
-        child: Container(color: Colors.black.withValues(alpha: 0.45)),
+        child: Container(color: LivePalette.shade(0.45)),
       ),
     ).withChild(
       Positioned(
@@ -2931,7 +2945,7 @@ class _RoomPageState extends State<RoomPage>
               children: [
                 // Header
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 8, 12),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: _glassBdr)),
                   ),
@@ -2971,7 +2985,6 @@ class _RoomPageState extends State<RoomPage>
                             : IconButton(
                                 key: const ValueKey('live_room.mute_all_guests'),
                                 tooltip: 'lr_mute_all_guests'.tr,
-                                visualDensity: VisualDensity.compact,
                                 onPressed: _guestBusy.value == null ? _guestsMuteAll : null,
                                 icon: Icon(Icons.mic_off_rounded, size: 18, color: LivePalette.warning),
                               ),
@@ -3199,7 +3212,7 @@ class _RoomPageState extends State<RoomPage>
 
     return Positioned.fill(
       child: Container(
-        color: Colors.black.withValues(alpha: 0.80),
+        color: LivePalette.shade(0.80),
         child: Center(
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.85, end: 1.0).animate(_quizSlide),
@@ -3220,7 +3233,7 @@ class _RoomPageState extends State<RoomPage>
                       blurRadius: 40,
                     ),
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.6),
+                      color: LivePalette.shade(0.6),
                       blurRadius: 20,
                     ),
                   ],
@@ -3703,7 +3716,7 @@ class _RecBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.58),
+        color: LivePalette.shade(0.58),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: dotColor.withValues(
@@ -3922,13 +3935,13 @@ class _ParticipantRow extends StatelessWidget {
             Icon(
               micOn ? Icons.mic_rounded : Icons.mic_off_rounded,
               size: 14,
-              color: micOn ? Colors.white54 : _rose.withValues(alpha: 0.7),
+              color: micOn ? LivePalette.textSoft : _rose.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 6),
             Icon(
               camOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
               size: 14,
-              color: camOn ? Colors.white54 : _rose.withValues(alpha: 0.7),
+              color: camOn ? LivePalette.textSoft : _rose.withValues(alpha: 0.7),
             ),
           ],
           if (trailing != null) ...[
@@ -3989,7 +4002,7 @@ class _ThumbnailCard extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       width: 152,
       height: 108,
-      margin: const EdgeInsets.only(right: 8),
+      margin: const EdgeInsetsDirectional.only(end: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
@@ -4002,7 +4015,7 @@ class _ThumbnailCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.45),
+            color: LivePalette.shade(0.45),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -4030,7 +4043,7 @@ class _ThumbnailCard extends StatelessWidget {
             else
               ParticipantWidget.widgetFor(track, showStatsLayer: false),
             if (handUp)
-              const Positioned(top: 5, left: 5, child: LiveHandBadge(compact: true)),
+              const PositionedDirectional(top: 5, start: 5, child: LiveHandBadge(compact: true)),
             Positioned(
               bottom: 0,
               left: 0,
@@ -4042,7 +4055,7 @@ class _ThumbnailCard extends StatelessWidget {
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.8),
+                      LivePalette.shade(0.8),
                       Colors.transparent,
                     ],
                   ),
@@ -4051,7 +4064,7 @@ class _ThumbnailCard extends StatelessWidget {
                   children: [
                     if (isScreen)
                       Padding(
-                        padding: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsetsDirectional.only(end: 4),
                         child: Icon(
                           Icons.screen_share_rounded,
                           size: 10,
@@ -4076,7 +4089,7 @@ class _ThumbnailCard extends StatelessWidget {
                       Container(
                         width: 7,
                         height: 7,
-                        margin: const EdgeInsets.only(left: 4),
+                        margin: const EdgeInsetsDirectional.only(start: 4),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: _cyan,
@@ -4150,7 +4163,7 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
             gradient: RadialGradient(
               center: Alignment(0, -0.3),
               radius: 1.2,
-              colors: [Color(0xFF0D1533), LivePalette.bg],
+              colors: [LivePalette.surfaceHi, LivePalette.bg],
             ),
           ),
         ),
@@ -4211,12 +4224,12 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
             ),
           ),
         ),
-        Positioned(
+        PositionedDirectional(
           top: 20,
-          left: 20,
+          start: 20,
           child: _PresenterBadge(name: presenterName, isSpeaking: isSpeaking),
         ),
-        Positioned(top: 20, right: 20, child: const _ScreenShareLiveBadge()),
+        const PositionedDirectional(top: 20, end: 20, child: _ScreenShareLiveBadge()),
         Positioned(
           left: 0,
           right: 0,
@@ -4244,7 +4257,7 @@ class _PresenterBadge extends StatelessWidget {
     decoration: BoxDecoration(
       color: isSpeaking
           ? _cyan.withValues(alpha: 0.22)
-          : Colors.black.withValues(alpha: 0.55),
+          : LivePalette.shade(0.55),
       borderRadius: BorderRadius.circular(30),
       border: Border.all(
         color: isSpeaking ? _cyan.withValues(alpha: 0.7) : _glassBdr,
@@ -4311,7 +4324,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
     child: const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.screen_share_rounded, size: 13, color: Colors.white),
+        Icon(Icons.screen_share_rounded, size: 13, color: LivePalette.textHigh),
         SizedBox(width: 6),
         Text(
           'SCREEN',
@@ -4319,7 +4332,7 @@ class _ScreenShareLiveBadge extends StatelessWidget {
             fontFamily: 'tajawal',
             fontSize: 10,
             fontWeight: FontWeight.w800,
-            color: Colors.white,
+            color: LivePalette.textHigh,
             letterSpacing: 1.2,
           ),
         ),
@@ -4349,8 +4362,8 @@ class _ScreenShareBottomBar extends StatelessWidget {
           begin: Alignment.bottomCenter,
           end: Alignment.topCenter,
           colors: [
-            Colors.black.withValues(alpha: 0.85),
-            Colors.black.withValues(alpha: 0.55),
+            LivePalette.shade(0.85),
+            LivePalette.shade(0.55),
             Colors.transparent,
           ],
           stops: const [0.0, 0.6, 1.0],
@@ -4379,7 +4392,7 @@ class _ScreenShareBottomBar extends StatelessWidget {
               child: Text(
                 presenterName.isNotEmpty ? presenterName[0].toUpperCase() : '?',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: LivePalette.textHigh,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
@@ -4472,7 +4485,7 @@ class _ScreenShareLoadingPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    color: const Color(0xFF0A0F20),
+    color: LivePalette.bg,
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -4789,7 +4802,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 12, 12),
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 18, 12, 12),
               child: Row(
                 children: [
                   Expanded(
@@ -4804,6 +4817,7 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                     ),
                   ),
                   IconButton(
+                    tooltip: t('إغلاق', 'Close'),
                     icon: const Icon(Icons.close_rounded, color: _textLow),
                     onPressed: () => Navigator.of(dialogContext).pop(),
                   ),
@@ -4833,8 +4847,8 @@ void _showAllParticipantsDialog(BuildContext context, List<_TeamsTileData> tiles
                       child: hasPhoto
                           ? null
                           : Text(initials,
-                          style: const TextStyle(
-                              color: Colors.black87,
+                          style: TextStyle(
+                              color: LivePalette.shade(0.87),
                               fontWeight: FontWeight.w700)),
                     ),
                     title: Text(
@@ -4874,12 +4888,8 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
   final initials = data.name.trim().isNotEmpty
       ? data.name.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join()
       : '؟';
-  String fmt(DateTime? d) {
-    if (d == null) return '—';
-    final h = d.hour.toString().padLeft(2, '0');
-    final m = d.minute.toString().padLeft(2, '0');
-    return '${d.year}/${d.month.toString().padLeft(2, '0')}/${d.day.toString().padLeft(2, '0')} — $h:$m';
-  }
+  // Server attendance times are UTC instants: shown in the platform / organization zone and 12h/24h choice.
+  String fmt(DateTime? d) => d == null ? '—' : AppTime.dateTime(d);
 
   showDialog(
     context: context,
@@ -4928,8 +4938,8 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                       : Center(
                     child: Text(
                       initials,
-                      style: const TextStyle(
-                          color: Colors.black87,
+                      style: TextStyle(
+                          color: LivePalette.shade(0.87),
                           fontSize: 32,
                           fontWeight: FontWeight.w800),
                     ),
@@ -4946,8 +4956,8 @@ void _showParticipantProfileDialog(BuildContext context, _TeamsTileData data) {
                         color: _cyan,
                         border: Border.all(color: _surface, width: 3),
                       ),
-                      child: const Icon(Icons.workspace_premium_rounded,
-                          size: 14, color: Colors.black87),
+                      child: Icon(Icons.workspace_premium_rounded,
+                          size: 14, color: LivePalette.shade(0.87)),
                     ),
                   ),
               ],
@@ -5128,7 +5138,7 @@ class _GlassBadge extends StatelessWidget {
     decoration: BoxDecoration(
       color: color != null
           ? color!.withValues(alpha: 0.2)
-          : Colors.black.withValues(alpha: 0.5),
+          : LivePalette.shade(0.5),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(
         color: color != null ? color!.withValues(alpha: 0.45) : _glassBdr,
@@ -5171,7 +5181,7 @@ class _SessionEndedDialog extends StatelessWidget {
         border: Border.all(color: _glassBdr, width: 1),
         boxShadow: [
           BoxShadow(color: _cyan.withValues(alpha: 0.10), blurRadius: 40),
-          BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20),
+          BoxShadow(color: LivePalette.shade(0.6), blurRadius: 20),
         ],
       ),
       child: Column(
@@ -5348,7 +5358,7 @@ class _ConnectionLostDialog extends StatelessWidget {
             color: _surfaceHi,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: _glassBdr, width: 1),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 20)],
+            boxShadow: [BoxShadow(color: LivePalette.shade(0.6), blurRadius: 20)],
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(

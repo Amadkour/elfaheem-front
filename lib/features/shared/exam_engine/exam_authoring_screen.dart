@@ -376,7 +376,7 @@ class ExamSectionsPanel extends StatelessWidget {
     final c = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 8, 4, 8),
       decoration: BoxDecoration(color: c.inputBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: c.divider)),
       child: Row(children: [
         Text('${index + 1}.', style: appText(13, w: FontWeight.w700, c: c.textMedium)),
@@ -765,7 +765,7 @@ class _QuestionEditorFormState extends State<QuestionEditorForm> with _Controlle
             AppCard(
               key: ValueKey('crit.${cr.uid}'),
               margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.fromLTRB(12, 12, 8, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(12, 12, 8, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                 Row(children: [
                   AppBadgePill(cr.id),
@@ -827,7 +827,7 @@ class BankQuestionTile extends StatelessWidget {
     final q = question;
     return AppCard(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
       onTap: onTap,
       child: Row(children: [
         Expanded(
@@ -1128,7 +1128,7 @@ class _ProctoringPolicyFormState extends State<ProctoringPolicyForm> {
         AppCard(
           key: ValueKey('rule.${r.category}'),
           margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.fromLTRB(14, 10, 8, 12),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 12),
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             Row(children: [
               Expanded(child: Text(categoryLabel(r.category), style: appText(14, w: FontWeight.w700, c: c.textDark))),
@@ -1203,7 +1203,7 @@ class AccommodationsPanel extends StatelessWidget {
         for (final a in list)
           AppCard(
             margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+            padding: const EdgeInsetsDirectional.fromSTEB(14, 10, 8, 10),
             child: Row(children: [
               Icon(Icons.accessibility_new_rounded, color: c.primary),
               const SizedBox(width: 10),
@@ -1687,7 +1687,7 @@ class _ExamEditorScreenState extends State<ExamEditorScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   child: ExamSettingsForm(key: ValueKey('settings.$_settingsGen'), draft: w, onSave: _saveSettings),
                 ),
-                RefreshIndicator(
+                AppRefresh(
                   onRefresh: () => _load(side: false),
                   child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 24), children: [
                     ExamSectionsPanel(

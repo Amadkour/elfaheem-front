@@ -58,7 +58,7 @@ class _ColumnsSheet extends StatelessWidget {
                 builder: (_, __) => Material(
                   color: Colors.transparent,
                   elevation: 8 * anim.value,
-                  shadowColor: Colors.black.withValues(alpha: 0.2),
+                  shadowColor: c.heroShade.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(16),
                   child: child,
                 ),
@@ -217,7 +217,7 @@ class _ColumnsSheet extends StatelessWidget {
                   ),
                   onPressed: () => showColumnEditor(context, p),
                   icon: const Icon(Icons.add_rounded, size: 18),
-                  label: Text('dl_new_column'.tr, style: dlText(13, w: FontWeight.w800, c: Colors.white)),
+                  label: Text('dl_new_column'.tr, style: dlText(13, w: FontWeight.w800, c: c.onHero)),
                 ),
                 ]),
               ),

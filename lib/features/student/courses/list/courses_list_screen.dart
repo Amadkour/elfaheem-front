@@ -1,6 +1,8 @@
 /// courses_list_screen.dart
 library;
 
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
@@ -10,7 +12,6 @@ import 'package:provider/provider.dart';
 import '../../../../config/app_config.dart' as Helpers;
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../utils/widget/app_bar.dart';
-import '../../../../utils/widget/app_loading_indicator.dart';
 import '../../../../utils/widget/base_page.dart';
 import '../../../../utils/widget/paged_progress.dart';
 import '../../../../utils/widget/search_text_field.dart';
@@ -93,7 +94,9 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
               ),
             Expanded(
               child: (provider.isLoading && provider.allCourses.isEmpty)
-                  ? Center(child: AppLoadingIndicator())
+                  ? const AppListSkeleton()
+                  : (provider.hasError && provider.allCourses.isEmpty)
+                  ? ErrorRetry(message: provider.errorMessage ?? 'retry'.tr, onRetry: provider.refresh)
                   : (provider.filteredCourses.isEmpty && !provider.hasMore)
                   ? _EmptyState(
                 icon: Icons.menu_book_rounded,

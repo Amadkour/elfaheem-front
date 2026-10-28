@@ -1,3 +1,4 @@
+import 'package:flutter_education_app/core/app_time.dart';
 import 'dart:async';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
       e.isSubmitted && e.percentage != null;
 
   Color get _accent =>
-      _hasScore ? (e.passed == true ? AppTheme.success : Colors.redAccent) : Colors.blueGrey;
+      _hasScore ? (e.passed == true ? AppTheme.success : context.colors.danger) : context.colors.textMedium;
 
   @override
   Widget build(BuildContext context) {
@@ -72,8 +73,9 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
       useWebCard: true,
       appBar: AppBar(
         backgroundColor: _accent,
-        foregroundColor: Colors.white,
+        foregroundColor: context.colors.onHero,
         leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: widget.onBack,
         ),
@@ -144,9 +146,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
               _InfoRow(
                 icon: Icons.event_busy_rounded,
                 label: tx('exam_deadline'),
-                value:
-                '${e.endDate!.day}/${e.endDate!.month}/${e.endDate!.year}  '
-                    '${e.endDate!.hour.toString().padLeft(2, '0')}:${e.endDate!.minute.toString().padLeft(2, '0')}',
+                value: AppTime.dateTime(e.endDate!),
                 color: context.colors.danger,
               ),
             ]),
@@ -203,8 +203,8 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
             width: double.infinity,
             child: ElevatedButton.icon(
               onPressed: widget.onBack,
-              icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                  size: 16, color: Colors.white),
+              icon: Icon(Icons.arrow_back_ios_new_rounded,
+                  size: 16, color: context.colors.onHero),
               label: Text(tx('exam_back_to_exams'),
                   style: const TextStyle(
                       fontFamily: 'bahji',
@@ -212,7 +212,7 @@ class _StudentExamFrozenScreenState extends State<StudentExamFrozenScreen>
                       fontWeight: FontWeight.w700)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accent,
-                foregroundColor: Colors.white,
+                foregroundColor: context.colors.onHero,
                 padding: const EdgeInsets.symmetric(vertical: 15),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
@@ -240,12 +240,12 @@ class _ScoreSummaryCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.colors.cardBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: accent.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: context.colors.heroShade.withValues(alpha: 0.04),
               blurRadius: 10)
         ],
       ),
@@ -308,11 +308,11 @@ class _InfoCard extends StatelessWidget {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
     decoration: BoxDecoration(
-      color: Colors.white,
+      color: context.colors.cardBg,
       borderRadius: BorderRadius.circular(14),
       boxShadow: [
         BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: context.colors.heroShade.withValues(alpha: 0.04),
             blurRadius: 8)
       ],
     ),

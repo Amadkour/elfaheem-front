@@ -163,8 +163,8 @@ class _StyleSheetState extends State<_StyleSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(color: it.$1 == value ? c.primary : Colors.transparent, borderRadius: BorderRadius.circular(11)),
               child: IconTheme(
-                data: IconThemeData(size: 18, color: it.$1 == value ? Colors.white : c.textMedium),
-                child: DefaultTextStyle.merge(style: TextStyle(color: it.$1 == value ? Colors.white : c.textDark), child: it.$2),
+                data: IconThemeData(size: 18, color: it.$1 == value ? c.onHero : c.textMedium),
+                child: DefaultTextStyle.merge(style: TextStyle(color: it.$1 == value ? c.onHero : c.textDark), child: it.$2),
               ),
             ),
           ),
@@ -274,6 +274,7 @@ class _StyleSheetState extends State<_StyleSheet> {
                     ),
                     IconButton(
                       visualDensity: VisualDensity.compact,
+                      tooltip: AppConfig.lang == 'ar' ? 'حذف القاعدة' : 'Delete rule',
                       icon: Icon(Icons.delete_outline_rounded, size: 18, color: c.danger),
                       onPressed: () => _set(_s.copyWith(rules: List.of(_s.rules)..removeAt(i))),
                     ),
@@ -470,7 +471,7 @@ class _RuleEditorState extends State<_RuleEditor> {
                       for (final o in _ops)
                         if (widget.col.isNumber || const {'=', '<>', 'contains'}.contains(o.$1))
                           ChoiceChip(
-                            label: Text(o.$2, style: dlText(13, w: FontWeight.w800, c: _r.op == o.$1 ? Colors.white : c.textDark)),
+                            label: Text(o.$2, style: dlText(13, w: FontWeight.w800, c: _r.op == o.$1 ? c.onHero : c.textDark)),
                             selected: _r.op == o.$1,
                             showCheckmark: false,
                             selectedColor: c.warning,

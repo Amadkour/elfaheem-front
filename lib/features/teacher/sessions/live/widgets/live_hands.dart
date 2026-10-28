@@ -168,7 +168,7 @@ class LiveHandBadge extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 5 : 8, vertical: compact ? 2 : 4),
       decoration: BoxDecoration(
-        color: Color.alphaBlend(c.withValues(alpha: 0.25), Colors.black.withValues(alpha: 0.6)),
+        color: Color.alphaBlend(c.withValues(alpha: 0.25), LivePalette.shade(0.6)),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: c.withValues(alpha: 0.7)),
         boxShadow: [BoxShadow(color: c.withValues(alpha: 0.3), blurRadius: 10)],
@@ -210,10 +210,10 @@ class LiveHandsPanel extends StatelessWidget {
   /// Identity whose allow-speak call is in flight (shows a spinner on that row).
   final String? busyIdentity;
 
-  static const _textHigh = Color(0xFFFFFFFF);
-  static const _textMid = Color(0xB3FFFFFF);
-  static const _textLow = Color(0x66FFFFFF);
-  static const _glassBdr = Color(0x30FFFFFF);
+  static const _textHigh = LivePalette.textHigh;
+  static const _textMid = LivePalette.textMid;
+  static const _textLow = LivePalette.textLow;
+  static const _glassBdr = LivePalette.glassBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +244,6 @@ class LiveHandsPanel extends StatelessWidget {
                   IconButton(
                     key: const ValueKey('live_hands.close'),
                     tooltip: 'lr_close'.tr,
-                    visualDensity: VisualDensity.compact,
                     onPressed: onClose,
                     icon: const Icon(Icons.close_rounded, size: 18, color: _textMid),
                   ),
@@ -315,7 +314,7 @@ class _HandRow extends StatelessWidget {
       key: ValueKey('live_hands.row.${hand.identity}'),
       padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 8),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0x14FFFFFF))),
+        border: Border(bottom: BorderSide(color: LivePalette.hairline)),
       ),
       child: Row(children: [
         Container(
@@ -365,15 +364,14 @@ class _HandRow extends StatelessWidget {
           if (hand.isGuest && onAllowSpeak != null)
             busy
                 ? const SizedBox(
-                    width: 36,
-                    height: 36,
+                    width: 48,
+                    height: 48,
                     child: Center(
                         child: SizedBox(
-                            width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))))
+                            width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: LivePalette.textHigh))))
                 : IconButton(
                     key: ValueKey('live_hands.allow.${hand.identity}'),
                     tooltip: 'lr_allow_speak'.tr,
-                    visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
                     padding: EdgeInsets.zero,
                     onPressed: () => onAllowSpeak!(hand.identity),
@@ -383,7 +381,6 @@ class _HandRow extends StatelessWidget {
             IconButton(
               key: ValueKey('live_hands.lower.${hand.identity}'),
               tooltip: 'lr_lower_hand'.tr,
-              visualDensity: VisualDensity.compact,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               padding: EdgeInsets.zero,
               onPressed: () => onLower!(hand.identity),

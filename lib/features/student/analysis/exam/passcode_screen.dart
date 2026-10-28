@@ -37,7 +37,7 @@ class ExamPasscodeSheet extends StatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: context.colors.heroShade.withValues(alpha: 0.55),
       builder: (_) => ExamPasscodeSheet(
         exam: exam,
         correctPasscode: correctPasscode,
@@ -139,7 +139,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withValues(alpha: .12), blurRadius: 24),
+                color: c.heroShade.withValues(alpha: .12), blurRadius: 24),
           ],
         ),
         padding: EdgeInsets.only(bottom: bottomPadding),
@@ -182,7 +182,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
-              colors: [kDeep, c.primary],
+              colors: [context.colors.primaryDark, c.primary],
               begin: Alignment.topRight,
               end: Alignment.bottomLeft,
             ),
@@ -194,8 +194,8 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
               ),
             ],
           ),
-          child: const Icon(Icons.lock_outline_rounded,
-              color: Colors.white, size: 30),
+          child: Icon(Icons.lock_outline_rounded,
+              color: context.colors.onHero, size: 30),
         ),
         const SizedBox(height: 16),
         Text(tx('exam_passcode_title'),
@@ -231,7 +231,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: _hasError
-                  ? kDanger
+                  ? context.colors.danger
                   : (filled ? c.primary : c.divider),
               boxShadow: filled && !_hasError
                   ? [
@@ -255,7 +255,7 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
     child: Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Text(tx('exam_passcode_wrong'),
-          style: examT(13, w: FontWeight.w700, c: kDanger)),
+          style: examT(13, w: FontWeight.w700, c: context.colors.danger)),
     ),
   );
 
@@ -303,9 +303,9 @@ class _ExamPasscodeSheetState extends State<ExamPasscodeSheet>
 
   Widget _buildCloseKey() => _KeyButton(
     onTap: () => Navigator.pop(context),
-    background: kDanger.withValues(alpha: 0.12),
-    borderColor: kDanger.withValues(alpha: 0.3),
-    child: const Icon(Icons.close_rounded, color: kDanger, size: 24),
+    background: context.colors.danger.withValues(alpha: 0.12),
+    borderColor: context.colors.danger.withValues(alpha: 0.3),
+    child: Icon(Icons.close_rounded, color: context.colors.danger, size: 24),
   );
 }
 

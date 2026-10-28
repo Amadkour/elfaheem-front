@@ -13,7 +13,6 @@
 library;
 
 import 'package:flutter/cupertino.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/teacher/sessions/sessions_provider.dart';
@@ -36,7 +35,7 @@ import 'components/share_link.dart';
 import 'components/student_course_hero.dart';
 import 'course_detail_provider.dart';
 import '../../../shared/course_profile/course_profile_screen.dart' show openCourseProfile;
-import 'package:flutter_education_app/design/app_kit.dart' show AppBanner;
+import 'package:flutter_education_app/design/app_kit.dart' show AppBanner, AppRefresh, AppListSkeleton, AppShimmer, AppSkeletonBox;
 import 'growth_tr.dart';
 
 /// Below this width we use the single-column (phone/tablet) layout.
@@ -116,23 +115,31 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     // Full-screen loader only for the FIRST load. While the next page of
     // sessions loads (sessions already on screen) the page must stay put.
     final loading = provider.isLoading && provider.sessions.isEmpty;
-    final loaderSize = (w / 5).clamp(80.0, 160.0).toDouble();
 
     return BasePage(
       useWebCard: true,
       enableFooterWidget: false,
       maxWith: twoCol ? 1180 : 800,
       child: loading
-          ? Center(
-              child: SizedBox(
-                width: loaderSize,
-                height: loaderSize,
-                child: AppLoadingIndicator(),
-              ),
-            )
+          ? const CourseDetailSkeleton()
           : _Body(twoCol: twoCol),
     );
   }
+}
+
+/// First-load placeholder in the page's own shape (hero, then rows), so nothing jumps when the course arrives.
+class CourseDetailSkeleton extends StatelessWidget {
+  const CourseDetailSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => const SingleChildScrollView(
+        physics: NeverScrollableScrollPhysics(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppShimmer(child: AppSkeletonBox(height: 240, radius: 0)),
+          SizedBox(height: 16),
+          AppListSkeleton(items: 4),
+        ]),
+      );
 }
 
 /// Provides what the tabs need, then picks the layout. One set of providers
@@ -252,8 +259,7 @@ class _MobileLayout extends StatelessWidget {
       child: Column(
         children: [
           Expanded(
-            child: RefreshIndicator(
-              color: context.colors.primary,
+            child: AppRefresh(
               onRefresh: p.refresh,
               child: NotificationListener<ScrollNotification>(
                 onNotification: (n) => _onCourseDetailScroll(context, n),
@@ -303,11 +309,11 @@ class _MobileBuyBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.cardBg,
         border: Border(
-          top: BorderSide(color: Colors.black.withValues(alpha: 0.06)),
+          top: BorderSide(color: c.heroShade.withValues(alpha: 0.06)),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: c.heroShade.withValues(alpha: 0.07),
             blurRadius: 18,
             offset: const Offset(0, -4),
           ),
@@ -414,7 +420,7 @@ class _SideCard extends StatelessWidget {
         border: Border.all(color: c.primary.withValues(alpha: 0.08)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.07),
+            color: c.heroShade.withValues(alpha: 0.07),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -451,7 +457,7 @@ class _SideCard extends StatelessWidget {
           ],
           if (highlights.isNotEmpty) ...[
             const SizedBox(height: 18),
-            Divider(height: 1, color: Colors.black.withValues(alpha: 0.07)),
+            Divider(height: 1, color: c.heroShade.withValues(alpha: 0.07)),
             const SizedBox(height: 8),
             for (final h in highlights) _Fact(item: h),
           ],
@@ -553,8 +559,8 @@ class _EnrollButton extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: c.onHero,
                 fontWeight: FontWeight.w800,
                 fontSize: 15,
                 fontFamily: 'bahji',
@@ -798,7 +804,7 @@ class _TabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final fg = active ? Colors.white : c.textLight;
+    final fg = active ? c.onHero : c.textLight;
 
     final text = Text(
       label,

@@ -17,8 +17,6 @@ import '../../../config/theme/theme_config_provider.dart';
 import '../../student/models.dart';
 import 'teacher_course_roadmap_section.dart';
 
-const _kRoadmapGold = Color(0xFFFFD700);
-const _kRoadmapGoldSoft = Color(0xFFE8C878);
 
 /// Background derives from the app's own primary color (not an arbitrary
 /// hue) so the roadmap reads as part of the course-profile page's identity
@@ -26,10 +24,11 @@ const _kRoadmapGoldSoft = Color(0xFFE8C878);
 /// contrast a "premium journey" card needs against white roadmap text.
 List<Color> darkRoadmapGradientColors(BuildContext context) {
   final primary = context.colors.primary;
+  final shade = context.colors.heroShade;
   return [
-    Color.lerp(primary, Colors.black, 0.80)!,
-    Color.lerp(primary, Colors.black, 0.58)!,
-    Color.lerp(primary, Colors.black, 0.32)!,
+    Color.lerp(primary, shade, 0.80)!,
+    Color.lerp(primary, shade, 0.58)!,
+    Color.lerp(primary, shade, 0.32)!,
   ];
 }
 
@@ -116,23 +115,27 @@ class CourseRoadmapSection extends StatelessWidget {
                   width: 34,
                   height: 34,
                   decoration: BoxDecoration(
-                    color: _kRoadmapGold.withValues(alpha: 0.16),
+                    color: context.colors.accent2.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.map_rounded,
                     size: 18,
-                    color: _kRoadmapGold,
+                    color: context.colors.accent2,
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(
-                  'learning_roadmap_title'.tr,
-                  style: const TextStyle(
-                    fontFamily: 'tajawal',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                Expanded(
+                  child: Text(
+                    'learning_roadmap_title'.tr,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: 'tajawal',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: context.colors.onHero,
+                    ),
                   ),
                 ),
               ],
@@ -155,15 +158,19 @@ class CourseRoadmapSection extends StatelessWidget {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  Container(width: 3, height: 15, color: _kRoadmapGold),
+                  Container(width: 3, height: 15, color: context.colors.accent2),
                   const SizedBox(width: 8),
-                  Text(
-                    'roadmap_explore_more_title'.tr,
-                    style: const TextStyle(
-                      fontFamily: 'tajawal',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                  Expanded(
+                    child: Text(
+                      'roadmap_explore_more_title'.tr,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'tajawal',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                        color: context.colors.onHero,
+                      ),
                     ),
                   ),
                 ],
@@ -301,9 +308,9 @@ class _RoadmapConnector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = switch (state) {
-      _NodeState.completed => _kRoadmapGold.withValues(alpha: 0.7),
-      _NodeState.next => _kRoadmapGold.withValues(alpha: 0.55),
-      _ => Colors.white.withValues(alpha: 0.15),
+      _NodeState.completed => context.colors.accent2.withValues(alpha: 0.7),
+      _NodeState.next => context.colors.accent2.withValues(alpha: 0.55),
+      _ => context.colors.onHero.withValues(alpha: 0.15),
     };
     return Padding(
       padding: const EdgeInsets.only(top: 20),
@@ -362,10 +369,10 @@ class _RoadmapNode extends StatelessWidget {
     final isCompleted = state == _NodeState.completed;
     final isMuted = state == _NodeState.muted;
 
-    final accent = isMuted ? Colors.white38 : _kRoadmapGold;
+    final accent = isMuted ? context.colors.onHeroFaint : context.colors.accent2;
     final iconColor = isMuted
-        ? Colors.white38
-        : (isCurrent ? Colors.white : accent);
+        ? context.colors.onHeroFaint
+        : (isCurrent ? context.colors.onHero : accent);
 
     return SizedBox(
       width: 40,
@@ -378,12 +385,12 @@ class _RoadmapNode extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isCurrent
-                  ? _kRoadmapGold
+                  ? context.colors.accent2
                   : (isCompleted
-                  ? _kRoadmapGold.withValues(alpha: 0.18)
-                  : Colors.white.withValues(alpha: 0.08)),
+                  ? context.colors.accent2.withValues(alpha: 0.18)
+                  : context.colors.onHero.withValues(alpha: 0.08)),
               border: Border.all(
-                color: isMuted ? Colors.white24 : _kRoadmapGold,
+                color: isMuted ? context.colors.heroGlassBorder : context.colors.accent2,
                 width: 1.4,
               ),
             ),
@@ -401,7 +408,7 @@ class _RoadmapNode extends StatelessWidget {
                 fontFamily: 'tajawal',
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
-                color: isMuted ? Colors.white38 : _kRoadmapGoldSoft,
+                color: isMuted ? context.colors.onHeroFaint : context.colors.accent,
                 letterSpacing: 0.4,
               ),
             ),
@@ -414,7 +421,7 @@ class _RoadmapNode extends StatelessWidget {
               fontFamily: 'tajawal',
               fontSize: 12,
               fontWeight: FontWeight.w700,
-              color: isMuted ? Colors.white38 : Colors.white,
+              color: isMuted ? context.colors.onHeroFaint : context.colors.onHero,
             ),
           ),
         ],
@@ -437,7 +444,7 @@ class _EnrollRoadmapButton extends StatelessWidget {
       child: Container(
         height: 46,
         decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [_kRoadmapGold, _kRoadmapGoldSoft]),
+          gradient: LinearGradient(colors: [context.colors.accent2, context.colors.accent]),
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
@@ -445,13 +452,17 @@ class _EnrollRoadmapButton extends StatelessWidget {
           children: [
             Icon(Icons.rocket_launch_rounded, size: 18, color: ink),
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'tajawal',
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: ink,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'tajawal',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: ink,
+                ),
               ),
             ),
           ],

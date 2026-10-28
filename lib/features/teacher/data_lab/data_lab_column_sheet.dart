@@ -569,7 +569,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
     return Container(
       key: ValueKey(piece.key),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      padding: const EdgeInsetsDirectional.fromSTEB(14, 12, 8, 12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.07),
         borderRadius: BorderRadius.circular(16),
@@ -580,7 +580,7 @@ class _ColumnEditorState extends State<_ColumnEditor> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
             decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
-            child: Text(piece.label, style: dlText(12, w: FontWeight.w800, c: Colors.white).copyWith(fontFamily: 'monospace')),
+            child: Text(piece.label, style: dlText(12, w: FontWeight.w800, c: context.colors.onHero).copyWith(fontFamily: 'monospace')),
           ),
           const Spacer(),
           IconButton(
@@ -693,7 +693,7 @@ class _InsertChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = selected ? Colors.white : color;
+    final fg = selected ? context.colors.onHero : color;
     final style = dlText(12.5, w: FontWeight.w800, c: fg);
     final chip = InkWell(
       borderRadius: BorderRadius.circular(12),

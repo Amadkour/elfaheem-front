@@ -1,3 +1,5 @@
+import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
@@ -14,7 +16,6 @@ import '../../models.dart';
 import '../details/components/app_responsive.dart';
 import '../details/course_detail_screen.dart';
 import 'my_courses_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 
 class MyCoursesScreen extends StatefulWidget {
   const MyCoursesScreen({super.key, required this.courses});
@@ -164,14 +165,14 @@ class _StatCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: Colors.white, size: 18),
+          Icon(icon, color: context.colors.onHero, size: 18),
           const SizedBox(height: 10),
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
               '$count',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: context.colors.onHero,
                 fontSize: 24,
                 fontWeight: FontWeight.w900,
                 fontFamily: 'bahji',
@@ -183,7 +184,7 @@ class _StatCard extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white,
+              color: context.colors.onHero,
               fontSize: 14,
               fontFamily: 'bahji',
             ),
@@ -219,7 +220,7 @@ class _FilterTabs extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: context.colors.heroShade.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -289,7 +290,10 @@ class _CourseList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<MyCoursesProvider>(builder: (context, provider, child) {
       if (provider.isLoading && provider.allCourses.isEmpty) {
-        return Center(child: AppLoadingIndicator());
+        return const AppListSkeleton();
+      }
+      if (provider.hasError && provider.allCourses.isEmpty) {
+        return ErrorRetry(message: provider.errorMessage ?? 'retry'.tr, onRetry: provider.refresh);
       }
 
       final courses = provider.filteredCourses;
