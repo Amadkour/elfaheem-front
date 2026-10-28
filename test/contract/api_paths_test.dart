@@ -22,18 +22,6 @@ import 'api_call_scan.dart';
 const knownMissing = <String, String>{
   // fallback for an older backend: tried only after GET /api/v1/my-enrolled-courses answers 404
   'GET /api/v1/my-enrollments': 'legacy fallback route (student_analytics_api.dart fetchMyEnrollments)',
-  // Track F (docs/polish/feedback-learning.md): learning from feedback, coded against the contract
-  'POST /api/v1/rag/learning/feedback': 'Track F: backend lands next',
-  'POST /api/v1/rag/learning/exam-drafts/{}/items/{}/feedback': 'Track F: backend lands next',
-  'GET /api/v1/rag/learning/suggestions': 'Track F: backend lands next',
-  'POST /api/v1/rag/learning/suggestions/{}/accept': 'Track F: backend lands next',
-  'POST /api/v1/rag/learning/suggestions/{}/dismiss': 'Track F: backend lands next',
-  'GET /api/v1/rag/learning/models': 'Track F: backend lands next',
-  'POST /api/v1/rag/learning/models/{}/promote': 'Track F: backend lands next',
-  'POST /api/v1/rag/learning/models/{}/rollback': 'Track F: backend lands next',
-  'GET /api/v1/rag/learning/stats': 'Track F: backend lands next',
-  'GET /api/v1/rag/learning/orgs/{}/settings': 'Track F: backend lands next',
-  'PUT /api/v1/rag/learning/orgs/{}/settings': 'Track F: backend lands next',
 };
 
 void main() {

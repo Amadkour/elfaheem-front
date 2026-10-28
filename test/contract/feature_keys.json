@@ -214,6 +214,7 @@
  "rag.admin",
  "rag.app_assistant",
  "rag.assistant",
+ "rag.learning",
  "rag.qa_admin",
  "register",
  "register.dob",
