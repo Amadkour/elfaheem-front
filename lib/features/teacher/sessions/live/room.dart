@@ -73,6 +73,13 @@ import 'package:flutter_education_app/features/shared/live/meeting_recording_she
     show showRecordSetupSheet;
 // Part 2 (live-rooms-spec §8, §11): the free-time countdown, the (i) sheet and the live plan
 import 'package:flutter_education_app/features/shared/live/live_time_limit.dart';
+import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/shared/live/live_media_plan.dart'
+    show isBoardVideoName, liveVideoBudget, wantBoardVideo;
+import 'package:flutter_education_app/features/shared/live/live_media_controller.dart';
+import 'package:flutter_education_app/features/shared/live/live_net_pill.dart';
+import 'package:flutter_education_app/features/shared/live/live_quality_governor.dart' show LiveVideoTier;
+import 'whiteboard/board_video_track.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.dart';
 import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
 import 'package:permission_handler/permission_handler.dart';
@@ -321,6 +328,10 @@ class RoomPage extends StatefulWidget {
   /// session's start). The (i) sheet's "Live for" counts from it; null → the person's own time in the room.
   final DateTime? liveStartedAt;
 
+  /// The super admin's live media settings from the join payload (D-090): the receive side (weak network, hidden
+  /// video), who records (device in client mode, Egress in server mode) and the share's ceilings.
+  final LiveConfig liveConfig;
+
   /// D9: the connection-lost dialog's Rejoin. The pre-join page passes how to join again (a fresh token, then
   /// connect) with the microphone / camera as they were in the room; null hides Rejoin.
   final void Function(bool micOn, bool camOn)? onRejoin;
@@ -348,6 +359,7 @@ class RoomPage extends StatefulWidget {
         this.startsAt,
         this.hostName,
         this.liveStartedAt,
+        this.liveConfig = LiveConfig.defaults,
         this.onRejoin,
       });
 
@@ -369,6 +381,56 @@ class _RoomPageState extends State<RoomPage>
   @override int get annotationThickness => _annot.thickness;
   // The share sheet offers the whiteboard (the "Whiteboard" region).
   @override bool get whiteboardOffered => _boardEnabled;
+  @override LiveConfig get liveConfig => widget.liveConfig;
+
+  // ── D-090: the receive side (weak network, hidden video) and the board's recording track ─────────────────
+  late final LiveMediaController _media = LiveMediaController(room: widget.room, config: widget.liveConfig);
+  late final BoardVideoPublisher _boardVideo = BoardVideoPublisher(room: widget.room, pageKey: _boardPageKey);
+
+  void _onMediaChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// The course session's device recorder runs (client mode, or a server that does not say; never in server mode,
+  /// where LiveKit Egress records).
+  bool get _deviceRecords => widget.isTeacher && widget.recordingEnabled && widget.liveConfig.deviceRecorder;
+
+  /// Minimized with pause_hidden_video: the page draws no video at all (adaptive stream then pauses every track the
+  /// box does not show; the box keeps its own renderer).
+  bool get _videoParked => (_minimized?.value ?? false) && widget.liveConfig.pauseHiddenVideo;
+
+  void _onMinimizedVideo() {
+    if (mounted) setState(() {});
+  }
+
+  /// The aurora behind the stage runs only while nothing else is on it (the waiting card): behind a video, a share
+  /// or a board it is barely visible and cost a full-screen repaint 60 times a second.
+  void _syncAurora() {
+    // Not before didChangeDependencies (it reads MediaQuery); not while minimized (_syncDecorLoops parks it).
+    if (!mounted || !_depsReady || (_minimized?.value ?? false)) return;
+    final idle = _stageTracks.isEmpty && !_isBoardMain && !(widget.room.localParticipant?.isCameraEnabled() ?? false);
+    if (idle) {
+      _syncAurora();
+    } else if (_auroraAnim.isAnimating) {
+      _auroraAnim.stop();
+    }
+  }
+
+  /// The board's recording track runs exactly while wanted (server recording mode, a server recording on, this
+  /// device presenting a board, a platform that can feed a track).
+  void _syncBoardVideo() {
+    final want = wantBoardVideo(
+      config: widget.liveConfig,
+      roomRecording: _serverRecording,
+      presentingBoard: _boardEnabled && _board.isLocalPresenting,
+      supported: boardVideoSupported(),
+    );
+    unawaited(_boardVideo.sync(want: want));
+  }
+
+  void _onBoardScene() => _boardVideo.markDirty();
+
+  bool _depsReady = false;
   @override Future<void> startWhiteboard(BoardBackground background) => _startBoard(background);
 
   // ── D29: what the server lets this participant publish (follows ParticipantPermissionsUpdatedEvent) ─────
@@ -440,6 +502,12 @@ class _RoomPageState extends State<RoomPage>
 
   void _onAppLifecycle(AppLifecycleState state) {
     if (kIsWeb || !lkPlatformIsMobile()) return;
+    // D-090: nobody watches the videos of an app in the background — they stop until it is back (audio goes on).
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
+      _media.setAppHidden(true);
+    } else if (state == AppLifecycleState.resumed) {
+      _media.setAppHidden(false);
+    }
     final local = widget.room.localParticipant;
     if (local == null) return;
     if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
@@ -1287,6 +1355,10 @@ class _RoomPageState extends State<RoomPage>
     _sortParticipants();
     _rememberLocalChoices();
     _lifecycle = AppLifecycleListener(onStateChange: _onAppLifecycle);
+    _media
+      ..addListener(_onMediaChanged)
+      ..start();
+    _board.scene.addListener(_onBoardScene);
 
     if (lkPlatformIs(PlatformType.android)) {
       // Same call Hardware.setSpeakerphoneOn(true) forwarded to before it was deprecated.
@@ -1323,9 +1395,7 @@ class _RoomPageState extends State<RoomPage>
 
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
-      if (widget.isTeacher &&
-          widget.recordingEnabled &&
-          widget.room.connectionState == ConnectionState.connected) {
+      if (_deviceRecords && widget.room.connectionState == ConnectionState.connected) {
         await _startRecorderOnce();
       }
     });
@@ -1333,10 +1403,12 @@ class _RoomPageState extends State<RoomPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _depsReady = true;
     // Hosted in LiveRoomLayer: follow the box (minimized → the aurora and the REC dot stop).
     if (_minimized == null && LiveRoomScope.maybeOf(context) != null) {
       _minimized = LiveRoomHost.minimizedListenable;
       _minimized?.addListener(_syncDecorLoops);
+      _minimized?.addListener(_onMinimizedVideo);
     }
     _syncDecorLoops();
     if (!_annotColorSet) {
@@ -1407,6 +1479,12 @@ class _RoomPageState extends State<RoomPage>
     _sortRecheck?.cancel();
     _lifecycle?.dispose();
     _minimized?.removeListener(_syncDecorLoops);
+    _minimized?.removeListener(_onMinimizedVideo);
+    _media
+      ..removeListener(_onMediaChanged)
+      ..dispose();
+    _board.scene.removeListener(_onBoardScene);
+    unawaited(_boardVideo.stop());
     _lobby?.dispose();
     _controls?.dispose();
     // Annotation: the Android overlay is hidden by disposeLiveNativeEvents() below (it owns onClosed).
@@ -1919,7 +1997,7 @@ class _RoomPageState extends State<RoomPage>
       // already running (no race with LiveKit track setup).
       log("----------------------111");
       _startSessionClock(); // everyone — total session time, not gated on isTeacher
-      if (widget.isTeacher && widget.recordingEnabled) await _startRecorderOnce();
+      if (_deviceRecords) await _startRecorderOnce();
     })
     ..on<RoomDisconnectedEvent>((event) async {
       log('Room disconnected: reason => ${event.reason}');
@@ -2013,6 +2091,7 @@ class _RoomPageState extends State<RoomPage>
       // D25: a notice (and the REC pill), never a dialog on everyone's screen.
       if (!mounted || event.activeRecording == _serverRecording) return;
       setState(() => _serverRecording = event.activeRecording);
+      _syncBoardVideo(); // D-090: the board goes into a server recording as a slow track
       showAppNotice((event.activeRecording ? 'lk_recording_active' : 'lk_recording_stopped').tr,
           icon: event.activeRecording ? Icons.fiber_manual_record_rounded : Icons.stop_circle_outlined);
     })
@@ -2310,6 +2389,7 @@ class _RoomPageState extends State<RoomPage>
 
     for (final p in widget.room.remoteParticipants.values) {
       for (final t in p.videoTrackPublications) {
+        if (isBoardVideoName(t.name)) continue; // a board's recording track: the board is drawn from vectors
         if (t.isScreenShare) {
           // Include screen shares even before the track object is loaded
           // (_PremiumScreenShareView handles the null-track loading state).
@@ -2355,6 +2435,7 @@ class _RoomPageState extends State<RoomPage>
     final localPubs = widget.room.localParticipant?.videoTrackPublications;
     if (localPubs != null) {
       for (final t in localPubs) {
+        if (isBoardVideoName(t.name)) continue;
         if (t.isScreenShare) {
           // Include local screen share even before track object loads.
           localScreen.add(
@@ -2386,6 +2467,7 @@ class _RoomPageState extends State<RoomPage>
         : [?localCamera, ...userMedia];
 
     if (mounted) setState(() => participantTracks = ordered);
+    _syncAurora();
     _syncAnnotRoles();
     // The strip shows the stage tracks after the first (the local camera is in the self-view box, not the strip).
     if ((localCamera == null ? ordered.length : ordered.length - 1) > 1) {
@@ -2405,7 +2487,7 @@ class _RoomPageState extends State<RoomPage>
 
   VideoTrack? _resolveScreenTrack(Participant p) {
     for (final pub in p.videoTrackPublications) {
-      if (pub.isScreenShare) {
+      if (pub.isScreenShare && !isBoardVideoName(pub.name)) {
         final t = pub.track;
         if (t is VideoTrack) return t;
       }
@@ -2501,12 +2583,14 @@ class _RoomPageState extends State<RoomPage>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Aurora background
-              AnimatedBuilder(
-                animation: _auroraAnim,
-                builder: (_, _) => CustomPaint(
-                  painter: _AuroraPainter(_auroraAnim.value),
-                  child: const SizedBox.expand(),
+              // Aurora background (its own layer: its repaints never repaint the stage)
+              RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _auroraAnim,
+                  builder: (_, _) => CustomPaint(
+                    painter: _AuroraPainter(_auroraAnim.value),
+                    child: const SizedBox.expand(),
+                  ),
                 ),
               ),
 
@@ -2537,7 +2621,7 @@ class _RoomPageState extends State<RoomPage>
 
                               // Thumbnail strip
                               if (_stageTracks.length > 1 &&
-                                  !_isScreenShareMain && !_isBoardMain)
+                                  !_isScreenShareMain && !_isBoardMain && !_videoParked)
                                 FadeTransition(
                                   opacity: _thumbBarFade,
                                   child: Positioned(
@@ -2547,6 +2631,10 @@ class _RoomPageState extends State<RoomPage>
                                     child: SizedBox(
                                       height: 108,
                                       child: ListView.builder(
+                                        // D-090: no tile is built off-screen (a built tile counts as watched and
+                                        // keeps its video coming), and past the device's video budget a tile
+                                        // shows the avatar (the stage is one of the budget).
+                                        scrollCacheExtent: const ScrollCacheExtent.pixels(0),
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                         ),
@@ -2558,9 +2646,25 @@ class _RoomPageState extends State<RoomPage>
                                             track: track,
                                             resolveScreenTrack: _resolveScreenTrack,
                                             handUp: _hands.isUp(track.participant.identity),
+                                            renderVideo: i + 1 < liveVideoBudget(MediaQuery.sizeOf(context).width),
                                           );
                                         },
                                       ),
+                                    ),
+                                  ),
+                                ),
+
+                              // D-090: audio only (weak_network audio_first) — why, and Show video
+                              if (_media.audioOnly)
+                                PositionedDirectional(
+                                  start: 12,
+                                  end: 12,
+                                  // A phone keeps clear of the bottom badges; a wide stage has room between them.
+                                  bottom: (MediaQuery.sizeOf(context).width >= 900 ? 14 : 64) + _boardDockClearance,
+                                  child: Center(
+                                    child: LiveAudioOnlyCard(
+                                      onShowVideo: _media.showVideo,
+                                      keepsScreen: _isScreenShareMain,
                                     ),
                                   ),
                                 ),
@@ -2752,6 +2856,8 @@ class _RoomPageState extends State<RoomPage>
   //   • Main view: first participant track (teacher camera or screen share).
   //   • PiP corner: student's own camera (if enabled).
   Widget _buildMainVideo() {
+    // D-090: minimized, the page draws no video (the box shows one); a board stays (vectors, no network).
+    if (_videoParked && !_isBoardMain) return ColoredBox(color: _bg, child: const SizedBox.expand());
     final (video, shown) = _mainVideo();
     if (shown == null || !_hands.isUp(shown.identity)) return video;
     // The ✋ badge of whoever fills the main view (bottom-start: the thumbnail strip owns the top edge).
@@ -2873,6 +2979,7 @@ class _RoomPageState extends State<RoomPage>
   // Tapping PiP swaps main and PiP content (camera ↔ remote/placeholder).
   // Draggable to any corner of the screen.
   Widget _buildDraggablePip(BoxConstraints constraints) {
+    if (_videoParked) return const SizedBox.shrink(); // D-090: no local preview behind the box
     final local = widget.room.localParticipant;
 
     // For teacher: always show local camera in PiP.
@@ -3159,6 +3266,11 @@ class _RoomPageState extends State<RoomPage>
       ));
     }
 
+    // ── D-090: the room lowered the video for a weak connection (audio-only has its own card on the stage) ──
+    if (_media.lowered && !_media.audioOnly) {
+      badges.add(LiveNetPill(recovering: _media.tier == LiveVideoTier.medium));
+    }
+
     // ── Room locked (hosts; live.room_lock) — the participants panel holds the switch ──
     if (_controls?.locked == true && !AppConfig.disableList.contains(kLiveRoomLockFeatureKey)) {
       badges.add(LiveLockedPill(onTap: _showParticipants ? null : _toggleParticipantPanel));
@@ -3343,6 +3455,8 @@ class _RoomPageState extends State<RoomPage>
       top: 14,
       right: 14,
       child: Column(
+        // The badges hug the physical right edge in Arabic too (end alone would follow the reading direction).
+        textDirection: TextDirection.ltr,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: badges
             .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
@@ -3373,7 +3487,8 @@ class _RoomPageState extends State<RoomPage>
             : null,
         meetingRecording: _meetingRecording != null,
         meetingRecordBusy: _meetingRecordBusy,
-        recordingEnabled: widget.recordingEnabled,
+        // In server mode (D-090) the device does not record: no device recorder controls.
+        recordingEnabled: widget.recordingEnabled && widget.liveConfig.deviceRecorder,
         onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
@@ -3707,6 +3822,7 @@ class _RoomPageState extends State<RoomPage>
   void _stopBoard() {
     if (!_board.isLocalPresenting) return;
     _board.stopPresenting();
+    _syncBoardVideo();
     _scheduleSort();
     if (mounted) setState(() {});
   }
@@ -3714,6 +3830,7 @@ class _RoomPageState extends State<RoomPage>
   /// Whatever this device presents stops (the one-share rule, a host's stop, a hand-over).
   Future<void> _stopAnyLocalShare() async {
     _stopBoard();
+    await _boardVideo.stop(); // the board's recording track first: it is not a screen share to stop
     if (screenShareActive) await stopScreenShare();
   }
 
@@ -3729,6 +3846,8 @@ class _RoomPageState extends State<RoomPage>
 
   void _onBoardChanged() {
     if (!mounted) return;
+    _boardVideo.markDirty();
+    _syncBoardVideo();
     final presenter = _board.presenter;
     if (presenter != _boardPresenterSeen) {
       final before = _boardPresenterSeen;
@@ -4016,7 +4135,7 @@ class _RoomPageState extends State<RoomPage>
     final me = _myIdentity;
     final ids = <String>[
       for (final p in widget.room.remoteParticipants.values)
-        if (p.videoTrackPublications.any((t) => t.isScreenShare && !t.muted)) p.identity,
+        if (p.videoTrackPublications.any((t) => t.isScreenShare && !t.muted && !isBoardVideoName(t.name))) p.identity,
       if (local != null && me.isNotEmpty && _localPresenting) me,
       // A whiteboard counts as presenting (D-087).
       if (_boardEnabled && _board.presenter != null && _board.presenter != me) _board.presenter!,
@@ -5449,11 +5568,14 @@ class _MiniTag extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ThumbnailCard extends StatelessWidget {
-  const _ThumbnailCard({required this.track, required this.resolveScreenTrack, this.handUp = false});
+  const _ThumbnailCard({required this.track, required this.resolveScreenTrack, this.handUp = false, this.renderVideo = true});
 
   final ParticipantTrack track;
   final VideoTrack? Function(Participant) resolveScreenTrack;
   final bool handUp;
+
+  /// False past the device's video budget (D-090): the avatar instead of a renderer.
+  final bool renderVideo;
 
   @override
   Widget build(BuildContext context) {
@@ -5494,7 +5616,7 @@ class _ThumbnailCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            if (isScreen && screenTrack != null)
+            if (isScreen && screenTrack != null && renderVideo)
               AbsorbPointer(
                 child: VideoTrackRenderer(
                   key: ValueKey(screenTrack.sid),
@@ -5504,7 +5626,7 @@ class _ThumbnailCard extends StatelessWidget {
                 ),
               )
             else
-              ParticipantWidget.widgetFor(track, showStatsLayer: false),
+              ParticipantWidget.widgetFor(track, showStatsLayer: false, renderVideo: renderVideo),
             if (handUp)
               const PositionedDirectional(top: 5, start: 5, child: LiveHandBadge(compact: true)),
             Positioned(

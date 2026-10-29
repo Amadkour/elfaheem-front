@@ -1013,3 +1013,34 @@ library (one presenter owns the state; per-item last-writer-wins is enough); put
 (an older app would draw them over a later screen share); a free-size infinite canvas (viewers on a phone and a
 projector must see the same page; zoom is per device instead); image / PDF page backgrounds (needs an upload route
 and a snapshot path for large binaries — later).
+
+## D-090 — Live media follows the super admin's `live_config`; the room lowers video itself on a weak link · 2026-10-29 · proposed
+
+**Context.** The owner: "apply all best practice points to improve and minimize the CPU and network connection in live,
+and where there are two approaches, make the super admin able to switch between them". Every publisher sent a 1080p60
+camera at 5 Mbit/s; on a 1 Mbit/s downlink the SFU froze 720p for ~15 s and then sat on 180p; an Android Motion share
+was 590×1280.
+**Decision.** Every live join / start payload carries `live_config` v1 (video codec, weak-network mode, camera caps per
+role, camera fps, screen fps / bitrate ceilings, Opus DTX / RED, participants' camera off at the start, pause hidden
+video, recording mode / engine); every field is optional and an older server gets the recommended defaults
+(`live_config.dart`, numbers and reasons in docs/live/NOTES.md "Live media tuning"). Publish: the role's cap at
+camera_fps with explicit simulcast layers (180p@15 · 360p · cap), VP8 backup behind H.264 / VP9 (VP9 never on Safari
+/ iOS), Opus mono 48 / 24 kbps, adaptive stream + dynacast on, the SDK's per-source degradation (camera keeps frame
+rate, screen keeps resolution). Screen share: "1080p / 720p" is the SHORT side with a pixel ceiling (a portrait phone
+shares 1080×2340 / 720×1560), two layers. Receive: a pure governor (`live_quality_governor.dart`) drops every remote
+video to LOW on the first bad sample (poor / lost rating, ≥ 8 % loss, a frozen camera, a server-paused track), climbs
+one tier per 12 s of good, doubles the hold and keeps a ceiling below a tier that broke the link (no flapping);
+`audio_first` drops the cameras (screen kept) after 8 s bad at LOW, with Show video. Hidden video stops (no
+off-screen strip tiles, a video budget per screen size, nothing drawn while minimized, everything unsubscribed while
+the app is in the background). A student's camera starts off (no track until turned on). In server recording mode
+the device recorder does not run and a presented board is published as a 2 fps `whiteboard` track for Egress
+(amends D-087's "Recording"); client mode keeps the device recorder.
+**Two approaches → a switch.** codec (VP8 universal / H.264 cheaper CPU on phones / VP9 less bandwidth), weak network
+(adaptive layers / audio first), recording (server Egress / device), Egress engine (composite / media), DTX, RED,
+participants' camera default, pause hidden video.
+**Rejected.** Leaving layer choice to the SFU alone (the measured 15 s freeze and the 180p floor); unsubscribing
+instead of lowering on every weak sample (a re-subscribe costs a renegotiation, and adaptive layers are enough
+outside `audio_first`); disabling hidden tracks with `disable()` (the SDK has no way back to "unset": a re-enabled
+hidden tile would keep its video forever — the background case unsubscribes, the minimized case simply draws no
+renderer); one screen-share layer (a weak viewer froze on it); a long-side cap for shares (portrait phones lost
+60 % of their width).

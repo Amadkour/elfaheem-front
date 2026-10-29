@@ -49,9 +49,9 @@ void main() {
       expect(off['systemAudio'], 'exclude');
     });
 
-    test('one layer with the preset encoding (shared with Android)', () {
+    test('two layers with the preset encoding (shared with Android)', () {
       final o = SharePreset.motion.publishOptions;
-      expect(o.simulcast, isFalse);
+      expect(o.simulcast, isTrue);
       expect(o.screenShareEncoding?.maxFramerate, 30);
       expect(o.screenShareEncoding?.maxBitrate, 3000000);
     });

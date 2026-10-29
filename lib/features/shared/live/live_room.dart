@@ -33,6 +33,7 @@ import 'package:flutter/foundation.dart' show ValueNotifier;
 import '../../../core/api_client.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/model/live_response_model.dart';
+import 'live_config.dart';
 import 'live_time_limit.dart' show parseLiveFreeMinutes, parseLiveTimeLimit, parseNaiveUtc;
 
 /// Kill-switch keys of the feature (ParentComponent / AppConfig.disableList).
@@ -341,6 +342,9 @@ class JoinOutcome {
   /// When the room went live (`live_started_at`, naive UTC → UTC); null when the payload does not say.
   DateTime? get liveStartedAt => parseNaiveUtc(payload['live_started_at']);
 
+  /// The super admin's live media settings (`live_config`, D-090), or the defaults.
+  LiveConfig get liveConfig => LiveConfig.fromPayload(payload);
+
   /// The room credentials for PreJoinPage / RoomPage; [sessionId] is the room screen's id (negative for meetings).
   LiveResponseModel live({required int sessionId}) => LiveResponseModel(
       sessionId: sessionId,
@@ -348,7 +352,8 @@ class JoinOutcome {
       token: token,
       recordingEnabled: recordingEnabled,
       freeEndsAt: freeEndsAt,
-      liveStartedAt: liveStartedAt);
+      liveStartedAt: liveStartedAt,
+      liveConfig: liveConfig);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

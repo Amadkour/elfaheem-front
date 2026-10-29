@@ -184,21 +184,23 @@ abstract class ParticipantWidget extends StatefulWidget {
   /// [imageUrl] is a photo the caller already knows (the enrolled-students list); [isHost] overrides
   /// the `teacher_` identity rule. Both optional, so existing call sites are unchanged.
   static ParticipantWidget widgetFor(ParticipantTrack participantTrack,
-      {bool showStatsLayer = false, String? imageUrl, bool? isHost}) {
+      {bool showStatsLayer = false, String? imageUrl, bool? isHost, bool renderVideo = true}) {
     if (participantTrack.participant is LocalParticipant) {
       return LocalParticipantWidget(
           participantTrack.participant as LocalParticipant,
           participantTrack.type,
           showStatsLayer,
           imageUrl: imageUrl,
-          isHost: isHost);
+          isHost: isHost,
+          renderVideo: renderVideo);
     } else if (participantTrack.participant is RemoteParticipant) {
       return RemoteParticipantWidget(
           participantTrack.participant as RemoteParticipant,
           participantTrack.type,
           showStatsLayer,
           imageUrl: imageUrl,
-          isHost: isHost);
+          isHost: isHost,
+          renderVideo: renderVideo);
     }
     throw UnimplementedError('Unknown participant type');
   }
@@ -211,10 +213,15 @@ abstract class ParticipantWidget extends StatefulWidget {
   final String? imageUrl;
   final bool? isHost;
 
+  /// False: the avatar even while the camera is on — no renderer, so adaptive stream pauses the video (the room's
+  /// video budget, D-090).
+  final bool renderVideo;
+
   const ParticipantWidget({
     this.quality = VideoQuality.MEDIUM,
     this.imageUrl,
     this.isHost,
+    this.renderVideo = true,
     super.key,
   });
 }
@@ -233,6 +240,7 @@ class LocalParticipantWidget extends ParticipantWidget {
       this.showStatsLayer, {
         super.imageUrl,
         super.isHost,
+        super.renderVideo,
         super.key,
       });
 
@@ -254,6 +262,7 @@ class RemoteParticipantWidget extends ParticipantWidget {
       this.showStatsLayer, {
         super.imageUrl,
         super.isHost,
+        super.renderVideo,
         super.key,
       });
 
@@ -337,7 +346,7 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
       encrypted: p.isEncrypted,
       overlay: overlay(isScreenShare),
       stats: widget.showStatsLayer ? ParticipantStatsWidget(participant: p) : null,
-      child: camOn
+      child: camOn && widget.renderVideo
           ? VideoTrackRenderer(
               renderMode: VideoRenderMode.auto,
               video,

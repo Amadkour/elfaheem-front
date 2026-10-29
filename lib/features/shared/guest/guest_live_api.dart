@@ -20,6 +20,7 @@ import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../live/live_controls_api.dart' show liveControlsErrorText;
 import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
+import '../live/live_config.dart';
 import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,6 +211,7 @@ class GuestJoin {
     required this.identity,
     this.freeEndsAt,
     this.liveStartedAt,
+    this.liveConfig = LiveConfig.defaults,
   });
 
   final String wsUrl;
@@ -225,6 +227,9 @@ class GuestJoin {
   /// When the room went live (`live_started_at`, UTC; spec §16), null when not sent.
   final DateTime? liveStartedAt;
 
+  /// The super admin's live media settings (`live_config`, D-090), or the defaults.
+  final LiveConfig liveConfig;
+
   factory GuestJoin.fromJson(Map<String, dynamic> j) => GuestJoin(
         wsUrl: (j['ws_url'] ?? j['url'] ?? '').toString(),
         token: (j['token'] ?? '').toString(),
@@ -234,6 +239,7 @@ class GuestJoin {
         identity: (j['identity'] ?? '').toString(),
         freeEndsAt: parseLiveTimeLimit(j['time_limit']),
         liveStartedAt: parseNaiveUtc(j['live_started_at']),
+        liveConfig: LiveConfig.fromPayload(j),
       );
 }
 

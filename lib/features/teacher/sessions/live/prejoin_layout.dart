@@ -51,7 +51,12 @@ class PreJoinLayout extends StatelessWidget {
     this.isGuest = false,
     this.canPublish = true,
     this.micLevel,
+    this.cameraOffHint = false,
   });
+
+  /// The camera starts off by the super admin's choice for participants (D-090): a quiet line says why and that
+  /// it can be turned on.
+  final bool cameraOffHint;
 
   /// Live microphone level 0–1 (web only); null hides the meter under the mic pill.
   final double? micLevel;
@@ -226,6 +231,10 @@ class PreJoinLayout extends StatelessWidget {
           ),
         ),
       ]),
+      if (cameraOffHint && !camOn) ...[
+        const SizedBox(height: 12),
+        PreJoinCameraOffHint(onTurnOn: onToggleCam),
+      ],
       ],
     ]);
   }
@@ -496,6 +505,60 @@ class _CameraOff extends StatelessWidget {
     if (parts.isEmpty) return '?';
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return (parts.first.characters.first + parts[1].characters.first).toUpperCase();
+  }
+}
+
+/// "Your camera starts off to save data" under the toggles (D-090): why the camera is off, and a quick Turn on.
+class PreJoinCameraOffHint extends StatelessWidget {
+  const PreJoinCameraOffHint({super.key, this.onTurnOn});
+
+  /// Null when there is no camera to turn on (the button is hidden).
+  final VoidCallback? onTurnOn;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ar = AppConfig.lang == 'ar';
+    final text = ar
+        ? 'تبدأ الكاميرا مغلقة لتوفير البيانات والبطارية. شغّلها متى شئت.'
+        : 'Your camera starts off to save data and battery. Turn it on whenever you like.';
+    final button = ar ? 'تشغيل' : 'Turn on';
+    // The primary reads on light; its light tone on dark (the deep primary sinks into a dark card).
+    final tint = Theme.of(context).brightness == Brightness.dark ? c.primaryLight : c.primary;
+    return Container(
+      key: const ValueKey('prejoin.camera_off_hint'),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: tint.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: tint.withValues(alpha: 0.24)),
+      ),
+      child: Row(children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: tint.withValues(alpha: 0.16)),
+          child: Icon(Icons.data_saver_on_rounded, size: 17, color: tint),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text, style: appText(12, c: c.textMedium, h: 1.4))),
+        if (onTurnOn != null) ...[
+          const SizedBox(width: 4),
+          TextButton.icon(
+            key: const ValueKey('prejoin.camera_off_hint.turn_on'),
+            onPressed: onTurnOn,
+            style: TextButton.styleFrom(
+              foregroundColor: tint,
+              minimumSize: const Size(48, 44),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            icon: const Icon(Icons.videocam_rounded, size: 18),
+            label: Text(button, style: appText(12.5, w: FontWeight.w800, c: tint)),
+          ),
+        ],
+      ]),
+    );
   }
 }
 

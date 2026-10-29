@@ -94,6 +94,9 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    /** D-090: the reused direct buffer of the whiteboard's recording frames ("pushBoardFrame"). */
+    private var boardFrameBuffer: java.nio.ByteBuffer? = null
+
     // L6: the audio-focus listener is static in ElFaheemBridge and its lambda holds the watcher; the
     // EventChannel's onCancel does not run when the Activity is destroyed with its engine. The room
     // goes with the engine, so the live-call service stops too.
@@ -218,10 +221,14 @@ class MainActivity : FlutterFragmentActivity() {
                         // is reused (no dialog), otherwise grant 1001 is asked.
                         "startScreenCaptureService" -> {
                             val maxLong = call.argument<Int>("maxLongSide") ?: 1280
+                            val shortSide = call.argument<Int>("shortSide") ?: 0
+                            val maxPixels = call.argument<Int>("maxPixels") ?: 0
                             val fps = call.argument<Int>("fps") ?: 15
                             val deviceAudio = call.argument<Boolean>("deviceAudio") ?: false
                             val extras: Intent.() -> Unit = {
                                 putExtra(ScreenCaptureService.EXTRA_SHARE_MAX_LONG, maxLong)
+                                putExtra(ScreenCaptureService.EXTRA_SHARE_SHORT, shortSide)
+                                putExtra(ScreenCaptureService.EXTRA_SHARE_PIXELS, maxPixels)
                                 putExtra(ScreenCaptureService.EXTRA_SHARE_FPS, fps)
                                 putExtra(ScreenCaptureService.EXTRA_SHARE_AUDIO, deviceAudio)
                             }
@@ -276,6 +283,28 @@ class MainActivity : FlutterFragmentActivity() {
                             }
                             ElFaheemBridge.setMicSoftMute(false)
                             result.success(null)
+                        }
+
+                        // D-090: one frame of the presented whiteboard (RGBA, top-left origin) for its
+                        // slow recording track (an ElFaheemFrameCapturer track Dart made with
+                        // getDisplayMedia useElFaheemCapturer). No projection, no service: the frame goes
+                        // straight to the active capturer. Never while a screen share runs (it owns it).
+                        "pushBoardFrame" -> {
+                            val bytes = call.argument<ByteArray>("rgba")
+                            val w = call.argument<Int>("width") ?: 0
+                            val h = call.argument<Int>("height") ?: 0
+                            if (ScreenCaptureService.isSharing || bytes == null || w <= 0 || h <= 0 ||
+                                    bytes.size < w * h * 4 || !ElFaheemBridge.hasCapturer()) {
+                                result.success(false)
+                            } else {
+                                val buf = boardFrameBuffer?.takeIf { it.capacity() >= bytes.size }
+                                        ?: java.nio.ByteBuffer.allocateDirect(bytes.size).also { boardFrameBuffer = it }
+                                buf.clear()
+                                buf.put(bytes, 0, w * h * 4)
+                                buf.position(0)
+                                ElFaheemBridge.pushFrame(buf, w, h, System.nanoTime())
+                                result.success(true)
+                            }
                         }
 
                         // What this device can do in the share flow.

@@ -56,6 +56,9 @@ import 'ios_share.dart';
 import 'share_options_sheet.dart';
 import '../whiteboard/board_protocol.dart' show BoardBackground;
 import 'share_presets.dart';
+import 'package:flutter_education_app/features/shared/live/live_config.dart';
+import 'package:flutter_education_app/features/shared/live/live_media_plan.dart'
+    show LiveCodecPlatform, effectiveVideoCodec, isBoardVideoName;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // I5: the iOS share keeps WebRTC's echo cancellation (the old diagnostic switched it off for the share and the
@@ -104,6 +107,20 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   /// The server lets the shared tab / device audio go with the share (room.dart: LiveAllowedControls.shareAudio).
   bool get shareAudioAllowed => true;
 
+  /// The super admin's live media settings (D-090): the share's fps / bitrate ceilings and codec.
+  LiveConfig get liveConfig => LiveConfig.defaults;
+
+  /// The presenter's mode with the super admin's ceilings and the room's codec for this device.
+  SharePreset _presetFor(ShareQuality q) =>
+      SharePreset.of(q).tuned(liveConfig, codec: effectiveVideoCodec(liveConfig.videoCodec, LiveCodecPlatform.current()));
+
+  /// This device's screen-share publication, never the whiteboard's recording track (D-090).
+  LocalTrackPublication? _realSharePub(LocalParticipant? local) => local?.videoTrackPublications
+      .where((p) => p.source == TrackSource.screenShareVideo && !isBoardVideoName(p.name))
+      .firstOrNull;
+
+  bool _realShareOn(LocalParticipant? local) => _realSharePub(local) != null;
+
   /// A share is running, starting or stopping on any platform (the room never turns the camera off in the
   /// background then: the share must keep going).
   bool get screenShareActive =>
@@ -112,7 +129,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       _webScreenShareTrack != null ||
       _isBroadcastActive ||
       (IosShareNative.supported && IosShareNative.broadcasting.value) ||
-      (room.localParticipant?.isScreenShareEnabled() ?? false);
+      _realShareOn(room.localParticipant);
 
   /// Stops a running share on any platform (the host took the permission away, the room is closing). Idempotent.
   Future<void> stopScreenShare() async {
@@ -120,12 +137,12 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (kIsWeb) {
       await _stopScreenShareWeb(local);
     } else if (lkPlatformIs(PlatformType.android)) {
-      if (_elFaheemScreenTrack != null || (local?.isScreenShareEnabled() ?? false)) {
+      if (_elFaheemScreenTrack != null || _realShareOn(local)) {
         await _stopScreenShareAndroid(local);
       }
     } else if (lkPlatformIs(PlatformType.iOS)) {
       await stopIOSBroadcast();
-    } else if (local != null && local.isScreenShareEnabled()) {
+    } else if (local != null && _realShareOn(local)) {
       await _safeNegotiate(() => local.setScreenShareEnabled(false));
     }
   }
@@ -198,8 +215,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       // iOS (I3): the publication only exists once the broadcast runs, and the system sheet may still be open:
       // the broadcast state decides (a second tap must stop, never start again).
       final isSharing = !kIsWeb && lkPlatformIs(PlatformType.iOS)
-          ? (IosShareNative.broadcasting.value || _isBroadcastActive || local.isScreenShareEnabled())
-          : local.isScreenShareEnabled();
+          ? (IosShareNative.broadcasting.value || _isBroadcastActive || _realShareOn(local))
+          : _realShareOn(local);
 
       if (kIsWeb) {
         await _toggleScreenShareWeb(local, isSharing);
@@ -261,7 +278,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     log('[SS] native event ${e.type} ${e.data}');
     if (e.stoppedOutside) {
       final local = room.localParticipant;
-      final published = local?.getTrackPublicationBySource(TrackSource.screenShareVideo) != null;
+      final published = _realShareOn(local);
       if (published || _elFaheemScreenTrack != null) {
         unawaited(_stopScreenShareAndroid(local));
         showSnack(t('توقفت مشاركة الشاشة', 'Screen sharing stopped'));
@@ -320,7 +337,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       await startWhiteboard(choice.whiteboard!);
       return;
     }
-    final preset = SharePreset.of(choice.quality);
+    final preset = _presetFor(choice.quality);
     var nativeStarted = false;
     try {
       // A running recording switches to the live screen: arm its wait BEFORE the native call
@@ -383,7 +400,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (_androidStopping) return;
     _androidStopping = true;
     try {
-      final pub = local?.getTrackPublicationBySource(TrackSource.screenShareVideo);
+      final pub = _realSharePub(local);
       if (local != null && pub != null) {
         try {
           await local.removePublishedTrack(pub.sid);
@@ -530,7 +547,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       return;
     }
     if (mobileWeb) return;
-    final preset = SharePreset.of(choice.quality);
+    final preset = _presetFor(choice.quality);
     rtc.MediaStream? stream;
     try {
       // ONE capture, shared by the live share and the recorder (two getDisplayMedia calls meant two browser
@@ -634,7 +651,9 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       }
       if (local != null) {
         for (final source in const [TrackSource.screenShareAudio, TrackSource.screenShareVideo]) {
-          final pub = local.getTrackPublicationBySource(source);
+          final pub = source == TrackSource.screenShareVideo
+              ? _realSharePub(local) // never the whiteboard's recording track (D-090)
+              : local.getTrackPublicationBySource(source);
           if (pub == null) continue;
           try {
             await local.removePublishedTrack(pub.sid);

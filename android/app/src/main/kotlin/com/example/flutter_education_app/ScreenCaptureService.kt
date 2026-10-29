@@ -103,6 +103,9 @@ class ScreenCaptureService : Service() {
         const val EXTRA_AUDIO_ONLY  = "audioOnly"
         // The share's preset (room_screen_share.dart → SharePreset): capture size cap, fps, device audio.
         const val EXTRA_SHARE_MAX_LONG = "shareMaxLongSide"
+        // D-090: the share's size class is its SHORT side (1080 Detail / 720 Motion) + a pixel ceiling.
+        const val EXTRA_SHARE_SHORT    = "shareShortSide"
+        const val EXTRA_SHARE_PIXELS   = "shareMaxPixels"
         const val EXTRA_SHARE_FPS      = "shareFps"
         const val EXTRA_SHARE_AUDIO    = "shareAudio"
 
@@ -186,6 +189,8 @@ class ScreenCaptureService : Service() {
 
     // The share's preset (EXTRA_SHARE_*).
     private var shareMaxLong = 1280
+    private var shareShort   = 0   // 0 = no short-side cap (an older Dart side)
+    private var sharePixels  = 0   // 0 = no pixel ceiling
     private var shareFps     = 15
     private var shareAudio   = false
 
@@ -438,6 +443,8 @@ class ScreenCaptureService : Service() {
 
     private fun readShareExtras(intent: Intent) {
         shareMaxLong = intent.getIntExtra(EXTRA_SHARE_MAX_LONG, 1280).coerceIn(320, 3840)
+        shareShort   = intent.getIntExtra(EXTRA_SHARE_SHORT, 0).let { if (it <= 0) 0 else it.coerceIn(180, 2160) }
+        sharePixels  = intent.getIntExtra(EXTRA_SHARE_PIXELS, 0).let { if (it <= 0) 0 else it.coerceIn(100_000, 8_294_400) }
         shareFps     = intent.getIntExtra(EXTRA_SHARE_FPS, 15).coerceIn(1, 30)
         shareAudio   = intent.getBooleanExtra(EXTRA_SHARE_AUDIO, false)
     }
@@ -889,7 +896,7 @@ class ScreenCaptureService : Service() {
         val projection = mediaProjection ?: return answerShare(false, "No MediaProjection")
         if (screenWidth <= 0) resolveScreenMetrics()
         val renderer = ensureRenderer()
-        renderer.configureCapture(shareMaxLong, shareFps)
+        renderer.configureCapture(shareMaxLong, shareFps, shareShort, sharePixels)
 
         if (virtualDisplay == null) {
             val (w, h) = currentDisplaySize()
@@ -923,7 +930,8 @@ class ScreenCaptureService : Service() {
             !hasRecordAudio() -> "no_permission"
             else -> ElFaheemBridge.startScreenAudio(projection)
         }
-        Log.i(TAG, "share started ${vdWidth}x$vdHeight ≤${shareMaxLong}px@${shareFps}fps device audio: $audioState")
+        Log.i(TAG, "share started ${vdWidth}x$vdHeight short≤$shareShort px≤$sharePixels long≤${shareMaxLong}px" +
+                "@${shareFps}fps device audio: $audioState")
         refreshForeground()
 
         if (isRunning) mainHandler.post { emitScreenLoopStarted() } // the recorder's Phase-2 wait
