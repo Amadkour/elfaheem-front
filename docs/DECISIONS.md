@@ -738,3 +738,36 @@ and restores it afterwards.
 silent too, and the SFU drops a muted track's packets); a second AudioRecord-fed track (no custom audio source in
 this WebRTC build); muting on every audio-focus loss (a video played in another app during the share would mute
 the presenter).
+
+## D-081 — Live annotation ink like a real pen; the Android whole-screen overlay is a bubble outside the app; the presenter's window is never secure while sharing · 2026-10-29 · proposed
+
+Amends D-079 (what the overlay looks like and when it shows; burned-in only stays).
+**Decision.** (1) Ink. The drawer filters its pointer samples before they go out (`annotation_ink.dart`,
+`AnnotationInk.kt`): a 2-D One Euro filter (one speed for both axes; min cut-off 1 Hz, β 0.025, d-cut-off 1 Hz —
+roughly half the jitter at slow speed, under 3 px behind the nib at writing speed, and the stroke still ends on the
+nib), pressure through an exponential average with a 0.08 step limit, samples under 0.8 px apart dropped. The
+filtered points are the wire points, so every device draws the same numbers with the same renderer: the midpoint
+chain of quadratic Béziers; a stylus stroke (`pr: 1` on its start, additive in protocol v1; older senders are guessed
+from the pressures and the guess sticks) is ONE filled shape — circles and bands along the densely sampled centre
+line, all clockwise under non-zero fill — with causally averaged radii (pressure factor 0.55–1.45) and tapered ends;
+finished pieces are cached and only the last piece is rebuilt, so nothing already drawn moves; a finger / mouse
+stroke is one stroked path with round caps (constant width); the highlighter one translucent stroked path. x / y go
+out with 5 decimals (4 were a 0.26 px grid on a 2560 px screen), pressure with 3. A finished stroke is no longer
+re-simplified (RDP moved the curve under the pen as it lifted), and snapshots carry every point (late joiners draw
+exactly what the others see). (2) Android whole-screen share: the overlay is ARMED when the share starts (with the
+permission) and shows only while the presenter is outside the app: a 56 dp draggable bubble that snaps to a side;
+tap → a compact toolbar (pen, highlighter, eraser, laser, use apps, colour, thickness, undo, clear, hide tools,
+close = clear) and a transparent canvas over the app below (touches pass through when drawing is off). Back in the
+app the windows go and the strokes are kept for the next time the presenter leaves; a rotation clears them; the
+share stopping (Dart or natively, `ScreenCaptureService.stopShare`) clears everything. Strokes stay burned into the
+video only (MediaProjection captures the overlay), never also sent as vectors. (3) Screen protection has one owner
+(`lib/core/screen_security.dart`): protected screens (course video, exams) protect / release with themselves as the
+owner; a whole-screen share (Android MediaProjection, iOS ReplayKit) clears an OWNERLESS protection —
+`ShareWindowGuard.kt` clears FLAG_SECURE and marks the Flutter view not sensitive (API 35+), logging what it found —
+and puts back exactly what it changed at the end; an open protected screen keeps its protection (a course video or
+an exam paper never goes out in a share).
+**Rejected.** Sending the overlay's strokes as vectors as well (double drawing on every viewer, or a mode switch per
+viewer); showing the overlay over NextBrain itself (it took every touch in the app); clearing FLAG_SECURE for the
+whole share regardless of who set it (a course video under the room would be broadcast); smoothing on the receiver
+only (the drawer's preview and the viewers would differ); Catmull-Rom through every sample (it passes through the
+jitter); per-axis One Euro (flattens curves where one axis slows down).

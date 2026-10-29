@@ -13,7 +13,7 @@ import 'package:flutter_education_app/features/shared/session/material/session_m
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
-import 'package:screen_protector/screen_protector.dart';
+import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:screen_brightness/screen_brightness.dart';
@@ -313,18 +313,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   /// Blocks screenshots / screen recording while the player is open
   /// (Android FLAG_SECURE, iOS blur in app switcher + screenshot prevention).
-  Future<void> _protectScreen(bool on) async {
-    if (kIsWeb) return;
-    try {
-      if (on) {
-        await ScreenProtector.preventScreenshotOn();
-        await ScreenProtector.protectDataLeakageWithBlur();
-      } else {
-        await ScreenProtector.preventScreenshotOff();
-        await ScreenProtector.protectDataLeakageWithBlurOff();
-      }
-    } catch (_) {}
-  }
+  /// Owned through ScreenSecurity (D-081): another protected screen closing never switches this one off.
+  Future<void> _protectScreen(bool on) =>
+      on ? ScreenSecurity.instance.protect(this) : ScreenSecurity.instance.release(this);
 
   /// Asks the server for the video URLs (this is what counts a view), then plays.
   Future<void> _startPlayback() async {

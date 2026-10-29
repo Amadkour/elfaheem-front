@@ -1,8 +1,11 @@
 // lib/features/teacher/sessions/live/annotation/android_overlay.dart
 //
-// The Android whole-screen annotation overlay (D-079): while the presenter shares the WHOLE screen from Android,
-// a native floating toolbar and a transparent full-screen canvas are drawn over every app
-// (AnnotationOverlay.kt, TYPE_APPLICATION_OVERLAY). MediaProjection captures overlay windows, so the strokes are
+// The Android whole-screen annotation overlay (D-079, D-081): while the presenter shares the WHOLE screen from
+// Android and has LEFT the app, a floating pen bubble stays over every app; tapping it opens a compact toolbar and
+// a transparent full-screen canvas over the app below (AnnotationOverlay.kt, TYPE_APPLICATION_OVERLAY). Nothing
+// is drawn over NextBrain itself: back in the app the windows go (the drawings are kept for the next time the
+// presenter leaves), and the share stopping clears everything. The ink is AnnotationInk.kt, the same rules as
+// annotation_ink.dart. MediaProjection captures overlay windows, so the strokes are
 // burned into the shared video and every recording; they are NOT also sent as vectors (the room's
 // AnnotationController goes into burned-in mode). With drawing off the canvas lets touches through, so the
 // presenter uses other apps normally.
@@ -11,9 +14,10 @@
 // once the person comes back. Refused → the in-app annotation on the share view is the fallback.
 //
 // Channel `com.example.flutter_education_app/annotation_overlay`:
-//   Dart → native: isPermitted · requestPermission · show {labels, colors, color, thickness, rtl, surface, accent}
-//                  · hide · isShowing
-//   native → Dart: closed (the overlay's own close button)
+//   Dart → native: isPermitted · requestPermission · openSettings · show {labels, colors, color, thickness, rtl,
+//                  surface, accent} (arms it for the share) · hide · isShowing (armed)
+//   native → Dart: closed (the overlay could not be shown any more, e.g. the permission was revoked: the room
+//                  falls back to in-app annotation)
 // Every call is a no-op answering false on other platforms (and on web).
 library;
 
@@ -35,7 +39,7 @@ class AndroidAnnotationOverlay {
   static VoidCallback? _onClosed;
   static bool _handlerSet = false;
 
-  /// Called when the presenter closes the overlay from its own toolbar.
+  /// Called when the overlay could not be shown any more (the permission was taken away while sharing).
   static set onClosed(VoidCallback? cb) {
     _onClosed = cb;
     if (!supported || _handlerSet) return;
@@ -53,9 +57,14 @@ class AndroidAnnotationOverlay {
   /// returns to the app (true at once when it already was).
   static Future<bool> requestPermission() => _bool('requestPermission');
 
+  /// Opens the system page for "Display over other apps" without waiting for an answer.
+  static Future<bool> openSettings() => _bool('openSettings');
+
+  /// Armed for the running share (the bubble shows whenever the presenter is outside the app).
   static Future<bool> isShowing() => _bool('isShowing');
 
-  /// Shows the toolbar + canvas over other apps. [colors] are ARGB presets (annotPresetColors; the first is also
+  /// Arms the overlay for the running share: the bubble, toolbar and canvas appear over other apps once the
+  /// presenter leaves NextBrain. [colors] are ARGB presets (annotPresetColors; the first is also
   /// the laser's), [color] the starting one, [thickness] 0..2, [surface] / [accent] the toolbar's background and
   /// selection (LivePalette.surfaceHi / accent). False when the permission is missing or the window could not be
   /// added.
@@ -92,9 +101,9 @@ class AndroidAnnotationOverlay {
         'thickness': t('السُّمك', 'Thickness'),
         'interact': t('استخدام التطبيقات (إيقاف الرسم)', 'Use apps (drawing off)'),
         'draw': t('الرسم', 'Draw'),
-        'collapse': t('تصغير الشريط', 'Collapse toolbar'),
-        'expand': t('إظهار أدوات الرسم', 'Show drawing tools'),
-        'close': t('إغلاق التعليق التوضيحي', 'Close annotation'),
+        'annotate': t('الرسم على الشاشة', 'Draw on the screen'),
+        'minimize': t('إخفاء الأدوات (تبقى الرسوم)', 'Hide tools (drawings stay)'),
+        'close': t('إنهاء الرسم ومسحه', 'Stop drawing and clear'),
         'move': t('اسحب لتحريك الشريط', 'Drag to move the toolbar'),
       };
 

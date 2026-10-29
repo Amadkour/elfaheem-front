@@ -43,6 +43,7 @@ import '../annotation/android_overlay.dart';
 import '../annotation/annotation_toolbar.dart' show annotPresetColors;
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/api_error_text.dart';
+import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:flutter/services.dart';
 import '../../../../admin/admin_common.dart';
 import 'recorder_web_stub.dart'
@@ -233,6 +234,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     // The overlay goes with the room (the notifier is left alone: the room is being disposed).
     AndroidAnnotationOverlay.onClosed = null;
     if (_annotOverlay.value) unawaited(AndroidAnnotationOverlay.hide());
+    unawaited(ScreenSecurity.instance.endShare()); // D-081
   }
 
   void _onLiveNativeEvent(LiveNativeEvent e) {
@@ -311,6 +313,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         return;
       }
       nativeStarted = true;
+      // D-081: MediaProjection draws a FLAG_SECURE window black — the presenter's own app must show in the share.
+      unawaited(ScreenSecurity.instance.beginShare());
       if (waitRecorder) {
         await rec.upgradeToScreenRecording();
         log('[SS] Android: the recording shows the live screen');
@@ -369,6 +373,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       } catch (_) {}
       _shareGen++; // an overlay offer still in flight gives up
       await _hideAnnotationOverlay();
+      await ScreenSecurity.instance.endShare(); // D-081: the window as before the share
       await LiveMicGate.instance.endDeviceAudio(local);
       // VirtualDisplay released (privacy indicator off); a running recording goes back to the
       // placeholder and keeps recording.
@@ -382,14 +387,16 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   // ── Android: the whole-screen annotation overlay (D-079) ───────────────────
   //
   // After the share is published: when annotation is on, "Display over other apps" is checked (asked once per
-  // room, with an explanation first), then the native toolbar + canvas are shown over every app. While it is
-  // up [annotationOverlayActive] is true and the room puts its AnnotationController in burned-in mode (the
+  // room, with an explanation first), then the overlay is ARMED: a floating pen bubble over every app once the
+  // presenter leaves NextBrain (tap: toolbar + canvas; D-081), nothing over the app itself. While it is
+  // armed [annotationOverlayActive] is true and the room puts its AnnotationController in burned-in mode (the
   // strokes are in the video, nothing is sent as vectors). Refused / failed: nothing is said, the in-app
   // annotation on the share view stays the way to draw. Hidden on every stop (our Stop, the system's Stop via
-  // shareStopped, a revoked permission, leaving) and when the presenter closes it from its own toolbar.
+  // shareStopped — natively too —, a revoked permission, leaving the room).
 
   final ValueNotifier<bool> _annotOverlay = ValueNotifier<bool>(false);
   bool _annotOverlayDeclined = false;
+  bool _annotOverlayHinted = false;
 
   /// Bumped on every share start / stop: an overlay offer from an earlier share gives up.
   int _shareGen = 0;
@@ -410,9 +417,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       if (_annotOverlayDeclined || !current() || !mounted) return;
       final ok = await appConfirm(
         context,
-        message: t('للرسم فوق التطبيقات الأخرى أثناء المشاركة، اسمح بـ «الظهور فوق التطبيقات الأخرى». يمكنك الرسم داخل التطبيق بدونه.',
-            'To draw over other apps while you share, allow "Display over other apps". Without it you draw inside the app.'),
-        confirmLabel: t('السماح', 'Allow'),
+        message: t(
+            'للرسم فوق التطبيقات الأخرى أثناء المشاركة، اسمح لـ NextBrain بـ «الظهور فوق التطبيقات الأخرى» في الإعدادات ثم ارجع إلى هنا. بدونه ترسم داخل التطبيق فقط.',
+            'To draw over other apps while you share, allow NextBrain to "Display over other apps" in Settings, then come back here. Without it you draw inside the app only.'),
+        confirmLabel: t('فتح الإعدادات', 'Open Settings'),
       );
       if (!ok) {
         _annotOverlayDeclined = true;
@@ -446,7 +454,13 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       return;
     }
     _annotOverlay.value = true;
-    log('[SS] annotation overlay on (burned in)');
+    log('[SS] annotation overlay armed (burned in): the bubble shows outside the app');
+    // D-081: the bubble appears only once the presenter leaves the app — say where to find it (once per room).
+    if (!_annotOverlayHinted) {
+      _annotOverlayHinted = true;
+      showSnack(t('للرسم فوق أي شاشة: اخرج من التطبيق واضغط فقاعة القلم العائمة',
+          'To draw over any screen: leave the app and tap the floating pen bubble'));
+    }
   }
 
   Future<void> _hideAnnotationOverlay() async {
@@ -813,6 +827,8 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   void _onIosBroadcastingChanged() {
     if (!mounted) return;
     final on = IosShareNative.broadcasting.value;
+    // D-081: a protected window is blank in the broadcast — none of ours while sharing (idempotent).
+    unawaited(on ? ScreenSecurity.instance.beginShare() : ScreenSecurity.instance.endShare());
     if (on == _isBroadcastActive) return;
     _isBroadcastActive = on;
     onIOSBroadcastStateChanged(on); // banner + toast
@@ -832,6 +848,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     }
     _isBroadcastActive = false;
     if (_iosStateBound) {
+      unawaited(ScreenSecurity.instance.endShare()); // D-081
       _iosStateBound = false;
       IosShareNative.broadcasting.removeListener(_onIosBroadcastingChanged);
       unawaited(IosShareNative.unbind());
