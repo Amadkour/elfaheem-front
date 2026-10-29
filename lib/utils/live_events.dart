@@ -90,6 +90,10 @@ class LiveEvents {
   /// (server: services/calendar_service.emit_meeting_live). The home's "Live now" banner follows both.
   static const meetingLive = 'meeting_live';
 
+  /// A meeting I own or am invited to was created / moved / cancelled / answered: `{meeting_id}` (stream only;
+  /// server: services/calendar_service.notify). The schedule page reloads its range (D-085).
+  static const calendarUpdated = 'calendar_updated';
+
   /// The teacher started a quiz in the room: `{course_id}`.
   static const quizStarted = 'quiz_started';
 
@@ -113,6 +117,7 @@ class LiveEvents {
     jobUpdated,
     sessionLive,
     meetingLive,
+    calendarUpdated,
     quizStarted,
     attendanceRosterUpdated,
   };
@@ -124,6 +129,7 @@ class LiveEvents {
     'transfer_review' => transfers,
     'payment_success' => payments, // the checkout's verification wait ends on it
     'session_started' => sessionLive, // the visible "session started" push: the home / course page follow it too
+    'meeting' => calendarUpdated, // a meeting invitation / answer / move: the schedule page reloads
     _ => null,
   };
 

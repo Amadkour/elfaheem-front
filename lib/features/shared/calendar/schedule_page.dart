@@ -1,0 +1,1146 @@
+// lib/features/shared/calendar/schedule_page.dart — THE schedule page (D-085): "My schedule" and "My calendar" are
+// one page. The student / teacher shell's Schedule tab, the top-bar calendar icon, '/calendar' (deep links,
+// notification taps, AppNavigator's `calendar` / `live_lobby`) and the organization / department calendars all open it.
+//
+//   SchedulePage()                       everything I belong to: org timetables (with one-date changes), exams, course
+//                                        live sessions, a personal course's weekly appointments, meetings
+//   SchedulePage(orgId: o)               one organization (+ my personal meetings)
+//   SchedulePage(deptId: d)              a department's calendar (its meetings; new ones belong to the department)
+//   SchedulePage(asTab: true)            inside a role shell (no back arrow; on desktop the shell's top bar has the title)
+//
+//   Views: Agenda (phone default: today pinned, then the days that hold something, a "now" line) · Day (week strip +
+//   time grid) · Week (desktop default) · Month (desktop: the big grid; phone: a month of dots + that day's list).
+//   A mini month picks the day (desktop sidebar, the phone header's month title), "Today" jumps back, a horizontal
+//   swipe moves the range on phones. Filters: the four kinds + the organizations, as chips (sidebar list on desktop),
+//   remembered on the device. "New meeting" / "Meet now" are the primary actions.
+//
+//   Data: ONE GET /me/calendar?detail=true per visible range through CalendarStore (cached; the agenda and the day
+//   view fetch whole weeks so switching views reuses it), plus — student / teacher only — the weekly appointments of
+//   personal courses (GET /student|teacher/schedules, cached, never failing the page). Live: the store reloads on
+//   `calendar_updated` / `meeting_live` / `session_live` / timetable `attention_changed`; the home's live rooms
+//   (MeHomeService.liveNow, no extra request) turn rows into "Live now · Join". No polling timer (a one-minute clock
+//   only redraws the "now" line).
+//
+// Pure parts: schedule_logic.dart; presentational parts: schedule_parts.dart, calendar_views.dart.
+library;
+
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_saver/file_saver.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/home/me_home.dart';
+import 'package:flutter_education_app/core/live/live_events_client.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/org/org_member_changes.dart' show respondToChange, undoChange;
+import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgTimetableScreen;
+import 'package:flutter_education_app/features/org/org_my_exams.dart' show openMyExams;
+import 'package:flutter_education_app/features/student/courses/details/course_live_join.dart' show openCourseLiveRoom;
+import 'package:flutter_education_app/features/student/home/home_live.dart' show joinHomeLiveRoom;
+import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart' show openTeacherCourseSessions;
+import 'package:flutter_education_app/utils/widget/app_navigator.dart';
+import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../admin/admin_common.dart' show t, asMap;
+import 'calendar_api.dart';
+import 'calendar_meeting.dart';
+import 'calendar_models.dart';
+import 'calendar_views.dart';
+import 'schedule_logic.dart';
+import 'schedule_parts.dart';
+import 'schedule_store.dart';
+
+/// The width from which the page shows its sidebar (mini month, filters, up next, invitations).
+const calWideBreakpoint = 1000.0;
+
+class SchedulePage extends StatefulWidget {
+  const SchedulePage({
+    super.key,
+    this.orgId,
+    this.deptId,
+    this.openMeetingId,
+    this.title,
+    this.asTab = false,
+    this.initialView,
+    this.api = const RemoteCalendarApi(),
+    this.store,
+    this.now,
+    this.liveKeys,
+    this.weeklyGet,
+    this.role,
+  });
+
+  final int? orgId, deptId, openMeetingId;
+  final String? title;
+  final bool asTab;
+  final CalView? initialView;
+  final CalendarApi api;
+
+  /// Tests / renders: their own cache, a fixed clock (UTC), the live rooms, the weekly appointments' GET, the role.
+  final CalendarStore? store;
+  final DateTime? now;
+  final Set<String>? liveKeys;
+  final Future<dynamic> Function(String path)? weeklyGet;
+  final String? role;
+
+  @override
+  State<SchedulePage> createState() => _SchedulePageState();
+}
+
+class _SchedulePageState extends State<SchedulePage> with WidgetsBindingObserver {
+  CalendarStore get _store => widget.store ?? CalendarStore.instance;
+
+  CalView? _view;
+  late DateTime _anchor = calDay(_nowWall);
+  late DateTime _pickerMonth = DateTime(_anchor.year, _anchor.month);
+  int _agendaDays = calAgendaDays;
+  CalFilters _filters = const CalFilters();
+  CalChunk? _chunk;
+  List<CalWeeklySlot> _weekly = const [];
+  bool _loading = false, _pickerOpen = false;
+  String? _error;
+  int _req = 0, _slide = 0;
+  Timer? _clock;
+
+  bool get _dept => widget.deptId != null;
+  DateTime get _nowUtc => widget.now ?? DateTime.now().toUtc();
+  DateTime get _nowWall => AppTime.toZone(_nowUtc);
+
+  String? get _role {
+    if (widget.role != null) return widget.role;
+    try {
+      return context.read<MyAuthProvider>().currentUser?.role;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String get _scope {
+    int? uid;
+    try {
+      uid = context.read<MyAuthProvider>().currentUser?.id;
+    } catch (_) {}
+    final where = _dept ? 'dept:${widget.deptId}' : (widget.orgId != null ? 'org:${widget.orgId}' : 'me');
+    return 'u${uid ?? 0}:$where';
+  }
+
+  /// Weekly appointments of personal courses: the student's / teacher's own list, only on the overall calendar.
+  String? get _weeklyPath {
+    if (_dept || widget.orgId != null) return null;
+    return switch (_role) {
+      'teacher' => '/api/v1/teacher/schedules',
+      'student' => '/api/v1/student/schedules',
+      _ => null,
+    };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _view = widget.initialView;
+    WidgetsBinding.instance.addObserver(this);
+    _store.bind();
+    _store.changes.addListener(_onStoreChanged);
+    if (widget.liveKeys == null) MeHomeService.instance.addListener(_onLiveRooms);
+    if (widget.now == null) {
+      LiveEventsClient.instance.bind();
+      _clock = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+    _restoreFilters();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      _view ??= MediaQuery.sizeOf(context).width >= calWideBreakpoint ? CalView.week : CalView.agenda;
+      await _load();
+      if (widget.openMeetingId != null && mounted) unawaited(_openMeeting(widget.openMeetingId!));
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _store.changes.removeListener(_onStoreChanged);
+    _store.release();
+    if (widget.liveKeys == null) MeHomeService.instance.removeListener(_onLiveRooms);
+    if (widget.now == null) LiveEventsClient.instance.release();
+    _clock?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted && (_chunk == null || !_store.fresh(_chunk!))) _load();
+  }
+
+  void _onStoreChanged() {
+    if (mounted) _load();
+  }
+
+  void _onLiveRooms() {
+    if (mounted) setState(() {});
+  }
+
+  Set<String> get _liveKeys {
+    if (widget.liveKeys != null) return widget.liveKeys!;
+    return {
+      for (final r in MeHomeService.instance.liveNow) ...[
+        if (r.isMeeting) calLiveKeyMeeting(r.id) else calLiveKeySession(r.id),
+        if (!r.isMeeting && r.courseId != null) calLiveKeyCourse(r.courseId!),
+      ],
+    };
+  }
+
+  // ── filters (device) ─────────────────────────────────────────────────────
+  Future<void> _restoreFilters() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final f = CalFilters.decode(p.getString(calFiltersPrefKey));
+      if (mounted && f != _filters) setState(() => _filters = f);
+    } catch (_) {/* no storage (tests, private window): everything shows */}
+  }
+
+  void _setFilters(CalFilters f) {
+    setState(() => _filters = f);
+    () async {
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.setString(calFiltersPrefKey, f.encode());
+      } catch (_) {}
+    }();
+  }
+
+  // ── loading ──────────────────────────────────────────────────────────────
+  (DateTime, DateTime) get _range => calFetchRange(_view ?? CalView.week, _anchor, agendaDays: _agendaDays);
+
+  Future<void> _load({bool force = false}) async {
+    final (s, e) = _range;
+    final n = ++_req;
+    final scope = _scope;
+    final hit = _store.cached(scope, s.toUtc(), e.toUtc());
+    final path = _weeklyPath;
+    if (path != null) {
+      final w = _store.weeklyCached(path);
+      if (w != null) _weekly = w;
+      unawaited(_store.weekly(path, force: force, get: widget.weeklyGet).then((w) {
+        if (mounted && n == _req) setState(() => _weekly = w);
+      }));
+    }
+    if (hit != null) {
+      setState(() {
+        _chunk = hit;
+        _error = null;
+      });
+      if (!force && _store.fresh(hit)) return;
+    }
+    setState(() {
+      _loading = true;
+      if (hit == null) _error = null;
+    });
+    try {
+      final c = await _store.fetch(widget.api, scope: scope, start: s, end: e, orgId: widget.orgId, deptId: widget.deptId);
+      if (!mounted || n != _req) return;
+      setState(() {
+        _chunk = c;
+        _loading = false;
+        _error = null;
+      });
+    } catch (err) {
+      if (!mounted || n != _req) return;
+      setState(() {
+        _error = calErrorText(err);
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _refresh() => _load(force: true);
+
+  void _go(CalView v, DateTime anchor, {int dir = 0}) {
+    setState(() {
+      if (v != _view) _agendaDays = calAgendaDays;
+      _view = v;
+      _anchor = calDay(anchor);
+      _pickerMonth = DateTime(_anchor.year, _anchor.month);
+      _slide = dir;
+    });
+    _load();
+  }
+
+  void _shift(int dir) => _go(_view!, calShift(_view!, _anchor, dir), dir: dir);
+
+  void _today() => _go(_view ?? CalView.agenda, _nowWall);
+
+  // ── data for the views ───────────────────────────────────────────────────
+  List<CalEvent> get _all {
+    final c = _chunk;
+    final events = c?.events ?? const <CalEvent>[];
+    if (_weekly.isEmpty || c == null) return events;
+    final s = AppTime.toZone(c.start), e = AppTime.toZone(c.end);
+    return [...events, ...calWeeklyEvents(_weekly, from: s, to: e, existing: events, toUtc: AppTime.fromZone)]
+      ..sort((a, b) => a.start.compareTo(b.start));
+  }
+
+  List<CalPause> get _pauses => _chunk?.pauses ?? const [];
+
+  List<Color> _dotsOf(List<CalEvent> shown, DateTime day) {
+    final c = context.colors;
+    final cats = <CalCat>{for (final e in calEventsOnDay(shown, day)) if (!e.cancelled) calCatOf(e)};
+    return [for (final k in CalCat.values) if (cats.contains(k)) calCatColor(c, k)];
+  }
+
+  // ── actions ──────────────────────────────────────────────────────────────
+  Future<void> _openMeeting(int id) async {
+    if (await showMeetingSheet(context, api: widget.api, meetingId: id)) {
+      _store.invalidate();
+      unawaited(_refresh());
+    }
+  }
+
+  bool get _teacher => _role == 'teacher';
+
+  void _openCourse(CalEvent e) {
+    if (e.courseId == null) return;
+    if (_teacher && (e.source == 'course_session' || e.source == 'course_weekly')) {
+      openTeacherCourseSessions(context, e.courseId!);
+    } else if (e.source == 'course_session' || e.source == 'course_weekly') {
+      unawaited(AppNavigator.openCourse(e.courseId!));
+    } else {
+      unawaited(Navigator.of(context).pushNamed('/course-profile', arguments: e.courseId));
+    }
+  }
+
+  Future<void> _tap(CalEvent e) async {
+    if (e.meetingId != null) return _openMeeting(e.meetingId!);
+    final now = _nowUtc;
+    final keys = _liveKeys;
+    await showAppSheet<void>(
+      context,
+      (ctx) => StatefulBuilder(builder: (ctx, setSheet) {
+        // the sheet follows my answer at once
+        final cur = _all.firstWhere((x) => x.id == e.id, orElse: () => e);
+        return CalEventSheet(
+          event: cur,
+          nowUtc: now,
+          live: calIsLive(cur, now, liveKeys: keys),
+          joinable: calJoinable(cur, now, liveKeys: keys),
+          onJoin: () {
+            Navigator.pop(ctx);
+            _join(cur);
+          },
+          onOpenCourse: cur.courseId == null
+              ? null
+              : () {
+                  Navigator.pop(ctx);
+                  _openCourse(cur);
+                },
+          onOpenExams: cur.source == 'exam'
+              ? () {
+                  Navigator.pop(ctx);
+                  openMyExams(context, orgId: cur.orgId);
+                }
+              : null,
+          onOpenTimetable: (cur.source == 'timetable' || cur.source == 'extra') && cur.orgId != null
+              ? () {
+                  Navigator.pop(ctx);
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgTimetableScreen(orgId: cur.orgId)));
+                }
+              : null,
+          onOpenLink: (cur.change?.onlineUrl ?? '').isEmpty ? null : () => _launch(cur.change!.onlineUrl!),
+          onAnswer: (d) async {
+            await _answerChange(cur, d);
+            setSheet(() {});
+          },
+          onUndo: cur.change != null && cur.change!.canEdit && cur.orgId != null
+              ? () async {
+                  Navigator.pop(ctx);
+                  if (await undoChange(cur.orgId!, cur.change!.id)) {
+                    _store.invalidate();
+                    unawaited(_refresh());
+                  }
+                }
+              : null,
+        );
+      }),
+    );
+  }
+
+  Future<void> _launch(String url) async {
+    final u = Uri.tryParse(url);
+    if (u == null || !(u.scheme == 'https' || u.scheme == 'http')) return;
+    try {
+      await launchUrl(u, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      showAppNotice(t('تعذر فتح الرابط', 'Could not open the link'), error: true);
+    }
+  }
+
+  Future<void> _join(CalEvent e) async {
+    if (e.meetingId != null) {
+      await openMeetingRoom(
+        context,
+        api: widget.api,
+        meeting: {
+          'id': e.meetingId,
+          'title': e.title,
+          'mode': 'online',
+          'is_owner': e.isOwner,
+          'starts_at': e.start.toIso8601String(),
+        },
+        canRecord: e.isOwner,
+      );
+      return;
+    }
+    if (e.sessionId != null && e.courseId != null) {
+      await openCourseLiveRoom(context, sessionId: e.sessionId!, courseId: e.courseId!, sessionName: e.title, autoJoin: true);
+      return;
+    }
+    if (e.source == 'course_weekly') {
+      final room = MeHomeService.instance.liveNow.where((r) => !r.isMeeting && r.courseId == e.courseId).firstOrNull;
+      if (room != null) return joinHomeLiveRoom(context, room);
+      return _openCourse(e);
+    }
+    final url = e.change?.onlineUrl;
+    if (url != null && url.isNotEmpty) await _launch(url);
+  }
+
+  Future<void> _rsvp(CalEvent e, String status) async {
+    final id = e.meetingId;
+    if (id == null) return;
+    _store.patch((x) => x.id == e.id ? x.copyWith(myStatus: status) : x);
+    setState(() => _chunk = _store.cached(_scope, _range.$1.toUtc(), _range.$2.toUtc()) ?? _chunk);
+    try {
+      await widget.api.respond(id, {'status': status});
+      showAppNotice(status == 'accepted' ? t('قبلت الدعوة', 'Invitation accepted') : t('اعتذرت عن الاجتماع', 'You declined'));
+    } catch (err) {
+      showAppNotice(calErrorText(err), error: true);
+    }
+    _store.invalidate();
+    unawaited(_refresh());
+  }
+
+  Future<void> _answerChange(CalEvent e, String decision) async {
+    final ch = e.change;
+    if (ch == null) return;
+    if (!await respondToChange(ch.id, decision)) return;
+    _store.patch((x) => x.id == e.id && x.change != null ? x.copyWith(change: x.change!.answered(decision)) : x);
+    if (mounted) setState(() => _chunk = _store.cached(_scope, _range.$1.toUtc(), _range.$2.toUtc()) ?? _chunk);
+  }
+
+  Future<void> _add([DateTime? wall]) async {
+    var start = wall;
+    if (start == null) {
+      final n = _nowWall;
+      final base = _anchor == calDay(n) ? n : DateTime(_anchor.year, _anchor.month, _anchor.day, 9);
+      start = DateTime(base.year, base.month, base.day, base.hour + (base == n ? 1 : 0));
+    }
+    final r = await showMeetingForm(context, api: widget.api, start: start, orgId: widget.orgId, deptId: widget.deptId);
+    if (r != null) {
+      showAppNotice(r['visibility'] == 'private' ? t('أُضيف إلى جدولك', 'Added to your schedule') : t('أُرسلت الدعوات', 'Invitations sent'));
+      _store.invalidate();
+      unawaited(_refresh());
+    }
+  }
+
+  Future<void> _move(CalEvent e, DateTime wallStart) async {
+    final s = AppTime.fromZone(wallStart).toUtc();
+    final en = s.add(e.duration);
+    if (s == e.start || e.meetingId == null) return;
+    final clash = calConflicts(_filters.apply(_all), e, s, en);
+    if (clash.isNotEmpty) {
+      final ok = await appConfirm(context,
+          message: '${t('يتعارض مع', 'This overlaps')}: ${clash.take(3).map((x) => x.title).join('، ')}'
+              '${clash.length > 3 ? ' +${clash.length - 3}' : ''}',
+          confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
+      if (!ok || !mounted) return;
+    }
+    _store.patch((x) => x.id == e.id ? x.moved(s, en) : x);
+    setState(() => _chunk = _store.cached(_scope, _range.$1.toUtc(), _range.$2.toUtc()) ?? _chunk);
+    Future<void> send(bool force) => widget.api.update(e.meetingId!, {
+          'starts_at': s.toIso8601String(),
+          'ends_at': en.toIso8601String(),
+          'force': force,
+        });
+    try {
+      await send(false);
+      showAppNotice(t('نُقل الاجتماع وأُبلغ المدعوون', 'Meeting moved — invitees notified'));
+    } catch (err) {
+      final busy = calBusyOf(err);
+      if (busy.isNotEmpty && mounted) {
+        final go = await appConfirm(context,
+            message: '${t('مشغولون في هذا الوقت', 'Busy at this time')}: ${busy.map((b) => asMap(b['user'])['name']).join('، ')}',
+            confirmLabel: t('انقل رغم ذلك', 'Move anyway'));
+        if (go) {
+          try {
+            await send(true);
+          } catch (e2) {
+            showAppNotice(calErrorText(e2), error: true);
+          }
+        }
+      } else {
+        showAppNotice(calErrorText(err), error: true);
+      }
+    }
+    _store.invalidate();
+    if (mounted) unawaited(_refresh());
+  }
+
+  Future<void> _export() async {
+    final (s, e) = _range;
+    final events = calSlice(_filters.apply(_all), s.toUtc(), e.toUtc());
+    if (events.where((x) => !x.cancelled).isEmpty) {
+      showAppNotice(t('لا مواعيد في هذه الفترة', 'Nothing to export in this range'), error: true);
+      return;
+    }
+    final name = '${t('جدولي', 'My schedule')} ${calTitleFor(_view ?? CalView.week, _anchor)}';
+    try {
+      await FileSaver.instance.saveFile(
+        name: name.replaceAll(RegExp(r'[\\/:*?"<>|–]'), '_'),
+        bytes: Uint8List.fromList(utf8.encode(calIcs(events, name: name))),
+        fileExtension: 'ics',
+        mimeType: MimeType.text,
+      );
+      showAppNotice(t('حُفظ ملف التقويم — افتحه في تقويم جهازك', 'Calendar file saved — open it in your device calendar'));
+    } catch (_) {
+      showAppNotice(t('تعذر إنشاء الملف', 'Could not create the file'), error: true);
+    }
+  }
+
+  CalTileActions get _actions => CalTileActions(onTap: _tap, onJoin: _join, onRsvp: _rsvp, onAnswerChange: _answerChange);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  //  Build
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      final wide = box.maxWidth >= calWideBreakpoint;
+      final view = _view ?? (wide ? CalView.week : CalView.agenda);
+      final all = _all;
+      final shown = _filters.apply(all);
+      final main = _main(context, view, all, shown, wide: wide, width: box.maxWidth);
+      if (!wide) {
+        return BasePage(
+          floatingActionButton: _dept ? null : _fab(context),
+          child: SafeArea(bottom: false, child: main),
+        );
+      }
+      return BasePage(
+        child: SafeArea(
+          bottom: false,
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            SizedBox(width: 300, child: _sidebar(context, view, all, shown)),
+            VerticalDivider(width: 1, color: context.colors.divider),
+            Expanded(child: main),
+          ]),
+        ),
+      );
+    });
+  }
+
+  String get _pageTitle =>
+      widget.title ?? (_dept ? t('تقويم الإدارة', 'Department calendar') : t('جدولي', 'My schedule'));
+
+  Widget? _fab(BuildContext context) {
+    final c = context.colors;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.end, children: [
+      QuickMeetingButton(fab: true, orgId: widget.orgId, api: widget.api, onDone: _refresh),
+      const SizedBox(height: 10),
+      FloatingActionButton.extended(
+        key: const ValueKey('cal.new_meeting'),
+        heroTag: 'cal_add',
+        onPressed: () => _add(),
+        backgroundColor: c.primary,
+        foregroundColor: c.onHero,
+        icon: const Icon(Icons.add_rounded),
+        label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+      ),
+    ]);
+  }
+
+  // ── desktop sidebar ──────────────────────────────────────────────────────
+  Widget _sidebar(BuildContext context, CalView view, List<CalEvent> all, List<CalEvent> shown) {
+    final c = context.colors;
+    final now = _nowUtc;
+    final keys = _liveKeys;
+    final next = shown.where((e) => !e.cancelled && !e.declined && e.end.isAfter(now)).toList()..sort((a, b) => a.start.compareTo(b.start));
+    final invites = [for (final e in all) if (e.isMeeting && e.myStatus == 'pending' && e.end.isAfter(now)) e];
+    final days = calVisibleDays(view, _anchor);
+    return ColoredBox(
+      color: c.cardBg,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+        children: [
+          if (!widget.asTab) ...[
+            Row(children: [
+              if (Navigator.of(context).canPop()) ...[
+                IconButton(
+                  tooltip: t('رجوع', 'Back'),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_rounded),
+                ),
+                const SizedBox(width: 2),
+              ],
+              Expanded(child: Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w800, c: c.textDark))),
+            ]),
+            const SizedBox(height: 2),
+          ],
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 2, bottom: 14),
+            child: Text(AppTime.date(now, pattern: 'EEEE d MMMM'), style: appText(13, w: FontWeight.w600, c: c.textMedium)),
+          ),
+          if (!_dept) ...[
+            SizedBox(
+              height: 46,
+              child: FilledButton.icon(
+                key: const ValueKey('cal.new_meeting'),
+                onPressed: () => _add(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: c.primary,
+                  foregroundColor: c.onHero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: QuickMeetingButton(orgId: widget.orgId, api: widget.api, onDone: _refresh),
+            ),
+            const SizedBox(height: 18),
+          ] else ...[
+            SizedBox(
+              height: 46,
+              child: FilledButton.icon(
+                key: const ValueKey('cal.new_meeting'),
+                onPressed: () => _add(),
+                style: FilledButton.styleFrom(backgroundColor: c.primary, foregroundColor: c.onHero, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                icon: const Icon(Icons.add_rounded),
+                label: Text(t('اجتماع جديد', 'New meeting'), style: appText(14, w: FontWeight.w800, c: c.onHero)),
+              ),
+            ),
+            const SizedBox(height: 18),
+          ],
+          CalMonthPicker(
+            month: _pickerMonth,
+            selected: _anchor,
+            today: calDay(_nowWall),
+            rangeStart: view == CalView.week || view == CalView.agenda ? days.first : null,
+            rangeEnd: view == CalView.week ? days.last : (view == CalView.agenda ? days.first.add(const Duration(days: 6)) : null),
+            dotsOf: (d) => _dotsOf(shown, d),
+            pausedOf: (d) => _pauses.any((p) => p.covers(d)),
+            onPick: (d) => _go(view == CalView.month ? CalView.day : view, d),
+            onMonth: (dir) => setState(() => _pickerMonth = DateTime(_pickerMonth.year, _pickerMonth.month + dir)),
+          ),
+          const SizedBox(height: 18),
+          if (next.isNotEmpty) ...[
+            CalUpNextCard(event: next.first, nowUtc: now, live: calIsLive(next.first, now, liveKeys: keys), onTap: () => _tap(next.first)),
+            const SizedBox(height: 14),
+          ],
+          if (invites.isNotEmpty) ...[
+            CalInvitesCard(invites: invites, actions: _actions),
+            const SizedBox(height: 14),
+          ],
+          if (!_dept)
+            CalFilterPanel(
+              counts: calCountsByCat(calSlice(all, _range.$1.toUtc(), _range.$2.toUtc())),
+              filters: _filters,
+              onCat: (k) => _setFilters(_filters.toggleCat(k)),
+              orgs: calOrgsOf(all),
+              onOrg: (id) => _setFilters(_filters.toggleOrg(id)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── header (phone / tablet) ──────────────────────────────────────────────
+  Widget _header(BuildContext context, CalView view) {
+    final c = context.colors;
+    final canPop = !widget.asTab && Navigator.of(context).canPop();
+    final monthTitle = calTitleFor(view == CalView.day || view == CalView.week ? CalView.month : view, _anchor);
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(canPop ? 4 : 18, 10, 8, 2),
+      child: Row(children: [
+        if (canPop)
+          IconButton(
+            tooltip: t('رجوع', 'Back'),
+            onPressed: () => Navigator.of(context).maybePop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+          ),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(_pageTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(24, w: FontWeight.w800, c: c.textDark)),
+            Semantics(
+              button: true,
+              label: t('اختر يوماً', 'Pick a day'),
+              child: InkWell(
+                key: const ValueKey('cal.month_toggle'),
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => setState(() {
+                  _pickerOpen = !_pickerOpen;
+                  _pickerMonth = DateTime(_anchor.year, _anchor.month);
+                }),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(
+                      child: Text(monthTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w700, c: appInk(context, c.primary))),
+                    ),
+                    AnimatedRotation(
+                      turns: _pickerOpen ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(Icons.expand_more_rounded, size: 20, color: appInk(context, c.primary)),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ]),
+        ),
+        _TodayButton(onTap: _today, isToday: _anchor == calDay(_nowWall)),
+        _MoreMenu(onRefresh: _refresh, onExport: _export),
+      ]),
+    );
+  }
+
+  Widget _toolbar(BuildContext context, CalView view, {required bool wide}) {
+    final c = context.colors;
+    final title = calTitleFor(view, _anchor);
+    final canPop = !widget.asTab && Navigator.of(context).canPop();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
+      child: Row(children: [
+        if (canPop && !wide) ...[
+          IconButton(tooltip: t('رجوع', 'Back'), onPressed: () => Navigator.of(context).maybePop(), icon: const Icon(Icons.arrow_back_rounded)),
+          const SizedBox(width: 4),
+        ],
+        _TodayButton(onTap: _today, isToday: false, outlined: true),
+        const SizedBox(width: 6),
+        IconButton(tooltip: t('السابق', 'Previous'), onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left_rounded)),
+        IconButton(tooltip: t('التالي', 'Next'), onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right_rounded)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(19, w: FontWeight.w800, c: c.textDark)),
+        ),
+        if (_loading && _chunk != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: SizedBox(width: 60, child: LinearProgressIndicator(minHeight: 3, borderRadius: BorderRadius.circular(3), color: c.primary, backgroundColor: c.inputBg)),
+          ),
+        CalViewSwitch(view: view, onView: (v) => _go(v, _anchor)),
+        _MoreMenu(onRefresh: _refresh, onExport: _export),
+      ]),
+    );
+  }
+
+  // ── main column ──────────────────────────────────────────────────────────
+  Widget _main(BuildContext context, CalView view, List<CalEvent> all, List<CalEvent> shown, {required bool wide, required double width}) {
+    final c = context.colors;
+    final tablet = !wide && width >= 700;
+    final pending = _chunk?.pending ?? 0;
+    final firstPending = all.where((e) => e.isMeeting && e.myStatus == 'pending' && e.end.isAfter(_nowUtc)).firstOrNull;
+    final children = <Widget>[
+      if (wide || tablet) _toolbar(context, view, wide: wide) else ...[
+        _header(context, view),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: !_pickerOpen
+              ? const SizedBox(width: double.infinity)
+              : Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+                    decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(18), border: Border.all(color: c.divider.withValues(alpha: 0.7))),
+                    child: CalMonthPicker(
+                      month: _pickerMonth,
+                      selected: _anchor,
+                      today: calDay(_nowWall),
+                      dotsOf: (d) => _dotsOf(shown, d),
+                      pausedOf: (d) => _pauses.any((p) => p.covers(d)),
+                      onPick: (d) {
+                        _pickerOpen = false;
+                        _go(view, d);
+                      },
+                      onMonth: (dir) => setState(() => _pickerMonth = DateTime(_pickerMonth.year, _pickerMonth.month + dir)),
+                    ),
+                  ),
+                ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          child: CalViewSwitch(view: view, onView: (v) => _go(v, _anchor), expand: true),
+        ),
+      ],
+      if (!wide && !_dept)
+        Padding(
+          padding: EdgeInsets.only(top: tablet ? 8 : 2, bottom: 4),
+          child: CalFilterChips(
+            counts: calCountsByCat(calSlice(all, _range.$1.toUtc(), _range.$2.toUtc())),
+            filters: _filters,
+            onCat: (k) => _setFilters(_filters.toggleCat(k)),
+            orgs: calOrgsOf(all),
+            onOrg: (id) => _setFilters(_filters.toggleOrg(id)),
+          ),
+        ),
+      if (!wide && _loading && _chunk != null)
+        LinearProgressIndicator(minHeight: 2, color: c.primary, backgroundColor: Colors.transparent)
+      else if (!wide)
+        const SizedBox(height: 2),
+      if (_error != null && _chunk != null)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          child: AppBanner(
+            icon: Icons.cloud_off_rounded,
+            text: _error!,
+            color: c.danger,
+            action: IconButton(tooltip: t('أعد المحاولة', 'Try again'), onPressed: _refresh, icon: const Icon(Icons.refresh_rounded)),
+          ),
+        ),
+      if (pending > 0 && !wide && firstPending != null && view != CalView.agenda)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+          child: AppBanner(
+            icon: Icons.mark_email_unread_rounded,
+            color: c.accent2,
+            text: t('لديك $pending ${pending == 1 ? 'دعوة' : 'دعوات'} بانتظار ردك', 'You have $pending invitation${pending == 1 ? '' : 's'} awaiting your answer'),
+            action: IconButton(tooltip: t('عرض', 'Open'), onPressed: () => _openMeeting(firstPending.meetingId!), icon: const Icon(Icons.open_in_new_rounded)),
+          ),
+        ),
+      Expanded(child: _content(context, view, shown, wide: wide)),
+    ];
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children);
+  }
+
+  Widget _content(BuildContext context, CalView view, List<CalEvent> shown, {required bool wide}) {
+    if (_chunk == null) {
+      if (_error != null) {
+        return Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: AppEmpty(
+              icon: Icons.cloud_off_rounded,
+              title: t('تعذر تحميل جدولك', 'Could not load your schedule'),
+              message: _error,
+              actionLabel: t('أعد المحاولة', 'Try again'),
+              onAction: _refresh,
+            ),
+          ),
+        );
+      }
+      return CalScheduleSkeleton(view: view);
+    }
+    final child = switch (view) {
+      CalView.agenda => _agenda(context, shown, wide: wide),
+      CalView.day => _day(context, shown, wide: wide),
+      CalView.week => _week(context, shown),
+      CalView.month => _month(context, shown, wide: wide),
+    };
+    final keyed = KeyedSubtree(key: ValueKey('${view.name}|$_anchor|$_agendaDays'), child: child);
+    final animated = AnimatedSwitcher(
+      duration: const Duration(milliseconds: 240),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (w, anim) {
+        final dx = _slide == 0 ? 0.0 : 0.06 * _slide;
+        return FadeTransition(
+          opacity: anim,
+          child: SlideTransition(position: Tween(begin: Offset(dx, _slide == 0 ? 0.015 : 0), end: Offset.zero).animate(anim), child: w),
+        );
+      },
+      layoutBuilder: (cur, prev) => Stack(alignment: Alignment.topCenter, children: [...prev, ?cur]),
+      child: keyed,
+    );
+    if (wide || view == CalView.agenda) return animated;
+    // phones: a horizontal swipe moves the range (the grids scroll vertically, the swipe stays free)
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragEnd: (d) {
+        final v = d.primaryVelocity ?? 0;
+        if (v.abs() < 300) return;
+        final forward = rtl ? v > 0 : v < 0;
+        _shift(forward ? 1 : -1);
+      },
+      child: animated,
+    );
+  }
+
+  Widget _agenda(BuildContext context, List<CalEvent> shown, {required bool wide}) {
+    final days = calAgenda(shown, from: _anchor, days: _agendaDays, nowWall: _nowWall, pauses: _pauses);
+    final orgs = calOrgsOf(shown);
+    final list = CalAgendaList(
+      days: days,
+      nowUtc: _nowUtc,
+      liveKeys: _liveKeys,
+      actions: _actions,
+      showOrg: orgs.where((o) => o.id != 0).length > 1,
+      padding: EdgeInsets.fromLTRB(16, 10, 16, wide ? 32 : 160),
+      emptyRange: _NothingAhead(filtered: _filters.any, onClear: () => _setFilters(const CalFilters())),
+      footer: _agendaDays < 56
+          ? Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Center(
+                child: TextButton.icon(
+                  key: const ValueKey('cal.agenda.more'),
+                  onPressed: () {
+                    setState(() => _agendaDays += calAgendaDays);
+                    _load();
+                  },
+                  icon: const Icon(Icons.expand_more_rounded),
+                  label: Text(t('عرض أسبوعين آخرين', 'Show the next two weeks')),
+                ),
+              ),
+            )
+          : null,
+    );
+    final body = AppRefresh(onRefresh: _refresh, child: list);
+    if (!wide) return body;
+    return Align(alignment: Alignment.topCenter, child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 860), child: body));
+  }
+
+  Widget _day(BuildContext context, List<CalEvent> shown, {required bool wide}) {
+    final keys = _liveKeys;
+    final grid = CalTimeGrid(
+      key: ValueKey('day-$_anchor'),
+      days: [_anchor],
+      events: shown,
+      pauses: _pauses,
+      showHeader: wide,
+      now: widget.now == null ? null : _nowWall,
+      isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
+      onTapEvent: _tap,
+      onTapSlot: _add,
+      onMove: _move,
+    );
+    if (wide) return grid;
+    final week = calVisibleDays(CalView.week, _anchor);
+    return Column(children: [
+      CalWeekStrip(
+        days: week,
+        selected: _anchor,
+        today: calDay(_nowWall),
+        dotsOf: (d) => _dotsOf(shown, d),
+        onPick: (d) => _go(CalView.day, d, dir: d.isAfter(_anchor) ? 1 : -1),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 2, 18, 6),
+        child: Row(children: [
+          Expanded(
+            child: Text(
+              '${_dayTitleOf(_anchor)} · ${AppTime.date(AppTime.fromZone(DateTime(_anchor.year, _anchor.month, _anchor.day, 12)), pattern: 'd MMMM')}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: appText(13.5, w: FontWeight.w800, c: context.colors.textDark),
+            ),
+          ),
+          Text(
+            () {
+              final n = calEventsOnDay(shown, _anchor).where((e) => !e.cancelled).length;
+              return n == 0 ? t('يوم فارغ', 'Free day') : t('$n ${n == 1 ? 'موعد' : 'مواعيد'}', '$n ${n == 1 ? 'event' : 'events'}');
+            }(),
+            style: appText(12, w: FontWeight.w700, c: context.colors.textLight),
+          ),
+        ]),
+      ),
+      Expanded(child: grid),
+    ]);
+  }
+
+  String _dayTitleOf(DateTime d) {
+    final diff = calDay(d).difference(calDay(_nowWall)).inDays;
+    if (diff == 0) return t('اليوم', 'Today');
+    if (diff == 1) return t('غداً', 'Tomorrow');
+    return AppTime.date(AppTime.fromZone(DateTime(d.year, d.month, d.day, 12)), pattern: 'EEEE');
+  }
+
+  Widget _week(BuildContext context, List<CalEvent> shown) {
+    final keys = _liveKeys;
+    final days = calVisibleDays(CalView.week, _anchor);
+    return CalTimeGrid(
+      key: ValueKey('week-${days.first}'),
+      days: days,
+      events: shown,
+      pauses: _pauses,
+      now: widget.now == null ? null : _nowWall,
+      isLive: (e) => calIsLive(e, _nowUtc, liveKeys: keys),
+      onTapEvent: _tap,
+      onTapSlot: _add,
+      onMove: _move,
+      onOpenDay: (d) => _go(CalView.day, d),
+    );
+  }
+
+  Widget _month(BuildContext context, List<CalEvent> shown, {required bool wide}) {
+    if (wide) {
+      return CalMonthGrid(
+        month: _anchor,
+        days: calVisibleDays(CalView.month, _anchor),
+        events: shown,
+        pauses: _pauses,
+        now: widget.now == null ? null : _nowWall,
+        onTapDay: (d) => _go(CalView.day, d),
+        onTapEvent: _tap,
+        onMove: _move,
+      );
+    }
+    // phone: the month as dots on top, the picked day's list below (Apple Calendar)
+    final sel = _anchor;
+    final day = calAgenda(shown, from: sel, days: 1, nowWall: _nowWall, pauses: _pauses).firstOrNull ??
+        CalAgendaDay(day: sel, events: const [], today: sel == calDay(_nowWall));
+    return AppRefresh(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(12, 4, 12, 160),
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(4, 8, 4, 8),
+            decoration: BoxDecoration(color: context.colors.cardBg, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.colors.divider.withValues(alpha: 0.7))),
+            child: CalMonthPicker(
+              month: DateTime(sel.year, sel.month),
+              selected: sel,
+              today: calDay(_nowWall),
+              roomy: true,
+              showHeader: false,
+              dotsOf: (d) => _dotsOf(shown, d),
+              pausedOf: (d) => _pauses.any((p) => p.covers(d)),
+              onPick: (d) {
+                if (d.month != sel.month) {
+                  _go(CalView.month, d, dir: d.isAfter(sel) ? 1 : -1);
+                } else {
+                  setState(() => _anchor = d);
+                }
+              },
+              onMonth: (dir) => _shift(dir),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: CalAgendaDayCard(
+              day: CalAgendaDay(day: day.day, events: day.events, today: day.today, nowAt: day.nowAt, pauses: [for (final p in _pauses) if (p.covers(sel)) p]),
+              nowUtc: _nowUtc,
+              liveKeys: _liveKeys,
+              actions: _actions,
+              showOrg: calOrgsOf(shown).where((o) => o.id != 0).length > 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayButton extends StatelessWidget {
+  const _TodayButton({required this.onTap, required this.isToday, this.outlined = false});
+  final VoidCallback onTap;
+  final bool isToday, outlined;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: InkWell(
+        key: const ValueKey('cal.today'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 40, minWidth: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: outlined || isToday ? Colors.transparent : calTint(c, c.primary, 0.10),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: outlined ? c.divider : (isToday ? c.divider : c.primary.withValues(alpha: 0.3))),
+          ),
+          child: Text(t('اليوم', 'Today'), style: appText(13, w: FontWeight.w800, c: isToday && !outlined ? c.textMedium : (outlined ? c.textDark : appInk(context, c.primary)))),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({required this.onRefresh, required this.onExport});
+  final Future<void> Function() onRefresh;
+  final Future<void> Function() onExport;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return PopupMenuButton<String>(
+      key: const ValueKey('cal.more'),
+      tooltip: t('المزيد', 'More'),
+      icon: Icon(Icons.more_vert_rounded, color: c.textMedium),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      onSelected: (v) {
+        if (v == 'refresh') onRefresh();
+        if (v == 'ics') onExport();
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'refresh',
+          child: Row(children: [const Icon(Icons.refresh_rounded, size: 20), const SizedBox(width: 10), Text(t('تحديث', 'Refresh'))]),
+        ),
+        PopupMenuItem(
+          value: 'ics',
+          child: Row(children: [
+            const Icon(Icons.ios_share_rounded, size: 20),
+            const SizedBox(width: 10),
+            Flexible(child: Text(t('تصدير إلى التقويم (.ics)', 'Export to calendar (.ics)'))),
+          ]),
+        ),
+      ],
+    );
+  }
+}
+
+class _NothingAhead extends StatelessWidget {
+  const _NothingAhead({required this.filtered, required this.onClear});
+  final bool filtered;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(children: [
+        Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(color: calTint(c, c.primary, 0.08), shape: BoxShape.circle),
+          child: Icon(Icons.event_available_rounded, size: 30, color: c.primary),
+        ),
+        const SizedBox(height: 12),
+        Text(t('لا شيء قادم', 'Nothing coming up'), style: appText(16, w: FontWeight.w800, c: c.textDark)),
+        const SizedBox(height: 4),
+        Text(
+          filtered
+              ? t('بعض الأنواع مخفية بالمرشّحات', 'Some kinds are hidden by the filters')
+              : t('ستظهر هنا محاضراتك وامتحاناتك واجتماعاتك', 'Your classes, exams and meetings show up here'),
+          textAlign: TextAlign.center,
+          style: appText(13, c: c.textMedium),
+        ),
+        if (filtered) ...[
+          const SizedBox(height: 8),
+          TextButton(onPressed: onClear, child: Text(t('إظهار الكل', 'Show everything'))),
+        ],
+      ]),
+    );
+  }
+}

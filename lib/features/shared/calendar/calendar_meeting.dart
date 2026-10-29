@@ -1068,12 +1068,13 @@ class _QuickMeetingButtonState extends State<QuickMeetingButton> {
               key: const ValueKey('calendar.meet_now'),
               heroTag: 'cal_meet_now',
               onPressed: _busy ? null : _go,
-              backgroundColor: c.accent,
-              foregroundColor: c.onHero,
+              // the secondary action: a light surface with the primary ink (the soft accent made white text unreadable)
+              backgroundColor: c.cardBg,
+              foregroundColor: c.primary,
               icon: _busy
-                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.onHero))
+                  ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary))
                   : const Icon(Icons.video_call_rounded),
-              label: Text(label, style: appText(14, w: FontWeight.w700, c: c.onHero)),
+              label: Text(label, style: appText(14, w: FontWeight.w800, c: c.primary)),
             )
           : AppPill(
               key: const ValueKey('meetings.meet_now'),

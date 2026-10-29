@@ -939,3 +939,33 @@ on the privacy and terms pages that opens the app assistant.
 accent toward the shade for contrast (cream became taupe); keeping the language page next to the switch;
 `Scrollable.ensureVisible` for the active chip (it also scrolls the page under the pinned header back up); sending
 the page question automatically (the person should see and own what is asked).
+
+## D-085 — "My schedule" and "My calendar" are one page · 2026-10-29 · accepted
+
+**Decision.** `SchedulePage` (`lib/features/shared/calendar/schedule_page.dart`) is the only schedule / calendar page:
+the student and teacher shells' Schedule tab (`asTab: true`), the top-bar calendar icon, `'/calendar'` (deep links,
+notification taps, AppNavigator `calendar` / `live_lobby`, the org and department dashboards; `CalendarScreen` /
+`CalendarView` are thin names for it) all open it. Views: Agenda (phone default — today pinned, then only the days
+that hold something, a "now" line), Day (week strip + time grid on phones), Week (desktop default), Month (desktop:
+the big grid; phone: a month of dots + the picked day's list). Desktop gets a sidebar: New meeting / Meet now, a mini
+month showing the visible range, Up next, invitations to answer, the filters. Filters are four kinds (classes · exams
+· live · meetings) + the organizations, remembered on the device (`calendar.filters.v1`). Colours come from the
+theme per kind (classes primary, a lab toward success, exams danger, live purple, meetings gold).
+**Data.** ONE `GET /me/calendar?detail=true` per visible range through `CalendarStore` (cached 3 min; the agenda
+and the day view fetch whole weeks from the start of their week so the week view reuses them; a wider chunk serves
+every range inside it). `detail=true` (additive, back `b2c4784`) adds each changed date's `change` (online /
+substitute / cancelled with the answers, `can_respond` / `can_edit`), keeps cancelled dates with `cancelled: true`
+(an older app never asked, so it never shows them as classes) and returns `pauses` (exam windows pausing the
+weekly classes). A personal course's weekly appointments (`GET /student|teacher/schedules`) are expanded to dated
+`course_weekly` events in the app (cached 15 min, never failing the page). Live: the store reloads on the new
+stream-only `calendar_updated` (every meeting notification), `meeting_live`, `session_live` and timetable /
+exam-timetable `attention_changed`; "Live now · Join" comes from the home's `MeHomeService.liveNow` (no extra
+request). No polling; a one-minute clock only moves the now line. Answers (invitation, one-date change) are
+optimistic patches of the cache, then a reload.
+**Rejected.** Keeping the tab and the calendar side by side with a shared header (two loaders, two caches, the same
+data drawn twice); a calendar package (none draws RTL, theme roles and our event kinds without forking); fetching
+`/public/schedule/me` beside the feed for the changes (a second call per range; the feed already knows the dates).
+**Removed.** `ScheduleTabBody` and its parts, `StudentScheduleTab`, `TeacherScheduleTab`, `StudentSchedulesProvider`,
+`TeacherScheduleOverviewProvider` (the tab's own `/me/calendar` call for "upcoming meetings" is gone).
+Tests: `test/ui/schedule_logic_test.dart`, `test/ui/schedule_layout_test.dart`, `test/ui/calendar_test.dart`;
+renders: `test/visual/schedule_golden_test.dart`.

@@ -4,12 +4,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_shell.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/shared/notification/notifications_provider.dart';
 import 'package:flutter_education_app/features/shared/profile/compalints/complaint_provider.dart';
 import 'package:flutter_education_app/features/teacher/courses/teacher_courses_provider.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/teacher/profile/switch_device_requests/teacher_device_requests_provider.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
 import '../analysis/analytics_hub_screen.dart';
@@ -17,8 +18,6 @@ import '../courses/courses_screen.dart';
 import '../home/home_screen.dart';
 import '../../shared/profile/profile_screen.dart';
 import '../home/teacher_home_provider.dart';
-import '../schedules/schedules_provider.dart';
-import '../schedules/schedules_screen.dart';
 
 // DashboardItem lives in the design layer (D-062); re-exported for the files that still import it from here.
 export 'package:flutter_education_app/design/app_shell.dart' show DashboardItem;
@@ -76,8 +75,8 @@ class _State extends State<TeacherDashboardScreen> {
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
         'my_schedule',
-        context.read<TeacherScheduleOverviewProvider>().fetch,
-        const TeacherScheduleTab(),
+        () async => CalendarStore.instance.invalidate(), // the one schedule page (D-085) reloads its range
+        const SchedulePage(asTab: true),
       ),
       DashboardItem(
         Icons.analytics_outlined,
@@ -146,58 +145,6 @@ class _State extends State<TeacherDashboardScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-// ── Schedule tab ──────────────────────────────────────────────────────────────
-class TeacherScheduleTab extends StatefulWidget {
-  const TeacherScheduleTab({super.key});
-
-  @override
-  State<TeacherScheduleTab> createState() => _TeacherScheduleTabState();
-}
-
-class _TeacherScheduleTabState extends State<TeacherScheduleTab>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  late TeacherScheduleOverviewProvider _prov;
-
-  @override
-  void initState() {
-    super.initState();
-    _prov = context.read<TeacherScheduleOverviewProvider>();
-    WidgetsBinding.instance.addPostFrameCallback(
-          (_) async => await _prov.fetch(),
-    );
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    _prov = context.watch<TeacherScheduleOverviewProvider>();
-    super.build(context);
-    return BasePage(
-      useWebCard: true,
-
-      child: SafeArea(
-        // the body owns loading (skeleton) / error (retry) / empty — a refresh keeps the data on screen
-        child: ScheduleTabBody(
-          provider: _prov,
-          getData: () => _prov.data,
-          onRefresh: _prov.fetch,
-          title: "time-table".tr,
-          emptyMessage: 'no-time-table'.tr,
-          getLastFetched: () => _prov.lastFetched,
-          getMeetings: () => _prov.meetings,
-        ),
-      ),
     );
   }
 }

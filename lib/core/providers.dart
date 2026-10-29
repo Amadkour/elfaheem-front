@@ -76,17 +76,11 @@ List<SingleChildWidget> appProviders({
   ChangeNotifierProvider<ThemeConfigProvider>(
     create: (_) => ThemeConfigProvider(api: api),
   ),
-  ChangeNotifierProvider<TeacherScheduleOverviewProvider>(
-    create: (_) => TeacherScheduleOverviewProvider(),
-  ),
   ChangeNotifierProvider<StudentExamProvider>(
     create: (_) => StudentExamProvider(),
   ),
   ChangeNotifierProvider<CourseDetailProvider>(
     create: (_) => CourseDetailProvider(),
-  ),
-  ChangeNotifierProvider<StudentSchedulesProvider>(
-    create: (_) => StudentSchedulesProvider(),
   ),
   ChangeNotifierProvider<TeacherCoursesProvider>(create: (_) => TeacherCoursesProvider()),
   ChangeNotifierProvider<ProfileProvider>(

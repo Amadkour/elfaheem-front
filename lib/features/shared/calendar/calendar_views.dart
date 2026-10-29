@@ -1,8 +1,10 @@
 // lib/features/shared/calendar/calendar_views.dart — the day/week time grid and the month grid of the calendar.
 //
-// Both are pure views over a list of CalEvent: colour per source, side-by-side overlaps (calLayoutDay), the answer
-// marker of meetings, a "now" line, tap a free slot to add, drag your own meetings to move them (long-press on touch,
-// plain drag with a mouse). The screen (calendar_screen.dart) does the loading and the conflict checks.
+// Both are pure views over a list of CalEvent: colour per kind, side-by-side overlaps (calLayoutDay), the answer
+// marker of meetings, one-date changes (online · substitute · cancelled, struck through), live rooms, exam-window
+// pauses (a strip under the day headers / a tinted month cell), a "now" line, tap a free slot to add, drag your own
+// meetings to move them (long-press on touch, plain drag with a mouse). The schedule page (schedule_page.dart) does
+// the loading and the conflict checks.
 library;
 
 import 'dart:async';
@@ -14,6 +16,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import 'calendar_models.dart';
+import 'schedule_parts.dart' show calTint;
 
 /// Lays [child] out with unbounded height and clips it to the box: text scaled up never throws an overflow.
 class _Clip extends StatelessWidget {
@@ -45,34 +48,50 @@ Widget _draggable(CalEvent e, Size size, Widget child) {
 
 /// The coloured block of one event (time grid) or one chip (month grid).
 class CalEventBlock extends StatelessWidget {
-  const CalEventBlock({super.key, required this.event, this.compact = false, this.height = 60});
+  const CalEventBlock({super.key, required this.event, this.compact = false, this.height = 60, this.live = false});
   final CalEvent event;
   final bool compact;
   final double height;
+
+  /// The room is open right now (a red dot before the title).
+  final bool live;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final e = event;
-    final color = calEventColor(c, e);
+    final muted = e.declined || e.cancelled;
+    final color = muted ? c.textLight : calEventColor(c, e);
     final pending = e.myStatus == 'pending' || e.myStatus == 'proposed';
     final title = Text(
       e.title,
       maxLines: compact ? 1 : (height > 60 ? 2 : 1),
       overflow: TextOverflow.ellipsis,
-      style: appText(compact ? 10 : 11.5, w: FontWeight.w700, c: e.declined ? c.textLight : c.textDark).copyWith(
-          decoration: e.declined ? TextDecoration.lineThrough : null),
+      style: appText(compact ? 10 : 11.5, w: FontWeight.w800, c: muted ? c.textLight : c.textDark).copyWith(
+          decoration: muted ? TextDecoration.lineThrough : null, decorationColor: c.textLight, height: 1.2),
     );
-    final marker = e.isMeeting && !e.isOwner && e.myStatus != null
-        ? Icon(calStatusIcon(e.myStatus), size: 12, color: calStatusColor(c, e.myStatus))
-        : null;
+    final ch = e.change;
+    final markerIcon = e.cancelled
+        ? Icons.event_busy_rounded
+        : (ch != null && ch.online)
+            ? Icons.videocam_rounded
+            : (ch != null && ch.substitute)
+                ? Icons.person_pin_rounded
+                : null;
+    final marker = live
+        ? Container(width: 7, height: 7, decoration: BoxDecoration(color: c.danger, shape: BoxShape.circle))
+        : markerIcon != null
+            ? Icon(markerIcon, size: 12, color: e.cancelled ? c.danger : appInk(context, color))
+            : e.isMeeting && !e.isOwner && e.myStatus != null
+                ? Icon(calStatusIcon(e.myStatus), size: 12, color: calStatusColor(c, e.myStatus))
+                : null;
     return Container(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: e.declined ? 0.06 : (pending ? 0.10 : 0.16)),
-        borderRadius: BorderRadius.circular(compact ? 5 : 8),
+        color: calTint(c, color, muted ? 0.05 : (pending ? 0.09 : 0.14)),
+        borderRadius: BorderRadius.circular(compact ? 6 : 9),
         border: BorderDirectional(start: BorderSide(color: color, width: compact ? 2.5 : 3.5)),
       ),
-      padding: EdgeInsetsDirectional.fromSTEB(compact ? 4 : 6, compact ? 1 : 3, 3, 1),
+      padding: EdgeInsetsDirectional.fromSTEB(compact ? 4 : 7, compact ? 1 : 4, 4, 1),
       child: _Clip(
         child: compact
             ? Row(children: [
@@ -80,13 +99,17 @@ class CalEventBlock extends StatelessWidget {
                 Expanded(child: title),
               ])
             : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Row(children: [
-                  Expanded(child: title),
-                  ?marker,
-                ]),
+                LayoutBuilder(
+                  // a block squeezed by overlaps (phone week) drops its marker rather than overflow
+                  builder: (context, box) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Expanded(child: title),
+                    if (marker != null && box.maxWidth > 40)
+                      Padding(padding: const EdgeInsetsDirectional.only(start: 2, top: 2), child: marker),
+                  ]),
+                ),
                 if (height > 34)
                   Text('${AppTime.time(e.start)} – ${AppTime.time(e.end)}',
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10, c: c.textMedium)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10, w: FontWeight.w600, c: c.textMedium)),
                 if (height > 52 && (e.location ?? e.subtitle ?? '').isNotEmpty)
                   Text(e.location ?? e.subtitle ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(10, c: c.textLight)),
                 if (height > 70 && e.isOwner && e.counts.isNotEmpty) _Counts(counts: e.counts),
@@ -133,10 +156,20 @@ class CalTimeGrid extends StatefulWidget {
     this.onOpenDay,
     this.now,
     this.hourHeight = 56,
+    this.pauses = const [],
+    this.isLive,
+    this.showHeader = true,
   });
 
   final List<DateTime> days; // wall days
   final List<CalEvent> events;
+
+  /// Exam windows pausing the weekly classes: a strip under the headers of the days they cover.
+  final List<CalPause> pauses;
+  final bool Function(CalEvent e)? isLive;
+
+  /// The day headers (a single day under the phone's week strip needs none).
+  final bool showHeader;
   final ValueChanged<CalEvent> onTapEvent;
   final ValueChanged<DateTime> onTapSlot; // wall start
   final void Function(CalEvent event, DateTime wallStart) onMove;
@@ -149,7 +182,7 @@ class CalTimeGrid extends StatefulWidget {
 }
 
 class _CalTimeGridState extends State<CalTimeGrid> {
-  late final ScrollController _scroll = ScrollController(initialScrollOffset: _firstHour() * widget.hourHeight);
+  late final ScrollController _scroll = ScrollController(initialScrollOffset: (_firstHour() * widget.hourHeight - 10).clamp(0, double.infinity));
   Timer? _tick;
 
   int _firstHour() {
@@ -183,27 +216,60 @@ class _CalTimeGridState extends State<CalTimeGrid> {
     final today = calDay(now);
     final hh = widget.hourHeight;
     return LayoutBuilder(builder: (context, box) {
-      const gutter = 46.0;
+      const gutter = 52.0;
       final colW = (box.maxWidth - gutter) / widget.days.length;
+      final paused = [for (final d in widget.days) widget.pauses.where((p) => p.covers(d)).firstOrNull];
       return Column(children: [
         // sticky day headers
-        Container(
-          decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
-          child: Row(children: [
-            const SizedBox(width: gutter),
-            for (final d in widget.days)
-              SizedBox(
-                width: colW,
-                height: 54,
-                child: InkWell(
-                  onTap: widget.onOpenDay == null ? null : () => widget.onOpenDay!(d),
-                  child: _DayHead(day: d, today: d == today),
+        if (widget.showHeader)
+          Container(
+            decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
+            child: Row(children: [
+              const SizedBox(width: gutter),
+              for (final d in widget.days)
+                SizedBox(
+                  width: colW,
+                  height: 58,
+                  child: InkWell(
+                    onTap: widget.onOpenDay == null ? null : () => widget.onOpenDay!(d),
+                    child: _DayHead(day: d, today: d == today),
+                  ),
                 ),
+            ]),
+          ),
+        if (paused.any((p) => p != null))
+          Container(
+            height: 24,
+            decoration: BoxDecoration(color: c.cardBg, border: Border(bottom: BorderSide(color: c.divider))),
+            child: Row(children: [
+              SizedBox(
+                width: gutter,
+                child: Center(child: Icon(Icons.pause_circle_rounded, size: 14, color: appInk(context, c.warning))),
               ),
-          ]),
-        ),
+              for (final p in paused)
+                SizedBox(
+                  width: colW,
+                  child: p == null
+                      ? null
+                      : Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          alignment: AlignmentDirectional.centerStart,
+                          decoration: BoxDecoration(color: calTint(c, c.warning, 0.16), borderRadius: BorderRadius.circular(5)),
+                          child: Text(
+                            p.name.isEmpty ? t('امتحانات', 'Exams') : p.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: appText(9.5, w: FontWeight.w700, c: appInk(context, c.warning)),
+                          ),
+                        ),
+                ),
+            ]),
+          ),
         Expanded(
-          child: Scrollbar(
+          child: ColoredBox(
+            color: c.cardBg,
+            child: Scrollbar(
             controller: _scroll,
             child: SingleChildScrollView(
               controller: _scroll,
@@ -218,8 +284,12 @@ class _CalTimeGridState extends State<CalTimeGrid> {
                           top: h * hh - 7,
                           start: 0,
                           end: 4,
-                          child: Text(AppTime.clockMinutes(h * 60),
-                              textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.clip, style: appText(9.5, c: c.textLight)),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerEnd,
+                            child: Text(AppTime.clockMinutes(h * 60),
+                                textAlign: TextAlign.end, maxLines: 1, style: appText(10, w: FontWeight.w600, c: c.textLight)),
+                          ),
                         ),
                     ]),
                   ),
@@ -235,11 +305,13 @@ class _CalTimeGridState extends State<CalTimeGrid> {
                         onTapEvent: widget.onTapEvent,
                         onTapSlot: widget.onTapSlot,
                         onMove: widget.onMove,
+                        isLive: widget.isLive,
                       ),
                     ),
                 ]),
               ),
             ),
+          ),
           ),
         ),
       ]);
@@ -257,18 +329,18 @@ class _DayHead extends StatelessWidget {
     final c = context.colors;
     final noon = AppTime.fromZone(DateTime(day.year, day.month, day.day, 12));
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 1),
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 1),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(AppTime.date(noon, pattern: 'EEE'), style: appText(11, w: FontWeight.w600, c: today ? c.primary : c.textLight)),
-          const SizedBox(height: 2),
+          Text(AppTime.date(noon, pattern: 'EEE'), style: appText(11, w: FontWeight.w700, c: today ? appInk(context, c.primary) : c.textLight)),
+          const SizedBox(height: 3),
           Container(
-            width: 28,
-            height: 28,
+            width: 30,
+            height: 30,
             alignment: Alignment.center,
             decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
-            child: Text('${day.day}', style: appText(14, w: FontWeight.w800, c: today ? context.colors.onHero : c.textDark)),
+            child: Text('${day.day}', style: appText(15, w: FontWeight.w800, c: today ? context.colors.onHero : c.textDark)),
           ),
         ]),
       ),
@@ -286,12 +358,14 @@ class _DayColumn extends StatefulWidget {
     required this.onTapSlot,
     required this.onMove,
     this.now,
+    this.isLive,
   });
 
   final DateTime day;
   final double width, hourHeight;
   final List<CalEvent> events;
   final DateTime? now;
+  final bool Function(CalEvent e)? isLive;
   final ValueChanged<CalEvent> onTapEvent;
   final ValueChanged<DateTime> onTapSlot;
   final void Function(CalEvent, DateTime) onMove;
@@ -350,7 +424,7 @@ class _DayColumnState extends State<_DayColumn> {
                 child: _Clip(
                   child: Padding(
                     padding: const EdgeInsets.all(3),
-                    child: Text(AppTime.clockMinutes(_hover!), maxLines: 1, style: appText(10, w: FontWeight.w700, c: c.primary)),
+                    child: Text(AppTime.clockMinutes(_hover!), maxLines: 1, style: appText(10, w: FontWeight.w700, c: appInk(context, c.primary))),
                   ),
                 ),
               ),
@@ -375,7 +449,7 @@ class _DayColumnState extends State<_DayColumn> {
                     child: Semantics(
                       button: true,
                       label: p.event.title,
-                      child: CalEventBlock(event: p.event, height: h),
+                      child: CalEventBlock(event: p.event, height: h, live: widget.isLive?.call(p.event) ?? false),
                     ),
                   ),
                 ),
@@ -439,11 +513,13 @@ class CalMonthGrid extends StatelessWidget {
     required this.onTapEvent,
     required this.onMove,
     this.now,
+    this.pauses = const [],
   });
 
   final DateTime month;
   final List<DateTime> days; // 42
   final List<CalEvent> events;
+  final List<CalPause> pauses;
   final ValueChanged<DateTime> onTapDay;
   final ValueChanged<CalEvent> onTapEvent;
   final void Function(CalEvent event, DateTime wallStart) onMove;
@@ -470,6 +546,7 @@ class CalMonthGrid extends StatelessWidget {
                     day: days[r * 7 + k],
                     inMonth: days[r * 7 + k].month == month.month,
                     today: days[r * 7 + k] == today,
+                    paused: pauses.where((p) => p.covers(days[r * 7 + k])).firstOrNull,
                     events: calEventsOnDay(events, days[r * 7 + k]),
                     height: cellH,
                     dense: dense,
@@ -512,10 +589,12 @@ class _MonthCell extends StatelessWidget {
     required this.onTapDay,
     required this.onTapEvent,
     required this.onMove,
+    this.paused,
   });
 
   final DateTime day;
   final bool inMonth, today, dense;
+  final CalPause? paused;
   final List<CalEvent> events;
   final double height;
   final ValueChanged<DateTime> onTapDay;
@@ -538,23 +617,40 @@ class _MonthCell extends StatelessWidget {
         onTap: () => onTapDay(day),
         child: Container(
           decoration: BoxDecoration(
-            color: cand.isNotEmpty ? c.primary.withValues(alpha: 0.10) : (inMonth ? c.cardBg : c.background),
+            color: cand.isNotEmpty
+                ? c.primary.withValues(alpha: 0.10)
+                : paused != null
+                    ? Color.alphaBlend(calTint(c, c.warning, 0.07), inMonth ? c.cardBg : c.background)
+                    : (inMonth ? c.cardBg : c.background),
             border: Border.all(color: c.divider, width: 0.5),
           ),
           padding: const EdgeInsets.all(3),
           child: _Clip(
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-              Align(
-                alignment: AlignmentDirectional.topStart,
-                child: Container(
-                  width: 22,
-                  height: 22,
+              Row(children: [
+                Container(
+                  width: 24,
+                  height: 24,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: today ? c.primary : Colors.transparent, shape: BoxShape.circle),
                   child: Text('${day.day}',
-                      style: appText(11.5, w: FontWeight.w800, c: today ? context.colors.onHero : (inMonth ? c.textDark : c.textLight))),
+                      style: appText(12, w: FontWeight.w800, c: today ? context.colors.onHero : (inMonth ? c.textDark : c.textLight))),
                 ),
-              ),
+                if (paused != null && !dense)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 4),
+                      child: Row(children: [
+                        Icon(Icons.pause_circle_rounded, size: 11, color: appInk(context, c.warning)),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(paused!.name.isEmpty ? t('امتحانات', 'Exams') : paused!.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(9.5, w: FontWeight.w700, c: appInk(context, c.warning))),
+                        ),
+                      ]),
+                    ),
+                  ),
+              ]),
               const SizedBox(height: 2),
               if (dense)
                 Wrap(spacing: 3, runSpacing: 3, children: [
@@ -575,7 +671,7 @@ class _MonthCell extends StatelessWidget {
                     ),
                   ),
                 if (more > 0)
-                  Text('+$more ${t('أخرى', 'more')}', maxLines: 1, style: appText(10, w: FontWeight.w700, c: c.primary)),
+                  Text('+$more ${t('أخرى', 'more')}', maxLines: 1, style: appText(10, w: FontWeight.w700, c: appInk(context, c.primary))),
               ],
             ]),
           ),
