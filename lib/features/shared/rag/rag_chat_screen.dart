@@ -194,9 +194,10 @@ class RagChatViewState extends State<RagChatView> {
     _convs..clear()..addAll(RagApi.conversationItems(r));
     _retentionDays = RagApi.retentionDays(r);
     RagConversation? open;
-    final want = widget.initialConversationId;
+    final want = _draftFresh ? null : widget.initialConversationId;
     if (want != null) open = _convs.where((c) => c.id == want).firstOrNull;
-    if (open == null && want == null && widget.resumeLatest) open = _convs.firstOrNull;
+    if (open == null && want == null && widget.resumeLatest && !_draftFresh) open = _convs.firstOrNull;
+    _draftFresh = false;
     if (open != null) {
       await openConversation(open);
     } else {
@@ -216,6 +217,22 @@ class RagChatViewState extends State<RagChatView> {
         _convs..clear()..addAll(RagApi.conversationItems(r));
         _retentionDays = RagApi.retentionDays(r) ?? _retentionDays;
       }
+    });
+  }
+
+  bool _draftFresh = false; // a question was handed in before the conversations loaded: start a new chat, not the latest
+
+  /// Types [text] into the box (not sent) on a new chat when the server has chat sessions — "Ask about this page"
+  /// (AppAssistant.ask). Before the conversations have loaded, the boot opens a new chat instead of the latest one.
+  void draft(String text) {
+    if (_sessions == true) {
+      newChat();
+    } else if (_sessions == null) {
+      _draftFresh = true;
+    }
+    setState(() {
+      _input.text = text;
+      _input.selection = TextSelection.collapsed(offset: text.length);
     });
   }
 

@@ -7,7 +7,7 @@
 // MediaQuery.disableAnimations.
 //
 //   authText / authTracking         the type scale (letter spacing for Latin only)
-//   authHeroGradient                the brand gradient of the hero / brand panel
+//   authHeroGradient                the hero / brand panel: primary 70 % · accent 30 % (D-088)
 //   AuthHeroBackdrop · AuthLogoTile the hero surface and the app-icon style logo
 //   AuthSidebar                     the brand panel of the wide (web / tablet) layout
 //   AuthCard · AuthEntrance         the form surface and its entrance
@@ -68,29 +68,65 @@ double authContrast(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/// One stop of a hero gradient: a step deeper toward [shade] in dark mode (a bright brand block glares there), then
-/// deepened further until even the MUTED on-hero ink (subtitles, the tagline: [ink] at 72 %) reads on it at 4.5:1,
-/// with a little margin for the glows drawn over it — an admin may run the server gradient into a light accent.
+/// One stop of a hero gradient, deepened until even the MUTED on-hero ink (subtitles, the tagline: [ink] at 72 %)
+/// reads on it at 4.5:1 with a little margin for the glows drawn over it — and at a stricter 6.4:1 in dark mode, the
+/// step deeper a bright brand block needs there. The deepening keeps the stop's own hue and only lowers its
+/// lightness (saturation capped a little, so a vivid light tone does not turn garish), so a light accent becomes
+/// its own deep tone — a cream gold turns bronze — instead of greying toward the shade (D-088).
 Color authHeroStop(Color stop, Color ink, Color shade, {required bool dark}) {
-  var c = dark ? Color.alphaBlend(shade.withValues(alpha: 0.36), stop) : stop;
-  double muted(Color bg) => authContrast(Color.alphaBlend(ink.withValues(alpha: 0.72), bg), bg);
-  for (var i = 0; i < 16 && muted(c) < 4.9; i++) {
-    c = Color.alphaBlend(shade.withValues(alpha: 0.12), c);
+  // dark mode: the step deeper is a stricter target on the same hue path (a blend toward the shade greyed a light
+  // accent into taupe); [shade] stays for callers and older themes' sake
+  final target = dark ? 6.4 : 4.9;
+  return authDeepen(stop, (bg) => authContrast(Color.alphaBlend(ink.withValues(alpha: 0.72), bg), bg) >= target);
+}
+
+/// [color] with its lightness lowered (hue kept, saturation capped at 0.62) until [ok] holds; unchanged when it
+/// already does.
+Color authDeepen(Color color, bool Function(Color) ok) {
+  if (ok(color)) return color;
+  final hsl = HSLColor.fromColor(color);
+  final tone = hsl.withSaturation(hsl.saturation.clamp(0.0, 0.62));
+  var c = color;
+  var l = hsl.lightness;
+  for (var i = 0; i < 80 && !ok(c); i++) {
+    l = (l - 0.012).clamp(0.0, 1.0);
+    c = tone.withLightness(l).toColor();
   }
   return c;
 }
 
-/// The brand gradient of the sign-in hero = the dashboard hero's (HomeHeroCard: the theme's primary gradient, set on
-/// the server, with its light sheen through the middle), so sign-in → home reads as one surface (D-082, amends
-/// D-073). Every stop passes [authHeroStop]: deeper in dark mode, never too light for the on-hero ink. Falls back to
-/// shades of the primary when the server sends fewer than two colours.
-LinearGradient authHeroGradient(ThemeConfigProvider c) {
+/// The accent's share of the sign-in hero: the surface is a blend of the theme's primary (70 %) and accent (30 %),
+/// the two colours the super admin picks on the Theme page ("Primary", "Accent 1") — D-088.
+const authHeroAccentShare = 0.30;
+
+/// Where the run into the accent starts, so the gradient's mean colour is exactly [authHeroAccentShare] accent:
+/// pure primary over the first part of the surface, then a straight run into the accent whose area is half
+/// primary, half accent → (1 − s) / 2 = 0.30 → s = 0.40.
+const authHeroBlendStart = 1 - 2 * authHeroAccentShare;
+
+/// The raw 70 / 30 brand stops before any contrast guard: primary · primary · accent at 0 · 0.40 · 1 — or, when the
+/// accent is (almost) the primary itself (a monochrome palette), shades of the primary at even stops (null).
+(List<Color>, List<double>?) authBrandStops(ThemeConfigProvider c) {
   final p = c.primary;
-  final base = c.primaryGradient.colors;
-  final colors = base.length >= 2 ? base : [c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)];
+  final a = c.accent;
+  if (authContrast(p, a) < 1.15) return ([c.heroTint(p, 0.14), p, c.heroEnd(p, 0.34)], null);
+  return ([p, p, a], const [0, authHeroBlendStart, 1]);
+}
+
+/// The brand gradient of the sign-in hero (D-088, amends D-082): the theme's primary over 70 % of the surface and its
+/// accent over 30 % — primary from the [begin] corner (top-start), running into the accent toward [end]
+/// (bottom-end; the short phone hero runs toward the end side, so its visible top keeps the accent). Every stop
+/// passes [authHeroStop]: deeper in dark mode, never too light for the on-hero ink.
+LinearGradient authHeroGradient(
+  ThemeConfigProvider c, {
+  AlignmentGeometry begin = AlignmentDirectional.topStart,
+  AlignmentGeometry end = AlignmentDirectional.bottomEnd,
+}) {
+  final (colors, stops) = authBrandStops(c);
   return LinearGradient(
-    begin: AlignmentDirectional.topStart,
-    end: AlignmentDirectional.bottomEnd,
+    begin: begin,
+    end: end,
+    stops: stops,
     colors: [for (final s in colors) authHeroStop(s, c.onHero, c.heroShade, dark: c.isDark)],
   );
 }
@@ -129,10 +165,15 @@ class AuthHeroBackdrop extends StatelessWidget {
           ),
         );
     final brandGlow = c.heroTint(c.primary, 0.45).withValues(alpha: c.isDark ? 0.16 : 0.24);
+    // the tall panel runs corner to corner; the short phone hero runs toward its end side, so the accent's 30 % is in
+    // the part above the card instead of under it
+    final gradient = panel || radius <= 0
+        ? authHeroGradient(c)
+        : authHeroGradient(c, end: const AlignmentDirectional(1, 0.4));
     final surface = ClipRRect(
       borderRadius: r,
       child: DecoratedBox(
-        decoration: BoxDecoration(gradient: authHeroGradient(c)),
+        decoration: BoxDecoration(gradient: gradient),
         child: Stack(
           clipBehavior: Clip.hardEdge,
           children: [
@@ -148,8 +189,9 @@ class AuthHeroBackdrop extends StatelessWidget {
                 ),
               ),
             ),
-            PositionedDirectional(top: -150, end: -130, child: glow(brandGlow, 380)),
-            PositionedDirectional(bottom: -170, start: -140, child: glow(ink.withValues(alpha: 0.04), 360)),
+            // the primary's glow sits on the primary side; the accent end keeps its own tone
+            PositionedDirectional(top: -150, start: -130, child: glow(brandGlow, 380)),
+            PositionedDirectional(bottom: -170, end: -140, child: glow(ink.withValues(alpha: 0.04), 360)),
             if (panel)
               PositionedDirectional(top: 280, start: -140, child: glow(c.heroTint(c.primary, 0.3).withValues(alpha: c.isDark ? 0.08 : 0.12), 340)),
             // the home hero's signature ring (HomeHeroCard), scaled to the larger surface, and a hairline echo
@@ -1011,10 +1053,12 @@ class _AuthButtonState extends State<AuthButton> {
     // a busy button keeps its colour (it is working, not disabled)
     final lit = active || widget.loading;
     final tone = widget.tone;
-    final brand = c.primaryGradientOnColor.colors;
+    // the hero's 70 / 30 primary → accent blend (D-088), each stop deep enough for the label at 4.5:1
+    final (brand, brandStops) = authBrandStops(c);
     final colors = tone != null
         ? [tone, c.heroEnd(tone, 0.22)]
-        : [brand.isEmpty ? c.primary : brand.first, c.heroEnd(brand.isEmpty ? c.primary : brand.last, 0.15)];
+        : [for (final s in brand) authDeepen(s, (bg) => authContrast(c.onHero, bg) >= 4.7)];
+    final stops = tone != null ? null : brandStops;
     final fg = lit ? c.onHero : c.textLight;
     const radius = 16.0;
 
@@ -1107,6 +1151,7 @@ class _AuthButtonState extends State<AuthButton> {
                       ? LinearGradient(
                           begin: AlignmentDirectional.centerStart,
                           end: AlignmentDirectional.centerEnd,
+                          stops: stops,
                           colors: colors,
                         )
                       : null,

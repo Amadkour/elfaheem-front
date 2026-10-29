@@ -1,0 +1,108 @@
+{
+ "input_bg": "#F5F8F5",
+ "input_bg_dark": "#24332D",
+ "card_shadow_color": "#14261F",
+ "card_shadow_color_dark": "#000000",
+ "charcoal": "#26332D",
+ "charcoal_light": "#46544D",
+ "charcoal_dark": "#151F1A",
+ "success": "#43B85A",
+ "danger": "#E5484D",
+ "warning": "#F2A93B",
+ "purple": "#7C6CE0",
+ "accent2": "#C98A3D",
+ "background": "#FBF7EC",
+ "surface_card": "#FFFFFF",
+ "card_bg": "#FFFFFF",
+ "text_field_background": "#F5F8F5",
+ "divider": "#E4EBE5",
+ "text_dark": "#14201A",
+ "text_medium": "#46544D",
+ "text_light": "#68756D",
+ "text_action": "#0F7B5F",
+ "second_text": "#68756D",
+ "dark_background": "#0C1511",
+ "dark_surface": "#121D18",
+ "dark_card": "#1A2822",
+ "dark_input": "#24332D",
+ "dark_divider": "#2E3F37",
+ "dark_text_primary": "#F2F7F4",
+ "dark_text_muted": "#A7B5AD",
+ "dark_text_light": "#8A9B94",
+ "primary": "#0F7B5F",
+ "primary_dark": "#0A5642",
+ "primary_light": "#34A883",
+ "light_primary": "#1F0F7B5F",
+ "accent": "#F3E6C4",
+ "primary_tint": "#1F0F7B5F",
+ "primary_tint_dark": "#330F7B5F",
+ "primary_shadow_color": "#4C0F7B5F",
+ "primary_shadow_color_dark": "#260F7B5F",
+ "gradient_primary": [
+  "#F3E6C4",
+  "#C98A3D"
+ ],
+ "primary_slider_gradient": [
+  "#0F7B5F",
+  "#F3E6C4"
+ ],
+ "gradient_accent": [
+  "#0F7B5F",
+  "#F3E6C4"
+ ],
+ "gradient_accent2": [
+  "#0F7B5F",
+  "#C98A3D"
+ ],
+ "gradient_slider": [
+  "#0F7B5F",
+  "#0F7B5F",
+  "#F3E6C4"
+ ],
+ "gradient_light_slide_bar": [
+  "#0F7B5F",
+  "#F3E6C4",
+  "#0F7B5F"
+ ],
+ "gradient_dark_slide_bar": [
+  "#0F7B5F",
+  "#F3E6C4",
+  "#0F7B5F"
+ ],
+ "gradient_background": [
+  "#FBF7EC",
+  "#0F7B5F",
+  "#FBF7EC"
+ ],
+ "gradient_dark_background": [
+  "#0C1511",
+  "#121D18"
+ ],
+ "gradient_disable": [
+  "#4F151F1A",
+  "#4F46544D"
+ ],
+ "gradient_gold_charcoal": [
+  "#0F7B5F",
+  "#26332D"
+ ],
+ "gradient_success": [
+  "#34C270",
+  "#4ADE80"
+ ],
+ "gradient_danger": [
+  "#FF3B5C",
+  "#FF6B85"
+ ],
+ "gradient_purple": [
+  "#8B6FFF",
+  "#B39DFF"
+ ],
+ "gradient_teal": [
+  "#26332D",
+  "#46544D"
+ ],
+ "platform": "android",
+ "is_active": true,
+ "updated_at": "2026-10-10T11:52:44.886067+00:00"
+}

@@ -509,7 +509,7 @@ class _JoinCard extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  gradient: c.primaryGradient,
+                  gradient: authHeroGradient(c),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(

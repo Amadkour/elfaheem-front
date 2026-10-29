@@ -35,7 +35,7 @@ import '../../config/app_config.dart';
 import '../../design/app_switch.dart';
 import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
-import '../shared/profile/change_language_screen.dart';
+import '../../design/app_language_switch.dart' show AppLanguageTile;
 import '../shared/display/display_settings_page.dart' show DisplaySettingsTile;
 import '../shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import '../shared/profile/compalints/complaint_provider.dart';
@@ -458,12 +458,7 @@ class _MorePageState extends State<_MorePage> {
               label: 'admin_my_account'.tr,
               onTap: () => _push(const AdminProfilePage()),
             ),
-            AppSettingsTile(
-              icon: Icons.translate_rounded,
-              color: AdminPalette.violet.last,
-              label: 'change_language'.tr,
-              onTap: () => _push(const ChangeLanguageScreen()),
-            ),
+            AppLanguageTile(color: AdminPalette.violet.last),
             const DisplaySettingsTile(),
             const AppAssistantOpenTile(),
             const AppAssistantBubbleTile(),

@@ -804,13 +804,19 @@ ID button and "Not you?", prefills the identifier, and opens the prompt by itsel
 a sign-out. `MainActivity` extends `FlutterFragmentActivity` (local_auth's requirement; the MediaProjection
 `startActivityForResult` / `onActivityResult` path is unchanged — both exist on `FragmentActivity`), manifest
 `USE_BIOMETRIC`, iOS `NSFaceIDUsageDescription` (English only: the project has no InfoPlist.strings localisation).
-**Decision (look, amends D-073).** `authHeroGradient` is now the dashboard hero's gradient — the theme's
-`primaryGradient` from the server, the same one `HomeHeroCard` paints, with its light sheen through the middle —
-each stop guarded by `authHeroStop` (a step deeper in dark mode, then deepened until even the muted on-hero ink —
-subtitles, tagline — reads at 4.5:1 with a margin for the glows; an admin may run the gradient into a light accent). On
-the default theme this keeps a gentle sheen rather than the home card's full one: AA contrast wins over the sheen. `AuthHeroBackdrop` carries the home hero's signature ring and a
-soft top sheen, and the phone hero floats on the same brand glow as the home hero; the wide brand panel uses the same
-surface (one extra glow for its height). The splash → login hand-off is untouched (the logo tile keeps its Hero tag).
+**Decision (look, amends D-073; colours amended by D-088).** The sign-in hero speaks the dashboard hero's language:
+`AuthHeroBackdrop` carries the home hero's signature ring and a soft top sheen, and the phone hero floats on the same
+brand glow as the home hero; the wide brand panel uses the same surface (one extra glow for its height). Its colours
+are a blend of the theme's **primary (70 %) and accent (30 %)** — the owner's call, D-088: `authHeroGradient` runs pure
+primary over the first 40 % of the surface, then straight into the accent ("Accent 1" on the admin Theme page), so the
+mean colour is exactly 70 / 30; the tall wide panel runs corner to corner, the short phone hero toward its end side
+(the accent stays in the part above the card). Each stop is guarded by `authHeroStop`: deepened along its own hue
+(lightness only, saturation capped at 0.62 — a cream accent becomes bronze instead of greying) until even the muted
+on-hero ink — subtitles, tagline — reads at 4.5:1 with a margin for the glows (6.4:1 in dark mode, the step deeper a
+bright block needs there). A monochrome theme (accent ≈ primary) gets shades of the primary. The primary button
+(`AuthButton`) uses the same 70 / 30 stops, deepened until its label reads at 4.5:1 (the server's
+`gradient_primary`, accent → accent 2, put white text on cream). The splash → login hand-off is untouched (the logo
+tile keeps its Hero tag).
 **Rejected.** Keeping the refresh token across sign-out; an HMAC device secret (a server-side secret to protect,
 where a public key needs none); skipping MFA after a fingerprint; the dashboard sidebar's charcoal for the wide
 panel (rendered muddy next to the brand hero); a separate biometric settings page.
@@ -897,3 +903,39 @@ keep `ComplaintsScreen`, the console).
 **Rejected.** Merging the two complaint systems on the server (a migration and every existing screen); listing the
 governance work items instead (their comments are not the complaint thread); opening the organization (mode switch,
 timezone, disable list) just to read one complaint; server-side search per keystroke over two sources.
+
+## D-088 — Sign-in colours 70 % primary / 30 % accent; the language is a switch in the settings row; Terms, Privacy and About are reading pages with the assistant one tap away · 2026-10-29
+
+**Context.** The owner asked for (1) the login bars to mix the app colours, primary 70 % and accent 30 %; (2) the
+language to change with a switcher like the login's, not a page; (3) premium privacy / terms / about pages; (4) a bot
+on the privacy and terms pages that opens the app assistant.
+**Decision.**
+- *Sign-in colours* — see D-082 (look), which this amends: `authBrandStops` = primary · primary · accent at
+  0 · 0.40 · 1 (mean colour exactly 70 / 30), every stop deepened along its own hue for the on-hero ink; the same
+  stops paint `AuthButton`. The a11y guideline test keeps guarding the contrast on the default theme.
+- *Language* — `AppLanguageTile` (`lib/design/app_language_switch.dart`) is the row on every role's settings page
+  (profile = student / teacher, admin More, parent More, org Preferences; kill switch `profile.change_language`
+  unchanged): icon · "Language" · `AppLanguageSegmented`, a pill with "عربي" · "EN" (the login toggle's labels) and a
+  sliding primary thumb, 48 dp hit areas, a selected state for screen readers, no slide under Reduce motion. A tap goes
+  through `LangProvider.changeLang` and then `refreshWholeUi()` after the frame, as the old page did on its pop.
+  `ChangeLanguageScreen` is deleted.
+- *Reading pages* — `TermsScreen(privacy:)` and `AboutScreen` (same routes, providers and endpoints) are rebuilt
+  from plain-value parts (`about_terms_parts.dart`): a calm hero card (brand icon tile, title, intro, meta pills:
+  updated · version · read time · sections), the sections as numbered cards with 16 px body text at 1.85 (ar) / 1.7
+  (en) line height through `appText` (the person's reading spacing applies), bullets and numbered steps parsed from
+  the admin's text (`readingBlocks`, pure); a table of contents that follows the scroll — section chips pinned under
+  the app bar on a phone, an "On this page" column beside a 760 px reading column from 1000 px; a closing note.
+  "Privacy" in the profile opens the same content introduced as privacy & terms (the server has one terms document).
+  About: hero with the logo, figures, mission quote, features (equal-height rows), team, and ONE "Contact & support"
+  card (contacts, the assistant, the installed / latest version and release notes). Loading draws the page's shape
+  (`ReadingSkeleton`); an error / empty page is `AppEmpty` with a retry. The accordion and the terms search are gone:
+  the table of contents does that job on a document of a few sections, and an open page reads better than a closed one.
+- *Assistant on the page* — a bot button in the app bar and, on a phone, a floating "Ask about this page" pill (it
+  folds to the bot disc while scrolling down) or, wide, a card under the table of contents. They call
+  `AppAssistant.ask(question)`: the pop-up opens on a NEW chat with a page-specific question typed in the box, NOT
+  sent (`RagChatViewState.draft`; before the conversations load the boot opens a new chat instead of the latest). Shown
+  only when `AppAssistant.availableFor` (signed in, not a guest, kill switch `rag.app_assistant` off).
+**Rejected.** A single flat 70 / 30 colour (no depth, and the accent disappears into the mix); greying a light
+accent toward the shade for contrast (cream became taupe); keeping the language page next to the switch;
+`Scrollable.ensureVisible` for the active chip (it also scrolls the page under the pinned header back up); sending
+the page question automatically (the person should see and own what is asked).

@@ -31,7 +31,7 @@ import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../auth/reauth_sheet.dart';
 import '../shared/notification/notifications_provider.dart';
-import '../shared/profile/change_language_screen.dart';
+import '../../design/app_language_switch.dart' show AppLanguageTile;
 import '../shared/profile/change_password_widget.dart';
 import '../shared/profile/compalints/complaints_hub_page.dart';
 import '../shared/profile/update_account_widget.dart';
@@ -362,12 +362,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
           title: 'settings'.tr,
           icon: Icons.settings_rounded,
           children: [
-            AppSettingsTile(
-              icon: Icons.language_rounded,
-              color: c.primaryLight,
-              label: 'change_language'.tr,
-              onTap: () => _push(const ChangeLanguageScreen()),
-            ),
+            const AppLanguageTile(),
             const DisplaySettingsTile(),
             const AppAssistantOpenTile(),
             const AppAssistantBubbleTile(),

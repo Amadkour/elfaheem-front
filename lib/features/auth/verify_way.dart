@@ -14,6 +14,7 @@ import 'package:flutter/services.dart';
 import '../../config/app_config.dart';
 import '../../config/theme/theme_config_provider.dart';
 import 'auth_provider.dart';
+import 'auth_widgets.dart' show authHeroGradient;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -227,7 +228,7 @@ class VerifyWayPicker extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                gradient: c.primaryGradient,
+                gradient: authHeroGradient(c),
                 borderRadius: BorderRadius.circular(13),
                 boxShadow: c.primaryShadow,
               ),

@@ -712,7 +712,7 @@ class _TermsBottomSheetState extends State<_TermsBottomSheet> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: c.primaryGradient,
+                      gradient: authHeroGradient(c),
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: c.primaryShadow,
                     ),
