@@ -470,11 +470,22 @@ class ScreenCaptureService : Service() {
     private fun hasRecordAudio(): Boolean =
             checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
 
+    private fun hasCamera(): Boolean =
+            checkSelfPermission(android.Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+
     /**
      * The foreground-service type for the current state: mediaProjection while
      * a projection is held (API 29+), microphone (API 30+, with RECORD_AUDIO)
      * while recording or sharing — WebRTC's mic and the device-audio capture
      * keep working while the person is in another app.
+     *
+     * D-094: camera too (API 30+, with CAMERA) while a projection is held. The
+     * room keeps the camera on while the screen is shared (LiveBackgroundCamera),
+     * but from Android 11 a background app may use the camera only through a
+     * foreground service of type camera that was started while the app was in
+     * front — without it the presenter's camera froze for everyone the moment
+     * they left the app to show another one. The type only keeps access; the
+     * camera itself is still opened (or not) by the room.
      */
     private fun foregroundType(withProjection: Boolean): Int {
         var type = 0
@@ -482,14 +493,35 @@ class ScreenCaptureService : Service() {
             type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && hasRecordAudio())
             type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && withProjection && hasCamera())
+            type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
         return type
     }
 
     private fun startForegroundTyped(type: Int) {
+        val camera = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                (type and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA) != 0
+        if (camera) {
+            try {
+                startForeground(NOTIFICATION_ID, buildNotification(), type)
+                afterForeground(type)
+                return
+            } catch (e: Exception) {
+                // The camera type can be refused (while-in-use rules: the app is not in front): the same call
+                // without it — the share and the microphone matter more than the camera.
+                Log.w(TAG, "startForeground with the camera type refused: ${e.message} — without it")
+            }
+            startForegroundTyped(type and ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA.inv())
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && type != 0)
             startForeground(NOTIFICATION_ID, buildNotification(), type)
         else
             startForeground(NOTIFICATION_ID, buildNotification())
+        afterForeground(type)
+    }
+
+    private fun afterForeground(type: Int) {
         // This service now holds the microphone type: the live-call service steps aside.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && (type and ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE) != 0)
             LiveCallService.onCaptureForeground(this, true)

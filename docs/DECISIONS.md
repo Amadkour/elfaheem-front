@@ -1214,3 +1214,34 @@ of D-079 / D-087 assumes 0..1 — a second path for one format); an unbounded pa
 projector must show the same content); cropping content on a format change (silent loss) or refusing the change once
 a board has content; a screenshot for the PNG (it carried the zoom, the selection and the tags, and could not export
 what is off screen).
+
+## D-094 — Viewers see the presenter's camera over a share or a whiteboard; the camera keeps streaming while an Android presenter shares from another app · 2026-10-30 · proposed
+
+**Context.** The owner: "when I share content and open the camera, the content and the camera show for me only; the
+participants see only the content". Root causes: (1) the room draws remote cameras only in the thumbnail strip, which
+is off while a share or a board fills the stage (`!_isScreenShareMain && !_isBoardMain`), so no viewer drew the
+presenter's camera at all — the presenter saw it only in their own self-view (D-092); (2) because nobody drew it,
+adaptive stream paused the camera track (its view registration is what makes it stream), so even the bits stopped;
+(3) on Android, a presenter who shares the whole screen and leaves the app kept the camera on (D8 never turns it off
+while sharing), but ScreenCaptureService ran as `mediaProjection|microphone` only — from Android 11 a background app
+may use the camera only through a foreground service of type camera started while it was in front, so the frames froze.
+**Decision.** (1) While a screen share or a whiteboard fills the stage, every viewer gets the presenter's camera (when
+it is on) in a floating box with the self-view's look (`SelfViewTile`): drag anywhere, snap to an edge or a corner, ⋮ /
+long-press for shape (box / circle) and size, "–" minimizes it to a name pill for the rest of the room; its default
+side is opposite my self-view and a rest spot that would overlap my self-view (or its "Show" chip) moves to the other
+end, then the other side. Other cameras that are on sit as up to 3 bubbles beside it (the share and the box count
+against `liveVideoBudget`; the rest is "+n", which opens the participants panel); tapping a bubble pins that camera
+into the box for this share. The presenter sees nothing new; a camera that is off draws nothing (never an empty box);
+minimized without video or my camera swapped onto the stage, nothing floats. Rules are pure
+(`live_presenter_cam.dart`: `presenterCamPlan`, `presenterDockSize`, `presenterCamSpot`, `PresenterCamStore` for
+shape / size / position), the widget takes plain values (`widgets/presenter_cam_box.dart`), the video is a
+`LiveVideoView` (D-092) — drawing it is what resumes the track. It reuses the self-view's keep-outs (annotation toolbar,
+board bar and dock, share bottom bar, badge column) and takes only its own touches, so the stage tap and drawing work
+around it. `presenterCamShown` is exposed for a future focus mode. (2) ScreenCaptureService adds the camera type while
+a projection is held and CAMERA is granted (manifest: `mediaProjection|microphone|camera` + `FOREGROUND_SERVICE_CAMERA`);
+a refused camera type (while-in-use rules) falls back to the same call without it, so a share never fails for it.
+Play Console needs the camera foreground-service declaration for the next release.
+**Rejected.** Turning the thumbnail strip on over a share (it covers the top of the content and the annotation /
+board bars, and decodes every camera); compositing the camera into the shared screen on the presenter's device
+(costly, burns it into the share and the recording); a separate camera foreground service (two notifications, and the
+camera type must be on the service that is in front when the share starts).
