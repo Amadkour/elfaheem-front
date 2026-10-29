@@ -26,10 +26,20 @@
 // not). `refreshSilently()` is the same fetch without the loading state, for
 // background refreshes (the per-second schedule ticker in
 // queue_work_items.dart, a course saved on another tab).
+//
+// LIVE NOW
 // ─────────────────────────────────────────────────────────────────────────
+// `liveNow` (the meetings I'm invited to that are live) follows `meeting_live` / `session_live` (LiveEvents): an
+// end drops the room at once, then ONLY GET /me/home is asked again (at most once per 2 s); an older server without
+// `live_now` shows the rooms the events announced. Wired once the home loaded; no timer.
+// ─────────────────────────────────────────────────────────────────────────
+
+import 'dart:async';
 
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
+import '../../../core/home/me_home.dart' show MeLiveRoom, liveRoomsAfterEvent;
+import '../../../utils/live_events.dart';
 import '../courses/component/teacher_stats.dart';
 import 'teacher_home_extra.dart';
 import 'teacher_models.dart';
@@ -65,6 +75,49 @@ class TeacherHomeProvider extends BaseProvider {
 
   /// The teacher block of GET /me/home; null while it has not arrived or on an older server.
   TeacherHomeExtra? get extra => _extra;
+
+  /// Older server (no `live_now`): the rooms the live events announced.
+  List<MeLiveRoom> _eventRooms = const [];
+
+  /// The "Live now" banner's rooms (see LIVE NOW above).
+  List<MeLiveRoom> get liveNow {
+    final x = _extra;
+    return x == null || !x.liveNowKnown ? _eventRooms : x.liveNow;
+  }
+
+  StreamSubscription<LiveEvent>? _liveSub;
+  DateTime? _lastLive;
+
+  void _wireLive() {
+    _liveSub ??= LiveEvents.instance.listen({LiveEvents.meetingLive, LiveEvents.sessionLive}, onLiveRoomEvent);
+  }
+
+  /// A room went live / ended (public for tests).
+  void onLiveRoomEvent(LiveEvent e) {
+    final x = _extra;
+    if (x != null && x.liveNowKnown && '${e.data['live']}' == 'false') {
+      // drop it at once (the reload confirms)
+      final meeting = e.type == LiveEvents.meetingLive;
+      final key = '${meeting ? 'meeting' : 'session'}:${e.data[meeting ? 'meeting_id' : 'session_id']}';
+      _extra = x.withLiveNow([for (final r in x.liveNow) if (r.key != key) r]);
+    }
+    _eventRooms = liveRoomsAfterEvent(_eventRooms, e);
+    notifyListeners();
+    final now = DateTime.now();
+    if (_lastLive != null && now.difference(_lastLive!) < const Duration(seconds: 2)) return;
+    _lastLive = now;
+    _fetchExtra().then((extra) {
+      if (extra == null) return;
+      _extra = extra;
+      notifyListeners();
+    });
+  }
+
+  @override
+  void dispose() {
+    _liveSub?.cancel();
+    super.dispose();
+  }
 
   /// True once GET /teacher/dashboard answered at least once (a later failure keeps the data on screen).
   bool get loaded => _loaded;
@@ -105,6 +158,7 @@ class TeacherHomeProvider extends BaseProvider {
       _loaded = true;
     }
     if (extra != null) _extra = extra;
+    _wireLive();
     notifyListeners();
   }
 

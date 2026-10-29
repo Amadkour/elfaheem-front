@@ -3,10 +3,13 @@
 //   header      greeting · name · notifications · ContextSwitcher (Personal ↔ organizations, exit to personal)
 //   Personal:   hero       the teaching day as a ribbon (today's sessions, "now" marker, next session) + figures:
 //                          students · courses · rating · earnings this month (when GET /me/home answers)
+//               live now   first: LiveNowCard per running session of mine (one "Enter room" button), then the
+//                          meetings I'm invited to that are live (HomeLiveNow, one-tap Join) — only while they run
 //               needs you  ONE card of small tiles (HomeStatStrip): attendance not taken · grading · material
-//                          missing · enrollment requests · payout pending — every count drawn ONCE on the page
-//               today      timeline of today's sessions → the course
-//               live now   LiveNowCard per running session (one "Enter room" button), only while it runs
+//                          missing · enrollment requests · payout pending — every count drawn ONCE on the page;
+//                          hidden while nothing waits (the greeting's line says "all caught up")
+//               today      one line per session (live first), 3 + "Show all" → the course
+//   Every section below the hero folds from its title (HomeSection, remembered per user on the device).
 //               coming up  the next 3 sessions after today, slim rows (TeacherComingUp)
 //               courses    summarized in one card (TeacherCourseSummary): published · drafts · sessions, the
 //                          enrollments sparkline when the payload carries one, the 3 courses with most students
@@ -21,6 +24,7 @@
 // same account. TeacherHomeBody takes plain values (test/ui/teacher_home_layout_test.dart).
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
+import 'package:flutter_education_app/core/home/me_home.dart' show MeLiveRoom;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/calendar_entry.dart';
@@ -36,6 +40,7 @@ import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
     show InboxCompactList, InboxItem, InboxPreviewCard, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
+import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -167,6 +172,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         index: 0,
                         child: HomeHeader(
                           name: user?.name ?? 'sir'.tr,
+                          subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length) : null,
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
                           actions: [const QuickMeetingIcon(), const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
                           contextSwitcher: const ContextSwitcher(),
@@ -191,6 +197,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                         pending: provider.pending,
                         courses: provider.homeCourses,
                         extra: provider.extra,
+                        liveNow: provider.liveNow,
                         onTab: _tab,
                         onOpenCourse: _openCourse,
                         onOpenCourseId: _openCourseId,
@@ -208,6 +215,21 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
       ),
     );
   }
+}
+
+/// The greeting's one line: today's sessions, what is live (or the next start), the counts that wait.
+String teacherDaySummary(List<ScheduleSession> schedule, Map<String, int> pending, int liveMeetings) {
+  final today = [...schedule.where((s) => s.isToday)]..sort((a, b) => a.startMin.compareTo(b.startMin));
+  final live = schedule.where((s) => s.isOngoing || s.isLive).length + liveMeetings;
+  final now = DateTime.now().toUtc();
+  final next = today.where((s) => teacherSessionUtc(s, s.startTime).isAfter(now)).firstOrNull;
+  int p(String k) => pending[k] ?? 0;
+  return homeDaySummary(
+    sessions: today.length,
+    live: live,
+    todo: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests'),
+    nextAt: next == null ? null : AppTime.time(teacherSessionUtc(next, next.startTime)),
+  );
 }
 
 /// Centered, max 1100 wide (web) — phones use the full width.
@@ -241,7 +263,15 @@ class TeacherHomeBody extends StatelessWidget {
     this.onOpenInbox,
     this.onInboxChanged,
     this.showFeeds = true,
+    this.liveNow = const [],
+    this.now,
   });
+
+  /// Meetings I'm invited to that are live right now (the "Live now" banner).
+  final List<MeLiveRoom> liveNow;
+
+  /// A fixed clock for the banner's "live for" (tests / renders); null = the device clock.
+  final DateTime? now;
 
   /// First load in flight (nothing to show yet) → one skeleton for the whole body.
   final bool loading;
@@ -311,6 +341,7 @@ class TeacherHomeBody extends StatelessWidget {
     int p(String k) => pending[k] ?? 0;
     final payout = extra?.pendingPayout;
     final hasPayout = payout != null && payout > 0;
+    final needs = p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + (hasPayout ? 1 : 0);
     final inbox = [for (final raw in extra?.inboxPreview ?? const <Map<String, dynamic>>[]) InboxItem(raw)];
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
@@ -327,14 +358,29 @@ class TeacherHomeBody extends StatelessWidget {
           ),
         ),
 
+      // ── live now, first: my running sessions (one "Enter room" each), then the meetings I'm invited to
+      if (live.isNotEmpty) ...[
+        ParentComponent(
+          key: const ValueKey('teacher_home_schedule'),
+          child: Column(children: [
+            for (final s in live) Padding(padding: const EdgeInsets.only(bottom: 8), child: LiveNowCard(session: s)),
+          ]),
+        ),
+        const SizedBox(height: 8),
+      ],
+      if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16)),
+
       // ── hero: the teaching day
       enter(_TeachingDayHero(items: items, stats: stats, earningsMonth: extra?.earningsMonth, onTap: () => onTab(2))),
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
 
-      // ── what needs you: one card of small tiles (every count once)
-      enter(HomeSectionTitle('home_needs_you'.tr,
-          count: p('attendance_missing') + p('grading') + p('materials_missing') + p('enrollment_requests') + (hasPayout ? 1 : 0))),
-      enter(HomeStatStrip(items: [
+      // ── what needs you: one card of small tiles (every count once) — only while something waits
+      if (needs > 0) ...[
+      enter(HomeSection(
+        id: 'teacher.needs_you',
+        title: 'home_needs_you'.tr,
+        count: needs,
+        child: HomeStatStrip(items: [
         HomeStat(icon: Icons.how_to_reg_rounded, label: 'home_t_attendance'.tr, count: p('attendance_missing'), tone: c.warning, onTap: () => onTab(1)),
         HomeStat(icon: Icons.grading_rounded, label: 'home_t_grading'.tr, count: p('grading'), tone: c.purple, onTap: () => onTab(1)),
         HomeStat(icon: Icons.upload_file_rounded, label: 'home_t_material'.tr, count: p('materials_missing'), tone: c.accent2, onTap: () => onTab(1)),
@@ -348,42 +394,48 @@ class TeacherHomeBody extends StatelessWidget {
             tone: c.success,
             onTap: onOpenEarnings,
           ),
-      ])),
-      const SizedBox(height: 28),
-
-      // ── today
-      enter(HomeSectionTitle('home_today_sessions'.tr, count: items.length, actionLabel: 'home_full_timetable'.tr, onAction: () => onTab(2))),
-      enter(HomeAgenda(
-        items: items,
-        emptyTitle: 'home_no_sessions_today'.tr,
-        emptyMessage: 'home_no_sessions_today_hint'.tr,
-        emptyActionLabel: 'home_full_timetable'.tr,
-        onEmptyAction: () => onTab(2),
+      ]),
       )),
-      const SizedBox(height: 28),
-
-      // ── live now: one card per running session with the button into the room
-      if (live.isNotEmpty) ...[
-        ParentComponent(
-          key: const ValueKey('teacher_home_schedule'),
-          child: Column(children: [
-            for (final s in live) Padding(padding: const EdgeInsets.only(bottom: 10), child: LiveNowCard(session: s)),
-          ]),
-        ),
-        const SizedBox(height: 18),
+      const SizedBox(height: 16),
       ],
+
+      // ── today: one line per session, live first, 3 + "Show all"
+      enter(HomeSection(
+        id: 'teacher.today',
+        title: 'home_today_sessions'.tr,
+        count: items.length,
+        actionLabel: 'home_full_timetable'.tr,
+        onAction: () => onTab(2),
+        child: HomeAgenda(
+          items: items,
+          emptyTitle: 'home_no_sessions_today'.tr,
+          emptyMessage: 'home_no_sessions_today_hint'.tr,
+          emptyActionLabel: 'home_full_timetable'.tr,
+          onEmptyAction: () => onTab(2),
+        ),
+      )),
+      const SizedBox(height: 16),
 
       // ── coming up: the next sessions after today, slim rows
       if (coming.isNotEmpty) ...[
-        HomeSectionTitle('hs_upcoming'.tr, count: coming.length, actionLabel: 'home_full_timetable'.tr, onAction: () => onTab(2)),
-        TeacherComingUp(sessions: coming.take(3).toList(), onOpen: onOpenCourseId),
-        const SizedBox(height: 28),
+        HomeSection(
+          id: 'teacher.coming',
+          title: 'hs_upcoming'.tr,
+          count: coming.length,
+          actionLabel: 'home_full_timetable'.tr,
+          onAction: () => onTab(2),
+          child: TeacherComingUp(sessions: coming.take(3).toList(), onOpen: onOpenCourseId),
+        ),
+        const SizedBox(height: 16),
       ],
 
       // ── my courses, summarized (+ the enrollments trend when the payload carries one)
-      HomeSectionTitle('my_courses'.tr),
-      if (courses.isEmpty)
-        Padding(
+      HomeSection(
+        id: 'teacher.courses',
+        title: 'my_courses'.tr,
+        count: courses.length,
+        child: courses.isEmpty
+        ? Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: AppEmpty(
             icon: Icons.auto_stories_rounded,
@@ -393,8 +445,7 @@ class TeacherHomeBody extends StatelessWidget {
             onAction: onNewCourse,
           ),
         )
-      else
-        ParentComponent(
+        : ParentComponent(
           key: const ValueKey('teacher_home_courses_row'),
           child: TeacherCourseSummary(
             courses: courses,
@@ -403,7 +454,8 @@ class TeacherHomeBody extends StatelessWidget {
             onShowAll: () => onTab(1),
           ),
         ),
-      const SizedBox(height: 28),
+      ),
+      const SizedBox(height: 16),
 
       // ── inbox: the preview from /me/home; an older server gets the self-fetching card
       if (extra != null)
@@ -564,17 +616,23 @@ class TeacherInboxPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle('inbox_title'.tr, count: items.length, actionLabel: 'inbox_see_all'.tr, onAction: onOpenAll),
-      InboxCompactList(
-        items: items.take(3).toList(),
-        onTap: (x) async {
-          if (await openInboxItem(context, x)) {
-            onChanged?.call();
-            AppModeController.instance.refresh();
-          }
-        },
+      HomeSection(
+        id: 'teacher.inbox',
+        title: 'inbox_title'.tr,
+        count: items.length,
+        actionLabel: 'inbox_see_all'.tr,
+        onAction: onOpenAll,
+        child: InboxCompactList(
+          items: items.take(3).toList(),
+          onTap: (x) async {
+            if (await openInboxItem(context, x)) {
+              onChanged?.call();
+              AppModeController.instance.refresh();
+            }
+          },
+        ),
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
     ]);
   }
 }

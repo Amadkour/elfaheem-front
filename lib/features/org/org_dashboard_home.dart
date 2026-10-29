@@ -27,7 +27,7 @@ import 'package:flutter_education_app/core/attention/attention_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppBanner, AppCard, AppListSkeleton, AppPill, AppRefresh, AppTime, AppTrendTile, appChartPalette, appCompactNumber, appInk, appText;
 import 'package:flutter_education_app/design/context_switcher.dart' show ContextExitButton, leaveToPersonal;
-import 'package:flutter_education_app/design/home_kit.dart' show HomeSectionTitle, HomeShortcut, HomeShortcuts;
+import 'package:flutter_education_app/design/home_kit.dart' show HomeSection, HomeSectionTitle, HomeShortcut, HomeShortcuts;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -492,9 +492,12 @@ class OrgTrendRow extends StatelessWidget {
     if (trends.isEmpty) return const SizedBox.shrink();
     final palette = appChartPalette(context);
     const slots = {'joins': 0, 'attendance': 2, 'complaints': 4};
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      HomeSectionTitle(t('الاتجاهات · 30 يوماً', 'Trends · 30 days'), padding: const EdgeInsets.fromLTRB(16, 8, 12, 10)),
-      Padding(
+    // folds from its title (HomeSection, remembered per user on the device)
+    return HomeSection(
+      id: 'org_admin.trends',
+      title: t('الاتجاهات · 30 يوماً', 'Trends · 30 days'),
+      titlePadding: const EdgeInsets.fromLTRB(16, 8, 12, 4),
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         child: LayoutBuilder(builder: (context, box) {
           const gap = 10.0;
@@ -522,7 +525,7 @@ class OrgTrendRow extends StatelessWidget {
           ]);
         }),
       ),
-    ]);
+    );
   }
 }
 

@@ -17084,5 +17084,85 @@
   "username_remove": {
     "en": "Remove username",
     "ar": "حذف اسم المستخدم"
+  },
+  "home_live_badge": {
+    "en": "LIVE",
+    "ar": "مباشر"
+  },
+  "home_live_join": {
+    "en": "Join",
+    "ar": "انضم"
+  },
+  "home_live_join_hint": {
+    "en": "Opens the room and joins you in",
+    "ar": "يفتح القاعة وينضمّك مباشرة"
+  },
+  "home_live_with": {
+    "en": "with {name}",
+    "ar": "مع {name}"
+  },
+  "home_live_for": {
+    "en": "live for {t}",
+    "ar": "مباشر منذ {t}"
+  },
+  "home_live_session": {
+    "en": "Live session",
+    "ar": "جلسة مباشرة"
+  },
+  "home_live_meeting": {
+    "en": "Live meeting",
+    "ar": "اجتماع مباشر"
+  },
+  "home_show_all": {
+    "en": "Show all ({n})",
+    "ar": "عرض الكل ({n})"
+  },
+  "home_show_less": {
+    "en": "Show less",
+    "ar": "عرض أقل"
+  },
+  "home_section_expand": {
+    "en": "Expand",
+    "ar": "توسيع"
+  },
+  "home_section_collapse": {
+    "en": "Collapse",
+    "ar": "طيّ"
+  },
+  "home_section_hidden": {
+    "en": "{n} hidden",
+    "ar": "{n} مخفية"
+  },
+  "home_sum_sessions_one": {
+    "en": "1 session today",
+    "ar": "جلسة واحدة اليوم"
+  },
+  "home_sum_sessions": {
+    "en": "{n} sessions today",
+    "ar": "{n} جلسات اليوم"
+  },
+  "home_sum_free": {
+    "en": "Nothing scheduled today",
+    "ar": "لا شيء في جدول اليوم"
+  },
+  "home_sum_todo": {
+    "en": "{n} to do",
+    "ar": "{n} مطلوب منك"
+  },
+  "home_sum_live": {
+    "en": "{n} live now",
+    "ar": "{n} مباشر الآن"
+  },
+  "home_sum_next": {
+    "en": "next at {t}",
+    "ar": "التالي {t}"
+  },
+  "home_sum_clear": {
+    "en": "all caught up",
+    "ar": "لا شيء ينتظرك"
+  },
+  "home_earlier_today": {
+    "en": "Earlier today",
+    "ar": "في وقت سابق اليوم"
   }
 }

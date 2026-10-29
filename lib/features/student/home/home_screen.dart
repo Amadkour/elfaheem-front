@@ -36,6 +36,7 @@ import 'package:flutter_education_app/features/shared/calendar/calendar_models.d
 import 'package:flutter_education_app/features/shared/course/home_course_list.dart';
 import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart' show InboxCompactList, InboxItem, InboxScreen, openInboxItem;
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
+import 'package:flutter_education_app/features/student/home/home_live.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
@@ -63,7 +64,15 @@ import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 // ═════════════════════════════════════════════════════════════════════════════
 
 class StudentHomeData {
-  const StudentHomeData({this.home, this.loading = false, this.error, this.guest = false, this.orgWaiting = 0, this.now});
+  const StudentHomeData({
+    this.home,
+    this.loading = false,
+    this.error,
+    this.guest = false,
+    this.orgWaiting = 0,
+    this.now,
+    this.liveNow = const [],
+  });
 
   /// The home payload; null while loading / after a failure.
   final MeHome? home;
@@ -78,6 +87,9 @@ class StudentHomeData {
 
   /// A fixed clock (tests); null = the device clock, ticking every 30 s.
   final DateTime? now;
+
+  /// The rooms live right now that I may join (MeHomeService.liveNow) — the "Live now" banner on top.
+  final List<MeLiveRoom> liveNow;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -128,12 +140,17 @@ class _HomeScreenState extends State<HomeScreen> {
         index: 0,
         child: Selector<MyAuthProvider, UserModel?>(
           selector: (_, p) => p.currentUser,
-          builder: (context, user, _) => HomeHeader(
-            name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
-            leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-            // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
-            actions: [if (!guest) const QuickMeetingIcon(), if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
-            contextSwitcher: guest ? null : const ContextSwitcher(),
+          builder: (context, user, _) => ListenableBuilder(
+            listenable: MeHomeService.instance,
+            builder: (context, _) => HomeHeader(
+              name: guest ? 'guest_name'.tr : (user?.name ?? 'sir'.tr),
+              // the day in one line ("2 sessions today · 1 live now · 3 to do") instead of another card
+              subtitle: guest ? null : studentDaySummary(MeHomeService.instance.home, MeHomeService.instance.liveNow.length),
+              leading: user == null ? null : UserChipButton(user: user, showLabel: false),
+              // the unread count is drawn once, in the "Needs you" grid — the bell stays plain here
+              actions: [if (!guest) const QuickMeetingIcon(), if (!guest) const CalendarIcon(), if (!guest) const NotificationIcon(unreadCount: 0)],
+              contextSwitcher: guest ? null : const ContextSwitcher(),
+            ),
           ),
         ),
       ),
@@ -179,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     error: svc.failed ? svc.error!.message : null,
                                     guest: guest,
                                     orgWaiting: contextSwitchVisible(ctl) ? ctl.pendingTotal : 0,
+                                    liveNow: svc.liveNow,
                                   ),
                                   onTab: _tab,
                                   onRetry: svc.refresh,
@@ -205,6 +223,22 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+/// The greeting's one line for a student / member: today's count, what is live (or the next start), the to-dos.
+/// Null while nothing is loaded.
+String? studentDaySummary(MeHome? home, int liveRooms, [DateTime? nowUtc]) {
+  if (home == null) return null;
+  final now = nowUtc ?? DateTime.now().toUtc();
+  final today = home.today.where((e) => !e.declined).toList();
+  final running = today.where((e) => !e.start.isAfter(now) && e.end.isAfter(now)).length;
+  final next = today.where((e) => e.start.isAfter(now)).firstOrNull;
+  return homeDaySummary(
+    sessions: today.length,
+    live: liveRooms > running ? liveRooms : running,
+    todo: home.attentionCount(AttentionTabs.home) + home.inboxTodo,
+    nextAt: next == null ? null : AppTime.time(next.start),
+  );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -247,7 +281,7 @@ class StudentHomeBody extends StatelessWidget {
     if (data.guest) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const HomeEntrance(index: 1, child: ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         ?feeds,
       ]);
     }
@@ -258,7 +292,7 @@ class StudentHomeBody extends StatelessWidget {
           ErrorRetry(message: data.error!, onRetry: onRetry ?? () {})
         else
           const AppListSkeleton(items: 6, padding: EdgeInsets.fromLTRB(20, 0, 20, 0)),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         ?feeds,
       ]);
     }
@@ -316,18 +350,36 @@ class _Sections extends StatelessWidget {
     final inboxRows = home.inboxPreview.take(3).map(InboxItem.new).toList();
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
+    // the hero repeats nothing the "Live now" banner already says: a running session that is in the banner leaves
+    // the hero to what comes after it
+    final live = data.liveNow;
+    final liveKeys = {for (final r in live) r.isMeeting ? 'meeting:${r.id}' : 'session:${r.id}'};
+    bool inBanner(CalEvent e) => liveKeys.contains(e.isMeeting ? 'meeting:${e.meetingId}' : e.id);
+    final hero = next != null && next.live && inBanner(next.event)
+        ? home.nextUp(now, home.today.where((e) => !inBanner(e)))
+        : next;
+    final anyCount = todo > 0 || inboxTodo > 0 || home.notificationsUnread > 0 || data.orgWaiting > 0;
+    final upcoming = home.upcoming.take(5).toList();
 
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself)
+      if (live.isNotEmpty) HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad),
+
       // ── hero: next up
       enter(ParentComponent(
         key: const ValueKey('student_home.upcoming_banner'),
-        child: NextUpHero(next: next, upcoming: home.firstUpcoming, now: now, onTap: () => _open(next?.event)),
+        child: NextUpHero(next: hero, upcoming: home.firstUpcoming, now: now, onTap: () => _open(hero?.event)),
       )),
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
 
-      // ── what matters now: one card of small tiles (today's and the courses' counts sit on their own sections)
-      enter(HomeSectionTitle('home_needs_you'.tr)),
-      enter(HomeStatStrip(items: [
+      // ── what matters now: one card of small tiles, only while something waits (the greeting says "all caught
+      //    up" otherwise)
+      if (anyCount) ...[
+      enter(HomeSection(
+        id: 'student.needs_you',
+        title: 'home_needs_you'.tr,
+        count: todo + inboxTodo + home.notificationsUnread + data.orgWaiting,
+        child: HomeStatStrip(items: [
         HomeStat(
           icon: Icons.task_alt_rounded,
           label: 'home_todo'.tr,
@@ -357,54 +409,79 @@ class _Sections extends StatelessWidget {
             tone: c.warning,
             onTap: body.onOpenOrgs,
           ),
-      ])),
-      const SizedBox(height: 28),
+      ]),
+      )),
+      const SizedBox(height: 16),
+      ],
 
-      // ── today | this week (side by side on a wide window)
+      // ── today | this week (side by side on a wide window): one line per item, live first, 3 + "Show all"
       HomeSplit(start: [
-        enter(HomeSectionTitle('home_today'.tr, count: home.today.length, actionLabel: 'home_full_timetable'.tr, onAction: () => body.onTab('my_schedule'))),
-        enter(HomeAgenda(
-          nowMin: nowMin,
-          items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
-          emptyTitle: 'home_no_classes_today'.tr,
-          emptyMessage: 'home_s_free_hint'.tr,
-          emptyActionLabel: 'home_full_timetable'.tr,
-          onEmptyAction: () => body.onTab('my_schedule'),
+        enter(HomeSection(
+          id: 'student.today',
+          title: 'home_today'.tr,
+          count: home.today.length,
+          foldedSummary: home.today.isEmpty ? null : homeDaySummaryOf(home.today, now),
+          actionLabel: 'home_full_timetable'.tr,
+          onAction: () => body.onTab('my_schedule'),
+          child: HomeAgenda(
+            nowMin: nowMin,
+            items: [for (final e in home.today) homeAgendaItemOf(context, e, now, onTap: () => _open(e))],
+            emptyTitle: 'home_no_classes_today'.tr,
+            emptyMessage: 'home_s_free_hint'.tr,
+            emptyActionLabel: 'home_full_timetable'.tr,
+            onEmptyAction: () => body.onTab('my_schedule'),
+          ),
         )),
       ], end: [
-        // ── this week
-        if (home.upcoming.isNotEmpty) ...[
-          enter(HomeSectionTitle('home_this_week'.tr, count: home.upcoming.length, actionLabel: 'home_open_calendar'.tr, onAction: () => Navigator.of(context).pushNamed('/calendar'))),
-          enter(UpcomingList(events: home.upcoming.take(5).toList(), onTap: _open)),
-        ],
+        // ── this week (nothing coming → no section)
+        if (upcoming.isNotEmpty)
+          enter(HomeSection(
+            id: 'student.week',
+            title: 'home_this_week'.tr,
+            count: home.upcoming.length,
+            actionLabel: 'home_open_calendar'.tr,
+            onAction: () => Navigator.of(context).pushNamed('/calendar'),
+            child: UpcomingList(events: upcoming, onTap: _open),
+          )),
       ]),
-      const SizedBox(height: 28),
+      const SizedBox(height: 16),
 
       // ── my courses, summarized (the full cards live on the courses tab)
-      enter(HomeSectionTitle('my_courses'.tr)),
-      enter(home.coursesProgress.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: AppEmpty(
-                icon: Icons.auto_stories_rounded,
-                title: 'home_s_no_courses'.tr,
-                message: 'home_s_no_courses_hint'.tr,
-                actionLabel: 'home_s_browse'.tr,
-                onAction: () => body.onTab('my_courses'),
-              ),
-            )
-          : StudentCourseSummary(courses: home.coursesProgress, onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses'))),
-      const SizedBox(height: 28),
+      enter(HomeSection(
+        id: 'student.courses',
+        title: 'my_courses'.tr,
+        count: home.coursesProgress.length,
+        child: home.coursesProgress.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: AppEmpty(
+                  icon: Icons.auto_stories_rounded,
+                  title: 'home_s_no_courses'.tr,
+                  message: 'home_s_no_courses_hint'.tr,
+                  actionLabel: 'home_s_browse'.tr,
+                  onAction: () => body.onTab('my_courses'),
+                ),
+              )
+            : StudentCourseSummary(courses: home.coursesProgress, onOpen: body.onOpenCourse, onShowAll: () => body.onTab('my_courses')),
+      )),
+      const SizedBox(height: 16),
 
       // ── inbox: the 3 most urgent rows (the count already sits in "Needs you")
       if (inboxRows.isNotEmpty) ...[
-        enter(HomeSectionTitle('inbox_title'.tr, actionLabel: 'inbox_see_all'.tr, onAction: body.onOpenInbox)),
-        enter(InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x))),
-        const SizedBox(height: 28),
+        enter(HomeSection(
+          id: 'student.inbox',
+          title: 'inbox_title'.tr,
+          actionLabel: 'inbox_see_all'.tr,
+          onAction: body.onOpenInbox,
+          child: InboxCompactList(items: inboxRows, onTap: (x) => body.onOpenInboxItem?.call(x)),
+        )),
+        const SizedBox(height: 16),
       ],
       ?body.feeds,
     ]);
   }
+
+  static const _bannerPad = EdgeInsets.fromLTRB(20, 0, 20, 16);
 
   void _open(CalEvent? e) {
     if (e == null) {

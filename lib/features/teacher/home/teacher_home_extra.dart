@@ -8,6 +8,7 @@
 library;
 
 import '../../../core/api_client.dart';
+import '../../../core/home/me_home.dart' show MeLiveRoom;
 
 class TeacherHomeExtra {
   const TeacherHomeExtra({
@@ -18,6 +19,8 @@ class TeacherHomeExtra {
     this.inboxPreview = const [],
     this.notificationsUnread,
     this.enrollmentSeries = const [],
+    this.liveNow = const [],
+    this.liveNowKnown = false,
   });
 
   /// attendance_missing · materials_missing · grading · enrollment_requests.
@@ -35,7 +38,25 @@ class TeacherHomeExtra {
   /// Enrollments per day, oldest first; empty unless the server sends `enrollments_series`.
   final List<double> enrollmentSeries;
 
+  /// `live_now[]`: meetings I'm invited to that are live right now (the home's "Live now" banner); my own course
+  /// sessions are never in it (they have their own "Enter room" cards). [liveNowKnown] false on an older server.
+  final List<MeLiveRoom> liveNow;
+  final bool liveNowKnown;
+
   bool get hasEarnings => earningsMonth != null;
+
+  /// The same block with [liveNow] replaced (a live event dropped / added a room before the reload answered).
+  TeacherHomeExtra withLiveNow(List<MeLiveRoom> rooms) => TeacherHomeExtra(
+        pending: pending,
+        teachingCourses: teachingCourses,
+        earningsMonth: earningsMonth,
+        pendingPayout: pendingPayout,
+        inboxPreview: inboxPreview,
+        notificationsUnread: notificationsUnread,
+        enrollmentSeries: enrollmentSeries,
+        liveNow: rooms,
+        liveNowKnown: liveNowKnown,
+      );
 
   factory TeacherHomeExtra.fromJson(Map<String, dynamic> j) {
     final earnings = j['earnings'];
@@ -59,6 +80,10 @@ class TeacherHomeExtra {
           for (final v in j['enrollments_series'] as List)
             if (v is num) v.toDouble(),
       ],
+      liveNow: [for (final x in j['live_now'] is List ? j['live_now'] as List : const []) MeLiveRoom.fromJson(x)]
+          .whereType<MeLiveRoom>()
+          .toList(),
+      liveNowKnown: j['live_now'] is List,
     );
   }
 }
