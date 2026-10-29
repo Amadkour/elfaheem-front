@@ -1075,3 +1075,32 @@ outside `audio_first`); disabling hidden tracks with `disable()` (the SDK has no
 hidden tile would keep its video forever — the background case unsubscribes, the minimized case simply draws no
 renderer); one screen-share layer (a weak viewer froze on it); a long-side cap for shares (portrait phones lost
 60 % of their width).
+
+## D-091 — "Go live" from the instructor home: one sheet, existing routes, autoJoin · 2026-10-29 · accepted
+
+**Context.** The owner: "make the teacher able to go live quickly from home". A live session could only be started
+from the course studio (course → session → Start → pre-join → Join); the home only had "Enter room" for a session
+that already ran, and the header's "Meet now" made a calendar meeting, not a class.
+**Decision.** The instructor home's header carries a red "Go live" pill at the end of the context-switcher line (the
+line under the greeting: an action beside the name squeezed it to "Ahm…" on a phone); it becomes "Return to live"
+while a room of mine runs — the open room (`LiveRoomHost`, minimized or behind a page) is expanded, else a session of
+mine the dashboard reports live is resumed. A tap opens one sheet (a dialog from 720 px): the course — the one with a
+timetable slot within ±60 min, else the one remembered on the device (per user, with the camera / microphone choice),
+else the next slot's, else live → published → most students — then the session: a live session of that course
+scheduled within ±60 min (or running, or a slot with no session yet) is offered first, else "New live session now"
+with an optional title (empty → "Live class · Thu 29 Oct · 10:40 PM", the way Meet now names a meeting after its
+start); the Record switch (the session's own, else the course's latest live session's, else on); camera /
+microphone; one big button. It runs on routes that already exist — `POST /sessions` (type live, now, 60 min) or
+nothing for an existing session, `PUT /sessions/{id} {record_enabled: true}` when Record is turned on for a session
+whose switch is off (`enable_recording` may only turn recording off), then `PreJoinPage(autoJoin)` whose `onStart` is
+`POST /live-sessions/start` ("start or resume", carrying `recording_enabled` and `live_config`, D-090). A slot without
+a session creates it at the slot's start, so the dashboard matches it (course + start) and the home's "Live now" card
+shows it. "Meet now" stays one tap away as the sheet's secondary action (the header icon left; it comes back when the
+kill switch `teacher.quick_live` hides Go live). Nothing is fetched when the home opens: the sheet asks
+`GET /courses/{id}/sessions` for the course it shows (cached per course while open), so the request budgets are
+unchanged. Files: `lib/features/teacher/home/go_live.dart` (pure, `test/org/go_live_test.dart`), `go_live_sheet.dart`
+(`test/ui/go_live_layout_test.dart`; renders `test/visual/go_live_golden_test.dart`).
+**Rejected.** A new server route ("quick live" in one call): the two existing calls do it, and `POST /quick_session`
+ignores the title and the Record switch; a floating button (the app assistant floats in the same corner); a primary-
+action slot in `AppShell` (one role needs it; the header is there at every size); starting the room from the sheet
+without the pre-join page (device setup, permissions and the Join retry live there).

@@ -284,6 +284,7 @@
  "subscription.receipt",
  "subscription.sender_info",
  "subscription.transfer_details",
+ "teacher.quick_live",
  "teacher_attendance",
  "teacher_attendance.save_bar",
  "teacher_attendance.search",

@@ -42,6 +42,8 @@ import 'package:flutter_education_app/features/shared/inbox/unified_inbox.dart'
 import 'package:flutter_education_app/features/teacher/courses/course_form_screen.dart';
 import 'package:flutter_education_app/features/teacher/dashboard/Teacher_dashboard_provider.dart';
 import 'package:flutter_education_app/features/student/home/home_live.dart' show HomeLiveNow;
+import 'package:flutter_education_app/features/teacher/home/go_live.dart' show kQuickLiveFeatureKey;
+import 'package:flutter_education_app/features/teacher/home/go_live_sheet.dart' show GoLiveEntry;
 import 'package:flutter_education_app/features/teacher/home/queue_work_items.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -152,6 +154,7 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
     final loading = provider.isLoading && !provider.loaded;
     final error = provider.hasError && !provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
     final staleError = provider.hasError && provider.loaded ? (provider.errorMessage ?? 'generic_error'.tr) : null;
+    final quickLive = !AppConfig.disableList.contains(kQuickLiveFeatureKey); // D-091
 
     return BasePage(
       key: const ValueKey('teacher_home'),
@@ -175,8 +178,30 @@ class _TeacherHomeScreenState extends State<TeacherHomeScreen> with AutomaticKee
                           name: user?.name ?? 'sir'.tr,
                           subtitle: provider.loaded ? teacherDaySummary(provider.schedule, provider.pending, provider.liveNow.length) : null,
                           leading: user == null ? null : UserChipButton(user: user, showLabel: false),
-                          actions: [const QuickMeetingIcon(), const CalendarEntryIcon(), NotificationIcon(unreadCount: unread)],
-                          contextSwitcher: const ContextSwitcher(),
+                          actions: [
+                            // "Meet now" moved into the Go live sheet; the icon comes back when Go live is switched off
+                            if (!quickLive) const QuickMeetingIcon(),
+                            const CalendarEntryIcon(),
+                            NotificationIcon(unreadCount: unread),
+                          ],
+                          contextSwitcher: quickLive
+                              // the switcher at the start, "Go live" at the end; each may take half the line
+                              ? Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                                  const Flexible(child: ContextSwitcher()),
+                                  Flexible(
+                                    child: Padding(
+                                      padding: const EdgeInsetsDirectional.only(start: 12),
+                                      child: GoLiveEntry(
+                                        courses: provider.homeCourses,
+                                        schedule: provider.schedule,
+                                        loading: loading,
+                                        onDone: provider.refreshSilently,
+                                        onNewCourse: _newCourse,
+                                      ),
+                                    ),
+                                  ),
+                                ])
+                              : const ContextSwitcher(),
                         ),
                       ),
                     ),
