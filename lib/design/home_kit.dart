@@ -19,9 +19,13 @@
 //   HomeStatStrip      "Needs you" in ONE card of small count tiles (student · instructor homes)
 //   HomeCourseSummary  a role's courses in ONE card: figures, the 3 that matter now as slim lines, "All n courses"
 //   HomeSection        a section whose title folds / unfolds it (animated); the choice is kept per user and section
-//                      on the device (HomeFolds, SharedPreferences) — a calmer home the person shapes
+//                      on the device (HomeFolds, SharedPreferences) — a calmer home the person shapes. An EMPTY
+//                      section (`empty:`) starts folded, its title quieter, one line saying so ("No classes today ·
+//                      Next: …"); the choice is kept per state (empty / with content), an explicit one always wins
 //   HomeAgendaLine /   the compact agenda (the default): one line per item (time · dot · title · tag), live first,
-//     HomeShowAllRow   then what is to come, what ended last (homeAgendaFocus); the first 3 + "Show all (n)"
+//     HomeShowAllRow   then what is to come, what ended last (homeAgendaFocus); the first 3 + "Show all (n)". The
+//                      running row is tinted with "Ends in 50 min · Lab 3", else the next row says "Starts in …"
+//                      (homeAgendaNote) — so no role draws a separate "next up" hero card that repeats it
 //   HomeLiveBanner     "Live now": a room I'm invited to is live — host avatar, title, live-for clock, pulsing dot
 //                      (HomePulseDot, parked by Reduce motion) and ONE Join button; one card per room
 //   homeDaySummary     the greeting's one line: "2 sessions today · 1 live now · 3 to do" (replaces a card)
@@ -183,7 +187,15 @@ class HomeSplit extends StatelessWidget {
 
 class HomeSectionTitle extends StatelessWidget {
   const HomeSectionTitle(this.title,
-      {super.key, this.count, this.actionLabel, this.onAction, this.padding, this.subtitle, this.onToggle, this.collapsed = false});
+      {super.key,
+      this.count,
+      this.actionLabel,
+      this.onAction,
+      this.padding,
+      this.subtitle,
+      this.onToggle,
+      this.collapsed = false,
+      this.quiet = false});
   final String title;
 
   /// A quiet line under the title (e.g. "Based on the rights you were given").
@@ -197,17 +209,27 @@ class HomeSectionTitle extends StatelessWidget {
   final VoidCallback? onToggle;
   final bool collapsed;
 
+  /// The section has nothing in it: a softer title and accent (the line under it says why).
+  final bool quiet;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
     Widget heading = Row(children: [
-      Container(width: 4, height: 18, decoration: BoxDecoration(color: c.primary, borderRadius: BorderRadius.circular(4))),
+      Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(color: quiet ? c.textLight.withValues(alpha: 0.45) : c.primary, borderRadius: BorderRadius.circular(4))),
       const SizedBox(width: 10),
       Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Row(children: [
-            Flexible(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w900, c: c.textDark))),
+            Flexible(
+                child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: appText(17, w: quiet ? FontWeight.w800 : FontWeight.w900, c: quiet ? c.textMedium : c.textDark))),
             if (count != null && count! > 0) ...[
               const SizedBox(width: 8),
               Container(
@@ -227,7 +249,8 @@ class HomeSectionTitle extends StatelessWidget {
             ],
           ]),
           if (subtitle != null && subtitle!.isNotEmpty)
-            Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium)),
+            // an empty section's line says what comes next: two lines rather than cut mid-title
+            Text(subtitle!, maxLines: quiet ? 2 : 1, overflow: TextOverflow.ellipsis, style: appText(12, c: c.textMedium, h: 1.3)),
         ]),
       ),
     ]);
@@ -503,12 +526,16 @@ class HomeAgendaItem {
     this.tag,
     this.tone,
     this.onTap,
+    this.place,
   });
 
   /// Display strings (already through AppTime).
   final String start, end;
   final String title;
   final String? subtitle;
+
+  /// Where it happens (room · hall), said on the line of the item that runs now or comes next.
+  final String? place;
 
   /// Wall-clock minutes in the display zone (ribbon position, "done" state). Optional.
   final int? startMin, endMin;
@@ -528,6 +555,31 @@ List<HomeAgendaItem> homeAgendaFocus(List<HomeAgendaItem> items, int nowMin) {
     return r != 0 ? r : a.$1.compareTo(b.$1);
   });
   return [for (final x in indexed) x.$2];
+}
+
+/// A duration in words: "50 min" · "2 h" · "1 h 20 min".
+String homeDurationText(int minutes) {
+  final h = minutes ~/ 60, m = minutes % 60;
+  if (h == 0) return 'home_min'.tr.replaceAll('{n}', '$m');
+  if (m == 0) return 'home_h'.tr.replaceAll('{h}', '$h');
+  return 'home_h_min'.tr.replaceAll('{h}', '$h').replaceAll('{m}', '$m');
+}
+
+/// The second line of the agenda row that matters now — what the old "next up" hero card said: the running item
+/// "Ends in 50 min · Lab 3", the next one ([next]) "Starts in 40 min · Room 204". Null for the others. Pure.
+String? homeAgendaNote(HomeAgendaItem x, int nowMin, {bool next = false}) {
+  if (!x.live && !next) return null;
+  final place = (x.place ?? '').trim();
+  String? rel;
+  if (x.live) {
+    final left = (x.endMin ?? -1) - nowMin;
+    if (left > 0) rel = 'home_ends_in'.tr.replaceAll('{t}', homeDurationText(left));
+  } else {
+    final wait = (x.startMin ?? -1) - nowMin;
+    if (wait > 0) rel = 'home_starts_in'.tr.replaceAll('{t}', homeDurationText(wait));
+  }
+  final parts = [?rel, if (place.isNotEmpty) place];
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 class HomeAgenda extends StatefulWidget {
@@ -604,6 +656,9 @@ class _HomeAgendaState extends State<HomeAgenda> {
       final ordered = homeAgendaFocus(items, now);
       final more = ordered.length > w.maxItems;
       final shown = _all || !more ? ordered : ordered.take(w.maxItems).toList();
+      // what runs now is set apart (tinted, "Ends in …"); with nothing running, the next item says when it starts
+      final anyLive = ordered.any((x) => x.live);
+      final nextItem = anyLive ? null : ordered.where((x) => !done(x) && (x.startMin ?? -1) > now).firstOrNull;
       return Padding(
         padding: padding,
         child: AppCard(
@@ -613,7 +668,8 @@ class _HomeAgendaState extends State<HomeAgenda> {
             curve: Curves.easeOutCubic,
             alignment: AlignmentDirectional.topCenter,
             child: Column(children: [
-              for (final x in shown) HomeAgendaLine(item: x, done: done(x)),
+              for (final x in shown)
+                HomeAgendaLine(item: x, done: done(x), focus: x.live, note: homeAgendaNote(x, now, next: identical(x, nextItem))),
               if (more)
                 HomeShowAllRow(
                   expanded: _all,
@@ -884,8 +940,10 @@ class HomeHeroFigure extends StatelessWidget {
       FittedBox(
           fit: BoxFit.scaleDown,
           alignment: AlignmentDirectional.centerStart,
-          child: Text(value, maxLines: 1, style: appText(20, w: FontWeight.w900, c: on, h: 1.1))),
-      Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: on.withValues(alpha: 0.8))),
+          child: Text(value, maxLines: 1, style: appText(24, w: FontWeight.w900, c: on, h: 1.1))),
+      const SizedBox(height: 2),
+      // two lines: "Earnings this month" was cut to "Earnings thi…" on a phone
+      Text(label, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(11, w: FontWeight.w600, c: on.withValues(alpha: 0.8), h: 1.2)),
     ]);
   }
 }
@@ -1141,11 +1199,17 @@ class _CourseLineRow extends StatelessWidget {
 /// One line of the compact agenda: start time · a dot in the item's tone (pulsing while live) · title · tag.
 /// The subtitle (teacher · room · organization) is not drawn; a screen reader still hears it.
 class HomeAgendaLine extends StatelessWidget {
-  const HomeAgendaLine({super.key, required this.item, this.done = false});
+  const HomeAgendaLine({super.key, required this.item, this.done = false, this.focus = false, this.note});
   final HomeAgendaItem item;
 
   /// Already ended: quieter ink (never an opacity — the text keeps its contrast).
   final bool done;
+
+  /// Runs now: the row is tinted in its tone and its title set heavier.
+  final bool focus;
+
+  /// A second line under the title ("Ends in 50 min · Lab 3").
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
@@ -1153,22 +1217,36 @@ class HomeAgendaLine extends StatelessWidget {
     final x = item;
     final tone = x.live ? c.danger : (x.tone ?? c.primary);
     final tag = x.live ? 'home_live'.tr : x.tag;
+    final hasNote = note != null && note!.isNotEmpty;
     final label = [
       '${x.start} – ${x.end}',
       x.title,
       if (x.subtitle != null && x.subtitle!.isNotEmpty) x.subtitle!,
       ?tag,
+      if (hasNote) note!,
     ].join(', ');
+    final title = Text(x.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: appText(14,
+            w: done ? FontWeight.w600 : (focus ? FontWeight.w800 : FontWeight.w700), c: done ? c.textMedium : c.textDark, h: 1.25));
+    final r = BorderRadius.circular(c.radiusMedium);
     return Semantics(
       button: x.onTap != null,
       label: label,
       excludeSemantics: true,
-      child: InkWell(
+      child: Padding(
+        padding: focus ? const EdgeInsets.symmetric(horizontal: 6, vertical: 4) : EdgeInsets.zero,
+        child: InkWell(
         onTap: x.onTap,
-        child: ConstrainedBox(
+        borderRadius: focus ? r : null,
+        child: Container(
           constraints: const BoxConstraints(minHeight: 52),
+          decoration: focus
+              ? BoxDecoration(color: tone.withValues(alpha: 0.07), borderRadius: r, border: Border.all(color: tone.withValues(alpha: 0.20)))
+              : null,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: focus ? 10 : 16, vertical: 8),
             child: Row(children: [
               SizedBox(
                 width: 64,
@@ -1199,10 +1277,16 @@ class HomeAgendaLine extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(x.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: appText(14, w: done ? FontWeight.w600 : FontWeight.w700, c: done ? c.textMedium : c.textDark, h: 1.25)),
+                child: !hasNote
+                    ? title
+                    : Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                        title,
+                        const SizedBox(height: 2),
+                        Text(note!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: appText(12, w: FontWeight.w700, c: focus ? appInk(context, tone) : c.textMedium, h: 1.25)),
+                      ]),
               ),
               if (tag != null) ...[
                 const SizedBox(width: 8),
@@ -1217,6 +1301,7 @@ class HomeAgendaLine extends StatelessWidget {
             ]),
           ),
         ),
+      ),
       ),
     );
   }
@@ -1260,8 +1345,14 @@ class HomeShowAllRow extends StatelessWidget {
 //  Foldable sections
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Which home sections the person folded, per signed-in user, on this device (SharedPreferences `home_folds`:
-/// "user id:section id" entries). Nothing loaded / no storage (tests) → every section open.
+/// Which home sections the person folded, per signed-in user, on this device (SharedPreferences `home_folds`).
+///
+/// A section remembers TWO choices, one per state, because an empty section and a full one are different asks:
+///   with content  "user:section" = folded (the default is open)
+///   empty         "user:section~open" = opened while empty (the default is FOLDED: an empty section's card is
+///                 noise, its title line says "Nothing today" instead)
+/// So a section that empties folds by itself and opens again when something arrives — unless the person chose
+/// otherwise for that state, and an explicit choice always wins. Nothing loaded / no storage (tests) → the defaults.
 class HomeFolds extends ChangeNotifier {
   HomeFolds._();
   static final HomeFolds instance = HomeFolds._();
@@ -1299,10 +1390,15 @@ class HomeFolds extends ChangeNotifier {
     }).catchError((Object _) {});
   }
 
-  bool isFolded(String section) => _folded.contains('$_uid:$section');
+  /// Folded now? [empty]: the section has nothing to show (folded unless the person opened it while empty).
+  bool isFolded(String section, {bool empty = false}) =>
+      empty ? !_folded.contains('$_uid:$section$_emptyOpen') : _folded.contains('$_uid:$section');
 
-  void toggle(String section) {
-    final k = '$_uid:$section';
+  static const _emptyOpen = '~open';
+
+  /// Flips the choice of the state the section is in ([empty] or with content); the other state's choice stays.
+  void toggle(String section, {bool empty = false}) {
+    final k = empty ? '$_uid:$section$_emptyOpen' : '$_uid:$section';
     if (!_folded.remove(k)) _folded.add(k);
     notifyListeners();
     _prefs?.setStringList(prefsKey, _folded.toList()).catchError((Object _) => false);
@@ -1317,6 +1413,10 @@ class HomeFolds extends ChangeNotifier {
 
 /// A home section whose title folds and unfolds it: the title row (count, action, a chevron), then [child] under an
 /// animated size change. Folded, the title's quiet line shows [foldedSummary] (what is hidden, in a few words).
+///
+/// [empty]: the section has nothing to list → it starts folded, its title quieter and its line [emptySummary]
+/// ("No classes today · Next: …"); its action stays (it is usually the way to fill it). Unfolding shows [child]'s
+/// empty state, and that choice is kept for the empty state only (HomeFolds).
 class HomeSection extends StatefulWidget {
   const HomeSection({
     super.key,
@@ -1330,6 +1430,8 @@ class HomeSection extends StatefulWidget {
     this.onAction,
     this.titlePadding,
     this.foldable = true,
+    this.empty = false,
+    this.emptySummary,
   });
 
   /// Stable id of the section (the saved fold), e.g. `student.today`.
@@ -1341,6 +1443,8 @@ class HomeSection extends StatefulWidget {
   final VoidCallback? onAction;
   final EdgeInsetsGeometry? titlePadding;
   final bool foldable;
+  final bool empty;
+  final String? emptySummary;
 
   @override
   State<HomeSection> createState() => _HomeSectionState();
@@ -1360,17 +1464,23 @@ class _HomeSectionState extends State<HomeSection> {
     return ListenableBuilder(
       listenable: HomeFolds.instance,
       builder: (context, _) {
-        final folded = w.foldable && HomeFolds.instance.isFolded(w.id);
+        final folded = w.foldable && HomeFolds.instance.isFolded(w.id, empty: w.empty);
+        final quiet = folded && w.empty;
         return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
           HomeSectionTitle(
             w.title,
-            count: w.count,
-            subtitle: folded ? (w.foldedSummary ?? w.subtitle) : w.subtitle,
-            actionLabel: folded ? null : w.actionLabel,
-            onAction: folded ? null : w.onAction,
+            count: w.empty ? null : w.count,
+            subtitle: quiet
+                ? (w.emptySummary ?? 'home_section_empty'.tr)
+                : folded
+                    ? (w.foldedSummary ?? w.subtitle)
+                    : w.subtitle,
+            actionLabel: folded && !w.empty ? null : w.actionLabel,
+            onAction: folded && !w.empty ? null : w.onAction,
             padding: w.titlePadding ?? const EdgeInsets.fromLTRB(20, 0, 12, 4),
             collapsed: folded,
-            onToggle: w.foldable ? () => HomeFolds.instance.toggle(w.id) : null,
+            quiet: quiet,
+            onToggle: w.foldable ? () => HomeFolds.instance.toggle(w.id, empty: w.empty) : null,
           ),
           ClipRect(
             child: AnimatedSize(

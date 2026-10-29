@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
+import 'package:flutter_education_app/design/home_kit.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart';
 import 'package:flutter_education_app/features/student/home/home_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -104,7 +105,7 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: full(), now: now, orgWaiting: 145)));
     // later in the day: the exam is next (countdown), the lab is done
     await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: full(), now: now.add(const Duration(hours: 1)))));
-    // the day is over: the free-day hero names the first upcoming event
+    // the day is over: every row is done (no note, nothing tinted)
     await expectNoLayoutErrors(tester, () => body(StudentHomeData(home: full(), now: now.add(const Duration(hours: 8)))));
   });
 
@@ -115,15 +116,25 @@ void main() {
     await expectNoLayoutErrors(tester, () => body(const StudentHomeData(guest: true)));
   });
 
-  testWidgets('pieces on their own: hero (next · live · free), this week, continue learning', (tester) async {
+  testWidgets('pieces on their own: today (running row with its note · next row), this week, courses', (tester) async {
     final h = full();
     await expectNoLayoutErrors(
       tester,
       () => ListView(children: [
-        NextUpHero(next: h.nextUp(now), now: now, upcoming: h.firstUpcoming),
-        NextUpHero(next: h.nextUp(now.add(const Duration(hours: 1))), now: now.add(const Duration(hours: 1))),
-        NextUpHero(next: null, now: now, upcoming: h.firstUpcoming),
-        NextUpHero(next: null, now: now),
+        Builder(
+          builder: (context) => HomeAgenda(
+            nowMin: 9 * 60 + 5,
+            items: [for (final e in h.today) homeAgendaItemOf(context, e, now)],
+            emptyTitle: longEn,
+          ),
+        ),
+        Builder(
+          builder: (context) => HomeAgenda(
+            nowMin: 10 * 60 + 5,
+            items: [for (final e in h.today) homeAgendaItemOf(context, e, now.add(const Duration(hours: 1)))],
+            emptyTitle: longEn,
+          ),
+        ),
         UpcomingList(events: h.upcoming, onTap: (_) {}),
         StudentCourseSummary(courses: h.coursesProgress, onOpen: (_) {}, onShowAll: () {}),
         StudentCourseSummary(courses: h.coursesProgress.take(1).toList()),
@@ -156,5 +167,41 @@ void main() {
     expect(homeEventTag(h.today[0]), isNull);
     expect(homeDuration(80), 'home_h_min');
     expect(homeDuration(5), 'home_min');
+    expect(homeDuration(120), 'home_h');
+  });
+
+  test('no next-up card: the running row says when it ends and where, the next one when it starts', () {
+    const running = HomeAgendaItem(start: '9:50', end: '10:50', title: 'Lab', startMin: 590, endMin: 650, live: true, place: 'Lab 3');
+    const next = HomeAgendaItem(start: '13:00', end: '14:00', title: 'Quiz', startMin: 780, endMin: 840);
+    const later = HomeAgendaItem(start: '16:00', end: '17:00', title: 'Meeting', startMin: 960, endMin: 1020, place: 'Hall');
+    // translations aren't loaded: the keys tell the choice
+    expect(homeAgendaNote(running, 600), 'home_ends_in · Lab 3');
+    expect(homeAgendaNote(running, 650), 'Lab 3'); // the very last minute: no "ends in 0"
+    expect(homeAgendaNote(next, 600, next: true), 'home_starts_in');
+    expect(homeAgendaNote(later, 600), isNull); // only the next one speaks
+    expect(homeAgendaNote(later, 600, next: true), 'home_starts_in · Hall');
+    expect(homeAgendaNote(const HomeAgendaItem(start: '', end: '', title: 'x'), 600, next: true), isNull);
+  });
+
+  test('an empty Today names what comes next', () {
+    final h = full();
+    expect(homeFreeDaySummary('Free', null), 'Free');
+    expect(homeFreeDaySummary('Free', h.firstUpcoming), startsWith('Free · home_next_on'));
+  });
+
+  testWidgets('the running row is drawn tinted with its note; with nothing running the next row has one', (tester) async {
+    final h = full();
+    await tester.pumpWidget(layoutHost(SingleChildScrollView(
+      child: Builder(
+        builder: (context) => HomeAgenda(nowMin: 9 * 60 + 5, items: [for (final e in h.today) homeAgendaItemOf(context, e, now)], emptyTitle: 'e'),
+      ),
+    )));
+    await tester.pump();
+    final lines = tester.widgetList<HomeAgendaLine>(find.byType(HomeAgendaLine)).toList();
+    expect(lines.first.item.live, isTrue);
+    expect(lines.first.focus, isTrue);
+    expect(lines.first.note, contains('Room 1'));
+    expect(lines.where((l) => l.note != null), hasLength(1));
+    await tester.pumpWidget(const SizedBox());
   });
 }

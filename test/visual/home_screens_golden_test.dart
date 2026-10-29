@@ -352,7 +352,12 @@ Map<String, dynamic> _inboxRow(String key, String ar, String en, {String segment
       'mandatory': mandatory,
     };
 
-MeHome _studentHome() => MeHome.fromJson({
+/// A free day: nothing today and no course yet (both sections fold themselves), the week still has classes.
+MeHome _studentFreeDay() => MeHome.fromJson({..._studentJson(), 'today': const [], 'courses_progress': const []});
+
+MeHome _studentHome() => MeHome.fromJson(_studentJson());
+
+Map<String, dynamic> _studentJson() => ({
       'now': _iso(_now),
       'today_date': '2026-10-28',
       'timezone': 'Africa/Cairo',
@@ -476,7 +481,8 @@ List<MeLiveRoom> _liveMeeting() => [
 Widget _header(String name, String? summary) => HomeHeader(name: name, subtitle: summary, padding: const EdgeInsets.fromLTRB(20, 20, 20, 16));
 
 // teacher
-ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart}) => ScheduleSession(
+ScheduleSession _session(int id, String name, String start, String end, {bool ongoing = false, int? untilStart, int inDays = 0}) =>
+    ScheduleSession(
       scheduleId: id,
       courseId: id,
       courseName: name,
@@ -485,9 +491,9 @@ ScheduleSession _session(int id, String name, String start, String end, {bool on
       startTime: start,
       endTime: end,
       durationMinutes: 90,
-      isToday: true,
+      isToday: inDays == 0,
       isOngoing: ongoing,
-      scheduledDate: DateTime.now(),
+      scheduledDate: _now.add(Duration(days: inDays)), // the scene's clock, so "now" and the times agree
       minutesUntilStart: ongoing ? null : untilStart,
       minutesUntilEnd: ongoing ? 40 : null,
       maxStudents: 120,
@@ -507,19 +513,30 @@ TeacherHomeExtra _teacherExtra() => TeacherHomeExtra.fromJson({
       'enrollments_series': [4, 6, 5, 9, 8, 12, 11, 15, 14, 19],
     });
 
-Widget _teacherHome() => SingleChildScrollView(
+/// [free]: a day without sessions (the next ones are tomorrow) and no live room — "Today's sessions" folds itself.
+Widget _teacherHome({bool free = false}) => SingleChildScrollView(
       child: _width(1100, Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _header(tr('أحمد حمدي', 'Ahmed Hamdy'), homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3))))),
+        _header(
+            tr('أحمد حمدي', 'Ahmed Hamdy'),
+            free
+                ? homeDaySummary(sessions: 0, live: 0, todo: 28)
+                : homeDaySummary(sessions: 3, live: 2, todo: 28, nextAt: AppTime.time(_now.add(const Duration(hours: 3))))),
         TeacherHomeBody(
-        liveNow: _liveMeeting(),
+        liveNow: free ? const [] : _liveMeeting(),
         now: _now,
         loading: false,
         stats: const TeacherStats(totalStudents: 1840, totalCourses: 6, overallRating: 4.8),
-        schedule: [
-          _session(1, tr('تراكيب البيانات', 'Data structures'), '08:00', '09:30'),
-          _session(2, tr('معمل الشبكات', 'Networks lab'), '10:00', '11:30', ongoing: true),
-          _session(3, tr('الذكاء الاصطناعي', 'Artificial intelligence'), '13:00', '14:30', untilStart: 180),
-        ],
+        // _now is 07:00 UTC: the first session ended, the lab runs (40 min left), the last one starts in 3 h
+        schedule: free
+            ? [
+                _session(1, tr('تراكيب البيانات', 'Data structures'), '06:00', '07:30', inDays: 1),
+                _session(3, tr('الذكاء الاصطناعي', 'Artificial intelligence'), '09:00', '10:30', inDays: 2),
+              ]
+            : [
+                _session(1, tr('تراكيب البيانات', 'Data structures'), '05:00', '06:20'),
+                _session(2, tr('معمل الشبكات', 'Networks lab'), '06:10', '07:40', ongoing: true),
+                _session(3, tr('الذكاء الاصطناعي', 'Artificial intelligence'), '10:00', '11:30', untilStart: 180),
+              ],
         pending: const {'attendance_missing': 2, 'grading': 18, 'materials_missing': 1, 'enrollment_requests': 7},
         courses: [
           for (final (id, ar, en, students, published) in [
@@ -781,8 +798,25 @@ void main() {
                 ]))));
   });
 
+  testWidgets('student home free day', (tester) async {
+    HomeFolds.instance.debugReset();
+    await _renderAll(tester, 'student_home_free',
+        (_) => SingleChildScrollView(
+            child: _width(
+                1000,
+                Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  _header(tr('سارة محمود', 'Sara Mahmoud'), studentDaySummary(_studentFreeDay(), 0, _now)),
+                  StudentHomeBody(data: StudentHomeData(home: _studentFreeDay(), now: _now), onTab: (_) {}),
+                ]))));
+  });
+
   testWidgets('teacher home', (tester) async {
     await _renderAll(tester, 'teacher_home', (_) => _teacherHome());
+  });
+
+  testWidgets('teacher home free day', (tester) async {
+    HomeFolds.instance.debugReset();
+    await _renderAll(tester, 'teacher_home_free', (_) => _teacherHome(free: true));
   });
 
   testWidgets('parent today', (tester) async {

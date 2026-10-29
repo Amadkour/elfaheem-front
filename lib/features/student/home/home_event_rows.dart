@@ -6,9 +6,12 @@
 //                                       in Organization mode)
 //   homeAgendaItemOf(context, e, now)   a CalEvent as a HomeAgenda row (times through AppTime, live while running)
 //   homeEventTag(e) · homeDuration(min) the tag of an event (lab · exam · meeting · online) · "1 h 20 min"
-//   NextUpHero(next:, now:, upcoming:)  the hero: the next event's start time set big, live state, countdown
 //   UpcomingList(events:)               "This week": one line per event (day + time column), 3 + "Show all"
 //   homeDaySummaryOf(today, now)        a folded "Today" section's quiet line
+//   homeFreeDaySummary(empty, upcoming) an EMPTY "Today" section's line: "No classes today · Next: … · Thu 30"
+//
+// There is no "next up" hero card any more: it repeated the first row of "Today". What only it said (ends in
+// 50 min · the room) is the second line of that row now (HomeAgenda: homeAgendaNote, the item's place).
 //   StudentCourseSummary(courses:)      "My courses" in one card: figures + the 3 that matter now (homeCourseFocus)
 //
 // Plain values only (layout-tested in test/ui/student_home_layout_test.dart).
@@ -77,6 +80,7 @@ HomeAgendaItem homeAgendaItemOf(BuildContext context, CalEvent e, DateTime nowUt
       if (e.location != null && e.location!.isNotEmpty) e.location!,
       if (e.orgName != null && e.orgName!.isNotEmpty) e.orgName!,
     ].join(' · '),
+    place: e.location,
     tag: homeEventTag(e),
     tone: switch (e.source) {
       'exam' => c.danger,
@@ -98,90 +102,15 @@ String homeDaySummaryOf(List<CalEvent> today, DateTime nowUtc) {
   ].join(' · ');
 }
 
-String homeDuration(int minutes) {
-  final h = minutes ~/ 60, m = minutes % 60;
-  if (h == 0) return 'home_min'.tr.replaceAll('{n}', '$m');
-  return 'home_h_min'.tr.replaceAll('{h}', '$h').replaceAll('{m}', '$m');
+/// An empty "Today" section's line (it starts folded): "No classes today · Next: Operating systems · Thu 30", or
+/// only [empty] (the role's own "nothing today") when nothing is coming.
+String homeFreeDaySummary(String empty, CalEvent? upcoming) {
+  if (upcoming == null) return empty;
+  final next = 'home_next_on'.tr.replaceAll('{t}', upcoming.title).replaceAll('{d}', AppTime.date(upcoming.start, pattern: 'EEE d'));
+  return '$empty · $next';
 }
 
-/// The student's hero: today's next event, its start time set big, live state, countdown. Free day → a calm
-/// green card that names the first upcoming day.
-class NextUpHero extends StatelessWidget {
-  const NextUpHero({super.key, required this.next, required this.now, this.upcoming, this.onTap});
-  final MeNextUp? next;
-  final CalEvent? upcoming;
-  final DateTime now;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final on = homeOnHero(context);
-    final n = next;
-    if (n == null) {
-      final up = upcoming;
-      return HomeHeroCard(
-        gradient: c.successGradient,
-        glow: c.success,
-        onTap: onTap,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          HomeHeroTag('home_today'.tr, icon: Icons.wb_sunny_rounded),
-          const SizedBox(height: 14),
-          Text('no_sessions_today_title'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(22, w: FontWeight.w900, c: on, h: 1.2)),
-          const SizedBox(height: 6),
-          Text(
-            up == null ? 'check_weekly_schedule'.tr : 'home_next_on'.tr.replaceAll('{d}', AppTime.date(up.start, pattern: 'EEEE d MMM')).replaceAll('{t}', up.title),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: appText(13, c: on.withValues(alpha: 0.9)),
-          ),
-        ]),
-      );
-    }
-    final e = n.event;
-    final mins = n.live ? e.end.difference(now).inMinutes : e.start.difference(now).inMinutes;
-    final rel = mins <= 0 ? '' : (n.live ? 'home_ends_in' : 'home_starts_in').tr.replaceAll('{t}', homeDuration(mins));
-    final tag = homeEventTag(e);
-    return HomeHeroCard(
-      gradient: n.live ? c.dangerGradient : c.primaryGradient,
-      glow: n.live ? c.danger : c.primary,
-      onTap: onTap,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          HomeHeroTag(n.live ? 'home_live'.tr : (tag ?? 'home_next'.tr), icon: n.live ? Icons.sensors_rounded : Icons.schedule_rounded),
-          const SizedBox(width: 8),
-          if (rel.isNotEmpty)
-            Expanded(
-              child: Text(rel,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.end,
-                  style: appText(12.5, w: FontWeight.w700, c: on.withValues(alpha: 0.9))),
-            ),
-        ]),
-        const SizedBox(height: 12),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
-          child: Text(AppTime.time(e.start), maxLines: 1, style: appText(40, w: FontWeight.w900, c: on, h: 1.05)),
-        ),
-        const SizedBox(height: 6),
-        Text(e.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(17, w: FontWeight.w800, c: on, h: 1.25)),
-        const SizedBox(height: 4),
-        Text(
-          [
-            '${'home_until'.tr} ${AppTime.time(e.end)}',
-            if (e.location != null && e.location!.isNotEmpty) e.location!,
-            if (e.orgName != null && e.orgName!.isNotEmpty) e.orgName!,
-          ].join(' · '),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: appText(12.5, c: on.withValues(alpha: 0.85)),
-        ),
-      ]),
-    );
-  }
-}
+String homeDuration(int minutes) => homeDurationText(minutes);
 
 /// "This week": one compact line per event — the day and time in a small column, a dot in the event's tone, the
 /// title, the tag — the first [maxItems] and "Show all (n)".

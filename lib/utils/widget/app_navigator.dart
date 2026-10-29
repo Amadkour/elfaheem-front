@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../../config/app_config.dart';
 import '../../core/api_client.dart';
 import '../../core/app_mode.dart';
+import '../../core/offline/downloads_availability.dart' show linkAvailableHere;
 import '../../core/attention/attention_service.dart' show AttentionService, OrgTabRequest;
 import '../../features/org/org_my_exams.dart' show MyExamsScreen;
 import '../../features/org/org_reports/report_page.dart' show OrgReceivedReportsPage;
@@ -81,6 +82,8 @@ class AppNavigator {
     // The assistant's notices to platform admins (rag_learning · rag_alerts): their own pages, else the list.
     if (await openRagAdminModule(nav, module, role: ctx.read<MyAuthProvider>().currentUser?.role)) return;
     if (!ctx.mounted) return;
+    // the Downloads page lives in the phone / desktop app only: on the web such a link stays where it is
+    if (!linkAvailableHere(module)) return;
     switch (module) {
       case 'course':
         if (targetId != null) {

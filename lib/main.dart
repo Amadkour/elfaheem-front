@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
+import 'package:flutter_education_app/core/offline/downloads_availability.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
 import 'package:flutter_education_app/features/shared/downloads/downloads_screen.dart';
 import 'package:flutter/material.dart';
@@ -692,6 +693,8 @@ class _ElFaheemAppState extends State<ElFaheemApp> with WidgetsBindingObserver {
       case '/change-password':
         return _fade(const _Guard(child: ChangePasswordScreen()), settings);
       case '/downloads':
+        // offline downloads are device files: no such page on the web (a typed / old link goes home)
+        if (!kDownloadsAvailable) return _fade(const _Guard(child: _RedirectHome()), settings);
         return _fade(const _Guard(child: DownloadsScreen()), settings);
       case '/course-detail':
         final course = settings.arguments;

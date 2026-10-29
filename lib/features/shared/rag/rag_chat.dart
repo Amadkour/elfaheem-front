@@ -38,6 +38,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
+import 'package:flutter_education_app/core/offline/downloads_availability.dart' show kDownloadsAvailable, linkAvailableHere;
 
 import '../../admin/admin_common.dart' show asInt, asMap, asMapList, asStr, t, trp;
 import '../exam_engine/exam_engine_api.dart' show EngineResult, engineCall;
@@ -394,11 +395,13 @@ String ragRelativeTime(DateTime? at, {DateTime? now}) {
 }
 
 /// A curated pair's deep link as [AppNavigator.openModule] takes it: `/downloads` → `downloads`, a feature key
-/// unchanged; null when there is nothing to open.
-String? ragDeepLinkModule(String? link) {
+/// unchanged; null when there is nothing to open — or when it is the Downloads page and this is the web (no such
+/// page there, so no "Open" button).
+String? ragDeepLinkModule(String? link, {bool downloadsAvailable = kDownloadsAvailable}) {
   final s = (link ?? '').trim();
   if (s.isEmpty) return null;
   final m = s.startsWith('/') ? s.substring(1) : s;
+  if (!linkAvailableHere(m, downloadsAvailable: downloadsAvailable)) return null;
   return m.isEmpty ? null : m;
 }
 
