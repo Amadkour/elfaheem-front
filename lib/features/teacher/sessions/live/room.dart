@@ -17,6 +17,11 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'widgets/live_palette.dart';
 // Annotation over the shared screen (D-079): docs/live/annotation_wiring.md, the "Annotation" region below
 import 'annotation/annotation_controller.dart';
+// The whiteboard (D-087): the "Whiteboard" region below
+import 'whiteboard/board_controller.dart';
+import 'whiteboard/board_protocol.dart' show BoardBackground;
+import 'whiteboard/board_toolbar.dart' show boardShortcutTool;
+import 'whiteboard/board_view.dart';
 import 'annotation/annotation_layer.dart';
 import 'annotation/annotation_toolbar.dart'
     show AnnotationControllerToolbar, annotPresetColors, annotShortcutThickness, annotShortcutTool;
@@ -362,6 +367,9 @@ class _RoomPageState extends State<RoomPage>
   // The Android whole-screen overlay starts with the room's annotation colour / thickness (room_wiring_pending §4).
   @override int? get annotationColorArgb => _annot.colorArgb;
   @override int get annotationThickness => _annot.thickness;
+  // The share sheet offers the whiteboard (the "Whiteboard" region).
+  @override bool get whiteboardOffered => _boardEnabled;
+  @override Future<void> startWhiteboard(BoardBackground background) => _startBoard(background);
 
   // ── D29: what the server lets this participant publish (follows ParticipantPermissionsUpdatedEvent) ─────
   late LiveAllowedControls _allowed = _allowedFrom(widget.room.localParticipant?.permissions);
@@ -1045,7 +1053,8 @@ class _RoomPageState extends State<RoomPage>
       mounted &&
       MediaQuery.sizeOf(context).width < kLiveControlsMobileBreakpoint &&
       !_reactions.pickerOpen &&
-      !_annotOpen; // drawing: the bar stays (its Annotate action closes the toolbar)
+      !_annotOpen && // drawing: the bar stays (its Annotate action closes the toolbar)
+      !(_isBoardMain && _board.canDrawLocal); // the same on the whiteboard
 
   void _pokeControls() {
     _controlsHideTimer?.cancel();
@@ -1082,6 +1091,18 @@ class _RoomPageState extends State<RoomPage>
     // The annotation toolbar's own keys (P / H / E / L, 1–3, Esc; AnnotationShortcuts) while it is open.
     if (_annotOpen &&
         (annotShortcutTool(k) != null || annotShortcutThickness(k) != null || k == LogicalKeyboardKey.escape)) {
+      return KeyEventResult.ignored;
+    }
+    // The whiteboard's keys (V / P / H / I / A / R / O / T / E / L, 1-3, Delete, PageUp / PageDown) while drawing on it.
+    if (_isBoardMain &&
+        _board.canDrawLocal &&
+        (boardShortcutTool(k) != null ||
+            annotShortcutThickness(k) != null ||
+            k == LogicalKeyboardKey.delete ||
+            k == LogicalKeyboardKey.backspace ||
+            k == LogicalKeyboardKey.pageUp ||
+            k == LogicalKeyboardKey.pageDown ||
+            k == LogicalKeyboardKey.escape)) {
       return KeyEventResult.ignored;
     }
     if (k == LogicalKeyboardKey.keyM) {
@@ -1197,6 +1218,7 @@ class _RoomPageState extends State<RoomPage>
     annotationOverlayActive.addListener(_onAnnotOverlay);
     _annot.addListener(_onAnnotChanged);
     _annotGranted = _annotStudentGranted;
+    _board.addListener(_onBoardChanged); // the "Whiteboard" region
     // One share at a time, requests, attention badges, the chat preview (the "Share arbitration" region).
     _shareEvents = _share.events.listen(_onShareEvent);
     _share.addListener(_onShareChanged);
@@ -1282,6 +1304,8 @@ class _RoomPageState extends State<RoomPage>
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Annotation: ask the room for the board (a late joiner sees what is drawn already).
       if (mounted && _annotEnabled) _annot.requestSnapshot();
+      // Whiteboard: the presenter (if any) sends the board.
+      if (mounted && _boardEnabled) _requestBoard();
 
       // ── Step 1: request runtime permissions ───────────────────────────────
       // CAMERA and MICROPHONE are dangerous permissions on Android 6+.
@@ -1389,6 +1413,9 @@ class _RoomPageState extends State<RoomPage>
     annotationOverlayActive.removeListener(_onAnnotOverlay);
     _annot.removeListener(_onAnnotChanged);
     _annot.dispose();
+    _board.removeListener(_onBoardChanged);
+    if (_board.isLocalPresenting) _board.stopPresenting(); // best effort: the room may be gone already
+    _board.dispose();
     unawaited(_shareEvents?.cancel());
     _share.removeListener(_onShareChanged);
     _share.dispose();
@@ -1967,12 +1994,15 @@ class _RoomPageState extends State<RoomPage>
     ..on<ParticipantDisconnectedEvent>((e) {
       _hands.drop(e.participant.identity);
       _share.participantLeft(e.participant.identity); // their request, approval and grant go too
+      _board.participantLeft(e.participant.identity); // a presenter who left takes the board with them
       _scheduleSort();
     })
     ..on<ParticipantConnectedEvent>((e) {
       _hands.reannounceLocal();
       // Annotation: the responder (presenter, else the first host) sends the newcomer the board.
       if (_annotEnabled) _annot.onParticipantJoined(e.participant.identity);
+      // Whiteboard: the presenter sends the newcomer the board.
+      if (_boardEnabled) _board.onParticipantJoined(e.participant.identity);
       _scheduleSort();
     })
     // D29: the host let this participant speak / share, or took it back.
@@ -1993,6 +2023,7 @@ class _RoomPageState extends State<RoomPage>
     ..on<RoomReconnectedEvent>((_) {
       _showNetBanner(false);
       if (_annotEnabled) _annot.requestSnapshot(); // strokes sent while away
+      if (_boardEnabled) _requestBoard(reconnected: true);
     })
     ..on<LocalTrackPublishedEvent>((_) {
       _scheduleSort();
@@ -2058,6 +2089,13 @@ class _RoomPageState extends State<RoomPage>
         case LiveDataRoute.annotation:
           // The sender is LiveKit's participant, never an identity read from the payload.
           if (_annotEnabled) _annot.receive(event.topic!, event.data, sender: p?.identity);
+          return;
+        case LiveDataRoute.board:
+          // The sender is LiveKit's participant, never an identity read from the payload.
+          if (_boardEnabled) {
+            _board.localIdentity = _myIdentity;
+            _board.receive(event.topic!, event.data, sender: p?.identity);
+          }
           return;
         case LiveDataRoute.share:
           // The sender is LiveKit's participant; an answer / stop counts only from a host the server set up.
@@ -2499,7 +2537,7 @@ class _RoomPageState extends State<RoomPage>
 
                               // Thumbnail strip
                               if (_stageTracks.length > 1 &&
-                                  !_isScreenShareMain)
+                                  !_isScreenShareMain && !_isBoardMain)
                                 FadeTransition(
                                   opacity: _thumbBarFade,
                                   child: Positioned(
@@ -2542,8 +2580,8 @@ class _RoomPageState extends State<RoomPage>
 
                               // Participant count badge
                               Positioned(
-                                bottom: 14,
-                                right: _isScreenShareMain
+                                bottom: 14 + _boardDockClearance,
+                                right: _isScreenShareMain || _isBoardMain
                                     ? _pipRight + _pipW + 8
                                     : 14,
                                 child: GestureDetector(
@@ -2749,6 +2787,12 @@ class _RoomPageState extends State<RoomPage>
       }
     }
 
+    // A presented whiteboard fills the stage (D-087), unless a screen share wins the one-share rule.
+    if (_isBoardMain) {
+      final presenter = _board.presenter!;
+      return (_buildBoardStage(), presenter == _myIdentity ? local : _remoteBy(presenter));
+    }
+
     // The local camera never fills the stage while someone else (or a share) can: it is in the self-view box.
     final mainTracks = _stageTracks;
 
@@ -2875,7 +2919,7 @@ class _RoomPageState extends State<RoomPage>
 
     return Positioned(
       right: _pipRight,
-      bottom: _pipBottom,
+      bottom: math.max(_pipBottom, _boardDockClearance + 8), // above the whiteboard's dock
       child: GestureDetector(
         onPanUpdate: (d) => setState(() {
           _pipRight = (_pipRight - d.delta.dx).clamp(
@@ -3491,7 +3535,8 @@ class _RoomPageState extends State<RoomPage>
       !_annot.isHost && (_annot.allowStudents || _annot.allowedIdentities.contains(_annot.localIdentity));
 
   /// Annotate is offered: a share fills the stage, this person may draw, and no Android overlay burns it in.
-  bool get _canAnnotate => _annotEnabled && _isScreenShareMain && _annot.canDrawLocal && !_annot.burnedIn;
+  bool get _canAnnotate =>
+      _annotEnabled && _isScreenShareMain && !_isBoardMain && _annot.canDrawLocal && !_annot.burnedIn;
 
   /// Hosts present and the presenter on the stage → the controller (a no-op when nothing changed). Runs after
   /// every re-layout (_sortParticipants: connect / disconnect / track (un)publish / local track events).
@@ -3519,12 +3564,15 @@ class _RoomPageState extends State<RoomPage>
 
   void _onAnnotChanged() {
     if (!mounted) return;
+    _board.permissionsChanged(); // the whiteboard shares the drawing permission (D-087)
     final granted = _annotStudentGranted;
     if (granted != _annotGranted) {
       _annotGranted = granted;
       if (_annotEnabled) {
         _showSnack(granted
-            ? t('يمكنك الآن الرسم على الشاشة المشتركة', 'You can now draw on the shared screen')
+            ? (_isBoardMain
+                ? t('يمكنك الآن الكتابة والرسم على السبورة', 'You can now write and draw on the whiteboard')
+                : t('يمكنك الآن الرسم على الشاشة المشتركة', 'You can now draw on the shared screen'))
             : t('أوقف المعلّم الرسم للطلاب', 'The teacher turned drawing off'));
       }
     }
@@ -3588,6 +3636,141 @@ class _RoomPageState extends State<RoomPage>
         ),
       );
   // ═══════════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Whiteboard (D-087, feature key `live.whiteboard`) — lib/features/teacher/sessions/live/whiteboard/
+  //
+  // The Share sheet's "Whiteboard" tab presents a board instead of a screen: vector ink, shapes, text boxes and
+  // pages on the data channel (topics `board` / `board.laser`, no track, no server route). It counts as presenting
+  // for the one-share rule (the arbiter's presenters include the board's presenter; a host's takeover, a hand-over
+  // or the lead host's enforcement stops it like a screen share) and fills everyone's stage while presented. Who may
+  // present: a host, or someone the server lets share their screen (the same "Ask to share" path). Who may draw:
+  // the presenter and hosts, students when the host allows drawing (the annotation permission). Late joiners get the
+  // board from the presenter. Keep this region the only whiteboard code in this file.
+  // ═══════════════════════════════════════════════════════════════════════════
+  static const _kBoardFeatureKey = 'live.whiteboard';
+
+  late final BoardController _board = BoardController(
+    localIdentity: _myIdentity,
+    send: (topic, bytes, reliable, {to}) async {
+      final lp = widget.room.localParticipant;
+      if (lp == null) return;
+      await lp.publishData(bytes, reliable: reliable, topic: topic, destinationIdentities: to);
+    },
+    isHost: _identityIsHost,
+    mayPresent: _mayPresentBoard,
+    studentMayDraw: _drawingAllowedFor,
+  );
+  final GlobalKey _boardPageKey = GlobalKey(debugLabel: 'live_room.board_page');
+  String? _boardPresenterSeen;
+
+  bool get _boardEnabled => !AppConfig.disableList.contains(_kBoardFeatureKey);
+
+  /// The board fills the stage: one is presented and no screen share wins over it (the arbiter's stage order).
+  bool get _isBoardMain {
+    if (!_boardEnabled || !_board.active) return false;
+    if (!_isScreenShareMain) return true;
+    final order = _share.stageOrder(_identityIsHost);
+    return order.isNotEmpty && order.first == _board.presenter;
+  }
+
+  /// Room for the tool dock under the page (the PiP and the participant badge sit above it).
+  double get _boardDockClearance {
+    if (!_isBoardMain || !_board.canDrawLocal) return 0;
+    return MediaQuery.sizeOf(context).width >= 980 ? 70 : 118;
+  }
+
+  bool _mayPresentBoard(String identity) {
+    if (identity.isEmpty) return false;
+    if (identity == _myIdentity) return _isShareHost || _allowed.share;
+    if (_identityIsHost(identity)) return true;
+    final rp = _remoteBy(identity);
+    return rp != null && _controlTarget(rp).permissions.mayShareScreen;
+  }
+
+  /// The Share sheet's Whiteboard: this device's own screen share stops first (one share), then the board goes up.
+  Future<void> _startBoard(BoardBackground background) async {
+    if (!_boardEnabled || !mounted) return;
+    final me = _myIdentity;
+    if (me.isEmpty) return;
+    if (screenShareActive) await stopScreenShare();
+    if (!mounted) return;
+    _board.localIdentity = me;
+    _board.setTool(BoardTool.pen);
+    _board.setDrawMode(true);
+    _board.startPresenting(background: background);
+    LiveRoomScope.maybeOf(context)?.expand();
+    _scheduleSort(); // → the arbiter: a host takes over, an approved presenter's grant is used
+    _pokeControls();
+  }
+
+  void _stopBoard() {
+    if (!_board.isLocalPresenting) return;
+    _board.stopPresenting();
+    _scheduleSort();
+    if (mounted) setState(() {});
+  }
+
+  /// Whatever this device presents stops (the one-share rule, a host's stop, a hand-over).
+  Future<void> _stopAnyLocalShare() async {
+    _stopBoard();
+    if (screenShareActive) await stopScreenShare();
+  }
+
+  /// On joining and after a reconnect: ask for the board; a presenter who was away sends theirs to everyone again.
+  void _requestBoard({bool reconnected = false}) {
+    _board.localIdentity = _myIdentity;
+    if (reconnected && _board.isLocalPresenting) {
+      _board.sendSnapshot();
+      return;
+    }
+    _board.requestSnapshot();
+  }
+
+  void _onBoardChanged() {
+    if (!mounted) return;
+    final presenter = _board.presenter;
+    if (presenter != _boardPresenterSeen) {
+      final before = _boardPresenterSeen;
+      _boardPresenterSeen = presenter;
+      if (presenter != null && presenter != _myIdentity && before == null && _boardEnabled) {
+        showAppNotice(t('يعرض ${_nameOf(presenter)} سبورة بيضاء', '${_nameOf(presenter)} is presenting a whiteboard'),
+            icon: Icons.draw_rounded);
+      }
+      _scheduleSort(); // the stage changes; the arbiter sees the board's presenter
+    }
+    _maybeRefreshWebPlaceholder(); // the web recording's still of the room follows the board
+  }
+
+  Future<void> _openBoardOptions() => showWhiteboardOptionsSheet(
+        context,
+        controller: _board,
+        pageKey: _boardPageKey,
+        isHost: _annot.isHost,
+        allowStudents: () => _annot.allowStudents,
+        onAllowStudents: _annot.isHost ? _annot.setAllowStudents : null,
+        listenable: _annot,
+        fileStem: (widget.sessionName ?? '').trim().isEmpty ? 'whiteboard' : widget.sessionName!.trim(),
+      );
+
+  Widget _buildBoardStage() {
+    final presenter = _board.presenter ?? '';
+    final mine = _board.isLocalPresenting;
+    return WhiteboardRoomView(
+      key: const ValueKey('live_room.whiteboard'),
+      controller: _board,
+      presenterName: _nameOf(presenter),
+      fallbackRtl: AppConfig.lang == 'ar',
+      pageKey: _boardPageKey,
+      onOptions: mine ? () => unawaited(_openBoardOptions()) : null,
+      // The presenter stops it; a host stops a participant's board (one share at a time).
+      onStop: mine
+          ? _stopBoard
+          : (_isShareHost && presenter.isNotEmpty && !_identityIsHost(presenter)
+              ? () => unawaited(_stopPresenter(presenter, notify: true))
+              : null),
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Host controls (live.teacher_controls / live.room_lock) — live hardening L2
@@ -3767,6 +3950,7 @@ class _RoomPageState extends State<RoomPage>
 
   /// This device presents now (iOS: the broadcast runs before its track is published).
   bool get _localPresenting =>
+      _board.isLocalPresenting ||
       (widget.room.localParticipant?.isScreenShareEnabled() ?? false) ||
       (!kIsWeb && IosShareNative.supported && IosShareNative.broadcasting.value);
 
@@ -3782,7 +3966,7 @@ class _RoomPageState extends State<RoomPage>
       requestsOn: _shareRequestsOn,
     );
     // A phone browser cannot share at all: asking would lead to an accept that cannot start.
-    if (kIsWeb && lkPlatformIsWebMobile() && mode == LiveShareButton.request) return LiveShareButton.hidden;
+    if (kIsWeb && lkPlatformIsWebMobile() && mode == LiveShareButton.request && !_boardEnabled) return LiveShareButton.hidden;
     return mode;
   }
 
@@ -3803,6 +3987,8 @@ class _RoomPageState extends State<RoomPage>
       requestsOn: _shareRequestsOn,
     );
     switch (d) {
+      case LiveShareTap.stop when _board.isLocalPresenting:
+        _stopBoard();
       case LiveShareTap.stop:
       case LiveShareTap.start:
         // A host's start takes over once its share is live (_syncPresenters), so a closed picker stops nobody.
@@ -3832,7 +4018,10 @@ class _RoomPageState extends State<RoomPage>
       for (final p in widget.room.remoteParticipants.values)
         if (p.videoTrackPublications.any((t) => t.isScreenShare && !t.muted)) p.identity,
       if (local != null && me.isNotEmpty && _localPresenting) me,
+      // A whiteboard counts as presenting (D-087).
+      if (_boardEnabled && _board.presenter != null && _board.presenter != me) _board.presenter!,
     ];
+    _board.localIdentity = me;
     final wasPresenting = me.isNotEmpty && _share.isPresenting(me);
     _share.setPresenters(ids);
     final nowPresenting = me.isNotEmpty && _share.isPresenting(me);
@@ -3862,7 +4051,7 @@ class _RoomPageState extends State<RoomPage>
       if (_enforced.contains(id)) continue;
       _enforced.add(id);
       if (id == _myIdentity) {
-        unawaited(stopScreenShare().then((_) => _scheduleSort()));
+        unawaited(_stopAnyLocalShare().then((_) => _scheduleSort()));
         continue;
       }
       _share.askToStop(id, name: _myReactionName);
@@ -3939,7 +4128,7 @@ class _RoomPageState extends State<RoomPage>
   /// A host asked this device to stop its share (stopped it, took over, or handed over to someone else).
   Future<void> _stopMyShareAsked({required String byName, String? keep, bool takeover = false}) async {
     if (!_localPresenting && !screenShareActive) return;
-    await stopScreenShare();
+    await _stopAnyLocalShare();
     _scheduleSort();
     if (!mounted) return;
     final who = byName.isNotEmpty ? byName : t('المضيف', 'The host');
@@ -4033,7 +4222,7 @@ class _RoomPageState extends State<RoomPage>
       }
     }
     if (_localPresenting) {
-      await stopScreenShare();
+      await _stopAnyLocalShare();
       _scheduleSort();
     }
     // The grant is noted first: an answer that comes back at once (a lapsed request) already finds it.

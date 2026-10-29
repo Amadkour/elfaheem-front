@@ -54,6 +54,7 @@ import 'room_recorder.dart';
 import 'android_share.dart';
 import 'ios_share.dart';
 import 'share_options_sheet.dart';
+import '../whiteboard/board_protocol.dart' show BoardBackground;
 import 'share_presets.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
@@ -80,6 +81,25 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   // _startLiveKitAudioTap doc comment). Calling this when there's nothing
   // to rebind is a safe no-op. Other platforms can leave this a no-op.
   void restartAudioTap() {}
+
+  /// The share sheet offers the whiteboard too (D-087; room.dart: the `live.whiteboard` switch).
+  bool get whiteboardOffered => false;
+
+  /// The presenter picked the whiteboard in the share sheet (room.dart presents it; no track is published).
+  Future<void> startWhiteboard(BoardBackground background) async {}
+
+  /// iOS / desktop have no options sheet of their own: with the whiteboard on, Screen | Whiteboard is asked first.
+  /// True when the screen share should go on (false: the board was picked or the sheet was closed).
+  Future<bool> _askScreenOrBoard() async {
+    if (!whiteboardOffered) return true;
+    final choice = await showShareOptionsSheet(context, deviceAudioSupported: false, whiteboard: true, qualityChoice: false);
+    if (choice == null || !mounted) return false;
+    if (choice.isWhiteboard) {
+      await startWhiteboard(choice.whiteboard!);
+      return false;
+    }
+    return true;
+  }
 
   /// The server lets the shared tab / device audio go with the share (room.dart: LiveAllowedControls.shareAudio).
   bool get shareAudioAllowed => true;
@@ -293,8 +313,13 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       context,
       deviceAudioSupported: audioSupported,
       deviceAudioNote: apiLevel >= 34 ? shareDeviceAudioScopeNote(arabic: AppConfig.lang == 'ar') : null,
+      whiteboard: whiteboardOffered,
     );
     if (choice == null || !mounted) return;
+    if (choice.isWhiteboard) {
+      await startWhiteboard(choice.whiteboard!);
+      return;
+    }
     final preset = SharePreset.of(choice.quality);
     var nativeStarted = false;
     try {
@@ -491,13 +516,20 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       await _stopScreenShareWeb(local);
       return;
     }
-    if (lkPlatformIsWebMobile()) {
+    final mobileWeb = lkPlatformIsWebMobile();
+    if (mobileWeb && !whiteboardOffered) {
       showSnack(t('مشاركة الشاشة غير متاحة في متصفح الهاتف', 'Screen sharing is not available in a phone browser'));
       return;
     }
-    final audioSupported = web_rec.displayAudioSupported() && shareAudioAllowed;
-    final choice = await showShareOptionsSheet(context, deviceAudioSupported: audioSupported, web: true);
+    final audioSupported = !mobileWeb && web_rec.displayAudioSupported() && shareAudioAllowed;
+    final choice = await showShareOptionsSheet(context,
+        deviceAudioSupported: audioSupported, web: true, whiteboard: whiteboardOffered, screenAvailable: !mobileWeb);
     if (choice == null || !mounted) return;
+    if (choice.isWhiteboard) {
+      await startWhiteboard(choice.whiteboard!);
+      return;
+    }
+    if (mobileWeb) return;
     final preset = SharePreset.of(choice.quality);
     rtc.MediaStream? stream;
     try {
@@ -709,6 +741,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
     if (!isSharing) {
       // ── START ──────────────────────────────────────────────────────────────
+      if (!await _askScreenOrBoard()) return;
       try {
         // Register for broadcast events BEFORE showing picker so we never
         // miss 'videoChunksActive' or 'broadcastStopped'. Routes through
@@ -861,6 +894,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       LocalParticipant local,
       bool isSharing,
       ) async {
+    if (!isSharing && !await _askScreenOrBoard()) return;
     try {
       await _safeNegotiate(() => local.setScreenShareEnabled(
         !isSharing,
