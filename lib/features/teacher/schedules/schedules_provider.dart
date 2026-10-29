@@ -5,13 +5,10 @@
 library;
 
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart'
-    show TeacherCourse, CourseSchedule, ScheduleSession;
+    show TeacherCourse, CourseSchedule;
 
-import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
 import '../../../core/base_provider.dart';
-import '../../shared/calendar/calendar_api.dart';
-import '../../shared/calendar/calendar_models.dart';
 
 // ─────────────────────────────────────────────
 //  Day constants

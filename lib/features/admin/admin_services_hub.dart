@@ -50,6 +50,7 @@ import 'admin_theme_page.dart';
 import 'admin_users_page.dart';
 import 'admin_versions_page.dart';
 import 'admin_view_as_page.dart';
+import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'enrollment_request/teacher_transfers_provider.dart';
 import 'enrollment_request/teacher_transfers_screen.dart';
 import 'package:flutter_education_app/features/ads/ads_pages.dart';
@@ -386,6 +387,18 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context) {
           icon: Icons.settings_suggest_rounded,
           colors: AdminPalette.indigo,
           onTap: () => push(const AdminPlatformSettingsPage()),
+        ),
+        AdminService(
+          labelKey: 'admin_live_settings',
+          descKey: 'admin_live_settings_d',
+          label: liveSettingsTitle(),
+          desc: t('الترميز، ضعف الشبكة، جودة الكاميرات والشاشة، ومكان التسجيل — لكل الأجهزة دون تحديث',
+              'Codec, weak networks, camera and screen quality, and where classes are recorded — no app update'),
+          icon: Icons.speed_rounded,
+          colors: AdminPalette.rose,
+          visible: isSuper,
+          featureKey: kLiveSettingsFeatureKey,
+          onTap: () => push(const LiveSettingsPage()),
         ),
         AdminService(
           labelKey: 'features',
