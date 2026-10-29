@@ -148,7 +148,7 @@ Future<void> openAttentionItem(BuildContext context, AttentionItem x, {VoidCallb
       if (orgId != null) await openOrgSection(orgId, 'academics', sub: x.isSuggestion ? 'structure' : 'registrar');
     case 'complaints':
       if (x.tab == AttentionTabs.profile) {
-        await AppNavigator.openModule('profile');
+        await AppNavigator.openModule('support'); // the profile's Complaints page (D-086)
       } else {
         onOpen?.call();
       }

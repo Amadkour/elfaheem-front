@@ -33,8 +33,7 @@ import '../auth/reauth_sheet.dart';
 import '../shared/notification/notifications_provider.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/profile/change_password_widget.dart';
-import '../shared/profile/compalints/complaint_provider.dart';
-import '../shared/profile/compalints/complaints_screen.dart';
+import '../shared/profile/compalints/complaints_hub_page.dart';
 import '../shared/profile/update_account_widget.dart';
 import 'parent_alerts_page.dart';
 import 'parent_children_page.dart';
@@ -386,8 +385,7 @@ class _ParentMorePageState extends State<_ParentMorePage> {
               icon: Icons.support_agent_rounded,
               color: c.primary,
               label: 'help_center'.tr,
-              onTap: () => _push(ChangeNotifierProvider(
-                  create: (_) => ComplaintProvider(), child: const ComplaintsScreen())),
+              onTap: () => _push(const ComplaintsHubPage()), // D-086: New complaint + My complaints
             ),
           ],
         ),

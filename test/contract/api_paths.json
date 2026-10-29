@@ -438,6 +438,7 @@
   "GET /api/v1/org/public/me/assisting",
   "GET /api/v1/org/public/me/availability-requests",
   "GET /api/v1/org/public/me/complaints",
+  "GET /api/v1/org/public/me/complaints/to-resolve",
   "GET /api/v1/org/public/me/exams",
   "GET /api/v1/org/public/me/feed",
   "GET /api/v1/org/public/me/form-responses",

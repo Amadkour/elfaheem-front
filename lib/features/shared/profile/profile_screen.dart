@@ -40,7 +40,7 @@ import '../display/display_settings_page.dart' show DisplaySettingsTile;
 import '../rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'change_password_widget.dart';
 import 'compalints/complaint_provider.dart';
-import 'compalints/complaints_screen.dart';
+import 'compalints/complaints_hub_page.dart';
 import 'course_instractor_profile.dart';
 import 'privacy_export.dart' show DataExportPage, dataExportEntryLabel;
 import 'profile_provider.dart' show ProfileProvider;
@@ -385,25 +385,15 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                                     (p) => p?.count ?? 0,
                               ),
                               child: AppSettingsTile(
+                                // One page for every role here (D-086): New complaint · My complaints ·
+                                // To resolve (non-students). The super admin keeps the admin console.
                                 onTap: () async {
                                   final shared =
                                   Provider.of<ComplaintProvider?>(
                                     context,
                                     listen: false,
                                   );
-                                  await _push(
-                                    shared != null
-                                        ? ChangeNotifierProvider<
-                                        ComplaintProvider
-                                    >.value(
-                                      value: shared,
-                                      child: const ComplaintsScreen(),
-                                    )
-                                        : ChangeNotifierProvider(
-                                      create: (_) => ComplaintProvider(),
-                                      child: const ComplaintsScreen(),
-                                    ),
-                                  );
+                                  await _push(const ComplaintsHubPage());
                                   shared?.refreshCount();
                                 },
                                 icon: Icons.support_agent_rounded,

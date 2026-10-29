@@ -36,10 +36,14 @@ import 'package:flutter_education_app/design/app_username.dart';
 import 'package:flutter_education_app/design/app_mentions.dart';
 
 class NewComplaintScreen extends StatefulWidget {
-  const NewComplaintScreen({super.key, this.courseId, this.courseTitle});
+  const NewComplaintScreen({super.key, this.courseId, this.courseTitle, this.formOnly = false});
 
   final String? courseId;
   final String? courseTitle;
+
+  /// Just the form, no "history" tab: the profile's Complaints page (D-086) keeps the history itself. A sent
+  /// complaint pops the screen with the created [ComplaintModel].
+  final bool formOnly;
 
   @override
   State<NewComplaintScreen> createState() => _NewComplaintScreenState();
@@ -70,9 +74,11 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   void initState() {
     super.initState();
     _tabs = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ComplaintProvider>().loadComplaints(reset: true);
-    });
+    if (!widget.formOnly) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<ComplaintProvider>().loadComplaints(reset: true);
+      });
+    }
   }
 
   @override
@@ -114,6 +120,10 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       });
       _snack('complaint_sent_success'.tr, context.colors.success,
           Icons.check_circle_rounded);
+      if (widget.formOnly) {
+        Navigator.of(context).pop(result);
+        return;
+      }
       _tabs.animateTo(1);
     } else {
       _snack('error_try_again'.tr, context.colors.danger, Icons.error_rounded);
@@ -143,43 +153,15 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       child: SafeArea(
         child: Column(
           children: [
-            ScreenAppBar(title: 'complaints_and_support'.tr),
-            _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
+            ScreenAppBar(title: widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr),
+            if (!widget.formOnly) _TabBar(controller: _tabs, unreadCount: _unreadCount(p)),
+            if (widget.formOnly) Expanded(child: _form(p)),
+            if (!widget.formOnly)
             Expanded(
               child: TabBarView(
                 controller: _tabs,
                 children: [
-                  _FormTab(
-                    target: ComplaintTargetPicker(
-                      type: _targetType,
-                      id: _targetId,
-                      label: _targetLabel,
-                      onChanged: (type, id, label) => setState(() {
-                        _targetType = type;
-                        _targetId = id;
-                        _targetLabel = label;
-                      }),
-                    ),
-                    formKey: _formKey,
-                    titleCtrl: _titleCtrl,
-                    descCtrl: _descCtrl,
-                    suggestionCtrl: _suggestionCtrl,
-                    suggestionExpanded: _suggestionExpanded,
-                    category: _category,
-                    priority: _priority,
-                    courseTitle: widget.courseTitle,
-                    isSending: p.isSending || p.isUploadingImage,
-                    pendingAttachments: p.pendingAttachments,
-                    onCategoryChanged: (v) => setState(() => _category = v),
-                    onPriorityChanged: (v) => setState(() => _priority = v),
-                    onToggleSuggestion: () =>
-                        setState(() => _suggestionExpanded = !_suggestionExpanded),
-                    onSubmit: _submit,
-                    onPickGallery: () => p.pickComplaintImages(),
-                    onPickCamera: () => p.pickComplaintImageFromCamera(),
-                    onPickFile: () => p.pickComplaintFile(),
-                    onRemoveImage: (i) => p.removeComplaintImage(i),
-                  ),
+                  _form(p),
                   _HistoryTab(
                     provider: p,
                     expandedIds: _expandedIds,
@@ -194,6 +176,38 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
       ),
     );
   }
+
+  Widget _form(ComplaintProvider p) => _FormTab(
+        target: ComplaintTargetPicker(
+          type: _targetType,
+          id: _targetId,
+          label: _targetLabel,
+          onChanged: (type, id, label) => setState(() {
+            _targetType = type;
+            _targetId = id;
+            _targetLabel = label;
+          }),
+        ),
+        formKey: _formKey,
+        titleCtrl: _titleCtrl,
+        descCtrl: _descCtrl,
+        suggestionCtrl: _suggestionCtrl,
+        suggestionExpanded: _suggestionExpanded,
+        category: _category,
+        priority: _priority,
+        courseTitle: widget.courseTitle,
+        isSending: p.isSending || p.isUploadingImage,
+        pendingAttachments: p.pendingAttachments,
+        onCategoryChanged: (v) => setState(() => _category = v),
+        onPriorityChanged: (v) => setState(() => _priority = v),
+        onToggleSuggestion: () =>
+            setState(() => _suggestionExpanded = !_suggestionExpanded),
+        onSubmit: _submit,
+        onPickGallery: () => p.pickComplaintImages(),
+        onPickCamera: () => p.pickComplaintImageFromCamera(),
+        onPickFile: () => p.pickComplaintFile(),
+        onRemoveImage: (i) => p.removeComplaintImage(i),
+      );
 
   int _unreadCount(ComplaintProvider p) =>
       p.complaints.where((c) => !c.isReadByUser).length;

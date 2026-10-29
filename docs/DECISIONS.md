@@ -866,3 +866,34 @@ then take it. Tests: `test/ui/analytics_summary_test.dart`, `analytics_summary_l
 **Rejected.** A period switch over undated numbers (it would change nothing); calling `GET /student/exams` from the
 tab for dated exam scores (one more request on every open, and only exams would follow the period); a percentile
 ("ahead of 70 % of your class": the server sends class averages, not the distribution).
+
+## D-086 — One Complaints page in the profile: New complaint · My complaints · To resolve · 2026-10-29
+
+**Context.** The owner (item 9): the complaints entry of the profile tab, for everyone but the super admin, opens a
+new complaint and the history, and non-students may open the complaints they must solve from it. The app had two
+complaint systems with separate screens: platform complaints (`/api/v1/complaints`, one list mixing my own with the
+ones I handle, no create button on it) and organization complaints (`/api/v1/org/…/complaints`, reachable only
+inside the organization's pages).
+**Decision.** `ComplaintsHubPage` (`lib/features/shared/profile/compalints/complaints_hub_*.dart`) is the page of the
+profile's Help-center tile, the parent's "More" tile, the `support` deep link without an id and the profile's
+complaints attention item, for every role whose home is not the admin dashboard (admin / super-admin / developer
+keep `ComplaintsScreen`, the console).
+- *One row shape* (`HubRow`, pure, `test/org/complaints_hub_test.dart`) over both sources; a row opens its existing
+  thread (platform `ComplaintDetailScreen`; organization member side `OrgMyComplaintThread`, made public; staff side
+  `OrgComplaintThreadScreen`, which now takes `orgId` / `canAct` so it works without opening the organization).
+- *My complaints*: platform `scope=mine` + `GET /org/public/me/complaints`; unread replies first, then the latest
+  change.
+- *To resolve*: platform `scope=to_resolve` + the new cross-organization `GET /org/public/me/complaints/to-resolve`
+  (departments where I may update complaints + those assigned to me, never my own). Most urgent first: open, overdue,
+  nearest reply-by, priority, unread, oldest. A platform complaint has no reply-by on the server: its priority's usual
+  window (the organizations' SLA hours from its creation) orders it but is never shown as a deadline. Quick Start /
+  Resolve are optimistic and rolled back on refusal; Reply opens the thread. Shown to everyone but students and
+  parents, and to anyone who has rows there (a student who is a department's staff member).
+- *New complaint*: no organization → the platform form (`NewComplaintScreen(formOnly: true)`); a member of
+  organizations first picks the destination (the app team or one of them → the organization's composer).
+- Both lists are loaded at once (4 requests on open), at most 100 platform rows and 50 / 100 organization rows per
+  list, filtered and searched on the device; an older server's ignored `scope` is split by owner, its missing
+  cross-organization route reads as "nothing there".
+**Rejected.** Merging the two complaint systems on the server (a migration and every existing screen); listing the
+governance work items instead (their comments are not the complaint thread); opening the organization (mode switch,
+timezone, disable list) just to read one complaint; server-side search per keystroke over two sources.

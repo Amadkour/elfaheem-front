@@ -544,7 +544,7 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
                     child: RowCard(
                       accent: x['unread'] == true ? c.primary : null,
                       onTap: () async {
-                        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => _MyComplaintThread(id: asInt(x['id']))));
+                        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrgMyComplaintThread(id: asInt(x['id']))));
                         load();
                       },
                       child: Row(children: [
@@ -569,15 +569,17 @@ class _MyComplaintsState extends State<_MyComplaints> with _Loader<_MyComplaints
   }
 }
 
-class _MyComplaintThread extends StatefulWidget {
-  const _MyComplaintThread({required this.id});
+class OrgMyComplaintThread extends StatefulWidget {
+  /// A complaint I filed in an organization (the member side: thread, reply, rate, reopen). Public for the profile's
+  /// Complaints page (D-086).
+  const OrgMyComplaintThread({super.key, required this.id});
   final int id;
 
   @override
-  State<_MyComplaintThread> createState() => _MyComplaintThreadState();
+  State<OrgMyComplaintThread> createState() => _OrgMyComplaintThreadState();
 }
 
-class _MyComplaintThreadState extends State<_MyComplaintThread> {
+class _OrgMyComplaintThreadState extends State<OrgMyComplaintThread> {
   Map<String, dynamic>? _d;
   bool _failed = false, _sending = false;
   final _msg = TextEditingController();

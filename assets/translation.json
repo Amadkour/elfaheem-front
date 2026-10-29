@@ -17564,5 +17564,233 @@
   "home_t_your_teaching": {
     "en": "Your teaching",
     "ar": "تدريسك"
+  },
+  "chub_title": {
+    "en": "Complaints",
+    "ar": "الشكاوى"
+  },
+  "chub_hero_title": {
+    "en": "How can we help?",
+    "ar": "كيف نقدر نساعدك؟"
+  },
+  "chub_hero_sub": {
+    "en": "Tell us what went wrong — every complaint gets a reference number and a reply.",
+    "ar": "أخبرنا بما حدث — كل شكوى تأخذ رقماً مرجعياً وتصلك متابعتها."
+  },
+  "chub_new": {
+    "en": "New complaint",
+    "ar": "شكوى جديدة"
+  },
+  "chub_mine": {
+    "en": "My complaints",
+    "ar": "شكاواي"
+  },
+  "chub_to_resolve": {
+    "en": "To resolve",
+    "ar": "مطلوب حلها"
+  },
+  "chub_search": {
+    "en": "Search by title, reference or name",
+    "ar": "ابحث بالعنوان أو الرقم المرجعي أو الاسم"
+  },
+  "chub_f_all": {
+    "en": "All",
+    "ar": "الكل"
+  },
+  "chub_f_open": {
+    "en": "Open",
+    "ar": "مفتوحة"
+  },
+  "chub_f_in_progress": {
+    "en": "In progress",
+    "ar": "قيد المعالجة"
+  },
+  "chub_f_resolved": {
+    "en": "Resolved",
+    "ar": "تم حلها"
+  },
+  "chub_f_closed": {
+    "en": "Closed",
+    "ar": "مغلقة"
+  },
+  "chub_f_active": {
+    "en": "Needs action",
+    "ar": "تحتاج إجراء"
+  },
+  "chub_f_overdue": {
+    "en": "Overdue",
+    "ar": "متأخرة"
+  },
+  "chub_f_unread": {
+    "en": "Unread",
+    "ar": "غير مقروءة"
+  },
+  "chub_st_open": {
+    "en": "Open",
+    "ar": "مفتوحة"
+  },
+  "chub_st_in_progress": {
+    "en": "In progress",
+    "ar": "قيد المعالجة"
+  },
+  "chub_st_waiting_me": {
+    "en": "Waiting for you",
+    "ar": "بانتظار ردك"
+  },
+  "chub_st_waiting": {
+    "en": "Awaiting their reply",
+    "ar": "بانتظار رد صاحبها"
+  },
+  "chub_st_resolved": {
+    "en": "Resolved",
+    "ar": "تم الحل"
+  },
+  "chub_st_closed": {
+    "en": "Closed",
+    "ar": "مغلقة"
+  },
+  "chub_new_reply": {
+    "en": "New reply",
+    "ar": "رد جديد"
+  },
+  "chub_new_item": {
+    "en": "New",
+    "ar": "جديدة"
+  },
+  "chub_app_team": {
+    "en": "App support team",
+    "ar": "فريق دعم التطبيق"
+  },
+  "chub_anonymous": {
+    "en": "Anonymous",
+    "ar": "هوية محجوبة"
+  },
+  "chub_overdue_by": {
+    "en": "Overdue {t}",
+    "ar": "متأخرة {t}"
+  },
+  "chub_due_in": {
+    "en": "Reply within {t}",
+    "ar": "الرد خلال {t}"
+  },
+  "chub_reply": {
+    "en": "Reply",
+    "ar": "رد"
+  },
+  "chub_start": {
+    "en": "Start",
+    "ar": "ابدأ"
+  },
+  "chub_resolve": {
+    "en": "Resolve",
+    "ar": "تم الحل"
+  },
+  "chub_resolved_toast": {
+    "en": "Marked as resolved — the sender was notified",
+    "ar": "تم تعليمها كمحلولة وإبلاغ صاحبها"
+  },
+  "chub_started_toast": {
+    "en": "Moved to in progress — the sender was notified",
+    "ar": "نُقلت إلى قيد المعالجة وأُبلغ صاحبها"
+  },
+  "chub_action_failed": {
+    "en": "Couldn't update it. Try again.",
+    "ar": "تعذّر التحديث. حاول مرة أخرى."
+  },
+  "chub_empty_mine_t": {
+    "en": "No complaints yet",
+    "ar": "لا شكاوى بعد"
+  },
+  "chub_empty_mine_m": {
+    "en": "If something goes wrong, tell us — we'll follow it up with you until it's solved.",
+    "ar": "إن واجهتك مشكلة فأخبرنا — سنتابعها معك حتى تُحل."
+  },
+  "chub_empty_resolve_t": {
+    "en": "All caught up",
+    "ar": "لا شيء ينتظرك"
+  },
+  "chub_empty_resolve_m": {
+    "en": "Complaints you're responsible for appear here, the most urgent first.",
+    "ar": "تظهر هنا الشكاوى المسؤول عنها، الأكثر إلحاحاً أولاً."
+  },
+  "chub_empty_filter_t": {
+    "en": "Nothing matches",
+    "ar": "لا نتائج مطابقة"
+  },
+  "chub_empty_filter_m": {
+    "en": "Try another filter or search.",
+    "ar": "جرّب تصفية أو بحثاً آخر."
+  },
+  "chub_clear": {
+    "en": "Clear filters",
+    "ar": "مسح التصفية"
+  },
+  "chub_partial": {
+    "en": "Some complaints couldn't load. Pull down to try again.",
+    "ar": "تعذّر تحميل بعض الشكاوى. اسحب للأسفل لإعادة المحاولة."
+  },
+  "chub_stat_open": {
+    "en": "open",
+    "ar": "مفتوحة"
+  },
+  "chub_stat_replies": {
+    "en": "unread",
+    "ar": "غير مقروءة"
+  },
+  "chub_stat_resolved": {
+    "en": "closed",
+    "ar": "منتهية"
+  },
+  "chub_stat_to_resolve": {
+    "en": "to resolve",
+    "ar": "مطلوب حلها"
+  },
+  "chub_where_t": {
+    "en": "Where should it go?",
+    "ar": "إلى من نرسل شكواك؟"
+  },
+  "chub_where_sub": {
+    "en": "Pick who can solve it — it reaches the right team at once.",
+    "ar": "اختر الجهة القادرة على حلها — تصل للفريق المختص مباشرة."
+  },
+  "chub_where_app": {
+    "en": "The app team",
+    "ar": "فريق التطبيق"
+  },
+  "chub_where_app_sub": {
+    "en": "Your account, payments, courses and anything in the app",
+    "ar": "حسابك والدفع والكورسات وأي شيء في التطبيق"
+  },
+  "chub_where_org_sub": {
+    "en": "A department of your organization",
+    "ar": "إحدى إدارات مؤسستك"
+  },
+  "chub_span_min": {
+    "en": "{n} min",
+    "ar": "{n} د"
+  },
+  "chub_span_h": {
+    "en": "{n} h",
+    "ar": "{n} س"
+  },
+  "chub_span_d": {
+    "en": "{n} d",
+    "ar": "{n} يوم"
+  },
+  "chub_just_now": {
+    "en": "just now",
+    "ar": "الآن"
+  },
+  "chub_ago_min": {
+    "en": "{n} min ago",
+    "ar": "منذ {n} د"
+  },
+  "chub_ago_h": {
+    "en": "{n} h ago",
+    "ar": "منذ {n} س"
+  },
+  "chub_ago_d": {
+    "en": "{n} d ago",
+    "ar": "منذ {n} يوم"
   }
 }

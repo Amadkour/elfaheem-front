@@ -20,6 +20,7 @@ import '../../features/org/org_reports/report_page.dart' show OrgReceivedReports
 import '../../features/shared/course_profile/course_profile_screen.dart' show CourseProfileScreen;
 import '../../features/shared/profile/compalints/complaint_provider.dart' show ComplaintProvider;
 import '../../features/shared/profile/compalints/complaints_screen.dart' show ComplaintDetailScreen, ComplaintsScreen;
+import '../../features/shared/profile/compalints/complaints_hub_page.dart' show openComplaintsHub;
 import '../../features/student/courses/details/course_link_loader.dart';
 import '../../features/shared/public_profile/public_profile_page.dart' show PublicProfileScreen;
 import '../../main.dart';
@@ -109,9 +110,15 @@ class AppNavigator {
                   create: (_) => ComplaintProvider(), child: ComplaintDetailScreen(complaintId: targetId))));
           return;
         }
-        await nav.push(MaterialPageRoute(
-            settings: const RouteSettings(name: '/help-center'),
-            builder: (_) => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const ComplaintsScreen())));
+        // the platform's admin console for the roles on the admin dashboard; everyone else the profile's
+        // Complaints page (New complaint · My complaints · To resolve, D-086)
+        if (const ['admin', 'super-admin', 'developer'].contains(ctx.read<MyAuthProvider>().currentUser?.role)) {
+          await nav.push(MaterialPageRoute(
+              settings: const RouteSettings(name: '/help-center'),
+              builder: (_) => ChangeNotifierProvider<ComplaintProvider>(create: (_) => ComplaintProvider(), child: const ComplaintsScreen())));
+        } else {
+          await openComplaintsHub(nav);
+        }
         return;
       case 'notifications':
         await nav.pushNamed('/notifications');
