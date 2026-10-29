@@ -7017,6 +7017,222 @@
     "en": "My exams and attendance",
     "ar": "اختباراتي وحضوري"
   },
+  "an2_tile_in_progress": {
+    "en": "In progress",
+    "ar": "قيد التعلّم"
+  },
+  "an2_title": {
+    "en": "Analytics",
+    "ar": "التحليلات"
+  },
+  "an2_sub_student": {
+    "en": "How your learning is going",
+    "ar": "ملخص تعلّمك"
+  },
+  "an2_sub_student_name": {
+    "en": "Hi {name}, here is how your learning is going.",
+    "ar": "أهلًا {name}، هذا ملخص تعلّمك."
+  },
+  "an2_sub_teacher": {
+    "en": "How your classes are doing",
+    "ar": "أداء فصولك في لمحة"
+  },
+  "an2_overall": {
+    "en": "Overall",
+    "ar": "الإجمالي"
+  },
+  "an2_class_overall": {
+    "en": "Average",
+    "ar": "المتوسط"
+  },
+  "an2_vs_class": {
+    "en": "vs class",
+    "ar": "عن الدفعة"
+  },
+  "an2_same_as_class": {
+    "en": "Same as class",
+    "ar": "مثل الدفعة"
+  },
+  "an2_you": {
+    "en": "You",
+    "ar": "أنت"
+  },
+  "an2_class_avg": {
+    "en": "Class average",
+    "ar": "متوسط الدفعة"
+  },
+  "an2_for_you": {
+    "en": "For you",
+    "ar": "لك الآن"
+  },
+  "an2_your_courses": {
+    "en": "Your courses",
+    "ar": "مقرراتك"
+  },
+  "an2_your_classes": {
+    "en": "Your classes",
+    "ar": "فصولك"
+  },
+  "an2_all_courses": {
+    "en": "All courses ({n})",
+    "ar": "كل المقررات ({n})"
+  },
+  "an2_all_courses_title": {
+    "en": "All courses",
+    "ar": "كل المقررات"
+  },
+  "an2_show_all": {
+    "en": "Show all ({n})",
+    "ar": "عرض الكل ({n})"
+  },
+  "an2_show_less": {
+    "en": "Show less",
+    "ar": "عرض أقل"
+  },
+  "an2_exam_results": {
+    "en": "Exam results",
+    "ar": "نتائج الاختبارات"
+  },
+  "an2_passed": {
+    "en": "Passed",
+    "ar": "ناجح"
+  },
+  "an2_below_pass": {
+    "en": "Below pass",
+    "ar": "دون النجاح"
+  },
+  "an2_passed_of": {
+    "en": "{n} of {m} passed",
+    "ar": "نجحت في {n} من {m}"
+  },
+  "an2_sessions_of": {
+    "en": "{a} of {h} sessions",
+    "ar": "{a} من {h} محاضرة"
+  },
+  "an2_tile_attended": {
+    "en": "Sessions attended",
+    "ar": "محاضرات حضرتها"
+  },
+  "an2_tile_passed": {
+    "en": "Exams passed",
+    "ar": "اختبارات نجحت فيها"
+  },
+  "an2_tile_saved": {
+    "en": "Saved to review",
+    "ar": "محفوظة للمراجعة"
+  },
+  "an2_tile_lectures": {
+    "en": "Lectures",
+    "ar": "المحاضرات"
+  },
+  "an2_tile_completed": {
+    "en": "Completed",
+    "ar": "مكتملة"
+  },
+  "an2_tile_students": {
+    "en": "Students",
+    "ar": "الطلاب"
+  },
+  "an2_tile_need_attention": {
+    "en": "Need attention",
+    "ar": "بحاجة لمتابعة"
+  },
+  "an2_tile_pass_rate": {
+    "en": "Exam pass rate",
+    "ar": "نسبة النجاح"
+  },
+  "an2_attention_sub": {
+    "en": "Under 60 % attendance or 50 % in exams",
+    "ar": "أقل من 60٪ حضورًا أو 50٪ في الاختبارات"
+  },
+  "an2_ins_low_att": {
+    "en": "You attended {a} of {h} sessions in {course}. Join the next one to get back on track.",
+    "ar": "حضرت {a} من {h} محاضرة في {course}. احضر المحاضرة القادمة لتعود إلى المسار."
+  },
+  "an2_ins_low_exams_review": {
+    "en": "Your exam average in {course} is {pct}. Go over the {questions} you saved before the next exam.",
+    "ar": "متوسط اختباراتك في {course} هو {pct}. راجع {questions} حفظتها قبل الاختبار القادم."
+  },
+  "an2_ins_low_exams": {
+    "en": "Your exam average in {course} is {pct}. A short review before the next exam will help.",
+    "ar": "متوسط اختباراتك في {course} هو {pct}. مراجعة قصيرة قبل الاختبار القادم ستساعدك."
+  },
+  "an2_ins_catch_up": {
+    "en": "Watch {lectures} to catch up with your class in {course}.",
+    "ar": "شاهد {lectures} لتلحق بزملائك في {course}."
+  },
+  "an2_ins_left": {
+    "en": "{lectures} left in {course}. A little every day gets you there.",
+    "ar": "باقي {lectures} في {course}. القليل كل يوم يوصلك."
+  },
+  "an2_ins_review": {
+    "en": "You saved {questions} to review in {course}.",
+    "ar": "حفظت {questions} للمراجعة في {course}."
+  },
+  "an2_ins_ahead": {
+    "en": "Your exams in {course} are {a} points above the class average. Great work!",
+    "ar": "اختباراتك في {course} أعلى من متوسط الدفعة بـ {a} نقطة. عمل رائع!"
+  },
+  "an2_ins_all_good": {
+    "en": "Everything is on track. Keep it up!",
+    "ar": "كل شيء يسير على ما يرام. استمر!"
+  },
+  "an2_tins_at_risk": {
+    "en": "{students} in {course} are under 60 % attendance or 50 % in exams.",
+    "ar": "{students} في {course} أقل من 60٪ حضورًا أو 50٪ في الاختبارات."
+  },
+  "an2_tins_low_att": {
+    "en": "Attendance in {course} is {pct}. A reminder before the next session may help.",
+    "ar": "الحضور في {course} {pct}. تذكير قبل المحاضرة القادمة قد يساعد."
+  },
+  "an2_tins_pass": {
+    "en": "Only {pct} of students pass the exams in {course}. A review session could help.",
+    "ar": "{pct} فقط من الطلاب ينجحون في اختبارات {course}. قد تساعد محاضرة مراجعة."
+  },
+  "an2_tins_no_marks": {
+    "en": "No marks are shared with the students of {course} yet.",
+    "ar": "لم تُشارك أي درجات مع طلاب {course} بعد."
+  },
+  "an2_tins_best": {
+    "en": "{course} is your strongest class, at {pct} progress.",
+    "ar": "{course} أقوى فصولك، بتقدّم {pct}."
+  },
+  "an2_head_empty": {
+    "en": "Your progress shows here as you learn.",
+    "ar": "سيظهر تقدّمك هنا مع تعلّمك."
+  },
+  "an2_head_ahead_one": {
+    "en": "You're ahead of the class average.",
+    "ar": "أنت أعلى من متوسط الدفعة."
+  },
+  "an2_head_ahead_all": {
+    "en": "You're ahead of the class average in all {m} courses.",
+    "ar": "أنت أعلى من متوسط الدفعة في كل مقرراتك ({m})."
+  },
+  "an2_head_ahead": {
+    "en": "You're ahead of the class average in {n} of {m} courses.",
+    "ar": "أنت أعلى من متوسط الدفعة في {n} من {m} مقررات."
+  },
+  "an2_head_catch_up": {
+    "en": "You're catching up. {course} is the best place to start.",
+    "ar": "أنت في طريقك للحاق. ابدأ بـ {course}."
+  },
+  "an2_head_great": {
+    "en": "You're doing great. Every course is on track.",
+    "ar": "أداؤك رائع. كل مقرراتك على المسار."
+  },
+  "an2_head_steady": {
+    "en": "Steady progress. Small steps every day add up.",
+    "ar": "تقدّم ثابت. الخطوات الصغيرة كل يوم تصنع الفرق."
+  },
+  "an2_thead_risk": {
+    "en": "{students} could use your attention this week.",
+    "ar": "{students} يحتاجون اهتمامك هذا الأسبوع."
+  },
+  "an2_thead_empty": {
+    "en": "Class numbers appear once your students start learning.",
+    "ar": "تظهر أرقام الفصل عندما يبدأ طلابك التعلّم."
+  },
   "an_subtitle": {
     "en": "Choose a course to view your attendance and results",
     "ar": "اختر كورساً لعرض سجل حضورك ونتائجك"

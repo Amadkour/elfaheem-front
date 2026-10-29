@@ -1,13 +1,18 @@
 // lib/features/teacher/analysis/analytics_hub_screen.dart
-// The teacher's analytics hub — same design system as the student and parent analytics (shared/analytics).
+// The instructor's analytics — the "Analysis" tab (kill switch teacher_tab_analysis). Same summary language as the
+// student's (shared/analytics/analytics_summary*.dart):
 //
-//   • header: courses, students, sessions and how many students need attention right now
-//   • "Needs attention" strip: students below 60 % attendance or 50 % exam average, across every course —
-//     tap one → their analytics profile (the same profile the student and the parent see)
-//   • one card per course: class snapshot (progress / attendance / exam average + pass rate), then
-//     Data Lab (the full sheet) · Attendance · Exams · Read flags
-// The class numbers come from GET /api/v1/data-lab/overview; when Data Lab is off for a course the card simply
-// shows the shortcuts.
+//   • header: "Analytics" + one line, refresh for mouse users
+//   • hero: class progress · attendance · exam average (averaged over the courses) as concentric rings, ONE sentence
+//     ("6 students could use your attention this week.")
+//   • four count tiles: courses · students · need attention · exam pass rate
+//   • "For you": students at risk, weak attendance, a low pass rate, marks not shared yet, the strongest class
+//   • "Your classes": one bar per course for Progress | Attendance | Exams (segmented); a bar opens the course's tools
+//     (Data Lab · Attendance · Exams · Read flags); "All courses" = search + the full course cards
+//   • "Needs your attention": students under 60 % attendance or 50 % in exams across every course, the first 3 +
+//     Show all — tap one → their analytics profile (the same profile the student and the parent see)
+// The class numbers come from GET /api/v1/data-lab/overview (one call for every course); when Data Lab is off for a
+// course it simply has no figures and keeps its shortcuts.
 library;
 
 import 'package:flutter/material.dart';
@@ -17,6 +22,8 @@ import 'package:provider/provider.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
+import '../../shared/analytics/analytics_summary.dart';
+import '../../shared/analytics/analytics_summary_ui.dart';
 import '../../shared/analytics/analytics_ui.dart';
 import '../../student/analysis/student_analytics_profile_screen.dart';
 import '../../student/analysis/student_analytics_provider.dart';
@@ -28,8 +35,9 @@ import '../home/teacher_models.dart';
 import 'attendance/teacher_attendance_screen.dart';
 import 'exam/teacher_exam_hub_screen.dart';
 import 'flags/teacher_read_flags_screen.dart';
+import 'package:flutter_education_app/design/app_charts.dart' show appChartPalette, appCompactNumber;
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 
 String _courseTitle(TeacherCourse c) => (AppConfig.lang == 'ar' ? c.titleAr : c.titleEn) ?? c.titleAr ?? c.titleEn ?? '';
 
@@ -52,6 +60,9 @@ class _OverviewStore extends ChangeNotifier {
   bool loading = false, failed = false;
   String _sig = '';
 
+  /// True once a load for the current course list finished (well or not).
+  bool get settled => !loading && _sig.isNotEmpty;
+
   Future<void> load(List<int> ids, {bool force = false}) async {
     final sig = ids.join(',');
     if (!force && sig == _sig) return;
@@ -64,12 +75,29 @@ class _OverviewStore extends ChangeNotifier {
       byCourse = {for (final x in dlList(r['items'])) (x['course_id'] as num).toInt(): _Snapshot(x)};
       failed = false;
     } catch (_) {
-      failed = true; // the hub still works: the cards just show their shortcuts
+      failed = true; // the hub still works: the courses just have no figures
     } finally {
       loading = false;
       notifyListeners();
     }
   }
+}
+
+/// A course + its class snapshot as plain numbers for the summary.
+AnCourseFacts _facts(TeacherCourse c, _Snapshot? s) {
+  final on = s != null && s.enabled;
+  return AnCourseFacts(
+    id: c.id,
+    title: _courseTitle(c),
+    progress: on ? s.n('progress') : null,
+    attendance: on ? s.n('attendance') : null,
+    exams: on ? s.n('exam_avg') : null,
+    lectures: c.sessionsCount,
+    students: c.studentsCount,
+    atRisk: on ? s.atRisk : 0,
+    passRate: on ? s.n('exam_pass_rate') : null,
+    sharedMarks: on ? s.published : null,
+  );
 }
 
 class TeacherAnalyticsHubScreen extends StatefulWidget {
@@ -84,9 +112,7 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
   bool get wantKeepAlive => true;
 
   final _store = _OverviewStore();
-  final _searchCtrl = TextEditingController();
-  String _search = '';
-  bool _attentionFirst = false;
+  AnMetric _metric = AnMetric.progress;
 
   @override
   void initState() {
@@ -103,6 +129,298 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
     _store
       ..removeListener(_onStore)
       ..dispose();
+    super.dispose();
+  }
+
+  void _push(Widget screen) => Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+
+  TeacherCourse? _course(int? id) {
+    for (final c in context.read<TeacherCoursesProvider>().allCourses) {
+      if (c.id == id) return c;
+    }
+    return null;
+  }
+
+  void _openAll() {
+    final prov = context.read<TeacherCoursesProvider>();
+    _push(ChangeNotifierProvider<TeacherCoursesProvider>.value(
+      value: prov,
+      child: _AllClassesPage(store: _store),
+    ));
+  }
+
+  /// The course's tools in a sheet (the same four shortcuts as its full card).
+  void _openTools(TeacherCourse course) {
+    final title = _courseTitle(course);
+    final s = _store.byCourse[course.id];
+    showAppSheet<void>(context, (ctx) {
+      final c = ctx.colors;
+      void go(Widget w) {
+        Navigator.pop(ctx);
+        _push(w);
+      }
+
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          AppSheetHeader(title),
+          if (s == null || s.enabled) ...[
+            ParentComponent(
+              featureKey: 'analytics_hub.data_lab',
+              child: _DataLabButton(published: s?.published ?? 0, onTap: () => go(DataLabScreen(courseId: course.id, courseTitle: title))),
+            ),
+            const SizedBox(height: 10),
+          ],
+          ParentComponent(
+            featureKey: 'analytics_hub.attendance',
+            child: _ActionButton(
+              icon: Icons.fact_check_rounded,
+              label: 'analytics_btn_attendance'.tr,
+              sublabel: 'analytics_btn_attendance_sub'.tr,
+              color: c.success,
+              onTap: () => go(TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ParentComponent(
+            featureKey: 'analytics_hub.exams',
+            child: _ActionButton(
+              icon: Icons.quiz_rounded,
+              label: 'analytics_btn_exams'.tr,
+              sublabel: 'analytics_btn_exams_sub'.tr,
+              color: c.primary,
+              onTap: () => go(TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ParentComponent(
+            featureKey: 'analytics_hub.read_flags',
+            child: _ActionButton(
+              icon: Icons.flag_rounded,
+              label: 'tflag_btn'.tr,
+              sublabel: 'tflag_btn_sub'.tr,
+              color: c.danger,
+              onTap: () => go(TeacherReadFlagsScreen(courseId: course.id, courseTitle: title)),
+            ),
+          ),
+        ]),
+      );
+    });
+  }
+
+  VoidCallback? _insightAction(AnInsight i) {
+    final course = _course(i.courseId);
+    if (course == null) return null;
+    final title = _courseTitle(course);
+    return switch (i.target) {
+      AnTarget.attendance => () => _push(TeacherAttendanceScreen(courseId: course.id, courseTitle: title)),
+      AnTarget.exams => () => _push(TeacherExamHubScreen(courseId: course.id, courseTitle: title)),
+      AnTarget.dataLab => () => _push(DataLabScreen(courseId: course.id, courseTitle: title)),
+      AnTarget.course || AnTarget.review => () => _openTools(course),
+      AnTarget.none => null,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final prov = context.watch<TeacherCoursesProvider>();
+    final all = prov.allCourses;
+    // (re)load the class numbers whenever the course list changes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !prov.isLoading) _store.load([for (final c in all) c.id]);
+    });
+
+    final Widget body;
+    if ((prov.isLoading && all.isEmpty) || (all.isNotEmpty && !_store.settled && _store.byCourse.isEmpty)) {
+      body = const AnSummarySkeleton();
+    } else if (all.isEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _header(all),
+          const SizedBox(height: 24),
+          AnEmpty(icon: Icons.school_outlined, title: 'no_courses_yet'.tr, sub: 'add_course_first_hint'.tr),
+        ]),
+      );
+    } else {
+      body = _summary(all);
+    }
+
+    return BasePage(
+      key: const ValueKey('analytics_hub'),
+      useWebCard: true,
+      enableFooterWidget: false,
+      child: ColoredBox(
+        color: context.colors.background,
+        child: AppRefresh(
+          onRefresh: () => _store.load([for (final c in all) c.id], force: true),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [SliverToBoxAdapter(child: body)],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _header(List<TeacherCourse> all) => AnPageHeader(
+        title: anTr('an2_title', 'Analytics'),
+        subtitle: anTr('an2_sub_teacher', 'How your classes are doing'),
+        actions: [
+          AnHeaderIcon(
+            icon: Icons.refresh_rounded,
+            tooltip: anTr('an_refresh', 'Refresh'),
+            onTap: () => _store.load([for (final c in all) c.id], force: true),
+          ),
+        ],
+      );
+
+  Widget _summary(List<TeacherCourse> all) {
+    final c = context.colors;
+    final facts = [for (final x in all) _facts(x, _store.byCourse[x.id])];
+    final totals = anTotals(facts);
+    final metrics = anAvailableMetrics(facts);
+    final metric = metrics.contains(_metric) ? _metric : (metrics.isEmpty ? AnMetric.progress : metrics.first);
+    final risk = facts.fold<int>(0, (s, f) => s + f.atRisk);
+    final passRate = anMean(facts.map((f) => f.passRate));
+
+    final hero = ParentComponent(
+      featureKey: 'analytics_hub.header',
+      child: AnSummaryHero(
+        headline: anHeadlineText(teacherHeadline(facts)),
+        rings: [for (final m in AnMetric.values) AnRingSpec(metric: m, value: totals.value(m))],
+        overall: totals.overall,
+        overallLabel: anTr('an2_class_overall', 'Average'),
+      ),
+    );
+
+    final tiles = AnStatTiles(tiles: [
+      AnTileSpec(
+        icon: Icons.menu_book_rounded,
+        label: anTr('an_courses', 'Courses'),
+        value: '${all.length}',
+        color: anMetricColor(context, AnMetric.progress),
+        onTap: _openAll,
+      ),
+      AnTileSpec(
+        icon: Icons.people_rounded,
+        label: anTr('an2_tile_students', 'Students'),
+        value: appCompactNumber(all.fold<int>(0, (s, x) => s + x.studentsCount)),
+        color: appChartPalette(context)[3],
+      ),
+      AnTileSpec(
+        icon: Icons.volunteer_activism_rounded,
+        label: anTr('an2_tile_need_attention', 'Need attention'),
+        value: '$risk',
+        color: risk > 0 ? c.warning : c.success,
+      ),
+      AnTileSpec(
+        icon: Icons.verified_rounded,
+        label: anTr('an2_tile_pass_rate', 'Exam pass rate'),
+        value: anPct(passRate),
+        color: anMetricColor(context, AnMetric.exams),
+      ),
+    ]);
+
+    final insights = teacherInsights(facts);
+    final insightCard = insights.isEmpty
+        ? null
+        : AnInsightCard(
+            title: anTr('an2_for_you', 'For you'),
+            rows: [for (final i in insights) AnInsightRowData(tone: i.tone, text: anInsightText(i), onTap: _insightAction(i))],
+          );
+
+    final chart = AnCourseBars(
+      title: anTr('an2_your_classes', 'Your classes'),
+      metric: metric,
+      metrics: metrics,
+      onMetric: (m) => setState(() => _metric = m),
+      rows: [
+        for (final f in anRankBy(facts, metric))
+          AnBarRowData(
+            title: f.title,
+            value: f.value(metric),
+            detail: anStudentsWord(f.students),
+            flag: f.atRisk > 0,
+            onTap: () {
+              final course = _course(f.id);
+              if (course != null) _openTools(course);
+            },
+          ),
+      ],
+      onShowAll: _openAll,
+      showAllLabel: anFmt('an2_all_courses', {'n': all.length}, 'All courses ({n})'),
+    );
+
+    // students who need attention, across every course — worst first
+    final titles = {for (final x in all) x.id: _courseTitle(x)};
+    final people = <(int, Map<String, dynamic>)>[
+      for (final e in _store.byCourse.entries)
+        for (final s in e.value.risk) (e.key, s),
+    ]..sort((a, b) => (anAverage([dlNum(a.$2['attendance']), dlNum(a.$2['exam_avg'])]) ?? 100)
+        .compareTo(anAverage([dlNum(b.$2['attendance']), dlNum(b.$2['exam_avg'])]) ?? 100));
+    final attention = people.isEmpty
+        ? null
+        : AnCompactList(
+            title: anTr('ta_attention', 'Needs your attention'),
+            subtitle: anTr('an2_attention_sub', 'Under 60 % attendance or 50 % in exams'),
+            rows: [
+              for (final (courseId, s) in people.take(20))
+                AnPersonRow(
+                  name: '${s['name']}',
+                  course: titles[courseId] ?? '',
+                  attendance: dlNum(s['attendance']),
+                  exams: dlNum(s['exam_avg']),
+                  onTap: () => _push(StudentAnalyticsProfileScreen.forTeacher(
+                    studentId: (s['student_id'] as num).toInt(),
+                    studentName: '${s['name']}',
+                    courseId: courseId,
+                  )),
+                ),
+            ],
+          );
+
+    return AnSummaryLayout(
+      header: _header(all),
+      hero: hero,
+      tiles: tiles,
+      insights: insightCard,
+      chart: metrics.isEmpty ? null : chart,
+      lists: [?attention],
+    );
+  }
+}
+
+// ── All courses: search + the full course cards ─────────────────────────────
+
+class _AllClassesPage extends StatefulWidget {
+  const _AllClassesPage({required this.store});
+
+  final _OverviewStore store;
+
+  @override
+  State<_AllClassesPage> createState() => _AllClassesPageState();
+}
+
+class _AllClassesPageState extends State<_AllClassesPage> {
+  final _searchCtrl = TextEditingController();
+  String _search = '';
+  bool _attentionFirst = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_onStore);
+  }
+
+  void _onStore() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.store.removeListener(_onStore);
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -117,166 +435,48 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    final prov = context.watch<TeacherCoursesProvider>();
-    final all = prov.allCourses;
-    // (re)load the class numbers whenever the course list changes
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !prov.isLoading) _store.load([for (final c in all) c.id]);
-    });
-
-    var list = _search.isEmpty ? List.of(all) : all.where((c) => _matches(c, _search)).toList();
+    final c = context.colors;
+    final all = context.watch<TeacherCoursesProvider>().allCourses;
+    final store = widget.store;
+    var list = _search.isEmpty ? List.of(all) : all.where((x) => _matches(x, _search)).toList();
     if (_attentionFirst) {
-      list.sort((a, b) => (_store.byCourse[b.id]?.atRisk ?? 0).compareTo(_store.byCourse[a.id]?.atRisk ?? 0));
+      list.sort((a, b) => (store.byCourse[b.id]?.atRisk ?? 0).compareTo(store.byCourse[a.id]?.atRisk ?? 0));
     }
-
-    return BasePage(
-      key: const ValueKey('analytics_hub'),
-      useWebCard: true,
-      enableFooterWidget: false,
-      child: ColoredBox(
-        color: context.colors.background,
-        child: prov.isLoading && all.isEmpty
-            ? const AppListSkeleton()
-            : AppRefresh(
-          onRefresh: () => _store.load([for (final c in all) c.id], force: true),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            slivers: [
-              SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics_hub.header', child: _hero(all))),
-              if (all.isNotEmpty) SliverToBoxAdapter(child: _attentionStrip(all)),
-              if (all.isNotEmpty) SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics_hub.search', child: _tools())),
-              if (list.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: AnEmpty(
-                    icon: Icons.school_outlined,
-                    title: all.isEmpty ? 'no_courses_yet'.tr : 'no_search_results'.tr,
-                    sub: all.isEmpty ? 'add_course_first_hint'.tr : null,
-                  ),
-                )
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
-                  sliver: SliverList.separated(
-                    itemCount: list.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 14),
-                    itemBuilder: (_, i) => _CourseAnalyticsCard(
-                      course: list[i],
-                      snapshot: _store.byCourse[list[i].id],
-                      loading: _store.loading && _store.byCourse.isEmpty,
-                    ),
+    return Scaffold(
+      backgroundColor: c.background,
+      appBar: AppBar(
+        backgroundColor: c.background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: Text(anTr('an2_all_courses_title', 'All courses'), style: anText(17, w: FontWeight.w800, c: c.textDark)),
+      ),
+      body: AppRefresh(
+        onRefresh: () => store.load([for (final x in all) x.id], force: true),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          slivers: [
+            SliverToBoxAdapter(child: ParentComponent(featureKey: 'analytics_hub.search', child: _tools())),
+            if (list.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: AnEmpty(icon: Icons.search_off_rounded, title: 'no_search_results'.tr),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
+                sliver: SliverList.separated(
+                  itemCount: list.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 14),
+                  itemBuilder: (_, i) => _CourseAnalyticsCard(
+                    course: list[i],
+                    snapshot: store.byCourse[list[i].id],
+                    loading: store.loading && store.byCourse.isEmpty,
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
-    );
-  }
-
-  // ── Hero ────────────────────────────────────────────────────────────────────
-  Widget _hero(List<TeacherCourse> all) {
-    final students = all.fold<int>(0, (s, c) => s + c.studentsCount);
-    final sessions = all.fold<int>(0, (s, c) => s + c.sessionsCount);
-    final risk = _store.byCourse.values.fold<int>(0, (s, x) => s + x.atRisk);
-    final att = anAverage(_store.byCourse.values.map((x) => x.n('attendance')));
-    final ex = anAverage(_store.byCourse.values.map((x) => x.n('exam_avg')));
-    return Container(
-      decoration: anHeroDecoration(context),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 16, 18, 22),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('analytics_hub_title'.tr, style: anText(21, w: FontWeight.w800, c: context.colors.onHero)),
-                  const SizedBox(height: 3),
-                  Text(
-                    risk > 0
-                        ? anFmt('ta_hero_risk', {'n': risk}, '{n} students could use your attention this week.')
-                        : (_store.byCourse.isEmpty ? 'analytics_hub_subtitle'.tr : anTr('ta_hero_ok', 'Every class is on track — nice work!')),
-                    style: anText(12.5, c: context.colors.onHeroMuted, h: 1.5),
-                  ),
-                ]),
-              ),
-              AnGlassIcon(
-                icon: Icons.refresh_rounded,
-                tooltip: anTr('an_refresh', 'Refresh'),
-                onTap: () => _store.load([for (final c in all) c.id], force: true),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            Row(children: [
-              AnHeroStat(icon: Icons.menu_book_rounded, value: '${all.length}', label: 'courses'.tr),
-              const SizedBox(width: 8),
-              AnHeroStat(icon: Icons.people_rounded, value: '$students', label: 'total_students'.tr),
-              const SizedBox(width: 8),
-              if (att != null || ex != null) ...[
-                AnHeroStat(icon: Icons.event_available_rounded, value: anPct(att), label: 'attendance_rate'.tr),
-                const SizedBox(width: 8),
-                AnHeroStat(icon: Icons.bar_chart_rounded, value: anPct(ex), label: 'sa_avg_score'.tr),
-              ] else
-                AnHeroStat(icon: Icons.video_library_rounded, value: '$sessions', label: 'sessions'.tr),
-            ]),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  // ── students who need attention, across every course ───────────────────────
-  Widget _attentionStrip(List<TeacherCourse> all) {
-    final titles = {for (final x in all) x.id: _courseTitle(x)};
-    final items = <(int, Map<String, dynamic>)>[
-      for (final e in _store.byCourse.entries)
-        for (final s in e.value.risk) (e.key, s),
-    ];
-    if (items.isEmpty) return const SizedBox.shrink();
-    items.sort((a, b) => (anAverage([dlNum(a.$2['attendance']), dlNum(a.$2['exam_avg'])]) ?? 100)
-        .compareTo(anAverage([dlNum(b.$2['attendance']), dlNum(b.$2['exam_avg'])]) ?? 100));
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AnSectionTitle(
-            anTr('ta_attention', 'Needs your attention'),
-            icon: Icons.volunteer_activism_rounded,
-            subtitle: anTr('ta_attention_sub', 'Attendance under 60 % or exams under 50 % — tap a student for the full picture.'),
-          ),
-        ),
-        SizedBox(
-          height: 86,   // was 74: chips overflowed by 1px with web font metrics
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: items.length > 20 ? 20 : items.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 10),
-            itemBuilder: (_, i) {
-              final (courseId, s) = items[i];
-              return AnAttentionChip(
-                name: '${s['name']}',
-                subtitle: titles[courseId],
-                attendance: dlNum(s['attendance']),
-                exams: dlNum(s['exam_avg']),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StudentAnalyticsProfileScreen.forTeacher(
-                      studentId: (s['student_id'] as num).toInt(),
-                      studentName: '${s['name']}',
-                      courseId: courseId,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ]),
     );
   }
 
@@ -298,13 +498,13 @@ class _TeacherAnalyticsHubScreenState extends State<TeacherAnalyticsHubScreen> w
               prefixIcon: Icon(Icons.search_rounded, color: c.textMedium, size: 21),
               suffixIcon: _search.isNotEmpty
                   ? IconButton(
-                tooltip: 'clear'.tr,
-                icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
-                onPressed: () {
-                  _searchCtrl.clear();
-                  setState(() => _search = '');
-                },
-              )
+                      tooltip: 'clear'.tr,
+                      icon: Icon(Icons.close_rounded, color: c.textMedium, size: 18),
+                      onPressed: () {
+                        _searchCtrl.clear();
+                        setState(() => _search = '');
+                      },
+                    )
                   : null,
               filled: true,
               fillColor: c.cardBg,
