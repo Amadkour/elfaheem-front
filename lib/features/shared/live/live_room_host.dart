@@ -76,6 +76,10 @@ class LiveRoomHost {
   /// while it is minimized (D27).
   static ValueListenable<bool>? get minimizedListenable => _active.value?.minimized;
 
+  /// What waits in the open room (unread chat, new hands, lobby and share requests; live_attention.dart): the
+  /// minimized box draws it as a badge. The room page keeps it current; it goes back to 0 when the room closes.
+  static final ValueNotifier<int> attention = ValueNotifier<int>(0);
+
   /// A [LiveRoomLayer] is in the tree — callers fall back to pushing the room as a route otherwise.
   static bool get isInstalled => _layers > 0;
 
@@ -108,6 +112,7 @@ class LiveRoomHost {
 
   static void _finish(_ActiveRoom room) {
     room.leave = null;
+    attention.value = 0;
     if (!room.closed.isCompleted) room.closed.complete();
   }
 

@@ -63,6 +63,14 @@ class LiveHostControlsController extends ChangeNotifier {
   /// Sends the annotation permission packet; null → the drawing toggle only changes `can_publish_data`.
   LiveDrawingPermissionSender? onDrawingChanged;
 
+  /// One share at a time (live_share_arbiter.dart): "Stop screen share" goes through the room, which asks the
+  /// presenter's app to stop (a clean stop, their notice) and keeps the server mute as the fallback. Null → the
+  /// server mute alone.
+  Future<void> Function(LiveControlTarget target)? stopScreenShare;
+
+  /// After "Revoke screen share" succeeded: the room forgets a temporary grant for that person.
+  void Function(String identity)? onScreenShareRevoked;
+
   /// Told right before end-for-all is sent (true) and again when it failed (false): the room publishes its
   /// "ending for everyone" packet (live_end_signal.dart), so the participants the server removes read "the host
   /// ended the session" rather than "you were removed". Its errors never stop the end.
@@ -128,7 +136,9 @@ class LiveHostControlsController extends ChangeNotifier {
     _changed();
     try {
       final source = liveMuteSourceFor(action);
-      if (source != null) {
+      if (action == LiveHostAction.stopScreenShare && stopScreenShare != null) {
+        await stopScreenShare!(target);
+      } else if (source != null) {
         await api.mute(id, source: source);
       } else if (action == LiveHostAction.remove) {
         await api.remove(id);
@@ -139,6 +149,7 @@ class LiveHostControlsController extends ChangeNotifier {
       } else {
         final perms = livePermissionsFor(action, target.permissions);
         if (perms != null) await api.setPermissions(id, perms);
+        if (action == LiveHostAction.revokeScreenShare) onScreenShareRevoked?.call(id);
       }
       _notice(liveHostActionDone(action, target.displayName));
       return true;

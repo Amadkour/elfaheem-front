@@ -14,6 +14,7 @@ void main() {
       expect(liveDataRoute('chat'), LiveDataRoute.handOrChat);
       expect(liveDataRoute('annot'), LiveDataRoute.annotation);
       expect(liveDataRoute('annot.laser'), LiveDataRoute.annotation);
+      expect(liveDataRoute('share'), LiveDataRoute.share); // one share at a time: requests, answers, stops
     });
 
     test('no topic is matched by payload (older senders)', () {

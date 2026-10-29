@@ -150,6 +150,7 @@
  "live.quick_meeting",
  "live.room_lock",
  "live.share_link",
+ "live.share_requests",
  "live.teacher_controls",
  "live_room.audio_output",
  "live_room.camera",

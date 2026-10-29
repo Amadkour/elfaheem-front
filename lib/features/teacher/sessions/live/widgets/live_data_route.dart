@@ -5,6 +5,7 @@
 library;
 
 import '../annotation/annotation_protocol.dart' show kAnnotLaserTopic, kAnnotTopic;
+import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart' show kLiveShareTopic;
 import 'live_chat.dart' show kLiveChatTopic;
 import 'live_hands.dart' show kLiveHandTopic;
 import 'live_quiz.dart' show kLiveQuizTopic;
@@ -16,6 +17,9 @@ enum LiveDataRoute {
 
   /// Annotation over the shared screen (strokes, permission, board snapshots, laser).
   annotation,
+
+  /// One share at a time: requests, answers, stops (live_share_arbiter.dart).
+  share,
 
   /// Hands and chat: matched by topic, or by payload type for senders that set no topic.
   handOrChat,
@@ -33,6 +37,8 @@ LiveDataRoute liveDataRoute(String? topic) {
     case kAnnotTopic:
     case kAnnotLaserTopic:
       return LiveDataRoute.annotation;
+    case kLiveShareTopic:
+      return LiveDataRoute.share;
     case kLiveHandTopic:
     case kLiveChatTopic:
     case null:

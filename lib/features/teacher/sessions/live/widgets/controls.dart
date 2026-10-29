@@ -14,6 +14,7 @@ import 'ios_share.dart' show IosShareNative;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart' show LiveShareButton;
 
 Color get _amber   => LivePalette.warning;   // paused recording
 Color get _emerald => LivePalette.success;   // resume / sharing
@@ -101,6 +102,17 @@ class ControlsWidget extends StatefulWidget {
   /// The toolbar is open.
   final bool annotating;
 
+  /// One share at a time (live_share_arbiter.dart): what the Share button is now — Share / Stop / Request to
+  /// share / Requested. Its tap goes to [onToggleScreenShare] on every platform (the room decides: start, stop,
+  /// request or withdraw). Null → the old rule ([allowShare], a plain toggle).
+  final LiveShareButton? shareButton;
+
+  /// Hands raised since the host last opened the queue (what the hands button adds to the "More" badge).
+  final int? handsAttention;
+
+  /// Lobby requests the host has not seen yet.
+  final int? lobbyAttention;
+
   const ControlsWidget(
       this.room,
       this.participant, {
@@ -137,6 +149,9 @@ class ControlsWidget extends StatefulWidget {
         this.meetingRecordBusy = false,
         this.onAnnotate,
         this.annotating = false,
+        this.shareButton,
+        this.handsAttention,
+        this.lobbyAttention,
       });
 
   @override
@@ -321,7 +336,10 @@ class ControlsWidgetState extends State<ControlsWidget> {
     if (_screenShareBusy) return;
     if (mounted) setState(() => _screenShareBusy = true);
     try {
-      if (lkPlatformIsDesktop()) {
+      if (widget.shareButton != null && widget.onToggleScreenShare != null) {
+        // The room arbitrates (one share at a time, requests) and runs the platform's share itself.
+        await widget.onToggleScreenShare!();
+      } else if (lkPlatformIsDesktop()) {
         await _toggleDesktopScreenShare();
       } else {
         if (widget.onToggleScreenShare == null) return;
@@ -381,7 +399,9 @@ class ControlsWidgetState extends State<ControlsWidget> {
   }
 
   // ── Public toggles (keyboard shortcuts in room.dart call these) ──────────
-  bool get _shareAllowed => widget.allowShare ?? (widget.isTeacher || widget.isHost);
+  bool get _shareAllowed => widget.shareButton != null
+      ? widget.shareButton != LiveShareButton.hidden
+      : widget.allowShare ?? (widget.isTeacher || widget.isHost);
 
   void toggleMic() {
     if (!widget.canPublish || !widget.allowMic) return;
@@ -441,6 +461,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
       key: const ValueKey('live_room.camera'),
       icon: isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
       label: isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr,
+      compactLabel: 'lr_camera'.tr, // the slashed icon already says "off" (the long label is cut on phones)
       active: isCamOn && _hasAnyCamera,
       off: !isCamOn && _hasAnyCamera,
       loading: _camActionBusy,
@@ -481,18 +502,26 @@ class ControlsWidgetState extends State<ControlsWidget> {
         : null;
 
     // ── Share & record (teacher) ────────────────────────────────────────────
-    final share = _shareAllowed
-        ? LiveControlAction(
-            key: const ValueKey('live_room.share'),
-            icon: isSharing ? Icons.stop_screen_share_rounded : Icons.screen_share_rounded,
-            label: isSharing ? 'lr_stop_share'.tr : 'lr_share'.tr,
-            active: isSharing,
-            color: isSharing ? _emerald : null,
-            loading: _screenShareBusy,
-            shortcut: 'S',
-            onTap: _screenShareBusy ? null : _onScreenShareToggle,
+    final mode = widget.shareButton;
+    final share = mode != null
+        ? shareAction(
+            // The local share state wins over a stale mode (the iOS broadcast runs before its track is published).
+            isSharing ? LiveShareButton.stop : mode,
+            busy: _screenShareBusy,
+            onTap: _onScreenShareToggle,
           )
-        : null;
+        : _shareAllowed
+            ? LiveControlAction(
+                key: const ValueKey('live_room.share'),
+                icon: isSharing ? Icons.stop_screen_share_rounded : Icons.screen_share_rounded,
+                label: isSharing ? 'lr_stop_share'.tr : 'lr_share'.tr,
+                active: isSharing,
+                color: isSharing ? _emerald : null,
+                loading: _screenShareBusy,
+                shortcut: 'S',
+                onTap: _screenShareBusy ? null : _onScreenShareToggle,
+              )
+            : null;
 
     final annotate = annotateAction(onTap: widget.onAnnotate, open: widget.annotating);
 
@@ -533,6 +562,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
             active: widget.handsOpen || widget.handsCount > 0,
             color: LivePalette.warning,
             badge: widget.handsCount,
+            attention: widget.handsAttention,
             shortcut: 'H',
             onTap: widget.onOpenHands,
           )
@@ -547,6 +577,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
             active: widget.chatOpen,
             badge: widget.chatUnread,
             shortcut: 'C',
+            // Phones: the chat never hides in "More" (a host must see what the class writes, in every state).
+            pinned: true,
             onTap: widget.onOpenChat,
           )
         : null;
@@ -583,6 +615,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
         onInteraction: widget.onInteraction,
         onLobby: widget.onLobby,
         waitingCount: widget.waitingCount,
+        lobbyAttention: widget.lobbyAttention,
       );
     }
 
@@ -600,7 +633,55 @@ class ControlsWidgetState extends State<ControlsWidget> {
       onInteraction: widget.onInteraction,
       onLobby: widget.onLobby,
       waitingCount: widget.waitingCount,
+      lobbyAttention: widget.lobbyAttention,
     );
+  }
+
+  /// The Share button for [mode] (one share at a time): Share · Stop share · Request to share · Requested (tap =
+  /// withdraw). Null for [LiveShareButton.hidden]. Public and pure so the layout test builds what the bar gets.
+  static LiveControlAction? shareAction(LiveShareButton mode, {bool busy = false, VoidCallback? onTap}) {
+    final tap = busy ? null : onTap;
+    return switch (mode) {
+      LiveShareButton.hidden => null,
+      LiveShareButton.share => LiveControlAction(
+          key: const ValueKey('live_room.share'),
+          icon: Icons.screen_share_rounded,
+          label: 'lr_share'.tr,
+          loading: busy,
+          shortcut: 'S',
+          onTap: tap,
+        ),
+      LiveShareButton.stop => LiveControlAction(
+          key: const ValueKey('live_room.share'),
+          icon: Icons.stop_screen_share_rounded,
+          label: 'lr_stop_share'.tr,
+          active: true,
+          color: _emerald,
+          loading: busy,
+          shortcut: 'S',
+          onTap: tap,
+        ),
+      LiveShareButton.request => LiveControlAction(
+          key: const ValueKey('live_room.share_request'),
+          icon: Icons.screen_share_outlined,
+          label: t('طلب مشاركة الشاشة', 'Ask to share'),
+          compactLabel: t('طلب', 'Request'),
+          loading: busy,
+          shortcut: 'S',
+          onTap: tap,
+        ),
+      LiveShareButton.requested => LiveControlAction(
+          key: const ValueKey('live_room.share_requested'),
+          icon: Icons.hourglass_top_rounded,
+          label: t('بانتظار موافقة المضيف — اضغط للإلغاء', 'Waiting for the host — tap to cancel'),
+          compactLabel: t('بانتظار', 'Waiting'),
+          active: true,
+          color: _amber,
+          loading: busy,
+          shortcut: 'S',
+          onTap: tap,
+        ),
+    };
   }
 
   // ── [meeting-recording] Record / Stop (meeting creator) ──────────────────

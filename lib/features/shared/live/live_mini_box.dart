@@ -11,6 +11,7 @@ import '../../teacher/sessions/live/widgets/live_palette.dart';
 import '../../teacher/sessions/live/widgets/android_share.dart' show LiveMicGate;
 import '../../teacher/sessions/live/widgets/participant.dart' show participantPhotoFromMetadata;
 import 'live_room_host.dart';
+import 'live_share_widgets.dart' show LiveAttentionBadge;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// One thing the box could show (a person's camera, or their screen share), as plain values.
@@ -71,7 +72,11 @@ class LiveMiniBoxLayout extends StatelessWidget {
     this.micOn = true,
     this.onToggleMic,
     this.onLeave,
+    this.attention = 0,
   });
+
+  /// What waits in the room (unread chat, hands, lobby / share requests): a badge beside LIVE.
+  final int attention;
 
   final String name;
   final String? imageUrl;
@@ -141,6 +146,14 @@ class LiveMiniBoxLayout extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // What waits in the room (chat, hands, lobby / share requests): tap the box to see it.
+                    if (attention > 0) ...[
+                      const SizedBox(width: 4),
+                      Semantics(
+                        label: t('$attention بانتظارك في الغرفة', '$attention waiting in the room'),
+                        child: LiveAttentionBadge(count: attention, size: 16),
+                      ),
+                    ],
                   ]),
                 ),
               ),
@@ -268,7 +281,7 @@ class LiveMiniTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: room,
+        listenable: Listenable.merge([room, LiveRoomHost.attention]),
         builder: (context, _) {
           final candidates = <LiveMiniCandidate>[];
           final tracks = <VideoTrack?>[];
@@ -332,6 +345,7 @@ class LiveMiniTile extends StatelessWidget {
             onExpand: () => scope == null ? LiveRoomHost.expand() : scope.expand(),
             onToggleMic: canPublish ? () => LiveMicGate.instance.setMic(local, !micOn).catchError((_) {}) : null,
             onLeave: LiveRoomHost.leave,
+            attention: LiveRoomHost.attention.value,
           );
         },
       );

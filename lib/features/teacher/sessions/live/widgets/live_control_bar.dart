@@ -23,6 +23,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'live_palette.dart';
+import 'package:flutter_education_app/features/shared/live/live_share_widgets.dart' show LiveAttentionBadge;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 /// Breakpoint between the mobile pill and the wide bar.
@@ -51,8 +52,14 @@ class LiveControlAction {
     this.menu,
     this.menuTitle,
     this.badge = 0,
+    this.attention,
     this.pinned = false,
+    this.compactLabel,
   });
+
+  /// The phone pill's label under the round button when [label] is too long for it ("Request" for "Ask to
+  /// share"); tooltips, the "More" sheet and screen readers keep [label]. Null = [label].
+  final String? compactLabel;
 
   final IconData icon;
   final String label;
@@ -73,7 +80,13 @@ class LiveControlAction {
   final String? menuTitle;
   /// Count shown as a small bubble on the button's corner (unread chat, raised hands); 0 hides it.
   final int badge;
-  /// Mobile: always in the pill, never in the "More" sheet (the Record / Stop of a meeting creator).
+  /// What this action adds to the "More" button's badge while it sits in the sheet (phones): new things only —
+  /// unread chat, hands raised since the queue was last opened, unseen lobby requests. Null = [badge].
+  final int? attention;
+
+  int get attentionCount => attention ?? badge;
+
+  /// Mobile: always in the pill, never in the "More" sheet (the Record / Stop of a meeting creator, the chat).
   final bool pinned;
 
   bool get enabled => onTap != null || (menu != null && menu!.isNotEmpty);
@@ -84,26 +97,11 @@ class _CountBadge extends StatelessWidget {
   const _CountBadge(this.count);
   final int count;
   @override
-  Widget build(BuildContext context) {
-    final c = LivePalette.danger;
-    return Container(
-      constraints: const BoxConstraints(minWidth: 18),
-      height: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 5),
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: c,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: LivePalette.surfaceHi, width: 1.5),
-      ),
-      child: Text(
-        count > 99 ? '99+' : '$count',
-        maxLines: 1,
-        style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, height: 1.1, fontWeight: FontWeight.w800, color: LivePalette.textHigh),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => LiveAttentionBadge(count: count);
 }
+
+/// The phone pill's "More" badge: what waits among the actions inside the sheet. Pure (layout test).
+int liveMoreBadge(List<LiveControlAction> overflow) => overflow.fold(0, (s, a) => s + a.attentionCount);
 
 /// Small recording state shown inside the bar.
 enum LiveRecBadge { none, recording, paused }
@@ -125,6 +123,7 @@ class LiveControlBar extends StatelessWidget {
     this.onInteraction,
     this.onLobby,
     this.waitingCount = 0,
+    this.lobbyAttention,
   });
 
   /// Admission lobby (host only): non-null adds a "Lobby" button with [waitingCount] as its badge — on phones in the
@@ -132,15 +131,20 @@ class LiveControlBar extends StatelessWidget {
   final VoidCallback? onLobby;
   final int waitingCount;
 
+  /// Lobby requests the host has not seen yet (what the lobby adds to the "More" badge); null = [waitingCount].
+  final int? lobbyAttention;
+
   LiveControlAction? get _lobbyAction => onLobby == null
       ? null
       : LiveControlAction(
           key: const ValueKey('live_room.lobby'),
           icon: waitingCount > 0 ? Icons.meeting_room_rounded : Icons.meeting_room_outlined,
           label: t('غرفة الانتظار', 'Lobby'),
+          compactLabel: t('الانتظار', 'Lobby'),
           active: waitingCount > 0,
           color: waitingCount > 0 ? LivePalette.warning : null,
           badge: waitingCount,
+          attention: lobbyAttention,
           shortcut: 'L',
           onTap: onLobby,
         );
@@ -228,6 +232,8 @@ class LiveControlBar extends StatelessWidget {
                     icon: Icons.more_horiz_rounded,
                     label: 'more'.tr,
                     active: overflow.any((a) => a.active && a.off == false && a.enabled),
+                    // What waits inside the sheet (unread chat, new hands, lobby requests): the "More" badge.
+                    badge: liveMoreBadge(overflow),
                     onTap: () => _openMoreSheet(context, overflow),
                   ),
                 ),
@@ -375,7 +381,7 @@ class _MobileButton extends StatelessWidget {
           ]),
           const SizedBox(height: 5),
           Text(
-            a.label,
+            a.compactLabel ?? a.label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,

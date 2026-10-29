@@ -44,10 +44,16 @@ import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
 // Host controls (live hardening L2): docs/live/teacher_controls_wiring.md, the "Host controls" region below
 import 'package:flutter_education_app/features/shared/live/live_controls_api.dart'
     show kLiveRoomLockFeatureKey, kLiveTeacherControlsFeatureKey, liveControlTargetFrom, liveIdentityIsStudent,
-        liveIsGuestIdentity, LiveControlTarget;
+        liveIsGuestIdentity, liveControlsError, LiveControlTarget, LivePublishSource;
 import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart'
     show LiveHostControlsController, LiveHostControlsHeader, LiveParticipantControlsButton, showLiveParticipantControls;
 import 'package:flutter_education_app/features/shared/live/live_end_signal.dart';
+// One share at a time + "Request to share", the attention badges and the chat preview: the "Share arbitration"
+// region below (lib/features/shared/live/live_share_arbiter.dart, live_attention.dart, live_share_widgets.dart)
+import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart';
+import 'package:flutter_education_app/features/shared/live/live_attention.dart';
+import 'package:flutter_education_app/features/shared/live/live_share_widgets.dart';
+import 'widgets/ios_share.dart' show IosShareNative;
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/recording_placeholder.dart';
@@ -406,6 +412,9 @@ class _RoomPageState extends State<RoomPage>
     }
     // Android 14+: the live-call service keeps the microphone alive in the background while one may be used.
     if (next.mic != before.mic) unawaited(next.mic ? LiveCallService.start() : LiveCallService.stop());
+    // A share the host allowed for one request (and takes back when it ends) has its own notices (Share region).
+    final shareOnly = before.mic == next.mic && before.camera == next.camera;
+    if (shareOnly && _share.everAccepted) return;
     switch (livePermissionNotice(before, next)) {
       case LivePermissionNotice.granted:
         _showSnack(t('سمح لك المضيف بالمشاركة: الميكروفون والكاميرا مغلقان حتى تفتحهما',
@@ -470,8 +479,11 @@ class _RoomPageState extends State<RoomPage>
       _auroraAnim.stop();
       _recDotAnim.stop();
       if (_annotOpen) _closeAnnot(); // the box shows no toolbar
+      WidgetsBinding.instance.addPostFrameCallback((_) => _hideChatToast()); // the box has its own badge
       return;
     }
+    // Full-screen again: a share request that waited while the room was a box is asked now.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openShareDialog());
     syncMotionLoop(context, _auroraAnim, rest: 0);
     if (!_recDotAnim.isAnimating) _recDotAnim.repeat(reverse: true); // tells something: never parked by motion
   }
@@ -501,6 +513,7 @@ class _RoomPageState extends State<RoomPage>
       _showSnack('✋ ${_hands.hands.last.name}');
     }
     _handsSeen = n;
+    _syncAttention();
     if (mounted) setState(() {});
   }
 
@@ -517,12 +530,32 @@ class _RoomPageState extends State<RoomPage>
   static const double _sidePanelWidth = 320;
   bool get _wideForSidePanel => mounted && MediaQuery.sizeOf(context).width >= _sidePanelBreakpoint;
 
+  /// The panel open as a phone sheet (null: none) — the attention counts treat it as "looked at".
+  _SidePanel? _sheetPanel;
+
   void _togglePanel(_SidePanel which) {
     if (_wideForSidePanel) {
       setState(() => _side = _side == which ? null : which);
+      _syncWatching();
       return;
     }
-    _showLiveSheet(_buildSidePanel(which, inSheet: true));
+    _sheetPanel = which;
+    _syncWatching();
+    _showLiveSheet(_buildSidePanel(which, inSheet: true)).whenComplete(() {
+      _sheetPanel = null;
+      _syncWatching();
+    });
+  }
+
+  void _closeSidePanel() {
+    setState(() => _side = null);
+    _syncWatching();
+  }
+
+  /// The hands queue on screen (side column or sheet): new hands are seen as they come.
+  void _syncWatching() {
+    final hands = _side == _SidePanel.hands || _sheetPanel == _SidePanel.hands;
+    _attention.setWatching(LiveAttentionKind.hands, hands);
   }
 
   void _openHands() => _togglePanel(_SidePanel.hands);
@@ -572,7 +605,7 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildSidePanel(_SidePanel which, {bool inSheet = false}) {
     final VoidCallback close = inSheet
         ? () => Navigator.of(context, rootNavigator: false).maybePop()
-        : () => setState(() => _side = null);
+        : _closeSidePanel;
     switch (which) {
       case _SidePanel.hands:
         return ValueListenableBuilder<String?>(
@@ -1056,7 +1089,7 @@ class _RoomPageState extends State<RoomPage>
     } else if (k == LogicalKeyboardKey.keyV) {
       controls?.toggleCamera();
     } else if (k == LogicalKeyboardKey.keyS) {
-      if (!_allowed.share) return KeyEventResult.ignored;
+      if (_shareButtonMode == LiveShareButton.hidden) return KeyEventResult.ignored;
       controls?.toggleShare();
     } else if (k == LogicalKeyboardKey.keyR) {
       _reactions.togglePicker();
@@ -1164,6 +1197,11 @@ class _RoomPageState extends State<RoomPage>
     annotationOverlayActive.addListener(_onAnnotOverlay);
     _annot.addListener(_onAnnotChanged);
     _annotGranted = _annotStudentGranted;
+    // One share at a time, requests, attention badges, the chat preview (the "Share arbitration" region).
+    _shareEvents = _share.events.listen(_onShareEvent);
+    _share.addListener(_onShareChanged);
+    _attention.addListener(_onAttention);
+    _chat.addListener(_onChatChanged);
     // A class can last hours: never let the phone sleep (it pauses camera / mic on many devices).
     WakelockPlus.enable().catchError((_) {});
 
@@ -1351,6 +1389,14 @@ class _RoomPageState extends State<RoomPage>
     annotationOverlayActive.removeListener(_onAnnotOverlay);
     _annot.removeListener(_onAnnotChanged);
     _annot.dispose();
+    unawaited(_shareEvents?.cancel());
+    _share.removeListener(_onShareChanged);
+    _share.dispose();
+    _attention.removeListener(_onAttention);
+    _attention.dispose();
+    _chat.removeListener(_onChatChanged);
+    _chatToastTimer?.cancel();
+    _lobby?.removeListener(_syncAttention);
     unawaited(LiveCallService.stop());
     LiveCallService.onLeaveRequested = null;
     _reactions.dispose();
@@ -1920,6 +1966,7 @@ class _RoomPageState extends State<RoomPage>
     // A raised hand leaves with its owner; a late joiner gets my raised hand re-announced.
     ..on<ParticipantDisconnectedEvent>((e) {
       _hands.drop(e.participant.identity);
+      _share.participantLeft(e.participant.identity); // their request, approval and grant go too
       _scheduleSort();
     })
     ..on<ParticipantConnectedEvent>((e) {
@@ -2011,6 +2058,14 @@ class _RoomPageState extends State<RoomPage>
         case LiveDataRoute.annotation:
           // The sender is LiveKit's participant, never an identity read from the payload.
           if (_annotEnabled) _annot.receive(event.topic!, event.data, sender: p?.identity);
+          return;
+        case LiveDataRoute.share:
+          // The sender is LiveKit's participant; an answer / stop counts only from a host the server set up.
+          _share.receive(event.data,
+              sender: p?.identity,
+              senderIsHost: p != null && _isServerHost(p),
+              senderName: senderName,
+              senderImageUrl: participantPhotoFromMetadata(p?.metadata));
           return;
         case LiveDataRoute.handOrChat:
           // Hands and chat: matched by topic, and by payload type for senders that set no topic.
@@ -2278,7 +2333,16 @@ class _RoomPageState extends State<RoomPage>
       }
     }
 
+    // One share at a time: who presents now (the arbiter, the lead host's enforcement), and the share that wins
+    // goes on the stage first — never a muted one left over from a takeover.
+    _syncPresenters();
+    final stageOrder = _share.stageOrder(_identityIsHost);
+    int rank(ParticipantTrack t) {
+      final i = stageOrder.indexOf(t.participant.identity);
+      return i < 0 ? stageOrder.length : i;
+    }
     final allScreen = [...screenTracks, ...localScreen];
+    mergeSort(allScreen, compare: (a, b) => rank(a).compareTo(rank(b))); // stable: ties keep their order
     final ordered = allScreen.isNotEmpty
     ? [...allScreen, ?localCamera, ...userMedia]
         : [?localCamera, ...userMedia];
@@ -2497,6 +2561,24 @@ class _RoomPageState extends State<RoomPage>
                               LiveReactionsOverlay(
                                 controller: _reactions,
                                 senderName: _myReactionName,
+                              ),
+
+                              // A new chat message while the chat is closed (tap → the chat)
+                              PositionedDirectional(
+                                start: 12,
+                                end: 12,
+                                bottom: 60, // above the participant count badge
+                                child: Align(
+                                  alignment: AlignmentDirectional.bottomStart,
+                                  child: LiveChatToastSlot(
+                                    data: _chatToast,
+                                    onOpen: () {
+                                      _hideChatToast();
+                                      _openChat();
+                                    },
+                                    onDismiss: _hideChatToast,
+                                  ),
+                                ),
                               ),
 
                               // Quiz overlay
@@ -2729,6 +2811,11 @@ class _RoomPageState extends State<RoomPage>
           resolveScreenTrack: _resolveScreenTrack,
           auroraAnim: _auroraAnim,
           annot: _annotEnabled ? _annot : null,
+          // A host stops a participant's share from the stage (one share at a time).
+          onStopShare: _canStopShareOf(main.participant)
+              ? () => unawaited(_stopPresenter(main.participant.identity, notify: true))
+              : null,
+          stopBusy: _stopping.contains(main.participant.identity),
         ),
         main.participant,
       );
@@ -3224,13 +3311,17 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildControlsBar() {
     // The bar paints its own glass shell (mobile pill / wide grouped bar) — see LiveControlBar.
     return ListenableBuilder(
-        listenable: Listenable.merge([_reactions, _hands, _chat, _annot, ?_lobby]),
+        listenable: Listenable.merge([_reactions, _hands, _chat, _annot, _share, _attention, ?_lobby]),
         builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
         key: _controlsKey,
-        // Lobby (host only): the waiting count on the bar's lobby button.
+        // Lobby (host only): the waiting count on the bar's lobby button; what is new adds to the "More" badge.
         waitingCount: _lobby?.waitingCount ?? 0,
+        lobbyAttention: _attention.count(LiveAttentionKind.lobby),
+        handsAttention: _attention.count(LiveAttentionKind.hands),
+        // One share at a time: Share / Stop / Ask to share / Waiting… — the tap goes through _onShareTap.
+        shareButton: _shareButtonMode,
         onLobby: _lobby == null ? null : _openLobby,
         // [meeting-recording] the creator's labelled red Record / Stop in the primary group (spec §11)
         onMeetingRecord: _canRecordMeeting && !_endingSession
@@ -3249,7 +3340,7 @@ class _RoomPageState extends State<RoomPage>
         allowMic: _allowed.mic,
         allowCamera: _allowed.camera,
         allowShare: _allowed.share,
-        onToggleScreenShare: toggleScreenShare,
+        onToggleScreenShare: _onShareTap,
         // ── NEW: pause / resume ──────────────────────────────────
         // Null when the action is not available (wrong state, or
         // a transition is already in flight) — ControlsWidget
@@ -3302,14 +3393,21 @@ class _RoomPageState extends State<RoomPage>
 
   void _startLobby() {
     if (!widget.host || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) return;
-    _lobby = LiveLobbyController(widget.ref)..start();
+    _lobby = LiveLobbyController(widget.ref)
+      ..addListener(_syncAttention)
+      ..start();
   }
 
   Future<void> _openLobby() async {
     final c = _lobby;
     if (c == null) return;
     _pokeControls();
-    await showLobbySheet(context, widget.ref, controller: c, title: widget.sessionName);
+    _attention.setWatching(LiveAttentionKind.lobby, true); // the requests are seen while the sheet is open
+    try {
+      await showLobbySheet(context, widget.ref, controller: c, title: widget.sessionName);
+    } finally {
+      if (mounted) _attention.setWatching(LiveAttentionKind.lobby, false);
+    }
   }
 
   Widget _buildLobbyBanner() {
@@ -3521,7 +3619,11 @@ class _RoomPageState extends State<RoomPage>
     if (off.contains(kLiveTeacherControlsFeatureKey) && off.contains(kLiveRoomLockFeatureKey)) return;
     // Allow / Revoke drawing = the annotation permission packet (+ can_publish_data, done by the controller).
     _controls = LiveHostControlsController(widget.ref, onDrawingChanged: _annotEnabled ? _setDrawingFor : null)
-      ..onEndForAllPhase = _announceEndForAll;
+      ..onEndForAllPhase = _announceEndForAll
+      // One share at a time: the presenter's app stops its share (the server mute is the fallback); a revoked
+      // share ends a temporary grant.
+      ..stopScreenShare = ((target) => _stopPresenter(target.identity))
+      ..onScreenShareRevoked = ((identity) => _share.takeGrant(identity));
     if (!off.contains(kLiveRoomLockFeatureKey)) unawaited(_controls!.loadLock());
   }
 
@@ -3578,6 +3680,434 @@ class _RoomPageState extends State<RoomPage>
         onPressed: () => unawaited(_openParticipantControls(rp)),
       ),
     );
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Share arbitration — one screen share at a time, "Ask to share", attention badges, the chat preview
+  //
+  // LiveShareArbiter (lib/features/shared/live/live_share_arbiter.dart) is the state machine; packets ride on topic
+  // `share` (reliable, to everyone). A host who starts sharing takes over (every other share stops, no prompt); a
+  // participant without the permission, or while someone else shares, asks — every host gets the request dialog
+  // (live_share_widgets.dart), the first answer wins and closes the others. Accept: the server grants
+  // `screen_share` when the requester has none (POST …/permissions — the server is the gate, LiveKit refuses any
+  // other publish), this host's own share stops, the accept hands over (every other presenter stops) and the
+  // requester's share starts. A host stops a participant's share from the stage chip or the participant's ⋮; the
+  // app stops it cleanly and the server mute is the fallback; a grant given for one request ends with that share.
+  // The lead host (smallest identity) also enforces the rule for whatever slips through (races, older apps).
+  // LiveAttention counts what waits (chat, new hands, lobby, share requests): the phone pill's "More" badge, the
+  // minimized box, and hidden controls come back when something new arrives.
+  // ═══════════════════════════════════════════════════════════════════════════
+  late final LiveShareArbiter _share = LiveShareArbiter(
+    localIdentity: () => _myIdentity,
+    isHost: () => _isShareHost,
+    send: (bytes) async {
+      final lp = widget.room.localParticipant;
+      if (lp == null) return;
+      await lp.publishData(bytes, reliable: true, topic: kLiveShareTopic);
+    },
+  );
+  StreamSubscription<LiveShareEvent>? _shareEvents;
+  final LiveAttention _attention = LiveAttention();
+  int _attentionLast = 0;
+  bool _shareDialogOpen = false;
+
+  /// Presenters a host asked to stop (the stage chip spins until their share is gone).
+  final Set<String> _stopping = {};
+
+  /// Presenters the lead host's enforcement already asked to stop (asked once per share).
+  final Set<String> _enforced = {};
+
+  /// The chat preview on screen (null: none).
+  LiveChatToastData? _chatToast;
+  Timer? _chatToastTimer;
+  String? _lastChatId;
+
+  /// This device hosts the share rules: the room's host whom the SERVER set up as one too (a co-host the server
+  /// minted as a member would have its answers ignored by everyone else — it asks like a member then).
+  bool get _isShareHost {
+    if (!widget.host || widget.isGuest) return false;
+    final local = widget.room.localParticipant;
+    if (local == null) return true;
+    final perms = local.permissions;
+    return liveIsServerHost(
+        identity: local.identity, kind: widget.ref.kind, canPublish: perms.canPublish, sources: perms.canPublishSources);
+  }
+
+  bool get _shareRequestsOn => !AppConfig.disableList.contains(kLiveShareRequestsFeatureKey);
+
+  /// A host as the SERVER set them up (live_share_arbiter.dart): their answers and stops count.
+  bool _isServerHost(Participant p) {
+    if (p is LocalParticipant) return _isShareHost;
+    final perms = p.permissions;
+    return liveIsServerHost(
+      identity: p.identity,
+      kind: widget.ref.kind,
+      canPublish: perms.canPublish,
+      sources: perms.canPublishSources,
+    );
+  }
+
+  bool _identityIsHost(String identity) {
+    if (identity == _myIdentity) return _isShareHost;
+    final p = _remoteBy(identity);
+    return p != null && _isServerHost(p);
+  }
+
+  RemoteParticipant? _remoteBy(String identity) =>
+      widget.room.remoteParticipants.values.firstWhereOrNull((p) => p.identity == identity);
+
+  String _nameOf(String identity) {
+    final p = _remoteBy(identity);
+    if (p == null) return identity == _myIdentity ? _myReactionName : identity;
+    return p.name.isNotEmpty ? p.name : p.identity;
+  }
+
+  bool get _hostPresent => widget.room.remoteParticipants.values.any(_isServerHost);
+
+  /// This device presents now (iOS: the broadcast runs before its track is published).
+  bool get _localPresenting =>
+      (widget.room.localParticipant?.isScreenShareEnabled() ?? false) ||
+      (!kIsWeb && IosShareNative.supported && IosShareNative.broadcasting.value);
+
+  /// The Share button now.
+  LiveShareButton get _shareButtonMode {
+    final mode = liveShareButtonFor(
+      isHost: _isShareHost,
+      sharing: _localPresenting,
+      mayShare: _allowed.share,
+      othersSharing: _share.othersSharing,
+      requestPending: _share.requestPending,
+      isGuest: widget.isGuest,
+      requestsOn: _shareRequestsOn,
+    );
+    // A phone browser cannot share at all: asking would lead to an accept that cannot start.
+    if (kIsWeb && lkPlatformIsWebMobile() && mode == LiveShareButton.request) return LiveShareButton.hidden;
+    return mode;
+  }
+
+  /// A host may stop [p]'s share from the stage (never another host's: the server refuses to moderate a host).
+  bool _canStopShareOf(Participant p) => _isShareHost && p is RemoteParticipant && !_isServerHost(p);
+
+  /// The bar's Share: start / stop / ask / withdraw (liveShareTapDecision).
+  Future<void> _onShareTap() async {
+    if (widget.room.localParticipant == null) return;
+    final d = liveShareTapDecision(
+      isHost: _isShareHost,
+      sharing: _localPresenting,
+      mayShare: _allowed.share,
+      othersSharing: _share.othersSharing,
+      requestPending: _share.requestPending,
+      hostPresent: _hostPresent,
+      isGuest: widget.isGuest,
+      requestsOn: _shareRequestsOn,
+    );
+    switch (d) {
+      case LiveShareTap.stop:
+      case LiveShareTap.start:
+        // A host's start takes over once its share is live (_syncPresenters), so a closed picker stops nobody.
+        await toggleScreenShare();
+        _scheduleSort();
+      case LiveShareTap.request:
+        if (_share.request(name: _myReactionName)) {
+          _showSnack(_share.othersSharing
+              ? t('أُرسل طلبك: سيبدأ عرضك عندما يوافق المضيف', 'Request sent: you will present once the host accepts')
+              : t('أُرسل طلب المشاركة إلى المضيف', 'Share request sent to the host'));
+        }
+      case LiveShareTap.cancelRequest:
+        _share.cancelRequest();
+        _showSnack(t('سُحب طلب المشاركة', 'Share request withdrawn'));
+      case LiveShareTap.noHost:
+        _showSnack(t('لا يوجد مضيف في الغرفة الآن ليوافق على المشاركة', 'No host is in the room right now to approve sharing'));
+      case LiveShareTap.hidden:
+        break;
+    }
+  }
+
+  /// Presenters → the arbiter; a host whose share just went live takes over; the lead host enforces "one share".
+  void _syncPresenters() {
+    final local = widget.room.localParticipant;
+    final me = _myIdentity;
+    final ids = <String>[
+      for (final p in widget.room.remoteParticipants.values)
+        if (p.videoTrackPublications.any((t) => t.isScreenShare && !t.muted)) p.identity,
+      if (local != null && me.isNotEmpty && _localPresenting) me,
+    ];
+    final wasPresenting = me.isNotEmpty && _share.isPresenting(me);
+    _share.setPresenters(ids);
+    final nowPresenting = me.isNotEmpty && _share.isPresenting(me);
+    if (_isShareHost && !wasPresenting && nowPresenting && _share.othersSharing) {
+      final others = _share.presenters.keys.where((id) => id != me).toList();
+      _share.takeOver(name: _myReactionName);
+      for (final id in others) {
+        _enforced.add(id);
+        _scheduleShareFallback(id);
+      }
+    }
+    _stopping.removeWhere((id) => !_share.isPresenting(id));
+    _enforced.removeWhere((id) => !_share.isPresenting(id));
+    _enforceOneShare();
+  }
+
+  /// The lead host stops every share but the one that wins (liveSharesToStop) — once per share.
+  void _enforceOneShare() {
+    if (!_isShareHost || _myIdentity.isEmpty) return;
+    final hosts = {
+      for (final p in widget.room.remoteParticipants.values)
+        if (_isServerHost(p)) p.identity,
+      _myIdentity,
+    };
+    if (liveLeadHost(hosts) != _myIdentity) return;
+    for (final id in _share.sharesToStop(_identityIsHost)) {
+      if (_enforced.contains(id)) continue;
+      _enforced.add(id);
+      if (id == _myIdentity) {
+        unawaited(stopScreenShare().then((_) => _scheduleSort()));
+        continue;
+      }
+      _share.askToStop(id, name: _myReactionName);
+      _scheduleShareFallback(id);
+    }
+  }
+
+  /// A presenter who does not stop by itself (an older app) is muted by the server after 4 s.
+  void _scheduleShareFallback(String identity) {
+    Timer(const Duration(seconds: 4), () {
+      if (!mounted || !_share.isPresenting(identity)) return;
+      final c = _controls;
+      final rp = _remoteBy(identity);
+      if (c == null || rp == null || _isServerHost(rp)) return;
+      unawaited(c.api.mute(identity, source: LivePublishSource.screenShare).then((_) {}, onError: (Object e) {
+        log('[SHARE] server stop of $identity: $e');
+      }));
+    });
+  }
+
+  /// A host stops [identity]'s share (the stage chip, the participant's ⋮). Its temporary grant ends with it.
+  Future<void> _stopPresenter(String identity, {bool notify = false}) async {
+    if (_stopping.contains(identity)) return;
+    setState(() => _stopping.add(identity));
+    _share.askToStop(identity, name: _myReactionName);
+    _scheduleShareFallback(identity);
+    if (notify) _showSnack(t('أُوقفت مشاركة ${_nameOf(identity)}', "${_nameOf(identity)}'s share was stopped"));
+    // The chip stops spinning once the share is gone (_syncPresenters), at the latest after 8 s.
+    Timer(const Duration(seconds: 8), () {
+      if (mounted && _stopping.remove(identity)) setState(() {});
+    });
+  }
+
+  void _onShareChanged() {
+    _syncAttention();
+    if (mounted) setState(() {});
+  }
+
+  void _onShareEvent(LiveShareEvent e) {
+    if (!mounted) return;
+    switch (e) {
+      case LiveShareRequested(:final request):
+        if (LiveRoomHost.isMinimized) {
+          showAppNotice(
+              t('يطلب ${request.name} مشاركة شاشته — افتح الغرفة للرد', '${request.name} wants to share their screen — open the room to answer'),
+              icon: Icons.screen_share_rounded);
+        } else {
+          _openShareDialog();
+        }
+      case LiveShareAnswered(:final request, :final accepted, :final byMe, :final byName):
+        if (!byMe) {
+          final who = byName.isNotEmpty ? byName : t('مضيف آخر', 'Another host');
+          _showSnack(accepted
+              ? t('وافق $who على مشاركة ${request.name}', "$who accepted ${request.name}'s share")
+              : t('رفض $who طلب ${request.name}', "$who declined ${request.name}'s request"));
+        }
+      case LiveShareRequestExpired(:final request):
+        _showSnack(t('انتهت مهلة طلب ${request.name} للمشاركة', "${request.name}'s share request timed out"));
+      case LiveShareWithdrawn():
+        break; // the dialog follows the arbiter; a grant that ends is LiveShareGrantEnded
+      case LiveShareMyRequestAccepted():
+        unawaited(_startAcceptedShare());
+      case LiveShareMyRequestRejected():
+        _showSnack(t('اعتذر المضيف عن مشاركة شاشتك الآن', "The host can't take your screen share right now"));
+      case LiveShareMyRequestExpired():
+        _showSnack(t('لم يرد المضيف على طلبك. حاول مرة أخرى بعد قليل.', 'No answer from the host. Try again in a moment.'));
+      case LiveShareStopAsked(:final byName, :final keep, :final takeover):
+        unawaited(_stopMyShareAsked(byName: byName, keep: keep, takeover: takeover));
+      case LiveShareGrantEnded(:final identity):
+        unawaited(_revokeShareGrant(identity));
+    }
+  }
+
+  /// A host asked this device to stop its share (stopped it, took over, or handed over to someone else).
+  Future<void> _stopMyShareAsked({required String byName, String? keep, bool takeover = false}) async {
+    if (!_localPresenting && !screenShareActive) return;
+    await stopScreenShare();
+    _scheduleSort();
+    if (!mounted) return;
+    final who = byName.isNotEmpty ? byName : t('المضيف', 'The host');
+    _showSnack(takeover
+        ? t('بدأ $who مشاركة شاشته، فتوقفت مشاركتك', '$who started sharing, so your share stopped')
+        : keep != null
+            ? t('توقفت مشاركتك ليعرض ${_nameOf(keep)}', 'Your share stopped so ${_nameOf(keep)} can present')
+            : t('أوقف $who مشاركة شاشتك', '$who stopped your screen share'));
+  }
+
+  /// A host accepted my request: the permission may still be on its way (≤ 8 s), then the share starts by itself
+  /// (the options sheet and the OS picker still ask on web / Android).
+  Future<void> _startAcceptedShare() async {
+    final deadline = DateTime.now().add(const Duration(seconds: 8));
+    while (mounted && !_allowed.share && DateTime.now().isBefore(deadline)) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    if (!mounted) return;
+    if (!_allowed.share) {
+      _share.withdrawAccepted();
+      _showSnack(t('تعذّر بدء المشاركة: لم يصل الإذن بعد. اطلب مرة أخرى.', "Couldn't start sharing: the permission did not arrive. Ask again."),
+          error: true);
+      return;
+    }
+    LiveRoomScope.maybeOf(context)?.expand();
+    _showSnack(t('وافق المضيف — اختر ما تريد مشاركته', 'The host accepted — choose what to share'));
+    if (!_localPresenting) await toggleScreenShare();
+    if (!mounted) return;
+    _scheduleSort();
+    // iOS: the broadcast sheet may still be open; the approval lapses there on its own if nothing starts.
+    final iosPending = !kIsWeb && lkPlatformIs(PlatformType.iOS);
+    if (!iosPending && !_localPresenting) _share.withdrawAccepted(); // closed the picker: the hosts take it back
+  }
+
+  /// The request dialog over the room (once; it follows the arbiter and closes by itself).
+  void _openShareDialog() {
+    if (!mounted || _shareDialogOpen || _share.current == null || LiveRoomHost.isMinimized || !_isShareHost) return;
+    _shareDialogOpen = true;
+    _pokeControls();
+    unawaited(showLiveShareRequestDialog(
+      context,
+      arbiter: _share,
+      onAnswer: (r, accept) => unawaited(_answerShare(r, accept)),
+      note: _shareAcceptNote,
+      imageFor: (r) => participantPhotoFromMetadata(_remoteBy(r.identity)?.metadata) ?? r.imageUrl,
+    ).whenComplete(() {
+      _shareDialogOpen = false;
+      // Closed by a minimize with requests left: asked again when the room is full-screen (_syncDecorLoops).
+    }));
+  }
+
+  (LiveShareAcceptNote, String) _shareAcceptNote() {
+    if (_localPresenting) return (LiveShareAcceptNote.yours, '');
+    final other = _share.presenters.keys.where((id) => id != _myIdentity).firstOrNull;
+    if (other != null) return (LiveShareAcceptNote.other, _nameOf(other));
+    return (LiveShareAcceptNote.none, '');
+  }
+
+  /// Accept / Decline from the dialog. Accept: the server's permission first (when the requester has none), then
+  /// this host's own share stops, then the answer (every host closes its dialog; the requester starts).
+  Future<void> _answerShare(LiveShareRequest r, bool accept) async {
+    final me = _myReactionName;
+    if (!accept) {
+      _share.answer(r.id, accept: false, name: me);
+      return;
+    }
+    if (!_share.beginAnswer(r.id)) return;
+    final rp = _remoteBy(r.identity);
+    if (rp == null) {
+      _share.answer(r.id, accept: false, name: me);
+      _showSnack(t('غادر ${r.name} الغرفة', '${r.name} left the room'));
+      return;
+    }
+    var granted = false;
+    final perms = _controlTarget(rp).permissions;
+    if (!perms.mayShareScreen) {
+      final c = _controls;
+      if (c == null) {
+        _share.abortAnswer(r.id);
+        _showSnack(t('أدوات المضيف متوقفة: لا يمكن منح إذن المشاركة', 'Host controls are off: the share permission cannot be given'),
+            error: true);
+        return;
+      }
+      try {
+        await c.api.setPermissions(r.identity, perms.withScreenShare(true));
+        granted = true;
+      } catch (e) {
+        _share.abortAnswer(r.id);
+        _showSnack(liveControlsError(e), error: true);
+        return;
+      }
+    }
+    if (_localPresenting) {
+      await stopScreenShare();
+      _scheduleSort();
+    }
+    // The grant is noted first: an answer that comes back at once (a lapsed request) already finds it.
+    if (granted) _share.noteGrant(r.identity); // taken back when that share ends (LiveShareGrantEnded)
+    final answered = _share.answer(r.id, accept: true, name: me);
+    if (granted && answered == null && _share.approvedAt(r.identity) == null && _share.takeGrant(r.identity)) {
+      unawaited(_revokeShareGrant(r.identity)); // it lapsed / was withdrawn meanwhile
+    }
+  }
+
+  /// Takes back a share permission this host gave for one request.
+  Future<void> _revokeShareGrant(String identity) async {
+    final c = _controls;
+    final rp = _remoteBy(identity);
+    if (c == null || rp == null) return;
+    final perms = _controlTarget(rp).permissions;
+    if (!perms.mayShareScreen) return;
+    try {
+      await c.api.setPermissions(identity, perms.withScreenShare(false));
+    } catch (e) {
+      log('[SHARE] revoke the grant of $identity: $e');
+    }
+  }
+
+  // ── Attention ──────────────────────────────────────────────────────────────
+  void _syncAttention() {
+    _attention.setChatUnread(_chat.unread);
+    if (widget.isTeacher || _isShareHost) _attention.setHands([for (final h in _hands.hands) h.identity]);
+    final lobby = _lobby;
+    if (lobby != null) _attention.setLobby([for (final r in lobby.waiting) r.id]);
+    _attention.setShareRequests(_isShareHost ? _share.pendingCount : 0);
+  }
+
+  void _onAttention() {
+    final total = _attention.total;
+    // Something new while the phone's controls are hidden: they come back with the badge.
+    if (total > _attentionLast && mounted) _pokeControls();
+    _attentionLast = total;
+    LiveRoomHost.attention.value = total;
+  }
+
+  // ── Chat preview ───────────────────────────────────────────────────────────
+  bool get _chatVisible => _chat.isOpen || _side == _SidePanel.chat || _sheetPanel == _SidePanel.chat;
+
+  void _onChatChanged() {
+    _syncAttention();
+    final msgs = _chat.messages;
+    if (msgs.isEmpty) {
+      _lastChatId = null;
+      return;
+    }
+    final last = msgs.last;
+    if (last.id == _lastChatId) return;
+    _lastChatId = last.id;
+    if (last.mine || _chatVisible || LiveRoomHost.isMinimized || !mounted) {
+      if (_chatVisible) _hideChatToast();
+      return;
+    }
+    final photo = participantPhotoFromMetadata(_remoteBy(last.identity)?.metadata);
+    setState(() => _chatToast = LiveChatToastData(
+          id: last.id,
+          name: last.name,
+          text: last.text,
+          imageUrl: photo,
+          more: (_chat.unread - 1).clamp(0, 999),
+        ));
+    _chatToastTimer?.cancel();
+    _chatToastTimer = Timer(const Duration(seconds: 5), _hideChatToast);
+  }
+
+  void _hideChatToast() {
+    _chatToastTimer?.cancel();
+    _chatToastTimer = null;
+    if (_chatToast != null && mounted) setState(() => _chatToast = null);
   }
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -4860,11 +5390,17 @@ class _PremiumScreenShareView extends StatefulWidget {
   /// Annotation over the shared video (null: `live.annotation` is off).
   final AnnotationController? annot;
 
+  /// A host's "Stop share" on this participant's share (null hides it).
+  final VoidCallback? onStopShare;
+  final bool stopBusy;
+
   const _PremiumScreenShareView({
     required this.participant,
     required this.resolveScreenTrack,
     required this.auroraAnim,
     this.annot,
+    this.onStopShare,
+    this.stopBusy = false,
   });
 
   @override
@@ -4983,7 +5519,14 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
         PositionedDirectional(
           top: 20,
           start: 20,
-          child: _PresenterBadge(name: presenterName, isSpeaking: isSpeaking),
+          end: 112, // clear of the SCREEN badge
+          child: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+              _PresenterBadge(name: presenterName, isSpeaking: isSpeaking),
+              if (widget.onStopShare != null) LiveStopShareChip(onTap: widget.onStopShare!, busy: widget.stopBusy),
+            ]),
+          ),
         ),
         const PositionedDirectional(top: 20, end: 20, child: _ScreenShareLiveBadge()),
         Positioned(
@@ -5112,13 +5655,17 @@ class _PresenterBadge extends StatelessWidget {
           color: isSpeaking ? _cyan : _textMid,
         ),
         const SizedBox(width: 6),
-        Text(
-          name,
-          style: TextStyle(
-            fontFamily: AppFonts.family,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: isSpeaking ? _cyan : _textMid,
+        Flexible(
+          child: Text(
+            name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: AppFonts.family,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isSpeaking ? _cyan : _textMid,
+            ),
           ),
         ),
       ],
