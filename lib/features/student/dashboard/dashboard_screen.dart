@@ -2,10 +2,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_shell.dart';
-import 'package:flutter_education_app/features/student/dashboard/component/student_schedule_tab.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_education_app/features/student/home/home_provider.dart';
 import 'package:flutter_education_app/features/teacher/data_lab/data_lab_gate.dart';
-import 'package:flutter_education_app/features/teacher/schedules/schedules_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:provider/provider.dart';
 import '../../../config/app_config.dart' as Helpers;
@@ -106,11 +106,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Icons.calendar_month_outlined,
         Icons.calendar_month_rounded,
         'my_schedule',
-        context.read<StudentSchedulesProvider>().fetch,
+        () async => CalendarStore.instance.invalidate(), // the one schedule page (D-085) reloads its range
         const GuestGate(
           icon: Icons.calendar_month_rounded,
           messageKey: 'guest_locked_schedule',
-          child: StudentScheduleTab(),
+          child: SchedulePage(asTab: true),
         ),
       ),
       DashboardItem(

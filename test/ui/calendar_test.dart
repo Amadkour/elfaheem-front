@@ -4,7 +4,8 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_api.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_meeting.dart';
 import 'package:flutter_education_app/features/shared/calendar/calendar_models.dart';
-import 'package:flutter_education_app/features/shared/calendar/calendar_screen.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_page.dart';
+import 'package:flutter_education_app/features/shared/calendar/schedule_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
@@ -85,7 +86,7 @@ class FakeCalendarApi implements CalendarApi {
       };
 
   @override
-  Future feed(String start, String end, {int? orgId, int? deptId}) async {
+  Future feed(String start, String end, {int? orgId, int? deptId, bool detail = false}) async {
     if (fail) throw Exception('offline');
     return {'items': sample(), 'pending_invites': 3};
   }
@@ -213,12 +214,12 @@ void main() {
   group('layout', () {
     for (final v in CalView.values) {
       testWidgets('calendar ${v.name} view', (tester) async {
-        await expectNoLayoutErrors(tester, () => CalendarView(api: FakeCalendarApi(), initialView: v), frames: 4);
+        await expectNoLayoutErrors(tester, () => SchedulePage(api: FakeCalendarApi(), store: CalendarStore(), initialView: v), frames: 4);
       });
     }
 
     testWidgets('calendar load error', (tester) async {
-      await expectNoLayoutErrors(tester, () => CalendarView(api: FakeCalendarApi(fail: true), initialView: CalView.week), frames: 4);
+      await expectNoLayoutErrors(tester, () => SchedulePage(api: FakeCalendarApi(fail: true), store: CalendarStore(), initialView: CalView.week), frames: 4);
     });
 
     testWidgets('new meeting form with busy invitees', (tester) async {
@@ -300,8 +301,12 @@ void main() {
     });
 
     testWidgets('calendar shows Meet now', (tester) async {
-      await expectNoLayoutErrors(tester, () => CalendarView(api: FakeCalendarApi(), initialView: CalView.day),
-          frames: 4, act: (t) async => expect(find.byKey(const ValueKey('calendar.meet_now')), findsOneWidget));
+      // the phone's floating button, the desktop sidebar's pill
+      await expectNoLayoutErrors(tester, () => SchedulePage(api: FakeCalendarApi(), store: CalendarStore(), initialView: CalView.day),
+          frames: 4,
+          act: (t) async => expect(
+              find.byKey(const ValueKey('calendar.meet_now')).evaluate().length + find.byKey(const ValueKey('meetings.meet_now')).evaluate().length,
+              1));
     });
 
     testWidgets('meeting details (invitee)', (tester) async {

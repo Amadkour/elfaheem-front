@@ -1,6 +1,8 @@
 // lib/features/shared/calendar/calendar_models.dart — the smart calendar: event model + pure layout logic.
 //
-//   GET /api/v1/me/calendar?start=&end=&org_id=        merged events (meeting · timetable · extra · exam · course_session)
+//   GET /api/v1/me/calendar?start=&end=&org_id=&detail=true   merged events (meeting · timetable · extra · exam ·
+//                                                       course_session); detail: one-date changes (`change`, cancelled
+//                                                       dates kept with `cancelled`) + `pauses` (exam windows)
 //   GET /api/v1/me/calendar/depts/{id}?start=&end=     a department's meetings
 //
 // Times arrive as naive UTC; everything on screen is the wall clock of AppTime's zone (platform / organization).
@@ -15,9 +17,117 @@ import 'package:flutter_education_app/core/app_time.dart';
 
 import '../../admin/admin_common.dart' show t;
 
-enum CalView { day, week, month }
+/// The views of the schedule page: agenda (phone default) · day · week (desktop default) · month.
+enum CalView { agenda, day, week, month }
 
-const calSources = ['meeting', 'timetable', 'extra', 'exam', 'course_session'];
+/// How many days the agenda shows from its first day (it grows by the same amount with "Show more").
+const calAgendaDays = 14;
+
+/// `course_weekly` is the app's own source: a personal course's weekly appointment (GET /student|teacher/schedules)
+/// expanded to dates (schedule_logic.dart calWeeklyEvents).
+const calSources = ['meeting', 'timetable', 'extra', 'exam', 'course_session', 'course_weekly'];
+
+/// The one-date change of a timetable session (GET /me/calendar?detail=true `change`): substitute · online /
+/// offline · cancelled, with the students' answers. An older server sends only `change_id` + `mode`.
+class CalChange {
+  const CalChange({
+    required this.id,
+    this.mode,
+    this.onlineUrl,
+    this.cancelled = false,
+    this.substitute = false,
+    this.note,
+    this.myResponse,
+    this.canRespond = false,
+    this.canEdit = false,
+    this.accept = 0,
+    this.reject = 0,
+  });
+
+  final int id;
+  final String? mode, onlineUrl, note, myResponse;
+  final bool cancelled, substitute, canRespond, canEdit;
+  final int accept, reject;
+
+  bool get online => mode == 'online';
+
+  static CalChange? fromJson(dynamic v, {int? changeId, String? mode}) {
+    if (v is Map) {
+      final id = _int(v['id']);
+      if (id == null) return null;
+      final r = v['responses'] is Map ? v['responses'] as Map : const {};
+      return CalChange(
+        id: id,
+        mode: v['mode']?.toString(),
+        onlineUrl: v['online_url']?.toString(),
+        cancelled: v['cancelled'] == true,
+        substitute: v['substitute'] == true,
+        note: v['note']?.toString(),
+        myResponse: v['my_response']?.toString(),
+        canRespond: v['can_respond'] == true,
+        canEdit: v['can_edit'] == true,
+        accept: _int(r['accept']) ?? 0,
+        reject: _int(r['reject']) ?? 0,
+      );
+    }
+    // an older server: only the id and the mode it applied
+    return changeId == null ? null : CalChange(id: changeId, mode: mode);
+  }
+
+  /// The change after I answered [decision] (the counts follow at once, before the reload).
+  CalChange answered(String decision) => CalChange(
+        id: id,
+        mode: mode,
+        onlineUrl: onlineUrl,
+        cancelled: cancelled,
+        substitute: substitute,
+        note: note,
+        myResponse: decision,
+        canRespond: canRespond,
+        canEdit: canEdit,
+        accept: accept + (decision == 'accept' ? 1 : 0) - (myResponse == 'accept' ? 1 : 0),
+        reject: reject + (decision == 'reject' ? 1 : 0) - (myResponse == 'reject' ? 1 : 0),
+      );
+}
+
+/// A published exam window that pauses an organization's weekly classes (`pauses[]`, dates inclusive).
+class CalPause {
+  const CalPause({required this.start, required this.end, required this.name, this.orgId, this.orgName, this.kind, this.id});
+  final DateTime start, end; // wall days
+  final String name;
+  final String? orgName, kind;
+  final int? orgId, id;
+
+  bool covers(DateTime day) {
+    final d = calDay(day);
+    return !d.isBefore(start) && !d.isAfter(end);
+  }
+
+  /// `pauses[]` of a feed answer, one per organization + window (each timetable of a term repeats it).
+  static List<CalPause> listFrom(dynamic r) {
+    final out = <CalPause>[];
+    final seen = <String>{};
+    if (r is! Map || r['pauses'] is! List) return out;
+    for (final x in r['pauses'] as List) {
+      if (x is! Map) continue;
+      final a = DateTime.tryParse('${x['start_date'] ?? ''}'), b = DateTime.tryParse('${x['end_date'] ?? ''}');
+      if (a == null || b == null) continue;
+      if (!seen.add('${x['org_id']}|${x['exam_schedule_id']}|${x['start_date']}')) continue;
+      final org = x['org'] is Map ? x['org'] as Map : const {};
+      final orgName = AppConfig.lang == 'ar' ? (org['name_ar'] ?? org['name_en']) : (org['name_en'] ?? org['name_ar']);
+      out.add(CalPause(
+        start: calDay(a),
+        end: calDay(b),
+        name: '${x['name'] ?? ''}'.trim(),
+        orgId: _int(x['org_id']),
+        orgName: orgName?.toString(),
+        kind: x['kind']?.toString(),
+        id: _int(x['exam_schedule_id']),
+      ));
+    }
+    return out;
+  }
+}
 
 DateTime? _utc(dynamic v) {
   final s = '${v ?? ''}'.trim();
@@ -49,6 +159,9 @@ class CalEvent {
     this.isOwner = false,
     this.editable = false,
     this.counts = const {},
+    this.cancelled = false,
+    this.change,
+    this.slotId,
   });
 
   final String id, source, title;
@@ -57,6 +170,13 @@ class CalEvent {
   final int? orgId, deptId, courseId, meetingId;
   final bool isOwner, editable;
   final Map<String, int> counts;
+
+  /// A timetable date the staff cancelled (only with `detail=true`): shown struck through, never joined.
+  final bool cancelled;
+
+  /// The one-date change of a timetable session (null when the date runs as the timetable says).
+  final CalChange? change;
+  final int? slotId;
 
   static CalEvent? fromJson(Map<String, dynamic> j) {
     final s = _utc(j['starts_at']), e = _utc(j['ends_at']);
@@ -86,6 +206,9 @@ class CalEvent {
         if (j['counts'] is Map)
           for (final e in (j['counts'] as Map).entries) '${e.key}': _int(e.value) ?? 0,
       },
+      cancelled: j['cancelled'] == true,
+      change: CalChange.fromJson(j['change'], changeId: _int(j['change_id']), mode: j['mode']?.toString()),
+      slotId: _int(j['slot_id']),
     );
   }
 
@@ -95,16 +218,23 @@ class CalEvent {
             if (x is Map) CalEvent.fromJson(Map<String, dynamic>.from(x)),
       ].whereType<CalEvent>().toList();
 
-  CalEvent moved(DateTime s, DateTime e) => CalEvent(
-        id: id, source: source, title: title, start: s, end: e, subtitle: subtitle, orgId: orgId, deptId: deptId,
-        courseId: courseId, meetingId: meetingId, location: location, mode: mode, myStatus: myStatus, kind: kind,
-        color: color, orgName: orgName, isOwner: isOwner, editable: editable, counts: counts);
+  CalEvent moved(DateTime s, DateTime e) => copyWith(start: s, end: e);
+
+  CalEvent copyWith({DateTime? start, DateTime? end, String? myStatus, CalChange? change}) => CalEvent(
+        id: id, source: source, title: title, start: start ?? this.start, end: end ?? this.end, subtitle: subtitle,
+        orgId: orgId, deptId: deptId, courseId: courseId, meetingId: meetingId, location: location, mode: mode,
+        myStatus: myStatus ?? this.myStatus, kind: kind, color: color, orgName: orgName, isOwner: isOwner,
+        editable: editable, counts: counts, cancelled: cancelled, change: change ?? this.change, slotId: slotId);
+
+  /// The course session's id (`session:<id>`), null for every other source.
+  int? get sessionId => source == 'course_session' && id.startsWith('session:') ? int.tryParse(id.substring(8)) : null;
 
   DateTime get wallStart => AppTime.toZone(start);
   DateTime get wallEnd => AppTime.toZone(end);
   Duration get duration => end.difference(start);
   bool get declined => myStatus == 'declined';
   bool get isMeeting => source == 'meeting';
+  bool get online => mode == 'online' || (change?.online ?? false);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -122,6 +252,9 @@ DateTime _startOfWeek(DateTime d, int weekStart) => calDay(d).subtract(Duration(
 List<DateTime> calVisibleDays(CalView v, DateTime anchor, {int? weekStart}) {
   final ws = weekStart ?? calWeekStart();
   switch (v) {
+    case CalView.agenda:
+      final a = calDay(anchor);
+      return [for (var i = 0; i < calAgendaDays; i++) DateTime(a.year, a.month, a.day + i)];
     case CalView.day:
       return [calDay(anchor)];
     case CalView.week:
@@ -133,15 +266,26 @@ List<DateTime> calVisibleDays(CalView v, DateTime anchor, {int? weekStart}) {
   }
 }
 
-/// UTC [start, end) to fetch for a view ([toUtc] = AppTime.fromZone in the app).
-(DateTime, DateTime) calFetchRange(CalView v, DateTime anchor, {int? weekStart, DateTime Function(DateTime)? toUtc}) {
-  final days = calVisibleDays(v, anchor, weekStart: weekStart);
+/// UTC [start, end) to fetch for a view ([toUtc] = AppTime.fromZone in the app). The agenda and the day view fetch
+/// whole weeks from the start of their week, so the week view of the same days is already in the cache;
+/// [agendaDays] = how many days the agenda shows now.
+(DateTime, DateTime) calFetchRange(CalView v, DateTime anchor,
+    {int? weekStart, DateTime Function(DateTime)? toUtc, int agendaDays = calAgendaDays}) {
+  final ws = weekStart ?? calWeekStart();
   final f = toUtc ?? AppTime.fromZone;
+  if (v == CalView.agenda || v == CalView.day) {
+    final a = calDay(anchor);
+    final first = _startOfWeek(a, ws);
+    final n = v == CalView.day ? 7 : ((a.difference(first).inDays + agendaDays + 6) ~/ 7) * 7;
+    return (f(first), f(DateTime(first.year, first.month, first.day + n)));
+  }
+  final days = calVisibleDays(v, anchor, weekStart: ws);
   final last = days.last;
   return (f(days.first), f(DateTime(last.year, last.month, last.day + 1)));
 }
 
 DateTime calShift(CalView v, DateTime anchor, int dir) => switch (v) {
+      CalView.agenda => DateTime(anchor.year, anchor.month, anchor.day + 7 * dir),
       CalView.day => DateTime(anchor.year, anchor.month, anchor.day + dir),
       CalView.week => DateTime(anchor.year, anchor.month, anchor.day + 7 * dir),
       CalView.month => DateTime(anchor.year, anchor.month + dir, 1),
@@ -218,25 +362,28 @@ String calSourceLabel(String s) => switch (s) {
       'extra' => t('فترات خاصة', 'Special periods'),
       'exam' => t('امتحانات', 'Exams'),
       'course_session' => t('جلسات المقررات', 'Course sessions'),
+      'course_weekly' => t('مواعيد المقررات', 'Course appointments'),
       _ => s,
     };
 
 IconData calSourceIcon(String s) => switch (s) {
       'meeting' => Icons.groups_2_rounded,
-      'timetable' => Icons.view_week_rounded,
+      'timetable' => Icons.class_rounded,
       'extra' => Icons.event_note_rounded,
-      'exam' => Icons.assignment_rounded,
-      'course_session' => Icons.live_tv_rounded,
+      'exam' => Icons.edit_note_rounded,
+      'course_session' || 'course_weekly' => Icons.sensors_rounded,
       _ => Icons.event_rounded,
     };
 
-/// One colour per source (private meetings get the accent so "just me" stands out).
+/// One colour per kind of event, derived from the live theme (D-085): classes = primary (a lab leans to success),
+/// exams = danger, live sessions = purple, meetings = gold (a private one = warning), special periods between
+/// primary and purple.
 Color calSourceColor(ThemeConfigProvider c, String source, {String? kind}) => switch (source) {
-      'meeting' => kind == 'private' ? c.accent : c.primary,
-      'timetable' => kind == 'lab' ? c.accent2 : Color.lerp(c.primary, c.accent2, 0.45)!,
-      'extra' => c.warning,
+      'meeting' => kind == 'private' ? c.warning : c.accent2,
+      'timetable' => kind == 'lab' ? Color.lerp(c.primary, c.success, 0.6)! : c.primary,
+      'extra' => Color.lerp(c.primary, c.purple, 0.5)!,
       'exam' => c.danger,
-      'course_session' => c.purple,
+      'course_session' || 'course_weekly' => c.purple,
       _ => c.textMedium,
     };
 
@@ -272,7 +419,7 @@ String calTitleFor(CalView v, DateTime anchor) {
   String fmt(DateTime d, String p) => AppTime.date(AppTime.fromZone(DateTime(d.year, d.month, d.day, 12)), pattern: p);
   return switch (v) {
     CalView.day => fmt(anchor, 'EEEE d MMMM y'),
-    CalView.month => fmt(DateTime(anchor.year, anchor.month, 15), 'MMMM y'),
+    CalView.month || CalView.agenda => fmt(DateTime(anchor.year, anchor.month, 15), 'MMMM y'),
     CalView.week => days.first.month == days.last.month
         ? '${fmt(days.first, 'd')} – ${fmt(days.last, 'd MMMM y')}'
         : '${fmt(days.first, 'd MMM')} – ${fmt(days.last, 'd MMM y')}',

@@ -1,6 +1,6 @@
 // lib/features/shared/calendar/calendar_api.dart — calls of the smart calendar (../back/routers/calendar_router.py).
 //
-//   GET    /api/v1/me/calendar · /depts/{id} · /people          POST /busy
+//   GET    /api/v1/me/calendar[?detail=true] · /depts/{id} · /people          POST /busy
 //   POST   /meetings/quick ("Meet now": online, private, starts now — live-rooms-spec §7)
 //   POST   /meetings · GET|PATCH|DELETE /meetings/{id} · POST /meetings/{id}/respond|accept-proposal|join
 //   POST   /api/v1/org/orgs/{o}/complaints/{c}/meeting          (a complaint / request → a meeting with its sender)
@@ -18,7 +18,8 @@ const _base = '/api/v1/me/calendar';
 const calTimeout = Duration(seconds: 25);
 
 abstract class CalendarApi {
-  Future<dynamic> feed(String start, String end, {int? orgId, int? deptId});
+  /// [detail]: one-date changes with the answers, cancelled dates and exam-window pauses (the schedule page).
+  Future<dynamic> feed(String start, String end, {int? orgId, int? deptId, bool detail = false});
   Future<dynamic> meeting(int id);
   Future<dynamic> create(Map<String, dynamic> body);
 
@@ -40,9 +41,9 @@ class RemoteCalendarApi implements CalendarApi {
   ApiClient get _api => ApiClient();
 
   @override
-  Future<dynamic> feed(String start, String end, {int? orgId, int? deptId}) => (deptId != null
+  Future<dynamic> feed(String start, String end, {int? orgId, int? deptId, bool detail = false}) => (deptId != null
           ? _api.get('$_base/depts/$deptId', queryParams: {'start': start, 'end': end})
-          : _api.get(_base, queryParams: {'start': start, 'end': end, 'org_id': ?orgId}))
+          : _api.get(_base, queryParams: {'start': start, 'end': end, 'org_id': ?orgId, if (detail) 'detail': 'true'}))
       .timeout(calTimeout);
 
   @override
