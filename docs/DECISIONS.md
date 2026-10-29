@@ -1013,3 +1013,34 @@ library (one presenter owns the state; per-item last-writer-wins is enough); put
 (an older app would draw them over a later screen share); a free-size infinite canvas (viewers on a phone and a
 projector must see the same page; zoom is per device instead); image / PDF page backgrounds (needs an upload route
 and a snapshot path for large binaries — later).
+
+## D-089 — Live performance: one recommended set, every either-or a super-admin switch, sent as `live_config` · 2026-10-29 · accepted
+
+**Context.** The owner: "apply all best practice points to improve and minimize the CPU and network connection in
+live, and where there are two approaches that must choose one, make the super admin able to switch between them".
+Measurements: `back/bench/recording/RESULTS.md` (the Chrome composite needs ~1.5 cores, peak 3, and is BROKEN under
+production's `cpus: 1.5` — 6.6 fps, ~80 % of the audio lost; the GStreamer composite 0.5 core pixel-exact; the v2
+media egress cheap but black with no share and one failure on a share stop; LiveKit kept a killed egress ACTIVE for
+60 s) and the LiveKit load bench (a 720p viewer at a 1 Mbit/s cap froze ~15 s, then 180p for good; webhooks waited
+up to 9.7 s on the dev API).
+**Decision.** The server keeps ONE settings object (`app_settings` `platform.live`, `GET/PUT
+/api/v1/admin/live-settings`, super admin, audited) and sends its effective values as `live_config` (contract v1) in
+every live start / join payload; older apps ignore it, the live room applies it (the room code's own model).
+Recommended set, and why: VP8 (decodes everywhere, simulcast solid; H.264 = hardware encode on phones, VP9 = ~30 %
+less data for more CPU) · weak network `adaptive` (simulcast steps down; `audio_first` keeps only the voice below a
+threshold with "Show video") · teacher camera 720p, attendees 360p (thumbnails), 24 fps · screen share 15 fps,
+2.5 Mbit/s cap (text needs keyframes, not frames) · DTX + RED on (the voice is protected first) · attendees join with
+the camera off · video nobody sees is paused · recording on the server, engine `composite`, ONE 1080p copy (one job
+per class instead of up to six). Recording mode replaces the env-only RECORDING_MODE at runtime (the env stays the
+default while unset, so production keeps recording on the device until the super admin picks); a run stores its
+mode and engine (migration 0030) and finishes in them. Engine `media` = one v2 StartEgress media job (host screen
+share preferred + every voice): its black-while-nothing-is-shared caveat is written on its card. The reconcile tick
+gets an egress watchdog (no playlist write for 120 s → stop, mark `stalled`, salvage the segments, save the partial
+recording); the webhook answers within 2 s and finishes slow work on its own pool. LiveKit: congestion control with
+`allow_pause`, codecs, PLI throttle, room guards (dev config in the back repo; production as reviewed proposals
+`back/deploy/livekit.production.yaml` / `egress.production.yaml`: egress v1.15 + the SDK compositor + `cpu_cost`,
+egress `cpus` 1.5 → 3). The admin page (`lib/features/admin/live_settings/`, kill switch `admin.live_settings`) shows
+each either-or as cards with trade-off tags and a Recommended badge, and a live estimate of the data per viewer.
+**Not chosen.** Per-organization overrides (a later layer, like the feature disable list); per-room settings chosen
+by the teacher (one more decision in front of a class); a recording "auto" mode that picks the engine by whether the
+host shares (the media egress cannot switch source mid-run; restarting splits the recording).
