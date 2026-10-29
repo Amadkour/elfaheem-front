@@ -21,7 +21,8 @@
 //   {"v":1,"t":"c"}                                                                 clear all (host)
 //   {"v":1,"t":"req"}                                                               "send me the board"
 //   {"v":1,"t":"snap","sid":"r8x","i":0,"n":2,"s":[{"a":…,"id":…,"tl":…,"c":…,"w":…,"p":[…],"o":1}]}
-//   {"v":1,"t":"perm","all":false,"ids":["student_4"]}                              who may draw (host)
+//   {"v":1,"t":"perm","all":false,"ids":["student_4"],"au":1}                       who may draw (host); au: show
+//                                                                                   who drew what (D-093)
 //   {"v":1,"t":"mode","burn":true}                                                  Android whole-screen share
 //   {"v":1,"t":"l","x":0.5,"y":0.25,"a":"teacher_7"}                                laser (topic annot.laser)
 //
@@ -335,7 +336,7 @@ class AnnotSnapshotChunk extends AnnotMsg {
 }
 
 class AnnotPermission extends AnnotMsg {
-  const AnnotPermission({required this.allowStudents, this.allowed = const {}});
+  const AnnotPermission({required this.allowStudents, this.allowed = const {}, this.showAuthors = false});
 
   /// Every student may draw.
   final bool allowStudents;
@@ -343,8 +344,13 @@ class AnnotPermission extends AnnotMsg {
   /// These identities may draw even when [allowStudents] is off.
   final Set<String> allowed;
 
+  /// The host's "Show who drew what" (D-093, `au`: additive, older apps ignore it): an item's author on hover /
+  /// long press, on the shared screen and the whiteboard.
+  final bool showAuthors;
+
   @override
-  Map<String, Object?> body() => {'t': 'perm', 'all': allowStudents, 'ids': allowed.toList()..sort()};
+  Map<String, Object?> body() =>
+      {'t': 'perm', 'all': allowStudents, 'ids': allowed.toList()..sort(), if (showAuthors) 'au': 1};
 }
 
 class AnnotMode extends AnnotMsg {
@@ -455,7 +461,7 @@ class AnnotCodec {
           if (s == null) return null;
           allowed.add(s);
         }
-        return AnnotPermission(allowStudents: all, allowed: allowed);
+        return AnnotPermission(allowStudents: all, allowed: allowed, showAuthors: m['au'] == 1 || m['au'] == true);
       case 'mode':
         final burn = m['burn'];
         return burn is bool ? AnnotMode(burnedIn: burn) : null;

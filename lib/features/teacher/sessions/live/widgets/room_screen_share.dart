@@ -54,7 +54,7 @@ import 'room_recorder.dart';
 import 'android_share.dart';
 import 'ios_share.dart';
 import 'share_options_sheet.dart';
-import '../whiteboard/board_protocol.dart' show BoardBackground;
+import '../whiteboard/board_protocol.dart' show BoardBackground, BoardFormat;
 import 'share_presets.dart';
 import 'package:flutter_education_app/features/shared/live/live_config.dart';
 import 'package:flutter_education_app/features/shared/live/live_media_plan.dart'
@@ -89,7 +89,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   bool get whiteboardOffered => false;
 
   /// The presenter picked the whiteboard in the share sheet (room.dart presents it; no track is published).
-  Future<void> startWhiteboard(BoardBackground background) async {}
+  Future<void> startWhiteboard(BoardBackground background, {BoardFormat format = BoardFormat.landscape}) async {}
 
   /// iOS / desktop have no options sheet of their own: with the whiteboard on, Screen | Whiteboard is asked first.
   /// True when the screen share should go on (false: the board was picked or the sheet was closed).
@@ -98,7 +98,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     final choice = await showShareOptionsSheet(context, deviceAudioSupported: false, whiteboard: true, qualityChoice: false);
     if (choice == null || !mounted) return false;
     if (choice.isWhiteboard) {
-      await startWhiteboard(choice.whiteboard!);
+      await startWhiteboard(choice.whiteboard!, format: choice.boardFormat);
       return false;
     }
     return true;
@@ -334,7 +334,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     );
     if (choice == null || !mounted) return;
     if (choice.isWhiteboard) {
-      await startWhiteboard(choice.whiteboard!);
+      await startWhiteboard(choice.whiteboard!, format: choice.boardFormat);
       return;
     }
     final preset = _presetFor(choice.quality);
@@ -543,7 +543,7 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         deviceAudioSupported: audioSupported, web: true, whiteboard: whiteboardOffered, screenAvailable: !mobileWeb);
     if (choice == null || !mounted) return;
     if (choice.isWhiteboard) {
-      await startWhiteboard(choice.whiteboard!);
+      await startWhiteboard(choice.whiteboard!, format: choice.boardFormat);
       return;
     }
     if (mobileWeb) return;

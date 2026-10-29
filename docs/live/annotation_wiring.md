@@ -154,6 +154,19 @@ mouse strokes are constant width; the highlighter is one translucent path. x / y
 - No server route: annotation is peer-to-peer over the room's data channel. The LiveKit token must allow
   `canPublishData` for students (already true for hands / chat / reactions).
 
+## Name tags, "Show who drew what", "Stylus only" (D-093) — wired
+
+- `AnnotationController(nameOf: _presenceNameOf)` / `BoardController(nameOf:, othersMayDraw:, showAuthors:)` in the
+  room's annotation / whiteboard regions; `_presenceNameOf` is the LiveKit display name (a guest's typed name), never
+  an identity ("Participant" / "Guest" when there is none). The controllers feed `presence` from the stroke / put /
+  laser packets (the real sender); `AnnotationLayer` and `WhiteboardStage` paint the tags and run the fade ticker.
+- The host's "Show who drew what" is `_annot.setShowAuthors` (annotation toolbar toggle, Board sheet switch); it
+  travels as `au` on the permission packet and also drives the whiteboard (`showAuthors: () => _annot.showAuthors`).
+- "Stylus only" is `DrawInputPrefs.stylusOnly` (device-local, SharedPreferences): a touch never draws on the layer or
+  the board; on the board a finger scrolls / zooms.
+- Room hooks (tiny): `startWhiteboard(background, {format})` → `_startBoard(format:)` → `startPresenting(format:)`;
+  `_openBoardOptions` passes `showAuthors` / `onShowAuthors`.
+
 ## Keyboard (web / desktop, while the toolbar is open)
 
 P pen · H highlighter · E eraser · L laser · 1 / 2 / 3 thickness · Ctrl+Z / ⌘Z undo · Esc close. Keys typed into a

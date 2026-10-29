@@ -27,6 +27,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
 import 'annotation_protocol.dart';
+import 'live_presence.dart';
 
 /// Publishes [bytes] on [topic]; [to] limits the receivers (null = everyone).
 typedef AnnotSend = Future<void> Function(String topic, List<int> bytes, bool reliable, {List<String>? to});
@@ -124,15 +125,30 @@ class AnnotationController extends ChangeNotifier {
     this.laserTtl = kAnnotLaserTtl,
     this.autoFlush = true,
     this.maxStrokes = 4000,
+    String Function(String identity)? nameOf,
     String? idPrefix,
     int? color,
   })  : now = now ?? DateTime.now,
+        nameOf = nameOf ?? ((id) => id),
         _idPrefix = idPrefix ?? _randomPrefix(),
         _color = color ?? 0xFFE53935;
 
   final String localIdentity;
   AnnotSend? send;
   final DateTime Function() now;
+
+  /// A participant's display name (the room: LiveKit's name; a guest's typed name), for the name tags (D-093).
+  String Function(String identity) nameOf;
+
+  /// Who else is drawing now: the name tags over the shared screen.
+  late final LivePresence presence = LivePresence(now: now);
+
+  /// [nameOf], cleaned (bidi controls out, 24 characters at most).
+  String displayName(String identity) => presenceSafeName(nameOf(identity), fallback: identity.isEmpty ? '' : '…');
+
+  /// Whether [identity]'s tag shows here: never your own; the presenter's only when others may draw too.
+  bool presenceShownFor(String identity) =>
+      identity != localIdentity && (_allowStudents || _allowed.isNotEmpty || identity != _presenter);
   final Duration batchInterval;
   final Duration laserTtl;
 
@@ -151,10 +167,14 @@ class AnnotationController extends ChangeNotifier {
   bool _allowStudents = false;
   Set<String> _allowed = {};
   bool _burnedIn = false;
+  bool _showAuthors = false;
 
   Set<String> get hosts => Set.unmodifiable(_hosts);
   String? get presenter => _presenter;
   bool get allowStudents => _allowStudents;
+
+  /// The host's "Show who drew what" (D-093): an item's author on hover / long press (here and on the whiteboard).
+  bool get showAuthors => _showAuthors;
   Set<String> get allowedIdentities => Set.unmodifiable(_allowed);
   bool get burnedIn => _burnedIn;
   bool get isHost => _hosts.contains(localIdentity);
@@ -194,7 +214,7 @@ class AnnotationController extends ChangeNotifier {
   void setAllowStudents(bool allow) {
     if (!isHost || allow == _allowStudents) return;
     _allowStudents = allow;
-    _emit(AnnotPermission(allowStudents: _allowStudents, allowed: _allowed));
+    _emit(_permission);
     _afterPermissionChange();
     _notify();
   }
@@ -203,10 +223,21 @@ class AnnotationController extends ChangeNotifier {
   void setAllowedIdentities(Set<String> ids) {
     if (!isHost || setEquals(ids, _allowed)) return;
     _allowed = Set.of(ids);
-    _emit(AnnotPermission(allowStudents: _allowStudents, allowed: _allowed));
+    _emit(_permission);
     _afterPermissionChange();
     _notify();
   }
+
+  /// Host: show (or stop showing) who drew what on hover / long press. Off by default. Sent to everyone.
+  void setShowAuthors(bool on) {
+    if (!isHost || on == _showAuthors) return;
+    _showAuthors = on;
+    _emit(_permission);
+    _notify();
+  }
+
+  AnnotPermission get _permission =>
+      AnnotPermission(allowStudents: _allowStudents, allowed: _allowed, showAuthors: _showAuthors);
 
   /// The presenter (or a host) switches burned-in mode for the Android whole-screen share.
   void setBurnedIn(bool on) {
@@ -547,7 +578,7 @@ class AnnotationController extends ChangeNotifier {
     for (final c in chunks) {
       _sendRaw(kAnnotTopic, c, true, to: to);
     }
-    if (isHost) _emit(AnnotPermission(allowStudents: _allowStudents, allowed: _allowed), to: to, force: true);
+    if (isHost) _emit(_permission, to: to, force: true);
     if (_burnedIn) _emit(const AnnotMode(burnedIn: true), to: to, force: true);
   }
 
@@ -606,11 +637,14 @@ class AnnotationController extends ChangeNotifier {
         s.points.addAll(m.points.take(room));
         s.version++;
         board._changed();
+        final tip = s.points.last;
+        presence.mark(sender, name: displayName(sender), x: tip.x, y: tip.y, color: s.color, active: true);
         return true;
       case AnnotEnd():
         final s = board.stroke(AnnotRef(sender, m.id));
         if (s == null || !s.open) return false;
         _finish(s);
+        presence.end(sender);
         return true;
       case AnnotUndo():
         if (m.author.isNotEmpty && m.author != sender) return false;
@@ -648,6 +682,7 @@ class AnnotationController extends ChangeNotifier {
         if (!_hosts.contains(sender)) return false;
         _allowStudents = m.allowStudents;
         _allowed = Set.of(m.allowed);
+        _showAuthors = m.showAuthors;
         _afterPermissionChange();
         _notify();
         return true;
@@ -663,9 +698,19 @@ class AnnotationController extends ChangeNotifier {
         if (!canDraw(sender)) return false;
         board._lasers[sender] = AnnotLaserDot(author: sender, x: m.x, y: m.y, at: now());
         board._changed();
+        presence.mark(sender, name: displayName(sender), x: m.x, y: m.y, active: false);
         return true;
     }
   }
+
+  /// The topmost stroke under ([x], [y]) (for "Drawn by …"). [aspect]: the content's width / height.
+  AnnotStroke? strokeAt(double x, double y, {double aspect = 16 / 9}) {
+    final hits = hitTest(x, y, aspect: aspect, tolerance: 0.01);
+    return hits.isEmpty ? null : hits.first;
+  }
+
+  /// RoomPage: someone left (their tag goes).
+  void participantLeft(String identity) => presence.remove(identity);
 
   bool _remove(List<AnnotRef> refs) {
     var any = false;
@@ -713,6 +758,7 @@ class AnnotationController extends ChangeNotifier {
     _disposed = true;
     _flushTimer?.cancel();
     board.dispose();
+    presence.dispose();
     super.dispose();
   }
 }

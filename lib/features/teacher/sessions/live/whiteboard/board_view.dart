@@ -5,8 +5,10 @@
 // RoomPage puts it where the shared screen would go while a board is presented, for the presenter and every viewer;
 // the room's recorder captures the room UI, so the board is in the recording as everyone sees it.
 //
-// The presenter's "Board" sheet ([showWhiteboardOptionsSheet]): background, save the page as PNG, clear / delete the
-// page, and (host) "Let students draw and write" — the room's annotation permission, shared with screen annotation.
+// The presenter's "Board" sheet ([showWhiteboardOptionsSheet]): page format (D-093: a change remaps the board for
+// everyone, after a word when it has content), background, save as PNG (board_export.dart; continuous: the part on
+// screen or the whole board), clear / delete the page, (host) "Let students draw and write" — the room's annotation
+// permission, shared with screen annotation — and "Show who drew what", and (this device) "Stylus only".
 library;
 
 import 'dart:async';
@@ -20,8 +22,10 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
+import '../annotation/draw_input_prefs.dart';
 import '../widgets/live_palette.dart';
 import 'board_controller.dart';
+import 'board_export.dart';
 import 'board_painter.dart';
 import 'board_protocol.dart';
 import 'board_stage.dart';
@@ -143,7 +147,8 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
           final dockH = canDraw ? (wideDock ? 70.0 : 121.0) : 10.0;
           const topH = 64.0;
           final side = box.maxWidth < 600 ? 4.0 : 12.0; // a phone gives the page every pixel of its width
-          final idealStage = (box.maxWidth - side * 2) / kBoardAspect + 4;
+          // A continuous page takes all the height there is (it scrolls); a fixed one what its shape needs.
+          final idealStage = _c.isContinuous ? double.infinity : (box.maxWidth - side * 2) / _c.aspect + 4;
           final stageH = math.max(0.0, math.min(idealStage, box.maxHeight - topH - dockH));
           final free = math.max(0.0, box.maxHeight - topH - stageH - dockH);
           final column = Column(children: [
@@ -171,7 +176,12 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
               height: stageH,
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: side),
-                child: WhiteboardStage(controller: _c, pageKey: widget.pageKey, fallbackRtl: widget.fallbackRtl),
+                child: WhiteboardStage(
+                  controller: _c,
+                  pageKey: widget.pageKey,
+                  fallbackRtl: widget.fallbackRtl,
+                  presenterName: widget.presenterName,
+                ),
               ),
             ),
           ]);
@@ -215,7 +225,8 @@ class _WhiteboardRoomViewState extends State<WhiteboardRoomView> {
 }
 
 /// The presenter's Board sheet. [allowStudents] / [onAllowStudents]: the room's annotation permission (host only);
-/// [listenable] rebuilds the sheet when it changes elsewhere.
+/// [showAuthors] / [onShowAuthors]: the host's "Show who drew what" (D-093); [listenable] rebuilds the sheet when they
+/// change elsewhere.
 Future<void> showWhiteboardOptionsSheet(
   BuildContext context, {
   required BoardController controller,
@@ -223,30 +234,42 @@ Future<void> showWhiteboardOptionsSheet(
   bool isHost = false,
   bool Function()? allowStudents,
   ValueChanged<bool>? onAllowStudents,
+  bool Function()? showAuthors,
+  ValueChanged<bool>? onShowAuthors,
   Listenable? listenable,
   String fileStem = 'whiteboard',
 }) =>
     showAppSheet<void>(
       context,
       (ctx) => ListenableBuilder(
-        listenable: Listenable.merge([controller, controller.scene, ?listenable]),
+        listenable: Listenable.merge([controller, controller.scene, DrawInputPrefs.stylusOnly, ?listenable]),
         builder: (ctx, _) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AppSheetHeader(t('السبورة', 'Board')),
           Flexible(
             child: SingleChildScrollView(
               child: WhiteboardOptionsLayout(
                 background: controller.background,
+                format: controller.format,
                 pageIndex: controller.pageIndex,
                 pageCount: controller.pageCount,
                 pageEmpty: controller.scene.pageEmpty,
                 isHost: isHost,
                 allowStudents: allowStudents?.call() ?? false,
+                showAuthors: showAuthors?.call() ?? false,
+                stylusOnly: DrawInputPrefs.stylusOnly.value,
                 onBackground: controller.setBackground,
+                onFormat: (f) => unawaited(_changeFormat(ctx, controller, f)),
                 onAllowStudents: onAllowStudents,
+                onShowAuthors: onShowAuthors,
+                onStylusOnly: (v) => unawaited(DrawInputPrefs.setStylusOnly(v)),
                 onExport: () async {
                   Navigator.pop(ctx);
-                  await Future<void>.delayed(const Duration(milliseconds: 250)); // the sheet leaves the page first
-                  await saveWhiteboardPng(pageKey, pageNumber: controller.pageIndex + 1, fileStem: fileStem);
+                  await saveBoardImage(controller,
+                      region: controller.isContinuous ? BoardExportRegion.visible : BoardExportRegion.page, fileStem: fileStem);
+                },
+                onExportWhole: () async {
+                  Navigator.pop(ctx);
+                  await saveBoardImage(controller, region: BoardExportRegion.whole, fileStem: fileStem);
                 },
                 onClearPage: () async {
                   final ok = await appConfirm(
@@ -273,7 +296,50 @@ Future<void> showWhiteboardOptionsSheet(
       ),
     );
 
-/// Saves the page on screen as a 1920 px PNG (downloads on the web, the share / save sheet on phones).
+/// The presenter picks a format: on a board with content, a word first (it is resized to fit, for everyone).
+Future<void> _changeFormat(BuildContext context, BoardController c, BoardFormat f) async {
+  if (f == c.format) return;
+  final empty = !c.scene.items.any((_) => true);
+  if (!empty) {
+    final ok = await appConfirm(
+      context,
+      message: t('تغيير شكل الصفحة إلى «${boardFormatLabel(f)}»؟ يبقى كل ما على السبورة ويُصغَّر عند الحاجة ليتّسع، لدى الجميع.',
+          'Change the page to ${boardFormatLabel(f)}? Everything on the board stays, made smaller where it has to fit, for everyone.'),
+      confirmLabel: t('تغيير', 'Change'),
+    );
+    if (!ok) return;
+  }
+  c.setFormat(f);
+}
+
+/// Saves [region] of the board as a PNG drawn from its items (board_export.dart; downloads on the web, the share /
+/// save sheet on phones).
+Future<void> saveBoardImage(BoardController c, {BoardExportRegion region = BoardExportRegion.page, String fileStem = 'whiteboard'}) =>
+    boardOnce(() async {
+      try {
+        final bytes = await boardRenderPng(c, region: region, view: c.localViewport);
+        if (bytes == null) {
+          showAppNotice(t('افتح السبورة أولاً لحفظها', 'Open the board first to save it'), error: true);
+          return;
+        }
+        final now = DateTime.now();
+        String two(int v) => v.toString().padLeft(2, '0');
+        final suffix = region == BoardExportRegion.whole ? 'all' : 'p${c.pageIndex + 1}';
+        final name = '$fileStem-${now.year}${two(now.month)}${two(now.day)}-${two(now.hour)}${two(now.minute)}-$suffix'
+            .replaceAll(RegExp(r'[\\/:*?"<>|\s]'), '_');
+        await FileSaver.instance.saveFile(name: name, bytes: bytes, fileExtension: 'png', mimeType: MimeType.png);
+        showAppNotice(
+            region == BoardExportRegion.whole
+                ? t('حُفظت السبورة كاملة كصورة', 'The whole board was saved as an image')
+                : t('حُفظت الصفحة كصورة', 'The page was saved as an image'),
+            icon: Icons.image_outlined);
+      } catch (e) {
+        showAppNotice(t('تعذّر حفظ الصورة', "Couldn't save the image"), error: true);
+      }
+    });
+
+/// Saves the page on screen as a 1920 px PNG (the stage's RepaintBoundary; [saveBoardImage] draws it from the items
+/// instead and is what the Board sheet uses).
 Future<void> saveWhiteboardPng(GlobalKey pageKey, {int pageNumber = 1, String fileStem = 'whiteboard'}) => boardOnce(() async {
       try {
         final bytes = await boardPagePng(pageKey);

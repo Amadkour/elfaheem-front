@@ -1075,3 +1075,56 @@ outside `audio_first`); disabling hidden tracks with `disable()` (the SDK has no
 hidden tile would keep its video forever — the background case unsubscribes, the minimized case simply draws no
 renderer); one screen-share layer (a weak viewer froze on it); a long-side cap for shares (portrait phones lost
 60 % of their width).
+
+## D-093 — Live drawing: name tags while people draw; whiteboard page formats (landscape · portrait · continuous) · 2026-10-29 · proposed
+
+Amends D-079 / D-083 (annotation) and D-087 (whiteboard).
+**Context.** The owner: "if the host allows participants to draw, show the writer's name inside the drawing while
+they're drawing", and "the drawing paper may be landscape or portrait, and may be continuous, to make drawing easy on
+mobiles, web or tablets".
+**Decision.** (1) Name tags (Zoom / Miro / FigJam style), on a shared screen's annotation and on the whiteboard
+(`annotation/live_presence.dart`, `presence_tags.dart`): while someone else draws, a pill in their ink colour with
+their name follows their pen tip (an open stroke's last point), the corner of the shape they drag, the caret of the
+text box they type (estimated from the text, no layout in the controller) or their laser; it stays while the pen is
+down and 1.5 s after the last activity, then fades over 0.35 s, and glides (45 ms time constant) instead of jumping
+per 33 ms batch. NO new message: the tags come from the packets the room already receives, keyed by the REAL LiveKit
+sender (a forged `a` changes nothing). Nobody sees their own tag; the presenter's tag shows only once someone else may
+draw (the room's permission is open), a co-host's always. The name is the participant's LiveKit display name (a
+guest's is the name they typed; never an identity — unknown → "Participant" / "Guest"), cleaned of bidi controls and
+control characters, whitespace collapsed, at most 24 characters + "…"; an Arabic name runs right to left by itself.
+The label is white or near-black, whichever contrasts more with the pill; a small content (< 480 px wide: a phone's
+view) gets compact tags. Tags are interface: never in the PNG or the recording track. (2) "Show who drew what",
+host-controlled, default off: `au: 1` on the annotation permission packet (additive; older apps ignore it; a
+permission without it turns it off) — the mouse over an item, or a long press when not drawing, shows "Drawn by …" on
+the shared screen and on the whiteboard (a translucent listener: the video below keeps its taps). (3) Page formats:
+`fm` on the board state — `l` landscape 16:9 (absent = l), `p` portrait 3:4 (a portrait phone's stage fills its width
+with it; a tablet's shape), `c` continuous: a column 20 page widths long, x by the width, y by that whole length (one
+5-decimal wire unit = 0.26 px on a 1280 px column), so every 0..1 clamp, parser and snapshot keeps working. A
+landscape board stays `bv: 1` (byte for byte the D-087 packet); portrait / continuous announce `bv: 2`, so an app from
+before this decision shows its "update the app" overlay instead of squeezing the page into 16:9 (it drops nothing and
+never crashes). Distances are measured in page widths on both axes (hit tests, Shift squares, tiny shapes). A
+continuous page is shown down to its extent (1 width — or 60 % of a screen — below the lowest content, at least 1.5
+screens, never above the presenter's view): it grows as people draw near its end. Each device scrolls (two fingers,
+the wheel, one finger when not drawing or with "Stylus only") and zooms its own view; the column fills a phone's or a
+tablet's width and is a portrait page's width on a laptop (max(480, 0.8 × height)). The presenter's view travels as
+`vp {y, h}` — lossy on `board.laser` at most every 100 ms while it moves, once reliably on `board` 350 ms after it
+stops, and to every late joiner after their snapshot; viewers follow it eased (centred when they see more, its top
+when less) until they scroll themselves, then "Follow …" snaps back; a rail beside the column shows where they are and
+where the presenter is. The presenter picks the format in the share sheet (a portrait phone starts on Portrait) and
+changes it in the Board sheet: every item is remapped (positions kept in page widths; a page whose content would run
+past the new bottom is scaled down evenly and centred; values rounded as they travel) and the board goes out again as
+a snapshot — receivers clear on the state's new format and rebuild; undo history starts again. Portrait / continuous
+pen and text steps are 1.6× (fractions of a narrow page). Save as PNG is drawn from the items (`board_export.dart`,
+not a screenshot): 1920×1080 / 1440×1920, or on a continuous page the part on screen or the whole board down to its
+last line as one tall image (1600 px wide, capped at 8192 px). The recording track (D-090) reads the presenter's
+visible part of a continuous page. (4) Comfortable drawing: a finger's stroke is held 70 ms before it goes out, so a
+pinch / two-finger scroll that starts with one finger never shows anyone a dot; a palm near the pen neither draws nor
+scrolls; "Stylus only" (this device, remembered, offered once the first time a pen touches a board) makes fingers
+scroll / zoom and never draw, also on a shared screen.
+**Rejected.** A lossy cursor message for the tags (the stroke / put / laser packets already carry the position and the
+sender; a cursor stream costs traffic for no new information); y in width units for continuous (every parser and clamp
+of D-079 / D-087 assumes 0..1 — a second path for one format); an unbounded page (no bound for snapshots and exports;
+20 widths ≈ 10 phone screens / 40 laptop screens, and pages still add more); free-size pages per device (a phone and a
+projector must show the same content); cropping content on a format change (silent loss) or refusing the change once
+a board has content; a screenshot for the PNG (it carried the zoom, the selection and the tags, and could not export
+what is off screen).

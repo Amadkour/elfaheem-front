@@ -8,12 +8,16 @@
 //                       (line, arrow, rectangle, ellipse) and the narrow style panel open above the dock.
 //   WhiteboardTopBar    over the page: what it is and whose, the page navigator (‹ 2 / 3 › and + for the presenter),
 //                       "Board" (options) and Stop presenting.
-//   WhiteboardOptionsLayout   the Board sheet: background, the page (clear / delete), students may draw (host),
-//                       save as PNG.
+//   WhiteboardOptionsLayout   the Board sheet: page format (D-093), background, the page (save as PNG — continuous:
+//                       the part on screen or the whole board —, clear / delete), students may draw and "Show who drew
+//                       what" (host), "Stylus only" (this device).
+//   BoardFormatPicker   Landscape · Portrait · Continuous, each with a drawing of its page (the share sheet uses it).
 //   BoardBackgroundTile a background's preview (the share sheet uses it too).
 //
 // Every control has a Semantics label and a 48 px target; keyboard shortcuts are in the tooltips on web / desktop.
 library;
+
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -44,6 +48,18 @@ String boardToolLabel(BoardTool tool) => switch (tool) {
       BoardTool.text => t('نص', 'Text'),
       BoardTool.eraser => t('ممحاة', 'Eraser'),
       BoardTool.laser => t('مؤشر ليزر', 'Laser pointer'),
+    };
+
+String boardFormatLabel(BoardFormat f) => switch (f) {
+      BoardFormat.landscape => t('أفقي', 'Landscape'),
+      BoardFormat.portrait => t('عمودي', 'Portrait'),
+      BoardFormat.continuous => t('متصل', 'Continuous'),
+    };
+
+String boardFormatHint(BoardFormat f) => switch (f) {
+      BoardFormat.landscape => t('16:9 للشاشات وأجهزة العرض', '16:9 for screens and projectors'),
+      BoardFormat.portrait => t('3:4 يملأ الهاتف والجهاز اللوحي', '3:4 fills phones and tablets'),
+      BoardFormat.continuous => t('ورقة تمتد للأسفل كلما كتبت', 'A page that grows as you write'),
     };
 
 String boardBackgroundLabel(BoardBackground b) => switch (b) {
@@ -794,41 +810,70 @@ class _TilePainter extends CustomPainter {
 
 // ── The Board sheet ───────────────────────────────────────────────────────────
 
-/// The presenter's board options. [isHost] shows "Students may draw".
+/// The presenter's board options. [isHost] shows "Students may draw" and "Show who drew what".
 class WhiteboardOptionsLayout extends StatelessWidget {
   const WhiteboardOptionsLayout({
     super.key,
     required this.background,
     required this.pageIndex,
     required this.pageCount,
+    this.format = BoardFormat.landscape,
     this.isHost = false,
     this.allowStudents = false,
+    this.showAuthors = false,
+    this.stylusOnly = false,
     this.pageEmpty = false,
     this.onBackground,
+    this.onFormat,
     this.onAllowStudents,
+    this.onShowAuthors,
+    this.onStylusOnly,
     this.onClearPage,
     this.onDeletePage,
     this.onExport,
+    this.onExportWhole,
   });
 
   final BoardBackground background;
   final int pageIndex;
   final int pageCount;
+
+  /// The page format (D-093).
+  final BoardFormat format;
   final bool isHost;
   final bool allowStudents;
+
+  /// The host's "Show who drew what" (hover / long press).
+  final bool showAuthors;
+
+  /// This device: only a stylus draws, fingers scroll and zoom.
+  final bool stylusOnly;
   final bool pageEmpty;
   final ValueChanged<BoardBackground>? onBackground;
+  final ValueChanged<BoardFormat>? onFormat;
   final ValueChanged<bool>? onAllowStudents;
+  final ValueChanged<bool>? onShowAuthors;
+  final ValueChanged<bool>? onStylusOnly;
   final VoidCallback? onClearPage;
   final VoidCallback? onDeletePage;
+
+  /// Save the page (continuous: the part on screen).
   final VoidCallback? onExport;
+
+  /// Continuous: save the whole board as one tall image.
+  final VoidCallback? onExportWhole;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final cont = format == BoardFormat.continuous;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        AppSectionTitle(t('شكل الصفحة', 'Page')),
+        const SizedBox(height: 8),
+        BoardFormatPicker(value: format, onChanged: onFormat),
+        const SizedBox(height: 16),
         AppSectionTitle(t('الخلفية', 'Background')),
         const SizedBox(height: 8),
         BoardBackgroundPicker(value: background, onChanged: onBackground),
@@ -838,10 +883,22 @@ class WhiteboardOptionsLayout extends StatelessWidget {
         _OptionRow(
           key: const ValueKey('board.export'),
           icon: Icons.image_outlined,
-          title: t('حفظ الصفحة كصورة PNG', 'Save the page as PNG'),
-          subtitle: t('صورة واضحة بحجم 1920×1080 لمشاركتها بعد الحصة', 'A crisp 1920×1080 image to share after class'),
+          title: cont ? t('حفظ الجزء الظاهر كصورة PNG', 'Save what is on screen as PNG') : t('حفظ الصفحة كصورة PNG', 'Save the page as PNG'),
+          subtitle: switch (format) {
+            BoardFormat.landscape => t('صورة واضحة بحجم 1920×1080 لمشاركتها بعد الحصة', 'A crisp 1920×1080 image to share after class'),
+            BoardFormat.portrait => t('صورة واضحة بحجم 1440×1920 لمشاركتها بعد الحصة', 'A crisp 1440×1920 image to share after class'),
+            BoardFormat.continuous => t('ما تراه الآن على السبورة', 'Exactly the part you see now'),
+          },
           onTap: onExport,
         ),
+        if (cont)
+          _OptionRow(
+            key: const ValueKey('board.export_whole'),
+            icon: Icons.vertical_split_rounded,
+            title: t('حفظ السبورة كاملة', 'Save the whole board'),
+            subtitle: t('صورة طويلة واحدة من الأعلى حتى آخر ما كُتب', 'One tall image, from the top to the last line'),
+            onTap: pageEmpty ? null : onExportWhole,
+          ),
         _OptionRow(
           key: const ValueKey('board.clear_page'),
           icon: Icons.cleaning_services_rounded,
@@ -870,10 +927,203 @@ class WhiteboardOptionsLayout extends StatelessWidget {
             value: allowStudents,
             onChanged: onAllowStudents,
           ),
+          AppSwitchTile(
+            key: const ValueKey('board.show_authors'),
+            icon: Icons.badge_outlined,
+            title: t('إظهار من رسم كل شيء', 'Show who drew what'),
+            subtitle: t('مرّر المؤشر أو اضغط مطولاً على أي رسم لترى اسم كاتبه', 'Hover or long-press any drawing to see who made it'),
+            value: showAuthors,
+            onChanged: onShowAuthors,
+          ),
+        ],
+        if (onStylusOnly != null) ...[
+          const SizedBox(height: 12),
+          AppSectionTitle(t('هذا الجهاز', 'This device')),
+          AppSwitchTile(
+            key: const ValueKey('board.stylus_only'),
+            icon: Icons.draw_rounded,
+            title: t('الرسم بالقلم فقط', 'Stylus only'),
+            subtitle: t('القلم (مثل S Pen) يرسم، والإصبع يحرّك السبورة ويكبّرها', 'A stylus (S Pen, Apple Pencil) draws; fingers scroll and zoom'),
+            value: stylusOnly,
+            onChanged: onStylusOnly,
+          ),
         ],
       ]),
     );
   }
+}
+
+/// Landscape · Portrait · Continuous, each with a little drawing of its page (three in a row on every width).
+class BoardFormatPicker extends StatelessWidget {
+  const BoardFormatPicker({super.key, required this.value, this.onChanged, this.dark = false});
+
+  final BoardFormat value;
+  final ValueChanged<BoardFormat>? onChanged;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        for (final (i, f) in BoardFormat.values.indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: BoardFormatTile(
+              format: f,
+              selected: f == value,
+              dark: dark,
+              onTap: onChanged == null ? null : () => onChanged!(f),
+            ),
+          ),
+        ],
+      ]);
+}
+
+class BoardFormatTile extends StatelessWidget {
+  const BoardFormatTile({super.key, required this.format, required this.selected, this.onTap, this.dark = false});
+
+  final BoardFormat format;
+  final bool selected;
+  final VoidCallback? onTap;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ring = selected ? c.primary : (dark ? LivePalette.glassBorder : c.divider);
+    final label = boardFormatLabel(format);
+    final hint = boardFormatHint(format);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '$label. $hint',
+      excludeSemantics: true,
+      child: InkWell(
+        key: ValueKey('board.format.${format.name}'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+          decoration: BoxDecoration(
+            color: selected ? c.primary.withValues(alpha: dark ? 0.16 : 0.07) : (dark ? LivePalette.glass : c.cardBg),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: ring, width: selected ? 2 : 1),
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(
+              height: 58,
+              child: CustomPaint(
+                size: const Size(double.infinity, 58),
+                painter: _FormatGlyphPainter(
+                  format,
+                  paper: dark ? const Color(0xFFF8FAFC) : Colors.white,
+                  edge: selected ? c.primary : (dark ? LivePalette.textLow : c.textLight),
+                  ink: selected ? c.primary : (dark ? LivePalette.textMid : c.textMedium),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: appText(13,
+                    w: selected ? FontWeight.w800 : FontWeight.w700,
+                    c: dark ? (selected ? LivePalette.textHigh : LivePalette.textMid) : (selected ? c.textDark : c.textMedium))),
+            const SizedBox(height: 2),
+            Text(hint,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: appText(11, c: dark ? LivePalette.textLow : c.textLight, h: 1.25)),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// A format's little page: a 16:9 card, a 3:4 sheet, or a tall sheet running out of the tile with a scroll arrow.
+class _FormatGlyphPainter extends CustomPainter {
+  const _FormatGlyphPainter(this.format, {required this.paper, required this.edge, required this.ink});
+
+  final BoardFormat format;
+  final Color paper;
+  final Color edge;
+  final Color ink;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final h = size.height;
+    final Rect r;
+    switch (format) {
+      case BoardFormat.landscape:
+        final w = math.min(size.width - 4, (h - 14) * 16 / 9);
+        r = Rect.fromCenter(center: size.center(Offset.zero), width: w, height: w * 9 / 16);
+      case BoardFormat.portrait:
+        final ph = h - 4;
+        r = Rect.fromCenter(center: size.center(Offset.zero), width: ph * 3 / 4, height: ph);
+      case BoardFormat.continuous:
+        final w = math.min(size.width - 18, h * 0.62);
+        r = Rect.fromLTWH((size.width - w) / 2, 2, w, h + 10); // runs out of the tile
+    }
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(5));
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    canvas.drawRRect(rr.shift(const Offset(0, 1.5)), Paint()..color = const Color(0x1F000000));
+    canvas.drawRRect(rr, Paint()..color = paper);
+    canvas.drawRRect(
+        rr,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = edge);
+    // A few "lines of writing".
+    final pen = Paint()
+      ..color = ink.withValues(alpha: 0.75)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    final left = r.left + r.width * 0.16, right = r.right - r.width * 0.16;
+    final rows = format == BoardFormat.landscape ? 3 : 4;
+    final step = format == BoardFormat.continuous ? 9.0 : (r.height * 0.62) / rows;
+    for (var i = 0; i < (format == BoardFormat.continuous ? 6 : rows); i++) {
+      final y = r.top + r.height * (format == BoardFormat.continuous ? 0 : 0.2) + 8 + i * step;
+      if (y > math.min(r.bottom - 6, size.height - 4)) break;
+      final end = i.isOdd ? right - (right - left) * 0.3 : right;
+      canvas.drawLine(Offset(left, y), Offset(end, y), pen);
+    }
+    if (format == BoardFormat.continuous) {
+      // The page goes on: a fade into the tile's foot and a down arrow.
+      final fade = Rect.fromLTWH(r.left - 2, size.height - 18, r.width + 4, 18);
+      canvas.drawRect(
+        fade,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [paper.withValues(alpha: 0), paper],
+          ).createShader(fade),
+      );
+      final c = Offset(r.center.dx, size.height - 9);
+      final arrow = Path()
+        ..moveTo(c.dx - 6, c.dy - 3)
+        ..lineTo(c.dx, c.dy + 3)
+        ..lineTo(c.dx + 6, c.dy - 3);
+      canvas.drawPath(
+          arrow,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.2
+            ..strokeCap = StrokeCap.round
+            ..strokeJoin = StrokeJoin.round
+            ..color = edge);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_FormatGlyphPainter old) =>
+      old.format != format || old.paper != paper || old.edge != edge || old.ink != ink;
 }
 
 /// The four backgrounds, two per row on a phone sheet, four in a row when there is room.

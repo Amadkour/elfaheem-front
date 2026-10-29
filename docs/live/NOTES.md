@@ -23,6 +23,12 @@
   Board sheet); the "Whiteboard" region of `room.dart`; the Share sheet's Whiteboard tab in
   `widgets/share_options_sheet.dart`. Tests `test/org/board_*_test.dart`, `test/ui/whiteboard_layout_test.dart`,
   renders `test/visual/whiteboard_golden_test.dart`.
+- Drawing presence and page formats (D-093): `annotation/live_presence.dart` (who draws now: fade, glide, safe names,
+  colours) + `presence_tags.dart` (the tags, "Drawn by …"), `annotation/draw_input_prefs.dart` ("Stylus only"),
+  `whiteboard/board_format.dart` (format geometry, continuous extent / view / follow, remap), `board_export.dart`
+  (PNG from the items). Wire: `fm` + `bv 2` on the board state, `vp` (presenter's continuous view), `au` on the
+  annotation permission. Tests `test/org/live_presence_test.dart`, `test/org/board_format_test.dart`,
+  `test/ui/whiteboard_formats_layout_test.dart`; renders `test/visual/whiteboard_formats_golden_test.dart`.
 - Native: Android `ScreenCaptureService.kt`, `MainActivity.kt`; iOS `AppDelegate.swift`, `LocalDebugRecorder.swift`,
   `ios/BroadcastUploadExtension`.
 

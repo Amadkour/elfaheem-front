@@ -11,10 +11,15 @@
 //                  or a text box, last writer wins by `r`), delete, clear page, snapshot (+ its request).
 //   'board.laser'  lossy: the laser pointer.
 //
-// Coordinates are normalised to the PAGE (0..1 on both axes, the page is [kBoardAspect] wide : 1 high), widths and
-// font sizes are fractions of the page width, so every viewer maps them through its own `contain` fit.
+// Coordinates are normalised to the PAGE (0..1 on both axes), widths and font sizes are fractions of the page width,
+// so every viewer maps them through its own fit. The page's shape is its FORMAT (D-093, `fm` on the state):
+//   l  landscape 16:9 (the default; absent = l)          [kBoardAspect]
+//   p  portrait 3:4 (fills a portrait phone's width)     [kBoardPortraitAspect]
+//   c  continuous: a column [kBoardContinuousLength] page widths long, shown as far as it is used and scrolled;
+//      x by the width, y by that whole length (one wire unit of y = 20 widths × 1e-5: 0.26 px on a 1280 px column)
 //
 //   {"v":1,"t":"on","bv":1,"bg":"g","pages":["p0","p1"],"pg":"p1"}        the presenter's board (bg w|b|g|l)
+//   {"v":1,"t":"on","bv":2,"fm":"c","bg":"w","pages":["p0"],"pg":"p0"}    a portrait / continuous board (bv 2)
 //   {"v":1,"t":"off"}                                                      the board is no longer presented
 //   {"v":1,"t":"s","id":"k3f0","pg":"p0","tl":"p","c":4294198070,"w":0.004,"pr":1}    ink start (+ "a" on a
 //                                                                          restore by a lead: the item's author)
@@ -29,12 +34,18 @@
 //   {"v":1,"t":"req"}                                                      "send me the board"
 //   {"v":1,"t":"snap","sid":"r8x","i":0,"n":2,"els":[{"k":"in","id":…,"a":…,"pg":…,"tl":…,"c":…,"w":…,"p":[…]},…]}
 //   {"v":1,"t":"l","x":0.5,"y":0.25}                                       laser (topic board.laser)
+//   {"v":1,"t":"vp","y":0.12,"h":0.03}                                     the presenter's view of a continuous
+//                                                                          page: top and height (page fractions);
+//                                                                          board.laser while scrolling (≤ 10 Hz),
+//                                                                          once on board when it stops
 //
 // Compatibility: unknown versions, types, item kinds and malformed packets decode to null and are ignored;
 // unknown keys are ignored. `bv` is the board's FEATURE version: a client that receives a higher one than
 // [kBoardFeatureVersion] shows "update the app" over the board instead of drawing half of it. An unknown
 // background id draws as white. Apps from before the board drop both topics (unknown topic), so they never crash;
-// they keep showing the presenter's camera tile while a board is presented.
+// they keep showing the presenter's camera tile while a board is presented. A landscape board stays `bv: 1` (every
+// app since D-087 draws it); a portrait or continuous one is `bv: 2`, so an app from before D-093 shows "update the
+// app" over it instead of squeezing it into 16:9. `vp` is a type older apps ignore.
 library;
 
 import 'dart:convert';
@@ -47,11 +58,53 @@ const kBoardTopic = 'board';
 const kBoardLaserTopic = 'board.laser';
 const kBoardVersion = 1;
 
-/// The board features this app draws. A presenter announcing a higher one gets "update the app" here.
-const kBoardFeatureVersion = 1;
+/// The board features this app draws (2: page formats, D-093). A presenter announcing a higher one gets "update the
+/// app" here.
+const kBoardFeatureVersion = 2;
 
-/// The page is this wide for a height of 1 (a 16:9 slide: the shape of every laptop, projector and recording).
+/// The landscape page is this wide for a height of 1 (a 16:9 slide: the shape of every laptop, projector and
+/// recording).
 const kBoardAspect = 16 / 9;
+
+/// The portrait page (3:4: a portrait phone's stage fills its width with it, and it is a tablet's own shape).
+const kBoardPortraitAspect = 3 / 4;
+
+/// A continuous page is this many page widths long (≈ 10 portrait phone screens, ≈ 40 laptop screens).
+const kBoardContinuousLength = 20.0;
+
+// ── Format ────────────────────────────────────────────────────────────────────
+
+enum BoardFormat { landscape, portrait, continuous }
+
+String boardFormatCode(BoardFormat f) => switch (f) {
+      BoardFormat.landscape => 'l',
+      BoardFormat.portrait => 'p',
+      BoardFormat.continuous => 'c',
+    };
+
+/// Absent or unknown → landscape (a newer format comes with a higher `bv`, which shows "update the app").
+BoardFormat boardFormatOf(Object? code) => switch (code) {
+      'p' => BoardFormat.portrait,
+      'c' => BoardFormat.continuous,
+      _ => BoardFormat.landscape,
+    };
+
+/// Width / height of the page (continuous: of its whole length).
+double boardFormatAspect(BoardFormat f) => switch (f) {
+      BoardFormat.landscape => kBoardAspect,
+      BoardFormat.portrait => kBoardPortraitAspect,
+      BoardFormat.continuous => 1 / kBoardContinuousLength,
+    };
+
+/// Pen widths and font sizes are fractions of the page WIDTH; a portrait / continuous page is narrow for its height
+/// (a phone's width), so its thickness and text steps are this much larger — a medium pen is ~2.5 px and medium text
+/// ~15 px on a 390 px phone page, as on a 16:9 page of a laptop. Local choice only: the wire carries the fractions.
+const kBoardTallStyleScale = 1.6;
+
+double boardStyleScale(BoardFormat f) => f == BoardFormat.landscape ? 1.0 : kBoardTallStyleScale;
+
+/// The `bv` a board of [f] announces: landscape stays 1 so every app since D-087 keeps drawing it.
+int boardFeatureVersionFor(BoardFormat f) => f == BoardFormat.landscape ? 1 : 2;
 
 const kBoardMaxPages = 30;
 const kBoardMaxItems = 6000;
@@ -219,9 +272,12 @@ final class BoardShape extends BoardItem {
   BoardShape moved(double dx, double dy) =>
       copyWith(x1: _c(x1 + dx), y1: _c(y1 + dy), x2: _c(x2 + dx), y2: _c(y2 + dy));
 
-  /// Too small to mean anything (a click without a drag).
-  bool get isTiny {
-    final dx = (x2 - x1).abs(), dy = (y2 - y1).abs() / kBoardAspect;
+  /// Too small to mean anything (a click without a drag) on a landscape page.
+  bool get isTiny => isTinyAt(kBoardAspect);
+
+  /// [isTiny] on a page of [aspect] (width / height): measured in page widths on both axes.
+  bool isTinyAt(double aspect) {
+    final dx = (x2 - x1).abs(), dy = (y2 - y1).abs() / aspect;
     return math.max(dx, dy) < 0.006;
   }
 
@@ -395,16 +451,31 @@ sealed class BoardMsg {
 
 /// The presented board: background, pages, the page everyone sees.
 class BoardState extends BoardMsg {
-  const BoardState({required this.background, required this.pages, required this.page, this.featureVersion = kBoardFeatureVersion});
+  const BoardState({
+    required this.background,
+    required this.pages,
+    required this.page,
+    this.format = BoardFormat.landscape,
+    int? featureVersion,
+  }) : featureVersion = featureVersion ?? (format == BoardFormat.landscape ? 1 : 2);
 
   final BoardBackground background;
   final List<String> pages;
   final String page;
+
+  /// The page format (D-093); `fm` is left out for landscape, so that packet is the D-087 one.
+  final BoardFormat format;
   final int featureVersion;
 
   @override
-  Map<String, Object?> body() =>
-      {'t': 'on', 'bv': featureVersion, 'bg': boardBackgroundCode(background), 'pages': pages, 'pg': page};
+  Map<String, Object?> body() => {
+        't': 'on',
+        'bv': featureVersion,
+        if (format != BoardFormat.landscape) 'fm': boardFormatCode(format),
+        'bg': boardBackgroundCode(background),
+        'pages': pages,
+        'pg': page,
+      };
 }
 
 class BoardOff extends BoardMsg {
@@ -529,8 +600,28 @@ class BoardLaser extends BoardMsg {
   @override
   bool get reliable => false;
 
+  // 5 decimals like ink: a continuous page's y spans 20 widths (older apps read any number).
   @override
-  Map<String, Object?> body() => {'t': 'l', 'x': annotRound(x), 'y': annotRound(y)};
+  Map<String, Object?> body() => {'t': 'l', 'x': _xy(x), 'y': _xy(y)};
+}
+
+/// The presenter's view of a continuous page (D-093): its top and height, fractions of the page's whole length.
+/// [lossy] while scrolling (topic board.laser, at most 10 a second); the last one goes reliably on `board`.
+class BoardViewport extends BoardMsg {
+  const BoardViewport({required this.top, required this.height, this.lossy = true});
+
+  final double top;
+  final double height;
+  final bool lossy;
+
+  @override
+  String get topic => lossy ? kBoardLaserTopic : kBoardTopic;
+
+  @override
+  bool get reliable => !lossy;
+
+  @override
+  Map<String, Object?> body() => {'t': 'vp', 'y': _xy(top), 'h': _xy(height)};
 }
 
 // ── Codec ─────────────────────────────────────────────────────────────────────
@@ -552,6 +643,11 @@ class BoardCodec {
     }
     if (m is! Map || m['v'] != kBoardVersion) return null;
     final msg = _parse(m);
+    if (msg is BoardViewport) {
+      // Either topic: lossy while scrolling, reliable when it stops.
+      if (topic != kBoardTopic && topic != kBoardLaserTopic) return null;
+      return BoardViewport(top: msg.top, height: msg.height, lossy: topic == kBoardLaserTopic);
+    }
     if (msg == null || msg.topic != topic) return null;
     return msg;
   }
@@ -570,7 +666,8 @@ class BoardCodec {
         }
         if (!ids.contains(page)) return null;
         final bv = m['bv'] is int ? m['bv'] as int : 1;
-        return BoardState(background: boardBackgroundOf(m['bg']), pages: ids, page: page, featureVersion: bv);
+        return BoardState(
+            background: boardBackgroundOf(m['bg']), pages: ids, page: page, format: boardFormatOf(m['fm']), featureVersion: bv);
       case 'off':
         return const BoardOff();
       case 's':
@@ -632,6 +729,10 @@ class BoardCodec {
         final x = m['x'], y = m['y'];
         if (x is! num || y is! num || !x.isFinite || !y.isFinite) return null;
         return BoardLaser(x: _c(x.toDouble()), y: _c(y.toDouble()));
+      case 'vp':
+        final y = m['y'], h = m['h'];
+        if (y is! num || h is! num || !y.isFinite || !h.isFinite || h <= 0) return null;
+        return BoardViewport(top: _c(y.toDouble()), height: _c(h.toDouble()));
       default:
         return null;
     }
