@@ -19,6 +19,7 @@ import '../features/admin/enrollment_request/teacher_transfers_screen.dart' show
 import '../features/shared/inbox/unified_inbox.dart' show InboxItem, openInboxItem;
 import '../main.dart' show navigatorKey;
 import '../utils/top_route_observer.dart' show topRouteObserver;
+import 'app_shell_nav.dart' show AppShellNav;
 import '../utils/widget/app_navigator.dart';
 import 'app_kit.dart';
 
@@ -126,7 +127,10 @@ String? orgSubPage(String section, String? sub) => switch ((section, sub)) {
 /// Opens the org dashboard of [orgId] on [section] (and its sub-page). Works from any screen.
 Future<void> openOrgSection(int orgId, String section, {String? sub}) async {
   AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId, section, sub);
-  if (topRouteObserver.currentRoute?.settings.name == '/org_dashboard') return;   // the dashboard picks it up
+  if (topRouteObserver.rootRoute?.settings.name == '/org_dashboard') {             // the dashboard picks it up
+    WidgetsBinding.instance.addPostFrameCallback((_) => AppShellNav.popVisibleToRoot()); // the section, not a page on it
+    return;
+  }
   await AppModeController.instance.openOrg(orgId);
   await navigatorKey.currentState?.pushNamed('/org_dashboard');
 }
@@ -166,4 +170,5 @@ void _requestShellTab(String id) {
   navigatorKey.currentState?.popUntil((r) => r.isFirst);
   AppNavigator.requestedTab.value = null;
   AppNavigator.requestedTab.value = id;
+  AppShellNav.popVisibleToRootAfterSwitch(); // that tab's own first page, not a page left open on it (D-081)
 }

@@ -13,10 +13,11 @@ import '../config/app_config.dart';
 import '../config/theme/theme_config_provider.dart';
 import '../utils/widget/parent_component.dart';
 import 'app_settings.dart';
+import 'app_shell_nav.dart' show AppShellNav;
 
 const calendarEntryFeatureKey = 'calendar.entry';
 
-void openMyCalendar(BuildContext context) => Navigator.of(context).pushNamed('/calendar');
+void openMyCalendar(BuildContext context) => AppShellNav.navigatorFor(context).pushNamed('/calendar');
 
 class CalendarEntryIcon extends StatelessWidget {
   const CalendarEntryIcon({super.key});

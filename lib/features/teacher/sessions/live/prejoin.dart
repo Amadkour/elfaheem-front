@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:livekit_client/livekit_client.dart';
 import 'widgets/live_palette.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -731,6 +732,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
   @override
   Widget build(BuildContext context) {
     LivePalette.sync(context);   // live classroom colours follow the app theme
+    AppShellNav.markFullScreen(context); // no tab bar on the pre-join page, even inside a tab (D-081)
     final args = widget.args;
     final title = (args.sessionName ?? '').trim();
     return Scaffold(

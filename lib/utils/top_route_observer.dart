@@ -12,10 +12,30 @@ import '../features/shared/attendance/attendance_offline_sync.dart';
 import '../features/shared/attendance/attendance_store.dart';
 import 'package:flutter_education_app/features/shared/exam_engine/offline/offline_exam_service.dart';
 import 'package:flutter_education_app/features/auth/username_confirm.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 
 class TopRouteObserver extends NavigatorObserver {
-  Route<dynamic>? currentRoute;
+  /// The root navigator's top route.
+  Route<dynamic>? _rootRoute;
   Route<dynamic>? previousRoute;
+
+  /// The root navigator's top route (a role shell's route while its tab pages are on screen).
+  Route<dynamic>? get rootRoute => _rootRoute;
+
+  /// The route the person sees: the root navigator's top, or — inside a role shell — the top page of the visible
+  /// tab (each tab has its own navigator, D-081). A tab on its root page reports the shell's route.
+  Route<dynamic>? get currentRoute => AppShellNav.effectiveTop(_rootRoute);
+  set currentRoute(Route<dynamic>? r) => _rootRoute = r;
+
+  /// A push / pop inside a shell tab's navigator ([initial]: the tab's own first page, built on its first visit).
+  void didChangeNested(Route<dynamic> route, {required bool pushed, bool initial = false}) {
+    _refreshShortcut();
+    if (initial) return; // a tab opening is not a navigation: no extra attention refresh (request budgets)
+    AttentionService.instance.onRouteChanged();
+  }
+
+  /// The visible tab changed, and with it the route the person sees.
+  void didSwitchTab() => _refreshShortcut();
 
   @override
   void didPush(
@@ -43,6 +63,7 @@ class TopRouteObserver extends NavigatorObserver {
     this.previousRoute = route;
     currentRoute = previousRoute;
     if (identical(route, _autoRoute)) _autoRoute = null;
+    AppShellNav.forgetRoute(route);
     _leaveIfReady();
     _refreshShortcut();
     AttentionService.instance.onRouteChanged();
@@ -56,6 +77,7 @@ class TopRouteObserver extends NavigatorObserver {
     this.previousRoute = previousRoute;
     currentRoute = previousRoute;
     if (identical(route, _autoRoute)) _autoRoute = null;
+    AppShellNav.forgetRoute(route);
     _leaveIfReady();
     _refreshShortcut();
   }

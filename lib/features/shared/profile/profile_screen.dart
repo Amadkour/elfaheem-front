@@ -37,6 +37,7 @@ import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
 import 'change_language_screen.dart';
 import '../display/display_settings_page.dart' show DisplaySettingsTile;
+import '../rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'change_password_widget.dart';
 import 'compalints/complaint_provider.dart';
 import 'compalints/complaints_screen.dart';
@@ -343,6 +344,8 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           const DisplaySettingsTile(),
+                          const AppAssistantOpenTile(),
+                          const AppAssistantBubbleTile(),
                           ParentComponent(
                             featureKey: 'profile.dark_mode',
                             child: AppSettingsTile(

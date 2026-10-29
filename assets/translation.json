@@ -17084,5 +17084,41 @@
   "username_remove": {
     "en": "Remove username",
     "ar": "حذف اسم المستخدم"
+  },
+  "assistant_entry_title": {
+    "en": "App assistant",
+    "ar": "مساعد التطبيق"
+  },
+  "assistant_entry_sub": {
+    "en": "Ask how to do anything in the app",
+    "ar": "اسأل كيف تنجز أي شيء في التطبيق"
+  },
+  "assistant_bubble_show": {
+    "en": "Floating assistant button",
+    "ar": "زر المساعد العائم"
+  },
+  "assistant_bubble_show_sub": {
+    "en": "Show the assistant button over every screen",
+    "ar": "إظهار زر المساعد فوق كل الشاشات"
+  },
+  "assistant_bubble_hide": {
+    "en": "Hide button",
+    "ar": "إخفاء الزر"
+  },
+  "assistant_bubble_open": {
+    "en": "Open assistant",
+    "ar": "فتح المساعد"
+  },
+  "assistant_bubble_drop": {
+    "en": "Release to hide",
+    "ar": "اترك الزر لإخفائه"
+  },
+  "assistant_bubble_drag": {
+    "en": "Drag here to hide",
+    "ar": "اسحب هنا للإخفاء"
+  },
+  "assistant_bubble_hidden": {
+    "en": "Assistant button hidden. Open the assistant anytime from Settings.",
+    "ar": "أُخفي زر المساعد. افتح المساعد في أي وقت من الإعدادات."
   }
 }

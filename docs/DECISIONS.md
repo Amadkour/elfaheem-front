@@ -738,3 +738,33 @@ and restores it afterwards.
 silent too, and the SFU drops a muted track's packets); a second AudioRecord-fed track (no custom audio source in
 this WebRTC build); muting on every audio-focus loss (a video played in another app during the share would mute
 the presenter).
+
+## D-081 — The role's tabs stay on every page: one navigator per shell tab · 2026-10-29 · accepted
+
+**Decision.** Every tab of `AppShell` (D-062, D-077) owns a navigator (`AppTabNavigator`, `lib/design/app_shell_nav.dart`),
+the Instagram / YouTube / Teams pattern: a page opened from inside a tab keeps the role's tab bar (phone bottom bar,
+tablet rail, desktop sidebar + top bar), each tab keeps its own back stack while the person switches tabs, a tap on
+the current tab goes back to its root, and the system / browser back pops the visible tab first, then goes to the
+home tab, then leaves as before. The tab stack is one GlobalKey'd subtree, so a rotation that changes the shell kind
+(phone landscape is the rail) keeps every stack. Code written for one app-wide navigator keeps working because the
+tab navigator hands up what must not live in a tab: dialogs and bottom sheets (they still cover the bar), any
+`fullscreenDialog` page (image cropper, attendance live, forms), the auth routes and the role homes by name
+(`shellRootRouteNames`), guest live links, and every replace / remove-until that would remove the tab's own root
+(sign-out, "back to home"), plus a `pop` / `maybePop` of the tab root. Named routes inside a tab are built by the app's
+own `_router` (the root navigator's `onGenerateRoute`), so `pushNamed` behaves the same. Full-screen experiences stay
+full-screen: the live room already lives in `LiveRoomLayer`; the exam sittings are pushed on the root navigator; the
+video player, the legacy quiz and the pre-join page call `AppShellNav.markFullScreen(context)` and the shell draws no
+chrome while such a page is the visible tab's top. Deep links (`AppNavigator`: notification taps, pushes, shared
+links) push into the visible tab when a shell is on screen (the bar stays) and onto the root navigator otherwise;
+org dashboards and other homes still open on the root. `topRouteObserver` reports the page the person sees
+(`currentRoute` = the visible tab's top inside the shell, `rootRoute` = the root navigator's top) and refreshes
+the attention badges on tab pushes / pops as it did on root ones (a tab's own first page is not a navigation: the
+request budgets are unchanged). `leaveToPersonal` also pops the tab it was pressed in. Tests:
+`test/ui/app_shell_nav_test.dart`; renders: `test/visual/nav_assistant_golden_test.dart`.
+**Rejected.** A persistent bar drawn around the single root navigator (pages would keep the bar but every dialog /
+sheet would sit inside the content area beside it, and a tab switch would have to drop the pages: no per-tab
+stacks); `go_router` / `StatefulShellRoute` (a rewrite of every route and of the 300+ `Navigator.push` call sites);
+pushing every page on the root (today's behaviour: the bar disappears, the request that started this).
+**Known differences.** A tab's first page no longer shows an implied back arrow when the dashboard itself was pushed
+above another page (the org dashboards have their exit button); on web the address bar keeps the dashboard's path
+while pages are open inside a tab.

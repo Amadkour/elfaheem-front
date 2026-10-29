@@ -11,6 +11,10 @@
 //       their first visit, so a home's other tabs load nothing until visited) and then kept in an IndexedStack,
 //       so it keeps its state. A tab switch from a deep link / onTap just changes currentIndex. Badges never
 //       need a tab built: they come from DashboardItem.badge + attentionKeys, drawn by ShellBadge.
+//       Each tab has its own navigator (D-081, app_shell_nav.dart): a page opened from inside a tab keeps the bar /
+//       rail / sidebar, every tab keeps its own back stack, a tap on the current tab goes back to its root, the
+//       system back pops the tab first (then goes to the home tab), and a [ShellFullScreen] page hides the chrome.
+//       The tab stack is one GlobalKey'd subtree, so a rotation that changes the shell kind keeps every stack.
 //   DashboardItem(icon, selectedIcon, label, onRefresh, screen, {badge, attentionKeys, attentionOrgId})
 //       one tab. `label` is a translation key (or an already translated text — a missing key falls back to
 //       itself). The count on the tab = `badge` (what the attention feed does not carry, set by the dashboard)
@@ -38,7 +42,9 @@ import '../utils/widget/app_network_image.dart';
 import '../utils/widget/base_page.dart';
 import '../utils/widget/refresh_button.dart';
 import 'app_responsive.dart';
+import 'app_shell_nav.dart';
 import 'calendar_entry.dart';
+import '../features/shared/rag/app_assistant.dart' show AppAssistantIcon;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,12 +113,14 @@ String _badgeText(int n) => n > 99 ? '99+' : '$n';
 
 /// The tab bodies of a shell: an IndexedStack whose children stay placeholders until their tab is first shown
 /// (D-077). A visited tab is remembered by its label, so it stays built when tabs before it come or go (an older
-/// server, a permission change); its state lives as long as the shell does.
+/// server, a permission change); its state lives as long as the shell does. Each built tab is a navigator of its
+/// own (D-081): [ShellTabs] holds their stacks; without one ([tabs] null) the stack keeps its own.
 class LazyTabStack extends StatefulWidget {
-  const LazyTabStack({super.key, required this.index, required this.items});
+  const LazyTabStack({super.key, required this.index, required this.items, this.tabs});
 
   final int index;
   final List<DashboardItem> items;
+  final ShellTabs? tabs;
 
   @override
   State<LazyTabStack> createState() => _LazyTabStackState();
@@ -120,6 +128,15 @@ class LazyTabStack extends StatefulWidget {
 
 class _LazyTabStackState extends State<LazyTabStack> {
   final Set<String> _visited = {};
+  ShellTabs? _own;
+
+  ShellTabs get _tabs => widget.tabs ?? (_own ??= ShellTabs());
+
+  @override
+  void dispose() {
+    _own?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -127,20 +144,61 @@ class _LazyTabStackState extends State<LazyTabStack> {
     if (items.isEmpty) return const SizedBox.shrink();
     final current = widget.index.clamp(0, items.length - 1);
     _visited.add(items[current].label);
+    _tabs.setActive(items[current].label);
     return IndexedStack(
       index: current,
       children: [
-        for (final item in items) _visited.contains(item.label) ? item.screen : const SizedBox.shrink(),
+        for (var i = 0; i < items.length; i++)
+          _visited.contains(items[i].label)
+              ? KeyedSubtree(
+                  key: ValueKey('tab:${items[i].label}'),
+                  child: _TabNavigatorHost(tab: _tabs.tab(items[i].label), screen: items[i].screen, active: i == current),
+                )
+              : const SizedBox.shrink(),
       ],
     );
   }
+}
+
+/// One tab: its screen at the bottom of its own navigator. Named routes are built by the app's router (the root
+/// navigator's onGenerateRoute), so `pushNamed` works the same inside a tab.
+class _TabNavigatorHost extends StatelessWidget {
+  const _TabNavigatorHost({required this.tab, required this.screen, required this.active});
+
+  final ShellTab tab;
+  final Widget screen;
+  final bool active;
+
+  NavigatorState? _root() {
+    final ctx = tab.navKey.currentContext;
+    return ctx == null ? null : Navigator.maybeOf(ctx, rootNavigator: true);
+  }
+
+  @override
+  Widget build(BuildContext context) => TickerMode(
+        enabled: active,
+        child: ShellTabScreen(
+          screen: screen,
+          child: HeroControllerScope(
+            controller: tab.hero,
+            child: AppTabNavigator(
+              key: tab.navKey,
+              tab: tab,
+              observers: [tab.observer],
+              onGenerateInitialRoutes: (_, _) => [tab.makeRoot()],
+              onGenerateRoute: (s) => _root()?.widget.onGenerateRoute?.call(s),
+              onUnknownRoute: (s) => _root()?.widget.onUnknownRoute?.call(s),
+            ),
+          ),
+        ),
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AppShell — picks the shell for a width
 // ─────────────────────────────────────────────────────────────────────────────
 
-class AppShell extends StatelessWidget {
+class AppShell extends StatefulWidget {
   const AppShell({
     super.key,
     required this.width,
@@ -159,13 +217,96 @@ class AppShell extends StatelessWidget {
   final int unreadCount;
 
   @override
-  Widget build(BuildContext context) => switch (Breakpoints.shellFor(width)) {
-        AppShellKind.wide =>
-          WideShell(currentIndex: currentIndex, onTap: onTap, dashboardItems: items, unreadCount: unreadCount),
-        AppShellKind.rail =>
-          RailShell(currentIndex: currentIndex, onTap: onTap, dashboardItems: items, unreadCount: unreadCount),
-        AppShellKind.mobile => MobileShell(currentIndex: currentIndex, onTap: onTap, dashboardItems: items),
-      };
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> {
+  final _tabs = ShellTabs();
+  final _stackKey = GlobalKey(debugLabel: 'shell-tabs');
+
+  @override
+  void initState() {
+    super.initState();
+    AppShellNav.register(_tabs);
+    _tabs.addListener(_changed);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tabs.hostRoute = ModalRoute.of(context);
+  }
+
+  @override
+  void dispose() {
+    _tabs.removeListener(_changed);
+    AppShellNav.unregister(_tabs);
+    _tabs.dispose();
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  int get _current => widget.items.isEmpty ? 0 : widget.currentIndex.clamp(0, widget.items.length - 1);
+
+  void _onTap(int i) {
+    switch (shellTapAction(tapped: i, current: _current, tabCanPop: _tabs.activeCanPop)) {
+      case ShellTap.popToRoot:
+        _tabs.popActiveToRoot();
+      case ShellTap.switchTab:
+      case ShellTap.none:
+        widget.onTap(i);
+    }
+  }
+
+  void _onBack() {
+    switch (shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current)) {
+      case ShellBack.popTab:
+        _tabs.active?.navigator?.maybePop();
+      case ShellBack.homeTab:
+        widget.onTap(0);
+      case ShellBack.leave:
+        break;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final body = LazyTabStack(key: _stackKey, index: _current, items: items, tabs: _tabs);
+    final kind = Breakpoints.shellFor(widget.width);
+    final full = _tabs.fullScreen;
+    _tabs.bottomBar = full || kind != AppShellKind.mobile ? 0 : BottomNavMetrics.heightFor(context);
+    _tabs.sideChrome = full
+        ? 0
+        : switch (kind) {
+            AppShellKind.wide => Breakpoints.sidebarW,
+            AppShellKind.rail => 67, // NavigationRail minWidth 66 + its divider
+            AppShellKind.mobile => 0,
+          };
+    final Widget shell = full
+        ? ColoredBox(color: context.colors.background, child: body)
+        : switch (kind) {
+            AppShellKind.wide => WideShell(
+                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body),
+            AppShellKind.rail => RailShell(
+                currentIndex: _current, onTap: _onTap, dashboardItems: items, unreadCount: widget.unreadCount, body: body),
+            AppShellKind.mobile => MobileShell(currentIndex: _current, onTap: _onTap, dashboardItems: items, body: body),
+          };
+    final back = shellBackAction(tabCanPop: _tabs.activeCanPop, index: _current);
+    return ShellScope(
+      tabs: _tabs,
+      child: PopScope<Object?>(
+        canPop: back == ShellBack.leave,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) _onBack();
+        },
+        child: shell,
+      ),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -178,12 +319,16 @@ class WideShell extends StatelessWidget {
   final List<DashboardItem> dashboardItems;
   final int unreadCount;
 
+  /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
+  final Widget? body;
+
   const WideShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
     required this.unreadCount,
+    this.body,
   });
 
   @override
@@ -287,7 +432,14 @@ class WideShell extends StatelessWidget {
                   unread: unreadCount,
                   onRefresh: dashboardItems[current].onRefresh,
                 ),
-                Expanded(child: LazyTabStack(index: current, items: dashboardItems)),
+                // the top bar already sits under the status bar: the pages below must not pad for it again
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
+                  ),
+                ),
               ],
             ),
           ),
@@ -328,7 +480,7 @@ class UserChipButton extends StatelessWidget {
       padding: showLabel ? const EdgeInsets.fromLTRB(14, 0, 14, 10) : const EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditAccountScreen())),
+        onTap: () => AppShellNav.navigatorFor(context).push(MaterialPageRoute(builder: (_) => EditAccountScreen())),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(14)),
@@ -510,6 +662,7 @@ class _TopBar extends StatelessWidget {
                 if (onRefresh != null) RefreshButton(onTap: onRefresh!),
                 const SizedBox(width: 5),
                 if (!GuestState.active) const CalendarIcon(),
+                if (!GuestState.active) const AppAssistantIcon(),
                 NotificationIcon(unreadCount: unread),
               ]),
             ),
@@ -539,7 +692,7 @@ class NotificationIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     return GestureDetector(
-      onTap: () => Navigator.of(context).pushNamed('/notifications'),
+      onTap: () => AppShellNav.navigatorFor(context).pushNamed('/notifications'),
       child: Container(
         padding: const EdgeInsets.all(7),
         margin: const EdgeInsets.all(5),
@@ -579,12 +732,16 @@ class RailShell extends StatelessWidget {
   final List<DashboardItem> dashboardItems;
   final int unreadCount;
 
+  /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
+  final Widget? body;
+
   const RailShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
     required this.unreadCount,
+    this.body,
   });
 
   @override
@@ -637,7 +794,14 @@ class RailShell extends StatelessWidget {
                   unread: unreadCount,
                   onRefresh: dashboardItems[current].onRefresh,
                 ),
-                Expanded(child: LazyTabStack(index: current, items: dashboardItems)),
+                // the top bar already sits under the status bar: the pages below must not pad for it again
+                Expanded(
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeTop: true,
+                    child: body ?? LazyTabStack(index: current, items: dashboardItems),
+                  ),
+                ),
               ],
             ),
           ),
@@ -673,11 +837,15 @@ class MobileShell extends StatelessWidget {
   final ValueChanged<int> onTap;
   final List<DashboardItem> dashboardItems;
 
+  /// The tab bodies ([AppShell] passes its keyed [LazyTabStack]); null = a stack of its own.
+  final Widget? body;
+
   const MobileShell({
     super.key,
     required this.currentIndex,
     required this.onTap,
     required this.dashboardItems,
+    this.body,
   });
 
   @override
@@ -685,7 +853,7 @@ class MobileShell extends StatelessWidget {
     final current = currentIndex.clamp(0, dashboardItems.length - 1);
     return BasePage(
       bottomNavigationBar: _BottomNav(onSelect: onTap, index: current, dashboardItems: dashboardItems),
-      child: LazyTabStack(index: current, items: dashboardItems),
+      child: body ?? LazyTabStack(index: current, items: dashboardItems),
     );
   }
 }
@@ -774,5 +942,16 @@ class _BottomTab extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// The phone bar's height (its rows + the safe area under it), for what floats above it (the app assistant).
+class BottomNavMetrics {
+  BottomNavMetrics._();
+
+  /// 8 + 30 (icon well) + 3 + the label line + 8, plus the home-indicator inset.
+  static double heightFor(BuildContext context) {
+    final label = MediaQuery.textScalerOf(context).scale(10) * 1.5;
+    return 8 + 30 + 3 + label + 8 + MediaQuery.paddingOf(context).bottom;
   }
 }

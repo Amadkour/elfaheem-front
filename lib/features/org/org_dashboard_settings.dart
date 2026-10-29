@@ -41,6 +41,7 @@ import 'org_ui.dart' show orgPickAndUpload, statusColor, statusLabel;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Settings ("More" on phones)
@@ -139,6 +140,8 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
               label: 'change_language'.tr,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeLanguageScreen()))),
           const DisplaySettingsTile(),
+          const AppAssistantOpenTile(),
+          const AppAssistantBubbleTile(),
           AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,

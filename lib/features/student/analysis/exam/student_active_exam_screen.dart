@@ -1,6 +1,7 @@
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import '../../../../config/theme/theme_config_provider.dart';
 import '../../../../core/api_client.dart';
 import '../../../../utils/widget/base_page.dart';
@@ -345,6 +346,7 @@ class _StudentExamQuizScreenState extends State<StudentExamQuizScreen> {
 
   @override
   Widget build(BuildContext context) {
+    AppShellNav.markFullScreen(context); // a sitting: no tab bar even when opened inside a tab (D-081)
     final c = context.colors;
 
     if (_submitting) {

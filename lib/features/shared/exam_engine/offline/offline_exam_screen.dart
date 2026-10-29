@@ -105,7 +105,8 @@ Future<void> _resume(BuildContext context, OfflineSitting s) async {
     return appToast(offlineCodeText('bad_key'), error: true);
   }
   if (!context.mounted) return;
-  await Navigator.push(context, MaterialPageRoute(builder: (_) => OfflineExamTakingScreen(package: p, content: content, sitting: s)));
+  // the sitting is full-screen: on the root navigator, above any tab bar (D-081)
+  await Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => OfflineExamTakingScreen(package: p, content: content, sitting: s)));
 }
 
 /// Looks for a nearby phone with this exam (and its key) while a small progress dialog is shown.
