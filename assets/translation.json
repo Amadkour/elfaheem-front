@@ -17336,5 +17336,17 @@
   "home_earlier_today": {
     "en": "Earlier today",
     "ar": "في وقت سابق اليوم"
+  },
+  "home_h": {
+    "en": "{h} h",
+    "ar": "{h} س"
+  },
+  "home_section_empty": {
+    "en": "Nothing here yet",
+    "ar": "لا شيء هنا بعد"
+  },
+  "home_t_your_teaching": {
+    "en": "Your teaching",
+    "ar": "تدريسك"
   }
 }

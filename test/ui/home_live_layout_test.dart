@@ -114,6 +114,38 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
+  testWidgets('an empty section starts folded with its line; opening it is remembered for the empty state only', (tester) async {
+    Widget host(bool empty) => layoutHost(SingleChildScrollView(
+          child: HomeSection(
+            id: 'test.empty',
+            title: 'Today',
+            empty: empty,
+            emptySummary: 'Nothing today',
+            actionLabel: 'Timetable',
+            onAction: () {},
+            child: HomeAgenda(items: empty ? const [] : agenda(2), emptyTitle: 'No classes'),
+          ),
+        ));
+    await tester.pumpWidget(host(true));
+    await tester.pump();
+    expect(find.text('Nothing today'), findsOneWidget);
+    expect(find.text('No classes'), findsNothing); // the empty card is not drawn
+    expect(find.text('Timetable'), findsOneWidget); // the way to fill it stays
+    // something arrives → the section opens by itself (its default with content)
+    await tester.pumpWidget(host(false));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(HomeAgendaLine), findsNWidgets(2));
+    // empty again, and the person opens it: kept for the empty state, the full state untouched
+    await tester.pumpWidget(host(true));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Today'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('No classes'), findsOneWidget);
+    expect(HomeFolds.instance.isFolded('test.empty', empty: true), isFalse);
+    expect(HomeFolds.instance.isFolded('test.empty'), isFalse);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('compact agenda: 3 lines, live first, Show all opens the rest', (tester) async {
     await tester.pumpWidget(layoutHost(SingleChildScrollView(child: HomeAgenda(items: agenda(5), nowMin: 10 * 60 + 30, emptyTitle: 'e'))));
     await tester.pump();

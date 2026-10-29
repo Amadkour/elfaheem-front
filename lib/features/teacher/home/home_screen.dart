@@ -1,14 +1,15 @@
 // lib/features/teacher/home/home_screen.dart — the INSTRUCTOR home (Track B.5).
 //
 //   header      greeting · name · notifications · ContextSwitcher (Personal ↔ organizations, exit to personal)
-//   Personal:   hero       the teaching day as a ribbon (today's sessions, "now" marker, next session) + figures:
-//                          students · courses · rating · earnings this month (when GET /me/home answers)
-//               live now   first: LiveNowCard per running session of mine (one "Enter room" button), then the
+//   Personal:   live now   first: LiveNowCard per running session of mine (one "Enter room" button), then the
 //                          meetings I'm invited to that are live (HomeLiveNow, one-tap Join) — only while they run
+//               hero       the key figures: students · courses · rating · earnings this month (when GET /me/home
+//                          answers) → analytics. The day's ribbon left it: it repeated "Today" below.
 //               needs you  ONE card of small tiles (HomeStatStrip): attendance not taken · grading · material
 //                          missing · enrollment requests · payout pending — every count drawn ONCE on the page;
 //                          hidden while nothing waits (the greeting's line says "all caught up")
-//               today      one line per session (live first), 3 + "Show all" → the course
+//               today      one line per session (live first, tinted, "Ends in …"), 3 + "Show all" → the course; a
+//                          free day folds by itself ("No sessions today · Next: … · Sun 1"), the empty courses too
 //   Every section below the hero folds from its title (HomeSection, remembered per user on the device).
 //               coming up  the next 3 sessions after today, slim rows (TeacherComingUp)
 //               courses    summarized in one card (TeacherCourseSummary): published · drafts · sessions, the
@@ -270,7 +271,7 @@ class TeacherHomeBody extends StatelessWidget {
   /// Meetings I'm invited to that are live right now (the "Live now" banner).
   final List<MeLiveRoom> liveNow;
 
-  /// A fixed clock for the banner's "live for" (tests / renders); null = the device clock.
+  /// A fixed clock for the banner's "live for" and the agenda's "ends in" (tests / renders); null = the device clock.
   final DateTime? now;
 
   /// First load in flight (nothing to show yet) → one skeleton for the whole body.
@@ -370,8 +371,9 @@ class TeacherHomeBody extends StatelessWidget {
       ],
       if (liveNow.isNotEmpty) HomeLiveNow(rooms: liveNow, now: now, padding: const EdgeInsets.fromLTRB(20, 0, 20, 16)),
 
-      // ── hero: the teaching day
-      enter(_TeachingDayHero(items: items, stats: stats, earningsMonth: extra?.earningsMonth, onTap: () => onTab(2))),
+      // ── hero: the key figures (the day's ribbon and "Live now · …" line are gone — "Today's sessions" below says
+      //    the same, with the running one tinted and "Ends in …")
+      enter(_TeachingFigures(stats: stats, earningsMonth: extra?.earningsMonth, onTap: () => onTab(3))),
       const SizedBox(height: 16),
 
       // ── what needs you: one card of small tiles (every count once) — only while something waits
@@ -404,10 +406,20 @@ class TeacherHomeBody extends StatelessWidget {
         id: 'teacher.today',
         title: 'home_today_sessions'.tr,
         count: items.length,
+        // a free day folds by itself: one line says so and names the next session
+        empty: items.isEmpty,
+        emptySummary: [
+          'home_no_sessions_today'.tr,
+          if (coming.isNotEmpty)
+            'home_next_on'.tr
+                .replaceAll('{t}', coming.first.courseName)
+                .replaceAll('{d}', AppTime.date(teacherSessionUtc(coming.first, coming.first.startTime), pattern: 'EEE d')),
+        ].join(' · '),
         actionLabel: 'home_full_timetable'.tr,
         onAction: () => onTab(2),
         child: HomeAgenda(
           items: items,
+          nowMin: now == null ? null : _wallMin(now!),
           emptyTitle: 'home_no_sessions_today'.tr,
           emptyMessage: 'home_no_sessions_today_hint'.tr,
           emptyActionLabel: 'home_full_timetable'.tr,
@@ -434,6 +446,10 @@ class TeacherHomeBody extends StatelessWidget {
         id: 'teacher.courses',
         title: 'my_courses'.tr,
         count: courses.length,
+        empty: courses.isEmpty,
+        emptySummary: 'home_t_no_courses'.tr,
+        actionLabel: courses.isEmpty ? 'hs_add_course'.tr : null,
+        onAction: courses.isEmpty ? onNewCourse : null,
         child: courses.isEmpty
         ? Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -637,64 +653,29 @@ class TeacherInboxPreview extends StatelessWidget {
   }
 }
 
-/// The instructor's hero: how many sessions today, what is next, the day as a ribbon, the key figures
-/// (students · courses · rating · earnings this month when the server sends it).
-class _TeachingDayHero extends StatelessWidget {
-  const _TeachingDayHero({required this.items, required this.stats, required this.onTap, this.earningsMonth});
-  final List<HomeAgendaItem> items;
+/// The instructor's hero: the key figures only — students · courses · rating · earnings this month (when the
+/// server sends it); tap → analytics. The day itself (count, "Live now · …", the ribbon) used to sit here too and
+/// repeated "Today's sessions" right below, so it went.
+class _TeachingFigures extends StatelessWidget {
+  const _TeachingFigures({required this.stats, required this.onTap, this.earningsMonth});
   final TeacherStats stats;
   final double? earningsMonth;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final on = context.colors.onHero;
-    final now = homeNow();
-    final nowMin = now.hour * 60 + now.minute;
-    final live = items.where((x) => x.live).firstOrNull;
-    final next = live ?? items.where((x) => (x.startMin ?? -1) > nowMin).firstOrNull;
-    final String line;
-    if (items.isEmpty) {
-      line = 'home_t_free_day'.tr;
-    } else if (live != null) {
-      line = '${'home_live'.tr} · ${live.title}';
-    } else if (next != null) {
-      line = '${'home_next'.tr} · ${next.title} · ${next.start}';
-    } else {
-      line = 'home_t_day_done'.tr;
-    }
+    final c = context.colors;
     return HomeHeroCard(
       onTap: onTap,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
-          HomeHeroTag('home_today'.tr, icon: Icons.wb_sunny_rounded),
-          const SizedBox(width: 8),
           Expanded(
-            child: Text(AppTime.date(DateTime.now().toUtc(), pattern: 'EEEE d MMMM'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: appText(12, w: FontWeight.w600, c: context.colors.onHeroMuted)),
+            child: Align(alignment: AlignmentDirectional.centerStart, child: HomeHeroTag('home_t_your_teaching'.tr, icon: Icons.insights_rounded)),
           ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: c.onHeroMuted),
         ]),
         const SizedBox(height: 14),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('${items.length}', style: appText(44, w: FontWeight.w900, c: on, h: 1)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Text('home_t_sessions_today'.tr,
-                  maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w700, c: on, h: 1.2)),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 6),
-        Text(line, maxLines: 2, overflow: TextOverflow.ellipsis, style: appText(13, w: FontWeight.w600, c: on.withValues(alpha: 0.9))),
-        const SizedBox(height: 16),
-        HomeDayRibbon(items: items, nowMin: nowMin),
-        const SizedBox(height: 16),
-        Row(children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(child: HomeHeroFigure(value: appCompactNumber(stats.totalStudents), label: 'home_students'.tr)),
           Expanded(child: HomeHeroFigure(value: '${stats.totalCourses}', label: 'courses'.tr)),
           Expanded(child: HomeHeroFigure(value: stats.overallRating.toStringAsFixed(1), label: 'home_rating'.tr)),

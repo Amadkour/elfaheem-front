@@ -2,10 +2,13 @@
 //
 //   header        greeting · name · calendar · notifications · ContextSwitcher (Personal ↔ organizations) · search
 //   Personal (StudentHomeBody, plain values from ONE call — GET /api/v1/me/home, MeHomeService):
-//     hero        "next up": today's next session / exam, its start time set big, live state and countdown
+//     live now    HomeLiveNow: a course session / meeting on air that I may join (one tap), only while it runs
+//                 (no "next up" hero card: it repeated Today's first row, which now says "Ends in … · room")
 //     needs you   ONE card of small tiles (HomeStatStrip): to do (attention) · inbox to-dos · unread notifications ·
 //                 organizations waiting — every count drawn ONCE on this screen
-//     today       timeline of today's events (sessions · timetable slots · exams · meetings, exam pauses applied)
+//     today       today's events, one line each (sessions · timetable slots · exams · meetings, exam pauses
+//                 applied); the running one tinted with "Ends in 50 min · Lab 3"; a free day folds by itself
+//                 ("No classes today · Next: … · Thu 30") — the empty courses section too
 //     this week   the next 5 events of the coming 7 days, compact rows
 //     my courses  courses_progress[] summarized in one card (StudentCourseSummary): figures + the 3 that matter now
 //     inbox       the 3 most urgent inbox rows (no second count)
@@ -344,33 +347,20 @@ class _Sections extends StatelessWidget {
     final data = body.data;
     final wallNow = AppTime.toZone(now);
     final nowMin = wallNow.hour * 60 + wallNow.minute;
-    final next = home.nextUp(now);
     final todo = home.attentionCount(AttentionTabs.home);
     final inboxTodo = home.inboxTodo;
     final inboxRows = home.inboxPreview.take(3).map(InboxItem.new).toList();
     var i = 1;
     Widget enter(Widget w) => HomeEntrance(index: i++, child: w);
-    // the hero repeats nothing the "Live now" banner already says: a running session that is in the banner leaves
-    // the hero to what comes after it
     final live = data.liveNow;
-    final liveKeys = {for (final r in live) r.isMeeting ? 'meeting:${r.id}' : 'session:${r.id}'};
-    bool inBanner(CalEvent e) => liveKeys.contains(e.isMeeting ? 'meeting:${e.meetingId}' : e.id);
-    final hero = next != null && next.live && inBanner(next.event)
-        ? home.nextUp(now, home.today.where((e) => !inBanner(e)))
-        : next;
     final anyCount = todo > 0 || inboxTodo > 0 || home.notificationsUnread > 0 || data.orgWaiting > 0;
     final upcoming = home.upcoming.take(5).toList();
 
+    // No "next up" hero card: it repeated the first row of "Today" — that row now carries what only the card said
+    // (tinted while it runs, "Ends in 50 min · Lab 3"; with nothing running the next row says when it starts).
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       // ── live now: a room I'm invited to is on air → one tap into it (appears / leaves by itself)
       if (live.isNotEmpty) HomeLiveNow(rooms: live, now: data.now, padding: _bannerPad),
-
-      // ── hero: next up
-      enter(ParentComponent(
-        key: const ValueKey('student_home.upcoming_banner'),
-        child: NextUpHero(next: hero, upcoming: home.firstUpcoming, now: now, onTap: () => _open(hero?.event)),
-      )),
-      const SizedBox(height: 16),
 
       // ── what matters now: one card of small tiles, only while something waits (the greeting says "all caught
       //    up" otherwise)
@@ -414,13 +404,17 @@ class _Sections extends StatelessWidget {
       const SizedBox(height: 16),
       ],
 
-      // ── today | this week (side by side on a wide window): one line per item, live first, 3 + "Show all"
-      HomeSplit(start: [
+      // ── today | this week (side by side on a wide window): one line per item, live first, 3 + "Show all"; a free
+      //    day stacks them (a folded Today beside the week card left a blank half column)
+      HomeSplit(minWidth: home.today.isEmpty ? double.infinity : 900, start: [
         enter(HomeSection(
           id: 'student.today',
           title: 'home_today'.tr,
           count: home.today.length,
           foldedSummary: home.today.isEmpty ? null : homeDaySummaryOf(home.today, now),
+          // a free day folds by itself: one line says so and names what comes next
+          empty: home.today.isEmpty,
+          emptySummary: homeFreeDaySummary('home_no_classes_today'.tr, home.firstUpcoming),
           actionLabel: 'home_full_timetable'.tr,
           onAction: () => body.onTab('my_schedule'),
           child: HomeAgenda(
@@ -451,6 +445,10 @@ class _Sections extends StatelessWidget {
         id: 'student.courses',
         title: 'my_courses'.tr,
         count: home.coursesProgress.length,
+        empty: home.coursesProgress.isEmpty,
+        emptySummary: 'home_s_no_courses'.tr,
+        actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : null,
+        onAction: home.coursesProgress.isEmpty ? () => body.onTab('my_courses') : null,
         child: home.coursesProgress.isEmpty
             ? Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),

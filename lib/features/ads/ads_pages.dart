@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/core/offline/downloads_availability.dart' show linkAvailableHere;
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/student/courses/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/student/models.dart';
@@ -33,7 +34,7 @@ import 'package:flutter_education_app/core/display/app_fonts.dart';
 Map<String, String> adPages() => {
       '/subscription': t('الاشتراكات والباقات', 'Subscription plans'),
       '/notifications': t('الإشعارات', 'Notifications'),
-      '/downloads': t('التنزيلات', 'Downloads'),
+      '/downloads': t('التنزيلات (التطبيق فقط)', 'Downloads (app only)'), // no Downloads page on the web
       '/profile': t('حسابي', 'My account'),
       '/home': t('الرئيسية', 'Home'),
     };
@@ -112,7 +113,8 @@ class _HomeAdsSliderState extends State<HomeAdsSlider> {
         toast(t('تعذّر فتح الكورس', 'Could not open the course'), error: true);
       }
     } else if (type == 'page' && value.startsWith('/')) {
-      Navigator.of(context).pushNamed(value);
+      // an ad pointing to Downloads is for the app: on the web it opens nothing
+      if (linkAvailableHere(value)) Navigator.of(context).pushNamed(value);
     } else if (ad['media_type'] == 'video' && '${ad['media_url'] ?? ''}'.isNotEmpty) {
       await launchUrl(Uri.parse(orgFileUrl('${ad['media_url']}')), mode: LaunchMode.externalApplication);
     }

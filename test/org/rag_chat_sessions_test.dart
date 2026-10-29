@@ -151,6 +151,9 @@ void main() {
       expect(ragDeepLinkModule('/'), isNull);
       expect(ragDeepLinkModule(''), isNull);
       expect(ragDeepLinkModule(null), isNull);
+      // the web has no Downloads page: no "Open" button for it there
+      expect(ragDeepLinkModule('/downloads', downloadsAvailable: false), isNull);
+      expect(ragDeepLinkModule('/calendar', downloadsAvailable: false), 'calendar');
     });
   });
 

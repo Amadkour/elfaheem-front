@@ -527,6 +527,9 @@ class OrgMemberHomeBody extends StatelessWidget {
             title: 'home_today'.tr,
             count: today?.length ?? 0,
             foldedSummary: (today ?? const []).isEmpty ? null : homeDaySummaryOf(today!, nowUtc),
+            // a free day folds by itself (its line says so); the person's own choice for that state wins
+            empty: (today ?? const []).isEmpty,
+            emptySummary: 'home_no_classes_today'.tr,
             actionLabel: 'home_full_timetable'.tr,
             onAction: openTimetable,
             titlePadding: _titlePad,
