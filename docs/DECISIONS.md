@@ -1299,3 +1299,16 @@ and board toolbars live on the stage and stay; the self-view box stays and keeps
 **Rejected.** Keeping the vertical badge column (it grew with every pill and sat over the video); a Record button on
 both the bar and the row; an auto-hiding row (the recording state must stay visible); a full-screen route for full
 view (the room is not a route, D-059).
+
+## D-097 — Weak-network follow-up from the perf2 bench: `allow_pause` off, a healed dip climbs back to HD after 60 s · 2026-10-30 · accepted
+**Context.** The after-tuning bench (scratchpad `perf2/RESULTS.md`; a real libwebrtc publisher, netem on the
+subscriber's downlink) found two weak spots: LiveKit's `congestion_control.allow_pause` paused the whole video 1–2
+times per run (up to 11.6 s) on a 1 Mbit/s link that carries 360p, and the governor's 4-minute ceiling held a link
+that had healed at 360p for ~4 min (720p came back 224 s after the cap was lifted).
+**Decision.** (1) `allow_pause: false` in `../back/scripts/dev/livekit.dev.yaml` and the production proposal
+`deploy/livekit.production.yaml` (2.5 s frozen and 0 pauses in the same run); the app's governor steps down to 180p /
+audio only itself. (2) `LiveQualityGovernor.firstStrikeCalm` (60 s): a FIRST strike's ceiling also ends after 60 s
+of unbroken good samples; repeat strikes keep the 8 / 16 / 32-minute ceilings. On a link that never carries 720p this
+costs one more 720p probe in 10 minutes (4 drops instead of 3, still ~80 % of the time on 360p).
+**Not changed.** The screen share's half-size layer: livekit_client 2.13.1 keeps the share's frame rate on it
+(`_computeDefaultScreenShareSimulcastParams`); the 3 fps layer on the bench came from the Python SDK's default.
