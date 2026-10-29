@@ -6,7 +6,9 @@ import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
 import '../../../../core/api_client.dart';
 import '../../../../core/base_provider.dart';
+import '../../../../core/live/event_wait.dart';
 import '../../../../utils/helpers.dart';
+import '../../../../utils/live_events.dart';
 import '../../../shared/guest/guest_state.dart';
 import '../../models.dart';
 import 'components/issued_certificate.dart';
@@ -87,6 +89,33 @@ class CourseDetailProvider extends BaseProvider {
       fetchSessions(courseId),
       if (course.isEnrolled) fetchMyCertificates(courseId),
     ]);
+    _watchLive(courseId);
+  }
+
+  // The live card follows the teacher: the server sends `session_live` to the enrolled students when a session of
+  // this course starts (and ends); a slow poll covers a closed stream. Guests have no stream (no account).
+  EventOrPoll? _liveWatch;
+  String? _liveWatchCourse;
+  bool _disposed = false;
+
+  void _watchLive(String courseId) {
+    if (GuestState.active || _liveWatchCourse == courseId) return;
+    _liveWatch?.dispose();
+    _liveWatchCourse = courseId;
+    _liveWatch = EventOrPoll(
+      names: const {LiveEvents.sessionLive},
+      match: (e) => '${e.data['course_id']}' == courseId,
+      every: const Duration(seconds: 30),
+      fallbackEvery: const Duration(minutes: 2),
+      poll: refreshSessionsSilently,
+    )..start();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _liveWatch?.dispose();
+    super.dispose();
   }
 
   // ── My certificates ───────────────────────────────────────────────────────
@@ -232,7 +261,7 @@ class CourseDetailProvider extends BaseProvider {
         completedSessionIds
           ..clear()
           ..addAll(fresh.where((e) => e.isCompleted).map((e) => e.id));
-        notifyListeners();
+        if (!_disposed) notifyListeners(); // a live-watch poll may land after the page closed
       }
     } catch (_) {}
   }
