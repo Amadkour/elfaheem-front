@@ -78,6 +78,16 @@ class AppAssistant {
   /// Opens the pop-up (settings tile, top-bar icon), whether or not the bubble is shown.
   static void openPanel() => open.value = true;
 
+  /// A question waiting to be typed into the pop-up's box (see [ask]); the host takes it once the chat is mounted.
+  static final ValueNotifier<String?> draft = ValueNotifier<String?>(null);
+
+  /// Opens the pop-up on a NEW chat with [question] already typed in the box, not sent — the person reads it, edits
+  /// it or presses send ("Ask about this page" on the terms / privacy pages, D-084).
+  static void ask(String question) {
+    draft.value = question;
+    open.value = true;
+  }
+
   /// Whether the assistant exists for this person right now (signed in, not a guest, not switched off).
   static bool availableFor(BuildContext context) =>
       context.read<MyAuthProvider>().isAuthenticated &&
@@ -286,6 +296,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
         topRouteObserver.topRoute,
         AppAssistant.hiddenBy,
         AppAssistant.open,
+        AppAssistant.draft,
         GuestState.instance,
         mode,
         prefs,
@@ -307,6 +318,7 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
           _menu = false;
         }
         final org = appAssistantOrg(isOrg: mode.isOrg, orgId: mode.currentOrgId, entry: mode.current);
+        if (open && AppAssistant.draft.value != null && !_draftScheduled) _takeDraft(org);
         return Stack(fit: StackFit.expand, children: [
           widget.child,
           if (allowed && _everOpened) _panel(context, open, org),
@@ -484,6 +496,33 @@ class _AppAssistantHostState extends State<AppAssistantHost> {
   void _close() {
     FocusManager.instance.primaryFocus?.unfocus();
     AppAssistant.open.value = false;
+  }
+
+  bool _draftScheduled = false;
+
+  /// Hands [AppAssistant.draft] to the chat of [org]'s scope once it is mounted (the first open builds it this frame).
+  void _takeDraft((int, String)? org, [int tries = 0]) {
+    _draftScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final text = AppAssistant.draft.value;
+      if (!mounted || text == null) {
+        _draftScheduled = false;
+        return;
+      }
+      final chat = _chats['app_assistant_${org?.$1}']?.currentState;
+      if (chat == null) {
+        if (tries < 20) {
+          _takeDraft(org, tries + 1);
+          WidgetsBinding.instance.scheduleFrame();
+        } else {
+          _draftScheduled = false;
+        }
+        return;
+      }
+      _draftScheduled = false;
+      AppAssistant.draft.value = null;
+      chat.draft(text);
+    });
   }
 
   /// Full screen: the same chat as a page, on the pop-up's current conversation (its messages come back from the

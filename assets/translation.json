@@ -1224,16 +1224,16 @@
     "ar": "المده"
   },
   "change_language": {
-    "en": "Change Language",
-    "ar": "تغير اللفة"
+    "en": "Change language",
+    "ar": "تغيير اللغة"
   },
   "dark_mode": {
     "en": "Dark Mode",
     "ar": "الوضع الليلي"
   },
   "privacy": {
-    "en": "Privacy and Conditions",
-    "ar": "سياية الخصوصية"
+    "en": "Privacy & terms",
+    "ar": "الخصوصية والشروط"
   },
   "time-table": {
     "en": "My Weekly table",
@@ -17336,5 +17336,65 @@
   "home_earlier_today": {
     "en": "Earlier today",
     "ar": "في وقت سابق اليوم"
+  },
+  "app_language": {
+    "en": "Language",
+    "ar": "اللغة"
+  },
+  "privacy_intro": {
+    "en": "How we look after your data, and the terms that keep the platform fair for everyone.",
+    "ar": "كيف نحافظ على بياناتك، والشروط التي تجعل المنصة عادلة للجميع."
+  },
+  "reading_on_this_page": {
+    "en": "On this page",
+    "ar": "في هذه الصفحة"
+  },
+  "reading_minutes": {
+    "en": "{n} min read",
+    "ar": "قراءة في {n} د"
+  },
+  "reading_error_title": {
+    "en": "Couldn't load this page",
+    "ar": "تعذّر تحميل الصفحة"
+  },
+  "reading_empty_title": {
+    "en": "Nothing here yet",
+    "ar": "لا يوجد محتوى بعد"
+  },
+  "reading_ask_title": {
+    "en": "Something unclear?",
+    "ar": "هل هناك ما لم يتضح؟"
+  },
+  "reading_ask_body": {
+    "en": "The assistant reads this page with you and answers in plain words.",
+    "ar": "المساعد يقرأ هذه الصفحة معك ويجيبك بكلمات بسيطة."
+  },
+  "assistant_ask_page": {
+    "en": "Ask about this page",
+    "ar": "اسأل عن هذه الصفحة"
+  },
+  "assistant_ask_page_tip": {
+    "en": "Ask the assistant about this page",
+    "ar": "اسأل المساعد عن هذه الصفحة"
+  },
+  "assistant_q_terms": {
+    "en": "Explain the terms and conditions in simple words: what am I agreeing to?",
+    "ar": "اشرح لي الشروط والأحكام بكلمات بسيطة: على ماذا أوافق؟"
+  },
+  "assistant_q_privacy": {
+    "en": "Explain the privacy policy: what data do you keep about me, and how is it protected?",
+    "ar": "اشرح لي سياسة الخصوصية: ما البيانات التي تحتفظون بها عني، وكيف تُحمى؟"
+  },
+  "about_support": {
+    "en": "Contact & support",
+    "ar": "التواصل والدعم"
+  },
+  "about_ask_assistant": {
+    "en": "Ask the assistant",
+    "ar": "اسأل المساعد"
+  },
+  "about_ask_assistant_sub": {
+    "en": "Answers about the app, any time",
+    "ar": "إجابات عن التطبيق في أي وقت"
   }
 }

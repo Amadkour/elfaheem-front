@@ -19,7 +19,7 @@ import 'package:flutter_education_app/design/app_kit.dart'
     show AppSettingsGroup, AppSettingsHeader, AppSettingsPage, AppSettingsTile, AppSwitch;
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/features/auth/mfa_entry.dart' show MfaSettingsEntry;
-import 'package:flutter_education_app/features/shared/profile/change_language_screen.dart';
+import 'package:flutter_education_app/design/app_language_switch.dart' show AppLanguageTile;
 import 'package:flutter_education_app/features/shared/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/teacher/certificates/designer/certificate_designs_screen.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
@@ -134,11 +134,7 @@ class _OrgSettingsPageState extends State<OrgSettingsPage> {
         ]),
         if (governance.isNotEmpty) AppSettingsGroup(title: t('الحوكمة', 'Governance'), icon: Icons.shield_rounded, children: governance),
         AppSettingsGroup(title: t('التفضيلات', 'Preferences'), icon: Icons.settings_rounded, children: [
-          AppSettingsTile(
-              icon: Icons.translate_rounded,
-              color: AdminPalette.violet.last,
-              label: 'change_language'.tr,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChangeLanguageScreen()))),
+          AppLanguageTile(color: AdminPalette.violet.last),
           const DisplaySettingsTile(),
           const AppAssistantOpenTile(),
           const AppAssistantBubbleTile(),

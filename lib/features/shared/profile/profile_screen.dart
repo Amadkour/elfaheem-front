@@ -35,7 +35,7 @@ import '../../teacher/profile/switch_device_requests/teacher_device_requests_scr
 import '../rag/rag_chat_screen.dart' show RagChatScreen;
 import 'about/about_and_terms_screen.dart';
 import 'about/about_terms_provider.dart';
-import 'change_language_screen.dart';
+import '../../../design/app_language_switch.dart' show AppLanguageTile;
 import '../display/display_settings_page.dart' show DisplaySettingsTile;
 import '../rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'change_password_widget.dart';
@@ -334,15 +334,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          ParentComponent(
-                            featureKey: 'profile.change_language',
-                            child: AppSettingsTile(
-                              icon: Icons.language_rounded,
-                              color: context.colors.primaryLight,
-                              label: 'change_language'.tr,
-                              onTap: () => _push(const ChangeLanguageScreen()),
-                            ),
-                          ),
+                          const AppLanguageTile(),
                           const DisplaySettingsTile(),
                           const AppAssistantOpenTile(),
                           const AppAssistantBubbleTile(),
@@ -427,7 +419,7 @@ class _TeacherProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.verified_user_rounded,
                               color: c.success,
                               label: 'privacy'.tr,
-                              onTap: () => _push(TermsScreen()),
+                              onTap: () => _push(const TermsScreen(privacy: true)),
                             ),
                           ),
                           ParentComponent(
