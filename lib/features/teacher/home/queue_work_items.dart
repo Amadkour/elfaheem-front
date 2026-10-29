@@ -42,6 +42,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_contrast.dart' show ensureContrast;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/shared/live/live_config.dart';
 import 'package:flutter_education_app/features/student/home/home_event_rows.dart' show homeDuration;
 import 'package:flutter_education_app/features/teacher/home/teacher_models.dart';
 import 'package:flutter_education_app/features/teacher/home/teacher_home_provider.dart';
@@ -119,6 +120,8 @@ void openTeacherPreJoin(BuildContext context, ScheduleSession session) {
               sessionId: session.sessionId!,
               url: session.joinUrl!,
               token: session.token!,
+              // the home's token comes without a join payload: the last live_config a server sent (D-090)
+              liveConfig: LiveConfig.lastKnown,
             );
           },
           // the home has no TeacherCourseScreenProvider above it (a context.read here threw when the room ended):
