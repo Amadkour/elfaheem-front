@@ -9,10 +9,12 @@
 //
 // Every packet is compact JSON with a version `v` and a type `t`. Coordinates are normalised (0..1 on both axes)
 // to the SHARED CONTENT rect, i.e. the video frame, so each viewer maps them through its own `contain` fit
-// (annotation_painter.dart); numbers are rounded to 4 decimals. Widths are a fraction of the frame width.
+// (annotation_painter.dart); x / y are rounded to 5 decimals, pressures to 3, widths to 4 (D-081). Widths are a
+// fraction of the frame width. The points are the drawer's FILTERED samples (annotation_ink.dart).
 //
-//   {"v":1,"t":"s","id":"k3f2a","a":"teacher_7","tl":"p","c":4294198070,"w":0.004}   stroke start (tl p | h)
-//   {"v":1,"t":"m","id":"k3f2a","p":[[0.1234,0.5,0.5],[0.125,0.51,0.62]]}            points [x, y, pressure]
+//   {"v":1,"t":"s","id":"k3f2a","a":"teacher_7","tl":"p","c":4294198070,"w":0.004,"pr":1}
+//                                              stroke start (tl p | h; pr 1 = stylus, the width follows pressure)
+//   {"v":1,"t":"m","id":"k3f2a","p":[[0.12345,0.5,0.5],[0.125,0.51,0.62]]}           points [x, y, pressure]
 //   {"v":1,"t":"x","id":"k3f2a"}                                                    stroke end
 //   {"v":1,"t":"u","a":"teacher_7","id":"k3f2a"}                                   undo (own stroke)
 //   {"v":1,"t":"e","ids":[["student_4","q1"],["teacher_7","k3f2a"]]}               erase [author, id] pairs
@@ -31,7 +33,8 @@
 // [kAnnotMaxReliableBytes] (1 KiB left for the DataPacket / UserPacket envelope), and a stroke too long for one
 // chunk is split into pieces that the receiver appends back together in order.
 //
-// Unknown versions, unknown types and malformed packets decode to null and are ignored.
+// Unknown versions, unknown types and malformed packets decode to null and are ignored; unknown KEYS are ignored
+// too, which is how `pr` and the finer rounding stay version 1 (an older client draws them its old way).
 library;
 
 import 'dart:convert';
@@ -75,11 +78,22 @@ AnnotInk? _inkOf(Object? s) => switch (s) {
       _ => null,
     };
 
-/// Rounds to 4 decimals; an integral value becomes an int so it encodes as `0` / `1`, not `0.0`.
-num annotRound(double v) {
-  final r = (v * 10000).roundToDouble() / 10000;
+/// Rounds to [digits] decimals (4 by default: widths); an integral value becomes an int so it encodes as `0` /
+/// `1`, not `0.0`.
+num annotRound(double v, [int digits = 4]) {
+  final f = math.pow(10, digits).toDouble();
+  final r = (v * f).roundToDouble() / f;
   return r == r.truncateToDouble() ? r.toInt() : r;
 }
+
+/// Decimals of a point's x / y (D-081). 4 decimals were a 1/10 000 grid: on a 2560 px wide screen a 0.26 px
+/// step, i.e. a quarter of the ~1 px between two samples of a slow stroke — the stair-step wobble you saw once
+/// the share was scaled up. 5 decimals put it under 0.03 px. Older clients read any number, so this is the same
+/// protocol version.
+const kAnnotCoordDigits = 5;
+
+/// Decimals of a pressure (1/1000 is far finer than any visible width change).
+const kAnnotPressureDigits = 3;
 
 double _clamp01(double v) => v.isNaN ? 0 : v.clamp(0.0, 1.0).toDouble();
 
@@ -89,16 +103,17 @@ class AnnotPoint {
 
   /// The point as it travels: clamped to 0..1 and rounded, so sender and receivers hold the same numbers.
   factory AnnotPoint.wire(double x, double y, [double p = 0.5]) => AnnotPoint(
-        annotRound(_clamp01(x)).toDouble(),
-        annotRound(_clamp01(y)).toDouble(),
-        annotRound(_clamp01(p)).toDouble(),
+        annotRound(_clamp01(x), kAnnotCoordDigits).toDouble(),
+        annotRound(_clamp01(y), kAnnotCoordDigits).toDouble(),
+        annotRound(_clamp01(p), kAnnotPressureDigits).toDouble(),
       );
 
   final double x;
   final double y;
   final double p;
 
-  List<num> toJson() => [annotRound(x), annotRound(y), annotRound(p)];
+  List<num> toJson() =>
+      [annotRound(x, kAnnotCoordDigits), annotRound(y, kAnnotCoordDigits), annotRound(p, kAnnotPressureDigits)];
 
   static AnnotPoint? parse(Object? o) {
     if (o is! List || o.length < 2) return null;
@@ -148,6 +163,7 @@ class AnnotStrokeData {
     required this.width,
     required this.points,
     this.open = false,
+    this.pressured,
   });
 
   final String author;
@@ -164,6 +180,9 @@ class AnnotStrokeData {
   /// Still being drawn: more points may follow on the live stream.
   final bool open;
 
+  /// Drawn with a stylus: the width follows the pressure (`pr`, D-081). Null: an older sender that does not say.
+  final bool? pressured;
+
   AnnotRef get ref => AnnotRef(author, id);
 
   Map<String, Object?> toJson({List<AnnotPoint>? only}) => {
@@ -174,6 +193,7 @@ class AnnotStrokeData {
         'w': annotRound(width),
         'p': [for (final pt in only ?? points) pt.toJson()],
         if (open) 'o': 1,
+        if (pressured != null) 'pr': pressured! ? 1 : 0,
       };
 
   static AnnotStrokeData? parse(Object? o) {
@@ -186,7 +206,14 @@ class AnnotStrokeData {
     final pts = _points(o['p'], max: kAnnotMaxPointsPerStroke);
     if (author == null || id == null || ink == null || color == null || width == null || pts == null) return null;
     return AnnotStrokeData(
-        author: author, id: id, ink: ink, color: color, width: width, points: pts, open: o['o'] == 1);
+        author: author,
+        id: id,
+        ink: ink,
+        color: color,
+        width: width,
+        points: pts,
+        open: o['o'] == 1,
+        pressured: _flag(o['pr']));
   }
 }
 
@@ -205,7 +232,8 @@ sealed class AnnotMsg {
 }
 
 class AnnotStart extends AnnotMsg {
-  const AnnotStart({required this.id, required this.author, required this.ink, required this.color, required this.width});
+  const AnnotStart(
+      {required this.id, required this.author, required this.ink, required this.color, required this.width, this.pressured});
 
   final String id;
   final String author;
@@ -213,9 +241,20 @@ class AnnotStart extends AnnotMsg {
   final int color;
   final double width;
 
+  /// A stylus stroke (`pr`, D-081): its width follows the pressure. Null from older senders (the receiver then
+  /// guesses from the pressures, as before).
+  final bool? pressured;
+
   @override
-  Map<String, Object?> body() =>
-      {'t': 's', 'id': id, 'a': author, 'tl': _inkCode(ink), 'c': color, 'w': annotRound(width)};
+  Map<String, Object?> body() => {
+        't': 's',
+        'id': id,
+        'a': author,
+        'tl': _inkCode(ink),
+        'c': color,
+        'w': annotRound(width),
+        if (pressured != null) 'pr': pressured! ? 1 : 0,
+      };
 }
 
 class AnnotPoints extends AnnotMsg {
@@ -366,7 +405,8 @@ class AnnotCodec {
         final color = _color(m['c']);
         final width = _width(m['w']);
         if (id == null || ink == null || color == null || width == null) return null;
-        return AnnotStart(id: id, author: _str(m['a']) ?? '', ink: ink, color: color, width: width);
+        return AnnotStart(
+            id: id, author: _str(m['a']) ?? '', ink: ink, color: color, width: width, pressured: _flag(m['pr']));
       case 'm':
         final id = _str(m['id']);
         final pts = _points(m['p'], max: kAnnotMaxPointsPerPacket);
@@ -519,6 +559,7 @@ class AnnotSnapshotAssembler {
                 width: prev.width,
                 points: [...prev.points, ...s.points],
                 open: prev.open || s.open,
+                pressured: prev.pressured ?? s.pressured,
               );
       }
     }
@@ -567,7 +608,9 @@ class AnnotPointBatcher {
 
 /// Ramer–Douglas–Peucker over a finished stroke (normalised space). A point is also kept when its pressure
 /// differs from the straight-line interpolation by more than [pressureTolerance] (the width would change).
-/// Deterministic: the author and every receiver simplify the same points to the same result.
+/// Deterministic: the author and every receiver simplify the same points to the same result. No longer applied to
+/// a finished stroke (D-081): it moved the curve under the pen the moment it lifted, and a late joiner must draw
+/// exactly what the others see; the ink filter's decimation (annotation_ink.dart) keeps the point count down.
 List<AnnotPoint> annotSimplify(List<AnnotPoint> pts, {double epsilon = 0.0008, double pressureTolerance = 0.15}) {
   if (pts.length < 3) return List.of(pts);
   final keep = List<bool>.filled(pts.length, false);
@@ -622,6 +665,9 @@ double _perpDist(AnnotPoint a, AnnotPoint b, AnnotPoint p) {
 
 String? _str(Object? o, {int max = kAnnotMaxIdLength}) =>
     o is String && o.isNotEmpty && o.length <= max ? o : null;
+
+/// `1` / `0` → true / false; anything else (absent) → null.
+bool? _flag(Object? o) => o == 1 ? true : (o == 0 ? false : null);
 
 int? _color(Object? o) => o is int && o >= 0 && o <= 0xFFFFFFFF ? o : null;
 

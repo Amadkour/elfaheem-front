@@ -5,7 +5,9 @@
 //
 // While the controller is in draw mode (and the local person may draw) a Listener turns pointers into strokes:
 // pressure comes from a stylus (PointerEvent.pressure over its pressureMin..pressureMax), touch and mouse draw
-// at 0.5; the stylus's eraser end erases. Palm-safe: one pointer draws at a time, and while a stylus is down (or
+// at 0.5 (constant width); the stylus's eraser end erases. Every sample goes through [AnnotInkFilter]
+// (annotation_ink.dart, D-081) before it reaches the controller: the jitter of a slow pen is smoothed away, a fast
+// one is not held back, and the stroke still ends exactly where the pen lifted. Palm-safe: one pointer draws at a time, and while a stylus is down (or
 // just lifted) touches are ignored; a stylus landing on a stroke a touch started removes that stroke (the palm).
 // Outside draw mode the layer is wrapped in IgnorePointer, so the video below (and its controls) keep working.
 // The laser fades with a Ticker that runs only while a dot is on screen.
@@ -18,6 +20,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 
 import 'annotation_controller.dart';
+import 'annotation_ink.dart';
 import 'annotation_painter.dart';
 
 /// Touches this soon after a stylus lifted are taken as the palm.
@@ -45,6 +48,9 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
 
   int? _pointer;
   PointerDeviceKind? _pointerKind;
+
+  /// The ink filter of the stroke in progress (logical px of this layer).
+  AnnotInkFilter? _ink;
   bool _stylusDown = false;
   DateTime? _stylusUp;
   Rect _rect = Rect.zero;
@@ -111,22 +117,33 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
     }
     final n = AnnotFit.toNormal(e.localPosition, _rect);
     if (n.dx < 0 || n.dx > 1 || n.dy < 0 || n.dy > 1) return;
+    final ink = AnnotInkFilter(pressure: stylus);
+    final s = ink.start(e.localPosition.dx, e.localPosition.dy, _seconds(e), _pressure(e));
     final started = widget.controller.begin(
       n.dx,
       n.dy,
-      p: _pressure(e),
+      p: s.p,
+      stylus: stylus,
       toolOverride: e.kind == PointerDeviceKind.invertedStylus ? AnnotTool.eraser : null,
     );
     if (started) {
       _pointer = e.pointer;
       _pointerKind = e.kind;
+      _ink = ink;
     }
   }
 
+  static double _seconds(PointerEvent e) => e.timeStamp.inMicroseconds / 1e6;
+
   void _move(PointerMoveEvent e) {
     if (e.pointer != _pointer) return;
-    final n = AnnotFit.toNormal(e.localPosition, _rect);
-    widget.controller.move(n.dx, n.dy, p: _pressure(e), aspect: _aspect);
+    final ink = _ink;
+    final s = ink == null
+        ? AnnotInkSample(e.localPosition.dx, e.localPosition.dy, _pressure(e))
+        : ink.add(e.localPosition.dx, e.localPosition.dy, _seconds(e), _pressure(e));
+    if (s == null) return; // within a pixel of the last point
+    final n = AnnotFit.toNormal(Offset(s.x, s.y), _rect);
+    widget.controller.move(n.dx, n.dy, p: s.p, aspect: _aspect);
   }
 
   void _hover(PointerHoverEvent e) {
@@ -143,8 +160,15 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
       _stylusUp = DateTime.now();
     }
     if (e.pointer != _pointer) return;
+    // The stroke ends where the pen lifted (the filter may be a pixel or two behind a fast pen).
+    final last = e is PointerUpEvent ? _ink?.finish(e.localPosition.dx, e.localPosition.dy) : null;
+    if (last != null) {
+      final n = AnnotFit.toNormal(Offset(last.x, last.y), _rect);
+      widget.controller.move(n.dx, n.dy, p: last.p, aspect: _aspect);
+    }
     _pointer = null;
     _pointerKind = null;
+    _ink = null;
     widget.controller.end();
   }
 
@@ -158,6 +182,7 @@ class _AnnotationLayerState extends State<AnnotationLayer> with SingleTickerProv
         if (!active && _pointer != null) {
           _pointer = null;
           _pointerKind = null;
+          _ink = null;
         }
         return LayoutBuilder(builder: (context, c) {
           final size = Size(c.maxWidth.isFinite ? c.maxWidth : 0, c.maxHeight.isFinite ? c.maxHeight : 0);

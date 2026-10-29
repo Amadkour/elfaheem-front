@@ -103,7 +103,12 @@ void main() {
     expect(s.points.first.x, closeTo(0.25, 0.001));
     expect(s.points.first.y, closeTo(0.5, 0.001));
     expect(s.points.last.x, closeTo(0.75, 0.001));
-    expect(s.points.length, 2); // a straight line: simplified to its ends
+    // Filtered and decimated, never simplified after the fact: the points stay on the line, in order.
+    expect(s.points.length, greaterThan(2));
+    expect(s.points.every((p) => (p.y - 0.5).abs() < 0.001), isTrue);
+    for (var i = 1; i < s.points.length; i++) {
+      expect(s.points[i].x, greaterThan(s.points[i - 1].x));
+    }
     // A press in the black band above the frame draws nothing.
     final g2 = await t.startGesture(const Offset(100, 100));
     await g2.moveTo(const Offset(150, 120));
@@ -174,7 +179,7 @@ void main() {
     expect(c2.board.strokes.single.points.first.x, closeTo(100 / 800, 0.002));
   });
 
-  testWidgets('the stylus eraser end erases; pressure reaches the stroke', (t) async {
+  testWidgets('the stylus eraser end erases; pressure reaches the stroke, averaged', (t) async {
     _host(t, const Size(800, 450));
     final c = _controller();
     addTearDown(c.dispose);
@@ -189,7 +194,9 @@ void main() {
     await t.pump();
     final s = c.board.strokes.single;
     expect(s.points.first.p, closeTo(0.9, 0.001));
-    expect(s.points.last.p, closeTo(0.2, 0.001));
+    // Pressure is averaged (a stylus reports a noisy value every sample): it moves at most 0.08 per sample.
+    expect(s.points.last.p, closeTo(0.82, 0.001));
+    expect(s.isPressured, isTrue);
     final e = TestPointer(2, PointerDeviceKind.invertedStylus);
     await t.sendEventToBinding(e.down(const Offset(200, 200)));
     await t.sendEventToBinding(e.up());

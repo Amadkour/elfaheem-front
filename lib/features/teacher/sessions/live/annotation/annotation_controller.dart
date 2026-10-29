@@ -44,6 +44,7 @@ class AnnotStroke {
     required this.width,
     List<AnnotPoint>? points,
     this.open = true,
+    this.pressured,
   }) : points = points ?? <AnnotPoint>[];
 
   final String author;
@@ -54,13 +55,34 @@ class AnnotStroke {
   List<AnnotPoint> points;
   bool open;
 
+  /// A stylus stroke: the width follows the pressure (`pr` on the wire). Null: an older sender did not say.
+  final bool? pressured;
+  bool _guessedPressure = false;
+
+  /// Whether the width follows the pressure. For an older sender (no `pr`) it is guessed from the samples
+  /// (any pressure away from 0.5), and once guessed it stays (the look never flips back mid-stroke).
+  bool get isPressured {
+    final p = pressured;
+    if (p != null) return p;
+    if (_guessedPressure) return true;
+    if (ink == AnnotInk.pen && points.any((q) => (q.p - 0.5).abs() > 0.02)) _guessedPressure = true;
+    return _guessedPressure;
+  }
+
   /// Bumped on every change (the painter's path cache keys on it).
   int version = 0;
 
   AnnotRef get ref => AnnotRef(author, id);
 
-  AnnotStrokeData toData() =>
-      AnnotStrokeData(author: author, id: id, ink: ink, color: color, width: width, points: points, open: open);
+  AnnotStrokeData toData({List<AnnotPoint>? points}) => AnnotStrokeData(
+      author: author,
+      id: id,
+      ink: ink,
+      color: color,
+      width: width,
+      points: points ?? this.points,
+      open: open,
+      pressured: pressured);
 }
 
 class AnnotLaserDot {
@@ -260,8 +282,9 @@ class AnnotationController extends ChangeNotifier {
   bool get canUndo => _undoStack.any((id) => board.stroke(AnnotRef(localIdentity, id)) != null);
 
   /// A pointer went down at ([x], [y]) (normalised) with pressure [p]. [toolOverride]: the stylus's eraser end.
-  /// Returns false when the local person may not draw.
-  bool begin(double x, double y, {double p = 0.5, AnnotTool? toolOverride}) {
+  /// [stylus]: the pen's width follows the pressure (the stroke says so on the wire, `pr`). The layer feeds
+  /// FILTERED points (annotation_ink.dart). Returns false when the local person may not draw.
+  bool begin(double x, double y, {double p = 0.5, AnnotTool? toolOverride, bool stylus = false}) {
     if (!canDrawLocal) return false;
     if (_gestureTool != null) end();
     final tool = toolOverride ?? _tool;
@@ -269,7 +292,8 @@ class AnnotationController extends ChangeNotifier {
     switch (tool) {
       case AnnotTool.pen:
       case AnnotTool.highlighter:
-        _startStroke(tool == AnnotTool.pen ? AnnotInk.pen : AnnotInk.highlighter, AnnotPoint.wire(x, y, p));
+        _startStroke(tool == AnnotTool.pen ? AnnotInk.pen : AnnotInk.highlighter, AnnotPoint.wire(x, y, stylus ? p : 0.5),
+            pressured: stylus && tool == AnnotTool.pen);
       case AnnotTool.eraser:
         eraseAt(x, y);
       case AnnotTool.laser:
@@ -282,7 +306,7 @@ class AnnotationController extends ChangeNotifier {
     switch (_gestureTool) {
       case AnnotTool.pen:
       case AnnotTool.highlighter:
-        _addPoint(AnnotPoint.wire(x, y, p));
+        _addPoint(AnnotPoint.wire(x, y, _current?.pressured == true ? p : 0.5));
       case AnnotTool.eraser:
         eraseAt(x, y, aspect: aspect);
       case AnnotTool.laser:
@@ -313,7 +337,7 @@ class AnnotationController extends ChangeNotifier {
     _notify();
   }
 
-  void _startStroke(AnnotInk ink, AnnotPoint first) {
+  void _startStroke(AnnotInk ink, AnnotPoint first, {bool pressured = false}) {
     if (board.strokeCount >= maxStrokes) return;
     final id = '$_idPrefix${(_nextId++).toRadixString(36)}';
     final widths = ink == AnnotInk.pen ? kAnnotPenWidths : kAnnotHighlighterWidths;
@@ -324,11 +348,12 @@ class AnnotationController extends ChangeNotifier {
       color: _color,
       width: annotRound(widths[_thickness]).toDouble(),
       points: [first],
+      pressured: pressured,
     );
     _current = s;
     board._strokes[s.ref.key] = s;
     board._changed();
-    _emit(AnnotStart(id: id, author: localIdentity, ink: ink, color: s.color, width: s.width));
+    _emit(AnnotStart(id: id, author: localIdentity, ink: ink, color: s.color, width: s.width, pressured: pressured));
     _batch.add(first, now());
     _scheduleFlush();
   }
@@ -349,7 +374,8 @@ class AnnotationController extends ChangeNotifier {
     }
   }
 
-  /// Finishes the stroke in progress: the last points go out, then the end; both sides simplify it the same way.
+  /// Finishes the stroke in progress: the last points go out, then the end. The points are kept as drawn (an
+  /// end-of-stroke simplification used to move the finished curve under the pen, D-081).
   void endStroke() {
     final s = _current;
     if (s == null) return;
@@ -365,7 +391,6 @@ class AnnotationController extends ChangeNotifier {
 
   void _finish(AnnotStroke s) {
     s.open = false;
-    s.points = annotSimplify(s.points);
     s.version++;
     board._changed();
   }
@@ -517,6 +542,7 @@ class AnnotationController extends ChangeNotifier {
     final cb = send;
     if (cb == null) return;
     final sid = '${_idPrefix}s${(_nextId++).toRadixString(36)}';
+    // Every point as drawn: a late joiner draws exactly what the others see (D-081).
     final chunks = AnnotCodec.snapshotChunks([for (final s in board.strokes) s.toData()], sid: sid);
     for (final c in chunks) {
       _sendRaw(kAnnotTopic, c, true, to: to);
@@ -535,7 +561,8 @@ class AnnotationController extends ChangeNotifier {
       if (have != null && have.points.length >= d.points.length) continue;
       if (have == null && board.strokeCount >= maxStrokes) continue;
       final s = have ??
-          AnnotStroke(author: d.author, id: d.id, ink: d.ink, color: d.color, width: d.width, open: d.open);
+          AnnotStroke(
+              author: d.author, id: d.id, ink: d.ink, color: d.color, width: d.width, open: d.open, pressured: d.pressured);
       s.points = List.of(d.points);
       s.open = d.open;
       s.version++;
@@ -566,7 +593,8 @@ class AnnotationController extends ChangeNotifier {
         final ref = AnnotRef(sender, m.id);
         if (board.stroke(ref) != null || board.strokeCount >= maxStrokes) return false;
         if (board.strokes.where((s) => s.open && s.author == sender).length >= 4) return false;
-        board._strokes[ref.key] = AnnotStroke(author: sender, id: m.id, ink: m.ink, color: m.color, width: m.width);
+        board._strokes[ref.key] =
+            AnnotStroke(author: sender, id: m.id, ink: m.ink, color: m.color, width: m.width, pressured: m.pressured);
         board._changed();
         return true;
       case AnnotPoints():

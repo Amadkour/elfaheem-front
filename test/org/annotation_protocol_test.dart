@@ -36,7 +36,7 @@ void main() {
 
       final pts = [AnnotPoint.wire(0.123456, 0.987654, 0.33333), AnnotPoint.wire(1.2, -0.1, 2)];
       final m = _rt(AnnotPoints(id: 'ab1', points: pts)) as AnnotPoints;
-      expect(m.points, [const AnnotPoint(0.1235, 0.9877, 0.3333), const AnnotPoint(1, 0, 1)]);
+      expect(m.points, [const AnnotPoint(0.12346, 0.98765, 0.333), const AnnotPoint(1, 0, 1)]);
 
       expect((_rt(const AnnotEnd('ab1')) as AnnotEnd).id, 'ab1');
     });
@@ -58,9 +58,9 @@ void main() {
       expect(const AnnotLaser(x: 0, y: 0).topic, kAnnotLaserTopic);
     });
 
-    test('compact: 4 decimals, integral values without ".0", versioned', () {
-      final s = utf8.decode(AnnotCodec.encode(AnnotPoints(id: 'x', points: [AnnotPoint.wire(1 / 3, 1, 0)])));
-      expect(s, '{"v":1,"t":"m","id":"x","p":[[0.3333,1,0]]}');
+    test('compact: 5 decimals for x / y, 3 for pressure, integral values without ".0", versioned', () {
+      final s = utf8.decode(AnnotCodec.encode(AnnotPoints(id: 'x', points: [AnnotPoint.wire(1 / 3, 1, 2 / 3)])));
+      expect(s, '{"v":1,"t":"m","id":"x","p":[[0.33333,1,0.667]]}');
     });
   });
 
