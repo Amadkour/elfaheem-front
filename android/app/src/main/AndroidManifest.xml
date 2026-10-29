@@ -26,6 +26,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- D-079: the whole-screen annotation overlay draws over other apps while the presenter shares -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
@@ -109,6 +111,16 @@
             android:name=".ScreenCaptureService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection|microphone" />
+
+        <!--
+            LiveCallService: the live room's microphone in the background for a participant who
+            neither records nor shares (Android 14+ cuts a background mic without a microphone FGS).
+            Steps aside while ScreenCaptureService holds the microphone type.
+        -->
+        <service
+            android:name=".LiveCallService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
 
         <!--
             flutter_webrtc screen share FGS — required on Android 14.

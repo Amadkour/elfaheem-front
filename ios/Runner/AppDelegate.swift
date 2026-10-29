@@ -50,6 +50,26 @@
 //     shortened — see startAudioSessionObserver), it should now rarely if
 //     ever need to actually do anything.
 //
+//  LIVE SCREEN SHARE (2026-10-29, audit docs/live/audit/ios_web.md I1–I14;
+//  UNTESTED — written on Windows, see docs/live/ios_test_plan.md):
+//     Viewers get the shared screen through flutter_webrtc's broadcast
+//     capturer: the extension sends JPEG frames over the Unix socket
+//     <App Group>/rtc_SSFD (Info.plist RTCAppGroupIdentifier /
+//     RTCScreenSharingExtension) and posts iOS_BroadcastStarted / Stopped,
+//     which livekit_client turns into publishing / unpublishing the
+//     screen-share track (Dart: ScreenShareCaptureOptions(
+//     useiOSBroadcastExtension: true), docs/live/ios_share_wiring.md).
+//     This file observes the same two notifications (onLkBroadcastStarted /
+//     Stopped) to arm the in-app recorder (path B above, unchanged wire
+//     format, now only while the ext_wants_* marker files ask for it), to
+//     report the share state to Dart ("…/broadcast_state" EventChannel) and
+//     to mix the shared app's sound into the live microphone
+//     (ShareAppAudioMixer at the bottom, flutter_webrtc AudioManager's
+//     capture post-processing hook). "requestBroadcastStop" / "stopBroadcast"
+//     post iOS_BroadcastRequestStop so the extension really ends (I2).
+//     During a share the session stays playAndRecord + videoChat (I5: echo
+//     cancellation kept; the old .videoRecording switch is gone).
+//
 //  ════════════════════════════════════════════════════════════════════
 
 import Flutter
@@ -60,6 +80,8 @@ import AVFoundation
 import CoreMedia
 import CoreVideo
 import WebRTC
+import flutter_webrtc   // AudioManager / ExternalAudioProcessingDelegate (ShareAppAudioMixer)
+import os
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -222,6 +244,11 @@ import WebRTC
     private var sessionId:  Int    = 0
     private var uploadUrl:  String = ""
     private var authToken:  String = ""
+    // The recorder start's id (ms, a new one per start; docs/live/native_epoch.md): sent as the chunk field
+    // `epoch`, so the server orders assembly by (epoch, index). Empty from an older Dart side.
+    private var epoch:      String = ""
+    // 409 recording_assembled / a dead upload token: this run takes no more chunks (reset on every start).
+    private var uploadsClosed: Bool = false
     private var chunkSecs:  Int    = 5
     // Meeting recordings (docs/backend/live-rooms-spec.md §5): the picked quality; 0 = the defaults below.
     private var videoBitrate: Int  = 0
@@ -455,6 +482,7 @@ import WebRTC
     private func drainUploadQueueIfIdle() {
         guard !uploadInFlight, !uploadQueue.isEmpty else { return }
         uploadInFlight = true
+        beginUploadBgTask()   // I9: its own task, ended when the queue is empty
         let next = uploadQueue.removeFirst()
         next()
     }
@@ -467,13 +495,12 @@ import WebRTC
             guard let self = self else { return }
             self.uploadInFlight = false
             self.drainUploadQueueIfIdle()
-            // Once nothing is running AND nothing is queued behind it, any
-            // background-execution grace period requested for draining the
-            // post-stop upload queue (see beginDrainBackgroundTask) is no
-            // longer needed — release it immediately rather than holding it
-            // until iOS's own expiration timeout.
+            // Once nothing is running AND nothing is queued behind it, the
+            // upload's own background task is released. I9: this used to end
+            // the shared "BroadcastRecord" bgTask, i.e. mid-broadcast after
+            // every chunk upload, leaving the share unprotected in background.
             if !self.uploadInFlight, self.uploadQueue.isEmpty {
-                self.endBgTask()
+                self.endUploadBgTask()
             }
         }
     }
@@ -587,6 +614,46 @@ import WebRTC
 
     // ── Background keepalive task ─────────────────────────────────────────────
     private var bgTask: UIBackgroundTaskIdentifier = .invalid
+    // I9: uploads draining after a stop get their OWN task, so finishing an
+    // upload can never end the "BroadcastRecord" task above mid-broadcast.
+    private var uploadBgTask: UIBackgroundTaskIdentifier = .invalid
+
+    // ── Live screen share via the broadcast extension (I1–I3) ────────────────
+    // Darwin names shared with livekit_client 2.13.1 (DarwinNotificationCenter.
+    // swift) and the extension (BroadcastUploadExtension/DarwinNotificationCenter.swift).
+    private let kLkBroadcastStarted     = "iOS_BroadcastStarted"
+    private let kLkBroadcastStopped     = "iOS_BroadcastStopped"
+    private let kLkBroadcastRequestStop = "iOS_BroadcastRequestStop"
+    private let kDarwinWantsChanged     = "com.example.flutter_education_app.wants_changed"
+    // Marker files in the App Group the extension polls (SampleHandler Wants).
+    private let kWantsVideoFile  = "ext_wants_video_file"
+    private let kWantsAudioQueue = "ext_wants_audio_queue"
+    private let kWantsDetail     = "ext_detail_mode"
+    private let kBroadcastStateChannel = "com.example.flutter_education_app/broadcast_state"
+    /// True between iOS_BroadcastStarted and iOS_BroadcastStopped. Main thread.
+    private var extensionBroadcastLive = false
+    private var broadcastStateSink: FlutterEventSink?
+    private var lkObserversAdded = false
+    /// Mix the shared app's sound into the published microphone (Dart
+    /// "setShareAppAudio"). On by default while a share is live.
+    private var shareAppAudioEnabled = true
+    private var shareDetailMode = false
+    private let appAudioMixer = ShareAppAudioMixer()
+    /// Audio-queue Darwin observer, registered either by the recorder
+    /// (registerDarwinListeners) or by the mixer. Main thread.
+    private var audioQueueObserverAdded = false
+
+    // ── In-app recorder robustness (I7, I11, I12, I14) ───────────────────────
+    private var recordingAudioObservers: [NSObjectProtocol] = []
+    private var lastForcedRotation: CFAbsoluteTime = 0
+    // Mic sample clock (I14), writerQueue only: PTS = anchor + samples / rate,
+    // re-anchored on a format change or when it drifts > 0.3 s from arrival.
+    private var micClockAnchor: CMTime?
+    private var micClockSamples: Int64 = 0
+    private var micClockRate: Int = 0
+    // Mic format the CURRENT writer's audio input locked onto (I12),
+    // writerQueue only. A different format means a new chunk.
+    private var micLockedFormat: (writer: ObjectIdentifier, sampleRate: Int, channels: Int, format: String)?
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: - App lifecycle
@@ -614,6 +681,14 @@ import WebRTC
         registerScreenShareChannel(messenger: engine.binaryMessenger)
         registerRecorderChannel(messenger: engine.binaryMessenger)
         registerEventChannel(messenger: engine.binaryMessenger)
+        registerBroadcastStateChannel(messenger: engine.binaryMessenger)
+
+        // Live share: follow the extension's Started / Stopped for the whole
+        // app lifetime, and start from a clean App Group (no stale markers or
+        // audio files from a previous run that ended abruptly).
+        clearExtensionMarkers()
+        resetAudioQueueDirectory()
+        registerLiveKitBroadcastObservers()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(appDidEnterBackground),
@@ -621,6 +696,10 @@ import WebRTC
         NotificationCenter.default.addObserver(
             self, selector: #selector(appWillEnterForeground),
             name: UIApplication.willEnterForegroundNotification, object: nil)
+        // The app going away must not leave the extension capturing (I2).
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(appWillTerminate),
+            name: UIApplication.willTerminateNotification, object: nil)
 
         // Downloaded (encrypted) videos must never go to iCloud / iTunes backups.
         excludeOfflineFolderFromBackup()
@@ -638,19 +717,30 @@ import WebRTC
         bgTask = UIApplication.shared.beginBackgroundTask(withName: "BroadcastRecord") {
             [weak self] in
             guard let self = self else { return }
-            NSLog("[REC] background task expiring — finalising chunk")
-            self.finaliseChunk(isFinal: false) { [weak self] _ in
-                guard let self = self else { return }
-                self.chunkIndex += 1
+            // I8: the old handler finalised the chunk and bumped chunkIndex
+            // but never opened a new writer, so nothing was recorded until
+            // the share stopped. Rotate instead: the next writer opens before
+            // the current one closes (finaliseChunk openNext). While the call
+            // keeps the audio session active the "audio" background mode
+            // keeps the process running, so recording simply continues.
+            NSLog("[REC] background task expiring — rotating chunk")
+            if self.recording, !self.stopping, !self.paused, self.writerSessionStarted {
+                self.chunkTimer?.invalidate()
+                self.chunkTimer = nil
+                self.finaliseChunk(isFinal: false, openNext: true) { _ in }
             }
-            UIApplication.shared.endBackgroundTask(self.bgTask)
-            self.bgTask = .invalid
+            self.endBgTask()
         }
         NSLog("[REC] background task started id=\(bgTask.rawValue)")
     }
 
     @objc private func appWillEnterForeground() {
         endBgTask()
+    }
+
+    @objc private func appWillTerminate() {
+        if extensionBroadcastLive { postDarwin(kLkBroadcastRequestStop) }
+        clearExtensionMarkers()
     }
 
     /// Keeps <Application Support>/offline (the encrypted downloads written by
@@ -702,14 +792,40 @@ import WebRTC
                 result(nil)
 
             case "showBroadcastPicker":
-                // Show the iOS system picker so the user can choose which
-                // foreign app to share. When they pick one and tap
-                // "Start Broadcast", SampleHandler.broadcastStarted() fires
-                // and the extension begins sending frames via CFMessagePort.
-                self.showBroadcastPicker(result: result)
+                // Shows the system "Start Broadcast" sheet for OUR extension
+                // (installed in the window — see showBroadcastPicker) and arms
+                // the in-app recorder. When the user starts, the extension
+                // posts iOS_BroadcastStarted and LiveKit publishes the share
+                // (ScreenShareCaptureOptions(useiOSBroadcastExtension: true)).
+                // {"present": false} arms the recorder without a sheet (for a
+                // flow where LiveKit's requestActivation shows it).
+                let present = (call.arguments as? [String: Any])?["present"] as? Bool ?? true
+                self.showBroadcastPicker(present: present, result: result)
 
             case "stopBroadcast":
                 self.stopBroadcastShare(result: result)
+
+            case "requestBroadcastStop":
+                // I2: ask the extension to end the broadcast (it answers with
+                // finishBroadcastWithError + iOS_BroadcastStopped). Same
+                // notification as livekit_client's BroadcastManager().requestStop().
+                self.postDarwin(self.kLkBroadcastRequestStop)
+                result(self.extensionBroadcastLive)
+
+            case "isBroadcastActive":
+                result(self.extensionBroadcastLive)
+
+            case "setShareAppAudio":
+                let on = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? true
+                self.shareAppAudioEnabled = on
+                if on { self.startAppAudioMixIfWanted() } else { self.stopAppAudioMix() }
+                result(self.appAudioMixer.isActive)
+
+            case "setShareDetailMode":
+                let on = (call.arguments as? [String: Any])?["enabled"] as? Bool ?? false
+                self.shareDetailMode = on
+                self.updateExtensionWants()
+                result(nil)
 
             default:
                 result(FlutterMethodNotImplemented)
@@ -731,12 +847,23 @@ import WebRTC
                 self.sessionId  = args["sessionId"]    as? Int    ?? 0
                 self.uploadUrl  = args["uploadUrl"]    as? String ?? ""
                 self.authToken  = args["authToken"]    as? String ?? ""
+                if let e = args["epoch"] as? String {
+                    self.epoch = e
+                } else if let n = args["epoch"] as? NSNumber {
+                    self.epoch = n.stringValue
+                } else {
+                    self.epoch = ""
+                }
+                self.uploadsClosed = false
                 self.chunkSecs  = args["chunkSeconds"] as? Int    ?? 5
                 self.chunkIndex = args["chunkIndex"]   as? Int    ?? 0
                 self.videoBitrate = args["videoBitrate"] as? Int  ?? 0
                 self.maxHeight    = args["maxHeight"]    as? Int  ?? 0
                 self.audioOnly    = args["audioOnly"]    as? Bool ?? false
                 NSLog("[REC] startMicRecording: session=\(self.sessionId) chunkSecs=\(self.chunkSecs) audioOnly=\(self.audioOnly)")
+                // I11: chunks that failed in an earlier run are retried now,
+                // with this (fresh) token, ahead of this session's chunks.
+                self.retryPendingChunks(authToken: self.authToken)
                 // Audio-only: the whole recording starts right here (no Phase 2,
                 // no screen capture, no red pill) — see startAudioOnlyRecording.
                 if self.audioOnly { self.startAudioOnlyRecording() }
@@ -787,29 +914,17 @@ import WebRTC
                 let isFinal = (call.arguments as? [String: Any])?["isFinal"] as? Bool ?? true
                 self.stopRecording(isFinal: isFinal, result: result)
 
-            case "startLocalDebugSave":
-                // TEMP DIAGNOSTIC (2026-07-29) — runs a separate, single,
-                // non-chunked local recording in parallel to the main
-                // pipeline and saves it straight to Photos on stop. Exists
-                // purely to isolate on-device capture from the
-                // upload/backend pipeline while debugging the system-audio
-                // issue. Safe to call even if chunkVideoWidth/Height aren't
-                // set yet — falls back to a placeholder size that gets
-                // corrected once the first real video frame arrives isn't
-                // needed here since LocalDebugRecorder anchors off the
-                // same sampleBuffers as the main writer.
-                LocalDebugRecorder.shared.start(
-                    videoWidth: max(self.chunkVideoWidth, 720),
-                    videoHeight: max(self.chunkVideoHeight, 1280)
-                )
-                result(true)
+            // (startLocalDebugSave / stopLocalDebugSave — the TEMP Photos
+            // mirror, audit I6 — were removed with LocalDebugRecorder.swift.
+            // An old Dart build calling them gets FlutterMethodNotImplemented.)
 
-            case "stopLocalDebugSave":
-                LocalDebugRecorder.shared.stopAndSaveToPhotos { success, error in
-                    DispatchQueue.main.async {
-                        result(["success": success, "error": error?.localizedDescription as Any])
-                    }
-                }
+            case "retryPendingUploads":
+                // I11: optional — Dart may call this once signed in (app
+                // start) so chunks kept from a failed upload go out without
+                // waiting for the next recording.
+                let token = (call.arguments as? [String: Any])?["authToken"] as? String ?? ""
+                if !token.isEmpty { self.retryPendingChunks(authToken: token) }
+                result(nil)
 
             case "sendAudioFrame":
                 // Raw PCM audio frames forwarded from Dart via
@@ -908,7 +1023,10 @@ import WebRTC
         sweepStaleChunks()
         configureAudioSessionForRecording()
         recording = true
+        startRecordingAudioObservers()
+        updateExtensionWants()
         beginChunkWriter()
+        armIfBroadcastAlreadyLive()
         NSLog("[REC] audio-only recording started — chunk #\(chunkIndex)")
     }
 
@@ -961,6 +1079,8 @@ import WebRTC
         // is silently dropped and chunkIndex increments to 1 before any real
         // media is captured. The timer is started in completionHandler below,
         // after RPScreenRecorder confirms it is actually delivering frames.
+        startRecordingAudioObservers()
+        updateExtensionWants()
 
         rp.startCapture(handler: { [weak self] sampleBuffer, bufferType, error in
             guard let self = self, self.recording, !self.stopping else { return }
@@ -988,6 +1108,8 @@ import WebRTC
                     self.systemAudioQueue.sync { self.systemAudioInput = nil }
                     self.pixelBufferAdaptor = nil
                     self.writerSessionStarted = false
+                    self.stopRecordingAudioObservers()
+                    self.updateExtensionWants()
                     self.releaseAudioSessionLock()
                     result(FlutterError(code: "RP_START_ERROR",
                                         message: e.localizedDescription, details: nil))
@@ -1019,12 +1141,18 @@ import WebRTC
                 // quiet." Never touch the session here while a broadcast is
                 // active — the broadcast-share reassert timer alone owns
                 // the session for the duration of the share.
-                guard !self.isBroadcasting else { return }
-                self.configureAudioSessionForRecording()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                    guard let self = self, self.recording, !self.isBroadcasting else { return }
+                // FIX (2026-10-29): this used to be `guard !isBroadcasting
+                // else { return }`, which also skipped beginChunkWriter() and
+                // result(true) below — a recording started while a share was
+                // already live never wrote a chunk and Dart's call never
+                // returned. Only the session re-arm is skipped now.
+                if !self.isBroadcasting {
                     self.configureAudioSessionForRecording()
-                    NSLog("[REC] AVAudioSession: delayed re-arm applied")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                        guard let self = self, self.recording, !self.isBroadcasting else { return }
+                        self.configureAudioSessionForRecording()
+                        NSLog("[REC] AVAudioSession: delayed re-arm applied")
+                    }
                 }
 
                 // ── Start chunk writer NOW — RPScreenRecorder is delivering ──
@@ -1032,6 +1160,7 @@ import WebRTC
                 // and the 5-second timer starts from this moment, not from
                 // before startCapture was called.
                 self.beginChunkWriter()
+                self.armIfBroadcastAlreadyLive()
                 self.emitEvent(["event": "screenLoopStarted"])
                 NSLog("[REC] RPScreenRecorder started — chunk #\(self.chunkIndex)")
                 result(true)
@@ -1145,11 +1274,15 @@ import WebRTC
         // would then say "already correct" and skip reactivating, leaving
         // the shared app silently ducked. That path is handled separately
         // by the interruption observer calling the force variant below.
+        // I5 (2026-10-29): voiceChat (LiveKit's earpiece preset) and
+        // videoChat (its speaker preset, and ours) both keep the platform
+        // echo canceller; anything else is drift worth correcting.
+        // mixWithOthers stays required: without it, activating our session
+        // would interrupt the app being shared (its video would pause).
         let alreadyCorrect =
             session.category == .playAndRecord &&
-            session.mode == .videoRecording &&
-            session.categoryOptions.contains(.mixWithOthers) &&
-            !session.categoryOptions.contains(.duckOthers)
+            (session.mode == .videoChat || session.mode == .voiceChat) &&
+            session.categoryOptions.contains(.mixWithOthers)
         guard !alreadyCorrect else { return }
         applyBroadcastShareAudioSessionConfig(reason: "reassert/route-change")
     }
@@ -1181,9 +1314,17 @@ import WebRTC
         rtcSession.lockForConfiguration()
         defer { rtcSession.unlockForConfiguration() }
         do {
+            // I5 (2026-10-29): was .videoRecording, chosen so iOS would not
+            // duck the shared app's sound. .videoRecording has no voice
+            // processing, so together with the share-time echoCancellation:
+            // false on the Dart side the students heard the teacher's speaker
+            // through the mic (echo). Echo-free speech wins: keep .videoChat.
+            // The shared app may now be ducked a little on the teacher's
+            // speaker; viewers get its sound from ShareAppAudioMixer (mixed
+            // in digitally, after the echo canceller), not through the air.
             try session.setCategory(
                 .playAndRecord,
-                mode: .videoRecording,                     // does NOT auto-duck other apps
+                mode: .videoChat,                          // keeps AEC + NS
                 options: [.defaultToSpeaker,
                           .allowBluetooth,
                           .allowBluetoothA2DP,
@@ -1192,8 +1333,8 @@ import WebRTC
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             rtcSession.isAudioEnabled = true
             audioReconfigCount += 1
-            NSLog("[REC] AVAudioSession: playAndRecord / videoRecording / mixWithOthers "
-                  + "— active (broadcast share, non-ducking mode) [reason: \(reason), "
+            NSLog("[REC] AVAudioSession: playAndRecord / videoChat / mixWithOthers "
+                  + "— active (broadcast share, echo cancellation kept) [reason: \(reason), "
                   + "count=\(audioReconfigCount)]")
         } catch {
             NSLog("[REC] AVAudioSession broadcast-share configure error "
@@ -1287,11 +1428,6 @@ import WebRTC
                 if self.videoInput?.isReadyForMoreMediaData == true {
                     self.videoInput?.append(sampleBuffer)
                 }
-                // TEMP DIAGNOSTIC (2026-07-29) — mirror into the parallel
-                // local-debug recorder, if active. No-ops entirely when
-                // start() hasn't been called, so this is inert in normal
-                // production use.
-                LocalDebugRecorder.shared.appendVideo(sampleBuffer)
 
             case .audioMic, .audioApp:
                 // Counted BEFORE any guard below, on purpose — this tells us
@@ -1308,11 +1444,20 @@ import WebRTC
                 // processSampleFromRecorder entirely) silently produced
                 // video-only chunks with no audio track at all.
                 //
-                // Drop audio that arrives before the first video frame —
-                // those samples precede the session start time and would
-                // cause "sample out of order" log spam and audio glitches
-                // at the very beginning of each chunk.
-                guard self.writerSessionStarted else { return }
+                // I7 (2026-10-29): the first sample of ANY type starts the
+                // chunk's session (it used to wait for a video frame, and
+                // ReplayKit only sends video when the screen changes, so a
+                // static screen lost seconds of audio at every chunk start).
+                let firstPts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                if !self.writerSessionStarted {
+                    guard CMTIME_IS_VALID(firstPts) else { return }
+                    writer.startSession(atSourceTime: firstPts)
+                    self.writerSessionStarted = true
+                    NSLog("[REC] writer session started (RP audio) at \(CMTimeGetSeconds(firstPts))s")
+                    self.systemAudioQueue.async { [weak self] in
+                        self?.flushPendingSystemAudioFrames()
+                    }
+                }
 
                 // ── Why audio could disappear entirely ──────────────────
                 // .audioMic and .audioApp are TWO INDEPENDENTLY-CLOCKED
@@ -1377,28 +1522,77 @@ import WebRTC
     // fine proxy for true capture time — audio/video sync doesn't need
     // frame-perfect alignment, just consistent monotonic ordering, which the
     // existing lastAudioPts guard already enforces.
+    //
+    // I14 (2026-10-29): arrival time is NOT used per frame any more. After a
+    // Dart round trip per 10 ms frame, arrival jitter made neighbouring frames
+    // non-monotonic (dropped by the guard) or overlapping. The PTS now comes
+    // from a sample clock: anchor (host time of the first frame) + samples
+    // written / sample rate. It re-anchors on a format change or when it drifts
+    // more than 0.3 s from arrival time (frames lost on the Dart side). The
+    // clock is continuous across chunks, so chunk N+1 starts exactly where N
+    // ended. Larger frames are fine (frame count comes from the byte count):
+    // see docs/live/ios_share_wiring.md for batching ~100 ms per call in Dart.
+    // I7: the first mic frame may start the chunk's session in every mode.
+    // I12: a format change mid-chunk asks for a new chunk instead of feeding
+    // a mismatched buffer to an input that locked onto the old format.
     private func handleIncomingAudioFrame(data: Data, sampleRate: Int, channels: Int, format: String) {
+        let arrival = CMClockGetTime(CMClockGetHostTimeClock())
         writerQueue.async { [weak self] in
             guard let self = self,
+                  sampleRate > 0, channels > 0,
                   let writer = self.assetWriter,
                   writer.status == .writing,
-                  self.writerSessionStarted || self.audioOnly,
                   self.audioInput?.isReadyForMoreMediaData == true else { return }
 
             self.audioSamplesSeenThisChunk += 1
 
-            guard let sampleBuffer = self.makeAudioSampleBuffer(
-                data: data, sampleRate: sampleRate, channels: channels, format: format
-            ) else { return }
+            // I12: one mic format per writer.
+            let writerId = ObjectIdentifier(writer)
+            if let locked = self.micLockedFormat, locked.writer == writerId {
+                if locked.sampleRate != sampleRate || locked.channels != channels || locked.format != format {
+                    NSLog("[REC] mic format changed mid-chunk (\(locked.sampleRate)/\(locked.channels)/\(locked.format) "
+                          + "→ \(sampleRate)/\(channels)/\(format)) — rotating chunk")
+                    DispatchQueue.main.async { [weak self] in
+                        self?.requestChunkRotation(reason: "mic format change", evenIfEmpty: true)
+                    }
+                    return
+                }
+            } else {
+                self.micLockedFormat = (writerId, sampleRate, channels, format)
+            }
 
-            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            // I14: sample clock.
+            let bytesPerFrame = (format == "float32" ? 4 : 2) * channels
+            let frameCount = Int64(data.count / max(1, bytesPerFrame))
+            guard frameCount > 0 else { return }
+            var pts: CMTime
+            if let anchor = self.micClockAnchor, self.micClockRate == sampleRate {
+                pts = CMTimeAdd(anchor, CMTimeMake(value: self.micClockSamples, timescale: Int32(sampleRate)))
+                let drift = abs(CMTimeGetSeconds(CMTimeSubtract(arrival, pts)))
+                if drift > 0.3 {
+                    self.micClockAnchor = arrival
+                    self.micClockSamples = 0
+                    pts = arrival
+                }
+            } else {
+                self.micClockAnchor = arrival
+                self.micClockRate = sampleRate
+                self.micClockSamples = 0
+                pts = arrival
+            }
+
+            guard let sampleBuffer = self.makeAudioSampleBuffer(
+                data: data, sampleRate: sampleRate, channels: channels, format: format,
+                presentationTime: pts
+            ) else { return }
+            self.micClockSamples += frameCount
+
             if !self.writerSessionStarted {
-                // Audio-only: there is no video frame to anchor the session,
-                // so the first audio sample of the chunk does (same rule as
-                // the video path — never .zero, see processSampleFromRecorder).
+                // First sample of the chunk (any mode) anchors the session —
+                // never .zero, see processSampleFromRecorder.
                 writer.startSession(atSourceTime: pts)
                 self.writerSessionStarted = true
-                NSLog("[REC] writer session started (audio-only) at \(CMTimeGetSeconds(pts))s")
+                NSLog("[REC] writer session started (mic) at \(CMTimeGetSeconds(pts))s")
                 self.systemAudioQueue.async { [weak self] in
                     self?.flushPendingSystemAudioFrames()
                 }
@@ -1415,9 +1609,6 @@ import WebRTC
             } else {
                 self.audioSamplesAppendedThisChunk += 1
             }
-            // TEMP DIAGNOSTIC (2026-07-29) — mirror mic audio into the
-            // parallel local-debug recorder, if active.
-            LocalDebugRecorder.shared.appendMic(sampleBuffer)
         }
     }
 
@@ -1426,7 +1617,8 @@ import WebRTC
     /// "float32" (matches AVAudioPCMBuffer.serializeAsBytes()'s "commonFormat"
     /// on the plugin's own native side).
     private func makeAudioSampleBuffer(
-        data: Data, sampleRate: Int, channels: Int, format: String, ptsNs: UInt64? = nil
+        data: Data, sampleRate: Int, channels: Int, format: String, ptsNs: UInt64? = nil,
+        presentationTime: CMTime? = nil
     ) -> CMSampleBuffer? {
         let isFloat = (format == "float32")
         let bytesPerSample = isFloat ? 4 : 2
@@ -1483,7 +1675,10 @@ import WebRTC
         // using arrival time for these instead would drift out of sync with
         // the broadcast video track over a multi-second chunk.
         let pts: CMTime
-        if let ns = ptsNs {
+        if let given = presentationTime {
+            // Mic frames: the sample clock of handleIncomingAudioFrame (I14).
+            pts = given
+        } else if let ns = ptsNs {
             // Microsecond precision, not millisecond: audio buffers can
             // arrive every ~10-25ms, so rounding to whole milliseconds
             // risks two consecutive buffers landing on the identical
@@ -1498,8 +1693,11 @@ import WebRTC
         } else {
             pts = CMClockGetTime(CMClockGetHostTimeClock())
         }
+        // With ONE timing entry for many samples CoreMedia applies `duration`
+        // to EACH sample, so it is one PCM frame (it used to be the whole
+        // buffer's length, i.e. frameCount times too long).
         var timing = CMSampleTimingInfo(
-            duration: CMTimeMake(value: Int64(frameCount), timescale: Int32(sampleRate)),
+            duration: CMTimeMake(value: 1, timescale: Int32(sampleRate)),
             presentationTimeStamp: pts,
             decodeTimeStamp: .invalid
         )
@@ -1579,53 +1777,6 @@ import WebRTC
                 NSLog("[REC] broadcast frame append FAILED — writer status=\(writer.status.rawValue) error=\(String(describing: writer.error))")
             } else {
                 self.videoBroadcastAppendedThisChunk += 1
-            }
-            // TEMP DIAGNOSTIC (2026-07-31) — mirror BROADCAST video into the
-            // parallel local-debug recorder too, if active. Previously only
-            // processSampleFromRecorder (RPScreenRecorder's own-app path)
-            // fed LocalDebugRecorder.appendVideo — during a share, that path
-            // is suppressed (see processSampleFromRecorder's isBroadcasting
-            // guard), so the debug recording's video track went dark the
-            // instant a share started while its audio kept recording,
-            // making the debug file useless for confirming whether shared-
-            // app audio specifically is muted (no picture to correlate
-            // against).
-            //
-            // appendVideo(_:) takes a CMSampleBuffer, but at this point in
-            // processSampleFromBroadcast we only have a decoded CVPixelBuffer
-            // (see jpegToPixelBuffer above) — so wrap it in a minimal
-            // CMSampleBuffer here rather than adding a second method to
-            // LocalDebugRecorder we can't currently see/edit.
-            var debugTimingInfo = CMSampleTimingInfo(
-                duration: .invalid,
-                presentationTimeStamp: pts,
-                decodeTimeStamp: .invalid
-            )
-            var debugFormatDescription: CMVideoFormatDescription?
-            let debugFmtStatus = CMVideoFormatDescriptionCreateForImageBuffer(
-                allocator: kCFAllocatorDefault,
-                imageBuffer: pixelBuffer,
-                formatDescriptionOut: &debugFormatDescription
-            )
-            if debugFmtStatus == noErr, let debugFormatDescription = debugFormatDescription {
-                var debugSampleBuffer: CMSampleBuffer?
-                let debugSbStatus = CMSampleBufferCreateForImageBuffer(
-                    allocator: kCFAllocatorDefault,
-                    imageBuffer: pixelBuffer,
-                    dataReady: true,
-                    makeDataReadyCallback: nil,
-                    refcon: nil,
-                    formatDescription: debugFormatDescription,
-                    sampleTiming: &debugTimingInfo,
-                    sampleBufferOut: &debugSampleBuffer
-                )
-                if debugSbStatus == noErr, let debugSampleBuffer = debugSampleBuffer {
-                    LocalDebugRecorder.shared.appendVideo(debugSampleBuffer)
-                } else {
-                    NSLog("[REC][debug] CMSampleBufferCreateForImageBuffer failed: \(debugSbStatus)")
-                }
-            } else {
-                NSLog("[REC][debug] CMVideoFormatDescriptionCreateForImageBuffer failed: \(debugFmtStatus)")
             }
         }
     }
@@ -1982,11 +2133,33 @@ import WebRTC
             return
         }
 
-        finaliseChunk(isFinal: false) { [weak self] _ in
-            guard let self = self, self.recording, !self.stopping, !self.paused else { return }
-            self.chunkIndex += 1
-            self.beginChunkWriter()
+        // I7: double-buffered — finaliseChunk opens writer N+1 synchronously
+        // (right after detaching writer N), then finishes N in the
+        // background. Before, N+1 was only created after N's finishWriting
+        // and upload hand-off, and every sample of that gap was dropped.
+        finaliseChunk(isFinal: false, openNext: true) { _ in }
+    }
+
+    /// Starts a new chunk now (I8 / I12: audio interruption ended, input
+    /// route or mic format changed, media services reset). Debounced to one
+    /// per second. `evenIfEmpty`: also replace a writer that has no session
+    /// yet (it may be bound to the old format / dead media services).
+    private func requestChunkRotation(reason: String, evenIfEmpty: Bool = false) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.requestChunkRotation(reason: reason, evenIfEmpty: evenIfEmpty)
+            }
+            return
         }
+        guard recording, !stopping, !paused, assetWriter != nil else { return }
+        guard writerSessionStarted || evenIfEmpty else { return }
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - lastForcedRotation >= 1.0 else { return }
+        lastForcedRotation = now
+        NSLog("[REC] forced chunk rotation: \(reason)")
+        chunkTimer?.invalidate()
+        chunkTimer = nil
+        finaliseChunk(isFinal: false, openNext: true) { _ in }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1998,21 +2171,16 @@ import WebRTC
         NSLog("[REC] pauseRecording: finalising chunk #\(chunkIndex)")
         chunkTimer?.invalidate(); chunkTimer = nil
         paused = true
+        // finaliseChunk detaches the writer synchronously. The index is
+        // advanced right away too (2026-10-29): advancing it — and nil-ing
+        // the writer again — in the completion could hit the NEXT writer when
+        // resumeRecording came first (same index → its file deleted, or the
+        // new writer dropped).
         finaliseChunk(isFinal: false) { [weak self] _ in
-            guard let self = self else { return }
-            self.chunkIndex += 1
-            self.assetWriter  = nil
-            self.videoInput   = nil
-            self.audioInput   = nil
-            // Redundant with finaliseChunk's own teardown in the normal
-            // case (it already ran and nil'd this), but still synchronized
-            // for consistency — see beginChunkWriter's matching .sync.
-            self.systemAudioQueue.sync { self.systemAudioInput = nil }
-            self.pixelBufferAdaptor = nil
-            self.writerSessionStarted = false
-            self.emitEvent(["event": "recordingPaused"])
+            self?.emitEvent(["event": "recordingPaused"])
             result(nil)
         }
+        chunkIndex += 1
     }
 
     private func resumeRecording(result: @escaping FlutterResult) {
@@ -2043,7 +2211,8 @@ import WebRTC
         // nil'd out, so RPScreenRecorder's video can't resume writing into
         // it first. This matters here too: ending the session WHILE a share
         // is still active goes through this exact path.
-        removeDarwinListeners()
+        removeDarwinListeners()       // also clears the ext_wants_* markers
+        stopRecordingAudioObservers()
         endBgTask()
 
         // ── Why we hold result open until the upload completes ────────────────
@@ -2118,7 +2287,17 @@ import WebRTC
     // MARK: - Chunk finalisation & upload
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func finaliseChunk(isFinal: Bool, completion: @escaping (_ uploadQueued: Bool) -> Void) {
+    /// `openNext` (I7): open the NEXT chunk's writer right after this one is
+    /// detached and before it is finished, so no sample falls into a gap.
+    /// Main thread. Only when still recording, not stopping and not paused.
+    private func finaliseChunk(isFinal: Bool, openNext: Bool = false,
+                               completion: @escaping (_ uploadQueued: Bool) -> Void) {
+        // Opens a replacement writer; `advance` = this chunk produced a file.
+        func openNextWriter(advance: Bool) {
+            guard openNext, recording, !stopping, !paused else { return }
+            if advance { chunkIndex += 1 }
+            beginChunkWriter()
+        }
         // Capture into locals and nil immediately — prevents double-finishWriting crash.
         // "Cannot call finishWritingWithCompletionHandler when status is 2" happens
         // when this is called twice on the same writer (e.g. stopBroadcastShare then
@@ -2159,6 +2338,9 @@ import WebRTC
             systemAudioQueue.sync { self.systemAudioInput = nil }
             pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
+            // A failed writer (e.g. media services reset) is replaced under
+            // the same index — its partial file is not uploadable.
+            openNextWriter(advance: false)
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
                 completion(false)
@@ -2175,6 +2357,7 @@ import WebRTC
             pixelBufferAdaptor = nil
             currentFile = nil; writerSessionStarted = false
             try? FileManager.default.removeItem(at: fileURL)
+            openNextWriter(advance: false)
             DispatchQueue.main.async { [weak self] in
                 if let r = self?.stopResult { self?.stopResult = nil; r(nil) }
                 completion(false)
@@ -2218,6 +2401,11 @@ import WebRTC
         sysAudioRmsSampleCountThisChunk = 0
         videoBroadcastSeenThisChunk     = 0
         videoBroadcastAppendedThisChunk = 0
+        // Where this chunk goes, captured now (a pending retry may outlive
+        // the session's settings).
+        let target = UploadTarget(url: uploadUrl, token: authToken, audioOnly: audioOnly, epoch: epoch)
+        // I7: writer N+1 exists before writer N is finished below.
+        openNextWriter(advance: true)
         writerQueue.async { [weak self] in
             vi?.markAsFinished()
             ai.markAsFinished()
@@ -2274,7 +2462,7 @@ import WebRTC
                       + "videoBroadcastSeen=\(videoBroadcastSeen) "
                       + "videoBroadcastAppended=\(videoBroadcastAppended))")
                 self?.enqueueUpload {
-                    self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal)
+                    self?.uploadChunkAsync(fileURL: fileURL, index: idx, isFinal: isFinal, target: target)
                 }
                 DispatchQueue.main.async { completion(true) }
             }
@@ -2313,6 +2501,7 @@ import WebRTC
         }
         addField("chunk_index", "\(chunkIndex)")
         addField("is_final", "1")
+        if !epoch.isEmpty { addField("epoch", epoch) }
         // Empty file part — zero bytes read server-side triggers the
         // "finalize ping" branch instead of trying to save a chunk.
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
@@ -2337,7 +2526,10 @@ import WebRTC
             guard let self = self else { return }
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             NSLog("[REC] finalize ping HTTP \(code)")
-            if (error != nil || code < 200 || code > 299), attempt < 3 {
+            // Only no answer / 408 / 429 / 5xx is worth another try (409 recording_assembled: already done; a
+            // dead upload token or another 4xx will not get better).
+            let retryable = error != nil || code == 0 || code == 408 || code == 429 || code >= 500
+            if retryable, attempt < 3 {
                 NSLog("[REC] finalize ping attempt \(attempt + 1) failed: "
                       + "\(error?.localizedDescription ?? "HTTP \(code)") — retrying")
                 DispatchQueue.global().asyncAfter(deadline: .now() + Double(3 * (1 << attempt))) {
@@ -2352,8 +2544,23 @@ import WebRTC
         }.resume()
     }
 
-    private func uploadChunkAsync(fileURL: URL, index: Int, isFinal: Bool, attempt: Int = 0) {
-        guard let url = URL(string: uploadUrl) else {
+    /// `target`: url / token / container kind of the chunk (captured when it
+    /// was finalised, or from a pending sidecar on a retry). `pending`: the
+    /// sidecar of a chunk kept from an earlier failure (I11) — on success
+    /// both files go, on failure the sidecar's attempt count is bumped.
+    private func uploadChunkAsync(fileURL: URL, index: Int, isFinal: Bool,
+                                  target: UploadTarget, pending: URL? = nil, attempt: Int = 0) {
+        let audioOnly = target.audioOnly
+        let authToken = target.token
+        if pending == nil && uploadsClosed {
+            // The run takes no more chunks (assembled / its token is dead): nothing to send, the recorder is done.
+            NSLog("[REC] chunk #\(index) skipped — uploads closed for this run")
+            try? FileManager.default.removeItem(at: fileURL)
+            uploadFinished()
+            if isFinal { resolveStopResult() }
+            return
+        }
+        guard let url = URL(string: target.url) else {
             NSLog("[REC] chunk #\(index) bad uploadUrl — skipping")
             uploadFinished()
             return
@@ -2387,6 +2594,7 @@ import WebRTC
         }
         addField("chunk_index", "\(index)")
         addField("is_final",    isFinal ? "1" : "0")
+        if !target.epoch.isEmpty { addField("epoch", target.epoch) }
 
         // Audio-only chunks are the same MP4 container with audio tracks only —
         // named .m4a / audio/mp4 so the server assembles one .m4a from them.
@@ -2426,28 +2634,73 @@ import WebRTC
         // Use the dedicated background URLSession so this upload survives
         // LiveKit disconnect / app backgrounding (URLSession.shared is cancelled
         // by the WebRTC stack teardown, causing "network connection was lost").
-        uploadSession.uploadTask(with: request, fromFile: tmpURL) { [weak self] _, response, error in
+        uploadSession.uploadTask(with: request, fromFile: tmpURL) { [weak self] data, response, error in
             guard let self = self else { return }
             try? FileManager.default.removeItem(at: tmpURL)   // clean temp file
 
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             NSLog("[REC] chunk #\(index) HTTP \(code) isFinal=\(isFinal) size=\(fileSize)B")
+            let errCode: String? = (error == nil && (code < 200 || code > 299)) ? recChunkErrorCode(data) : nil
+
+            if error == nil && code == 409 && errCode == "recording_assembled" {
+                // The run's recording is assembled: stop uploading for it, drop what is left of it.
+                NSLog("[REC] chunk #\(index): recording already assembled — uploads stopped")
+                try? FileManager.default.removeItem(at: fileURL)
+                if let sidecar = pending { try? FileManager.default.removeItem(at: sidecar) }
+                self.uploadFinished()
+                guard pending == nil else { return }
+                self.uploadsClosed = true
+                self.dropKeptChunks(forUrl: target.url)
+                self.emitEvent(["event": "uploadsStopped", "reason": "recording_assembled"])
+                if isFinal { self.resolveStopResult() }
+                return
+            }
+            if error == nil && code == 409 && errCode == "recording_assembling" {
+                // Being assembled right now: keep the chunk (never delete footage), no retry in this run.
+                NSLog("[REC] chunk #\(index): recording being assembled — kept")
+                if pending == nil {
+                    self.keepFailedChunk(fileURL: fileURL, index: index, isFinal: isFinal, target: target)
+                }
+                self.uploadFinished()
+                guard pending == nil else { return }
+                if isFinal { self.resolveStopResult() }
+                return
+            }
 
             if error != nil || code < 200 || code > 299 {
+                // 401 upload_token_expired / _invalid / _revoked, 403 upload_token_scope: this token can no
+                // longer upload to the run — permanent (below), and the rest of the run is not sent either.
+                if pending == nil, let c = errCode, c.hasPrefix("upload_token_") { self.uploadsClosed = true }
                 let reason = error?.localizedDescription ?? "HTTP \(code)"
                 NSLog("[REC] chunk #\(index) attempt \(attempt+1) failed: \(reason)")
-                if attempt < 4 {
+                // A 4xx (other than timeout / rate limit) will not get better
+                // by retrying (session gone, token for another user, …).
+                let permanent = error == nil && (400...499).contains(code) && code != 408 && code != 429
+                // A kept chunk retried from a later run gets one extra try per run.
+                let maxAttempts = pending == nil ? 4 : 1
+                if !permanent && attempt < maxAttempts {
                     // Back-off: 3s, 6s, 12s, 24s — longer than before because
                     // waitsForConnectivity means the network may need time to
                     // fully re-establish after LiveKit tears down its sockets.
                     DispatchQueue.global().asyncAfter(deadline: .now() + Double(3 * (1 << attempt))) {
-                        self.uploadChunkAsync(fileURL: fileURL, index: index,
-                                              isFinal: isFinal, attempt: attempt + 1)
+                        self.uploadChunkAsync(fileURL: fileURL, index: index, isFinal: isFinal,
+                                              target: target, pending: pending, attempt: attempt + 1)
                     }
                 } else {
-                    try? FileManager.default.removeItem(at: fileURL)
-                    self.emitError("chunk #\(index) failed after 4 retries: \(reason)")
+                    if let sidecar = pending {
+                        self.pendingChunkFailed(sidecar: sidecar, file: fileURL, dropNow: permanent)
+                    } else if permanent {
+                        try? FileManager.default.removeItem(at: fileURL)
+                    } else {
+                        // I11: keep it (Application Support, survives tmp
+                        // purges) and retry on the next startMicRecording /
+                        // retryPendingUploads instead of deleting it.
+                        self.keepFailedChunk(fileURL: fileURL, index: index, isFinal: isFinal, target: target)
+                    }
                     self.uploadFinished()
+                    guard pending == nil else { return }
+                    self.emitError("chunk #\(index) failed after \(attempt + 1) attempts: \(reason)"
+                                   + (permanent ? "" : " — kept for a later retry"))
                     // Final chunk failed permanently — still unblock Dart so the
                     // session can close. The idle watchdog on the server will
                     // assemble whatever chunks landed successfully.
@@ -2465,8 +2718,12 @@ import WebRTC
 
             // Success — delete the original chunk file and notify Dart.
             try? FileManager.default.removeItem(at: fileURL)
-            NSLog("[REC] chunk #\(index) uploaded OK (\(fileSize)B isFinal=\(isFinal))")
+            if let sidecar = pending { try? FileManager.default.removeItem(at: sidecar) }
+            NSLog("[REC] chunk #\(index) uploaded OK (\(fileSize)B isFinal=\(isFinal) kept=\(pending != nil))")
             self.uploadFinished()
+            // A kept chunk from an earlier run is not part of the current
+            // recording: no event, and it never resolves this run's stop.
+            guard pending == nil else { return }
             DispatchQueue.main.async {
                 self.emitEvent(["event": "chunkUploaded", "chunkIndex": index,
                                 "bytes": fileSize, "isFinal": isFinal])
@@ -2498,6 +2755,31 @@ import WebRTC
         }
     }
 
+    /// Unblocks Dart's `await stopRecording` (once).
+    private func resolveStopResult() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, let r = self.stopResult else { return }
+            self.stopResult = nil
+            r(nil)
+        }
+    }
+
+    /// Deletes the kept chunks (I11) that were going to `url` (the run is assembled: they can never land).
+    private func dropKeptChunks(forUrl url: String) {
+        guard let dir = pendingChunksDir(),
+              let entries = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil) else { return }
+        for sidecar in entries where sidecar.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: sidecar),
+                  let meta = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                  (meta["url"] as? String) == url else { continue }
+            if let file = meta["file"] as? String {
+                try? FileManager.default.removeItem(at: dir.appendingPathComponent(file))
+            }
+            try? FileManager.default.removeItem(at: sidecar)
+        }
+    }
+
     private func sweepStaleChunks() {
         // Only remove chunk files that are more than 1 hour old.
         // Deleting recent files risks wiping chunks that a background URLSession
@@ -2506,23 +2788,169 @@ import WebRTC
         let cutoff = Date(timeIntervalSinceNow: -3600)
         guard let items = try? FileManager.default.contentsOfDirectory(
             at: tmp, includingPropertiesForKeys: [.creationDateKey]) else { return }
-        for url in items where url.lastPathComponent.hasPrefix("rec_chunk_") {
+        // I11: the multipart temp copies (upload_chunk_*) are swept too —
+        // they used to stay forever when the app died mid-upload.
+        for url in items where url.lastPathComponent.hasPrefix("rec_chunk_")
+                            || url.lastPathComponent.hasPrefix("upload_chunk_") {
             let created = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
             if let d = created, d < cutoff {
                 try? FileManager.default.removeItem(at: url)
                 NSLog("[REC] swept stale chunk: \(url.lastPathComponent)")
             }
         }
+        // Kept chunks (I11) give up after 72 h.
+        guard let dir = pendingChunksDir(),
+              let kept = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: [.creationDateKey]) else { return }
+        let keptCutoff = Date(timeIntervalSinceNow: -72 * 3600)
+        for url in kept {
+            let created = (try? url.resourceValues(forKeys: [.creationDateKey]))?.creationDate
+            if let d = created, d < keptCutoff {
+                try? FileManager.default.removeItem(at: url)
+                NSLog("[REC] swept kept chunk: \(url.lastPathComponent)")
+            }
+        }
+    }
+
+    // ── I11: chunks kept after a failed upload ───────────────────────────────
+    //
+    // <Application Support>/rec_pending/<name>.mp4|.m4a + <name>.json
+    // (sidecar: url, index, isFinal, audioOnly, attempts). The auth token is
+    // NOT stored: a retry uses the token of the run that retries it
+    // (startMicRecording or Dart's "retryPendingUploads"). Retried in creation
+    // order through the same serial upload queue; dropped after a 4xx, after
+    // 10 attempts across runs, or after 72 h (sweepStaleChunks).
+    // OPEN QUESTION for the server: a chunk that arrives after its recording
+    // was assembled (finalize ping / idle watchdog) — see the test plan.
+
+    private func pendingChunksDir() -> URL? {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory,
+                                                  in: .userDomainMask).first else { return nil }
+        let dir = base.appendingPathComponent("rec_pending", isDirectory: true)
+        try? FileManager.default.createDirectory(
+            at: dir, withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        var mutableDir = dir
+        try? mutableDir.setResourceValues(values)
+        return dir
+    }
+
+    private func keepFailedChunk(fileURL: URL, index: Int, isFinal: Bool, target: UploadTarget) {
+        guard let dir = pendingChunksDir() else {
+            try? FileManager.default.removeItem(at: fileURL)
+            return
+        }
+        let stamp = Int(Date().timeIntervalSince1970 * 1000)
+        let name = String(format: "p_%013d_%06d", stamp, index)
+        let dest = dir.appendingPathComponent(name + (target.audioOnly ? ".m4a" : ".mp4"))
+        do {
+            try FileManager.default.moveItem(at: fileURL, to: dest)
+        } catch {
+            NSLog("[REC] could not keep chunk #\(index): \(error.localizedDescription)")
+            try? FileManager.default.removeItem(at: fileURL)
+            return
+        }
+        let meta: [String: Any] = [
+            "url": target.url, "index": index, "isFinal": isFinal,
+            "audioOnly": target.audioOnly, "attempts": 1, "epoch": target.epoch,
+            "file": dest.lastPathComponent,
+        ]
+        if let json = try? JSONSerialization.data(withJSONObject: meta) {
+            try? json.write(to: dir.appendingPathComponent(name + ".json"), options: .atomic)
+        }
+        NSLog("[REC] chunk #\(index) kept for a later retry: \(dest.lastPathComponent)")
+    }
+
+    /// Queues every kept chunk (oldest first) for upload with `authToken`.
+    private func retryPendingChunks(authToken token: String) {
+        guard !token.isEmpty, let dir = pendingChunksDir(),
+              let entries = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil) else { return }
+        let sidecars = entries.filter { $0.pathExtension == "json" }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        for sidecar in sidecars {
+            guard let data = try? Data(contentsOf: sidecar),
+                  let meta = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+                  let url = meta["url"] as? String,
+                  let index = meta["index"] as? Int,
+                  let file = meta["file"] as? String else {
+                try? FileManager.default.removeItem(at: sidecar)
+                continue
+            }
+            let fileURL = dir.appendingPathComponent(file)
+            guard FileManager.default.fileExists(atPath: fileURL.path) else {
+                try? FileManager.default.removeItem(at: sidecar)
+                continue
+            }
+            let isFinal = meta["isFinal"] as? Bool ?? false
+            let target = UploadTarget(url: url, token: token,
+                                      audioOnly: meta["audioOnly"] as? Bool ?? false,
+                                      epoch: meta["epoch"] as? String ?? "")
+            NSLog("[REC] retrying kept chunk #\(index) (\(file))")
+            enqueueUpload { [weak self] in
+                self?.uploadChunkAsync(fileURL: fileURL, index: index, isFinal: isFinal,
+                                       target: target, pending: sidecar)
+            }
+        }
+    }
+
+    private func pendingChunkFailed(sidecar: URL, file: URL, dropNow: Bool) {
+        var attempts = 10
+        if let data = try? Data(contentsOf: sidecar),
+           var meta = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] {
+            attempts = (meta["attempts"] as? Int ?? 1) + 1
+            meta["attempts"] = attempts
+            if let json = try? JSONSerialization.data(withJSONObject: meta) {
+                try? json.write(to: sidecar, options: .atomic)
+            }
+        }
+        if dropNow || attempts >= 10 {
+            NSLog("[REC] dropping kept chunk \(file.lastPathComponent) (attempts=\(attempts) permanent=\(dropNow))")
+            try? FileManager.default.removeItem(at: file)
+            try? FileManager.default.removeItem(at: sidecar)
+        }
+    }
+
+    // ── I9: background time for the upload queue, separate from bgTask ───────
+    private func beginUploadBgTask() {
+        guard uploadBgTask == .invalid else { return }
+        uploadBgTask = UIApplication.shared.beginBackgroundTask(withName: "RecordingUpload") {
+            [weak self] in self?.endUploadBgTask()
+        }
+    }
+
+    private func endUploadBgTask() {
+        guard uploadBgTask != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(uploadBgTask)
+        uploadBgTask = .invalid
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: - Broadcast Extension (foreign-app screen share)
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func showBroadcastPicker(result: @escaping FlutterResult) {
+    private func showBroadcastPicker(present: Bool, result: @escaping FlutterResult) {
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { result(nil); return }
+            self.armBroadcastRecording(reason: present ? "picker" : "arm-only")
+            if present { self.presentBroadcastPicker() }
+            result(nil)
+        }
+    }
 
+    /// Prepares the in-app recorder (and the audio session) for a broadcast:
+    /// Darwin listeners for the extension's frames / audio / stop, the
+    /// background task, a clean chunk boundary (recording paused until the
+    /// first broadcast frame) and the no-show watchdog. Idempotent enough to
+    /// run from the picker AND again from onLkBroadcastStarted. Main thread.
+    private func armBroadcastRecording(reason: String) {
+
+            // NOTE (I5, 2026-10-29): the "broadcast share" session config is
+            // now playAndRecord + videoChat (echo cancellation kept), so the
+            // non-ducking history below no longer applies; the call is kept
+            // so the reassert observers still guard against drift.
             // ── Switch to non-ducking mode BEFORE the picker even appears ──
             // Previously this only happened reactively, in handleBroadcastData,
             // on the FIRST BROADCAST VIDEO FRAME. That is too late: the user
@@ -2570,7 +2998,10 @@ import WebRTC
             self.registerDarwinListeners()
             self.appDidEnterBackground()
 
-            if self.recording && !self.paused && !self.stopping {
+            // Audio-only recordings have no video source to switch (and the
+            // extension sends them no frames: ext_wants_video_file is off),
+            // so they keep recording straight through the share.
+            if self.recording && !self.paused && !self.stopping && !self.audioOnly {
                 self.paused = true
                 // Without this, the pre-share chunk's still-pending 5s timer
                 // survives the pause untouched. If the whole picker-confirm→
@@ -2586,13 +3017,40 @@ import WebRTC
                 // that didn't.
                 self.chunkTimer?.invalidate()
                 self.chunkTimer = nil
-                NSLog("[SHARE] picker: recording paused before system overlay")
-                self.finaliseChunk(isFinal: false) { [weak self] _ in
-                    guard let self = self else { return }
-                    self.chunkIndex += 1
-                    NSLog("[SHARE] picker: paused chunk rotated at #\(self.chunkIndex)")
-                }
+                NSLog("[SHARE] arm (\(reason)): recording paused until the first broadcast frame")
+                // Index advanced NOW, not in the completion: the first
+                // broadcast frame can reopen a writer before this chunk's
+                // finishWriting returns, and must not reuse (and delete) its file.
+                self.finaliseChunk(isFinal: false) { _ in }
+                self.chunkIndex += 1
+                NSLog("[SHARE] arm: paused chunk rotated, next #\(self.chunkIndex)")
             }
+
+            // ── Watchdog: resume if the broadcast never actually starts ──────
+            // Covers: sheet failed to present, user dismissed it without going
+            // through "Start Broadcast", or the extension failed to launch
+            // (signing/App-Group misconfiguration etc). Cancelled as soon as
+            // a real broadcast frame arrives (handleBroadcastData), the user
+            // explicitly cancels (stopBroadcastShare), or the extension itself
+            // reports it stopped (onDarwinStopNotif). A broadcast confirmed
+            // after it fired re-arms through onLkBroadcastStarted.
+            self.pickerWatchdog?.invalidate()
+            self.pickerWatchdog = Timer.scheduledTimer(
+                withTimeInterval: self.pickerWatchdogSecs, repeats: false
+            ) { [weak self] _ in
+                guard let self = self else { return }
+                self.pickerWatchdog = nil
+                guard self.recording, self.paused, !self.isBroadcasting, !self.stopping else { return }
+                NSLog("[SHARE] picker watchdog: no broadcast frame after " +
+                      "\(self.pickerWatchdogSecs)s — resuming RPScreenRecorder")
+                self.broadcastShareArmed = false
+                self.paused = false
+                self.beginChunkWriter()
+            }
+    }
+
+    /// Shows the system "Start Broadcast" sheet for our extension. Main thread.
+    private func presentBroadcastPicker() {
 
             // ── preferredExtension = OUR extension (not nil) ─────────────────
             //
@@ -2632,8 +3090,10 @@ import WebRTC
             //
             let picker = RPSystemBroadcastPickerView(
                 frame: CGRect(x: 0, y: 0, width: 60, height: 60))
+            // Same key flutter_webrtc and livekit_client read (Info.plist).
             picker.preferredExtension =
-                Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
+                (Bundle.main.object(forInfoDictionaryKey: "RTCScreenSharingExtension") as? String)
+                ?? Bundle.main.bundleIdentifier.map { $0 + ".BroadcastUploadExtension" }
             picker.showsMicrophoneButton = false
 
             // ── CRITICAL: the picker must be part of a live window ───────────
@@ -2649,7 +3109,6 @@ import WebRTC
             // and behind everything else, then remove it shortly after.
             guard let hostWindow = self.window else {
                 NSLog("[SHARE] showBroadcastPicker: no window available")
-                result(nil)
                 return
             }
             picker.alpha = 0.01
@@ -2675,33 +3134,15 @@ import WebRTC
                     self?.activeBroadcastPicker = nil
                 }
             }
-
-            // ── Watchdog: resume if the broadcast never actually starts ──────
-            // Covers: sheet failed to present, user dismissed it without going
-            // through "Start Broadcast", or the extension failed to launch
-            // (signing/App-Group misconfiguration etc). Cancelled as soon as
-            // a real broadcast frame arrives (handleBroadcastData), the user
-            // explicitly cancels (stopBroadcastShare), or the extension itself
-            // reports it stopped (onDarwinStopNotif).
-            self.pickerWatchdog?.invalidate()
-            self.pickerWatchdog = Timer.scheduledTimer(
-                withTimeInterval: self.pickerWatchdogSecs, repeats: false
-            ) { [weak self] _ in
-                guard let self = self else { return }
-                self.pickerWatchdog = nil
-                guard self.recording, self.paused, !self.isBroadcasting, !self.stopping else { return }
-                NSLog("[SHARE] picker watchdog: no broadcast frame after " +
-                      "\(self.pickerWatchdogSecs)s — resuming RPScreenRecorder")
-                self.broadcastShareArmed = false
-                self.paused = false
-                self.beginChunkWriter()
-            }
-
-            result(nil)
-        }
     }
 
     private func stopBroadcastShare(result: @escaping FlutterResult) {
+        // I2: actually end the extension (it used to keep capturing — red
+        // pill — after "Stop sharing" / leaving the room). It answers with
+        // finishBroadcastWithError + iOS_BroadcastStopped.
+        if extensionBroadcastLive || broadcastShareArmed || isBroadcasting {
+            postDarwin(kLkBroadcastRequestStop)
+        }
         // NOTE: isBroadcasting is deliberately NOT set to false here at the
         // top — see below for why. Everything else that's safe to clean up
         // immediately (Darwin listeners, background task, watchdog, picker
@@ -2810,7 +3251,8 @@ import WebRTC
         // Wipe any audio-queue files left over from a previous broadcast
         // (e.g. one that ended abruptly before the host finished draining
         // it) before this new broadcast's frames start arriving.
-        resetAudioQueueDirectory()
+        // (Not while the app-audio mixer is already draining it.)
+        if !audioQueueObserverAdded { resetAudioQueueDirectory() }
 
         let center = CFNotificationCenterGetDarwinNotifyCenter()
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
@@ -2826,16 +3268,9 @@ import WebRTC
             kDarwinFrameNotif as CFString, nil, .deliverImmediately
         )
 
-        // System/app audio notification (shared app's own audio)
-        CFNotificationCenterAddObserver(
-            center, selfPtr,
-            { _, selfPtr, _, _, _ in
-                guard let selfPtr = selfPtr else { return }
-                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
-                me.onDarwinAudioFrameNotif()
-            },
-            kDarwinAudioNotif as CFString, nil, .deliverImmediately
-        )
+        // System/app audio notification (shared app's own audio) — shared
+        // with ShareAppAudioMixer, so registered once for both.
+        registerAudioQueueListener()
 
         // Stop notification
         CFNotificationCenterAddObserver(
@@ -2849,20 +3284,48 @@ import WebRTC
         )
 
         NSLog("[SHARE] Darwin listeners registered")
+        updateExtensionWants()
     }
 
     private func removeDarwinListeners() {
-        guard darwinObserverAdded else { return }
+        guard darwinObserverAdded else { updateExtensionWants(); return }
         darwinObserverAdded = false
         let center  = CFNotificationCenterGetDarwinNotifyCenter()
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
         CFNotificationCenterRemoveObserver(center, selfPtr,
             CFNotificationName(kDarwinFrameNotif as CFString), nil)
         CFNotificationCenterRemoveObserver(center, selfPtr,
-            CFNotificationName(kDarwinAudioNotif as CFString), nil)
-        CFNotificationCenterRemoveObserver(center, selfPtr,
             CFNotificationName(kDarwinStopNotif  as CFString), nil)
+        // The audio queue stays observed while the mixer still uses it.
+        if !appAudioMixer.isActive { removeAudioQueueListener() }
         NSLog("[SHARE] Darwin listeners removed")
+        updateExtensionWants()
+    }
+
+    private func registerAudioQueueListener() {
+        guard !audioQueueObserverAdded else { return }
+        audioQueueObserverAdded = true
+        CFNotificationCenterAddObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            Unmanaged.passUnretained(self).toOpaque(),
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                me.onDarwinAudioFrameNotif()
+            },
+            kDarwinAudioNotif as CFString, nil, .deliverImmediately
+        )
+    }
+
+    private func removeAudioQueueListener() {
+        guard audioQueueObserverAdded else { return }
+        audioQueueObserverAdded = false
+        CFNotificationCenterRemoveObserver(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            Unmanaged.passUnretained(self).toOpaque(),
+            CFNotificationName(kDarwinAudioNotif as CFString), nil)
+        // Whatever the extension still had queued is nobody's now.
+        audioIpcReadQueue.async { [weak self] in self?.resetAudioQueueDirectory() }
     }
 
     /// Called on the main thread when the extension posted a frame notification.
@@ -2977,6 +3440,9 @@ import WebRTC
 
     /// Called on the main thread when the extension posted a stop notification.
     private func onDarwinStopNotif() {
+        // Reached twice per broadcast end (the extension posts both its own
+        // "…stop" and iOS_BroadcastStopped → onLkBroadcastStopped): once is enough.
+        guard darwinObserverAdded || isBroadcasting || broadcastShareArmed else { return }
         NSLog("[SHARE] broadcast extension finished (Darwin stop)")
         isBroadcasting = false
         broadcastShareArmed = false
@@ -3102,7 +3568,17 @@ import WebRTC
             // the mic, NOT a duplicate. Written into the second, independent
             // systemAudioInput track (see its declaration for why it's a
             // separate track rather than mixed into the mic track).
+            //
+            // Live: also mixed into the published microphone (ShareAppAudioMixer).
+            if appAudioMixer.isActive { appAudioMixer.push(payload: payload) }
             guard recording, !stopping, !paused else { return }
+            // While the mixer is really mixing, the recording's mic track (the
+            // LiveKit audio tap reads the capture post-processing output, i.e.
+            // AFTER the mix) already carries this sound; writing it to the
+            // system-audio track as well would play it twice after the
+            // server's amix. If the mic is muted / its engine stopped, the
+            // mixer is not called back and the system-audio track takes over.
+            if appAudioMixer.isMixingLive { return }
             processSystemAudioFromBroadcast(payload, ptsNs: ptsNs)
 
         default:
@@ -3267,12 +3743,6 @@ import WebRTC
                   + "\(String(describing: self.assetWriter?.status.rawValue)) "
                   + "error=\(String(describing: self.assetWriter?.error))")
         }
-        // TEMP DIAGNOSTIC (2026-07-29) — mirror system/shared-app audio
-        // into the parallel local-debug recorder, if active. This is the
-        // exact same sampleBuffer the main pipeline just tried to append,
-        // so whatever ends up in the local Photos copy for this track is
-        // a direct, chunking/backend-free comparison point.
-        LocalDebugRecorder.shared.appendSystemAudio(sampleBuffer)
     }
 
     /// Replays anything buffered by processSystemAudioFromBroadcast while
@@ -3451,6 +3921,469 @@ import WebRTC
             }
         }
         return out
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: - Live share state (I1–I3), extension markers, app audio
+    // UNTESTED (2026-10-29) — docs/live/ios_test_plan.md
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// "…/broadcast_state": {"active": Bool} on every Started / Stopped, and
+    /// the current value as soon as Dart listens (ios_share.dart). Its own
+    /// channel: rec_events allows one listener only (ClientRecorder's).
+    private func registerBroadcastStateChannel(messenger: FlutterBinaryMessenger) {
+        let ch = FlutterEventChannel(name: kBroadcastStateChannel, binaryMessenger: messenger)
+        ch.setStreamHandler(RecEventStreamHandler(
+            onListen: { [weak self] sink in
+                guard let self = self else { return }
+                self.broadcastStateSink = sink
+                sink?(["active": self.extensionBroadcastLive])
+            },
+            onCancel: { [weak self] in self?.broadcastStateSink = nil }
+        ))
+    }
+
+    private func emitBroadcastState(_ active: Bool) {
+        DispatchQueue.main.async { [weak self] in
+            self?.broadcastStateSink?(["active": active])
+        }
+    }
+
+    private func postDarwin(_ name: String) {
+        CFNotificationCenterPostNotification(
+            CFNotificationCenterGetDarwinNotifyCenter(),
+            CFNotificationName(name as CFString), nil, nil, true)
+    }
+
+    /// iOS_BroadcastStarted / Stopped (posted by the extension), observed
+    /// for the app's whole lifetime. livekit_client observes the same names
+    /// independently (publish / unpublish); this side does recording, state
+    /// and app audio.
+    private func registerLiveKitBroadcastObservers() {
+        guard !lkObserversAdded else { return }
+        lkObserversAdded = true
+        let center  = CFNotificationCenterGetDarwinNotifyCenter()
+        let selfPtr = Unmanaged.passUnretained(self).toOpaque()
+        CFNotificationCenterAddObserver(
+            center, selfPtr,
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                DispatchQueue.main.async { me.onLkBroadcastStarted() }
+            },
+            kLkBroadcastStarted as CFString, nil, .deliverImmediately)
+        CFNotificationCenterAddObserver(
+            center, selfPtr,
+            { _, selfPtr, _, _, _ in
+                guard let selfPtr = selfPtr else { return }
+                let me = Unmanaged<AppDelegate>.fromOpaque(selfPtr).takeUnretainedValue()
+                DispatchQueue.main.async { me.onLkBroadcastStopped() }
+            },
+            kLkBroadcastStopped as CFString, nil, .deliverImmediately)
+    }
+
+    private func onLkBroadcastStarted() {
+        guard !extensionBroadcastLive else { return }
+        extensionBroadcastLive = true
+        NSLog("[SHARE] iOS_BroadcastStarted — extension live")
+        emitBroadcastState(true)
+        // A share started from LiveKit's own picker (or confirmed after the
+        // picker watchdog gave up) still needs the recorder armed.
+        if recording && !stopping { armBroadcastRecording(reason: "broadcast started") }
+        startAppAudioMixIfWanted()
+        updateExtensionWants()
+    }
+
+    private func onLkBroadcastStopped() {
+        NSLog("[SHARE] iOS_BroadcastStopped — extension ended")
+        extensionBroadcastLive = false
+        stopAppAudioMix()
+        emitBroadcastState(false)
+        onDarwinStopNotif()          // recorder side; no-op when not armed
+        updateExtensionWants()
+    }
+
+    /// A recording that starts while a share is already live arms itself.
+    private func armIfBroadcastAlreadyLive() {
+        guard extensionBroadcastLive, recording, !stopping else { return }
+        armBroadcastRecording(reason: "recording started during a share")
+    }
+
+    // ── Marker files the extension polls (SampleHandler.refreshWants) ────────
+
+    /// Writes what the extension should produce right now, then pokes it
+    /// (it also re-reads every second). Nothing is written to the App Group
+    /// unless someone here drains it (I2: no audio files piling up).
+    private func updateExtensionWants() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.updateExtensionWants() }
+            return
+        }
+        let wantsVideo = recording && !audioOnly && darwinObserverAdded
+        let wantsAudio = (recording && darwinObserverAdded) || appAudioMixer.isActive
+        setExtensionMarker(kWantsVideoFile, on: wantsVideo)
+        setExtensionMarker(kWantsAudioQueue, on: wantsAudio)
+        setExtensionMarker(kWantsDetail, on: shareDetailMode)
+        postDarwin(kDarwinWantsChanged)
+    }
+
+    private func clearExtensionMarkers() {
+        setExtensionMarker(kWantsVideoFile, on: false)
+        setExtensionMarker(kWantsAudioQueue, on: false)
+        setExtensionMarker(kWantsDetail, on: false)
+    }
+
+    private func setExtensionMarker(_ name: String, on: Bool) {
+        guard let container = FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: kAppGroup) else { return }
+        let path = container.appendingPathComponent(name).path
+        let fm = FileManager.default
+        if on {
+            if !fm.fileExists(atPath: path) { _ = fm.createFile(atPath: path, contents: nil) }
+        } else if fm.fileExists(atPath: path) {
+            try? fm.removeItem(atPath: path)
+        }
+    }
+
+    // ── App audio into the live microphone ───────────────────────────────────
+
+    private func startAppAudioMixIfWanted() {
+        guard shareAppAudioEnabled, extensionBroadcastLive, !appAudioMixer.isActive else { return }
+        appAudioMixer.start()
+        registerAudioQueueListener()
+        updateExtensionWants()
+        NSLog("[SHARE] app audio mixing into the microphone: on")
+    }
+
+    private func stopAppAudioMix() {
+        guard appAudioMixer.isActive else { return }
+        appAudioMixer.stop()
+        if !darwinObserverAdded { removeAudioQueueListener() }
+        updateExtensionWants()
+        NSLog("[SHARE] app audio mixing into the microphone: off")
+    }
+
+    // ── I12: audio-session events for the WHOLE recording ────────────────────
+    //
+    // startAudioSessionObserver() only watches while a share is armed. A
+    // phone call, a headset / Bluetooth route change or a media-services
+    // reset during a plain recording could leave the session inactive or
+    // change the mic format under a writer locked onto the old one. Each of
+    // these now starts a fresh chunk (requestChunkRotation, debounced).
+
+    private func startRecordingAudioObservers() {
+        guard recordingAudioObservers.isEmpty else { return }
+        let nc = NotificationCenter.default
+        let session = AVAudioSession.sharedInstance()
+
+        recordingAudioObservers.append(nc.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: session, queue: .main
+        ) { [weak self] note in
+            guard let self = self,
+                  let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            switch type {
+            case .began:
+                NSLog("[REC] audio interruption began (recording)")
+            case .ended:
+                // During a share startAudioSessionObserver forces the
+                // reactivation itself; otherwise do it here.
+                if !(self.isBroadcasting || self.broadcastShareArmed) {
+                    self.configureAudioSessionForRecording()
+                }
+                self.requestChunkRotation(reason: "audio interruption ended", evenIfEmpty: true)
+            @unknown default:
+                break
+            }
+        })
+
+        recordingAudioObservers.append(nc.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: session, queue: .main
+        ) { [weak self] note in
+            guard let self = self,
+                  let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  let reason = AVAudioSession.RouteChangeReason(rawValue: raw) else { return }
+            // Only real device changes; .categoryChange fires on our own
+            // (and LiveKit's) reconfigurations.
+            switch reason {
+            case .newDeviceAvailable, .oldDeviceUnavailable:
+                self.requestChunkRotation(reason: "audio route changed (\(raw))")
+            default:
+                break
+            }
+        })
+
+        recordingAudioObservers.append(nc.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification, object: session, queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            NSLog("[REC] media services were reset — reconfiguring and replacing the writer")
+            self.configureAudioSessionForRecording()
+            self.requestChunkRotation(reason: "media services reset", evenIfEmpty: true)
+        })
+    }
+
+    private func stopRecordingAudioObservers() {
+        for observer in recordingAudioObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        recordingAudioObservers.removeAll()
+    }
+}
+
+/// Where a chunk is uploaded (captured when it is finalised; I11).
+private struct UploadTarget {
+    let url: String
+    let token: String
+    let audioOnly: Bool
+    /// The recorder start the chunk was recorded in (the `epoch` form field; "" from an older Dart side).
+    let epoch: String
+}
+
+/// `detail.code` of a FastAPI error body (`{"detail": {"code": …}}`), else nil.
+private func recChunkErrorCode(_ data: Data?) -> String? {
+    guard let data = data,
+          let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+          let detail = json["detail"] as? [String: Any],
+          let code = detail["code"] as? String, !code.isEmpty else { return nil }
+    return code
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - ShareAppAudioMixer — the shared app's sound into the live mic
+//
+// UNTESTED (2026-10-29). flutter_webrtc (fork nextbrain/1.6.2-hotfix.4)
+// builds its RTCPeerConnectionFactory with AudioManager.sharedInstance's
+// RTCDefaultAudioProcessingModule; that module's capturePostProcessingDelegate
+// is AudioManager.capturePostProcessingAdapter, which calls every registered
+// ExternalAudioProcessingDelegate with each 10 ms capture buffer AFTER the
+// echo canceller / noise suppressor and BEFORE it is encoded and sent
+// (common/darwin/Classes/AudioManager.m, AudioProcessingAdapter.m). Adding
+// samples there puts them into the published microphone track:
+//   • viewers hear the shared app (a video, a lesson app) clean, with no
+//     acoustic path and no echo-canceller interference (it runs before us);
+//   • it is only heard while the teacher's microphone track is published
+//     and capturing (muted mic → no capture callbacks → no app audio). That
+//     limitation is documented in docs/live/ios_share_wiring.md.
+//
+// Data path: extension .audioApp → App Group audio queue (batches of ~6
+// buffers, ≈ 60–150 ms) → AppDelegate drain (audioIpcReadQueue) → push():
+// decode (16-bit int or 32-bit float, native endian — the extension already
+// byte-swaps big-endian, I13), down-mix to mono, linear resampling to the
+// capture rate (frames × 100, typically 48 kHz), into a ring buffer. The
+// audio thread pulls `frames` samples per callback with a 0.7 gain and
+// clamps to the int16 range RTCAudioBuffer uses (float samples, ±32768).
+// Jitter: playback starts once 80 ms are buffered (again after an
+// underrun); more than 400 ms buffered drops the oldest down to 200 ms, so
+// the added latency stays ≈ 100–300 ms (the extension's batching dominates).
+// ─────────────────────────────────────────────────────────────────────────────
+
+final class ShareAppAudioMixer: NSObject, ExternalAudioProcessingDelegate {
+    private let lock: UnsafeMutablePointer<os_unfair_lock>
+    // Ring buffer (mono, capture rate, int16-scale floats). Guarded by lock.
+    private var ring = [Float](repeating: 0, count: 48_000)   // 1 s at 48 kHz
+    private var readIndex = 0
+    private var writeIndex = 0
+    private var count = 0
+    private var priming = true
+    private var targetRate: Double = 48_000
+    private var lastProcessTime: CFAbsoluteTime = 0
+    private var active = false
+    // Resampler state — push() only (audioIpcReadQueue, serial).
+    private var resampleSourceRate: Double = 0
+    private var resampleTargetRate: Double = 0
+    private var resamplePos: Double = 0
+    private var resamplePrev: Float = 0
+
+    private let gain: Float = 0.7
+
+    override init() {
+        lock = UnsafeMutablePointer<os_unfair_lock>.allocate(capacity: 1)
+        lock.initialize(to: os_unfair_lock())
+        super.init()
+    }
+
+    deinit {
+        lock.deinitialize(count: 1)
+        lock.deallocate()
+    }
+
+    var isActive: Bool {
+        os_unfair_lock_lock(lock); defer { os_unfair_lock_unlock(lock) }
+        return active
+    }
+
+    /// True while WebRTC is calling us back (mic capturing), i.e. the app
+    /// audio really reaches the published track.
+    var isMixingLive: Bool {
+        os_unfair_lock_lock(lock); defer { os_unfair_lock_unlock(lock) }
+        return active && CFAbsoluteTimeGetCurrent() - lastProcessTime < 0.5
+    }
+
+    func start() {
+        os_unfair_lock_lock(lock)
+        let wasActive = active
+        active = true
+        resetRingLocked()
+        os_unfair_lock_unlock(lock)
+        guard !wasActive else { return }
+        AudioManager.sharedInstance().capturePostProcessingAdapter.addProcessing(self)
+    }
+
+    func stop() {
+        os_unfair_lock_lock(lock)
+        let wasActive = active
+        active = false
+        resetRingLocked()
+        os_unfair_lock_unlock(lock)
+        guard wasActive else { return }
+        AudioManager.sharedInstance().capturePostProcessingAdapter.removeProcessing(self)
+    }
+
+    private func resetRingLocked() {
+        readIndex = 0; writeIndex = 0; count = 0; priming = true
+    }
+
+    /// One audio record payload from the extension:
+    /// [4B sampleRate BE][4B channels BE][4B isFloat BE][interleaved PCM].
+    /// audioIpcReadQueue only.
+    func push(payload: Data) {
+        guard payload.count > 12 else { return }
+        func be32(_ o: Int) -> UInt32 {
+            var v: UInt32 = 0
+            for i in 0..<4 { v = (v << 8) | UInt32(payload[payload.startIndex + o + i]) }
+            return v
+        }
+        let srcRate = Double(be32(0))
+        let channels = Int(be32(4))
+        let isFloat = be32(8) != 0
+        guard srcRate > 0, channels > 0 else { return }
+
+        // Decode + down-mix to mono, int16 scale.
+        var mono: [Float] = []
+        payload.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in
+            let pcm = UnsafeRawBufferPointer(rebasing: raw[12...])
+            let width = isFloat ? 4 : 2
+            let frames = pcm.count / (width * channels)
+            guard frames > 0 else { return }
+            mono.reserveCapacity(frames)
+            let inv = 1 / Float(channels)
+            for f in 0..<frames {
+                var sum: Float = 0
+                for c in 0..<channels {
+                    let offset = (f * channels + c) * width
+                    if isFloat {
+                        let bits = pcm.loadUnaligned(fromByteOffset: offset, as: UInt32.self)
+                        sum += Float(bitPattern: bits) * 32767
+                    } else {
+                        let bits = pcm.loadUnaligned(fromByteOffset: offset, as: UInt16.self)
+                        sum += Float(Int16(bitPattern: bits))
+                    }
+                }
+                mono.append(sum * inv)
+            }
+        }
+        guard !mono.isEmpty else { return }
+
+        os_unfair_lock_lock(lock)
+        let dstRate = targetRate
+        let isOn = active
+        os_unfair_lock_unlock(lock)
+        guard isOn else { return }
+
+        // Streaming linear resampler (state carried across pushes).
+        if resampleSourceRate != srcRate || resampleTargetRate != dstRate {
+            resampleSourceRate = srcRate
+            resampleTargetRate = dstRate
+            resamplePos = 0
+            resamplePrev = mono[0]
+        }
+        let step = srcRate / dstRate          // source samples per output sample
+        let n = mono.count
+        var out: [Float] = []
+        out.reserveCapacity(Int(Double(n) / step) + 2)
+        var pos = resamplePos                 // -1 ≤ pos: index -1 = resamplePrev
+        while pos <= Double(n - 1) {
+            let i = Int(pos.rounded(.down))
+            let frac = Float(pos - Double(i))
+            let a = i < 0 ? resamplePrev : mono[i]
+            let b = (i + 1 < n) ? mono[i + 1] : mono[n - 1]
+            out.append(a + (b - a) * frac)
+            pos += step
+        }
+        resamplePos = pos - Double(n)
+        resamplePrev = mono[n - 1]
+
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        guard active, targetRate == dstRate else { return }   // rate changed meanwhile
+        let cap = ring.count
+        for s in out {
+            if count == cap {                 // full: drop the oldest
+                readIndex = (readIndex + 1) % cap
+                count -= 1
+            }
+            ring[writeIndex] = s
+            writeIndex = (writeIndex + 1) % cap
+            count += 1
+        }
+        // Latency cap: > 400 ms buffered → keep the newest 200 ms.
+        let high = Int(dstRate * 0.4), keep = Int(dstRate * 0.2)
+        if count > high {
+            let drop = count - keep
+            readIndex = (readIndex + drop) % cap
+            count = keep
+        }
+    }
+
+    // MARK: ExternalAudioProcessingDelegate (WebRTC audio thread)
+
+    func audioProcessingInitialize(withSampleRate sampleRateHz: Int, channels: Int) {
+        os_unfair_lock_lock(lock)
+        if sampleRateHz > 0 { setTargetRateLocked(Double(sampleRateHz)) }
+        os_unfair_lock_unlock(lock)
+    }
+
+    func audioProcessingProcess(_ audioBuffer: RTCAudioBuffer) {
+        let frames = audioBuffer.frames
+        let channels = audioBuffer.channels
+        guard frames > 0, channels > 0 else { return }
+
+        os_unfair_lock_lock(lock)
+        defer { os_unfair_lock_unlock(lock) }
+        guard active else { return }
+        lastProcessTime = CFAbsoluteTimeGetCurrent()
+        // RTCAudioBuffer holds 10 ms: its rate is frames × 100.
+        let rate = Double(frames * 100)
+        if rate != targetRate { setTargetRateLocked(rate); return }
+
+        let prebuffer = Int(targetRate * 0.08)
+        if priming {
+            guard count >= prebuffer else { return }
+            priming = false
+        }
+        let n = min(frames, count)
+        let cap = ring.count
+        for f in 0..<n {
+            let s = ring[readIndex] * gain
+            readIndex = (readIndex + 1) % cap
+            for c in 0..<channels {
+                let ptr = audioBuffer.rawBuffer(forChannel: c)
+                ptr[f] = max(-32768, min(32767, ptr[f] + s))
+            }
+        }
+        count -= n
+        if n < frames { priming = true }      // underrun: buffer up again
+    }
+
+    func audioProcessingRelease() {}
+
+    private func setTargetRateLocked(_ rate: Double) {
+        guard rate != targetRate else { return }
+        targetRate = rate
+        let needed = Int(rate)                // 1 s of ring
+        if ring.count != needed { ring = [Float](repeating: 0, count: needed) }
+        resetRingLocked()
     }
 }
 

@@ -32,6 +32,7 @@ import 'live/prejoin.dart';
 import 'model/live_response_model.dart';
 import '../../shared/live/live_room.dart' show JoinOutcome;
 import '../../shared/live/live_time_limit.dart' show parseNaiveUtc;
+import '../../shared/live/live_controls_api.dart' show liveJoinRefusalText;
 
 class TeacherCourseScreenProvider extends BaseProvider {
   TeacherCourseScreenProvider({
@@ -900,9 +901,19 @@ class TeacherCourseScreenProvider extends BaseProvider {
       int sessionId,
       BuildContext context,
       ) async {
-    final result = await run(
-          () => _api.get('/api/v1/live-sessions/$sessionId/join'),
-    );
+    // A join the host's controls refused (423 room_locked, 403 participant_removed) is thrown to the pre-join page,
+    // which says why (liveJoinRefusalText); run() would turn it into a bare null.
+    Object? refused;
+    final result = await run(() async {
+      try {
+        return await _api.get('/api/v1/live-sessions/$sessionId/join');
+      } on ApiException catch (e) {
+        if (liveJoinRefusalText(e) == null) rethrow;
+        refused = e;
+        return null;
+      }
+    });
+    if (refused case final e?) throw e;
     if (result is Map<String, dynamic>) {
       final outcome = JoinOutcome.parse(result);
       if (!outcome.isAdmitted) return outcome;

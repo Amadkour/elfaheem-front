@@ -324,6 +324,8 @@
   let _safetyFlushId  = null;   // periodic requestData() safety-net interval
   let _sessionId, _apiUrl, _authToken;
   let _uploadUrl      = '';   // meeting recordings: their own chunk route (meta.uploadUrl); '' = the session route
+  let _epoch          = '';   // this start's id (meta.epoch), sent with every chunk as `epoch` (R1)
+  let _assembled      = false; // the server answered 409 recording_assembled: nothing more to upload
   let _videoBitrate   = VIDEO_BITRATE; // meta.videoBitsPerSecond (the picked quality), else the constant
   let _audioOnly      = false; // meta.audioOnly: no canvas at all — the mixed audio stream is recorded alone
   let _chunkExt       = 'webm'; // the uploaded chunk's extension (from the mime the recorder actually uses)
@@ -810,12 +812,16 @@
     const form = new FormData();
     form.append('chunk_index', String(index));
     form.append('is_final',    isFinal ? '1' : '0');
+    if (_epoch) form.append('epoch', _epoch);
     form.append('chunk', blob, `chunk_${String(index).padStart(6,'0')}.${_chunkExt}`);
 
     console.log(`[Compositor] uploading chunk #${index} size=${blob.size} final=${isFinal} ext=${_chunkExt}`);
 
     let attempt = 0;
     let uploaded = false;
+
+    // The run's recording is already assembled (409 recording_assembled): stop uploading, it is done.
+    if (_assembled) attempt = 4;
 
     while (attempt <= 3) {
       try {
@@ -831,7 +837,15 @@
           break;
         }
         const body = await r.text().catch(() => '(unreadable)');
+        if (r.status === 409 && body.indexOf('recording_assembled') >= 0) {
+          // R4: assembled already — every later chunk would be refused too; the recording is done.
+          console.log(`[Compositor] chunk #${index}: the recording is already assembled — no more uploads`);
+          _assembled = true;
+          window._ElFaheemCompositorAssembled = true;
+          break;
+        }
         console.error(`[Compositor] chunk #${index} REJECTED status=${r.status} body=${body.slice(0,300)}`);
+        // 4xx: no retry (409 recording_assembling, a revoked / expired upload token, no live run, …)
         if (r.status >= 400 && r.status < 500) break;
       } catch (e) {
         console.warn(`[Compositor] chunk #${index} network error attempt ${attempt}:`, e);
@@ -840,7 +854,7 @@
       if (attempt <= 3) await new Promise(res => setTimeout(res, 1000 * (1 << attempt)));
     }
 
-    if (!uploaded) console.error(`[Compositor] chunk #${index} FAILED after ${attempt} attempts`);
+    if (!uploaded && !_assembled) console.error(`[Compositor] chunk #${index} FAILED after ${attempt} attempts`);
 
     _pendingUploads--;
     _queueDepth--;
@@ -894,6 +908,9 @@
       _sessionTitle     = '';
       _participantCount = 0;
       _uploadUrl        = '';
+      _epoch            = '';
+      _assembled        = false;
+      window._ElFaheemCompositorAssembled = false;
       _videoBitrate     = VIDEO_BITRATE;
       _audioOnly        = false;
       _chunkExt         = 'webm';
@@ -904,6 +921,7 @@
           _sessionTitle     = String(parsed.sessionTitle || '');
           _participantCount = Number(parsed.participantCount) || 0;
           _uploadUrl        = String(parsed.uploadUrl || '');
+          _epoch            = String(parsed.epoch || '').slice(0, 64);
           const bps = Number(parsed.videoBitsPerSecond) || 0;
           if (bps > 0) _videoBitrate = bps;
           _audioOnly        = parsed.audioOnly === true;
@@ -912,6 +930,7 @@
         console.warn('[Compositor] failed to parse start() meta — using defaults:', e);
       }
       _sessionStartMs = Date.now();
+      if (!_epoch) _epoch = String(_sessionStartMs); // an older Dart side sent none: one id per start still
       _isPaused = false;
 
       _sessionId = sessionId;

@@ -15,6 +15,10 @@ Object? streamFromLivekitTrack(Object? track) => null;
 // resolves this name on every platform, not just web.
 Object? nativeAudioStreamFromTrack(Object? lkTrack) => null;
 
+// Mirror recorder_web_impl.dart's screen-share helpers (only called on web).
+bool setTrackContentHint(Object? lkTrack, String hint) => false;
+bool displayAudioSupported() => false;
+
 class WebRecorder {
   WebRecorder({required void Function(int) onBlob});
   Future<bool> start(Object? stream, String mimeType) async => false;
@@ -28,6 +32,7 @@ class WebRecorder {
         String? uploadUrl,
         int? videoBitsPerSecond,
         bool audioOnly = false,
+        String? epoch,
       }) {}
   Future<void> waitForBackgroundUploads({Duration timeout = const Duration(minutes: 5)}) async {}
   void updateParticipantCount(int count) {}

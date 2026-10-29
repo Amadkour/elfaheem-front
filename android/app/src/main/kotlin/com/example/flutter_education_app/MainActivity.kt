@@ -26,6 +26,12 @@ package com.example.flutter_education_app
 // see ElFaheemFrameCapturer.java / GetUserMediaImpl.java's
 // useElFaheemCapturer branch, which reads frames from the SAME
 // VirtualDisplay above instead of requesting its own.
+//
+// A share no longer needs a recording: without one the service runs in
+// share-only mode (projection + renderer, no MediaRecorder). A projection
+// kept from an earlier share (a recording runs, below API 34) is reused with
+// ACTION_START_SHARE, no dialog. Share / audio events reach Dart on
+// CH_LIVE_EVENTS (shareStarted, shareStopped, shareResized, audioInterruption).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import android.app.NotificationChannel
@@ -41,6 +47,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import com.cloudwebrtc.webrtc.ElFaheemBridge
 
 class MainActivity : FlutterActivity() {
 
@@ -52,6 +59,7 @@ class MainActivity : FlutterActivity() {
         private const val CH_NOTIFICATIONS = "com.example.flutter_education_app/notifications"
         private const val CH_REC_EVENTS    = "com.example.flutter_education_app/rec_events"
         private const val CH_RADIOS        = "com.example.flutter_education_app/radios"   // attendance: switch radios on
+        private const val CH_LIVE_EVENTS   = "com.example.flutter_education_app/live_events" // share + phone-call events
 
         // 1001: the one and only MediaProjection grant → ACTION_STORE_PROJECTION
         private const val REQUEST_MEDIA_PROJECTION = 1001
@@ -59,11 +67,53 @@ class MainActivity : FlutterActivity() {
 
     private var projectionManager: MediaProjectionManager? = null
 
-    private var onRecorderProjectionApproved: (() -> Unit)? = null // 1001
+    private var onRecorderProjectionApproved: ((Map<String, Any?>) -> Unit)? = null // 1001
+    // The share preset of the pending request (forwarded with STORE_PROJECTION).
+    private var pendingShareExtras: Intent.() -> Unit = {}
+    private var audioInterruptions: LiveAudioInterruptions? = null
+    // ScreenCaptureService was put in the foreground (microphone) before the consent dialog (M4).
+    private var preparedForShare = false
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+    }
+
+    // Back in front: a live-call service the background refused to start comes back now.
+    override fun onResume() {
+        super.onResume()
+        LiveCallService.sync(this)
+    }
+
+    // The live-call notification's "Leave" (the app is in front again; Dart may confirm).
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getStringExtra(LiveCallService.EXTRA_LIVE_CALL_ACTION) == LiveCallService.LIVE_CALL_LEAVE) {
+            intent.removeExtra(LiveCallService.EXTRA_LIVE_CALL_ACTION)
+            LiveCallService.leaveRequested()
+        }
+    }
+
+    // L6: the audio-focus listener is static in ElFaheemBridge and its lambda holds the watcher; the
+    // EventChannel's onCancel does not run when the Activity is destroyed with its engine. The room
+    // goes with the engine, so the live-call service stops too.
+    override fun onDestroy() {
+        audioInterruptions?.stop()
+        audioInterruptions = null
+        LiveCallService.release(this)
+        super.onDestroy()
+    }
+
+    /** M4: the consent did not lead to a share — the prepared (idle) capture service stops again. */
+    private fun unprepareShare() {
+        if (!preparedForShare) return
+        preparedForShare = false
+        if (ScreenCaptureService.isRunning || ScreenCaptureService.isSharing || ScreenCaptureService.isProjectionGranted) return
+        try {
+            stopService(Intent(this, ScreenCaptureService::class.java))
+        } catch (e: Exception) {
+            Log.w(TAG, "unprepareShare: ${e.message}")
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -85,8 +135,8 @@ class MainActivity : FlutterActivity() {
                     // only AFTER ACTION_STORE_PROJECTION has run and recordLoop()
                     // has been launched. Calling the callback here directly would
                     // let Dart race ahead before recording starts.
-                    ScreenCaptureService.onProjectionGrantStored = {
-                        onRecorderProjectionApproved?.invoke()
+                    ScreenCaptureService.onProjectionGrantStored = { outcome ->
+                        onRecorderProjectionApproved?.invoke(outcome)
                         onRecorderProjectionApproved = null
                     }
 
@@ -94,14 +144,26 @@ class MainActivity : FlutterActivity() {
                         action = ScreenCaptureService.ACTION_STORE_PROJECTION
                         putExtra(ScreenCaptureService.EXTRA_RESULT_CODE, resultCode)
                         putExtra(ScreenCaptureService.EXTRA_DATA, data)
+                        pendingShareExtras()
                     }
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        startForegroundService(i) else startService(i)
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            startForegroundService(i) else startService(i)
+                        preparedForShare = false // the service owns its state from here
+                    } catch (e: Exception) {
+                        // e.g. ForegroundServiceStartNotAllowedException (12+): Dart must not wait forever.
+                        Log.e(TAG, "onActivityResult(1001): could not start the service: ${e.message}", e)
+                        ScreenCaptureService.onProjectionGrantStored = null
+                        onRecorderProjectionApproved?.invoke(mapOf("ok" to false, "error" to (e.message ?: "service start failed")))
+                        onRecorderProjectionApproved = null
+                        unprepareShare()
+                    }
 
                 } else {
                     Log.w(TAG, "onActivityResult(1001): recorder projection denied (resultCode=$resultCode)")
-                    onRecorderProjectionApproved?.invoke()
+                    onRecorderProjectionApproved?.invoke(mapOf("ok" to false, "denied" to true))
                     onRecorderProjectionApproved = null
+                    unprepareShare() // STORE_PROJECTION is never sent
                 }
             }
             // REQUEST_SCREEN_SHARE (1002) removed — was a second, redundant
@@ -112,39 +174,80 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /**
+     * M4: before the consent dialog, while this activity is in front, ScreenCaptureService goes into
+     * the foreground with the microphone type (when no recording already holds it and RECORD_AUDIO is
+     * granted). The STORE_PROJECTION that follows the consent then reaches a foreground service (no
+     * background-start refusal) and the presenter's voice keeps going in other apps on 14+.
+     */
+    private fun prepareShare() {
+        preparedForShare = false
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
+        if (ScreenCaptureService.isRunning || ScreenCaptureService.isSharing || ScreenCaptureService.isProjectionGranted) return
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        try {
+            startService(Intent(this, ScreenCaptureService::class.java).apply {
+                action = ScreenCaptureService.ACTION_PREPARE_SHARE
+            })
+            preparedForShare = true
+        } catch (e: Exception) {
+            Log.w(TAG, "prepareShare: ${e.message}")
+        }
+    }
+
     // ─────────────────────────────────────────────────────────────────────────
     // Flutter engine — method + event channels
     // ─────────────────────────────────────────────────────────────────────────
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        AnnotationOverlayChannel.register(this, flutterEngine.dartExecutor.binaryMessenger) // D-079 whole-screen annotation
+        LiveCallService.register(this, flutterEngine.dartExecutor.binaryMessenger) // the room's mic in the background
 
         // ── 1. Screen-share channel ───────────────────────────────────────────
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CH_SCREEN_SHARE)
                 .setMethodCallHandler { call, result ->
                     when (call.method) {
 
-                        // Shows the projection dialog for the RECORDER (grant 1001).
-                        // Called once, the first time Share is tapped — NOT at
-                        // session start (recording itself starts earlier, at
-                        // ACTION_START_MIC_ONLY, showing a placeholder; this
-                        // grant only upgrades that already-running recording
-                        // to real screen content — see ScreenCaptureService.kt's
-                        // activateLiveProjection()).
+                        // Starts a live share with the preset from Dart
+                        // ({maxLongSide, fps, deviceAudio}) and answers
+                        // {ok, denied?, error?, width, height, deviceAudio}
+                        // once the share runs (or failed). With or without a
+                        // recording; a projection kept from an earlier share
+                        // is reused (no dialog), otherwise grant 1001 is asked.
                         "startScreenCaptureService" -> {
-                            // Guard on isProjectionGranted, NOT isRunning.
-                            // isRunning is true from session start (placeholder
-                            // recording via ACTION_START_MIC_ONLY already running).
-                            // We must still show the projection dialog (grant 1001)
-                            // so ACTION_STORE_PROJECTION can fire and
-                            // activateLiveProjection() can upgrade to live content.
-                            // Only skip if the grant was already stored.
-                            if (ScreenCaptureService.isProjectionGranted) {
-                                Log.d(TAG, "startScreenCaptureService: projection already granted")
-                                result.success(true)
+                            val maxLong = call.argument<Int>("maxLongSide") ?: 1280
+                            val fps = call.argument<Int>("fps") ?: 15
+                            val deviceAudio = call.argument<Boolean>("deviceAudio") ?: false
+                            val extras: Intent.() -> Unit = {
+                                putExtra(ScreenCaptureService.EXTRA_SHARE_MAX_LONG, maxLong)
+                                putExtra(ScreenCaptureService.EXTRA_SHARE_FPS, fps)
+                                putExtra(ScreenCaptureService.EXTRA_SHARE_AUDIO, deviceAudio)
+                            }
+                            if (ScreenCaptureService.isSharing) {
+                                Log.d(TAG, "startScreenCaptureService: already sharing")
+                                result.success(mapOf("ok" to true, "already" to true,
+                                        "deviceAudio" to ElFaheemBridge.screenAudioState()))
                                 return@setMethodCallHandler
                             }
-                            onRecorderProjectionApproved = { result.success(true) }
+                            if (ScreenCaptureService.isProjectionGranted) {
+                                Log.d(TAG, "startScreenCaptureService: reusing the kept projection")
+                                ScreenCaptureService.onProjectionGrantStored = { outcome -> result.success(outcome) }
+                                try {
+                                    startService(Intent(this, ScreenCaptureService::class.java).apply {
+                                        action = ScreenCaptureService.ACTION_START_SHARE
+                                        extras()
+                                    })
+                                } catch (e: Exception) {
+                                    ScreenCaptureService.onProjectionGrantStored = null
+                                    result.success(mapOf("ok" to false, "error" to e.message))
+                                }
+                                return@setMethodCallHandler
+                            }
+                            pendingShareExtras = extras
+                            onRecorderProjectionApproved = { outcome -> result.success(outcome) }
+                            prepareShare()
                             try {
                                 @Suppress("DEPRECATION")
                                 startActivityForResult(
@@ -154,11 +257,47 @@ class MainActivity : FlutterActivity() {
                             } catch (e: Exception) {
                                 Log.e(TAG, "startScreenCaptureService: ${e.message}", e)
                                 onRecorderProjectionApproved = null
+                                unprepareShare()
                                 result.error("START_ERROR", e.message, null)
                             }
                         }
 
-                        "stopScreenCaptureService" -> result.success(null)
+                        // Share off: releases the VirtualDisplay (and the projection unless a
+                        // recording keeps it, below API 34). Idempotent.
+                        "stopScreenShare", "stopScreenCaptureService" -> {
+                            if (ScreenCaptureService.isSharing || ScreenCaptureService.isProjectionGranted) {
+                                try {
+                                    startService(Intent(this, ScreenCaptureService::class.java).apply {
+                                        action = ScreenCaptureService.ACTION_STOP_SHARE
+                                    })
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "stopScreenShare: ${e.message}", e)
+                                }
+                            }
+                            ElFaheemBridge.setMicSoftMute(false)
+                            result.success(null)
+                        }
+
+                        // What this device can do in the share flow.
+                        "shareCapabilities" -> result.success(mapOf(
+                                "deviceAudio" to ElFaheemBridge.screenAudioSupported(),
+                                "sdk" to Build.VERSION.SDK_INT,
+                                "keepsGrant" to (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE),
+                        ))
+
+                        "shareState" -> result.success(mapOf(
+                                "sharing" to ScreenCaptureService.isSharing,
+                                "projection" to ScreenCaptureService.isProjectionGranted,
+                                "deviceAudio" to ElFaheemBridge.screenAudioState(),
+                                "micSoftMuted" to ElFaheemBridge.isMicSoftMuted(),
+                        ))
+
+                        // The mic "soft mute" during a share with device audio: the mic's
+                        // samples are zeroed, the track (carrying the shared audio) keeps going.
+                        "setMicSoftMute" -> {
+                            ElFaheemBridge.setMicSoftMute(call.argument<Boolean>("muted") ?: false)
+                            result.success(null)
+                        }
 
                         else -> result.notImplemented()
                     }
@@ -177,6 +316,8 @@ class MainActivity : FlutterActivity() {
                             val authToken = call.argument<String>("authToken") ?: ""
                             val chunkSecs = call.argument<Int>("chunkSeconds") ?: 5
                             val chunkIdx  = call.argument<Int>("chunkIndex")   ?: 0
+                            // The recorder start's id (native_epoch.md): sent with every chunk as `epoch`.
+                            val epoch     = call.argument<Any>("epoch")?.toString() ?: ""
                             // Meeting recordings: the picked quality (absent for course sessions → 0 = defaults).
                             val videoBps  = call.argument<Int>("videoBitrate") ?: 0
                             val maxHeight = call.argument<Int>("maxHeight")    ?: 0
@@ -200,6 +341,7 @@ class MainActivity : FlutterActivity() {
                                     putExtra(ScreenCaptureService.EXTRA_AUTH_TOKEN,  authToken)
                                     putExtra(ScreenCaptureService.EXTRA_CHUNK_SECS,  chunkSecs)
                                     putExtra(ScreenCaptureService.EXTRA_CHUNK_INDEX, chunkIdx)
+                                    putExtra(ScreenCaptureService.EXTRA_EPOCH,       epoch)
                                     putExtra(ScreenCaptureService.EXTRA_VIDEO_BPS,   videoBps)
                                     putExtra(ScreenCaptureService.EXTRA_MAX_HEIGHT,  maxHeight)
                                     putExtra(ScreenCaptureService.EXTRA_AUDIO_ONLY,  audioOnly)
@@ -390,6 +532,25 @@ class MainActivity : FlutterActivity() {
                         result.success(false)        // … Dart falls back to the settings screen / a hint
                     }
                 }
+
+        // ── 3c. Share / phone-call events (room_screen_share.dart) ───────────
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, CH_LIVE_EVENTS)
+                .setStreamHandler(object : EventChannel.StreamHandler {
+                    override fun onListen(args: Any?, sink: EventChannel.EventSink) {
+                        Log.d(TAG, "live events: Dart is listening")
+                        ScreenCaptureService.liveEventSink = sink
+                        audioInterruptions?.stop()
+                        audioInterruptions = LiveAudioInterruptions(this@MainActivity) { event ->
+                            ScreenCaptureService.liveEventSink?.success(event)
+                        }.also { it.start() }
+                    }
+                    override fun onCancel(args: Any?) {
+                        Log.d(TAG, "live events: Dart cancelled")
+                        ScreenCaptureService.liveEventSink = null
+                        audioInterruptions?.stop()
+                        audioInterruptions = null
+                    }
+                })
 
         // ── 4. EventChannel: native → Dart events ─────────────────────────────
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, CH_REC_EVENTS)

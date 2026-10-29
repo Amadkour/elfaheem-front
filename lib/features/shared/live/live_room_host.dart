@@ -72,6 +72,10 @@ class LiveRoomHost {
 
   static bool get isMinimized => _active.value?.minimized.value ?? false;
 
+  /// The open room's "in the box" flag (null when no room is open): the room page stops its decorative loops
+  /// while it is minimized (D27).
+  static ValueListenable<bool>? get minimizedListenable => _active.value?.minimized;
+
   /// A [LiveRoomLayer] is in the tree — callers fall back to pushing the room as a route otherwise.
   static bool get isInstalled => _layers > 0;
 

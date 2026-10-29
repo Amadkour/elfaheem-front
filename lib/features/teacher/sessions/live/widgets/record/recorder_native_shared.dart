@@ -99,6 +99,9 @@ abstract class NativeRecorderBackend {
   Future<bool> start({
     required String uploadUrl,
     required String authToken,
+    // R1: this start's id, for the chunk field `epoch`. The native uploaders do not send it yet
+    // (docs/live/native_epoch.md); an extra argument is ignored until they do.
+    String? epoch,
     // Meeting recordings (docs/backend/live-rooms-spec.md §5): the picked quality as
     // {videoBitrate, maxHeight, audioOnly}; null keeps the platform's own defaults.
     Map<String, Object>? encoder,
@@ -117,6 +120,7 @@ abstract class NativeRecorderBackend {
         'sessionId':    sessionId,
         'uploadUrl':    uploadUrl,
         'authToken':    authToken,
+        'epoch':        ?epoch,
         'chunkSeconds': chunkSeconds,
         'chunkIndex':   0,
         ...?encoder,

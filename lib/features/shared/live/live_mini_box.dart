@@ -8,6 +8,7 @@ import 'package:livekit_client/livekit_client.dart';
 import '../../admin/admin_common.dart' show t;
 import '../../teacher/sessions/live/widgets/live_avatar.dart';
 import '../../teacher/sessions/live/widgets/live_palette.dart';
+import '../../teacher/sessions/live/widgets/android_share.dart' show LiveMicGate;
 import '../../teacher/sessions/live/widgets/participant.dart' show participantPhotoFromMetadata;
 import 'live_room_host.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -310,7 +311,7 @@ class LiveMiniTile extends StatelessWidget {
           final i = liveMiniPick(candidates);
           final shown = i == null ? null : candidates[i];
           final track = i == null ? null : tracks[i];
-          final micOn = local?.isMicrophoneEnabled() ?? false;
+          final micOn = LiveMicGate.instance.micOn(local);
           final canPublish = local != null && local.permissions.canPublish;
           final scope = LiveRoomScope.maybeOf(context);
           return LiveMiniBoxLayout(
@@ -329,7 +330,7 @@ class LiveMiniTile extends StatelessWidget {
                     mirrorMode: shown.isLocal && !shown.screenShare ? VideoViewMirrorMode.mirror : VideoViewMirrorMode.off,
                   ),
             onExpand: () => scope == null ? LiveRoomHost.expand() : scope.expand(),
-            onToggleMic: canPublish ? () => local.setMicrophoneEnabled(!micOn).catchError((_) => null) : null,
+            onToggleMic: canPublish ? () => LiveMicGate.instance.setMic(local, !micOn).catchError((_) {}) : null,
             onLeave: LiveRoomHost.leave,
           );
         },

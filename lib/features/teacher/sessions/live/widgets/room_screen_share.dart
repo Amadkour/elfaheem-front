@@ -16,23 +16,31 @@
 // MediaProjectionManager itself), the live LiveKit share. No downgrade,
 // no re-upgrade, no second dialog.
 //
-// START sharing (first tap only — isScreenRecording guards repeats):
-//   1. startScreenCaptureService — the one system dialog. Confirming it
-//      starts local recording (ACTION_STORE_PROJECTION → recordLoop()).
-//   2. getDisplayMedia({'video': {'useElFaheemCapturer': true}}) — reuses
-//      that same grant's VirtualDisplay frames, publishes the live track.
-//      Zero additional dialogs.
+// Android (see the Android section below): the share works with or without
+// a recording, every share start goes live again (a second share works),
+// the system's own Stop ends it cleanly, device audio rides on the mic
+// track (Android 10+), and the presenter picks Detail or Motion. With
+// annotation on (feature key live.annotation) the presenter is offered the
+// whole-screen drawing overlay (D-079, annotation/android_overlay.dart):
+// strokes drawn over every app are burned into the shared video, and
+// [annotationOverlayActive] tells the room to switch its AnnotationController
+// to burned-in mode; the overlay goes with the share on every stop path.
 //
-// STOP sharing:
-//   Unpublish the ElFaheem track directly. Local recording was never
-//   paused, so nothing needs re-confirming — it just keeps running.
+// Web (see the Web section): the same options sheet and Detail / Motion presets
+// (share_presets.dart), ONE getDisplayMedia whose video AND tab / system audio
+// are published (screenShareVideo + screenShareAudio) and fed to the recorder,
+// and the browser's own "Stop sharing" runs the same cleanup as our Stop.
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'dart:async';
 import 'dart:developer';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, ValueListenable, ValueNotifier;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show appConfirm;
 import 'live_palette.dart';
+import '../annotation/android_overlay.dart';
+import '../annotation/annotation_toolbar.dart' show annotPresetColors;
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/services.dart';
@@ -42,57 +50,26 @@ if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'package:livekit_client/livekit_client.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'room_recorder.dart';
+import 'android_share.dart';
+import 'ios_share.dart';
+import 'share_options_sheet.dart';
+import 'share_presets.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
-// ── DIAGNOSTIC (2026-07-30) ───────────────────────────────────────────────
-// Tests the hypothesis that WebRTC's Voice-Processing I/O unit (engaged by
-// echoCancellation: true on the live call's mic track) forces system-wide
-// audio ducking at the CoreAudio HAL level — below AVAudioSession's own
-// category/mode negotiation — which would silence ReplayKit's .audioApp
-// tap regardless of any of the broadcast-extension-side session
-// configuration already in place. This has been isolated as the most
-// likely remaining explanation after ruling out per-sample file I/O,
-// buffer lifetime bugs, audio-session reconfigure storms, and the
-// backend/network entirely — audio capturing correctly for ~1s then
-// muting for the rest matches the ~1s engagement delay of iOS's
-// voice-processing ducking closely.
-//
-// Same options as _hdAudioCaptureOptions (room.dart) except
-// echoCancellation: false. If disabling this for the duration of a
-// broadcast share resolves the muting, echo cancellation is confirmed as
-// the root cause — the real fix then needs to explicitly weigh AEC loss
-// during screen share against having working shared-content audio at all
-// (echo risk during a share is often lower anyway, since the teacher
-// typically isn't speaking directly over loud speaker output the whole
-// time the way a phone-call-style conversation would be).
-const _shareCompatibleAudioCaptureOptions = AudioCaptureOptions(
-  noiseSuppression: true,
-  echoCancellation: false,
-  autoGainControl: true,
-  highPassFilter: true,
-  typingNoiseDetection: true,
-);
-
-const _callQualityAudioCaptureOptions = AudioCaptureOptions(
-  noiseSuppression: true,
-  echoCancellation: true,
-  autoGainControl: true,
-  highPassFilter: true,
-  typingNoiseDetection: true,
-);
+// I5: the iOS share keeps WebRTC's echo cancellation (the old diagnostic switched it off for the share and the
+// students heard echo); the native audio session stays playAndRecord + videoChat.
 
 mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
-  /// The track + publication published via ElFaheemFrameCapturer
-  /// (single-projection Android path). setScreenShareEnabled(false) doesn't
-  /// know about this track since it was never published through
-  /// setScreenShareEnabled(true) — stop must unpublish it directly via
-  /// these references. .sid lives on the PUBLICATION, not the track itself.
+  /// The track published via ElFaheemFrameCapturer (single-projection Android
+  /// path). setScreenShareEnabled(false) doesn't know about it; stop finds its
+  /// publication by source and unpublishes it.
   LocalVideoTrack? _elFaheemScreenTrack;
-  LocalTrackPublication<LocalVideoTrack>? _elFaheemScreenPublication;
 
-  // Same pattern, web platform — see _toggleScreenShareWeb.
+  // Web: the share's own tracks (one getDisplayMedia stream) — see _toggleScreenShareWeb. The publications are
+  // always looked up by SOURCE (a full reconnect changes their sids, D18).
   LocalVideoTrack? _webScreenShareTrack;
-  LocalTrackPublication<LocalVideoTrack>? _webScreenSharePublication;
+  LocalAudioTrack? _webScreenAudioTrack;
+  bool _webStopping = false;
 
   Room get room;
   ClientRecorder? get recorder;
@@ -102,6 +79,61 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   // _startLiveKitAudioTap doc comment). Calling this when there's nothing
   // to rebind is a safe no-op. Other platforms can leave this a no-op.
   void restartAudioTap() {}
+
+  /// The server lets the shared tab / device audio go with the share (room.dart: LiveAllowedControls.shareAudio).
+  bool get shareAudioAllowed => true;
+
+  /// A share is running, starting or stopping on any platform (the room never turns the camera off in the
+  /// background then: the share must keep going).
+  bool get screenShareActive =>
+      _isTogglingShare ||
+      _elFaheemScreenTrack != null ||
+      _webScreenShareTrack != null ||
+      _isBroadcastActive ||
+      (IosShareNative.supported && IosShareNative.broadcasting.value) ||
+      (room.localParticipant?.isScreenShareEnabled() ?? false);
+
+  /// Stops a running share on any platform (the host took the permission away, the room is closing). Idempotent.
+  Future<void> stopScreenShare() async {
+    final local = room.localParticipant;
+    if (kIsWeb) {
+      await _stopScreenShareWeb(local);
+    } else if (lkPlatformIs(PlatformType.android)) {
+      if (_elFaheemScreenTrack != null || (local?.isScreenShareEnabled() ?? false)) {
+        await _stopScreenShareAndroid(local);
+      }
+    } else if (lkPlatformIs(PlatformType.iOS)) {
+      await stopIOSBroadcast();
+    } else if (local != null && local.isScreenShareEnabled()) {
+      await _safeNegotiate(() => local.setScreenShareEnabled(false));
+    }
+  }
+
+  /// room.dart's permission listener (M1): on Android a share's device audio rides on the mic track, so a share
+  /// with device audio stops when the microphone ([micRevoked]) or the share audio ([shareAudioRevoked]:
+  /// `before.shareAudio && !next.shareAudio`, it is no published track there) is taken away; the native capture
+  /// cannot drop its audio alone, the presenter shares again without it. True when it stopped the share.
+  Future<bool> stopShareIfDeviceAudioRevoked({required bool micRevoked, required bool shareAudioRevoked}) async {
+    if (kIsWeb || !lkPlatformIs(PlatformType.android)) return false;
+    if (!LiveMicGate.instance.deviceAudioActive || !(micRevoked || shareAudioRevoked)) return false;
+    await stopScreenShare();
+    showSnack(shareAudioRevoked
+        ? t('توقفت المشاركة: لم يعد صوت الجهاز مسموحاً. شارك من جديد لعرض الشاشة بلا صوت.',
+            'Sharing stopped: device audio is no longer allowed. Share again to show your screen without it.')
+        : t('توقفت المشاركة: لم يعد الميكروفون مسموحاً، وصوت الجهاز يمر عبره.',
+            'Sharing stopped: the microphone is no longer allowed, and device audio goes through it.'));
+    return true;
+  }
+
+  /// room.dart forwards every LocalTrackUnpublishedEvent. On the web the SDK unpublishes the share by itself when
+  /// the browser's own "Stop sharing" ends the track (W3 / D17): the rest of our Stop runs then (the audio track,
+  /// the recorder, the state and the notice).
+  void onLocalTrackUnpublished(LocalTrackUnpublishedEvent event) {
+    if (!kIsWeb || _webStopping || _webScreenShareTrack == null) return;
+    if (event.publication.source != TrackSource.screenShareVideo) return;
+    log('[SS] Web: the browser ended the share');
+    unawaited(_stopScreenShareWeb(room.localParticipant, endedOutside: true));
+  }
 
   static const _hdAudioPublishOptions = AudioPublishOptions(
     encoding: AudioEncoding(maxBitrate: 128000),
@@ -142,7 +174,11 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     try {
       final local = room.localParticipant;
       if (local == null) return;
-      final isSharing = local.isScreenShareEnabled();
+      // iOS (I3): the publication only exists once the broadcast runs, and the system sheet may still be open:
+      // the broadcast state decides (a second tap must stop, never start again).
+      final isSharing = !kIsWeb && lkPlatformIs(PlatformType.iOS)
+          ? (IosShareNative.broadcasting.value || _isBroadcastActive || local.isScreenShareEnabled())
+          : local.isScreenShareEnabled();
 
       if (kIsWeb) {
         await _toggleScreenShareWeb(local, isSharing);
@@ -159,247 +195,421 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   }
 
   // ── Android ───────────────────────────────────────────────────────────────
+  //
+  // START: the options sheet (Detail / Motion, device audio) → the native
+  //   share (ScreenCaptureService: the system dialog unless a projection is
+  //   still held, VirtualDisplay → renderer → ElFaheemFrameCapturer, device
+  //   audio into the mic buffer) → the ElFaheem track published with the
+  //   preset's encoding. With or without a recording; a recording that runs
+  //   switches to the live screen (its Phase-2 wait resolves on the native
+  //   'screenLoopStarted'). The mic's mute state is never changed: with
+  //   device audio a muted mic becomes "track on, samples zeroed".
+  // STOP (button, system chip, room closing): the published screen track is
+  //   found by SOURCE (a reconnect changes sids, D18) and unpublished, the
+  //   native share is stopped (VirtualDisplay released, privacy indicator
+  //   off) and a soft-muted mic goes back to a real mute.
+
+  StreamSubscription<LiveNativeEvent>? _liveNativeSub;
+  bool _androidStopping = false;
+
+  /// Android: listen to the native share / phone-call events for the room's lifetime.
+  void initLiveNativeEvents() {
+    if (kIsWeb || !lkPlatformIs(PlatformType.android)) return;
+    _liveNativeSub ??= AndroidShareNative.events().listen(_onLiveNativeEvent, onError: (Object e) {
+      log('[SS] live events error: $e');
+    });
+  }
+
+  /// Android: the room is closing — the share ends with it (privacy), the mic gate resets.
+  void disposeLiveNativeEvents() {
+    if (kIsWeb || !lkPlatformIs(PlatformType.android)) return;
+    unawaited(_liveNativeSub?.cancel());
+    _liveNativeSub = null;
+    final sharing = _elFaheemScreenTrack != null;
+    _elFaheemScreenTrack = null;
+    _shareGen++;
+    LiveMicGate.instance.reset();
+    if (sharing) unawaited(AndroidShareNative.stop());
+    // The overlay goes with the room (the notifier is left alone: the room is being disposed).
+    AndroidAnnotationOverlay.onClosed = null;
+    if (_annotOverlay.value) unawaited(AndroidAnnotationOverlay.hide());
+  }
+
+  void _onLiveNativeEvent(LiveNativeEvent e) {
+    log('[SS] native event ${e.type} ${e.data}');
+    if (e.stoppedOutside) {
+      final local = room.localParticipant;
+      final published = local?.getTrackPublicationBySource(TrackSource.screenShareVideo) != null;
+      if (published || _elFaheemScreenTrack != null) {
+        unawaited(_stopScreenShareAndroid(local));
+        showSnack(t('توقفت مشاركة الشاشة', 'Screen sharing stopped'));
+      }
+      return;
+    }
+    final call = e.interruption;
+    if (call != null) unawaited(_onPhoneCall(call));
+  }
+
+  /// A phone call holds the mic: mute it (the viewers would hear silence anyway) and give it
+  /// back afterwards — only when it was on.
+  Future<void> _onPhoneCall(bool active) async {
+    final local = room.localParticipant;
+    if (local == null || !local.permissions.canPublish) return;
+    final gate = LiveMicGate.instance;
+    try {
+      // The gate remembers "muted by the call"; a tap on the mic in between clears it (M3).
+      if (active) {
+        if (await gate.muteForCall(local)) {
+          showSnack(t('أُوقف الميكروفون أثناء المكالمة الهاتفية', 'Microphone muted during the phone call'));
+        }
+      } else if (await gate.restoreAfterCall(local)) {
+        showSnack(t('عاد الميكروفون بعد المكالمة', 'Microphone back on after the call'));
+      }
+    } catch (err) {
+      log('[SS] phone-call mic change: $err');
+    }
+  }
 
   Future<void> _toggleScreenShareAndroid(
       LocalParticipant local,
       bool isSharing,
       ) async {
-    if (!isSharing) {
-      // ── START screen share ────────────────────────────────────────────────
-      try {
-        if (!local.isMicrophoneEnabled()) {
-          await local.setMicrophoneEnabled(true);
-          await Future.delayed(const Duration(milliseconds: 200));
-        }
-
-        // Step 1: One-time MediaProjection grant — the ONLY system dialog
-        // in the whole session, and only shown the first time Share is
-        // tapped (isScreenRecording guards repeat taps within the same
-        // session). This single grant drives ScreenCaptureService's own
-        // VirtualDisplay/encoder (local recording) AND, via
-        // ElFaheemFrameCapturer reading frames from that same
-        // VirtualDisplay, the live LiveKit share — no second projection,
-        // no downgrade-for-share, no conflict between the two.
-        if (recorder != null && !recorder!.isScreenRecording) {
-          log('[SS] Android: requesting the single MediaProjection grant '
-              '(local recording + live share both start from this)');
-          // Arm the confirmation wait BEFORE the native call, matching the
-          // pattern room.dart used to use at session start — ACTION_STORE_
-          // PROJECTION's recordLoop() can emit 'screenLoopStarted' before
-          // invokeMethod's own Future resolves.
-          recorder!.prepareUpgradeWait();
-          final granted = await const MethodChannel(
-            'com.example.flutter_education_app/screen_share',
-          ).invokeMethod<bool>('startScreenCaptureService');
-          if (granted != true) {
-            log('[SS] Android: MediaProjection grant denied — aborting share');
-            showSnack('lr_screen_share_denied'.tr);
-            return;
-          }
-          // upgradeToScreenRecording() here no longer sends any native
-          // command (ACTION_UPGRADE_TO_SCREEN / dialog #2 is gone — see
-          // ScreenCaptureService.kt / MainActivity.kt) — it just waits for
-          // the 'screenLoopStarted' that ACTION_STORE_PROJECTION's own
-          // recordLoop() emits, then flips isScreenRecording to true.
-          await recorder!.upgradeToScreenRecording();
-          log('[SS] Android: local recording is live');
-        }
-
-        // Step 2: Publish the live share using ElFaheemFrameCapturer via
-        // getDisplayMedia's useElFaheemCapturer branch (GetUserMediaImpl.java)
-        // — this reuses the SAME MediaProjection grant from Step 1 above; it
-        // never calls MediaProjectionManager itself, so no second dialog.
-        final stream = await rtc.navigator.mediaDevices.getDisplayMedia({
-          'video': {'useElFaheemCapturer': true},
-        });
-        final screenTrack = stream.getVideoTracks().first;
-        // Constructor confirmed against the real pinned livekit_client source:
-        // LocalVideoTrack(TrackSource, MediaStream, MediaStreamTrack,
-        // VideoCaptureOptions). ScreenShareCaptureOptions is the
-        // VideoCaptureOptions subtype matching this track's semantics
-        // (source: screenShareVideo) — mirrors what createScreenShareTrack()
-        // would have used internally, without us calling it (which would
-        // re-trigger MediaProjection).
-        // ignore: invalid_use_of_internal_member
-        _elFaheemScreenTrack = LocalVideoTrack(
-          TrackSource.screenShareVideo,
-          stream,
-          screenTrack,
-          const ScreenShareCaptureOptions(),
-        );
-        await _safeNegotiate(() async {
-          _elFaheemScreenPublication =
-          await local.publishVideoTrack(_elFaheemScreenTrack!);
-        });
-        log('[SS] Android: LiveKit screen share enabled (single-projection)');
-
-        // Step 4: Publish screen audio track if available.
-        await Future.delayed(const Duration(milliseconds: 300));
-        for (final pub in local.audioTrackPublications) {
-          if (pub.source == TrackSource.screenShareAudio &&
-              pub.track is LocalAudioTrack) {
-            await local.publishAudioTrack(
-              pub.track as LocalAudioTrack,
-              publishOptions: _hdAudioPublishOptions,
-            );
-            log('[SS] Android: screen audio track published');
-            break;
-          }
-        }
-      } catch (e) {
-        log('[SS] Android start error: $e');
-        showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
-      }
-    } else {
-      // ── STOP screen share ─────────────────────────────────────────────────
-      try {
-        if (_elFaheemScreenPublication != null) {
-          await _safeNegotiate(
-            // unpublishTrack was renamed to removePublishedTrack in a past
-            // livekit_client release (confirmed via changelog) — same
-            // signature, new name.
-                () => local.removePublishedTrack(_elFaheemScreenPublication!.sid),
-          );
-          await _elFaheemScreenTrack?.stop();
-          _elFaheemScreenTrack = null;
-          _elFaheemScreenPublication = null;
-          log('[SS] Android: LiveKit screen share disabled (single-projection)');
-        } else {
-          // Fallback for any path that still went through setScreenShareEnabled.
-          await _safeNegotiate(() => local.setScreenShareEnabled(false));
-          log('[SS] Android: LiveKit screen share disabled');
-        }
-      } catch (e) {
-        log('[SS] Android stop screen share error: $e');
-      }
-      // Local recording was never paused for the share (single-projection
-      // architecture — see start branch above) — it keeps running for the
-      // rest of the session regardless of share state. It does, however,
-      // revert from live screen content back to the session-info
-      // placeholder now that Share is off (per product decision — keeps
-      // the MediaProjection grant alive so re-tapping Share needs no new
-      // dialog, just stops drawing live frames into the recording/capturer).
-      try {
-        // revertToPlaceholder is handled on CH_RECORDER
-        // ('.../native_recorder') in MainActivity.kt, not CH_SCREEN_SHARE —
-        // this was silently throwing MissingPluginException every time
-        // Share was stopped, so the recording/live frames never actually
-        // switched back to the placeholder after a share ended.
-        await const MethodChannel(
-          'com.example.flutter_education_app/native_recorder',
-        ).invokeMethod('revertToPlaceholder');
-        log('[SS] Android: recording reverted to placeholder');
-      } catch (e) {
-        log('[SS] Android revertToPlaceholder error: $e');
-      }
-      log('[SS] Android: share ended, recording continues uninterrupted');
+    if (isSharing || _elFaheemScreenTrack != null) {
+      await _stopScreenShareAndroid(local);
+      return;
     }
+    // ── START ───────────────────────────────────────────────────────────────
+    // M1 / M2: the switch only when the mic may be published and the room lets the share's audio go out.
+    final audioSupported = await AndroidShareNative.deviceAudioSupported(
+      micAllowed: ParticipantMic(local).allowed,
+      shareAudioAllowed: shareAudioAllowed,
+    );
+    // L7: 14+ can share a single app, yet playback capture still takes every app's media audio.
+    final apiLevel = audioSupported ? await AndroidShareNative.apiLevel() : 0;
+    if (!mounted) return;
+    final choice = await showShareOptionsSheet(
+      context,
+      deviceAudioSupported: audioSupported,
+      deviceAudioNote: apiLevel >= 34 ? shareDeviceAudioScopeNote(arabic: AppConfig.lang == 'ar') : null,
+    );
+    if (choice == null || !mounted) return;
+    final preset = SharePreset.of(choice.quality);
+    var nativeStarted = false;
+    try {
+      // A running recording switches to the live screen: arm its wait BEFORE the native call
+      // ('screenLoopStarted' can arrive before invokeMethod returns).
+      final rec = recorder;
+      final waitRecorder = rec != null && !rec.isScreenRecording;
+      if (waitRecorder) rec.prepareUpgradeWait();
+
+      final outcome = await AndroidShareNative.start(preset, deviceAudio: choice.deviceAudio);
+      if (!outcome.ok) {
+        log('[SS] Android: share not started (denied=${outcome.denied}, ${outcome.error})');
+        showSnack(outcome.denied
+            ? 'lr_screen_share_denied'.tr
+            : trp('lr_screen_share_failed', {'e': outcome.error ?? t('حاول مرة أخرى', 'try again')}));
+        return;
+      }
+      nativeStarted = true;
+      if (waitRecorder) {
+        await rec.upgradeToScreenRecording();
+        log('[SS] Android: the recording shows the live screen');
+      }
+
+      final (w, h) = preset.sizeFor(outcome.width, outcome.height);
+      final stream = await rtc.navigator.mediaDevices.getDisplayMedia({
+        'video': {'useElFaheemCapturer': true, 'width': w, 'height': h, 'frameRate': preset.maxFps},
+      });
+      // ignore: invalid_use_of_internal_member
+      final track = LocalVideoTrack(
+        TrackSource.screenShareVideo,
+        stream,
+        stream.getVideoTracks().first,
+        preset.captureOptions(w, h),
+      );
+      _elFaheemScreenTrack = track;
+      // Not through _safeNegotiate: a skipped publish would leave the native share running unseen.
+      await local.publishVideoTrack(track, publishOptions: preset.publishOptions);
+      log('[SS] Android: share published ${w}x$h ${preset.quality.name} '
+          '${preset.maxFps}fps ${preset.maxBitrate ~/ 1000}kbps, device audio ${outcome.deviceAudio}');
+
+      if (outcome.deviceAudioOn) {
+        // False: the mic may not be published or its track could not come on — the share goes on without it.
+        if (!await LiveMicGate.instance.beginDeviceAudio(local)) {
+          showSnack(t('يُشارَك بلا صوت الجهاز', 'Sharing without device audio'));
+        }
+      } else if (choice.deviceAudio && outcome.deviceAudioFailed) {
+        showSnack(t('تعذّر التقاط صوت الجهاز: يسمع الحضور الميكروفون فقط', 'Device audio could not start: viewers hear your microphone only'));
+      }
+      // Not awaited: the permission page may take a while, and Stop must work meanwhile.
+      unawaited(_offerAnnotationOverlay(_shareGen));
+    } catch (e) {
+      log('[SS] Android start error: $e');
+      if (nativeStarted) await _stopScreenShareAndroid(local);
+      showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
+    }
+  }
+
+  Future<void> _stopScreenShareAndroid(LocalParticipant? local) async {
+    if (_androidStopping) return;
+    _androidStopping = true;
+    try {
+      final pub = local?.getTrackPublicationBySource(TrackSource.screenShareVideo);
+      if (local != null && pub != null) {
+        try {
+          await local.removePublishedTrack(pub.sid);
+        } catch (e) {
+          log('[SS] Android unpublish error: $e');
+        }
+      }
+      final track = _elFaheemScreenTrack;
+      _elFaheemScreenTrack = null;
+      try {
+        await track?.stop();
+      } catch (_) {}
+      _shareGen++; // an overlay offer still in flight gives up
+      await _hideAnnotationOverlay();
+      await LiveMicGate.instance.endDeviceAudio(local);
+      // VirtualDisplay released (privacy indicator off); a running recording goes back to the
+      // placeholder and keeps recording.
+      await AndroidShareNative.stop();
+      log('[SS] Android: share stopped');
+    } finally {
+      _androidStopping = false;
+    }
+  }
+
+  // ── Android: the whole-screen annotation overlay (D-079) ───────────────────
+  //
+  // After the share is published: when annotation is on, "Display over other apps" is checked (asked once per
+  // room, with an explanation first), then the native toolbar + canvas are shown over every app. While it is
+  // up [annotationOverlayActive] is true and the room puts its AnnotationController in burned-in mode (the
+  // strokes are in the video, nothing is sent as vectors). Refused / failed: nothing is said, the in-app
+  // annotation on the share view stays the way to draw. Hidden on every stop (our Stop, the system's Stop via
+  // shareStopped, a revoked permission, leaving) and when the presenter closes it from its own toolbar.
+
+  final ValueNotifier<bool> _annotOverlay = ValueNotifier<bool>(false);
+  bool _annotOverlayDeclined = false;
+
+  /// Bumped on every share start / stop: an overlay offer from an earlier share gives up.
+  int _shareGen = 0;
+
+  /// The native annotation overlay is shown (room.dart: `_annot.setBurnedIn(value)`).
+  ValueListenable<bool> get annotationOverlayActive => _annotOverlay;
+
+  /// The overlay's starting colour (ARGB) and thickness 0..2; room.dart passes its AnnotationController's.
+  int? get annotationColorArgb => null;
+  int get annotationThickness => 1;
+
+  Future<void> _offerAnnotationOverlay(int gen) async {
+    if (!AndroidAnnotationOverlay.supported || AppConfig.disableList.contains('live.annotation')) return;
+    bool current() => mounted && gen == _shareGen && _elFaheemScreenTrack != null;
+    if (!current()) return;
+    var permitted = await AndroidAnnotationOverlay.isPermitted();
+    if (!permitted) {
+      if (_annotOverlayDeclined || !current() || !mounted) return;
+      final ok = await appConfirm(
+        context,
+        message: t('للرسم فوق التطبيقات الأخرى أثناء المشاركة، اسمح بـ «الظهور فوق التطبيقات الأخرى». يمكنك الرسم داخل التطبيق بدونه.',
+            'To draw over other apps while you share, allow "Display over other apps". Without it you draw inside the app.'),
+        confirmLabel: t('السماح', 'Allow'),
+      );
+      if (!ok) {
+        _annotOverlayDeclined = true;
+        return;
+      }
+      if (!current()) return;
+      permitted = await AndroidAnnotationOverlay.requestPermission();
+      if (!permitted) {
+        _annotOverlayDeclined = true;
+        log('[SS] annotation overlay: permission refused — in-app annotation only');
+        return;
+      }
+    }
+    if (!current() || !mounted) return;
+    final presets = annotPresetColors(context.colors);
+    AndroidAnnotationOverlay.onClosed = () => _annotOverlay.value = false;
+    final shown = await AndroidAnnotationOverlay.show(
+      colors: [for (final c in presets) c.toARGB32()],
+      color: annotationColorArgb ?? presets.first.toARGB32(),
+      thickness: annotationThickness,
+      surface: LivePalette.surfaceHi.toARGB32(),
+      accent: LivePalette.accent.toARGB32(),
+    );
+    if (!shown) {
+      log('[SS] annotation overlay: not shown — in-app annotation only');
+      return;
+    }
+    if (gen != _shareGen) {
+      // The share stopped while the overlay was coming up.
+      await AndroidAnnotationOverlay.hide();
+      return;
+    }
+    _annotOverlay.value = true;
+    log('[SS] annotation overlay on (burned in)');
+  }
+
+  Future<void> _hideAnnotationOverlay() async {
+    if (!AndroidAnnotationOverlay.supported) return;
+    await AndroidAnnotationOverlay.hide();
+    if (_annotOverlay.value) _annotOverlay.value = false;
   }
 
   // Blocking helpers _stopScreenForShare() / _stopShareAndReUpgrade() were
   // removed — they belonged to the old downgrade-to-mic-then-back
-  // workaround for the two-projection conflict. In the single-projection
-  // architecture (see start/stop branches above), local recording never
-  // pauses around a share toggle, so there's nothing left to downgrade or
-  // re-upgrade.
+  // workaround for the two-projection conflict.
 
   // ── Web ───────────────────────────────────────────────────────────────────
 
+  // START: the options sheet (Detail / Motion, tab audio where the browser can) → ONE getDisplayMedia with the
+  //   preset's limits (W7) → the video published as screenShareVideo (one layer, the preset's encoding and
+  //   degradation, contentHint detail / motion) and the tab / system audio, when the browser gave one, as a
+  //   screenShareAudio LocalAudioTrack (W1, as LiveKit's createScreenShareTracksWithAudio does) → the same
+  //   stream to the recorder. No audio (Firefox / Safari, or "Share audio" unticked) is no error: a notice says
+  //   the viewers hear the microphone only.
+  // STOP (our button, the browser's "Stop sharing" via onLocalTrackUnpublished, a revoked permission): both
+  //   publications found by source and unpublished, the tracks stopped, the recorder detached, the UI reset.
   Future<void> _toggleScreenShareWeb(
       LocalParticipant local,
       bool isSharing,
       ) async {
-    if (!isSharing) {
+    if (isSharing || _webScreenShareTrack != null) {
+      await _stopScreenShareWeb(local);
+      return;
+    }
+    if (lkPlatformIsWebMobile()) {
+      showSnack(t('مشاركة الشاشة غير متاحة في متصفح الهاتف', 'Screen sharing is not available in a phone browser'));
+      return;
+    }
+    final audioSupported = web_rec.displayAudioSupported() && shareAudioAllowed;
+    final choice = await showShareOptionsSheet(context, deviceAudioSupported: audioSupported, web: true);
+    if (choice == null || !mounted) return;
+    final preset = SharePreset.of(choice.quality);
+    rtc.MediaStream? stream;
+    try {
+      // ONE capture, shared by the live share and the recorder (two getDisplayMedia calls meant two browser
+      // pickers, and possibly two different tabs in the share and the recording).
+      stream = await rtc.navigator.mediaDevices.getDisplayMedia(
+        preset.webDisplayMediaConstraints(audio: choice.deviceAudio),
+      );
+      final videoTrack = stream.getVideoTracks().first;
+      if (!web_rec.setTrackContentHint(videoTrack, preset.contentHint)) {
+        log('[SS] Web: contentHint not set (the browser default applies)');
+      }
+      Map<String, dynamic> settings = const {};
       try {
-        // ── Single capture, shared by both consumers ──────────────────────
-        // Previously this called TWO independent getDisplayMedia()s: one
-        // here (web_rec.getDisplayMedia(), feeding only the recorder) and
-        // a second one implicitly inside setScreenShareEnabled(true) below
-        // (LiveKit captures its own stream internally when you don't hand
-        // it one) — two separate browser "Choose what to share" dialogs,
-        // and if the user picked a different window/tab in each, the
-        // recording and the live share could end up showing different
-        // content entirely.
-        //
-        // Fixed the same way the Android single-projection path already
-        // proves works in this codebase (see publishElFaheemTrack above):
-        // capture ONE stream via flutter_webrtc's own getDisplayMedia
-        // (not the recorder's standalone helper — this one returns a
-        // `rtc.MediaStream` that LocalVideoTrack can publish directly),
-        // then reuse that exact stream for both LiveKit and the recorder,
-        // instead of letting either side capture independently.
-        final rtc.MediaStream screenStream =
-        await rtc.navigator.mediaDevices.getDisplayMedia({
-          'video': {
-            'width': 1280, 'height': 720, 'frameRate': 30,
-          },
-          'audio': true,
-        });
-        final videoTrack = screenStream.getVideoTracks().first;
-        // ignore: invalid_use_of_internal_member
-        _webScreenShareTrack = LocalVideoTrack(
-          TrackSource.screenShareVideo,
-          screenStream,
-          videoTrack,
-          const ScreenShareCaptureOptions(),
-        );
-        await _safeNegotiate(() async {
-          _webScreenSharePublication =
-          await local.publishVideoTrack(_webScreenShareTrack!);
-        });
+        settings = videoTrack.getSettings();
+      } catch (_) {}
+      final (w, h) = preset.sizeFromSettings(settings);
+      // ignore: invalid_use_of_internal_member
+      final track = LocalVideoTrack(
+        TrackSource.screenShareVideo,
+        stream,
+        videoTrack,
+        preset.captureOptions(w, h),
+      );
+      _webScreenShareTrack = track;
+      // Not through _safeNegotiate: a skipped publish would leave the capture running unseen.
+      await local.publishVideoTrack(track, publishOptions: preset.publishOptions);
+      log('[SS] Web: share published ${w}x$h ${preset.quality.name} ${preset.maxFps}fps '
+          '${preset.maxBitrate ~/ 1000}kbps');
 
-        if (recorder == null) {
-          log('[SS] Web: recorder is null — screen stream will NOT reach '
-              'the compositor (nothing will be recorded for this share)');
+      final audioTracks = stream.getAudioTracks();
+      if (audioTracks.isNotEmpty && choice.deviceAudio) {
+        // ignore: invalid_use_of_internal_member
+        final audio = LocalAudioTrack(
+          TrackSource.screenShareAudio,
+          stream,
+          audioTracks.first,
+          const AudioCaptureOptions(),
+        );
+        _webScreenAudioTrack = audio;
+        try {
+          await local.publishAudioTrack(audio, publishOptions: SharePreset.screenAudioPublishOptions);
+          log('[SS] Web: tab / system audio published');
+        } catch (e) {
+          log('[SS] Web: tab audio not published: $e');
+          _webScreenAudioTrack = null;
+          try {
+            await audio.stop();
+          } catch (_) {}
+          showSnack(t('تعذّر نشر صوت الجهاز: يسمع الحضور الميكروفون فقط', 'Device audio could not be shared: viewers hear your microphone only'));
         }
-        // Feeds the compositor from the SAME stream just published above —
-        // see streamFromLivekitTrack's doc comment in recorder_web_impl.dart
-        // for the one piece of this that still needs confirming against
-        // the actual flutter_webrtc fork in use.
-        final nativeStream = web_rec.streamFromLivekitTrack(screenStream);
+      } else if (choice.deviceAudio) {
+        showSnack(t('لم يشارك المتصفح صوتاً: يسمع الحضور الميكروفون فقط. فعّل «مشاركة الصوت» في نافذة المتصفح لمشاركته.',
+            'The browser shared no audio: viewers hear your microphone only. Tick "Share audio" in the browser\'s dialog to include it.'));
+      }
+
+      if (recorder == null) {
+        log('[SS] Web: no recorder — the share is live but not recorded');
+      } else {
+        // The compositor gets the SAME stream (video + the tab audio) that was just published.
+        final nativeStream = web_rec.streamFromLivekitTrack(stream);
         if (nativeStream != null) {
           await recorder?.attachScreenToRecorder(nativeStream);
         } else {
-          log('[SS] Web: could not bridge the LiveKit screen stream to the '
-              'recorder — see streamFromLivekitTrack TODO. Live share will '
-              'work; the recording will miss the screen for this share.');
+          log('[SS] Web: could not bridge the screen stream to the recorder — the recording misses this share');
         }
-
-        // Screen/tab audio (previously included via
-        // setScreenShareEnabled(..., captureScreenAudio: true)) is NOT
-        // republished here. LocalVideoTrack's constructor above is
-        // confirmed correct — it's already used the same way for
-        // Android's ElFaheem track — but I don't have a confirmed
-        // LocalAudioTrack constructor signature anywhere in this codebase
-        // to build on, and guessing at one risks a straight compile error
-        // rather than just a runtime issue. If `screenStream` has an audio
-        // track (screenStream.getAudioTracks()) and you want it published,
-        // check LocalAudioTrack's actual constructor for your livekit_client
-        // version and publish it the same way the video track is above —
-        // happy to wire it in once confirmed.
-        log('[SS] Web: screen share active (single capture)');
-      } catch (e) {
-        log('[SS] Web start error: $e');
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      log('[SS] Web start error: $e');
+      if (_webScreenShareTrack != null) {
+        await _stopScreenShareWeb(local);
+      } else if (stream != null) {
+        try {
+          for (final tr in stream.getTracks()) {
+            await tr.stop();
+          }
+        } catch (_) {}
+      }
+      final text = e.toString();
+      // The person closed the browser's picker (NotAllowedError / AbortError): no error, a short note.
+      if (text.contains('NotAllowedError') || text.contains('AbortError') || text.contains('Permission denied')) {
+        showSnack('lr_screen_share_denied'.tr);
+      } else {
         showSnack(trp('lr_screen_share_failed', {'e': shareErrorText(e)}));
       }
-    } else {
-      try {
-        if (_webScreenSharePublication != null) {
-          await _safeNegotiate(
-                () => local.removePublishedTrack(_webScreenSharePublication!.sid),
-          );
-          await _webScreenShareTrack?.stop();
-          _webScreenShareTrack = null;
-          _webScreenSharePublication = null;
-        } else {
-          // Fallback for any path that still went through setScreenShareEnabled.
-          await _safeNegotiate(() => local.setScreenShareEnabled(false));
+    }
+  }
+
+  Future<void> _stopScreenShareWeb(LocalParticipant? local, {bool endedOutside = false}) async {
+    if (_webStopping) return;
+    _webStopping = true;
+    try {
+      final hadShare = _webScreenShareTrack != null;
+      // The recorder first: it must not keep drawing a stream that is about to end.
+      if (hadShare) {
+        try {
+          await recorder?.detachScreenFromRecorder();
+        } catch (e) {
+          log('[SS] Web: recorder detach error: $e');
         }
-        await recorder?.detachScreenFromRecorder();
-        log('[SS] Web: screen share stopped');
-      } catch (e) {
-        log('[SS] Web stop error: $e');
       }
+      if (local != null) {
+        for (final source in const [TrackSource.screenShareAudio, TrackSource.screenShareVideo]) {
+          final pub = local.getTrackPublicationBySource(source);
+          if (pub == null) continue;
+          try {
+            await local.removePublishedTrack(pub.sid);
+          } catch (e) {
+            log('[SS] Web unpublish $source error: $e');
+          }
+        }
+      }
+      final video = _webScreenShareTrack, audio = _webScreenAudioTrack;
+      _webScreenShareTrack = null;
+      _webScreenAudioTrack = null;
+      for (final tr in [audio, video]) {
+        try {
+          await tr?.stop();
+        } catch (_) {}
+      }
+      if (hadShare) log('[SS] Web: screen share stopped${endedOutside ? ' (by the browser)' : ''}');
+      if (endedOutside && hadShare) showSnack(t('توقفت مشاركة الشاشة', 'Screen sharing stopped'));
+      if (mounted) setState(() {});
+    } finally {
+      _webStopping = false;
     }
   }
 
@@ -506,60 +716,23 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
         // arrives on the first Darwin frame notification.
         recorder?.prepareUpgradeWait();
 
-        // Enable LiveKit screen-share track in parallel so participants see
-        // the screen via WebRTC while the extension records it locally.
-        unawaited(
-          _safeNegotiate(
-                () => local.setScreenShareEnabled(true).catchError((_) => null),
-          ),
-        );
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        // ── DIAGNOSTIC (2026-07-30): disable echo cancellation for the
-        // duration of the share — see the const's doc comment above for
-        // why. Non-fatal if it fails; the share proceeds either way.
-        try {
-          await local.setMicrophoneEnabled(
-            true,
-            audioCaptureOptions: _shareCompatibleAudioCaptureOptions,
-          );
-          log('[SS] iOS: echoCancellation disabled for share (diagnostic)');
-        } catch (e) {
-          log('[SS] iOS: failed to disable echoCancellation (non-fatal): $e');
-        }
-
-        // Show the "Start Broadcast" confirmation sheet for OUR extension.
-        // Internally this: pauses RPScreenRecorder, finalises + rotates chunk,
-        // registers Darwin listeners, auto-taps the picker button.
-        await _ssChannel.invokeMethod<void>('showBroadcastPicker');
+        // I1: nothing is published here. On iOS setScreenShareEnabled(true) answers with LiveKit's own
+        // requestActivation (a SECOND picker); LiveKit publishes the share by itself when the extension posts
+        // iOS_BroadcastStarted (RoomOptions.defaultScreenShareCaptureOptions, useiOSBroadcastExtension).
+        // Shows the "Start Broadcast" sheet for OUR extension and arms the in-app recorder.
+        await IosShareNative.start();
         log('[SS] iOS: broadcast picker shown');
 
-        // Step 2: Wait for Phase-2 upgrade — confirms the AVAssetWriter is
-        // writing real broadcast frames (not just paused).
-        // upgradeToScreenRecording() calls invokeMethod('upgradeToScreenRecording')
-        // which emits 'videoChunksActive' from native IFF self.recording==true.
-        // The first Darwin frame from the extension triggers beginChunkWriter()
-        // in AppDelegate, which means self.recording is already true by the
-        // time the user's extension confirms — so this resolves normally.
-        // Timeout is generous (30s) since the user is manually confirming
-        // the system broadcast picker.
-        log('[SS] iOS: waiting for broadcast Phase-2 upgrade...');
-        await recorder?.upgradeToScreenRecording();
-        log('[SS] iOS: Phase-2 confirmed — broadcast chunks active');
-
-        // Defensive: setScreenShareEnabled(true) above renegotiates the
-        // peer connection to add the screen-share track, which can cause
-        // LiveKit to republish the mic as a new LocalAudioTrack instance.
-        // room.dart's LocalTrackPublishedEvent listener already catches
-        // this automatically, but that event's timing relative to this
-        // await chain isn't guaranteed, so re-check here too — a cheap
-        // no-op if the tap is already bound to the current track.
-        restartAudioTap();
-
-        // Update UI — banner + toast appear
-        _isBroadcastActive = true;
-        onIOSBroadcastStateChanged(true);
-
+        // The person may still cancel the sheet: the share state follows IosShareNative.broadcasting
+        // (_onIosBroadcastingChanged), not this call.
+        final rec = recorder;
+        if (rec != null) {
+          // Phase-2 upgrade: confirms the AVAssetWriter writes real broadcast frames (30 s timeout, the user
+          // confirms the system sheet by hand). Without a recording there is nothing to wait for.
+          log('[SS] iOS: waiting for broadcast Phase-2 upgrade...');
+          await rec.upgradeToScreenRecording();
+          log('[SS] iOS: Phase-2 confirmed — broadcast chunks active');
+        }
       } catch (e) {
         log('[SS] iOS start error: $e');
         if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
@@ -585,11 +758,13 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
     if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
       recorder?.onBroadcastEvent = null;
     }
-    if (!_isBroadcastActive) return;
+    // I2: the extension may be live although Dart never saw it start (app restarted, LiveKit's own picker).
+    if (!_isBroadcastActive && !IosShareNative.broadcasting.value) return;
     _isBroadcastActive = false;
 
     if (leaving) {
       try {
+        await IosShareNative.requestStop();
         await _ssChannel.invokeMethod<void>('stopBroadcast');
         log('[SS] iOS: stopBroadcast sent to native (room closed)');
       } catch (e) {
@@ -598,24 +773,10 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
       return;
     }
 
-    // ── DIAGNOSTIC (2026-07-30): restore normal call-quality echo
-    // cancellation once the share ends — see the const's doc comment
-    // near the top of this file.
     try {
-      final local = room.localParticipant;
-      if (local != null) {
-        await local.setMicrophoneEnabled(
-          true,
-          audioCaptureOptions: _callQualityAudioCaptureOptions,
-        );
-        log('[SS] iOS: echoCancellation restored after share (diagnostic)');
-      }
-    } catch (e) {
-      log('[SS] iOS: failed to restore echoCancellation (non-fatal): $e');
-    }
-
-    try {
-      // Tell AppDelegate to stop the extension and rotate the recording chunk.
+      // Ask the extension to end (iOS_BroadcastRequestStop), then tell AppDelegate to stop it and rotate the
+      // recording chunk (it posts the same request; both are idempotent).
+      await IosShareNative.requestStop();
       await _ssChannel.invokeMethod<void>('stopBroadcast');
       log('[SS] iOS: stopBroadcast sent to native');
     } catch (e) {
@@ -638,12 +799,43 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
   /// Override in the parent State to show/hide the stop-share banner + toast.
   void onIOSBroadcastStateChanged(bool active) {}
 
+  bool _iosStateBound = false;
+
+  /// iOS (I3): the share state follows the extension (IosShareNative.broadcasting), not the publication. Call
+  /// once from initState; [disposeBroadcastSub] undoes it.
+  void initIOSBroadcastState() {
+    if (!IosShareNative.supported || _iosStateBound) return;
+    _iosStateBound = true;
+    IosShareNative.bind();
+    IosShareNative.broadcasting.addListener(_onIosBroadcastingChanged);
+  }
+
+  void _onIosBroadcastingChanged() {
+    if (!mounted) return;
+    final on = IosShareNative.broadcasting.value;
+    if (on == _isBroadcastActive) return;
+    _isBroadcastActive = on;
+    onIOSBroadcastStateChanged(on); // banner + toast
+    if (on) {
+      restartAudioTap(); // the mic may be republished during the negotiation
+    } else {
+      // Control Center stop: LiveKit unpublishes by itself; this is only belt and braces.
+      unawaited(_safeNegotiate(
+          () => room.localParticipant?.setScreenShareEnabled(false).catchError((_) => null) ?? Future.value()));
+    }
+  }
+
   /// Clean up on widget dispose.
   void disposeBroadcastSub() {
     if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
       recorder?.onBroadcastEvent = null;
     }
     _isBroadcastActive = false;
+    if (_iosStateBound) {
+      _iosStateBound = false;
+      IosShareNative.broadcasting.removeListener(_onIosBroadcastingChanged);
+      unawaited(IosShareNative.unbind());
+    }
   }
 
   // ── Desktop ───────────────────────────────────────────────────────────────

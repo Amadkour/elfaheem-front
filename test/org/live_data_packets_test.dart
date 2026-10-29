@@ -12,6 +12,8 @@ void main() {
       expect(liveDataRoute('quiz'), LiveDataRoute.quiz);
       expect(liveDataRoute('hand'), LiveDataRoute.handOrChat);
       expect(liveDataRoute('chat'), LiveDataRoute.handOrChat);
+      expect(liveDataRoute('annot'), LiveDataRoute.annotation);
+      expect(liveDataRoute('annot.laser'), LiveDataRoute.annotation);
     });
 
     test('no topic is matched by payload (older senders)', () {

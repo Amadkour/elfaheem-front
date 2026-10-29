@@ -623,7 +623,7 @@ packages:
     source: hosted
     version: "0.14.4"
   flutter_lints:
-    dependency: "direct overridden"
+    dependency: "direct dev"
     description:
       name: flutter_lints
       sha256: "3105dc8492f6183fb076ccf1f351ac3d60564bff92e20bfc4af9cc1651f4e7e1"
@@ -769,11 +769,11 @@ packages:
     dependency: "direct main"
     description:
       path: "."
-      ref: "163469226e1d261a6461f1b7244c1d0ff0cec770"
-      resolved-ref: "163469226e1d261a6461f1b7244c1d0ff0cec770"
+      ref: "00e021c345fe7d2f541058354b122b6e9a21fbde"
+      resolved-ref: "00e021c345fe7d2f541058354b122b6e9a21fbde"
       url: "https://github.com/Amadkour/flutter-webrtc.git"
     source: git
-    version: "1.6.0"
+    version: "1.6.2+hotfix.4"
   fluttertoast:
     dependency: "direct main"
     description:

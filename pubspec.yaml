@@ -102,15 +102,14 @@ dependencies:
   screen_brightness: ^2.1.11
   volume_controller: ^3.7.1
 dependency_overrides:
+  # The fork rebased on upstream v1.6.2+hotfix.4 (the exact version livekit_client 2.13.1 pins, WebRTC-SDK
+  # 150.7871.01 on Android and iOS), branch nextbrain/1.6.2-hotfix.4: the single-projection screen-share capturer,
+  # device audio for screen share, the mic soft mute (D-080). Pinned to a commit on purpose (D-010); for local
+  # fork work use `path: ../flutter-webrtc` and pin again before committing.
   flutter_webrtc:
     git:
       url: https://github.com/Amadkour/flutter-webrtc.git
-      # pinned to the commit the app is built and tested with (was `main`, which moves under every build)
-      ref: 163469226e1d261a6461f1b7244c1d0ff0cec770
-  flutter_lints: ^6.0.0
-
-  flutter_test:
-    sdk: flutter
+      ref: 00e021c345fe7d2f541058354b122b6e9a21fbde
 
 flutter:
   uses-material-design: true
@@ -319,6 +318,8 @@ flutter_native_splash:
     color_dark: "#0F7B5F"
   web: true
 dev_dependencies:
-  flutter_test: any
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.3
   xml: 7.0.1

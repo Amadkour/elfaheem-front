@@ -685,3 +685,56 @@ a regression fails CI.
 **Rejected.** Building every tab at open (the old `IndexedStack`: one home's open cost every tab's requests);
 rebuilding a tab on every visit (loses its state and re-fetches); a per-tab preload flag (no role uses it, and it
 would quietly bring the cost back).
+
+## D-078 — Live classes stay on LiveKit (WebRTC SFU) + server recording; the 5 s chunks are a recording path only · 2026-10-29 · accepted
+
+**Decision.** Live delivery stays on the self-hosted LiveKit SFU (WebRTC: adaptive stream, dynacast, simulcast,
+sub-second latency, reconnection in the SDK) for every platform. The device-uploaded 5 s chunks that the server joins
+with ffmpeg were never the live path: viewers always watched over WebRTC. They are the client recorder
+(`RECORDING_MODE=client`) and the meeting recorder to Google Drive / OneDrive. Server recording (LiveKit Egress) is
+the target for both, tuned for low CPU and high screen-share quality (the design follows the recording research in
+`docs/live/`); the device recorder stays as the fallback while older app versions exist. The audit that led here is
+`docs/live/audit/` (2026-10-29).
+**Rejected.** Replacing WebRTC with LL-HLS or RTMP/SRT ingest for live classes (seconds of latency, no two-way
+audio, a transcoder per room — worse for interactive teaching); fixing the chunk path as a live transport (it was
+never one); a second media server next to LiveKit.
+
+## D-079 — Live annotation: vector strokes over the data channel, burned in only for Android whole-screen share · 2026-10-29 · proposed
+
+**Decision.** Annotations are vector strokes sent on the LiveKit data channel, never pixels: topic `annot`
+(reliable) for stroke start / points / end, undo, erase and clear, and `annot.laser` (lossy) for the laser pointer.
+Points are normalised to the shared video's content rect (0..1 on both axes, mapped through each viewer's `contain`
+fit), carry pressure 0..1, and are batched every ~33 ms. Tools: pen, highlighter, stroke eraser, undo (per author),
+clear all (host), colour, thickness (a fraction of the frame width), laser (fades). Late joiners get the current
+board from the presenter as a snapshot packet. The presenter and the host draw; students draw only when the host
+allows it. This is what Zoom / Teams do: the presenter annotates on top of the share, viewers see it in real time.
+Where the presenter shares the WHOLE screen from Android, a floating toolbar + canvas is drawn over other apps
+(`SYSTEM_ALERT_WINDOW`, asked once, with an in-app fallback when refused); MediaProjection captures that overlay,
+so the strokes are burned into the shared video (and every recording) and are not also sent as vectors (no double
+drawing); students cannot annotate in that mode. iOS cannot draw over other apps (ReplayKit has no overlay), and a
+browser cannot draw over another tab or window, so there the presenter annotates on the in-app view of the share and
+the strokes travel as vectors.
+**Rejected.** Sending annotation as video (latency of the video path, blurry text, recording-only quality); burning
+in on every platform (impossible on iOS / web); absolute pixel coordinates (break across screen sizes and
+orientations).
+
+## D-080 — Android screen share: share-only mode, device audio mixed into the mic, a "soft mute" while it runs · 2026-10-29
+
+**Decision.** The Android share no longer depends on a recording: `ScreenCaptureService` runs a share-only mode
+(MediaProjection + `ScreenPlaceholderRenderer`, no MediaRecorder, FGS type mediaProjection + microphone). Every
+share start switches the renderer to live; share stop releases the VirtualDisplay and keeps the projection only
+while a recording runs below API 34 (a 34+ projection makes one VirtualDisplay); the system's own Stop ends the
+share (event `shareStopped` on `live_events`) without ending the recording. Device audio (API 29+) is captured
+with `AudioPlaybackCaptureConfiguration` (usages MEDIA / GAME / UNKNOWN, the app's own uid excluded: no echo of the
+remote voices) and mixed into the outgoing mic buffer through WebRTC's `JavaAudioDeviceModule.AudioBufferCallback`
+in the flutter_webrtc fork (`ElFaheemAudioMixer`), the way LiveKit's native Android SDK does it — not a separate
+`screenShareAudio` track, which the fork cannot feed. Because the shared audio rides on the mic track, muting the
+mic during such a share zeroes the mic samples natively ("soft mute", `LiveMicGate` in the app) and keeps the
+track publishing; viewers then see the presenter's mic as on. At share end a soft mute becomes a real mute again.
+Presets: Detail (≤1920 px long side, ≤15 fps, 2.5 Mbps, maintain resolution) and Motion (720p, 30 fps, 3 Mbps,
+maintain frame rate), one layer each. A phone call (call audio mode, not a media app taking focus) mutes the mic
+and restores it afterwards.
+**Rejected.** LiveKit mute during device audio (it disables / stops the mic track: the shared audio would go
+silent too, and the SFU drops a muted track's packets); a second AudioRecord-fed track (no custom audio source in
+this WebRTC build); muting on every audio-focus loss (a video played in another app during the share would mute
+the presenter).

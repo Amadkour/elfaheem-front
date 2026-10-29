@@ -17,11 +17,14 @@ import 'prejoin_layout.dart';
 import 'prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
 import 'room.dart';
+import 'widgets/live_room_rules.dart' show liveConnectRetryDelay;
+import 'widgets/share_presets.dart' show SharePreset;
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart' show WaitingForHostPage;
 import 'package:flutter_education_app/features/shared/live/live_mini_box.dart' show LiveMiniTile;
 import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
+import 'package:flutter_education_app/features/shared/live/live_controls_api.dart' show liveJoinRefusalText;
 import 'package:flutter_education_app/design/app_kit.dart' show appToast;
 import 'package:flutter_education_app/features/shared/points/points_api.dart' show LivePlanDeclined;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -127,6 +130,38 @@ class JoinArgs {
   /// ApiClient instance scoped to the authenticated user.
   /// Passed down to RoomPage → _ClientRecorder for chunk upload auth.
   final ApiClient apiClient;
+
+  /// The same join again after a lost connection (D9): the session the room ran (a quick session created on
+  /// the first join keeps its id), pressed by itself once the devices are ready.
+  JoinArgs forRejoin({required int sessionId}) => JoinArgs(
+        e2ee: e2ee,
+        e2eeKey: e2eeKey,
+        simulcast: simulcast,
+        adaptiveStream: adaptiveStream,
+        dynacast: dynacast,
+        preferredCodec: preferredCodec,
+        enableBackupVideoCodec: enableBackupVideoCodec,
+        sessionId: sessionId,
+        courseId: courseId,
+        maxStudents: maxStudents,
+        isTeacher: isTeacher,
+        userName: userName,
+        userId: userId,
+        onStart: onStart,
+        onEnd: onEnd,
+        onComplete: onComplete,
+        sessionName: sessionName,
+        apiClient: apiClient,
+        guest: guest,
+        canPublish: canPublish,
+        roomRef: roomRef,
+        isHost: isHost,
+        onPoll: onPoll,
+        canRecord: canRecord,
+        autoJoin: true,
+        startsAt: startsAt,
+        hostName: hostName,
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -134,9 +169,13 @@ class JoinArgs {
 // prejoin_layout.dart (PreJoinLayout) so it can be tested without LiveKit.
 // ─────────────────────────────────────────────────────────────────────────────
 class PreJoinPage extends StatefulWidget {
-  const PreJoinPage({required this.args, super.key});
+  const PreJoinPage({required this.args, super.key, this.startMic = true, this.startCam = true});
 
   final JoinArgs args;
+
+  /// The microphone / camera to start with (a Rejoin restores what the person had in the room, D9).
+  final bool startMic;
+  final bool startCam;
 
   @override
   State<StatefulWidget> createState() => _PreJoinPageState();
@@ -148,8 +187,8 @@ class _PreJoinPageState extends State<PreJoinPage> {
   StreamSubscription? _subscription;
 
   bool _busy = false;
-  bool _enableVideo = true;
-  bool _enableAudio = true;
+  late bool _enableVideo = widget.startCam;
+  late bool _enableAudio = widget.startMic;
 
   /// Set once the room took over the tracks: dispose must not stop them then.
   bool _joined = false;
@@ -426,10 +465,10 @@ class _PreJoinPageState extends State<PreJoinPage> {
         maxBitrate: 5 * 1000 * 1000,
         maxFramerate: 60,
       );
-      const screenEncoding = VideoEncoding(
-        maxBitrate: 4 * 1000 * 1000,
-        maxFramerate: 30,
-      );
+      // D14: one screen-share preset everywhere. Android and the web publish their own track with the mode the
+      // presenter picked (SharePreset); what still goes through setScreenShareEnabled (iOS, desktop) gets
+      // "Detail" (1080p, 15 fps, 2.5 Mbps) instead of the old 1080p15 capture with 30 fps / 4 Mbps encoding.
+      final screenEncoding = SharePreset.detail.encoding;
       late int localSessionId;
       if (args.sessionId==null && !args.guest){
         final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
@@ -439,7 +478,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         }
         localSessionId = r.id;
       }
-      final room = Room(
+      Room newRoom() => Room(
         roomOptions: RoomOptions(
           adaptiveStream: args.adaptiveStream,
           dynacast: args.dynacast,
@@ -455,10 +494,14 @@ class _PreJoinPageState extends State<PreJoinPage> {
               dimensions: VideoDimensionsPresets.h1080_169,
             ),
           ),
-          defaultScreenShareCaptureOptions: const ScreenShareCaptureOptions(
+          // iOS (I1): LiveKit publishes the share by itself on iOS_BroadcastStarted with THESE options (no
+          // per-call options then); `useiOSBroadcastExtension` picks the extension's socket ('broadcast-manual').
+          // Ignored on the other platforms.
+          defaultScreenShareCaptureOptions: ScreenShareCaptureOptions(
+            useiOSBroadcastExtension: true,
             captureScreenAudio: true,
-            maxFrameRate: 30,
-            params: VideoParametersPresets.screenShareH1080FPS15,
+            maxFrameRate: SharePreset.detail.maxFps.toDouble(),
+            params: VideoParameters(dimensions: VideoDimensionsPresets.h1080_169, encoding: screenEncoding),
           ),
           defaultVideoPublishOptions: VideoPublishOptions(
             simulcast: args.simulcast,
@@ -473,27 +516,22 @@ class _PreJoinPageState extends State<PreJoinPage> {
         ),
       );
 
-      final listener = room.createListener();
-      final data = await _resolveJoin(args, args.sessionId ?? localSessionId);
-      if (data == null) {
-        // Waiting cancelled, or the host refused: stay on the pre-join page.
+      final sessionId = args.sessionId ?? localSessionId;
+      final data = await _resolveJoin(args, sessionId);
+      if (data == null) return; // waiting cancelled, or the host refused: stay on the pre-join page
+
+      // D10: a network failure is tried twice more (after 1 s, then 3 s) with a fresh Room and fresh tracks (a
+      // failed connect cleans its Room up and stops what it had published); a refused token (4xx) is not. A Room
+      // that never connected is disposed with its listener.
+      final (room, listener) = await _connectWithRetry(newRoom, data);
+      _joined = true;
+
+      if (!context.mounted) {
         await listener.dispose();
         await room.dispose();
         return;
       }
-
-      await room.prepareConnection(data.url, data.token);
-      await room.connect(
-        data.url,
-        data.token,
-        fastConnectOptions: FastConnectOptions(
-          microphone: TrackOption(track: _audioTrack),
-          camera: TrackOption(track: _videoTrack),
-        ),
-      );
-      _joined = true;
-
-      if (!context.mounted) return;
+      final nav = Navigator.of(context);
       final page = RoomPage(
         room,
         listener,
@@ -521,6 +559,13 @@ class _PreJoinPageState extends State<PreJoinPage> {
         liveStartedAt: data.liveStartedAt,
         startsAt: args.startsAt,
         hostName: args.hostName,
+        // D9: Rejoin opens this page again for the same session, joining by itself with the room's choices.
+        onRejoin: (micOn, camOn) {
+          if (!nav.mounted) return;
+          unawaited(nav.push(MaterialPageRoute<void>(
+            builder: (_) => PreJoinPage(args: args.forRejoin(sessionId: sessionId), startMic: micOn, startCam: camOn),
+          )));
+        },
       );
       await _showRoom(context, page, room);
 
@@ -533,9 +578,47 @@ class _PreJoinPageState extends State<PreJoinPage> {
       if (error is LivePlanDeclined) return;
       log('PreJoinPage._join error: $error');
       if (!context.mounted) return;
-      await context.showErrorDialog(error);
+      // The host's controls refused the join (423 room_locked, 403 participant_removed / guest_blocked): say why,
+      // never retry (a 4xx; liveConnectRetryDelay retries only network failures).
+      await context.showErrorDialog(liveJoinRefusalText(error) ?? error);
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Connects a new Room from [newRoom]; network failures are retried per [liveConnectRetryDelay]. Every Room
+  /// that failed is disposed (with its listener) before the next try or the rethrow.
+  Future<(Room, EventsListener<RoomEvent>)> _connectWithRetry(Room Function() newRoom, LiveResponseModel data) async {
+    for (var attempt = 0;; attempt++) {
+      final room = newRoom();
+      final listener = room.createListener();
+      try {
+        try {
+          await room.prepareConnection(data.url, data.token);
+        } catch (e) {
+          log('PreJoin: prepareConnection: $e'); // a warm-up only
+        }
+        await room.connect(
+          data.url,
+          data.token,
+          fastConnectOptions: FastConnectOptions(
+            microphone: TrackOption(track: _audioTrack),
+            camera: TrackOption(track: _videoTrack),
+          ),
+        );
+        return (room, listener);
+      } catch (e) {
+        await listener.dispose();
+        await room.dispose();
+        final wait = liveConnectRetryDelay(e, attempt);
+        if (wait == null || !mounted) rethrow;
+        log('PreJoin: connect failed (${attempt + 1}), retrying in ${wait.inSeconds}s: $e');
+        await Future<void>.delayed(wait);
+        if (!mounted) rethrow;
+        // The failed Room stopped the tracks it had published: start fresh ones with the same choices.
+        await _changeLocalAudioTrack();
+        await _changeLocalVideoTrack();
+      }
     }
   }
 

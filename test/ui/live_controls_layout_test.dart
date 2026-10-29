@@ -264,6 +264,44 @@ void main() {
     });
   });
 
+  // ── Annotate (D-079): beside Share; the label follows the toolbar ──
+  group('Annotate beside Share', () {
+    test('the action: null without a callback; Annotate / Stop drawing', () {
+      AppConfig.lang = 'en';
+      expect(ControlsWidgetState.annotateAction(onTap: null), isNull);
+      final idle = ControlsWidgetState.annotateAction(onTap: () {})!;
+      final open = ControlsWidgetState.annotateAction(onTap: () {}, open: true)!;
+      expect(idle.label, 'Annotate');
+      expect(open.label, 'Stop drawing');
+      expect(open.active, isTrue);
+      expect(idle.icon, isNot(open.icon));
+    });
+
+    testWidgets('a full bar with Annotate (open and closed), 320 px included: no overflow', (tester) async {
+      for (final open in [false, true]) {
+        await expectNoLayoutErrors(tester, () {
+          final a = _eight();
+          final annotate = ControlsWidgetState.annotateAction(onTap: () {}, open: open)!;
+          return Align(
+            alignment: Alignment.bottomCenter,
+            child: LiveControlBar(
+              primary: [a[0], a[1], a[2], annotate, a[3]],
+              secondary: [a[4], a[5], a[6], a[7]],
+              groups: [
+                [a[0], a[1], a[4], a[5], a[6]],
+                [a[2], annotate, a[7]],
+                [a[3]],
+              ],
+              end: _end(),
+            ),
+          );
+        }, act: (t) async {
+          expect(find.byKey(const ValueKey('live_room.end')), findsOneWidget);
+        });
+      }
+    });
+  });
+
   testWidgets('no secondary actions and few primaries: no More button', (tester) async {
     await expectNoLayoutErrors(tester, () {
       final a = _eight();

@@ -6,13 +6,22 @@ import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, ValueListenable;
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:livekit_client/livekit_client.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'widgets/live_palette.dart';
+// Annotation over the shared screen (D-079): docs/live/annotation_wiring.md, the "Annotation" region below
+import 'annotation/annotation_controller.dart';
+import 'annotation/annotation_layer.dart';
+import 'annotation/annotation_toolbar.dart'
+    show AnnotationControllerToolbar, annotPresetColors, annotShortcutThickness, annotShortcutTool;
+import 'widgets/live_call_service.dart';
+import 'widgets/live_locked_pill.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
@@ -32,6 +41,13 @@ import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' sh
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/shared/live/live_room_host.dart';
+// Host controls (live hardening L2): docs/live/teacher_controls_wiring.md, the "Host controls" region below
+import 'package:flutter_education_app/features/shared/live/live_controls_api.dart'
+    show kLiveRoomLockFeatureKey, kLiveTeacherControlsFeatureKey, liveControlTargetFrom, liveIdentityIsStudent,
+        liveIsGuestIdentity, LiveControlTarget;
+import 'package:flutter_education_app/features/shared/live/live_participant_controls.dart'
+    show LiveHostControlsController, LiveHostControlsHeader, LiveParticipantControlsButton, showLiveParticipantControls;
+import 'package:flutter_education_app/features/shared/live/live_end_signal.dart';
 import 'widgets/participant.dart';
 import 'widgets/participant_info.dart';
 import 'widgets/recording_placeholder.dart';
@@ -50,6 +66,11 @@ import 'package:flutter_education_app/features/shared/live/meeting_info_sheet.da
 import 'package:flutter_education_app/features/shared/points/live_plan_sheet.dart' show showLivePlanSheet;
 import 'package:permission_handler/permission_handler.dart';
 import 'widgets/room_screen_share.dart';
+import 'widgets/android_share.dart' show LiveMicGate;
+import 'widgets/live_room_ended.dart';
+import 'widgets/live_room_rules.dart';
+import 'widgets/live_tile_order.dart';
+import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'widgets/recorder_web_stub.dart'
 if (dart.library.html) 'widgets/recorder_web_impl.dart' as web_rec;
@@ -289,6 +310,10 @@ class RoomPage extends StatefulWidget {
   /// session's start). The (i) sheet's "Live for" counts from it; null → the person's own time in the room.
   final DateTime? liveStartedAt;
 
+  /// D9: the connection-lost dialog's Rejoin. The pre-join page passes how to join again (a fresh token, then
+  /// connect) with the microphone / camera as they were in the room; null hides Rejoin.
+  final void Function(bool micOn, bool camOn)? onRejoin;
+
   const RoomPage(
       this.room,
       this.listener, {
@@ -312,6 +337,7 @@ class RoomPage extends StatefulWidget {
         this.startsAt,
         this.hostName,
         this.liveStartedAt,
+        this.onRejoin,
       });
 
   @override
@@ -326,6 +352,129 @@ class _RoomPageState extends State<RoomPage>
   @override ClientRecorder? get recorder => _recorder;
   @override bool get isTeacher => widget.isTeacher;
   @override void showSnack(String msg) => _showSnack(msg);
+  @override bool get shareAudioAllowed => _allowed.shareAudio;
+  // The Android whole-screen overlay starts with the room's annotation colour / thickness (room_wiring_pending §4).
+  @override int? get annotationColorArgb => _annot.colorArgb;
+  @override int get annotationThickness => _annot.thickness;
+
+  // ── D29: what the server lets this participant publish (follows ParticipantPermissionsUpdatedEvent) ─────
+  late LiveAllowedControls _allowed = _allowedFrom(widget.room.localParticipant?.permissions);
+
+  LiveAllowedControls _allowedFrom(ParticipantPermissions? p) {
+    if (p == null) {
+      return widget.canPublish
+          ? liveAllowedControls(canPublish: true, sources: const [], host: widget.isTeacher || widget.host)
+          : LiveAllowedControls.none;
+    }
+    return liveAllowedControls(
+      canPublish: p.canPublish,
+      sources: [for (final s in p.canPublishSources) s.name],
+      host: widget.isTeacher || widget.host,
+    );
+  }
+
+  Future<void> _onLocalPermissions(ParticipantPermissions permissions) async {
+    final next = _allowedFrom(permissions);
+    final before = _allowed;
+    if (next == before || !mounted) return;
+    log('[LIVE] permissions: $before -> $next');
+    setState(() => _allowed = next);
+    final local = widget.room.localParticipant;
+    if (local != null) {
+      final revoked = liveRevokedSources(next, local.trackPublications.values.map((p) => p.source));
+      // The share first: on Android its device audio rides on the mic track (M1: a revoked share audio stops a
+      // share with device audio too; liveRevokedSources lists published sources only).
+      if (revoked.contains(TrackSource.screenShareVideo)) {
+        await stopScreenShare();
+      } else {
+        await stopShareIfDeviceAudioRevoked(
+          micRevoked: revoked.contains(TrackSource.microphone),
+          shareAudioRevoked: before.shareAudio && !next.shareAudio,
+        );
+      }
+      for (final source in revoked) {
+        if (source == TrackSource.screenShareVideo) continue;
+        final pub = local.getTrackPublicationBySource(source);
+        if (pub == null) continue;
+        try {
+          await local.removePublishedTrack(pub.sid);
+        } catch (e) {
+          log('[LIVE] unpublish $source after a permission change: $e');
+        }
+      }
+      if (!next.camera) _bgCamera.forget();
+    }
+    // Android 14+: the live-call service keeps the microphone alive in the background while one may be used.
+    if (next.mic != before.mic) unawaited(next.mic ? LiveCallService.start() : LiveCallService.stop());
+    switch (livePermissionNotice(before, next)) {
+      case LivePermissionNotice.granted:
+        _showSnack(t('سمح لك المضيف بالمشاركة: الميكروفون والكاميرا مغلقان حتى تفتحهما',
+            'The host let you take part: your microphone and camera stay off until you turn them on'));
+      case LivePermissionNotice.revoked:
+        _showSnack(t('غيّر المضيف ما يمكنك مشاركته', 'The host changed what you can share'));
+      case LivePermissionNotice.none:
+        break;
+    }
+  }
+
+  // ── D8: the camera while the app is in the background (phones) ──────────────────────────────────────────
+  final LiveBackgroundCamera _bgCamera = LiveBackgroundCamera();
+  AppLifecycleListener? _lifecycle;
+
+  void _onAppLifecycle(AppLifecycleState state) {
+    if (kIsWeb || !lkPlatformIsMobile()) return;
+    final local = widget.room.localParticipant;
+    if (local == null) return;
+    if (state == AppLifecycleState.hidden || state == AppLifecycleState.paused) {
+      // A frozen frame is all the others would see; the mic keeps going as the person set it, and a running
+      // screen share is never touched (it must continue in the background).
+      if (_bgCamera.onBackground(cameraOn: local.isCameraEnabled(), sharing: screenShareActive)) {
+        log('[LIVE] background: camera off');
+        unawaited(local.setCameraEnabled(false).then((_) {}, onError: (Object e) => log('[LIVE] camera off: $e')));
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      if (_bgCamera.onForeground(allowed: _allowed.camera)) {
+        log('[LIVE] foreground: camera back on');
+        unawaited(local.setCameraEnabled(true).then((_) {}, onError: (Object e) => log('[LIVE] camera on: $e')));
+      }
+    }
+  }
+
+  // ── D9: what Rejoin restores (kept up to date while connected; read once the room is gone) ───────────────
+  bool _lastMicOn = false;
+  bool _lastCamOn = false;
+
+  void _rememberLocalChoices() {
+    final local = widget.room.localParticipant;
+    if (local == null || widget.room.connectionState != ConnectionState.connected) return;
+    _lastMicOn = LiveMicGate.instance.micOn(local);
+    _lastCamOn = local.isCameraEnabled() || _bgCamera.pausedByUs;
+  }
+
+  // ── D21: one throttled re-layout (≤ 2 per second, the last change always applied) ──────────────────────
+  late final LiveUpdateThrottle _sortThrottle =
+      LiveUpdateThrottle(const Duration(milliseconds: 500), _sortParticipants);
+  final LiveSpeakerOrder _speakerOrder = LiveSpeakerOrder();
+  Timer? _sortRecheck;
+
+  void _scheduleSort() {
+    if (mounted) _sortThrottle.request();
+  }
+
+  // ── D27: decorative loops stop while the room is a box (and follow Reduce motion) ──────────────────────
+  ValueListenable<bool>? _minimized;
+
+  void _syncDecorLoops() {
+    if (!mounted) return;
+    if (_minimized?.value ?? false) {
+      _auroraAnim.stop();
+      _recDotAnim.stop();
+      if (_annotOpen) _closeAnnot(); // the box shows no toolbar
+      return;
+    }
+    syncMotionLoop(context, _auroraAnim, rest: 0);
+    if (!_recDotAnim.isAnimating) _recDotAnim.repeat(reverse: true); // tells something: never parked by motion
+  }
 
   // Live emoji reactions (everyone): published lossy on topic 'reaction', shown by LiveReactionsOverlay.
   late final LiveReactionsController _reactions = LiveReactionsController(
@@ -753,26 +902,66 @@ class _RoomPageState extends State<RoomPage>
     _audioTapCancel?.call();
     _audioTapCancel = null;
 
+    _dropTapBuffer();
     _audioTapCancel = micTrack.addAudioRenderer(
       onFrame: (frame) {
-        // Fire-and-forget: don't await, this fires on every audio frame
-        // (dropping the returned Future rather than awaiting keeps this
-        // callback from ever blocking on channel round-trip time).
-        _audioFrameChannel.invokeMethod('sendAudioFrame', {
-          'data': frame.data,
-          'sampleRate': frame.sampleRate,
-          'channels': frame.channels,
-          'format': frame.format.name,
-        });
+        // I14: ~100 ms per channel call instead of one per 10 ms frame (the native side timestamps by sample
+        // count and takes any frame size). A format change drops what was buffered in the old one.
+        final fmt = (frame.sampleRate, frame.channels, frame.format.name);
+        if (_tapFormat != fmt) {
+          _dropTapBuffer();
+          _tapFormat = fmt;
+        }
+        final bytesPerSample = frame.format == AudioFormat.Float32 ? 4 : 2;
+        _tapChunks.add(frame.data);
+        _tapBytes += frame.data.lengthInBytes;
+        _tapFrames += frame.data.lengthInBytes ~/ (math.max(1, frame.channels) * bytesPerSample);
+        if (_tapFrames >= frame.sampleRate ~/ 10) _flushTapBuffer();
       },
     );
     _tappedAudioTrack = micTrack;
     log('[REC] LiveKit audio tap: started');
   }
 
+  // I14: the tap's batch (one sendAudioFrame per ~100 ms).
+  final List<Uint8List> _tapChunks = [];
+  int _tapBytes = 0;
+  int _tapFrames = 0;
+  (int, int, String)? _tapFormat;
+
+  void _dropTapBuffer() {
+    _tapChunks.clear();
+    _tapBytes = 0;
+    _tapFrames = 0;
+  }
+
+  void _flushTapBuffer() {
+    final fmt = _tapFormat;
+    if (fmt == null || _tapChunks.isEmpty) {
+      _dropTapBuffer();
+      return;
+    }
+    final out = Uint8List(_tapBytes);
+    var at = 0;
+    for (final c in _tapChunks) {
+      out.setRange(at, at + c.lengthInBytes, c);
+      at += c.lengthInBytes;
+    }
+    _dropTapBuffer();
+    // Fire-and-forget: the audio callback never waits on the channel's round trip.
+    _audioFrameChannel.invokeMethod<void>('sendAudioFrame', {
+      'data': out,
+      'sampleRate': fmt.$1,
+      'channels': fmt.$2,
+      'format': fmt.$3,
+    }).catchError((Object e) => log('[REC] sendAudioFrame: $e'));
+  }
+
   void _stopLiveKitAudioTap() {
     _audioTapCancel?.call();
     _audioTapCancel = null;
+    _flushTapBuffer(); // what was buffered before the stop
+    _tapFormat = null;
     _tappedAudioTrack = null;
     log('[REC] LiveKit audio tap: stopped');
   }
@@ -820,7 +1009,10 @@ class _RoomPageState extends State<RoomPage>
   static const _controlsHideAfter = Duration(seconds: 4);
 
   bool get _controlsAutoHide =>
-      mounted && MediaQuery.sizeOf(context).width < kLiveControlsMobileBreakpoint && !_reactions.pickerOpen;
+      mounted &&
+      MediaQuery.sizeOf(context).width < kLiveControlsMobileBreakpoint &&
+      !_reactions.pickerOpen &&
+      !_annotOpen; // drawing: the bar stays (its Annotate action closes the toolbar)
 
   void _pokeControls() {
     _controlsHideTimer?.cancel();
@@ -854,12 +1046,17 @@ class _RoomPageState extends State<RoomPage>
     }
     final controls = _controlsKey.currentState;
     final k = e.logicalKey;
+    // The annotation toolbar's own keys (P / H / E / L, 1–3, Esc; AnnotationShortcuts) while it is open.
+    if (_annotOpen &&
+        (annotShortcutTool(k) != null || annotShortcutThickness(k) != null || k == LogicalKeyboardKey.escape)) {
+      return KeyEventResult.ignored;
+    }
     if (k == LogicalKeyboardKey.keyM) {
       controls?.toggleMic();
     } else if (k == LogicalKeyboardKey.keyV) {
       controls?.toggleCamera();
     } else if (k == LogicalKeyboardKey.keyS) {
-      if (!widget.isTeacher) return KeyEventResult.ignored;
+      if (!_allowed.share) return KeyEventResult.ignored;
       controls?.toggleShare();
     } else if (k == LogicalKeyboardKey.keyR) {
       _reactions.togglePicker();
@@ -953,6 +1150,20 @@ class _RoomPageState extends State<RoomPage>
     super.initState();
     AppAssistant.hide(); // full screen: no floating assistant bubble
     _setUpListeners();
+    // Android: share stopped from the system UI, phone calls (RoomScreenShareMixin).
+    initLiveNativeEvents();
+    // iOS: the share state follows the broadcast extension (RoomScreenShareMixin, I3).
+    initIOSBroadcastState();
+    // Android 14+: keeps the microphone alive in the background (a listen-only participant needs nothing). The
+    // notification's Leave only brings the app to the front; the usual confirmation and End follow.
+    if (_allowed.mic) unawaited(LiveCallService.start());
+    LiveCallService.onLeaveRequested = () {
+      if (mounted) unawaited(_leaveFromMiniBox());
+    };
+    // Annotation (D-079): the Android overlay's burned-in switch, the students' notices.
+    annotationOverlayActive.addListener(_onAnnotOverlay);
+    _annot.addListener(_onAnnotChanged);
+    _annotGranted = _annotStudentGranted;
     // A class can last hours: never let the phone sleep (it pauses camera / mic on many devices).
     WakelockPlus.enable().catchError((_) {});
 
@@ -1010,9 +1221,12 @@ class _RoomPageState extends State<RoomPage>
     );
 
     _serverRecording = widget.room.isRecording;
-    widget.room.addListener(_onRoomDidUpdate);
+    // One source of re-layouts: the room's events (the Room's own ChangeNotifier fired for the same changes
+    // again — D21), throttled in _scheduleSort.
     _hands.addListener(_onHandsChanged);
     _sortParticipants();
+    _rememberLocalChoices();
+    _lifecycle = AppLifecycleListener(onStateChange: _onAppLifecycle);
 
     if (lkPlatformIs(PlatformType.android)) {
       // Same call Hardware.setSpeakerphoneOn(true) forwarded to before it was deprecated.
@@ -1025,8 +1239,12 @@ class _RoomPageState extends State<RoomPage>
     if (!widget.isTeacher && !widget.isGuest && !_isMeeting) _startQuizPolling();
     if (widget.isTeacher && !_isMeeting) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
     _startLobby(); // host only; see the "Lobby" region
+    _startControls(); // host only; see the "Host controls" region
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Annotation: ask the room for the board (a late joiner sees what is drawn already).
+      if (mounted && _annotEnabled) _annot.requestSnapshot();
+
       // ── Step 1: request runtime permissions ───────────────────────────────
       // CAMERA and MICROPHONE are dangerous permissions on Android 6+.
       // PixelCopy itself needs no permission, but camera PiP and mic
@@ -1039,7 +1257,7 @@ class _RoomPageState extends State<RoomPage>
       final local = widget.room.localParticipant;
       // Listen-only guests never publish: skipping this keeps their mic off (the server token would refuse anyway).
       // A person who switched the mic off on the pre-join page stays muted until they unmute themselves.
-      if (local != null && widget.canPublish && widget.enableAudio) await _enableHdAudio(local);
+      if (local != null && _allowed.mic && widget.enableAudio) await _enableHdAudio(local);
 
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
@@ -1050,6 +1268,21 @@ class _RoomPageState extends State<RoomPage>
       }
     });
   }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Hosted in LiveRoomLayer: follow the box (minimized → the aurora and the REC dot stop).
+    if (_minimized == null && LiveRoomScope.maybeOf(context) != null) {
+      _minimized = LiveRoomHost.minimizedListenable;
+      _minimized?.addListener(_syncDecorLoops);
+    }
+    _syncDecorLoops();
+    if (!_annotColorSet) {
+      _annotColorSet = true;
+      _annot.setColor(annotPresetColors(context.colors).first.toARGB32());
+    }
+  }
+
   void _onRecorderUpdate() {
     if (!mounted) return;
     final state = _recorder?.state;
@@ -1108,8 +1341,18 @@ class _RoomPageState extends State<RoomPage>
 
   @override
   void dispose() {
-    widget.room.removeListener(_onRoomDidUpdate);
+    _sortThrottle.dispose();
+    _sortRecheck?.cancel();
+    _lifecycle?.dispose();
+    _minimized?.removeListener(_syncDecorLoops);
     _lobby?.dispose();
+    _controls?.dispose();
+    // Annotation: the Android overlay is hidden by disposeLiveNativeEvents() below (it owns onClosed).
+    annotationOverlayActive.removeListener(_onAnnotOverlay);
+    _annot.removeListener(_onAnnotChanged);
+    _annot.dispose();
+    unawaited(LiveCallService.stop());
+    LiveCallService.onLeaveRequested = null;
     _reactions.dispose();
     _hands.removeListener(_onHandsChanged);
     LiveQuizBroadcast.latest.removeListener(_onQuizPublished);
@@ -1147,6 +1390,8 @@ class _RoomPageState extends State<RoomPage>
       unawaited(stopIOSBroadcast(leaving: true));
       disposeBroadcastSub();
     }
+    // Android: a share still running ends with the room (VirtualDisplay + projection released).
+    disposeLiveNativeEvents();
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
@@ -1164,7 +1409,12 @@ class _RoomPageState extends State<RoomPage>
   /// layer is closed and the pre-join page pops itself; pushed as a plain route, the room and the pre-join
   /// page pop.
   void _leaveRoom() {
-    if (!mounted) return;
+    // Once: End for everyone may close the room from its own call AND from the disconnect it causes (a plain
+    // route would otherwise pop twice as many pages).
+    if (!mounted || _leftRoom) return;
+    _leftRoom = true;
+    unawaited(LiveCallService.stop());
+    LiveCallService.onLeaveRequested = null;
     final scope = LiveRoomScope.maybeOf(context);
     if (scope != null) {
       scope.close();
@@ -1173,6 +1423,8 @@ class _RoomPageState extends State<RoomPage>
     Navigator.pop(context);
     if (mounted) Navigator.pop(context);
   }
+
+  bool _leftRoom = false;
 
   /// The hang-up button of the minimized box: back to full screen, then the same confirmation as End.
   Future<void> _leaveFromMiniBox() async {
@@ -1211,7 +1463,9 @@ class _RoomPageState extends State<RoomPage>
   //   pipeline) — there's nothing that needs the screen to stay frozen for
   //   either call, only that they run in this specific order relative to
   //   each other.
-  Future<dynamic> _endSessionWithRecording() async {
+  /// [serverEnded]: the room was already ended on the server (End for everyone): the recorder is stopped and
+  /// drained the same way, without a second `onEnd` call.
+  Future<dynamic> _endSessionWithRecording({bool serverEnded = false}) async {
     if (_endingSession) return null;
     if (mounted) setState(() => _endingSession = true);
 
@@ -1255,16 +1509,27 @@ class _RoomPageState extends State<RoomPage>
     // function for why blocking navigation on either call, especially
     // onEnd()'s up-to-150s server-side wait, would be a bad regression).
     unawaited(() async {
-      try {
-        await widget.onEnd();
-      } catch (e) {
-        log('[REC] onEnd error: $e');
+      if (!serverEnded) {
+        try {
+          await widget.onEnd();
+        } catch (e) {
+          log('[REC] onEnd error: $e');
+        }
       }
       if (rec != null) {
         await _drainAndDispose(rec);
       }
     }());
 
+    // L1: an Android share with device audio soft-mutes the mic; really mute it before the disconnect, so the
+    // last frames are never heard.
+    if (!kIsWeb && lkPlatformIs(PlatformType.android)) {
+      try {
+        await LiveMicGate.instance.release(widget.room.localParticipant);
+      } catch (e) {
+        log('[LIVE] mic gate release: $e');
+      }
+    }
     _leaveRoom();
     return null;
   }
@@ -1585,57 +1850,105 @@ class _RoomPageState extends State<RoomPage>
     })
     ..on<RoomDisconnectedEvent>((event) async {
       log('Room disconnected: reason => ${event.reason}');
-      final isTeacherEnd =
-          event.reason == DisconnectReason.roomDeleted ||
-              event.reason == DisconnectReason.serverShutdown;
-      final userLeft = event.reason == DisconnectReason.clientInitiated;
+      if (_endedForAll) {
+        // This host ended the room for everyone: its own removal / the deleted room is no news to them. Leave as
+        // after End (the recorder stops and drains; once, whichever of this and the call's answer comes first).
+        WidgetsBindingCompatible.instance
+            ?.addPostFrameCallback((_) => unawaited(_endSessionWithRecording(serverEnded: true)));
+        return;
+      }
+      // A removal right after the host's "ending for everyone" packet is the session ending (live_end_signal.dart).
+      final action = liveDisconnectActionAfterEndSignal(
+        liveDisconnectAction(event.reason, isTeacher: widget.isTeacher),
+        hostEnding: _endSignal.hostEnding(DateTime.now()),
+      );
+      final rejoin = widget.onRejoin;
+      final mic = _lastMicOn, cam = _lastCamOn;
       WidgetsBindingCompatible.instance?.addPostFrameCallback((_) async {
         if (mounted) LiveRoomScope.maybeOf(context)?.expand(); // minimized: the dialog must be seen
         final limit = _timeLimit;
+        var rejoinNow = false;
         if (event.reason == DisconnectReason.roomDeleted &&
             limit != null &&
             limit.showFreeTimeEnded(DateTime.now()) &&
             mounted) {
           // The server ended the meeting for the free-time limit: the owner is offered the plan.
           await _showFreeTimeEnded();
-        } else if (isTeacherEnd && !widget.isTeacher && mounted) {
+        } else if (action == LiveDisconnectAction.sessionEnded && mounted) {
           await showDialog(
             context: context,
             barrierDismissible: false,
             builder: (_) => const _SessionEndedDialog(),
           );
-        } else if (!isTeacherEnd && !userLeft && mounted) {
-          // Before: the room just closed with no explanation when the network dropped or the teacher removed you.
-          await showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => _ConnectionLostDialog(removed: event.reason == DisconnectReason.participantRemoved),
-          );
+        } else if (mounted &&
+            (action == LiveDisconnectAction.rejoin ||
+                action == LiveDisconnectAction.removed ||
+                action == LiveDisconnectAction.otherDevice)) {
+          // A lost connection offers Rejoin (the pre-join page's join again); being removed or joining from
+          // another device never rejoins by itself.
+          final kind = switch (action) {
+            LiveDisconnectAction.removed => LiveEndedKind.removed,
+            LiveDisconnectAction.otherDevice => LiveEndedKind.otherDevice,
+            _ => LiveEndedKind.lost,
+          };
+          rejoinNow = await showDialog<bool>(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: LiveRoomEndedCard(
+                    kind: kind,
+                    onRejoin: kind == LiveEndedKind.lost && rejoin != null ? () => Navigator.of(ctx).pop(true) : null,
+                    onClose: () => Navigator.of(ctx).pop(false),
+                  ),
+                ),
+              ) ==
+              true;
         }
         _leaveRoom();
+        if (rejoinNow && rejoin != null) rejoin(mic, cam);
       });
     })
-    ..on<ParticipantEvent>((_) {
-      _sortParticipants();
+    ..on<ParticipantEvent>((e) {
+      // Data packets (chat, hands, reactions) and transcriptions change no tile.
+      if (e is DataReceivedEvent || e is TranscriptionEvent) return;
+      _scheduleSort();
       _maybeSyncLiveScreenCapture();
       _maybeRefreshWebPlaceholder();
     })
+    ..on<ActiveSpeakersChangedEvent>((_) => _scheduleSort())
     // A raised hand leaves with its owner; a late joiner gets my raised hand re-announced.
-    ..on<ParticipantDisconnectedEvent>((e) => _hands.drop(e.participant.identity))
-    ..on<ParticipantConnectedEvent>((_) => _hands.reannounceLocal())
+    ..on<ParticipantDisconnectedEvent>((e) {
+      _hands.drop(e.participant.identity);
+      _scheduleSort();
+    })
+    ..on<ParticipantConnectedEvent>((e) {
+      _hands.reannounceLocal();
+      // Annotation: the responder (presenter, else the first host) sends the newcomer the board.
+      if (_annotEnabled) _annot.onParticipantJoined(e.participant.identity);
+      _scheduleSort();
+    })
+    // D29: the host let this participant speak / share, or took it back.
+    ..on<ParticipantPermissionsUpdatedEvent>((e) {
+      if (e.participant is LocalParticipant) unawaited(_onLocalPermissions(e.permissions));
+    })
     ..on<RoomRecordingStatusChanged>((event) {
-      if (mounted) setState(() => _serverRecording = event.activeRecording);
-      unawaited(
-        context.showRecordingStatusChangedDialog(event.activeRecording),
-      );
+      // D25: a notice (and the REC pill), never a dialog on everyone's screen.
+      if (!mounted || event.activeRecording == _serverRecording) return;
+      setState(() => _serverRecording = event.activeRecording);
+      showAppNotice((event.activeRecording ? 'lk_recording_active' : 'lk_recording_stopped').tr,
+          icon: event.activeRecording ? Icons.fiber_manual_record_rounded : Icons.stop_circle_outlined);
     })
     ..on<RoomAttemptReconnectEvent>(
           (e) => log('Reconnect ${e.attempt}/${e.maxAttemptsRetry}'),
     )
     ..on<RoomReconnectingEvent>((_) => _showNetBanner(true))
-    ..on<RoomReconnectedEvent>((_) => _showNetBanner(false))
+    ..on<RoomReconnectedEvent>((_) {
+      _showNetBanner(false);
+      if (_annotEnabled) _annot.requestSnapshot(); // strokes sent while away
+    })
     ..on<LocalTrackPublishedEvent>((_) {
-      _sortParticipants();
+      _scheduleSort();
       // Cheap no-op if already bound to the current mic track (see
       // _startLiveKitAudioTap's identical() check) — but if screen-share
       // negotiation (or anything else) caused LiveKit to republish the mic
@@ -1644,9 +1957,12 @@ class _RoomPageState extends State<RoomPage>
       // the rest of the session with no error anywhere.
       if (widget.isTeacher) _startLiveKitAudioTap();
     })
-    ..on<LocalTrackUnpublishedEvent>((_) => _sortParticipants())
+    ..on<LocalTrackUnpublishedEvent>((e) {
+      _scheduleSort();
+      onLocalTrackUnpublished(e); // web: the browser's own "Stop sharing" (RoomScreenShareMixin)
+    })
     ..on<TrackSubscribedEvent>((event) {
-      _sortParticipants();
+      _scheduleSort();
       // Mixes each remote participant's audio into the web recording —
       // previously NOTHING did this for any remote participant (only the
       // local teacher's own mic and, when sharing, screen audio ever
@@ -1666,27 +1982,35 @@ class _RoomPageState extends State<RoomPage>
       }
     })
     ..on<TrackUnsubscribedEvent>((event) {
-      _sortParticipants();
+      _scheduleSort();
       if (kIsWeb && _recordsHere && event.track is RemoteAudioTrack) { // [meeting-recording]
         _recorder?.removeRemoteAudioStream(event.participant.sid);
       }
     })
-    ..on<TrackMutedEvent>((_) => _sortParticipants())
-    ..on<TrackUnmutedEvent>((_) => _sortParticipants())
+    ..on<TrackMutedEvent>((_) => _scheduleSort())
+    ..on<TrackUnmutedEvent>((_) => _scheduleSort())
     ..on<TrackE2EEStateEvent>((e) => log('e2ee: $e'))
     ..on<ParticipantNameUpdatedEvent>((e) {
       log('Name: ${e.participant.identity} → ${e.name}');
-      _sortParticipants();
+      _scheduleSort();
     })
     ..on<DataReceivedEvent>((event) {
       final p = event.participant;
       final senderName = (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity;
+      if (event.topic == kLiveEndForAllTopic) {
+        _endSignal.receive(event.data, senderIdentity: p?.identity);
+        return;
+      }
       switch (liveDataRoute(event.topic)) {
         case LiveDataRoute.reaction:
           _reactions.receive(event.data, fallbackName: senderName);
           return;
         case LiveDataRoute.quiz:
           _onQuizPacket(event.data);
+          return;
+        case LiveDataRoute.annotation:
+          // The sender is LiveKit's participant, never an identity read from the payload.
+          if (_annotEnabled) _annot.receive(event.topic!, event.data, sender: p?.identity);
           return;
         case LiveDataRoute.handOrChat:
           // Hands and chat: matched by topic, and by payload type for senders that set no topic.
@@ -1885,8 +2209,6 @@ class _RoomPageState extends State<RoomPage>
     }
   }
 
-  void _onRoomDidUpdate() => _sortParticipants();
-
   bool _hasVideoTrack(TrackPublication pub) => pub.track is VideoTrack;
 
   void _sortParticipants() {
@@ -1910,19 +2232,30 @@ class _RoomPageState extends State<RoomPage>
       }
     }
 
-    userMedia.sort((a, b) {
-      if (a.participant.isSpeaking && b.participant.isSpeaking) {
-        return a.participant.audioLevel > b.participant.audioLevel ? -1 : 1;
-      }
-      final as_ = a.participant.lastSpokeAt?.millisecondsSinceEpoch ?? 0;
-      final bs_ = b.participant.lastSpokeAt?.millisecondsSinceEpoch ?? 0;
-      if (as_ != bs_) return as_ > bs_ ? -1 : 1;
-      if (a.participant.hasVideo != b.participant.hasVideo) {
-        return a.participant.hasVideo ? -1 : 1;
-      }
-      return a.participant.joinedAt.millisecondsSinceEpoch -
-          b.participant.joinedAt.millisecondsSinceEpoch;
-    });
+    // D21: a stable order — whoever spoke in the last 2 s stays on top in their place (no tile jumping on every
+    // word), then the most recent speaker, cameras on, who joined first (live_tile_order.dart).
+    final now = DateTime.now();
+    final sortedMedia = _speakerOrder.order<ParticipantTrack>([
+      for (final t in userMedia)
+        LiveTileFacts(
+          item: t,
+          id: '${t.participant.identity}/${t.type.name}',
+          speaking: t.participant.isSpeaking,
+          lastSpokeAt: t.participant.lastSpokeAt,
+          hasVideo: t.participant.hasVideo,
+          joinedAt: t.participant.joinedAt,
+        ),
+    ], now);
+    userMedia
+      ..clear()
+      ..addAll(sortedMedia);
+    // Someone held only by the 2 s hysteresis leaves the speaking group without an event: re-sort then.
+    _sortRecheck?.cancel();
+    final recheck = _speakerOrder.recheckAt;
+    if (recheck != null && mounted) {
+      _sortRecheck = Timer(recheck.difference(now) + const Duration(milliseconds: 20), _scheduleSort);
+    }
+    _rememberLocalChoices();
 
     ParticipantTrack? localCamera;
     final localScreen = <ParticipantTrack>[];
@@ -1951,7 +2284,9 @@ class _RoomPageState extends State<RoomPage>
         : [?localCamera, ...userMedia];
 
     if (mounted) setState(() => participantTracks = ordered);
-    if (ordered.length > 1) {
+    _syncAnnotRoles();
+    // The strip shows the stage tracks after the first (the local camera is in the self-view box, not the strip).
+    if ((localCamera == null ? ordered.length : ordered.length - 1) > 1) {
     _thumbBarAnim.forward();
     } else {
     _thumbBarAnim.reverse();
@@ -1986,9 +2321,20 @@ class _RoomPageState extends State<RoomPage>
     return null;
   }
 
-  bool get _isScreenShareMain =>
-      participantTracks.isNotEmpty &&
-          participantTracks.first.type == ParticipantTrackType.kScreenShare;
+  /// What may fill the stage and the thumbnail strip: every track except the local camera, which lives in the
+  /// self-view box only — for every role. (Only a teacher's own camera used to be left out, so a student or a
+  /// meeting owner saw their own camera on the stage AND in the box.)
+  List<ParticipantTrack> get _stageTracks {
+    final local = widget.room.localParticipant;
+    return participantTracks
+        .where((t) => !(t.participant == local && t.type != ParticipantTrackType.kScreenShare))
+        .toList();
+  }
+
+  bool get _isScreenShareMain {
+    final stage = _stageTracks;
+    return stage.isNotEmpty && stage.first.type == ParticipantTrackType.kScreenShare;
+  }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   // Always a notice: full-screen, LiveRoomLayer hands showAppNotice the room navigator's overlay, so it is drawn
@@ -2021,6 +2367,19 @@ class _RoomPageState extends State<RoomPage>
     // event fires before this State object's listeners are fully wired up.
     _startSessionClock();
     LiveRoomScope.maybeOf(context)?.bindLeave(_leaveFromMiniBox);
+    final minimized = _minimized;
+    final page = _buildRoomPage();
+    if (minimized == null) return page;
+    // In the box: nothing of the page is painted, so its decorative loops (the share view's glow, banner pulses)
+    // stop until it is full-screen again (D27).
+    return ValueListenableBuilder<bool>(
+      valueListenable: minimized,
+      builder: (_, min, child) => TickerMode(enabled: !min, child: child!),
+      child: page,
+    );
+  }
+
+  Widget _buildRoomPage() {
     return Theme(
       data: ThemeData.dark(),
       child: Scaffold(
@@ -2075,7 +2434,7 @@ class _RoomPageState extends State<RoomPage>
                               ),
 
                               // Thumbnail strip
-                              if (participantTracks.length > 1 &&
+                              if (_stageTracks.length > 1 &&
                                   !_isScreenShareMain)
                                 FadeTransition(
                                   opacity: _thumbBarFade,
@@ -2090,12 +2449,15 @@ class _RoomPageState extends State<RoomPage>
                                           horizontal: 12,
                                         ),
                                         scrollDirection: Axis.horizontal,
-                                        itemCount: participantTracks.length - 1,
-                                        itemBuilder: (_, i) => _ThumbnailCard(
-                                          track: participantTracks[i + 1],
-                                          resolveScreenTrack: _resolveScreenTrack,
-                                          handUp: _hands.isUp(participantTracks[i + 1].participant.identity),
-                                        ),
+                                        itemCount: _stageTracks.length - 1,
+                                        itemBuilder: (_, i) {
+                                          final track = _stageTracks[i + 1];
+                                          return _ThumbnailCard(
+                                            track: track,
+                                            resolveScreenTrack: _resolveScreenTrack,
+                                            handUp: _hands.isUp(track.participant.identity),
+                                          );
+                                        },
                                       ),
                                     ),
                                   ),
@@ -2110,6 +2472,9 @@ class _RoomPageState extends State<RoomPage>
                               // iOS broadcast share banner + stop button
                               if (widget.isTeacher)
                                 _buildIOSShareBanner(),
+
+                              // Annotation toolbar (while drawing on the shared screen)
+                              if (_annotOpen && _isScreenShareMain) _buildAnnotToolbar(),
 
                               // Participant count badge
                               Positioned(
@@ -2280,8 +2645,8 @@ class _RoomPageState extends State<RoomPage>
   (Widget, Participant?) _mainVideo() {
     final local = widget.room.localParticipant;
 
-    if (_pipSwapped && widget.isTeacher) {
-      // Swapped: show teacher's own camera in the main area.
+    if (_pipSwapped) {
+      // Swapped: show the local camera in the main area (any role).
       final localEntry = participantTracks
           .where((t) =>
       t.participant == local &&
@@ -2302,13 +2667,8 @@ class _RoomPageState extends State<RoomPage>
       }
     }
 
-    // For teacher: filter out local camera from the main track list so the
-    // main area always shows remote participants or a placeholder.
-    final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
-        : participantTracks;
+    // The local camera never fills the stage while someone else (or a share) can: it is in the self-view box.
+    final mainTracks = _stageTracks;
 
     if (mainTracks.isEmpty) {
       // Mirror the recording's fallback order (see recorder_compositor.js's
@@ -2319,7 +2679,7 @@ class _RoomPageState extends State<RoomPage>
       // other participant showing video, an enabled camera fills the main
       // view instead; the placeholder is reserved for when nothing at all
       // is available, same as the recorded output.
-      final isMicOn = local?.isMicrophoneEnabled() ?? false;
+      final isMicOn = LiveMicGate.instance.micOn(local);
       final isCamOn = local?.isCameraEnabled() ?? false;
 
       if (!_pipSwapped && isCamOn) {
@@ -2368,6 +2728,7 @@ class _RoomPageState extends State<RoomPage>
           participant: main.participant,
           resolveScreenTrack: _resolveScreenTrack,
           auroraAnim: _auroraAnim,
+          annot: _annotEnabled ? _annot : null,
         ),
         main.participant,
       );
@@ -2395,19 +2756,13 @@ class _RoomPageState extends State<RoomPage>
         ? _resolveCameraTrack(localEntry.participant)
         : null;
 
-    // For teacher, show PiP even when camera track is null (shows off icon).
-    // For student, hide PiP if no camera track.
-    if (cameraTrack == null && !widget.isTeacher) return const SizedBox.shrink();
-    // Hide entirely if teacher has no camera and not swapped.
-    if (cameraTrack == null && !_pipSwapped) return const SizedBox.shrink();
+    // No local camera: no box (swapped or not — the main view only swaps in a live camera, so a box here would
+    // repeat whatever the stage shows).
+    if (cameraTrack == null) return const SizedBox.shrink();
 
     // In swapped mode: PiP shows the remote/main content;
     // In normal mode: PiP shows the local camera.
-    final mainTracks = widget.isTeacher
-        ? participantTracks.where((t) =>
-    !(t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)).toList()
-        : participantTracks;
+    final mainTracks = _stageTracks;
 
     // When there's no screen share/remote content, an enabled camera is
     // already shown full-screen as the main view's fallback (see
@@ -2425,7 +2780,7 @@ class _RoomPageState extends State<RoomPage>
     // instead), hiding the only place the camera was visible. isSharing
     // must be part of this check, not just whether other tracks exist.
     final isSharing = local?.isScreenShareEnabled() == true;
-    if (!_pipSwapped && !isSharing && mainTracks.isEmpty && cameraTrack != null) {
+    if (!_pipSwapped && !isSharing && mainTracks.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -2474,7 +2829,7 @@ class _RoomPageState extends State<RoomPage>
                       showStatsLayer: false,
                     ),
                   )
-                else if (!_pipSwapped && cameraTrack != null)
+                else if (!_pipSwapped)
                   AbsorbPointer(
                     child: VideoTrackRenderer(
                       cameraTrack,
@@ -2673,6 +3028,11 @@ class _RoomPageState extends State<RoomPage>
       ));
     }
 
+    // ── Room locked (hosts; live.room_lock) — the participants panel holds the switch ──
+    if (_controls?.locked == true && !AppConfig.disableList.contains(kLiveRoomLockFeatureKey)) {
+      badges.add(LiveLockedPill(onTap: _showParticipants ? null : _toggleParticipantPanel));
+    }
+
     // ── Total session time — everyone, always (not just teacher/recording) ──
     if (_sessionClockTimer != null) {
       badges.add(
@@ -2864,7 +3224,7 @@ class _RoomPageState extends State<RoomPage>
   Widget _buildControlsBar() {
     // The bar paints its own glass shell (mobile pill / wide grouped bar) — see LiveControlBar.
     return ListenableBuilder(
-        listenable: Listenable.merge([_reactions, _hands, _chat, ?_lobby]),
+        listenable: Listenable.merge([_reactions, _hands, _chat, _annot, ?_lobby]),
         builder: (_, _) => ControlsWidget(
         widget.room,
         widget.room.localParticipant!,
@@ -2883,7 +3243,12 @@ class _RoomPageState extends State<RoomPage>
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
         isTeacher: widget.isTeacher,
-        canPublish: widget.canPublish,
+        isHost: widget.host,
+        // D29: what the server allows right now (a guest allowed to speak, a student allowed to share)
+        canPublish: _allowed.any,
+        allowMic: _allowed.mic,
+        allowCamera: _allowed.camera,
+        allowShare: _allowed.share,
         onToggleScreenShare: toggleScreenShare,
         // ── NEW: pause / resume ──────────────────────────────────
         // Null when the action is not available (wrong state, or
@@ -2915,6 +3280,9 @@ class _RoomPageState extends State<RoomPage>
         onOpenChat: _openChat,
         chatUnread: _chat.unread,
         chatOpen: _side == _SidePanel.chat || _chat.isOpen,
+        // Annotation (D-079): hosts, the presenter, students a host allowed; only while a share fills the stage.
+        onAnnotate: _canAnnotate || _annotOpen ? _toggleAnnot : null,
+        annotating: _annotOpen,
       ),
     );
   }
@@ -2988,6 +3356,231 @@ class _RoomPageState extends State<RoomPage>
   }
   // ═══════════════════════════════════════════════════════════════════════════
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Annotation over the shared screen (D-079, feature key `live.annotation`) — docs/live/annotation_wiring.md
+  //
+  // Peer to peer over the room's data channel (topics `annot` / `annot.laser`, no server route). Hosts (`teacher_*`,
+  // plus this device when it hosts a meeting) and the person whose share is on the stage draw; students only when a
+  // host allows it (everyone, or one by one from the participants panel). Late joiners get the board from the
+  // responder (the presenter, else the first host). On an Android whole-screen share the overlay of
+  // RoomScreenShareMixin burns the strokes into the video instead (burned-in mode: nothing travels as vectors).
+  // Keep this region the only annotation code in this file (plus the layer in _PremiumScreenShareView).
+  // ═══════════════════════════════════════════════════════════════════════════
+  static const _kAnnotFeatureKey = 'live.annotation';
+
+  late final AnnotationController _annot = AnnotationController(
+    localIdentity: _myIdentity,
+    send: (topic, bytes, reliable, {to}) async {
+      final lp = widget.room.localParticipant;
+      if (lp == null) return;
+      await lp.publishData(bytes, reliable: reliable, topic: topic, destinationIdentities: to);
+    },
+  );
+
+  /// The in-app toolbar is shown (and the layer takes the pointer).
+  bool _annotOpen = false;
+  bool _annotColorSet = false;
+
+  /// A host's permission lets this (non-host) person draw — the students' notices follow it.
+  bool _annotGranted = false;
+
+  /// Whose share was on the stage at the last re-layout (null: none).
+  String? _annotPresenter;
+
+  bool get _annotEnabled => !AppConfig.disableList.contains(_kAnnotFeatureKey);
+
+  bool get _annotStudentGranted =>
+      !_annot.isHost && (_annot.allowStudents || _annot.allowedIdentities.contains(_annot.localIdentity));
+
+  /// Annotate is offered: a share fills the stage, this person may draw, and no Android overlay burns it in.
+  bool get _canAnnotate => _annotEnabled && _isScreenShareMain && _annot.canDrawLocal && !_annot.burnedIn;
+
+  /// Hosts present and the presenter on the stage → the controller (a no-op when nothing changed). Runs after
+  /// every re-layout (_sortParticipants: connect / disconnect / track (un)publish / local track events).
+  void _syncAnnotRoles() {
+    final local = widget.room.localParticipant;
+    final hosts = <String>{
+      for (final p in widget.room.remoteParticipants.values)
+        if (isHostIdentity(p.identity)) p.identity,
+      if (local != null && local.identity.isNotEmpty && (isHostIdentity(local.identity) || widget.host))
+        local.identity,
+    };
+    final presenter = _isScreenShareMain ? _stageTracks.first.participant.identity : null;
+    final before = _annotPresenter;
+    _annotPresenter = presenter;
+    if (before != presenter) {
+      // The drawings belonged to that content: a host clears them when the share ends or changes hands.
+      if (before != null && _annot.isHost) _annot.clearAll();
+      if (_annotOpen) {
+        _annot.setDrawMode(false);
+        if (mounted) setState(() => _annotOpen = false);
+      }
+    }
+    _annot.setRoles(hosts: hosts, presenter: presenter);
+  }
+
+  void _onAnnotChanged() {
+    if (!mounted) return;
+    final granted = _annotStudentGranted;
+    if (granted != _annotGranted) {
+      _annotGranted = granted;
+      if (_annotEnabled) {
+        _showSnack(granted
+            ? t('يمكنك الآن الرسم على الشاشة المشتركة', 'You can now draw on the shared screen')
+            : t('أوقف المعلّم الرسم للطلاب', 'The teacher turned drawing off'));
+      }
+    }
+    // Drawing taken away (permission, burned-in mode, the share ended): the toolbar closes.
+    if (_annotOpen && !_canAnnotate) setState(() => _annotOpen = false);
+  }
+
+  /// The Android whole-screen overlay is shown / closed (RoomScreenShareMixin, room_wiring_pending.md §4).
+  void _onAnnotOverlay() {
+    if (!mounted) return;
+    final on = annotationOverlayActive.value;
+    // _syncAnnotRoles has made the local presenter a lead by now (LocalTrackPublishedEvent re-sorts).
+    _annot.setBurnedIn(on);
+    if (on && _annotOpen) {
+      _annot.setDrawMode(false);
+      setState(() => _annotOpen = false); // the native toolbar replaces the in-app one
+    }
+  }
+
+  void _toggleAnnot() {
+    if (_annotOpen) {
+      _closeAnnot();
+      return;
+    }
+    if (!_canAnnotate) return;
+    _annot.setDrawMode(true);
+    setState(() => _annotOpen = true);
+    _pokeControls();
+  }
+
+  void _closeAnnot() {
+    _annot.setDrawMode(false);
+    if (mounted) setState(() => _annotOpen = false);
+  }
+
+  /// The participants panel's "Allow / Revoke drawing" (LiveHostControlsController.onDrawingChanged): the
+  /// permission packet; the controller has already switched `can_publish_data` on when it was off.
+  Future<void> _setDrawingFor(String identity, bool allow) async {
+    final ids = Set.of(_annot.allowedIdentities);
+    if (allow) {
+      ids.add(identity);
+    } else {
+      ids.remove(identity);
+    }
+    _annot.setAllowedIdentities(ids);
+  }
+
+  bool _drawingAllowedFor(String identity) =>
+      _annot.allowStudents || _annot.allowedIdentities.contains(identity);
+
+  Widget _buildAnnotToolbar() => PositionedDirectional(
+        top: 12,
+        start: 12,
+        end: 12,
+        child: Center(
+          child: AnnotationControllerToolbar(
+            key: const ValueKey('live_room.annotation_toolbar'),
+            controller: _annot,
+            onClose: _closeAnnot,
+          ),
+        ),
+      );
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Host controls (live.teacher_controls / live.room_lock) — live hardening L2
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A host (`widget.host && !widget.isGuest`) gets LiveHostControlsController: the participants panel's header
+  // (Mute all · Lock room · End for everyone) and a ⋮ per participant (mute · stop camera / share · allow / revoke
+  // screen share · remove). UI and API in lib/features/shared/live/live_controls_api.dart +
+  // live_participant_controls.dart; wiring in docs/live/teacher_controls_wiring.md — keep this region the only
+  // host-controls code in this file. End for everyone publishes the "ending" packet first (live_end_signal.dart),
+  // so the people the server removes read "the host ended the session".
+  // ═══════════════════════════════════════════════════════════════════════════
+  LiveHostControlsController? _controls;
+
+  /// The host's "ending for everyone" packets (every room listens; only hosts send).
+  final LiveEndForAllSignal _endSignal = LiveEndForAllSignal();
+
+  /// This host is ending / ended the room for everyone: its own disconnect then shows no dialog.
+  bool _endedForAll = false;
+
+  bool get _canModerate => widget.host && !widget.isGuest;
+
+  /// The per-participant ⋮ and Mute all (not only the lock row) are on.
+  bool get _teacherControlsOn =>
+      _controls != null && !AppConfig.disableList.contains(kLiveTeacherControlsFeatureKey);
+
+  void _startControls() {
+    if (!_canModerate) return;
+    final off = AppConfig.disableList;
+    if (off.contains(kLiveTeacherControlsFeatureKey) && off.contains(kLiveRoomLockFeatureKey)) return;
+    // Allow / Revoke drawing = the annotation permission packet (+ can_publish_data, done by the controller).
+    _controls = LiveHostControlsController(widget.ref, onDrawingChanged: _annotEnabled ? _setDrawingFor : null)
+      ..onEndForAllPhase = _announceEndForAll;
+    if (!off.contains(kLiveRoomLockFeatureKey)) unawaited(_controls!.loadLock());
+  }
+
+  /// Right before end-for-all (true) and after it failed (false): tells every room why they are about to leave.
+  Future<void> _announceEndForAll(bool ending) async {
+    _endedForAll = ending;
+    await widget.room.localParticipant
+        ?.publishData(liveEndForAllPacket(ending: ending), reliable: true, topic: kLiveEndForAllTopic);
+  }
+
+  /// The server ended the room for everyone: stop / drain a device recorder, then leave as after End.
+  void _onEndedForAll() {
+    _endedForAll = true;
+    unawaited(_endSessionWithRecording(serverEnded: true));
+  }
+
+  LiveControlTarget _controlTarget(RemoteParticipant p) {
+    final perms = p.permissions;
+    return liveControlTargetFrom(
+      identity: p.identity,
+      name: p.name,
+      kind: widget.ref.kind,
+      localIdentity: _myIdentity,
+      imageUrl: participantPhotoFromMetadata(p.metadata),
+      micOn: p.isMicrophoneEnabled(),
+      cameraOn: p.isCameraEnabled(),
+      screenSharing: p.isScreenShareEnabled(),
+      canPublish: perms.canPublish,
+      sources: [for (final s in perms.canPublishSources) s.name], // proto names: CAMERA, SCREEN_SHARE, …
+      canPublishData: perms.canPublishData,
+      drawingAllowed: _drawingAllowedFor(p.identity),
+    );
+  }
+
+  Future<void> _openParticipantControls(RemoteParticipant p) async {
+    final c = _controls;
+    if (c == null) return;
+    _pokeControls();
+    await showLiveParticipantControls(context,
+        controller: c, target: _controlTarget(p), drawingAvailable: _annotEnabled && c.onDrawingChanged != null);
+  }
+
+  /// The ⋮ of a participant's row in the panel (null when the controls are off or the person is a host).
+  Widget? _controlsButton(RemoteParticipant? rp, String name) {
+    final c = _controls;
+    if (c == null || rp == null || !_teacherControlsOn) return null;
+    final target = _controlTarget(rp);
+    if (target.isHost || target.isSelf) return null;
+    return AnimatedBuilder(
+      animation: c,
+      builder: (_, _) => LiveParticipantControlsButton(
+        name: name,
+        busy: c.busyFor(rp.identity) != null,
+        onPressed: () => unawaited(_openParticipantControls(rp)),
+      ),
+    );
+  }
+  // ═══════════════════════════════════════════════════════════════════════════
+
   // ── Participant panel ──────────────────────────────────────────────────────
   Widget _buildParticipantPanel() {
     final liveIdentities = widget.room.remoteParticipants.values
@@ -2996,6 +3589,16 @@ class _RoomPageState extends State<RoomPage>
     final guests = widget.room.remoteParticipants.values
         .where((p) => isGuestIdentity(p.identity))
         .toList();
+    // Host controls: everyone else in the room who is not on the roster (meeting members, staff, a co-host),
+    // so the host can reach them too. Only for a host: other viewers keep the roster as it was.
+    final others = _controls == null
+        ? const <RemoteParticipant>[]
+        : widget.room.remoteParticipants.values
+            .where((p) =>
+                !liveIsGuestIdentity(p.identity) &&
+                !_enrolledStudents.any(
+                    (s) => liveIdentityIsStudent(p.identity, p.name, studentId: s.id, studentName: s.name)))
+            .toList();
 
     return Positioned.fill(
       child: GestureDetector(
@@ -3050,8 +3653,9 @@ class _RoomPageState extends State<RoomPage>
                             color: _cyan,
                           ),
                         ),
-                      // Teacher: one tap mutes every guest (guests never see moderation).
-                      if (widget.isTeacher && !widget.isGuest && guests.isNotEmpty)
+                      // Teacher: one tap mutes every guest (guests never see moderation). The host controls' Mute
+                      // all (everyone but the hosts) replaces it while they are on.
+                      if (widget.isTeacher && !widget.isGuest && guests.isNotEmpty && !_teacherControlsOn)
                         _guestBusy.value == '*'
                             ? const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8),
@@ -3087,15 +3691,17 @@ class _RoomPageState extends State<RoomPage>
                   ),
                 ),
 
+                // Host controls: Mute all · Lock room · End for everyone (each behind its own kill switch).
+                if (_controls != null)
+                  LiveHostControlsHeader(controller: _controls!, onEnded: _onEndedForAll),
+
                 // Teacher row
                 _ParticipantRow(
                   name: widget.room.localParticipant?.name ?? 'You',
                   isOnline: true,
                   isTeacher: true,
                   isAttended: true,
-                  micOn:
-                  widget.room.localParticipant?.isMicrophoneEnabled() ??
-                      false,
+                  micOn: LiveMicGate.instance.micOn(widget.room.localParticipant),
                   camOn:
                   widget.room.localParticipant?.isCameraEnabled() ?? false,
                   joinDate: widget.room.localParticipant?.joinedAt,
@@ -3162,7 +3768,7 @@ class _RoomPageState extends State<RoomPage>
 
                 // Student list
                 Expanded(
-                  child: _enrolledStudents.isEmpty
+                  child: _enrolledStudents.isEmpty && others.isEmpty
                       ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -3186,18 +3792,31 @@ class _RoomPageState extends State<RoomPage>
                   )
                       : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: _enrolledStudents.length,
+                    itemCount: others.length + _enrolledStudents.length,
                     itemBuilder: (ctx, i) {
-                      final s = _enrolledStudents[i];
-                      final online =
-                          liveIdentities.contains(s.id.toString()) ||
-                              liveIdentities.contains(s.name);
+                      if (i < others.length) {
+                        final o = others[i];
+                        final name = o.name.isNotEmpty ? o.name : o.identity;
+                        return _ParticipantRow(
+                          name: name,
+                          isOnline: true,
+                          isTeacher: false,
+                          isAttended: false,
+                          joinDate: o.joinedAt,
+                          micOn: o.isMicrophoneEnabled(),
+                          camOn: o.isCameraEnabled(),
+                          handUp: _hands.isUp(o.identity),
+                          trailing: _controlsButton(o, name),
+                        );
+                      }
+                      final s = _enrolledStudents[i - others.length];
                       final rp = widget.room.remoteParticipants.values
                           .firstWhereOrNull(
-                            (p) =>
-                        p.identity == s.id.toString() ||
-                            p.name == s.name,
+                            (p) => liveIdentityIsStudent(p.identity, p.name, studentId: s.id, studentName: s.name),
                       );
+                      final online = rp != null ||
+                          liveIdentities.contains(s.id.toString()) ||
+                          liveIdentities.contains(s.name);
                       return _ParticipantRow(
                         name: s.name,
                         isOnline: online,
@@ -3208,6 +3827,7 @@ class _RoomPageState extends State<RoomPage>
                         micOn: rp?.isMicrophoneEnabled() ?? false,
                         camOn: rp?.isCameraEnabled() ?? false,
                         handUp: rp != null && _hands.isUp(rp.identity),
+                        trailing: _controlsButton(rp, s.name),
                       );
                     },
                   ),
@@ -3919,7 +4539,7 @@ class _ParticipantRow extends StatelessWidget {
   final DateTime? leaveDate;
   /// ✋ in the queue right now.
   final bool handUp;
-  /// Teacher's ⋮ moderation menu (guests only).
+  /// The host's ⋮: the guest menu for guests, the host controls' button for everyone else in the room.
   final Widget? trailing;
 
   String _fmtDuration(DateTime? from, DateTime? to) {
@@ -4237,10 +4857,14 @@ class _PremiumScreenShareView extends StatefulWidget {
   final VideoTrack? Function(Participant) resolveScreenTrack;
   final AnimationController auroraAnim;
 
+  /// Annotation over the shared video (null: `live.annotation` is off).
+  final AnnotationController? annot;
+
   const _PremiumScreenShareView({
     required this.participant,
     required this.resolveScreenTrack,
     required this.auroraAnim,
+    this.annot,
   });
 
   @override
@@ -4264,6 +4888,12 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
       parent: _borderGlowAnim,
       curve: Curves.easeInOut,
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    syncMotionLoop(context, _borderGlowAnim, reverse: true, rest: 0); // decorative: Reduce motion parks it
   }
 
   @override
@@ -4336,11 +4966,13 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(19),
                 child: screenTrack != null
-                    ? VideoTrackRenderer(
-                  screenTrack,
-                  renderMode: VideoRenderMode.auto,
-                  fit: VideoViewFit.contain,
-                )
+                    ? (widget.annot == null
+                        ? VideoTrackRenderer(
+                            screenTrack,
+                            renderMode: VideoRenderMode.auto,
+                            fit: VideoViewFit.contain,
+                          )
+                        : _AnnotatedShareVideo(track: screenTrack, controller: widget.annot!))
                     : _ScreenShareLoadingPlaceholder(
                   presenterName: presenterName,
                 ),
@@ -4365,6 +4997,73 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
         ),
       ],
     );
+  }
+}
+
+/// The shared video with the annotation layer on top. It owns the renderer so the layer reads the REAL frame size
+/// (RTCVideoValue: width / height / rotation, the same aspect RTCVideoView's `contain` fit uses), which follows
+/// rotation and window resizes. Until the first frame the layer uses its own size.
+class _AnnotatedShareVideo extends StatefulWidget {
+  const _AnnotatedShareVideo({required this.track, required this.controller});
+
+  final VideoTrack track;
+  final AnnotationController controller;
+
+  @override
+  State<_AnnotatedShareVideo> createState() => _AnnotatedShareVideoState();
+}
+
+class _AnnotatedShareVideoState extends State<_AnnotatedShareVideo> {
+  final rtc.RTCVideoRenderer _renderer = rtc.RTCVideoRenderer();
+  bool _ready = false;
+  bool _disposed = false;
+  Size? _frame;
+
+  @override
+  void initState() {
+    super.initState();
+    _renderer.addListener(_onValue);
+    unawaited(_renderer.initialize().then((_) {
+      if (!_disposed && mounted) setState(() => _ready = true);
+    }, onError: (Object e) => log('[ANNOT] renderer init: $e')));
+  }
+
+  void _onValue() {
+    if (!mounted) return;
+    final v = _renderer.value;
+    final next = v.width > 0 && v.height > 0 ? Size(v.aspectRatio, 1) : null;
+    if (next != _frame) setState(() => _frame = next);
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _renderer.removeListener(_onValue);
+    // The VideoTrackRenderer below was unmounted first (children go first) and does not dispose a cached renderer.
+    unawaited(() async {
+      try {
+        _renderer.srcObject = null;
+        await _renderer.dispose();
+      } catch (e) {
+        log('[ANNOT] renderer dispose: $e');
+      }
+    }());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) return const SizedBox.expand();
+    return Stack(fit: StackFit.expand, children: [
+      VideoTrackRenderer(
+        widget.track,
+        renderMode: VideoRenderMode.texture,
+        fit: VideoViewFit.contain,
+        cachedRenderer: _renderer,
+        autoDisposeRenderer: false,
+      ),
+      AnnotationLayer(controller: widget.controller, contentSize: _frame),
+    ]);
   }
 }
 
@@ -5465,56 +6164,4 @@ class NotificationChannelHelper {
       log('NotificationChannelHelper: ${e.message}');
     }
   }
-}
-
-/// Shown when the room closes for a reason other than "the teacher ended it" or "you left":
-/// a lost connection, or the teacher removed you. Same look as _SessionEndedDialog.
-class _ConnectionLostDialog extends StatelessWidget {
-  const _ConnectionLostDialog({required this.removed});
-  final bool removed;
-
-  @override
-  Widget build(BuildContext context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: _surfaceHi,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _glassBdr, width: 1),
-            boxShadow: [BoxShadow(color: LivePalette.shade(0.6), blurRadius: 20)],
-          ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: (removed ? _rose : _cyan).withValues(alpha: 0.12),
-                border: Border.all(color: (removed ? _rose : _cyan).withValues(alpha: 0.4), width: 2),
-              ),
-              child: Icon(removed ? Icons.person_remove_rounded : Icons.wifi_off_rounded,
-                  color: removed ? _rose : _cyan, size: 34),
-            ),
-            const SizedBox(height: 20),
-            Text((removed ? 'lr_removed_title' : 'lr_connection_lost_title').tr,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: AppFonts.family, color: _textHigh, fontWeight: FontWeight.w800, fontSize: 20)),
-            const SizedBox(height: 10),
-            Text((removed ? 'lr_removed_body' : 'lr_connection_lost_body').tr,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontFamily: AppFonts.family, color: _textMid, height: 1.5)),
-            const SizedBox(height: 22),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                    backgroundColor: _cyan, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('admin_ok'.tr, style: TextStyle(fontFamily: AppFonts.family, fontWeight: FontWeight.w800)),
-              ),
-            ),
-          ]),
-        ),
-      );
 }

@@ -9,6 +9,8 @@ import 'package:flutter_education_app/features/teacher/sessions/live/widgets/roo
 import 'package:livekit_client/livekit_client.dart';
 import 'live_control_bar.dart';
 import 'live_palette.dart';
+import 'android_share.dart' show LiveMicGate;
+import 'ios_share.dart' show IosShareNative;
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../components/exts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
@@ -26,6 +28,10 @@ class ControlsWidget extends StatefulWidget {
   final LocalParticipant participant;
   final Future<dynamic> Function() onEndSession;
   final bool isTeacher;
+
+  /// The room's host (a course's teacher, a meeting's owner): may share the screen. A meeting owner is not a
+  /// "teacher", and the server grants the host every publish source.
+  final bool isHost;
   final Future<void> Function()? onToggleScreenShare;
 
   // ── NEW: pause / resume recording callbacks ───────────────────────────────
@@ -58,6 +64,12 @@ class ControlsWidget extends StatefulWidget {
   /// Leave, reactions and the speaker / audio-output choice.
   final bool canPublish;
 
+  /// D29: the sources the server's permissions allow right now (room.dart, LiveAllowedControls). A source that
+  /// is not allowed has no button. [allowShare] null → the old rule (teacher or host).
+  final bool allowMic;
+  final bool allowCamera;
+  final bool? allowShare;
+
   // Hand raise: students / guests get a toggle (null hides it); the teacher gets a
   // count chip that opens the queue (onOpenHands, null hides it).
   final VoidCallback? onToggleHand;
@@ -83,12 +95,19 @@ class ControlsWidget extends StatefulWidget {
   /// Starting / stopping is in flight (spinner).
   final bool meetingRecordBusy;
 
+  /// Annotation (D-079, feature key `live.annotation`): opens / closes the drawing toolbar over the shared screen.
+  /// Null hides the action (no share on the stage, or this person may not draw).
+  final VoidCallback? onAnnotate;
+  /// The toolbar is open.
+  final bool annotating;
+
   const ControlsWidget(
       this.room,
       this.participant, {
         super.key,
         required this.onEndSession,
         required this.isTeacher,
+        this.isHost = false,
         this.onToggleScreenShare,
         // NEW optional — default null keeps non-teacher builds unchanged
         this.onPauseRecording,
@@ -100,6 +119,9 @@ class ControlsWidget extends StatefulWidget {
         this.recordingEnabled = true,
         this.onInteraction,
         this.canPublish = true,
+        this.allowMic = true,
+        this.allowCamera = true,
+        this.allowShare,
         this.onToggleHand,
         this.handUp = false,
         this.onOpenHands,
@@ -113,6 +135,8 @@ class ControlsWidget extends StatefulWidget {
         this.onMeetingRecord,
         this.meetingRecording = false,
         this.meetingRecordBusy = false,
+        this.onAnnotate,
+        this.annotating = false,
       });
 
   @override
@@ -137,6 +161,9 @@ class ControlsWidgetState extends State<ControlsWidget> {
   void initState() {
     super.initState();
     participant.addListener(_onChange);
+    LiveMicGate.instance.addListener(_onChange);
+    // iOS (I3): the share button follows the broadcast, which runs before LiveKit has published the track.
+    IosShareNative.broadcasting.addListener(_onChange);
     _subscription = Hardware.instance.onDeviceChange.stream.listen(_loadDevices);
     unawaited(Hardware.instance.enumerateDevices().then(_loadDevices));
   }
@@ -145,6 +172,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
   void dispose() {
     unawaited(_subscription?.cancel());
     participant.removeListener(_onChange);
+    LiveMicGate.instance.removeListener(_onChange);
+    IosShareNative.broadcasting.removeListener(_onChange);
     super.dispose();
   }
 
@@ -164,8 +193,10 @@ class ControlsWidgetState extends State<ControlsWidget> {
   }
 
   // ── Audio ──────────────────────────────────────────────────────────────────
-  void _disableAudio() => unawaited(participant.setMicrophoneEnabled(false));
-  void _enableAudio()  => unawaited(participant.setMicrophoneEnabled(true));
+  // Through LiveMicGate: during an Android share with device audio, mute zeroes the mic samples
+  // and the track keeps carrying the shared audio (android_share.dart).
+  void _disableAudio() => unawaited(LiveMicGate.instance.setMic(participant, false));
+  void _enableAudio()  => unawaited(LiveMicGate.instance.setMic(participant, true));
 
 
   // ── Device selectors ───────────────────────────────────────────────────────
@@ -350,9 +381,11 @@ class ControlsWidgetState extends State<ControlsWidget> {
   }
 
   // ── Public toggles (keyboard shortcuts in room.dart call these) ──────────
+  bool get _shareAllowed => widget.allowShare ?? (widget.isTeacher || widget.isHost);
+
   void toggleMic() {
-    if (!widget.canPublish) return;
-    if (participant.isMicrophoneEnabled()) {
+    if (!widget.canPublish || !widget.allowMic) return;
+    if (LiveMicGate.instance.micOn(participant)) {
       _disableAudio();
     } else {
       _enableAudio();
@@ -360,12 +393,12 @@ class ControlsWidgetState extends State<ControlsWidget> {
   }
 
   void toggleCamera() {
-    if (!widget.canPublish || !_hasAnyCamera) return;
+    if (!widget.canPublish || !widget.allowCamera || !_hasAnyCamera) return;
     _toggleCameraOnOff();
   }
 
   void toggleShare() {
-    if (!widget.isTeacher || !widget.canPublish) return;
+    if (!_shareAllowed || !widget.canPublish) return;
     _onScreenShareToggle();
   }
 
@@ -382,15 +415,17 @@ class ControlsWidgetState extends State<ControlsWidget> {
   // ─────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final isMicOn   = participant.isMicrophoneEnabled();
+    final isMicOn   = LiveMicGate.instance.micOn(participant);
     final isCamOn   = participant.isCameraEnabled();
-    final isSharing = participant.isScreenShareEnabled();
+    // iOS (I3): the broadcast is live before its track is published (and the sheet may still be open).
+    final isSharing = participant.isScreenShareEnabled() ||
+        (IosShareNative.supported && IosShareNative.broadcasting.value);
     final mobile    = !kIsWeb && lkPlatformIsMobile();
     final recOn     = showsRecorderControls(
         isTeacher: widget.isTeacher, recordingEnabled: widget.recordingEnabled, recordsHere: widget.recordsHere);
 
     // ── Devices ─────────────────────────────────────────────────────────────
-    final mic = LiveControlAction(
+    final mic = !widget.allowMic ? null : LiveControlAction(
       key: const ValueKey('live_room.mic'),
       icon: isMicOn ? Icons.mic_rounded : Icons.mic_off_rounded,
       label: isMicOn ? 'lr_mute'.tr : 'lr_unmute'.tr,
@@ -402,7 +437,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
       menu: lkPlatformIs(PlatformType.android) ? null : _deviceOptions(_audioInputs, widget.room.selectedAudioInputDeviceId, _selectAudioInput, 'lr_microphone'.tr),
     );
 
-    final cam = LiveControlAction(
+    final cam = !widget.allowCamera ? null : LiveControlAction(
       key: const ValueKey('live_room.camera'),
       icon: isCamOn ? Icons.videocam_rounded : Icons.videocam_off_rounded,
       label: isCamOn ? 'lr_camera'.tr : 'lr_cam_off'.tr,
@@ -415,7 +450,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
       menu: mobile ? null : _deviceOptions(_videoInputs, widget.room.selectedVideoInputDeviceId, _selectVideoInput, 'lr_camera'.tr),
     );
 
-    final flip = (isCamOn && _hasBackCamera)
+    final flip = (widget.allowCamera && isCamOn && _hasBackCamera)
         ? LiveControlAction(
             key: const ValueKey('live_room.flip_camera'),
             icon: position == CameraPosition.back ? Icons.camera_front_rounded : Icons.camera_rear_rounded,
@@ -446,7 +481,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
         : null;
 
     // ── Share & record (teacher) ────────────────────────────────────────────
-    final share = widget.isTeacher
+    final share = _shareAllowed
         ? LiveControlAction(
             key: const ValueKey('live_room.share'),
             icon: isSharing ? Icons.stop_screen_share_rounded : Icons.screen_share_rounded,
@@ -458,6 +493,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
             onTap: _screenShareBusy ? null : _onScreenShareToggle,
           )
         : null;
+
+    final annotate = annotateAction(onTap: widget.onAnnotate, open: widget.annotating);
 
     final record = recOn ? _recordingAction() : null;
     final meetRec = meetingRecordAction(
@@ -535,9 +572,10 @@ class ControlsWidgetState extends State<ControlsWidget> {
       // Listen-only: no mic / camera / share / recording — just Leave, reactions and audio output.
       return LiveControlBar(
         primary: [?react, ?hand, ?chat, ?speaker, ?output],
-        secondary: const [],
+        secondary: [?annotate],
         groups: [
           [?speaker, ?output],
+          [?annotate],
           [?react, ?hand, ?chat],
         ],
         end: end,
@@ -550,11 +588,11 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
     return LiveControlBar(
       // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
-      primary: [mic, cam, ?meetRec, ?share, ?react, ?hand, ?hands, ?chat],
+      primary: [?mic, ?cam, ?meetRec, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
       secondary: [?flip, ?speaker, ?output, ?record],
       groups: [
-        [mic, cam, ?flip, ?speaker, ?output],
-        [?share, ?meetRec, ?record],
+        [?mic, ?cam, ?flip, ?speaker, ?output],
+        [?share, ?annotate, ?meetRec, ?record],
         [?react, ?hand, ?hands, ?chat],
       ],
       end: end,
@@ -579,6 +617,20 @@ class ControlsWidgetState extends State<ControlsWidget> {
       loading: busy,
       pinned: true,
       onTap: busy ? null : onTap,
+    );
+  }
+
+  /// Annotate (D-079): opens / closes the drawing toolbar over the shared screen; null when [onTap] is null.
+  /// Public and pure so the layout test builds exactly what the bar gets.
+  static LiveControlAction? annotateAction({required VoidCallback? onTap, bool open = false}) {
+    if (onTap == null) return null;
+    return LiveControlAction(
+      key: const ValueKey('live_room.annotate'),
+      icon: open ? Icons.edit_off_rounded : Icons.draw_rounded,
+      label: open ? t('إنهاء الرسم', 'Stop drawing') : t('تعليق توضيحي', 'Annotate'),
+      active: open,
+      color: open ? LivePalette.accent : null,
+      onTap: onTap,
     );
   }
 

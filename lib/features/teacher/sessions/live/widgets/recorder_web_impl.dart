@@ -4,9 +4,12 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
+
+import 'share_presets.dart' show webDisplayAudioSupported;
 
 // ── Single top-level dispatcher ───────────────────────────────────────────────
 // recorder_compositor.js exposes window._elfaheemCompositor(cmd, ...args).
@@ -63,6 +66,7 @@ void _compositorStart(
       String? uploadUrl,
       int? videoBitsPerSecond,
       bool audioOnly = false,
+      String? epoch,
     }) {
   // Bundled as JSON rather than adding more positional a5/a6/... params to
   // the dispatcher — keeps the JS-interop surface stable as more placeholder
@@ -78,6 +82,8 @@ void _compositorStart(
     // Audio-only: the compositor records the mixed audio stream alone (no
     // canvas, audio/webm;codecs=opus chunks) — see its start().
     'audioOnly': audioOnly,
+    // R1: this recorder start's id, sent with every chunk as the form field `epoch`.
+    'epoch': ?epoch,
   });
   _dispatch('start', sessionId.toJS, apiUrl.toJS, authToken.toJS, meta.toJS);
 }
@@ -288,6 +294,50 @@ web.MediaStream? nativeAudioStreamFromTrack(Object? lkTrack) {
   return null;
 }
 
+/// The browser's own MediaStreamTrack behind a flutter_webrtc track (its `.jsTrack`), or null.
+web.MediaStreamTrack? _nativeTrack(Object? lkTrack) {
+  if (lkTrack == null) return null;
+  try {
+    if (_asJs(lkTrack).isA<web.MediaStreamTrack>()) return lkTrack as web.MediaStreamTrack;
+    final dynamic maybeWrapped = lkTrack;
+    final Object? jsTrack = maybeWrapped.jsTrack;
+    if (_asJs(jsTrack).isA<web.MediaStreamTrack>()) return jsTrack as web.MediaStreamTrack;
+  } catch (e) {
+    _log('_nativeTrack: no .jsTrack on ${lkTrack.runtimeType} ($e)');
+  }
+  return null;
+}
+
+/// The screen-share track's `contentHint` ("detail" keeps text sharp, "motion" keeps video smooth, W7).
+/// False when the track could not be reached (the share still works, with the browser's default hint).
+bool setTrackContentHint(Object? lkTrack, String hint) {
+  final track = _nativeTrack(lkTrack);
+  if (track == null) return false;
+  try {
+    track.contentHint = hint;
+    return true;
+  } catch (e) {
+    _log('setTrackContentHint($hint): $e');
+    return false;
+  }
+}
+
+/// Whether this browser can share a tab's / the system's audio (Chromium yes, Firefox / Safari no), so the share
+/// sheet offers the switch only where it can work.
+bool displayAudioSupported() {
+  try {
+    final nav = web.window.navigator;
+    final constraints = nav.mediaDevices.getSupportedConstraints() as JSObject;
+    return webDisplayAudioSupported(
+      userAgent: nav.userAgent,
+      suppressLocalAudioPlaybackSupported: constraints.has('suppressLocalAudioPlayback'),
+    );
+  } catch (e) {
+    _log('displayAudioSupported: $e');
+    return false;
+  }
+}
+
 void _log(String msg) {
   // ignore: avoid_print
   print('[web_rec] $msg');
@@ -323,6 +373,7 @@ class WebRecorder {
         String? uploadUrl,
         int? videoBitsPerSecond,
         bool audioOnly = false,
+        String? epoch,
       }) {
     _started = true;
     _log('calling compositor start() sessionId=$sessionId apiUrl=$apiUrl audioOnly=$audioOnly');
@@ -337,6 +388,7 @@ class WebRecorder {
         uploadUrl: uploadUrl,
         videoBitsPerSecond: videoBitsPerSecond,
         audioOnly: audioOnly,
+        epoch: epoch,
       );
     } catch (e) {
       _log('compositorStart error: $e — is recorder_compositor.js loaded in index.html?');

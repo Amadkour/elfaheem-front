@@ -37,6 +37,16 @@ import java.nio.FloatBuffer
  * All EGL/GL work happens on a single dedicated GL thread — every public
  * method hops onto it via the Handler; none of this is safe to call from
  * arbitrary threads directly.
+ *
+ * The live share's readback (A6): the frame is drawn a second time into a
+ * small offscreen framebuffer — scaled so its longer side is at most
+ * [configureCapture]'s maxLongSide (1280 "motion", 1920 "detail"), aspect
+ * kept, flipped to top-left origin — and read with glReadPixels into ONE
+ * reused direct buffer, only when a new screen frame arrived (or every
+ * 500 ms on a static screen) and never faster than the share's fps. Nothing
+ * is handed to the capturer before the first real frame, nor in placeholder
+ * mode. With no encoder attached (share without a recording, audio-only
+ * recording, a paused recording) the encoder pass is skipped entirely.
  */
 class ScreenPlaceholderRenderer(
         private val onLiveFrameForCapturer: ((widthPx: Int, heightPx: Int, rgbaBytes: ByteBuffer) -> Unit)?,
@@ -49,6 +59,9 @@ class ScreenPlaceholderRenderer(
         private const val PLACEHOLDER_R = 0.10f
         private const val PLACEHOLDER_G = 0.12f
         private const val PLACEHOLDER_B = 0.16f
+        /** A static screen is re-sent this often, so the encoder can refine it. */
+        private const val STATIC_RESEND_MS = 500L
+        private const val LATCH_TIMEOUT_MS = 3_000L
     }
 
     private val thread = HandlerThread("ScreenPlaceholderRendererGL").also { it.start() }
@@ -72,6 +85,28 @@ class ScreenPlaceholderRenderer(
 
     @Volatile private var liveMode = false
     @Volatile private var running = false
+
+    // No encoder surface (share-only, audio-only, paused): only the capture pass runs.
+    private var offscreen = false
+
+    // Size of the VirtualDisplay's frames (= the SurfaceTexture's buffer size).
+    private var inputWidth = 0
+    private var inputHeight = 0
+
+    // Live-share capture: scaled offscreen framebuffer + one reused readback buffer.
+    @Volatile private var captureMaxLongSide = 1280
+    @Volatile private var captureFps = 15
+    private var captureFbo = 0
+    private var captureTexture = 0
+    private var captureWidth = 0
+    private var captureHeight = 0
+    private var captureBuffer: ByteBuffer? = null
+    private var lastCaptureMs = 0L
+    @Volatile private var newFrameSinceCapture = false
+    private var flippedVertexBuffer: FloatBuffer? = null
+    private var fitVertexBuffer: FloatBuffer? = null
+    private var fitFor = ""
+    private var capturedFrames = 0L
 
     // GL program handles used by the live textured-quad path (OES external texture).
     private var program = 0
@@ -144,6 +179,8 @@ class ScreenPlaceholderRenderer(
         glHandler.post {
             try {
                 initEgl()
+                inputWidth = width
+                inputHeight = height
                 initTexture(width, height)
                 initProgram()
                 running = true
@@ -153,7 +190,45 @@ class ScreenPlaceholderRenderer(
                 latch.countDown()
             }
         }
-        latch.await()
+        await(latch, "start")
+    }
+
+    /** Waits for a GL-thread task, but never forever (the thread may have quit: A21). */
+    private fun await(latch: java.util.concurrent.CountDownLatch, what: String) {
+        if (!latch.await(LATCH_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+            Log.w(TAG, "$what: GL thread did not answer in $LATCH_TIMEOUT_MS ms")
+        }
+    }
+
+    /**
+     * The live share's capture size and rate: longer side at most [maxLongSide]
+     * (aspect kept), at most [fps] frames per second. Also speeds the draw
+     * clock up to [fps] while live.
+     */
+    fun configureCapture(maxLongSide: Int, fps: Int) {
+        captureMaxLongSide = maxLongSide.coerceIn(320, 3840)
+        captureFps = fps.coerceIn(1, 30)
+        Log.d(TAG, "capture ≤${captureMaxLongSide}px @${captureFps}fps")
+    }
+
+    /**
+     * The VirtualDisplay was resized (rotation, Android 14 single-app share):
+     * the SurfaceTexture's buffer follows, and the capture size with it.
+     */
+    fun setInputSize(width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+        val latch = java.util.concurrent.CountDownLatch(1)
+        glHandler.post {
+            try {
+                inputWidth = width
+                inputHeight = height
+                inputSurfaceTexture?.setDefaultBufferSize(width, height)
+                Log.d(TAG, "input size ${width}x$height")
+            } finally {
+                latch.countDown()
+            }
+        }
+        await(latch, "setInputSize")
     }
 
     /**
@@ -185,10 +260,11 @@ class ScreenPlaceholderRenderer(
                 if (outputSurface != EGL14.EGL_NO_SURFACE) {
                     EGL14.eglDestroySurface(eglDisplay, outputSurface)
                 }
-                val attribs = intArrayOf(
-                        EGL14.EGL_WIDTH, outputWidth, EGL14.EGL_HEIGHT, outputHeight,
-                        EGL14.EGL_NONE)
+                // Nothing is drawn into it while paused: a tiny pbuffer keeps a
+                // current context for the live share's capture pass.
+                val attribs = intArrayOf(EGL14.EGL_WIDTH, 16, EGL14.EGL_HEIGHT, 16, EGL14.EGL_NONE)
                 outputSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, attribs, 0)
+                offscreen = true
                 // outputWidth/outputHeight deliberately left unchanged —
                 // dimensions must stay consistent for onLiveFrameForCapturer
                 // (a resolution change mid-stream could disrupt the live
@@ -201,7 +277,7 @@ class ScreenPlaceholderRenderer(
                 latch.countDown()
             }
         }
-        latch.await()
+        await(latch, "surface change")
     }
 
     /**
@@ -222,10 +298,11 @@ class ScreenPlaceholderRenderer(
                 }
                 outputWidth = width
                 outputHeight = height
-                val attribs = intArrayOf(
-                        EGL14.EGL_WIDTH, outputWidth, EGL14.EGL_HEIGHT, outputHeight,
-                        EGL14.EGL_NONE)
+                // Nothing is drawn into it (no encoder): a tiny pbuffer is
+                // enough to keep a current context for the capture pass.
+                val attribs = intArrayOf(EGL14.EGL_WIDTH, 16, EGL14.EGL_HEIGHT, 16, EGL14.EGL_NONE)
                 outputSurface = EGL14.eglCreatePbufferSurface(eglDisplay, eglConfig, attribs, 0)
+                offscreen = true
                 scheduleNextTick()
             } catch (e: Exception) {
                 Log.e(TAG, "attachOffscreenOutput failed: ${e.message}", e)
@@ -233,7 +310,7 @@ class ScreenPlaceholderRenderer(
                 latch.countDown()
             }
         }
-        latch.await()
+        await(latch, "surface change")
     }
 
     /** Call on EVERY chunk boundary (first chunk + every ping-pong swap). Blocks until applied. */
@@ -248,6 +325,7 @@ class ScreenPlaceholderRenderer(
                         eglDisplay, eglConfig, surface, intArrayOf(EGL14.EGL_NONE), 0)
                 outputWidth = width
                 outputHeight = height
+                offscreen = false
                 pendingBitmap?.let { uploadPlaceholderBitmap(it); pendingBitmap = null }
                 // Always (re)start the draw clock here, in both modes — it
                 // drives placeholder AND live drawing now (see "Draw clock"
@@ -259,7 +337,7 @@ class ScreenPlaceholderRenderer(
                 latch.countDown()
             }
         }
-        latch.await()
+        await(latch, "surface change")
     }
 
     /**
@@ -273,17 +351,18 @@ class ScreenPlaceholderRenderer(
         glHandler.post {
             liveMode = true
             haveLiveFrame = false // no real frame drawn into the texture yet
+            newFrameSinceCapture = false
+            lastCaptureMs = 0L
             Log.d(TAG, "switched to LIVE mode")
             scheduleNextTick() // restart the clock under the new mode, in case it isn't already running
         }
     }
 
-    /** Optional: revert to placeholder (e.g. if you want recording to show a
-     *  placeholder again after Share is turned off, rather than a frozen
-     *  last frame). Not called by default — see ScreenCaptureService wiring. */
+    /** Share turned off: the recording shows the placeholder again and nothing more reaches the capturer. */
     fun switchToPlaceholder() {
         glHandler.post {
             liveMode = false
+            haveLiveFrame = false
             Log.d(TAG, "switched to PLACEHOLDER mode")
             scheduleNextTick()
         }
@@ -293,6 +372,12 @@ class ScreenPlaceholderRenderer(
         running = false
         glHandler.post {
             try {
+                if (captureFbo != 0) GLES20.glDeleteFramebuffers(1, intArrayOf(captureFbo), 0)
+                if (captureTexture != 0) GLES20.glDeleteTextures(1, intArrayOf(captureTexture), 0)
+                captureFbo = 0
+                captureTexture = 0
+                captureBuffer = null
+                inputSurface?.release()
                 inputSurfaceTexture?.release()
                 if (placeholderTextureId != 0) {
                     GLES20.glDeleteTextures(1, intArrayOf(placeholderTextureId), 0)
@@ -406,9 +491,20 @@ class ScreenPlaceholderRenderer(
                 -1f, 1f, 0f, 1f,
                 1f, 1f, 1f, 1f,
         )
-        vertexBuffer = ByteBuffer.allocateDirect(verts.size * 4)
-                .order(ByteOrder.nativeOrder()).asFloatBuffer().apply { put(verts); position(0) }
+        vertexBuffer = floatBuffer(verts)
+        // Same quad upside down: drawn into the capture framebuffer, glReadPixels
+        // (bottom-left origin) then returns the rows top-down, as the capturer expects.
+        flippedVertexBuffer = floatBuffer(floatArrayOf(
+                -1f, 1f, 0f, 0f,
+                1f, 1f, 1f, 0f,
+                -1f, -1f, 0f, 1f,
+                1f, -1f, 1f, 1f,
+        ))
     }
+
+    private fun floatBuffer(values: FloatArray): FloatBuffer =
+            ByteBuffer.allocateDirect(values.size * 4)
+                    .order(ByteOrder.nativeOrder()).asFloatBuffer().apply { put(values); position(0) }
 
     private fun linkProgram(vertexSrc: String, fragmentSrc: String): Int {
         val vs = compileShader(GLES20.GL_VERTEX_SHADER, vertexSrc)
@@ -493,10 +589,11 @@ class ScreenPlaceholderRenderer(
                 Log.e(TAG, "draw tick failed, continuing: ${e.message}", e)
             }
             scheduleNextTickInner(myGeneration)
-        }, 1000L / FPS_PLACEHOLDER)
+        }, 1000L / (if (liveMode) maxOf(FPS_PLACEHOLDER, captureFps) else FPS_PLACEHOLDER))
     }
 
     private fun drawPlaceholderFrame() {
+        if (offscreen) return // nothing consumes it
         if (!makeCurrentOutput()) return
         GLES20.glViewport(0, 0, outputWidth, outputHeight)
         GLES20.glClearColor(PLACEHOLDER_R, PLACEHOLDER_G, PLACEHOLDER_B, 1f)
@@ -565,64 +662,140 @@ class ScreenPlaceholderRenderer(
         try {
             inputSurfaceTexture?.updateTexImage()
             haveLiveFrame = true
+            newFrameSinceCapture = true
         } catch (_: Exception) {}
     }
 
     private fun drawLiveFrame() {
         if (!makeCurrentOutput()) return
+        if (haveLiveFrame) inputSurfaceTexture?.getTransformMatrix(texMatrix)
 
+        // 1. The live share: a scaled, flipped copy into the capture framebuffer.
+        if (haveLiveFrame) onLiveFrameForCapturer?.let { captureForShare(it) }
+
+        // 2. The recording's encoder (skipped without one).
+        if (offscreen) return
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
         GLES20.glViewport(0, 0, outputWidth, outputHeight)
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-
-        if (haveLiveFrame) {
-            // Real content available — draw the OES texture (fresh or
-            // repeated from the last onFrameAvailable(), doesn't matter).
-            inputSurfaceTexture?.getTransformMatrix(texMatrix)
-            GLES20.glUseProgram(program)
-            vertexBuffer!!.position(0)
-            GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aPositionLoc)
-            vertexBuffer!!.position(2)
-            GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 16, vertexBuffer)
-            GLES20.glEnableVertexAttribArray(aTexCoordLoc)
-            GLES20.glUniformMatrix4fv(uTexMatrixLoc, 1, false, texMatrix, 0)
-
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
-            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-        }
-        // else: no real frame has arrived yet (brief window right after
-        // switchToLive(), before the first actual screen change) — still
-        // draw+swap+readback the plain black clear above instead of doing
-        // nothing, so the encoder keeps getting frames every tick
-        // regardless. Once onFrameAvailable() fires, subsequent ticks draw
-        // the real texture as above.
-
-        // CRITICAL ORDERING: glReadPixels MUST happen before eglSwapBuffers.
-        // Swapping makes the buffer we just drew into the FRONT buffer and
-        // hands back an undefined (often white, on this Adreno driver) back
-        // buffer for the next frame — reading pixels after swap reads that
-        // undefined buffer, not the frame we actually rendered. This was
-        // the cause of the live share showing a solid white screen.
-        //
-        // NOTE: reading pixels back via glReadPixels every frame is real CPU
-        // cost at 15fps; this is the simplest-to-verify approach for a first
-        // working version, not the most efficient one. If frame rate or CPU
-        // usage becomes a problem, this is the place to optimize (e.g. a
-        // second EGL output surface backed by the capturer's own
-        // SurfaceTexture, avoiding the CPU round-trip entirely).
-        onLiveFrameForCapturer?.let { sink ->
-            val buf = ByteBuffer.allocateDirect(outputWidth * outputHeight * 4)
-                    .order(ByteOrder.nativeOrder())
-            GLES20.glReadPixels(
-                    0, 0, outputWidth, outputHeight,
-                    GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
-            buf.position(0)
-            sink(outputWidth, outputHeight, buf)
-        }
-
+        // No real frame yet (right after switchToLive): the black clear still
+        // goes to the encoder, so it keeps getting frames every tick.
+        if (haveLiveFrame) drawInputQuad(fitVertexBuffer())
         EGL14.eglSwapBuffers(eglDisplay, outputSurface)
+    }
+
+    /** The OES input texture over [verts] (x, y, u, v) into whatever framebuffer is bound. */
+    private fun drawInputQuad(verts: FloatBuffer) {
+        GLES20.glUseProgram(program)
+        verts.position(0)
+        GLES20.glVertexAttribPointer(aPositionLoc, 2, GLES20.GL_FLOAT, false, 16, verts)
+        GLES20.glEnableVertexAttribArray(aPositionLoc)
+        verts.position(2)
+        GLES20.glVertexAttribPointer(aTexCoordLoc, 2, GLES20.GL_FLOAT, false, 16, verts)
+        GLES20.glEnableVertexAttribArray(aTexCoordLoc)
+        GLES20.glUniformMatrix4fv(uTexMatrixLoc, 1, false, texMatrix, 0)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, oesTextureId)
+        GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
+    }
+
+    /**
+     * The screen aspect-fitted into the encoder frame (a landscape screen after
+     * a rotation is letterboxed into the portrait recording, not stretched).
+     */
+    private fun fitVertexBuffer(): FloatBuffer {
+        val key = "${inputWidth}x$inputHeight>${outputWidth}x$outputHeight"
+        fitVertexBuffer?.let { if (key == fitFor) return it }
+        var sx = 1f
+        var sy = 1f
+        if (inputWidth > 0 && inputHeight > 0 && outputWidth > 0 && outputHeight > 0) {
+            val inAspect = inputWidth.toFloat() / inputHeight
+            val outAspect = outputWidth.toFloat() / outputHeight
+            if (inAspect > outAspect) sy = outAspect / inAspect else sx = inAspect / outAspect
+        }
+        val buf = floatBuffer(floatArrayOf(
+                -sx, -sy, 0f, 0f,
+                sx, -sy, 1f, 0f,
+                -sx, sy, 0f, 1f,
+                sx, sy, 1f, 1f,
+        ))
+        fitVertexBuffer = buf
+        fitFor = key
+        return buf
+    }
+
+    private fun captureForShare(sink: (Int, Int, ByteBuffer) -> Unit) {
+        val now = android.os.SystemClock.uptimeMillis()
+        val minGap = 1000L / captureFps - 2
+        if (now - lastCaptureMs < minGap) return
+        if (!newFrameSinceCapture && now - lastCaptureMs < STATIC_RESEND_MS) return
+        if (!ensureCaptureTarget()) return
+
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, captureFbo)
+        GLES20.glViewport(0, 0, captureWidth, captureHeight)
+        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        drawInputQuad(flippedVertexBuffer!!)
+        val buf = captureBuffer!!
+        buf.position(0)
+        GLES20.glReadPixels(0, 0, captureWidth, captureHeight, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, buf)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        buf.position(0)
+        lastCaptureMs = now
+        newFrameSinceCapture = false
+        // The capturer converts synchronously (RGBA → I420 into its own
+        // buffers), so this one buffer is free again when the sink returns.
+        sink(captureWidth, captureHeight, buf)
+        if (++capturedFrames % 300 == 0L) {
+            Log.d(TAG, "share: $capturedFrames frames read back at ${captureWidth}x$captureHeight")
+        }
+    }
+
+    /** (Re)creates the capture framebuffer + readback buffer for the current input size. */
+    private fun ensureCaptureTarget(): Boolean {
+        if (inputWidth <= 0 || inputHeight <= 0) return false
+        val (w, h) = scaledSize(inputWidth, inputHeight, captureMaxLongSide)
+        if (captureFbo != 0 && w == captureWidth && h == captureHeight) return true
+        if (captureTexture == 0) {
+            val t = IntArray(1)
+            GLES20.glGenTextures(1, t, 0)
+            captureTexture = t[0]
+        }
+        if (captureFbo == 0) {
+            val f = IntArray(1)
+            GLES20.glGenFramebuffers(1, f, 0)
+            captureFbo = f[0]
+        }
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, captureTexture)
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, w, h, 0,
+                GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, captureFbo)
+        GLES20.glFramebufferTexture2D(GLES20.GL_FRAMEBUFFER, GLES20.GL_COLOR_ATTACHMENT0,
+                GLES20.GL_TEXTURE_2D, captureTexture, 0)
+        val status = GLES20.glCheckFramebufferStatus(GLES20.GL_FRAMEBUFFER)
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+        if (status != GLES20.GL_FRAMEBUFFER_COMPLETE) {
+            Log.e(TAG, "capture framebuffer incomplete: $status")
+            return false
+        }
+        captureWidth = w
+        captureHeight = h
+        captureBuffer = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
+        Log.d(TAG, "share capture target ${w}x$h (input ${inputWidth}x$inputHeight, max $captureMaxLongSide)")
+        return true
+    }
+
+    /** [w]x[h] scaled so the longer side is at most [maxLong], aspect kept, both even. */
+    private fun scaledSize(w: Int, h: Int, maxLong: Int): Pair<Int, Int> {
+        val longer = maxOf(w, h)
+        val scale = if (longer > maxLong) maxLong.toDouble() / longer else 1.0
+        fun even(v: Double) = (Math.round(v).toInt() and 1.inv()).coerceAtLeast(2)
+        return even(w * scale) to even(h * scale)
     }
 
     private fun makeCurrentOutput(): Boolean {

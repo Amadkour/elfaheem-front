@@ -54,6 +54,10 @@
 		<string>حفظ تسجيلات الحصص</string>
 		<key>NSScreenCaptureUsageDescription</key>
 		<string>Screen recording is used to record live sessions for later review</string>
+		<key>RTCAppGroupIdentifier</key>
+		<string>group.com.softkour.alfaheem</string>
+		<key>RTCScreenSharingExtension</key>
+		<string>com.softkour.alfaheem.BroadcastUploadExtension</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

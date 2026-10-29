@@ -220,6 +220,21 @@ void main() {
       expect(guestLiveErrorText(ApiException(statusCode: 404, message: 'raw', code: 'request_expired')), contains('expired'));
       expect(guestLiveErrorText(ApiException(statusCode: 400, message: 'raw', code: 'zzz')), 'raw');
     });
+
+    test("the host controls' refusals: locked room, removed, blocked (both languages)", () {
+      for (final lang in ['en', 'ar']) {
+        AppConfig.lang = lang;
+        final locked = guestLiveErrorText(ApiException(statusCode: 423, message: 'raw', code: 'room_locked'));
+        expect(locked, isNot('raw'));
+        expect(guestLiveErrorText(ApiException(statusCode: 423, message: 'raw')), locked);
+        expect(guestLiveErrorText(ApiException(statusCode: 403, message: 'raw', code: 'participant_removed')), isNot('raw'));
+        expect(guestLiveErrorText(ApiException(statusCode: 403, message: 'raw', code: 'guest_blocked')), isNot('raw'));
+      }
+      AppConfig.lang = 'en';
+      expect(guestLiveErrorText(ApiException(statusCode: 423, message: 'raw', code: 'room_locked')), contains('locked'));
+      expect(guestLiveErrorIsFinal(ApiException(statusCode: 403, message: 'raw', code: 'participant_removed')), isTrue);
+      expect(guestLiveErrorIsFinal(ApiException(statusCode: 423, message: 'raw', code: 'room_locked')), isFalse);
+    });
   });
 
   group('GuestLiveInfo (extended public payload)', () {

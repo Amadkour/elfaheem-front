@@ -639,6 +639,7 @@ import 'package:flutter_education_app/features/shared/live/meeting_recording.dar
 import 'record/recorder_native_android.dart';
 import 'record/recorder_native_shared.dart';
 import 'record/recorder_types.dart';
+import 'record/recording_upload_token.dart';
 import 'recorder_web_stub.dart'
 if (dart.library.html) 'recorder_web_impl.dart' as web_rec;
 import 'record/recorder_native_stub.dart'
@@ -700,6 +701,34 @@ class ClientRecorder extends ChangeNotifier {
   /// "is_final without a chunk"), so the server assembles even when the last chunk never carried `is_final`
   /// (empty final chunk, a native error, a web session with no data). Null = nothing to call (course sessions).
   final String? stopPath;
+
+  /// The route that issues this recorder's upload token (recording_upload_token.dart); null = none.
+  String? get uploadTokenPath => recordingUploadTokenPath(sessionId: sessionId, chunkPath: chunkPath);
+
+  // ── Upload auth + epoch (A7 / I10, R1) ────────────────────────────────────
+  // Asked once per start, in parallel with the platform start: the Authorization value every uploader sends
+  // (`Bearer <upload token>`, else the access token on an older server), and the start's `epoch`.
+  Future<RecordingUploadAuth>? _auth;
+  String _epoch = '';
+
+  /// The id of the current start, sent as the chunk field `epoch` (web: the compositor's form; native: the
+  /// start arguments — see docs/live/native_epoch.md).
+  String get epoch => _epoch;
+
+  Future<String> _authorization() async {
+    final auth = await (_auth ??= _resolveAuth());
+    return auth.authorization;
+  }
+
+  Future<RecordingUploadAuth> _resolveAuth() async {
+    final auth = await resolveRecordingUploadAuth(
+      tokenPath: uploadTokenPath,
+      post: (path) => apiClient.post(path),
+      accessToken: () => apiClient.accessToken,
+    );
+    log('[REC] upload auth: $auth');
+    return auth;
+  }
 
   /// The full chunk upload URL this recorder posts to.
   String get uploadUrl =>
@@ -813,14 +842,16 @@ class ClientRecorder extends ChangeNotifier {
   Future<void> start() async {
     if (_state != RecState.idle) return;
     _set(RecState.starting);
+    _epoch = newRecordingEpoch(DateTime.now());
+    _auth = _resolveAuth(); // web: awaited by startWebCompositor, so the compositor setup does not wait on it
     if (kIsWeb) {
       await _startWeb();
     } else {
-      final token = (await apiClient.accessToken) ?? '';
       final q = quality;
       await _native?.start(
         uploadUrl: uploadUrl,
-        authToken: 'Bearer $token',
+        authToken: await _authorization(),
+        epoch: _epoch,
         encoder: q == null ? null : RecorderSettings.of(q).toMap(),
       );
     }
@@ -832,12 +863,14 @@ class ClientRecorder extends ChangeNotifier {
     int participantCount = 0,
   }) async {
     if (!kIsWeb || _webRecorder == null) return;
-    final token = (await apiClient.accessToken) ?? '';
+    final authorization = await _authorization();
+    if (_webRecorder == null) return; // stopped while the token was being fetched
     final q = quality;
     _webRecorder!.startCompositor(
       sessionId,
       apiClient.baseUrl,
-      'Bearer $token',
+      authorization,
+      epoch: _epoch.isEmpty ? newRecordingEpoch(DateTime.now()) : _epoch,
       teacherName: teacherName,
       sessionTitle: sessionTitle,
       participantCount: participantCount,
@@ -999,6 +1032,11 @@ class ClientRecorder extends ChangeNotifier {
       await apiClient.post(path);
       log('[REC] stop posted → $path');
     } catch (e) {
+      final ex = ApiException.from(e);
+      if (recordingChunkVerdict(ex.statusCode, ex.code) == RecordingChunkVerdict.assembled) {
+        log('[REC] stop: the recording is already assembled — done');
+        return;
+      }
       log('[REC] stop post failed ($path): $e');
     }
   }

@@ -18,6 +18,7 @@
 // to resolve `/live/<token>` as a route (web path, web hash and app links).
 import '../../../config/app_config.dart';
 import '../../../core/api_client.dart';
+import '../live/live_controls_api.dart' show liveControlsErrorText;
 import '../live/live_room.dart' show JoinOutcome, LiveGuestAdmission, LiveRoomRef, liveGuestAdmissionFrom, liveRoomCodeText;
 import '../live/live_time_limit.dart' show parseLiveTimeLimit, parseNaiveUtc;
 
@@ -341,7 +342,12 @@ String guestLiveErrorText(Object e) {
       return 'guest_live_err_rate_limited'.tr;
     case 'guest_blocked':
       return 'guest_live_err_blocked'.tr;
+    // The host's controls (live hardening): 423 room_locked, 403 participant_removed.
+    case 'room_locked':
+    case 'participant_removed':
+      return liveControlsErrorText(ex.code)!;
   }
+  if (ex.statusCode == 423) return liveControlsErrorText('room_locked')!;
   if (ex.statusCode == 429) return 'guest_live_err_rate_limited'.tr;
   return liveRoomErrorTextOrNull(ex) ?? ex.message;
 }
@@ -361,7 +367,12 @@ bool guestLiveErrorIsPin(Object e) => ApiException.from(e).code == 'guest_pin_in
 /// True when the error means the link itself is dead: polling it again is pointless.
 bool guestLiveErrorIsFinal(Object e) {
   final code = ApiException.from(e).code;
-  return code == 'guest_link_invalid' || code == 'live_ended' || code == 'guests_disabled';
+  return code == 'guest_link_invalid' ||
+      code == 'live_ended' ||
+      code == 'guests_disabled' ||
+      // The host removed / blocked this visitor: asking again never lets them in (a locked room may open again).
+      code == 'participant_removed' ||
+      code == 'guest_blocked';
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
