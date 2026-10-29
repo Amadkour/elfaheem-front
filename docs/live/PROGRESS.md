@@ -40,4 +40,4 @@ screen-share quality are solved; production accounts are never used (local stack
 | 9 | app resilience: background camera, Rejoin, connect retry, tile order, permission updates, upload token + epoch (Dart, Kotlin, Swift), LiveCallService | done, NOT device-tested | |
 | 10 | features: teacher controls UI, annotation (D-079) + Android overlay, locked pill; whiteboard / polls / Q&A / grid / audio-only / consent = FOLLOW-UP | done (in scope part) | |
 | 11 | load + weak-network tests | load run pending (bench/load); full weak-network suite = FOLLOW-UP | |
-| 12 | docs (dev + ops), features guide, merge into organizations | todo | |
+| 12 | docs, features guide, merge into organizations | merged LOCALLY (not pushed): front organizations = 745aab2 (fast-forward), back organizations = 50fa99b (merge; live e2e 969 checks pass on it) | push needs the owner's OK; CI does not run on `organizations` pushes |
