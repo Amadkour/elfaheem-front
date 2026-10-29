@@ -6,15 +6,18 @@
 //   width < 600  → mobile: a floating glass pill with the primary actions as large round labelled buttons,
 //                  a "More" button that opens a bottom sheet (showAppSheet) with everything that did not fit
 //                  plus the secondary actions, and the red End button last.
-//   width ≥ 600  → web / desktop: a centred floating bar with grouped segments (devices | share & record |
+//   width ≥ 600  → web / desktop: a centred floating bar with grouped segments (devices | share |
 //                  reactions | end), tooltips with keyboard hints, hover states and a device chevron next to
 //                  the actions that carry a device menu.
 //
 // The row is always laid out left-to-right so the End button is the rightmost one in Arabic too; labels are
 // plain Text so Arabic shaping is unaffected.
 //
-// A [LiveControlAction.pinned] primary (the meeting creator's red Record / Stop, live-rooms-spec §11) never moves
-// into "More" on phones: the pill makes room for it and its buttons shrink to fit (320 px included).
+// A [LiveControlAction.pinned] primary (the chat) never moves into "More" on phones: the pill makes room for it and
+// its buttons shrink to fit (320 px included).
+//
+// Recording is not on the bar (D-095): Record / Pause / Resume / Stop and the REC time live in the room's top row
+// (live_top_row.dart).
 library;
 
 import 'package:flutter/material.dart';
@@ -86,7 +89,7 @@ class LiveControlAction {
 
   int get attentionCount => attention ?? badge;
 
-  /// Mobile: always in the pill, never in the "More" sheet (the Record / Stop of a meeting creator, the chat).
+  /// Mobile: always in the pill, never in the "More" sheet (the chat).
   final bool pinned;
 
   bool get enabled => onTap != null || (menu != null && menu!.isNotEmpty);
@@ -103,15 +106,6 @@ class _CountBadge extends StatelessWidget {
 /// The phone pill's "More" badge: what waits among the actions inside the sheet. Pure (layout test).
 int liveMoreBadge(List<LiveControlAction> overflow) => overflow.fold(0, (s, a) => s + a.attentionCount);
 
-/// Small recording state shown inside the bar.
-enum LiveRecBadge { none, recording, paused }
-
-/// Whether the bar carries the recorder controls — the Pause / Resume button and the REC chip. A teacher's bar
-/// follows the course's record switch exactly as before; anyone else's (a meeting creator) only while THIS device
-/// is the one recording ([recordsHere], room.dart `_recordsHere`). Pure, so the layout test covers every state.
-bool showsRecorderControls({required bool isTeacher, required bool recordingEnabled, required bool recordsHere}) =>
-    isTeacher ? recordingEnabled : recordsHere;
-
 class LiveControlBar extends StatelessWidget {
   const LiveControlBar({
     super.key,
@@ -119,7 +113,6 @@ class LiveControlBar extends StatelessWidget {
     this.secondary = const [],
     required this.end,
     this.groups,
-    this.rec = LiveRecBadge.none,
     this.onInteraction,
     this.onLobby,
     this.waitingCount = 0,
@@ -165,7 +158,6 @@ class LiveControlBar extends StatelessWidget {
   final LiveControlAction end;
   /// Wide: the segments. Defaults to one group of [primary] followed by one of [secondary].
   final List<List<LiveControlAction>>? groups;
-  final LiveRecBadge rec;
   /// Called on any pointer-down inside the bar (used to restart the auto-hide timer).
   final VoidCallback? onInteraction;
 
@@ -217,32 +209,29 @@ class LiveControlBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: Stack(clipBehavior: Clip.none, alignment: Alignment.topCenter, children: [
-        Container(
-          padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
-          decoration: _shell(30),
-          child: Row(children: [
-            for (final a in shown) Expanded(child: _MobileButton(action: a, size: size)),
-            if (overflow.isNotEmpty)
-              Expanded(
-                child: _MobileButton(
-                  size: size,
-                  action: LiveControlAction(
-                    key: const ValueKey('live_room.more'),
-                    icon: Icons.more_horiz_rounded,
-                    label: 'more'.tr,
-                    active: overflow.any((a) => a.active && a.off == false && a.enabled),
-                    // What waits inside the sheet (unread chat, new hands, lobby requests): the "More" badge.
-                    badge: liveMoreBadge(overflow),
-                    onTap: () => _openMoreSheet(context, overflow),
-                  ),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
+        decoration: _shell(30),
+        child: Row(children: [
+          for (final a in shown) Expanded(child: _MobileButton(action: a, size: size)),
+          if (overflow.isNotEmpty)
+            Expanded(
+              child: _MobileButton(
+                size: size,
+                action: LiveControlAction(
+                  key: const ValueKey('live_room.more'),
+                  icon: Icons.more_horiz_rounded,
+                  label: 'more'.tr,
+                  active: overflow.any((a) => a.active && a.off == false && a.enabled),
+                  // What waits inside the sheet (unread chat, new hands, lobby requests): the "More" badge.
+                  badge: liveMoreBadge(overflow),
+                  onTap: () => _openMoreSheet(context, overflow),
                 ),
               ),
-            Expanded(child: _MobileButton(action: end, size: size, danger: true)),
-          ]),
-        ),
-        if (rec != LiveRecBadge.none) Positioned(top: -9, child: _RecChip(rec)),
-      ]),
+            ),
+          Expanded(child: _MobileButton(action: end, size: size, danger: true)),
+        ]),
+      ),
     );
   }
 
@@ -266,7 +255,6 @@ class LiveControlBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             decoration: _shell(22),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              if (rec != LiveRecBadge.none) ...[_RecChip(rec), _divider()],
               for (var i = 0; i < segs.length; i++) ...[
                 if (i > 0) _divider(),
                 for (final a in segs[i]) Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: _WideButton(a)),
@@ -588,34 +576,6 @@ class _WideEndButtonState extends State<_WideEndButton> {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ── REC chip ────────────────────────────────────────────────────────────────
-class _RecChip extends StatelessWidget {
-  const _RecChip(this.state);
-  final LiveRecBadge state;
-  @override
-  Widget build(BuildContext context) {
-    final paused = state == LiveRecBadge.paused;
-    final c = paused ? LivePalette.warning : LivePalette.danger;
-    return Container(
-      key: const ValueKey('live_room.rec_badge'),
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(c.withValues(alpha: 0.22), LivePalette.surface),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: c.withValues(alpha: 0.6)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        paused
-            ? Icon(Icons.pause_rounded, size: 11, color: c)
-            : Container(width: 7, height: 7, decoration: BoxDecoration(shape: BoxShape.circle, color: c, boxShadow: [BoxShadow(color: c, blurRadius: 6)])),
-        const SizedBox(width: 5),
-        Text(paused ? 'lr_rec_paused_chip'.tr : 'lr_rec'.tr,
-            style: TextStyle(fontFamily: AppFonts.family, fontSize: 10, fontWeight: FontWeight.w800, color: c, letterSpacing: 0.6)),
-      ]),
     );
   }
 }

@@ -5,7 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/features/teacher/sessions/live/widgets/room_recorder.dart';
 import 'package:livekit_client/livekit_client.dart';
 import 'live_control_bar.dart';
 import 'live_palette.dart';
@@ -16,13 +15,15 @@ import '../../components/exts.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/shared/live/live_share_arbiter.dart' show LiveShareButton;
 
-Color get _amber   => LivePalette.warning;   // paused recording
+Color get _amber   => LivePalette.warning;   // a pending share request
 Color get _emerald => LivePalette.success;   // resume / sharing
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ControlsWidget — owns the device / share / recording logic and describes the
-// buttons as LiveControlActions; LiveControlBar (live_control_bar.dart) lays
-// them out (mobile pill + "More" sheet, or the wide grouped bar).
+// ControlsWidget — owns the device / share logic and describes the buttons as
+// LiveControlActions; LiveControlBar (live_control_bar.dart) lays them out
+// (mobile pill + "More" sheet, or the wide grouped bar). Recording (Record /
+// Pause / Resume / Stop, the REC time) is not on the bar: it lives in the room's
+// top row (live_top_row.dart, D-095).
 // ─────────────────────────────────────────────────────────────────────────────
 class ControlsWidget extends StatefulWidget {
   final Room room;
@@ -35,28 +36,9 @@ class ControlsWidget extends StatefulWidget {
   final bool isHost;
   final Future<void> Function()? onToggleScreenShare;
 
-  // ── NEW: pause / resume recording callbacks ───────────────────────────────
-  // Passed from room.dart. Each is null when the action is not available
-  // (wrong RecState, transition in flight, or not a teacher). ControlsWidget
-  // disables the corresponding button automatically when the callback is null.
-  final Future<void> Function()? onPauseRecording;
-  final Future<void> Function()? onResumeRecording;
-
-  // Current recorder state — used to pick the correct icon / label / colour
-  // for the combined Pause/Resume button, and to gate the End button.
-  final RecState? recorderState;
-
-  /// True when THIS device is the one recording: a course teacher, or a meeting creator who pressed Record
-  /// (room.dart `_recordsHere`). For everyone who is not a teacher it decides whether Pause / Resume and the REC
-  /// chip are shown at all; a teacher's bar keeps following [recordingEnabled] alone (showsRecorderControls).
-  final bool recordsHere;
-
   // Live reactions: opens / closes the emoji picker (null hides the button).
   final VoidCallback? onToggleReactions;
   final bool reactionsOpen;
-
-  /// False → nothing recording-related is shown (no pause/resume, no REC chip).
-  final bool recordingEnabled;
 
   /// Any pointer-down inside the bar (room.dart restarts its auto-hide timer).
   final VoidCallback? onInteraction;
@@ -88,14 +70,6 @@ class ControlsWidget extends StatefulWidget {
   final VoidCallback? onLobby;
   final int waitingCount;
 
-  /// [meeting-recording] The meeting creator's labelled red Record / Stop (live-rooms-spec §11) — in the PRIMARY
-  /// group, pinned in the phone pill. Null hides it (course sessions, everyone but the creator).
-  final VoidCallback? onMeetingRecord;
-  /// True while this meeting records (the action reads "Stop").
-  final bool meetingRecording;
-  /// Starting / stopping is in flight (spinner).
-  final bool meetingRecordBusy;
-
   /// Annotation (D-079, feature key `live.annotation`): opens / closes the drawing toolbar over the shared screen.
   /// Null hides the action (no share on the stage, or this person may not draw).
   final VoidCallback? onAnnotate;
@@ -121,14 +95,8 @@ class ControlsWidget extends StatefulWidget {
         required this.isTeacher,
         this.isHost = false,
         this.onToggleScreenShare,
-        // NEW optional — default null keeps non-teacher builds unchanged
-        this.onPauseRecording,
-        this.onResumeRecording,
-        this.recorderState,
-        this.recordsHere = false,
         this.onToggleReactions,
         this.reactionsOpen = false,
-        this.recordingEnabled = true,
         this.onInteraction,
         this.canPublish = true,
         this.allowMic = true,
@@ -144,9 +112,6 @@ class ControlsWidget extends StatefulWidget {
         this.chatOpen = false,
         this.onLobby,
         this.waitingCount = 0,
-        this.onMeetingRecord,
-        this.meetingRecording = false,
-        this.meetingRecordBusy = false,
         this.onAnnotate,
         this.annotating = false,
         this.shareButton,
@@ -170,7 +135,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
   StreamSubscription? _subscription;
   bool _speakerphoneOn  = AudioManager.instance.isSpeakerOutputPreferred;
   bool _screenShareBusy = false;
-  bool _recActionBusy   = false;   // true while pause/resume is in flight
 
   @override
   void initState() {
@@ -365,27 +329,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
     } catch (e) { log('desktop screen share: $e'); }
   }
 
-  // ── NEW: pause / resume recording ─────────────────────────────────────────
-  //
-  // A single button toggles between Pause and Resume depending on recorderState.
-  // The callback coming from room.dart is already null when the action is
-  // unavailable, so we just disable the button in that case.
-  void _onRecordingAction() async {
-    if (_recActionBusy) return;
-    final isPaused = widget.recorderState == RecState.paused;
-    final cb = isPaused ? widget.onResumeRecording : widget.onPauseRecording;
-    if (cb == null) return;
-
-    if (mounted) setState(() => _recActionBusy = true);
-    try {
-      await cb();
-    } catch (e) {
-      log('recording action error: $e');
-    } finally {
-      if (mounted) setState(() => _recActionBusy = false);
-    }
-  }
-
   // ── Disconnect ─────────────────────────────────────────────────────────────
   void _onTapDisconnect() async {
     final result = await context.showDisconnectDialog();
@@ -442,8 +385,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
     final isSharing = participant.isScreenShareEnabled() ||
         (IosShareNative.supported && IosShareNative.broadcasting.value);
     final mobile    = !kIsWeb && lkPlatformIsMobile();
-    final recOn     = showsRecorderControls(
-        isTeacher: widget.isTeacher, recordingEnabled: widget.recordingEnabled, recordsHere: widget.recordsHere);
 
     // ── Devices ─────────────────────────────────────────────────────────────
     final mic = !widget.allowMic ? null : LiveControlAction(
@@ -502,7 +443,7 @@ class ControlsWidgetState extends State<ControlsWidget> {
           )
         : null;
 
-    // ── Share & record (teacher) ────────────────────────────────────────────
+    // ── Share ───────────────────────────────────────────────────────────────
     final mode = widget.shareButton;
     final share = mode != null
         ? shareAction(
@@ -525,10 +466,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
             : null;
 
     final annotate = annotateAction(onTap: widget.onAnnotate, open: widget.annotating);
-
-    final record = recOn ? _recordingAction() : null;
-    final meetRec = meetingRecordAction(
-        onTap: widget.onMeetingRecord, recording: widget.meetingRecording, busy: widget.meetingRecordBusy);
 
     // ── Reactions (everyone) ────────────────────────────────────────────────
     final react = widget.onToggleReactions != null
@@ -592,17 +529,8 @@ class ControlsWidgetState extends State<ControlsWidget> {
       onTap: _onTapDisconnect,
     );
 
-    final recState = widget.recorderState;
-    final rec = !recOn
-        ? LiveRecBadge.none
-        : recState == RecState.recording
-            ? LiveRecBadge.recording
-            : recState == RecState.paused
-                ? LiveRecBadge.paused
-                : LiveRecBadge.none;
-
     if (!widget.canPublish) {
-      // Listen-only: no mic / camera / share / recording — just Leave, reactions and audio output.
+      // Listen-only: no mic / camera / share — just Leave, reactions and audio output.
       return LiveControlBar(
         primary: [?react, ?hand, ?chat, ?speaker, ?output],
         secondary: [?annotate],
@@ -612,7 +540,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
           [?react, ?hand, ?chat],
         ],
         end: end,
-        rec: LiveRecBadge.none,
         onInteraction: widget.onInteraction,
         onLobby: widget.onLobby,
         waitingCount: widget.waitingCount,
@@ -622,15 +549,14 @@ class ControlsWidgetState extends State<ControlsWidget> {
 
     return LiveControlBar(
       // Phones: whatever does not fit the pill moves into the "More" sheet automatically.
-      primary: [?mic, ?cam, ?meetRec, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
-      secondary: [?flip, ?speaker, ?output, ?record],
+      primary: [?mic, ?cam, ?share, ?annotate, ?react, ?hand, ?hands, ?chat],
+      secondary: [?flip, ?speaker, ?output],
       groups: [
         [?mic, ?cam, ?flip, ?speaker, ?output],
-        [?share, ?annotate, ?meetRec, ?record],
+        [?share, ?annotate],
         [?react, ?hand, ?hands, ?chat],
       ],
       end: end,
-      rec: rec,
       onInteraction: widget.onInteraction,
       onLobby: widget.onLobby,
       waitingCount: widget.waitingCount,
@@ -685,23 +611,6 @@ class ControlsWidgetState extends State<ControlsWidget> {
     };
   }
 
-  // ── [meeting-recording] Record / Stop (meeting creator) ──────────────────
-  /// The labelled red Record / Stop of a meeting creator, pinned in the phone pill; null when [onTap] is null.
-  /// Public and pure so the layout test builds exactly what the bar gets.
-  static LiveControlAction? meetingRecordAction({required VoidCallback? onTap, bool recording = false, bool busy = false}) {
-    if (onTap == null) return null;
-    return LiveControlAction(
-      key: const ValueKey('live_room.meeting_record'),
-      icon: recording ? Icons.stop_circle_rounded : Icons.fiber_manual_record_rounded,
-      label: recording ? t('إيقاف', 'Stop') : t('تسجيل', 'Record'),
-      active: true,
-      color: LivePalette.danger,
-      loading: busy,
-      pinned: true,
-      onTap: busy ? null : onTap,
-    );
-  }
-
   /// Annotate (D-079): opens / closes the drawing toolbar over the shared screen; null when [onTap] is null.
   /// Public and pure so the layout test builds exactly what the bar gets.
   static LiveControlAction? annotateAction({required VoidCallback? onTap, bool open = false}) {
@@ -727,27 +636,5 @@ class ControlsWidgetState extends State<ControlsWidget> {
           onTap: () => select(d),
         ),
     ];
-  }
-
-  // ── Pause / Resume recording ──────────────────────────────────────────────
-  //   RecState.recording → amber "Pause"  (onPauseRecording)
-  //   RecState.paused    → green "Resume" (onResumeRecording)
-  //   anything else      → disabled "Pause"
-  LiveControlAction _recordingAction() {
-    final state    = widget.recorderState;
-    final isPaused = state == RecState.paused;
-    final isActive = state == RecState.recording || isPaused;
-    final String label = _recActionBusy
-        ? (isPaused ? 'lr_resuming'.tr : 'lr_pausing'.tr)
-        : (isPaused ? 'lr_resume'.tr : 'lr_pause'.tr);
-    return LiveControlAction(
-      key: const ValueKey('live_room.pause_recording'),
-      icon: isPaused ? Icons.play_circle_outline_rounded : Icons.pause_circle_outline_rounded,
-      label: label,
-      active: isActive,
-      color: isPaused ? _emerald : _amber,
-      loading: _recActionBusy,
-      onTap: (!_recActionBusy && isActive) ? _onRecordingAction : null,
-    );
   }
 }

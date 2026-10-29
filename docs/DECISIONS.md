@@ -1214,3 +1214,30 @@ of D-079 / D-087 assumes 0..1 — a second path for one format); an unbounded pa
 projector must show the same content); cropping content on a format change (silent loss) or refusing the change once
 a board has content; a screenshot for the PNG (it carried the zoom, the selection and the tags, and could not export
 what is off screen).
+
+## D-095 — The live room's top row: one line above the stage; recording moves up from the bar; full view · 2026-10-30 · proposed
+
+Amends D-058 / D-060 (meeting Record / Stop pinned on the bar, the info chip), D-090 (the badge column) and D-092.
+**Context.** The owner: "the top icons info, times, recording — make all of it in one line and remove the app logo of
+the top corner of live; also remove the record button from the bottom and make it in the top row with the record
+time; also show the live time and an icon to make the shared content full and remove the top and bottom bars".
+**Decision.** (1) `widgets/live_top_row.dart` (`LiveTopRow`, plain values; room.dart `_buildTopRow()` maps its state,
+rebuilt by `_clockTick` + the recorder only, D-092) is ONE 48 px line above the stage, never inside it: start — ⓘ LIVE
++ how long the room has been live (`live_started_at`, else the person's own time; the chip is the info button) · the
+free-time countdown (+ Upgrade) · weak network · Room locked; end — the recording control · Full view · Minimize.
+Below 600 px labels become icons (the times stay), chips tighten, the ⓘ glyph drops when a status pill sits beside
+the clock; a still-crowded row scrolls its start group under an edge fade — it never wraps. (2) Recording leaves the
+bar (`LiveRecBadge`, the bar's Pause / Resume and `meetingRecordAction` are gone): `liveRecPhase` picks the device's
+recorder first, then the creator's "Record", then the server's "● REC" (everyone, no controls — D-090 server mode
+included); recording / paused shows the dot + time and a tap opens Pause / Resume (the gate the bar had,
+`showsRecorderControls`) and, for a meeting's creator, Stop recording. (3) No app logo in the room: the waiting
+card's `showLogo` is false, and its own "live" chip is off (the row says LIVE). The recording placeholder is a
+screenshot of the live screen, so the recording has no logo either — a recording-only logo would need a second,
+off-screen render of the card and break the stated parity. (4) Full view (`_focus`, offered whenever something fills
+the stage — share, board or a camera): the row, the bar and the thumbnail strip step aside; `LiveFocusExitButton`
+takes the participant badge's corner (with a red dot while this device records); a tap on the stage, Esc, F and the
+back button (`PopScope` — `LiveRoomHost.handleBack` asks the room's navigator first) bring them back. The annotation
+and board toolbars live on the stage and stay; the self-view box stays and keeps clear of the exit button.
+**Rejected.** Keeping the vertical badge column (it grew with every pill and sat over the video); a Record button on
+both the bar and the row; an auto-hiding row (the recording state must stay visible); a full-screen route for full
+view (the room is not a route, D-059).
