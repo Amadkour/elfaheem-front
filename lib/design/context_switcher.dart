@@ -54,9 +54,12 @@ int pendingElsewhere(AppModeController ctl) {
 /// only flipped the mode while the org pages stayed on screen, so there was no way out.
 Future<void> leaveToPersonal(BuildContext context) async {
   final nav = Navigator.of(context, rootNavigator: true);
+  // an org page opened inside a tab of the personal shell (D-081): that tab goes back to its own first page too
+  final near = Navigator.maybeOf(context);
   final ctl = AppModeController.instance;
   await ctl.setMode(AppMode.individual);
   ctl.applyOrgContext();
+  if (near != null && !identical(near, nav) && near.mounted) near.popUntil((r) => r.isFirst);
   String? root;
   nav.popUntil((r) {
     if (r.isFirst) root = r.settings.name;

@@ -1,7 +1,9 @@
 // lib/core/app_navigator.dart
 //
 // One place that knows how to open a "module" from a notification tap, a push, a dialog button
-// or a shared link. Everything goes through navigatorKey (main.dart).
+// or a shared link. Everything goes through navigatorKey (main.dart) — and, while a role shell is on screen, into
+// its visible tab's navigator (D-081: the page keeps the tab bar; [_nav]). Org dashboards, sign-in and other role
+// homes still land on the root navigator (AppTabNavigator hands them up).
 import 'dart:async' show unawaited;
 
 import 'package:flutter/material.dart';
@@ -22,6 +24,7 @@ import '../../features/shared/public_profile/public_profile_page.dart' show Publ
 import '../../main.dart';
 import '../top_route_observer.dart' show topRouteObserver;
 import 'view_as_state.dart';
+import '../../design/app_shell_nav.dart' show AppShellNav;
 import '../../features/org/governance/gov_wiring.dart' show govOpenAssignmentsLink, govOpenDelegationLink, govOpenItemLink, govOpenSessionLink;
 import '../../features/shared/live/live_room.dart' show LiveRoomRef, kLiveLobbyFeatureKey;
 import '../../features/shared/live/live_lobby_sheets.dart' show showLobbySheet;
@@ -40,8 +43,14 @@ class AppNavigator {
   /// Left null → teachers also get the shared CourseDetailScreen.
   static Widget Function(Map<String, dynamic> courseJson)? teacherCourseBuilder;
 
+  /// Where a deep link pushes: the visible tab of the role shell on screen, else the root navigator.
+  static NavigatorState? get _nav => AppShellNav.pushTarget() ?? navigatorKey.currentState;
+
+  /// The org dashboard is the root navigator's top (its own tab pages included).
+  static bool get _onOrgDashboard => topRouteObserver.rootRoute?.settings.name == '/org_dashboard';
+
   static Future<void> openCourse(int courseId, {int? ref}) async {
-    await navigatorKey.currentState?.push(MaterialPageRoute(
+    await _nav?.push(MaterialPageRoute(
       settings: const RouteSettings(name: '/course-by-id'),
       builder: (_) => CourseLinkLoader(courseId: courseId, ref: ref),
     ));
@@ -49,7 +58,7 @@ class AppNavigator {
 
   /// A public profile by @username (profile links `https://nextbrain.site/@name`, D-074).
   static Future<void> openProfile(String username) async {
-    await navigatorKey.currentState?.push(MaterialPageRoute(
+    await _nav?.push(MaterialPageRoute(
       settings: RouteSettings(name: '/@$username'),
       builder: (_) => PublicProfileScreen(username: username),
     ));
@@ -63,9 +72,10 @@ class AppNavigator {
   /// live_plan_renew_failed, Part 3 §15) | rag_learning · rag_alerts (platform admins only: the assistant's Learning
   /// page / the console's Alerts tab, `rag_admin_links.dart`; anyone else the notifications list)
   static Future<void> openModule(String? module, {int? targetId, int? orgId, String? kind}) async {
-    final nav = navigatorKey.currentState;
+    final root = navigatorKey.currentState;
     final ctx = navigatorKey.currentContext;
-    if (nav == null || ctx == null || !ctx.mounted) return;
+    final nav = _nav;
+    if (root == null || nav == null || ctx == null || !ctx.mounted) return;
     // Not logged in (or an admin is only LOOKING at a user's app): never navigate on that user's behalf.
     if (!ctx.read<MyAuthProvider>().isAuthenticated || ViewAsState.active) return;
     // The assistant's notices to platform admins (rag_learning · rag_alerts): their own pages, else the list.
@@ -121,7 +131,11 @@ class AppNavigator {
           return;
         }
         AttentionService.instance.orgTabRequest.value = OrgTabRequest(orgId, 'timetable', targetId != null ? 'open:$targetId' : 'generate');
-        if (topRouteObserver.currentRoute?.settings.name != '/org_dashboard') await nav.pushNamed('/org_dashboard');
+        if (_onOrgDashboard) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => AppShellNav.popVisibleToRoot()); // the section, not a page above it
+        } else {
+          await root.pushNamed('/org_dashboard');
+        }
         return;
       // governance (D-057): an item · a council session · a delegation · a form I must answer
       case 'org_work':
@@ -155,10 +169,12 @@ class AppNavigator {
       case 'profile':
         await nav.pushNamed('/profile');
       case 'my_courses':
-      // These are tabs inside the dashboards: pop to the root and ask the AppShell to switch.
-        nav.popUntil((r) => r.isFirst);
+      // These are tabs inside the dashboards: pop to the root and ask the AppShell to switch (the shell then shows
+      // that tab's root page, D-081).
+        root.popUntil((r) => r.isFirst);
         requestedTab.value = null; // re-fire even if the same id is requested twice
         requestedTab.value = module;
+        AppShellNav.popVisibleToRootAfterSwitch();
         return;
       default:
       // A module this app version does not know (server added a new one) → the notifications list
@@ -187,7 +203,7 @@ class AppNavigator {
   /// The `live_lobby` deep link: a meeting opens the calendar on that meeting, a course session stays where the
   /// host is; the lobby sheet (waiting list, Admit / Reject) opens on top either way.
   static Future<void> openLiveLobby(LiveRoomRef? ref) async {
-    final nav = navigatorKey.currentState;
+    final nav = _nav;
     if (nav == null) return;
     if (ref == null || AppConfig.disableList.contains(kLiveLobbyFeatureKey)) {
       await nav.pushNamed('/notifications');
@@ -247,7 +263,7 @@ class AppNavigator {
     if (orgId != null && await _openOrgFirst(orgId, module == null && target == null)) return;
     if (module != null) return openModule(module, targetId: target, orgId: orgId);
     if (target != null) return openCourse(target);
-    await navigatorKey.currentState?.pushNamed('/notifications');
+    await _nav?.pushNamed('/notifications');
   }
 
   /// Organization notification (push data / tap target carry `org_id`): open that organization in Organization
@@ -261,6 +277,7 @@ class AppNavigator {
     } catch (_) {/* never block the tap */}
     if (!homeOnly) return false;
     navigatorKey.currentState?.popUntil((r) => r.isFirst);
+    AppShellNav.popVisibleToRoot(); // and the tab on screen back to its own first page
     return true;
   }
 

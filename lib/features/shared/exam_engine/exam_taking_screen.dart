@@ -48,7 +48,8 @@ Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {St
       appToast(examCodeText(r.code ?? '') == (r.code ?? '') ? r.message : examCodeText(r.code ?? ''), error: true);
       return;
     }
-    await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ExamTakingScreen(examTitle: title, startReply: r.map, deviceId: deviceId,
+    // the sitting is full-screen: on the root navigator, above any tab bar (D-081)
+    await Navigator.of(ctx, rootNavigator: true).push(MaterialPageRoute(builder: (_) => ExamTakingScreen(examTitle: title, startReply: r.map, deviceId: deviceId,
         examId: examId, hasPaperFile: exam['has_paper_file'] == true, paperFile: exam['paper_file'] is Map ? asMap(exam['paper_file']) : null)));
   }
 

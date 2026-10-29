@@ -6,6 +6,7 @@ import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 import 'package:flutter/services.dart';
 import 'package:floating/floating.dart';
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
@@ -1309,6 +1310,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   @override
   Widget build(BuildContext context) {
+    AppShellNav.markFullScreen(context); // the player takes the whole screen, even inside a tab (D-081)
     return PopScope(
       canPop: !_isFullScreen,
       onPopInvokedWithResult: (popped, _) {

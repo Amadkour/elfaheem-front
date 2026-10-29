@@ -46,6 +46,7 @@ import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/features/shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
 
 class ParentTabProvider extends ChangeNotifier {
@@ -369,6 +370,8 @@ class _ParentMorePageState extends State<_ParentMorePage> {
               onTap: () => _push(const ChangeLanguageScreen()),
             ),
             const DisplaySettingsTile(),
+            const AppAssistantOpenTile(),
+            const AppAssistantBubbleTile(),
             AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,

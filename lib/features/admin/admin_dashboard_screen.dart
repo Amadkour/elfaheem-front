@@ -37,6 +37,7 @@ import '../../design/calendar_entry.dart';
 import '../../utils/helpers.dart';
 import '../shared/profile/change_language_screen.dart';
 import '../shared/display/display_settings_page.dart' show DisplaySettingsTile;
+import '../shared/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import '../shared/profile/compalints/complaint_provider.dart';
 import 'admin_common.dart';
 import 'admin_courses_page.dart';
@@ -464,6 +465,8 @@ class _MorePageState extends State<_MorePage> {
               onTap: () => _push(const ChangeLanguageScreen()),
             ),
             const DisplaySettingsTile(),
+            const AppAssistantOpenTile(),
+            const AppAssistantBubbleTile(),
             AppSettingsTile(
               icon: Icons.dark_mode_rounded,
               color: c.textDark,
