@@ -27,6 +27,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+    <!-- D-094: the presenter's camera keeps streaming while they share from another app (ScreenCaptureService). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- D-079: the whole-screen annotation overlay draws over other apps while the presenter shares -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -108,11 +110,14 @@
             foregroundServiceType must include mediaProjection on Android 14+
             because MediaProjection.getMediaProjection() is called from within
             this service's context.
+            camera (D-094): added only while a projection is held and CAMERA is
+            granted, so the presenter's camera keeps streaming while they share
+            from another app (Android 11+ cuts a background camera otherwise).
         -->
         <service
             android:name=".ScreenCaptureService"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection|microphone" />
+            android:foregroundServiceType="mediaProjection|microphone|camera" />
 
         <!--
             LiveCallService: the live room's microphone in the background for a participant who

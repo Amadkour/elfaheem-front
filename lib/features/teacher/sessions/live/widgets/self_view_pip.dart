@@ -436,11 +436,30 @@ class SelfViewOptions extends StatelessWidget {
     required this.onHide,
     this.onToStage,
     this.showAloneSwitch = true,
+    this.title,
+    this.hint,
+    this.icon = Icons.person_pin_rounded,
+    this.hideIcon = Icons.visibility_off_rounded,
+    this.hideTitle,
+    this.hideSubtitle,
+    this.showCircleTip = true,
   });
 
   final SelfViewPrefs prefs;
   final ValueChanged<SelfViewPrefs> onChanged;
   final VoidCallback onHide;
+
+  /// The header's and the last row's texts and icons; null → the self-view's own (the presenter's camera box,
+  /// D-094, reuses this sheet with its own).
+  final String? title;
+  final String? hint;
+  final IconData icon;
+  final IconData hideIcon;
+  final String? hideTitle;
+  final String? hideSubtitle;
+
+  /// "The circle shows mostly your face" (about my own camera only).
+  final bool showCircleTip;
 
   /// "Show me on the stage" (swap with the stage's content); null hides the row.
   final VoidCallback? onToStage;
@@ -452,12 +471,12 @@ class SelfViewOptions extends StatelessWidget {
         shrinkWrap: true,
         children: [
           Row(children: [
-            const Icon(Icons.person_pin_rounded, size: 20, color: LivePalette.textHigh),
+            Icon(icon, size: 20, color: LivePalette.textHigh),
             const SizedBox(width: 8),
-            Expanded(child: Text('lr_self_view'.tr, style: _txt(16, w: FontWeight.w800))),
+            Expanded(child: Text(title ?? 'lr_self_view'.tr, style: _txt(16, w: FontWeight.w800))),
           ]),
           const SizedBox(height: 4),
-          Text('lr_self_view_drag_hint'.tr, style: _txt(12, w: FontWeight.w500, c: LivePalette.textMid, h: 1.35)),
+          Text(hint ?? 'lr_self_view_drag_hint'.tr, style: _txt(12, w: FontWeight.w500, c: LivePalette.textMid, h: 1.35)),
           const SizedBox(height: 16),
           _Section(title: 'lr_self_view_shape'.tr),
           Row(children: [
@@ -481,8 +500,10 @@ class SelfViewOptions extends StatelessWidget {
               ),
             ),
           ]),
-          const SizedBox(height: 8),
-          Text('lr_self_view_circle_tip'.tr, style: _txt(11.5, w: FontWeight.w500, c: LivePalette.textSoft, h: 1.35)),
+          if (showCircleTip) ...[
+            const SizedBox(height: 8),
+            Text('lr_self_view_circle_tip'.tr, style: _txt(11.5, w: FontWeight.w500, c: LivePalette.textSoft, h: 1.35)),
+          ],
           const SizedBox(height: 16),
           _Section(title: 'lr_self_view_size'.tr),
           Row(children: [
@@ -533,9 +554,9 @@ class SelfViewOptions extends StatelessWidget {
           const SizedBox(height: 8),
           _Row(
             key: const ValueKey('self_view.hide'),
-            icon: Icons.visibility_off_rounded,
-            title: 'lr_self_view_hide'.tr,
-            subtitle: 'lr_self_view_hide_sub'.tr,
+            icon: hideIcon,
+            title: hideTitle ?? 'lr_self_view_hide'.tr,
+            subtitle: hideSubtitle ?? 'lr_self_view_hide_sub'.tr,
             onTap: onHide,
           ),
         ],

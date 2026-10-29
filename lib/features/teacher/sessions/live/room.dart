@@ -90,7 +90,9 @@ import 'widgets/live_room_rules.dart';
 import 'widgets/live_tile_order.dart';
 import 'widgets/live_video_view.dart';
 import 'widgets/self_view_pip.dart';
+import 'widgets/presenter_cam_box.dart';
 import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
+import 'package:flutter_education_app/features/shared/live/live_presenter_cam.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'widgets/recorder_web_stub.dart'
@@ -1420,6 +1422,9 @@ class _RoomPageState extends State<RoomPage>
     // D-092: the remembered self-view (shape, size, position, alone on the stage).
     SelfViewStore.instance.addListener(_onSelfViewPrefs);
     unawaited(SelfViewStore.instance.load());
+    // D-094: the presenter's camera box over a share (shape, size, position).
+    PresenterCamStore.instance.addListener(_onSelfViewPrefs);
+    unawaited(PresenterCamStore.instance.load());
 
     if (lkPlatformIs(PlatformType.android)) {
       // Same call Hardware.setSpeakerphoneOn(true) forwarded to before it was deprecated.
@@ -1547,6 +1552,7 @@ class _RoomPageState extends State<RoomPage>
       ..dispose();
     _board.scene.removeListener(_onBoardScene);
     SelfViewStore.instance.removeListener(_onSelfViewPrefs);
+    PresenterCamStore.instance.removeListener(_onSelfViewPrefs);
     _clockTick.dispose();
     unawaited(_boardVideo.stop());
     _lobby?.dispose();
@@ -2772,6 +2778,10 @@ class _RoomPageState extends State<RoomPage>
                                 ),
                               ),
 
+                              // D-094: the presenter's camera (and a few others) over a share or a board, for
+                              // every viewer; under my self-view, never on it.
+                              _buildPresenterCam(),
+
                               // My own camera (D-092): a box / circle over everything on the stage — the board, a
                               // shared screen, the annotation layer — that takes only its own touches.
                               _buildSelfView(),
@@ -3162,6 +3172,181 @@ class _RoomPageState extends State<RoomPage>
                         onHide: () {
                           Navigator.of(ctx).pop();
                           if (mounted) setState(() => _selfHidden = true);
+                        },
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── The presenter's camera over a share (D-094) ────────────────────────────────────────────────
+  //
+  // While a screen share or the whiteboard fills the stage the thumbnail strip is off, so a viewer used to see the
+  // content only — and adaptive stream paused the presenter's camera that nobody drew (the presenter saw both: their
+  // own self-view). Every viewer now gets the presenter's camera in a floating box (the self-view's look; drag, snap,
+  // shape / size, minimize to a name) and up to a few other cameras as bubbles next to it, inside liveVideoBudget.
+  // Drawing them is what makes them stream again. The presenter sees nothing new. Rules: live_presenter_cam.dart;
+  // widget: widgets/presenter_cam_box.dart.
+
+  /// A camera the viewer tapped into the box, and for whose share (a new share starts on its presenter again).
+  String? _camPinned;
+  String? _camPinnedFor;
+
+  /// "Minimize to a name" — per room, like "Hide self view".
+  bool _camCollapsed = false;
+
+  PresenterCamPrefs get _camPrefs => PresenterCamStore.instance.value;
+
+  /// Whoever fills the stage with a share or a board (null: neither is on the stage).
+  String? get _stagePresenter {
+    if (_isBoardMain) return _board.presenter;
+    if (_isScreenShareMain) return _stageTracks.first.participant.identity;
+    return null;
+  }
+
+  /// A participant's camera when it can be drawn: published, not muted and received (an audio-only room has none);
+  /// never a share, never the board's recording track.
+  VideoTrack? _cameraTrackOf(Participant p) {
+    for (final pub in p.videoTrackPublications) {
+      if (pub.isScreenShare || isBoardVideoName(pub.name) || pub.muted) continue;
+      final t = pub.track;
+      if (t is VideoTrack) return t;
+    }
+    return null;
+  }
+
+  PresenterCamPlan get _camPlan {
+    final presenter = _stagePresenter;
+    if (presenter == null) return PresenterCamPlan.none;
+    final cams = <LiveCamFacts>[];
+    for (final id in [
+      presenter,
+      for (final t in _stageTracks)
+        if (t.type != ParticipantTrackType.kScreenShare) t.participant.identity,
+    ]) {
+      final p = _remoteBy(id);
+      cams.add(LiveCamFacts(id, camOn: p != null && _cameraTrackOf(p) != null));
+    }
+    return presenterCamPlan(
+      presenter: presenter,
+      me: _myIdentity,
+      cams: cams,
+      pinned: _camPinnedFor == presenter ? _camPinned : null,
+      // Minimized without video, or my camera swapped onto the stage (the share is then in my box).
+      suppressed: _videoParked || _selfSpot == SelfViewSpot.stage,
+      budget: liveVideoBudget(MediaQuery.sizeOf(context).width),
+    );
+  }
+
+  /// The presenter's camera (or its pill) is on the stage — for a mode that hides the bars and keeps the box.
+  bool get presenterCamShown => _camPlan.any;
+
+  Widget _buildPresenterCam() {
+    final plan = _camPlan;
+    if (!plan.any) return const SizedBox.shrink();
+    PresenterCamItem? item(String id) {
+      final p = _remoteBy(id);
+      if (p == null) return null;
+      final cam = _cameraTrackOf(p);
+      return PresenterCamItem(
+        id: id,
+        name: _nameOf(id),
+        video: cam == null ? null : LiveVideoView(cam, key: ValueKey('live_room.presenter_cam.$id'), fit: VideoViewFit.cover),
+        imageUrl: participantPhotoFromMetadata(p.metadata),
+        micOn: p.isMicrophoneEnabled(),
+        speaking: p.isSpeaking,
+        handUp: _hands.isUp(id),
+      );
+    }
+
+    final presenter = _stagePresenter;
+    final selfPrefs = _selfPrefs;
+    final keep = _selfKeepOut;
+    final Rect? Function(Size)? avoid = switch (_selfSpot) {
+      SelfViewSpot.box => (stage) => selfViewRect(stage: stage, prefs: selfPrefs, keepOut: keep),
+      SelfViewSpot.hiddenChip => (stage) => selfViewChipRect(stage: stage, prefs: selfPrefs, keepOut: keep),
+      _ => null,
+    };
+    return Positioned.fill(
+      child: PresenterCamLayer(
+        key: const ValueKey('live_room.presenter_cam'),
+        prefs: _camPrefs,
+        keepOut: keep,
+        selfSide: selfPrefs.side,
+        main: plan.main == null ? null : item(plan.main!),
+        bubbles: [for (final id in plan.bubbles) ?item(id)],
+        more: plan.more,
+        avoid: avoid,
+        collapsed: _camCollapsed,
+        showChrome: _controlsVisible,
+        onTap: _toggleControlsVisibility,
+        onMenu: () => unawaited(_openPresenterCamOptions()),
+        onCollapse: () => setState(() => _camCollapsed = true),
+        onExpand: () {
+          setState(() => _camCollapsed = false);
+          _pokeControls();
+        },
+        onPin: (id) => setState(() {
+          _camPinned = id;
+          _camPinnedFor = presenter;
+        }),
+        onMore: () => unawaited(_toggleParticipantPanel()),
+        onMoved: (side, y) => unawaited(PresenterCamStore.instance.update(_camPrefs.copyWith(side: side, y: y))),
+      ),
+    );
+  }
+
+  Future<void> _openPresenterCamOptions() async {
+    _pokeControls();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (ctx) => Directionality(
+        textDirection: dir,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: _surfaceHi, border: Border(top: BorderSide(color: _glassBdr))),
+              child: SafeArea(
+                top: false,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 42,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 10, bottom: 6),
+                    decoration: BoxDecoration(color: _glassBdr, borderRadius: BorderRadius.circular(3)),
+                  ),
+                  Flexible(
+                    child: ValueListenableBuilder<PresenterCamPrefs>(
+                      valueListenable: PresenterCamStore.instance,
+                      builder: (_, p, _) => SelfViewOptions(
+                        key: const ValueKey('live_room.presenter_cam.options'),
+                        prefs: p.asSelfViewPrefs,
+                        showAloneSwitch: false,
+                        showCircleTip: false,
+                        icon: Icons.co_present_rounded,
+                        title: 'lr_presenter_cam'.tr,
+                        hint: 'lr_presenter_cam_hint'.tr,
+                        hideIcon: Icons.close_fullscreen_rounded,
+                        hideTitle: 'lr_presenter_cam_collapse'.tr,
+                        hideSubtitle: 'lr_presenter_cam_collapse_sub'.tr,
+                        onChanged: (next) =>
+                            unawaited(PresenterCamStore.instance.update(p.copyWith(shape: next.shape, size: next.size))),
+                        onHide: () {
+                          Navigator.of(ctx).pop();
+                          if (mounted) setState(() => _camCollapsed = true);
                         },
                       ),
                     ),

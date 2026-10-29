@@ -17853,6 +17853,30 @@
     "en": "Answers about the app, any time",
     "ar": "إجابات عن التطبيق في أي وقت"
   },
+  "lr_presenter_cam": {
+    "en": "Presenter's camera",
+    "ar": "كاميرا المقدّم"
+  },
+  "lr_presenter_cam_hint": {
+    "en": "Drag it to any corner — it snaps to the nearest edge. Tap a small circle to show that camera in the box.",
+    "ar": "اسحبها إلى أي زاوية وستلتصق بأقرب حافة. اضغط على دائرة صغيرة لعرض تلك الكاميرا في النافذة."
+  },
+  "lr_presenter_cam_collapse": {
+    "en": "Minimize to a name",
+    "ar": "تصغير إلى الاسم"
+  },
+  "lr_presenter_cam_collapse_sub": {
+    "en": "The shared content stays in full view; tap the name to bring the camera back",
+    "ar": "يبقى المحتوى المشترك ظاهرًا كاملًا، واضغط على الاسم لإعادة الكاميرا"
+  },
+  "lr_presenter_cam_show": {
+    "en": "Show the camera",
+    "ar": "إظهار الكاميرا"
+  },
+  "lr_presenter_cam_more": {
+    "en": "{n} more cameras",
+    "ar": "{n} كاميرات أخرى"
+  },
   "lr_self_view": {
     "en": "Self view",
     "ar": "العرض الذاتي"
