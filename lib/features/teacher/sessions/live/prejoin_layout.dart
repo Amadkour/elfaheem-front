@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/shared/live/live_self_view.dart' show SelfViewShape;
 
 import 'widgets/live_palette.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -52,7 +53,14 @@ class PreJoinLayout extends StatelessWidget {
     this.canPublish = true,
     this.micLevel,
     this.cameraOffHint = false,
+    this.previewShape = SelfViewShape.box,
+    this.onPreviewShape,
   });
+
+  /// The self-view's shape (D-092): the preview shows the camera as the room's box will (a box fills the card, a
+  /// circle sits in its middle). [onPreviewShape] null hides the shape switch.
+  final SelfViewShape previewShape;
+  final ValueChanged<SelfViewShape>? onPreviewShape;
 
   /// The camera starts off by the super admin's choice for participants (D-090): a quiet line says why and that
   /// it can be turned on.
@@ -190,6 +198,8 @@ class PreJoinLayout extends StatelessWidget {
         micOn: micOn,
         hasCamera: cams.isNotEmpty,
         userName: userName,
+        shape: previewShape,
+        onShape: canPublish ? onPreviewShape : null,
       ),
       if (!canPublish) ...[
         const SizedBox(height: 14),
@@ -362,6 +372,8 @@ class PreJoinPreviewCard extends StatelessWidget {
     required this.micOn,
     required this.hasCamera,
     required this.userName,
+    this.shape = SelfViewShape.box,
+    this.onShape,
   });
 
   final Widget? preview;
@@ -370,10 +382,17 @@ class PreJoinPreviewCard extends StatelessWidget {
   final bool hasCamera;
   final String userName;
 
+  /// D-092: a box fills the card; a circle sits in its middle, as the room's self-view will look.
+  final SelfViewShape shape;
+
+  /// The Box / Circle switch on the card (top-end); null hides it.
+  final ValueChanged<SelfViewShape>? onShape;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final showVideo = camOn && preview != null;
+    final circle = shape == SelfViewShape.circle;
     final offText = camOn
         ? 'lr_starting_camera'.tr
         : (hasCamera ? 'lr_camera_off_msg'.tr : 'lr_no_camera_found'.tr);
@@ -384,14 +403,45 @@ class PreJoinPreviewCard extends StatelessWidget {
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: LivePalette.bg,
+            gradient: circle && showVideo
+                ? RadialGradient(radius: 0.9, colors: [LivePalette.surfaceHi, LivePalette.bg])
+                : null,
             border: Border.all(color: LivePalette.ink(0.08)),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Stack(fit: StackFit.expand, children: [
             if (showVideo)
-              preview!
+              // One widget tree for both shapes (only sizes and the radius change): switching never re-creates the
+              // camera's renderer.
+              LayoutBuilder(builder: (context, box) {
+                final d = box.maxHeight * 0.8;
+                return Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOutCubic,
+                    width: circle ? d : box.maxWidth,
+                    height: circle ? d : box.maxHeight,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(circle ? d / 2 : 0),
+                      border: circle ? Border.all(color: LivePalette.ink(0.78), width: 2.5) : null,
+                      boxShadow: circle ? [BoxShadow(color: LivePalette.shade(0.5), blurRadius: 24, offset: const Offset(0, 8))] : null,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(circle ? d / 2 : 0),
+                      child: preview!,
+                    ),
+                  ),
+                );
+              })
             else
               _CameraOff(name: userName, text: offText, starting: camOn),
+
+            if (onShape != null && showVideo)
+              PositionedDirectional(
+                top: 6,
+                end: 6,
+                child: _ShapeSwitch(shape: shape, onShape: onShape!),
+              ),
 
             // Bottom scrim so the chips stay readable over video
             Positioned(
@@ -442,6 +492,63 @@ class PreJoinPreviewCard extends StatelessWidget {
                 ),
               ]),
             ),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Box / Circle on the preview card (D-092): the self-view's shape, remembered for the room.
+class _ShapeSwitch extends StatelessWidget {
+  const _ShapeSwitch({required this.shape, required this.onShape});
+
+  final SelfViewShape shape;
+  final ValueChanged<SelfViewShape> onShape;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget option(SelfViewShape s, IconData icon, String label) {
+      final on = s == shape;
+      return Semantics(
+        button: true,
+        selected: on,
+        label: label,
+        excludeSemantics: true,
+        child: InkResponse(
+          key: ValueKey('prejoin.shape.${s.name}'),
+          onTap: () => onShape(s),
+          radius: 22,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: on ? LivePalette.accent.withValues(alpha: 0.9) : Colors.transparent,
+            ),
+            child: Icon(icon, size: 19, color: on ? LivePalette.textHigh : LivePalette.textMid),
+          ),
+        ),
+      );
+    }
+
+    return Semantics(
+      container: true,
+      label: 'lr_self_view_shape_toggle'.tr,
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          color: LivePalette.shade(0.5),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: LivePalette.glassBorder),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            option(SelfViewShape.box, Icons.crop_portrait_rounded, 'lr_self_view_box'.tr),
+            const SizedBox(width: 2),
+            option(SelfViewShape.circle, Icons.circle_outlined, 'lr_self_view_circle'.tr),
           ]),
         ),
       ),

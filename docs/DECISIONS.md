@@ -1075,3 +1075,60 @@ outside `audio_first`); disabling hidden tracks with `disable()` (the SDK has no
 hidden tile would keep its video forever — the background case unsubscribes, the minimized case simply draws no
 renderer); one screen-share layer (a weak viewer froze on it); a long-side cap for shares (portrait phones lost
 60 % of their width).
+
+## D-092 — The live room's self-view: my camera in a box or circle I can put anywhere, in every state; the renderer never takes a tap again · 2026-10-29 · proposed
+
+**Context.** The owner (Galaxy S24 Ultra, teacher): "when I open the camera, sometimes my app becomes slow, and the
+bottom bar doesn't show again when I tap the screen" and "I need to show my image when I open the camera, in any
+position, in a box or circle or without background" — in every state: sharing, the pre-join page, the whiteboard and
+annotation. Root causes found (logcat7.txt + code): (1) `_syncAurora` called itself while the stage was empty —
+166 Stack Overflows (~98 000 frames each, logged with the trace and sent to Crashlytics) in 3 minutes; (2) every
+LOCAL track (my camera on the stage, my own screen share) was drawn by livekit_client's VideoTrackRenderer, which on
+phones wraps the video in its own GestureDetector (onTapDown → focus, scale → zoom): it won every tap, so "tap the
+stage to show the bar" never fired, and on a share each tap threw `PlatformException(setFocusMode … Video capturer not
+compatible)`; (3) that renderer's build() makes a new `FutureBuilder(future: _initializeRenderer())` — a re-attach
+(srcObject over the channel) on every build — and the room rebuilt everything once a second (the session clock) and
+on every speaker change; (4) the Android placeholder screenshot (whole room → PNG, 2×/s, a GPU read-back of the camera
+texture) started on any participant event for a teacher, even with no device recording (server mode); (5) turning
+the camera on opened it twice (setCameraEnabled, then setCameraPosition(front) = a full restartTrack); (6) the share's
+border glow repainted two large blurred shadows every frame; the aurora ran under the opaque waiting card.
+
+**Decision.** `LiveVideoView` (`widgets/live_video_view.dart`) is the only way the room, the pre-join page and the
+minimized box draw a track: the renderer behind an IgnorePointer (the tap goes to the stage), one renderer instance
+while track / fit / mirror stay the same (`LiveStableChild`, a parent rebuild stops there), its own RepaintBoundary.
+Tap-to-focus is kept for a local CAMERA on Android / iOS only (`LiveCameraFocus`, guarded: the first failure turns it
+off for the run). The clocks tick a ValueNotifier read by the badge column only; the screenshot loop runs only while
+the device recorder records frames; the camera restarts only when it did not come up on the front camera; the
+share's glow is still; the aurora stops while my camera is on; the recursion is gone.
+Self-view (`lib/features/shared/live/live_self_view.dart` rules, `widgets/self_view_pip.dart` widgets): while my camera
+is on, it is always somewhere — a floating box (3:4 on phones, 16:9 on wide stages) or circle, small or medium, over
+the waiting card, someone's video, a shared screen (mine too), the whiteboard and the annotation layer; it takes only
+its own touches (drawing goes on around it) and keeps clear of the badge column (measured), the thumbnail strip, the
+annotation toolbar, the board's bar and dock, the share's bottom bar and the bottom badge row. Drag anywhere; a drop
+snaps to the nearer side edge (a fling carries it, 120 ms projection) and into a corner within 56 px of an end; the
+side and the height fraction are what is stored, so a keyboard, the chat column or a rotation keeps it in place.
+Tap → swap with the stage's video (never a board); long-press or ⋮ (shown with the bar) → options: Box / Circle,
+Small / Medium, "Fill the screen while I'm alone", "Show me on the big screen", "Hide self view" (a chip brings it
+back; per room). Shape, size, side, height and "alone on the stage" are remembered on the device
+(`SelfViewStore`, SharedPreferences `live.self_view.v1`); the pre-join preview shows the camera in the same shape
+with a Box / Circle switch. Never the stage AND the box at once (the "camera twice" fix holds). Alone, the default is
+the box over the waiting card (what the owner asked for); a client-mode recording, which screenshots the teacher's
+screen, then shows the waiting card with the box — "Fill the screen while I'm alone" puts the camera back on the
+stage. The minimized box keeps its rule (a share, else a camera, else an avatar).
+
+**Background ("without background").** Not added. livekit_client 2.13.1 has only the `TrackProcessor` interface (no
+blur / virtual background; the web processors are the separate JS `@livekit/track-processors`, no Dart wrapper);
+the flutter_webrtc fork exposes a Java `ExternalVideoFrameProcessing` hook on Android only, which would need an ML
+segmenter (ML Kit selfie segmentation or MediaPipe, a native dependency) running on every 720p24 frame in the
+encoder path — the CPU / heat this decision is fixing. The circle is the minimal look (mostly the face). Revisit with
+a GPU segmenter on the native side if the owner wants it for everyone, not just the self-view.
+
+**Android whole-screen share.** In-app only. A camera bubble over other apps would be captured by MediaProjection
+like every overlay window: the students would see my camera twice (the camera track and inside the shared screen,
+covering the content) and so would the recording; a FLAG_SECURE bubble shows as a black box in the share. (The
+annotation bubble is different: it is meant to be captured.)
+
+**Rejected.** Forking livekit_client to drop the renderer's detector (the IgnorePointer does it without a fork);
+`RepaintBoundary` alone (the re-attach happens in build, not paint); a full-stage self-preview when alone with no
+way to choose (the owner asked for a box or circle anywhere); remembering "hide self view" across rooms (a hidden
+view would surprise the next class); free positioning without snapping (a box left in the middle covers the stage).

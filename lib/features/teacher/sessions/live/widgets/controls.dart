@@ -245,11 +245,12 @@ class ControlsWidgetState extends State<ControlsWidget> {
         // Always resume on front by default.
         position = CameraPosition.front;
         await participant.setCameraEnabled(true);
-        // setCameraEnabled(true) uses whichever default the SDK/OS
-        // resolves to, which isn't guaranteed to be "front" on every
-        // platform — pin it explicitly once the track exists.
+        // setCameraEnabled(true) captures with the room's defaults (D-090: cameraCaptureFor, which asks for the
+        // FRONT camera). setCameraPosition restarts the whole capture (a second camera open, a new track, a
+        // re-negotiated sender) — D-092: only when the track did not come up on the front camera.
         final track = _localCameraTrack();
-        if (track != null) {
+        final opts = track?.currentOptions;
+        if (track != null && !(opts is CameraCaptureOptions && opts.cameraPosition == CameraPosition.front && opts.deviceId == null)) {
           await track.setCameraPosition(CameraPosition.front);
         }
       } else {

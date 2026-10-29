@@ -11,6 +11,7 @@ import '../../teacher/sessions/live/widgets/live_avatar.dart';
 import '../../teacher/sessions/live/widgets/live_palette.dart';
 import '../../teacher/sessions/live/widgets/android_share.dart' show LiveMicGate;
 import '../../teacher/sessions/live/widgets/participant.dart' show participantPhotoFromMetadata;
+import '../../teacher/sessions/live/widgets/live_video_view.dart';
 import 'live_room_host.dart';
 import 'live_share_widgets.dart' show LiveAttentionBadge;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
@@ -337,12 +338,12 @@ class LiveMiniTile extends StatelessWidget {
             micOn: micOn,
             video: track == null
                 ? null
-                : VideoTrackRenderer(
+                // D-092: the box rebuilds on every room change; LiveVideoView keeps its renderer attached once.
+                : LiveVideoView(
                     track,
                     key: ValueKey('mini_${track.sid}'),
-                    renderMode: VideoRenderMode.auto,
                     fit: shown!.screenShare ? VideoViewFit.contain : VideoViewFit.cover,
-                    mirrorMode: shown.isLocal && !shown.screenShare ? VideoViewMirrorMode.mirror : VideoViewMirrorMode.off,
+                    mirror: shown.isLocal && !shown.screenShare ? VideoViewMirrorMode.mirror : VideoViewMirrorMode.off,
                   ),
             onExpand: () => scope == null ? LiveRoomHost.expand() : scope.expand(),
             onToggleMic: canPublish ? () => LiveMicGate.instance.setMic(local, !micOn).catchError((_) {}) : null,

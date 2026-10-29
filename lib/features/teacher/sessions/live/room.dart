@@ -88,6 +88,9 @@ import 'widgets/android_share.dart' show LiveMicGate;
 import 'widgets/live_room_ended.dart';
 import 'widgets/live_room_rules.dart';
 import 'widgets/live_tile_order.dart';
+import 'widgets/live_video_view.dart';
+import 'widgets/self_view_pip.dart';
+import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
 import 'package:flutter_education_app/design/app_icons.dart';
 import 'widgets/recorder_web_stub.dart'
@@ -408,9 +411,13 @@ class _RoomPageState extends State<RoomPage>
   void _syncAurora() {
     // Not before didChangeDependencies (it reads MediaQuery); not while minimized (_syncDecorLoops parks it).
     if (!mounted || !_depsReady || (_minimized?.value ?? false)) return;
-    final idle = _stageTracks.isEmpty && !_isBoardMain && !(widget.room.localParticipant?.isCameraEnabled() ?? false);
+    // Never while my camera is on (D-092): the waiting card is opaque, and a 60 fps background under a live camera
+    // box is what made a phone hot for nothing.
+    final idle = _stageTracks.isEmpty && !_isBoardMain && _localCamTrack == null;
     if (idle) {
-      _syncAurora();
+      // D-092: this called itself (an endless recursion: ~98 000 frames and a Stack Overflow, logged with its whole
+      // trace and sent to Crashlytics, up to 3 times a second while the stage was empty — logcat7 22:56–22:59).
+      if (!_auroraAnim.isAnimating) syncMotionLoop(context, _auroraAnim, rest: 0);
     } else if (_auroraAnim.isAnimating) {
       _auroraAnim.stop();
     }
@@ -1099,11 +1106,16 @@ class _RoomPageState extends State<RoomPage>
   Timer? _sessionClockTimer;
   int _sessionElapsedSeconds = 0;
 
+  /// D-092: the two clocks tick this instead of setState — only the badge column and the iOS share banner listen,
+  /// so the whole room (every tile, every video) is no longer rebuilt once a second.
+  final ValueNotifier<int> _clockTick = ValueNotifier<int>(0);
+
   void _startSessionClock() {
     if (_sessionClockTimer != null) return; // already ticking — RoomConnectedEvent shouldn't fire twice, but be safe
     _sessionClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) { _sessionClockTimer?.cancel(); _sessionClockTimer = null; return; }
-      setState(() => _sessionElapsedSeconds++);
+      _sessionElapsedSeconds++;
+      _clockTick.value++;
     });
   }
 
@@ -1129,16 +1141,20 @@ class _RoomPageState extends State<RoomPage>
     if (!_controlsVisible) setState(() => _controlsVisible = true);
     if (!_controlsAutoHide) return;
     _controlsHideTimer = Timer(_controlsHideAfter, () {
-      if (mounted && _controlsAutoHide && _controlsVisible) setState(() => _controlsVisible = false);
+      if (!mounted) return;
+      final next = liveControlsAfterIdle(visible: _controlsVisible, autoHide: _controlsAutoHide);
+      if (next != _controlsVisible) setState(() => _controlsVisible = next);
     });
   }
 
+  /// A tap on the stage (or on a self-view that has nothing to swap with): live_self_view.dart's rule.
   void _toggleControlsVisibility() {
-    if (_controlsVisible && _controlsAutoHide) {
-      _controlsHideTimer?.cancel();
-      setState(() => _controlsVisible = false);
-    } else {
+    final next = liveControlsAfterTap(visible: _controlsVisible, autoHide: _controlsAutoHide);
+    if (next.restartTimer) {
       _pokeControls();
+    } else {
+      _controlsHideTimer?.cancel();
+      if (next.visible != _controlsVisible) setState(() => _controlsVisible = next.visible);
     }
   }
 
@@ -1211,13 +1227,52 @@ class _RoomPageState extends State<RoomPage>
   Timer? _quizTimer;
   int _quizSecondsLeft = 0;
 
-  // Draggable PiP
-  double _pipRight = 16;
-  double _pipBottom = 100;
-  static const double _pipW = 120;
-  static const double _pipH = 90;
-  // When true, camera is the main view and the main participant is in the PiP.
+  // ── D-092: the self-view (widgets/self_view_pip.dart, rules in live_self_view.dart) ──
+  // When true, my camera is on the stage and the stage's video sits in the box (a tap on the box; only while the
+  // stage shows someone's video or a share — never a board, which would disappear).
   bool _pipSwapped = false;
+
+  /// "Hide self view" — per room (the next class starts with it shown).
+  bool _selfHidden = false;
+
+  /// The top-end badge column's height: the box keeps clear of it on the right.
+  double _badgeColumnH = 0;
+
+  SelfViewPrefs get _selfPrefs => SelfViewStore.instance.value;
+
+  void _onSelfViewPrefs() {
+    if (!mounted) return;
+    setState(() {});
+    _syncAurora();
+  }
+
+  /// My camera while it sends a picture (published and not muted); null otherwise.
+  LocalVideoTrack? get _localCamTrack {
+    final local = widget.room.localParticipant;
+    if (local == null) return null;
+    for (final pub in local.videoTrackPublications) {
+      if (pub.isScreenShare || isBoardVideoName(pub.name)) continue;
+      final t = pub.track;
+      if (t != null && !pub.muted) return t;
+    }
+    return null;
+  }
+
+  /// Someone's video, a share (mine too, even before its tile exists) or a board is on the stage.
+  bool get _stageHasOther =>
+      _stageTracks.isNotEmpty || _isBoardMain || (widget.room.localParticipant?.isScreenShareEnabled() ?? false);
+
+  /// A tap on the box swaps it with the stage only while the stage shows a video (someone's camera or a share).
+  bool get _canSwapSelf => _stageTracks.isNotEmpty && !_isBoardMain;
+
+  SelfViewSpot get _selfSpot => selfViewSpot(
+        camOn: _localCamTrack != null,
+        stageHasOther: _stageHasOther,
+        swapped: _pipSwapped && _canSwapSelf,
+        hidden: _selfHidden,
+        aloneOnStage: _selfPrefs.aloneOnStage,
+        parked: _videoParked,
+      );
 
   // Animations
   late AnimationController _thumbBarAnim;
@@ -1359,6 +1414,9 @@ class _RoomPageState extends State<RoomPage>
       ..addListener(_onMediaChanged)
       ..start();
     _board.scene.addListener(_onBoardScene);
+    // D-092: the remembered self-view (shape, size, position, alone on the stage).
+    SelfViewStore.instance.addListener(_onSelfViewPrefs);
+    unawaited(SelfViewStore.instance.load());
 
     if (lkPlatformIs(PlatformType.android)) {
       // Same call Hardware.setSpeakerphoneOn(true) forwarded to before it was deprecated.
@@ -1432,7 +1490,8 @@ class _RoomPageState extends State<RoomPage>
     if (_recClockTimer != null) return; // already ticking
     _recClockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) { _recClockTimer?.cancel(); _recClockTimer = null; return; }
-      setState(() => _recElapsedSeconds++);
+      _recElapsedSeconds++;
+      _clockTick.value++;
     });
   }
 
@@ -1484,6 +1543,8 @@ class _RoomPageState extends State<RoomPage>
       ..removeListener(_onMediaChanged)
       ..dispose();
     _board.scene.removeListener(_onBoardScene);
+    SelfViewStore.instance.removeListener(_onSelfViewPrefs);
+    _clockTick.dispose();
     unawaited(_boardVideo.stop());
     _lobby?.dispose();
     _controls?.dispose();
@@ -1952,6 +2013,14 @@ class _RoomPageState extends State<RoomPage>
   /// this without a direct cross-file call into room_screen_share.dart.
   void _maybeSyncLiveScreenCapture() {
     if (!widget.isTeacher || !Platform.isAndroid) return;
+    // D-092: only while the device recorder records frames. Every participant event used to (re)start this for a
+    // teacher — in server mode (Egress) and with no recording at all too — so the phone screenshotted the whole room
+    // (a GPU read-back of the camera texture + a PNG encode + a channel call) twice a second for nothing.
+    final r = _recorder;
+    if (!_recorderStarted || r == null || r.audioOnly) {
+      _stopLiveScreenCapture();
+      return;
+    }
     final sharing = widget.room.localParticipant?.isScreenShareEnabled() == true;
     if (sharing) {
       _stopLiveScreenCapture();
@@ -2466,7 +2535,13 @@ class _RoomPageState extends State<RoomPage>
     ? [...allScreen, ?localCamera, ...userMedia]
         : [?localCamera, ...userMedia];
 
-    if (mounted) setState(() => participantTracks = ordered);
+    if (mounted) {
+      setState(() {
+        participantTracks = ordered;
+        // The video I swapped with is gone: I go back to the box (else a new arrival would land in it).
+        if (_pipSwapped && !_canSwapSelf) _pipSwapped = false;
+      });
+    }
     _syncAurora();
     _syncAnnotRoles();
     // The strip shows the stage tracks after the first (the local camera is in the self-view box, not the strip).
@@ -2495,15 +2570,6 @@ class _RoomPageState extends State<RoomPage>
     return null;
   }
 
-  VideoTrack? _resolveCameraTrack(Participant p) {
-    for (final pub in p.videoTrackPublications) {
-      if (!pub.isScreenShare) {
-        final t = pub.track;
-        if (t is VideoTrack) return t;
-      }
-    }
-    return null;
-  }
 
   /// What may fill the stage and the thumbnail strip: every track except the local camera, which lives in the
   /// self-view box only — for every role. (Only a teacher's own camera used to be left out, so a student or a
@@ -2608,9 +2674,12 @@ class _RoomPageState extends State<RoomPage>
                           builder: (ctx, constraints) => Stack(
                             fit: StackFit.expand,
                             children: [
+                              // A tap anywhere on the stage shows / hides the bar (D-092: no video renderer takes
+                              // the tap any more — LiveVideoView), and focuses my camera when it fills the stage.
                               GestureDetector(
+                                key: const ValueKey('live_room.stage'),
                                 behavior: HitTestBehavior.opaque,
-                                onTap: _toggleControlsVisibility,
+                                onTapUp: (d) => _onStageTap(d.localPosition, constraints.biggest),
                                 child: ClipRRect(
                                   borderRadius: const BorderRadius.all(
                                     Radius.circular(20),
@@ -2669,15 +2738,18 @@ class _RoomPageState extends State<RoomPage>
                                   ),
                                 ),
 
-                              // PiP
-                              _buildDraggablePip(constraints),
-
-                              // Recording indicators
-                              _buildRecordingIndicator(),
+                              // Recording indicators (the clocks rebuild only this, D-092)
+                              ValueListenableBuilder<int>(
+                                valueListenable: _clockTick,
+                                builder: (_, _, _) => _buildRecordingIndicator(),
+                              ),
 
                               // iOS broadcast share banner + stop button
                               if (widget.isTeacher)
-                                _buildIOSShareBanner(),
+                                ValueListenableBuilder<int>(
+                                  valueListenable: _clockTick,
+                                  builder: (_, _, _) => _buildIOSShareBanner(),
+                                ),
 
                               // Annotation toolbar (while drawing on the shared screen)
                               if (_annotOpen && _isScreenShareMain) _buildAnnotToolbar(),
@@ -2685,9 +2757,7 @@ class _RoomPageState extends State<RoomPage>
                               // Participant count badge
                               Positioned(
                                 bottom: 14 + _boardDockClearance,
-                                right: _isScreenShareMain || _isBoardMain
-                                    ? _pipRight + _pipW + 8
-                                    : 14,
+                                right: 14, // the self-view keeps clear of the bottom row (D-092)
                                 child: GestureDetector(
                                   onTap: _toggleParticipantPanel,
                                   child: _GlassBadge(
@@ -2698,6 +2768,10 @@ class _RoomPageState extends State<RoomPage>
                                   ),
                                 ),
                               ),
+
+                              // My own camera (D-092): a box / circle over everything on the stage — the board, a
+                              // shared screen, the annotation layer — that takes only its own touches.
+                              _buildSelfView(),
 
                               // Live reactions (bubbles + picker)
                               LiveReactionsOverlay(
@@ -2871,26 +2945,11 @@ class _RoomPageState extends State<RoomPage>
   (Widget, Participant?) _mainVideo() {
     final local = widget.room.localParticipant;
 
-    if (_pipSwapped) {
-      // Swapped: show the local camera in the main area (any role).
-      final localEntry = participantTracks
-          .where((t) =>
-      t.participant == local &&
-          t.type != ParticipantTrackType.kScreenShare)
-          .firstOrNull;
-      if (localEntry != null) {
-        final cameraTrack = _resolveCameraTrack(localEntry.participant);
-        if (cameraTrack != null) {
-          return (
-            VideoTrackRenderer(
-              cameraTrack,
-              renderMode: VideoRenderMode.texture,
-              fit: VideoViewFit.contain,
-            ),
-            local,
-          );
-        }
-      }
+    // D-092: my camera fills the stage when the self-view rules say so (swapped with the stage's video, or alone
+    // with "fill the screen while I'm alone"); never the stage AND the box at once.
+    final selfCam = _localCamTrack;
+    if (selfCam != null && _selfSpot == SelfViewSpot.stage) {
+      return (LiveVideoView(selfCam, key: const ValueKey('live_room.self_stage'), fit: VideoViewFit.cover), local);
     }
 
     // A presented whiteboard fills the stage (D-087), unless a screen share wins the one-share rule.
@@ -2913,20 +2972,6 @@ class _RoomPageState extends State<RoomPage>
       // is available, same as the recorded output.
       final isMicOn = LiveMicGate.instance.micOn(local);
       final isCamOn = local?.isCameraEnabled() ?? false;
-
-      if (!_pipSwapped && isCamOn) {
-        final cameraTrack = local != null ? _resolveCameraTrack(local) : null;
-        if (cameraTrack != null) {
-          return (
-            VideoTrackRenderer(
-              cameraTrack,
-              renderMode: VideoRenderMode.texture,
-              fit: VideoViewFit.cover,
-            ),
-            local,
-          );
-        }
-      }
 
       // Premium placeholder — shown only when there's truly nothing to
       // display: no screen share, no other participant's video, and no
@@ -2973,157 +3018,153 @@ class _RoomPageState extends State<RoomPage>
     return (ParticipantWidget.widgetFor(main, showStatsLayer: false), main.participant);
   }
 
-  // ── PiP ────────────────────────────────────────────────────────────────────
+  // ── Self-view (D-092) ──────────────────────────────────────────────────────
   //
-  // Always shows the teacher's own camera feed in the corner (PiP).
-  // Tapping PiP swaps main and PiP content (camera ↔ remote/placeholder).
-  // Draggable to any corner of the screen.
-  Widget _buildDraggablePip(BoxConstraints constraints) {
-    if (_videoParked) return const SizedBox.shrink(); // D-090: no local preview behind the box
+  // My own camera, in every state of the room while it is on: a box or circle I drag anywhere (it snaps to the
+  // nearer edge or a corner), over the waiting card, someone's video, a shared screen (mine too), the whiteboard or
+  // the annotation layer. Tap → swap with the stage's video (when there is one); long-press or ⋮ → options (shape,
+  // size, fill the screen while alone, hide). Never on the stage AND in the box: the "camera twice" fix holds.
+
+  /// What the box keeps clear of: the thumbnail strip, the annotation toolbar, the board's bar and dock, the
+  /// share's bottom bar, the bottom badge row, and on the right the badge column (measured).
+  SelfViewKeepOut get _selfKeepOut {
+    final strip = _stageTracks.length > 1 && !_isScreenShareMain && !_isBoardMain && !_videoParked;
+    var top = 12.0;
+    if (strip) top = 132;
+    if (_annotOpen && _isScreenShareMain) top = math.max(top, 76);
+    if (_isBoardMain) top = math.max(top, 64);
+    var bottom = 58.0 + _boardDockClearance;
+    if (_isScreenShareMain) bottom = math.max(bottom, 84);
+    final badges = _badgeColumnH > 0 ? 14 + _badgeColumnH + 8 - top : 0.0;
+    return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom), topRight: math.max(0.0, badges));
+  }
+
+  void _onStageTap(Offset at, Size stage) {
+    _toggleControlsVisibility();
+    // Tap to focus where it works (a local camera on a phone; guarded, never an exception per tap).
+    if (_selfSpot == SelfViewSpot.stage) unawaited(LiveCameraFocus.tap(_localCamTrack, at, stage));
+  }
+
+  void _selfMoved(SelfViewSide side, double y) {
+    unawaited(SelfViewStore.instance.update(_selfPrefs.copyWith(side: side, y: y)));
+  }
+
+  Widget _buildSelfView() {
+    final spot = _selfSpot;
     final local = widget.room.localParticipant;
-
-    // For teacher: always show local camera in PiP.
-    // For student: only show PiP if local camera track is available.
-    final localEntry = participantTracks
-        .where((t) =>
-    t.participant == local &&
-        t.type != ParticipantTrackType.kScreenShare)
-        .firstOrNull;
-
-    final cameraTrack = localEntry != null
-        ? _resolveCameraTrack(localEntry.participant)
-        : null;
-
-    // No local camera: no box (swapped or not — the main view only swaps in a live camera, so a box here would
-    // repeat whatever the stage shows).
-    if (cameraTrack == null) return const SizedBox.shrink();
-
-    // In swapped mode: PiP shows the remote/main content;
-    // In normal mode: PiP shows the local camera.
-    final mainTracks = _stageTracks;
-
-    // When there's no screen share/remote content, an enabled camera is
-    // already shown full-screen as the main view's fallback (see
-    // _buildMainVideo) — showing that same feed again in the small PiP
-    // corner would just be a redundant duplicate, so the PiP hides itself
-    // in exactly that state instead.
-    //
-    // BUG FIX: mainTracks deliberately excludes the local participant's
-    // own non-screen-share track, but it never counted the local
-    // participant's own screen-share track either (participantTracks
-    // doesn't surface "your own share" as a tile to yourself) — so while
-    // actively sharing with no other participants' video around,
-    // mainTracks came back empty and this fired even though the main view
-    // was NOT showing the camera at all (it shows a "sharing" placeholder
-    // instead), hiding the only place the camera was visible. isSharing
-    // must be part of this check, not just whether other tracks exist.
-    final isSharing = local?.isScreenShareEnabled() == true;
-    if (!_pipSwapped && !isSharing && mainTracks.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final pipTrack = _pipSwapped && mainTracks.isNotEmpty ? mainTracks.first : null;
-
-    return Positioned(
-      right: _pipRight,
-      bottom: math.max(_pipBottom, _boardDockClearance + 8), // above the whiteboard's dock
-      child: GestureDetector(
-        onPanUpdate: (d) => setState(() {
-          _pipRight = (_pipRight - d.delta.dx).clamp(
-            8.0,
-            constraints.maxWidth - _pipW - 8.0,
-          );
-          _pipBottom = (_pipBottom - d.delta.dy).clamp(
-            8.0,
-            constraints.maxHeight - _pipH - 8.0,
-          );
-        }),
-        onTap: () => setState(() => _pipSwapped = !_pipSwapped),
-        child: Container(
-          width: _pipW,
-          height: _pipH,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _cyan.withValues(alpha: 0.5), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: _cyan.withValues(alpha: 0.18), blurRadius: 20),
-              BoxShadow(
-                color: LivePalette.shade(0.55),
-                blurRadius: 14,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    final cam = _localCamTrack;
+    if (spot == SelfViewSpot.none || local == null || cam == null) return const SizedBox.shrink();
+    final prefs = _selfPrefs;
+    if (spot == SelfViewSpot.stage) {
+      if (_pipSwapped && _canSwapSelf) {
+        // Swapped: the stage's video in the box; a tap puts it back.
+        return Positioned.fill(
+          child: SelfViewLayer(
+            key: const ValueKey('live_room.self_view'),
+            prefs: prefs,
+            keepOut: _selfKeepOut,
+            onMoved: _selfMoved,
+            onTap: () => setState(() => _pipSwapped = false),
+            onLongPress: _openSelfViewOptions,
+            tile: ClipRRect(
+              borderRadius: BorderRadius.circular(prefs.shape == SelfViewShape.circle ? 999 : 16),
+              child: AbsorbPointer(child: ParticipantWidget.widgetFor(_stageTracks.first, showStatsLayer: false)),
+            ),
           ),
+        );
+      }
+      // Alone on the stage: one chip, with the bar, brings the box back.
+      if (!_controlsVisible) return const SizedBox.shrink();
+      return Positioned(
+        top: 12,
+        left: 12,
+        child: SelfViewChip(
+          key: const ValueKey('live_room.self_view.to_box'),
+          icon: Icons.picture_in_picture_alt_rounded,
+          label: 'lr_self_view_to_box'.tr,
+          onTap: () {
+            setState(() => _pipSwapped = false);
+            unawaited(SelfViewStore.instance.update(prefs.copyWith(aloneOnStage: false)));
+            _pokeControls();
+          },
+        ),
+      );
+    }
+    return Positioned.fill(
+      child: SelfViewLayer(
+        key: const ValueKey('live_room.self_view'),
+        prefs: prefs,
+        keepOut: _selfKeepOut,
+        hidden: spot == SelfViewSpot.hiddenChip,
+        onShow: () {
+          setState(() => _selfHidden = false);
+          _pokeControls();
+        },
+        onMoved: _selfMoved,
+        onTap: _canSwapSelf ? () => setState(() => _pipSwapped = true) : _toggleControlsVisibility,
+        onLongPress: _openSelfViewOptions,
+        tile: SelfViewTile(
+          shape: prefs.shape,
+          name: _myReactionName,
+          video: LiveVideoView(cam, key: const ValueKey('live_room.self_video'), fit: VideoViewFit.cover),
+          micOn: LiveMicGate.instance.micOn(local),
+          speaking: local.isSpeaking,
+          handUp: _hands.localUp,
+          showChrome: _controlsVisible,
+          onMenu: _openSelfViewOptions,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSelfViewOptions() async {
+    _pokeControls();
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      constraints: const BoxConstraints(maxWidth: 560),
+      builder: (ctx) => Directionality(
+        textDirection: dir,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(ctx).height * 0.85),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12.5),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Video content
-                if (_pipSwapped && pipTrack != null)
-                  AbsorbPointer(
-                    child: ParticipantWidget.widgetFor(
-                      pipTrack,
-                      showStatsLayer: false,
-                    ),
-                  )
-                else if (!_pipSwapped)
-                  AbsorbPointer(
-                    child: VideoTrackRenderer(
-                      cameraTrack,
-                      renderMode: VideoRenderMode.texture,
-                      fit: VideoViewFit.contain,
-                    ),
-                  )
-                else
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: _surfaceHi, border: Border(top: BorderSide(color: _glassBdr))),
+              child: SafeArea(
+                top: false,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
                   Container(
-                    color: _surface,
-                    child: Icon(
-                      Icons.videocam_off_rounded,
-                      size: 22,
-                      color: _cyan.withValues(alpha: 0.4),
-                    ),
+                    width: 42,
+                    height: 5,
+                    margin: const EdgeInsets.only(top: 10, bottom: 6),
+                    decoration: BoxDecoration(color: _glassBdr, borderRadius: BorderRadius.circular(3)),
                   ),
-
-                // My own raised hand, so I can see it is still up
-                if (!_pipSwapped && _hands.localUp)
-                  const PositionedDirectional(top: 4, start: 4, child: LiveHandBadge(compact: true)),
-
-                // Swap icon — always visible so intent is clear
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: LivePalette.shade(0.45),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Icon(
-                      Icons.swap_calls_rounded,
-                      size: 13,
-                      color: LivePalette.ink(0.85),
-                    ),
-                  ),
-                ),
-
-                // Drag handle — subtle bar at top-centre
-                Positioned(
-                  top: 5,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      width: 28,
-                      height: 3,
-                      decoration: BoxDecoration(
-                        color: LivePalette.ink(0.3),
-                        borderRadius: BorderRadius.circular(2),
+                  Flexible(
+                    child: ValueListenableBuilder<SelfViewPrefs>(
+                      valueListenable: SelfViewStore.instance,
+                      builder: (_, p, _) => SelfViewOptions(
+                        key: const ValueKey('live_room.self_view.options'),
+                        prefs: p,
+                        onChanged: (next) => unawaited(SelfViewStore.instance.update(next)),
+                        onToStage: _canSwapSelf
+                            ? () {
+                                Navigator.of(ctx).pop();
+                                if (mounted) setState(() => _pipSwapped = true);
+                              }
+                            : null,
+                        onHide: () {
+                          Navigator.of(ctx).pop();
+                          if (mounted) setState(() => _selfHidden = true);
+                        },
                       ),
                     ),
                   ),
-                ),
-              ],
+                ]),
+              ),
             ),
           ),
         ),
@@ -3454,13 +3495,19 @@ class _RoomPageState extends State<RoomPage>
     return Positioned(
       top: 14,
       right: 14,
-      child: Column(
-        // The badges hug the physical right edge in Arabic too (end alone would follow the reading direction).
-        textDirection: TextDirection.ltr,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: badges
-            .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
-            .toList(),
+      // D-092: the self-view keeps clear of this column on the right (its height changes with the badges).
+      child: SelfViewSizeReporter(
+        onSize: (s) {
+          if (mounted && (s.height - _badgeColumnH).abs() > 1) setState(() => _badgeColumnH = s.height);
+        },
+        child: Column(
+          // The badges hug the physical right edge in Arabic too (end alone would follow the reading direction).
+          textDirection: TextDirection.ltr,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: badges
+              .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
+              .toList(),
+        ),
       ),
     );
   }
@@ -5617,14 +5664,7 @@ class _ThumbnailCard extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             if (isScreen && screenTrack != null && renderVideo)
-              AbsorbPointer(
-                child: VideoTrackRenderer(
-                  key: ValueKey(screenTrack.sid),
-                  screenTrack,
-                  renderMode: VideoRenderMode.auto,
-                  fit: VideoViewFit.contain,
-                ),
-              )
+              LiveVideoView(screenTrack, key: ValueKey(screenTrack.sid), fit: VideoViewFit.contain)
             else
               ParticipantWidget.widgetFor(track, showStatsLayer: false, renderVideo: renderVideo),
             if (handUp)
@@ -5727,20 +5767,17 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
   @override
   void initState() {
     super.initState();
+    // D-092: a still glow. Pulsing, it repainted two large blurred shadows (32 / 48) around the shared video on
+    // every frame, for as long as a share was on the stage.
     _borderGlowAnim = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+      value: 0.55,
+    );
     _borderGlow = CurvedAnimation(
       parent: _borderGlowAnim,
       curve: Curves.easeInOut,
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    syncMotionLoop(context, _borderGlowAnim, reverse: true, rest: 0); // decorative: Reduce motion parks it
   }
 
   @override
@@ -5814,11 +5851,7 @@ class _PremiumScreenShareViewState extends State<_PremiumScreenShareView>
                 borderRadius: BorderRadius.circular(19),
                 child: screenTrack != null
                     ? (widget.annot == null
-                        ? VideoTrackRenderer(
-                            screenTrack,
-                            renderMode: VideoRenderMode.auto,
-                            fit: VideoViewFit.contain,
-                          )
+                        ? LiveVideoView(screenTrack, fit: VideoViewFit.contain)
                         : _AnnotatedShareVideo(track: screenTrack, controller: widget.annot!))
                     : _ScreenShareLoadingPlaceholder(
                   presenterName: presenterName,
@@ -5909,9 +5942,10 @@ class _AnnotatedShareVideoState extends State<_AnnotatedShareVideo> {
   Widget build(BuildContext context) {
     if (!_ready) return const SizedBox.expand();
     return Stack(fit: StackFit.expand, children: [
-      VideoTrackRenderer(
+      // D-092: LiveVideoView — no renderer gesture (my own share's taps threw setFocusMode and hid the bar's tap).
+      LiveVideoView(
         widget.track,
-        renderMode: VideoRenderMode.texture,
+        mirror: VideoViewMirrorMode.off,
         fit: VideoViewFit.contain,
         cachedRenderer: _renderer,
         autoDisposeRenderer: false,
