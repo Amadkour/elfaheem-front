@@ -151,13 +151,17 @@ class ControlsWidgetState extends State<ControlsWidget> {
   LocalParticipant get participant => widget.participant;
 
   void _loadDevices(List<MediaDevice> devices) {
+    // enumerateDevices() may answer after the bar left the tree (the room closed meanwhile).
+    if (!mounted) return;
     _audioInputs  = devices.where((d) => d.kind == 'audioinput').toList();
     _audioOutputs = devices.where((d) => d.kind == 'audiooutput').toList();
     _videoInputs  = devices.where((d) => d.kind == 'videoinput').toList();
     setState(() {});
   }
 
-  void _onChange() => setState(() {});
+  void _onChange() {
+    if (mounted) setState(() {});
+  }
 
   // ── Audio ──────────────────────────────────────────────────────────────────
   void _disableAudio() => unawaited(participant.setMicrophoneEnabled(false));

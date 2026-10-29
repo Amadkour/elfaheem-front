@@ -577,12 +577,26 @@ mixin RoomScreenShareMixin<T extends StatefulWidget> on State<T> {
 
   /// Stop the iOS broadcast from any call site.
   /// Safe to call multiple times — idempotent.
-  Future<void> stopIOSBroadcast() async {
+  ///
+  /// [leaving]: the room screen is being disposed. Only the native extension is
+  /// stopped (ReplayKit would otherwise keep capturing after the person left);
+  /// the mic and the LiveKit publication are left alone, the room is closing.
+  Future<void> stopIOSBroadcast({bool leaving = false}) async {
     if (recorder?.onBroadcastEvent == _handleBroadcastEvent) {
       recorder?.onBroadcastEvent = null;
     }
     if (!_isBroadcastActive) return;
     _isBroadcastActive = false;
+
+    if (leaving) {
+      try {
+        await _ssChannel.invokeMethod<void>('stopBroadcast');
+        log('[SS] iOS: stopBroadcast sent to native (room closed)');
+      } catch (e) {
+        log('[SS] iOS stopBroadcast on leave error (non-fatal): $e');
+      }
+      return;
+    }
 
     // ── DIAGNOSTIC (2026-07-30): restore normal call-quality echo
     // cancellation once the share ends — see the const's doc comment

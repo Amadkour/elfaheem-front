@@ -6,7 +6,7 @@ import 'dart:math' as math;
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:collection/collection.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart' hide ConnectionState;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -22,6 +22,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'widgets/controls.dart';
 import 'widgets/live_chat.dart';
 import 'widgets/live_control_bar.dart' show kLiveControlsMobileBreakpoint;
+import 'widgets/live_data_route.dart';
 import 'widgets/live_duration.dart';
 import 'widgets/live_hands.dart';
 import 'widgets/live_quiz.dart';
@@ -534,6 +535,9 @@ class _RoomPageState extends State<RoomPage>
 
   bool _isBroadcastingIOS = false;
 
+  /// A calendar meeting (courseId 0): the course-only calls (roster, quiz feed, attendance leave) are skipped.
+  bool get _isMeeting => widget.ref.isMeeting;
+
   Future<void> _stopIOSBroadcast() async {
     if (!_isBroadcastingIOS) return;
     await stopIOSBroadcast();
@@ -1015,10 +1019,11 @@ class _RoomPageState extends State<RoomPage>
       unawaited(AudioManager.instance.setSpeakerOutputPreferred(true));
     }
 
-    // Guests have no token: the roster and the quiz feed need an account.
-    if (!widget.isGuest) _fetchEnrolledStudents();
-    if (!widget.isTeacher && !widget.isGuest) _startQuizPolling();
-    if (widget.isTeacher) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
+    // Guests have no token: the roster and the quiz feed need an account. A calendar meeting has no course
+    // (courseId 0): no roster, no quiz feed.
+    if (!widget.isGuest && !_isMeeting) _fetchEnrolledStudents();
+    if (!widget.isTeacher && !widget.isGuest && !_isMeeting) _startQuizPolling();
+    if (widget.isTeacher && !_isMeeting) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
     _startLobby(); // host only; see the "Lobby" region
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -1033,7 +1038,8 @@ class _RoomPageState extends State<RoomPage>
       // ── Step 2: enable HD audio ────────────────────────────────────────────
       final local = widget.room.localParticipant;
       // Listen-only guests never publish: skipping this keeps their mic off (the server token would refuse anyway).
-      if (local != null && widget.canPublish) await _enableHdAudio(local);
+      // A person who switched the mic off on the pre-join page stays muted until they unmute themselves.
+      if (local != null && widget.canPublish && widget.enableAudio) await _enableHdAudio(local);
 
       // ── Step 3: start recorder if room is already connected ────────────────
       // Handles the race where the room connected before initState() ran.
@@ -1113,9 +1119,9 @@ class _RoomPageState extends State<RoomPage>
     _guestBusy.dispose();
     WakelockPlus.disable().catchError((_) {});
     if (_netNotice != null) hideAppNotice(message: _netNotice);
-    if (!widget.isTeacher && !widget.isGuest) {
+    if (!widget.isTeacher && !widget.isGuest && !_isMeeting) {
       // Check-out time: without this every student's attendance showed "stayed 0 min" (check-out = join time).
-      // (A guest has no attendance record and no token: nothing to send.)
+      // (A guest has no attendance record and no token: nothing to send. A meeting is not a course session.)
       widget.apiClient
           .post('/api/v1/live-sessions/${widget.sessionId}/leave')
           .then((_) {}, onError: (_) {});
@@ -1135,6 +1141,12 @@ class _RoomPageState extends State<RoomPage>
     _sessionClockTimer?.cancel();
     _liveScreenCaptureTimer?.cancel();
     _webPlaceholderDebounce?.cancel();
+    // iOS: a broadcast still running when the room closes would keep ReplayKit capturing after the person
+    // left. Before the recorder is detached below (stopIOSBroadcast unhooks its broadcast events).
+    if (!kIsWeb && Platform.isIOS) {
+      unawaited(stopIOSBroadcast(leaving: true));
+      disposeBroadcastSub();
+    }
     // Recorder: if user exits without pressing End Session (e.g. back-swipe),
     // stop the camera fast and drain remaining uploads in the background.
     if (_recorder != null) {
@@ -1167,12 +1179,9 @@ class _RoomPageState extends State<RoomPage>
     LiveRoomScope.maybeOf(context)?.expand();
     final ok = await context.showDisconnectDialog();
     if (ok != true || !mounted) return;
+    // The same path as the End button: it closes the layer, and the page's dispose disconnects the room once
+    // (a second disconnect() here raced that one).
     await _endSessionWithRecording();
-    try {
-      await widget.room.disconnect();
-    } catch (e) {
-      log('leave from the box: $e');
-    }
   }
 
   Future<void> _disposeRoomAsync() async {
@@ -1314,7 +1323,7 @@ class _RoomPageState extends State<RoomPage>
   // Enrolled students
   // ─────────────────────────────────────────────────────────────────────────
   Future<void> _fetchEnrolledStudents() async {
-    if (_loadingStudents || widget.isGuest) return;
+    if (_loadingStudents || widget.isGuest || _isMeeting) return;
     if (mounted) setState(() => _loadingStudents = true);
     try {
       final resp = await widget.apiClient.get(
@@ -1373,7 +1382,7 @@ class _RoomPageState extends State<RoomPage>
 
   /// A 'quiz' packet from the teacher: fetch the active exam now (students only; a guest has no token).
   void _onQuizPacket(List<int> bytes) {
-    if (widget.isTeacher || widget.isGuest) return;
+    if (widget.isTeacher || widget.isGuest || _isMeeting) return;
     final s = LiveQuizBroadcast.decode(bytes);
     if (s == null || (s.courseId != null && s.courseId != widget.courseId)) return;
     _pollActiveQuiz();
@@ -1661,11 +1670,6 @@ class _RoomPageState extends State<RoomPage>
       if (kIsWeb && _recordsHere && event.track is RemoteAudioTrack) { // [meeting-recording]
         _recorder?.removeRemoteAudioStream(event.participant.sid);
       }
-      if (!widget.isTeacher &&
-          event.participant.sid == widget.room.localParticipant?.sid) {
-        log('Local track unsubscribed — auto-ending session');
-        unawaited(_autoEndSession());
-      }
     })
     ..on<TrackMutedEvent>((_) => _sortParticipants())
     ..on<TrackUnmutedEvent>((_) => _sortParticipants())
@@ -1677,27 +1681,22 @@ class _RoomPageState extends State<RoomPage>
     ..on<DataReceivedEvent>((event) {
       final p = event.participant;
       final senderName = (p?.name.isNotEmpty ?? false) ? p!.name : p?.identity;
-      if (event.topic == kLiveReactionTopic) {
-        _reactions.receive(event.data, fallbackName: senderName);
-        return;
+      switch (liveDataRoute(event.topic)) {
+        case LiveDataRoute.reaction:
+          _reactions.receive(event.data, fallbackName: senderName);
+          return;
+        case LiveDataRoute.quiz:
+          _onQuizPacket(event.data);
+          return;
+        case LiveDataRoute.handOrChat:
+          // Hands and chat: matched by topic, and by payload type for senders that set no topic.
+          if (_hands.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
+          if (_chat.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
+        case LiveDataRoute.ignore:
+          break;
       }
-      if (event.topic == kLiveQuizTopic) {
-        _onQuizPacket(event.data);
-        return;
-      }
-      // Hands and chat: matched by topic, and by payload type for senders that set no topic.
-      if (event.topic == kLiveHandTopic || event.topic == kLiveChatTopic || event.topic == null) {
-        if (_hands.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
-        if (_chat.receive(event.data, senderIdentity: p?.identity, fallbackName: senderName)) return;
-        if (event.topic != null) return;
-      }
-      String decoded = 'Failed to decode';
-      try {
-        decoded = utf8.decode(event.data);
-      } catch (e) {
-        log('Decode: $e');
-      }
-      unawaited(context.showDataReceivedDialog(decoded));
+      // Unknown topic / payload: any participant can publish data, so it is never shown on everyone's screen.
+      if (kDebugMode) log('live data ignored: topic ${event.topic}, ${event.data.length} bytes');
     })
     ..on<AudioPlaybackStatusChanged>((event) async {
       if (!widget.room.canPlaybackAudio) {
@@ -1883,15 +1882,6 @@ class _RoomPageState extends State<RoomPage>
       log('[REC] startScreenCaptureService PlatformException: ${e.code} ${e.message}');
     } catch (e) {
       log('[REC] startScreenCaptureService error: $e');
-    }
-  }
-
-  Future<void> _autoEndSession() async {
-    try {
-      await widget.onEnd();
-      await widget.room.disconnect();
-    } catch (e) {
-      log('autoEndSession error: $e');
     }
   }
 

@@ -20,10 +20,21 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show trp;
 
 import 'live_palette.dart';
-import 'participant_info.dart' show isGuestIdentity;
+import 'participant_info.dart' show isGuestIdentity, isHostIdentity;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 
 const kLiveHandTopic = 'hand';
+
+/// Whose hand a received packet raises / lowers, or null when the packet must be dropped. [senderIdentity] is
+/// the LiveKit participant that published it (any participant can publish data, so the payload's identity is
+/// not trusted): a raise is always the sender's own hand, a lower of someone else's hand is accepted only from
+/// a host ([isHostIdentity]). A packet with no sender came from the server and is taken as written.
+String? handPacketTarget({required bool up, required String payloadIdentity, String? senderIdentity}) {
+  final sender = senderIdentity ?? '';
+  if (sender.isEmpty) return payloadIdentity.isEmpty ? null : payloadIdentity;
+  if (up || payloadIdentity.isEmpty || payloadIdentity == sender) return sender;
+  return isHostIdentity(sender) ? payloadIdentity : null;
+}
 
 class LiveHand {
   const LiveHand({required this.identity, required this.name, required this.ts});
@@ -114,13 +125,15 @@ class LiveHandsController extends ChangeNotifier {
   void drop(String identity) => remove(identity);
 
   /// Parses an incoming packet; returns true when it was a hand packet. [senderIdentity] / [fallbackName] come
-  /// from the LiveKit participant and are used when the payload is incomplete.
+  /// from the LiveKit participant: the sender decides whose hand it is ([handPacketTarget]), the name is used
+  /// when the payload has none.
   bool receive(List<int> data, {String? senderIdentity, String? fallbackName}) {
     try {
       final m = jsonDecode(utf8.decode(data));
       if (m is! Map || m['type'] != 'hand') return false;
-      final identity = '${m['identity'] ?? senderIdentity ?? ''}';
-      if (identity.isEmpty) return true;
+      final identity = handPacketTarget(
+          up: m['up'] == true, payloadIdentity: '${m['identity'] ?? ''}', senderIdentity: senderIdentity);
+      if (identity == null) return true;
       if (m['up'] == true) {
         final raw = '${m['name'] ?? ''}'.trim();
         final ts = m['ts'] is num ? (m['ts'] as num).toInt() : DateTime.now().millisecondsSinceEpoch;

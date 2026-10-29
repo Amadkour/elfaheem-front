@@ -13,7 +13,6 @@ import '../components/exts.dart';
 import '../model/live_response_model.dart';
 import '../../../../core/api_client.dart';
 import '../sessions_provider.dart';
-import 'local_debug_save.dart';
 import 'prejoin_layout.dart';
 import 'prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'prejoin_mic_meter_web.dart' as mic_meter;
@@ -436,9 +435,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
         final TeacherSessionItem? r = await context.read<TeacherCourseScreenProvider>().quickSession(courseId: args.courseId);
         if(r ==null){
           Helpers.showMessage('failed to create session'.tr, isError: true);
-        }else {
-          localSessionId = r.id;
+          return;
         }
+        localSessionId = r.id;
       }
       final room = Room(
         roomOptions: RoomOptions(
@@ -500,7 +499,6 @@ class _PreJoinPageState extends State<PreJoinPage> {
         listener,
         fastConnection: true,
         onEnd: () async {
-          LocalDebugSave.stop();
           args.onEnd.call();
         },
         isTeacher: args.isTeacher,
@@ -529,8 +527,6 @@ class _PreJoinPageState extends State<PreJoinPage> {
       // Student live-completion: fires after the room closed
       if (!args.isTeacher) {
         await args.onComplete?.call();
-      } else {
-        LocalDebugSave.start();
       }
     } catch (error) {
       // The owner closed the live-plan sheet without subscribing: stay here quietly (spec §8).

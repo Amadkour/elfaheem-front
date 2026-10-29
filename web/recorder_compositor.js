@@ -302,6 +302,10 @@
   const CHUNK_INTERVAL_MS = 10_000;   // native timeslice — recorder auto-flushes every 10s
   const CANVAS_W = 1920;
   const CANVAS_H = 1080;
+  // Labels whose stream the recorder itself opened (its own getUserMedia in
+  // recorder_web_impl.dart): the only ones stop() may end. Every other label
+  // wraps a LiveKit track the room still uses ('screen', 'remote_<sid>').
+  const OWNED_LABELS = ['camera'];
   const VIDEO_BITRATE = 3_500_000;    // 3.5 Mbps — ~4.4MB/10s chunk.
                                        // Chunk uploads are serialized and queue-depth
                                        // tracked (see ondataavailable/_uploadChunk below),
@@ -1158,8 +1162,19 @@
 
       await new Promise(r => setTimeout(r, 300));
 
-      Object.values(_sources).forEach(src => {
-        if (src.stream) src.stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
+      // Stop only the tracks the recorder opened itself (its own
+      // getUserMedia camera/mic stream, label 'camera'). 'screen' is the
+      // share LiveKit is still publishing and 'remote_<sid>' are LiveKit's
+      // remote audio tracks: stopping those killed the live share and every
+      // remote voice when "Stop recording" was pressed mid-meeting. They are
+      // only detached from the compositor.
+      Object.keys(_sources).forEach(label => {
+        const src = _sources[label];
+        const owned = OWNED_LABELS.indexOf(label) !== -1;
+        compositor.removeStream(label);
+        if (owned && src && src.stream) {
+          src.stream.getTracks().forEach(t => { try { t.stop(); } catch(_){} });
+        }
       });
       try { if (_silentSource) _silentSource.stop(); } catch (_) {}
       try { if (_silentSource) _silentSource.disconnect(); } catch (_) {}

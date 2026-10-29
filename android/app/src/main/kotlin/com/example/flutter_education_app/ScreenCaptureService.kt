@@ -7,6 +7,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.hardware.display.DisplayManager
 import android.hardware.display.VirtualDisplay
 import android.media.MediaRecorder
@@ -124,6 +126,17 @@ class ScreenCaptureService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    // The app was swiped away from recents: the same teardown as ACTION_STOP
+    // (the chunk loop flags the last chunk is_final, drains the uploads and
+    // stops the service) — not a projection + uploads left running for an
+    // engine that no longer exists.
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Log.d(TAG, "onTaskRemoved — stopping like ACTION_STOP")
+        requestStop()
+        if (!isRunning) stopSelf()
+        super.onTaskRemoved(rootIntent)
+    }
+
     override fun onDestroy() {
         shouldStop.set(true)
         shouldRecord.set(false)
@@ -161,7 +174,12 @@ class ScreenCaptureService : Service() {
                     }
                 } catch (_: Exception) {}
                 resolveScreenMetrics()
-                startForegroundMicOnly()
+                if (!startForegroundMicOnly()) {
+                    // No microphone foreground service (Android 14+ without
+                    // RECORD_AUDIO): Dart got the error event, nothing records.
+                    if (!isRunning) stopSelf()
+                    return START_NOT_STICKY
+                }
                 isRunning = true
 
                 // Single-MediaProjection architecture: recording (with a
@@ -215,7 +233,8 @@ class ScreenCaptureService : Service() {
                         emitError("MediaProjection grant invalid")
                         onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
                     }
-                    return START_STICKY
+                    answerForegroundStart()
+                    return START_NOT_STICKY
                 }
                 if (!shouldRecord.get() || placeholderRenderer == null) {
                     // Placeholder recording never started (e.g. uploadUrl was
@@ -225,15 +244,26 @@ class ScreenCaptureService : Service() {
                         emitError("Recording not active — cannot start live sharing")
                         onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
                     }
-                    return START_STICKY
+                    answerForegroundStart()
+                    return START_NOT_STICKY
                 }
                 if (isProjectionGranted) {
                     Log.w(TAG, "projection already active — ignoring duplicate STORE_PROJECTION")
                     mainHandler.post { onProjectionGrantStored?.invoke(); onProjectionGrantStored = null }
-                    return START_STICKY
+                    answerForegroundStart()
+                    return START_NOT_STICKY
                 }
 
-                promoteForegroundToProjection()
+                try {
+                    promoteForegroundToProjection()
+                } catch (e: Exception) {
+                    Log.e(TAG, "promoteForegroundToProjection failed: ${e.message}", e)
+                    mainHandler.post {
+                        emitError("Could not start screen capture: ${e.message}")
+                        onProjectionGrantStored?.invoke(); onProjectionGrantStored = null
+                    }
+                    return START_NOT_STICKY
+                }
                 activateLiveProjection(resultCode, data)
             }
 
@@ -248,11 +278,7 @@ class ScreenCaptureService : Service() {
 
             ACTION_STOP -> {
                 Log.d(TAG, "ACTION_STOP — signalling chunk loop")
-                shouldStop.set(true)
-                shouldRecord.set(false)
-                shouldPause.set(false)
-                // If currently paused, wake the park-loop so it can exit cleanly.
-                synchronized(this) { (this as Object).notifyAll() }
+                requestStop()
             }
 
             // ACTION_UPGRADE_TO_SCREEN removed — was a no-op duplicate of what
@@ -281,11 +307,11 @@ class ScreenCaptureService : Service() {
             ACTION_PAUSE_RECORDING -> {
                 if (!shouldRecord.get() || shouldStop.get()) {
                     Log.w(TAG, "PAUSE ignored — not recording")
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
                 if (shouldPause.get()) {
                     Log.w(TAG, "PAUSE ignored — already paused")
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
                 Log.d(TAG, "ACTION_PAUSE_RECORDING")
                 shouldPause.set(true)
@@ -296,13 +322,16 @@ class ScreenCaptureService : Service() {
             // ── NEW: RESUME ───────────────────────────────────────────────────
             // Clears the pause flag and wakes the parked chunk loop.
             ACTION_RESUME_RECORDING -> {
-                if (!isProjectionGranted || shouldStop.get()) {
+                // Gated on the recorder, not on the screen grant: a recording
+                // paused before the first share (or an audio-only meeting)
+                // has no projection and must still resume.
+                if (!isRunning || !shouldRecord.get() || shouldStop.get()) {
                     Log.w(TAG, "RESUME ignored — not in a pauseable state")
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
                 if (!shouldPause.get()) {
                     Log.w(TAG, "RESUME ignored — not paused")
-                    return START_STICKY
+                    return START_NOT_STICKY
                 }
                 Log.d(TAG, "ACTION_RESUME_RECORDING")
                 shouldRecord.set(true)
@@ -313,35 +342,100 @@ class ScreenCaptureService : Service() {
             }
 
             else -> {
-                startForegroundMicOnly()
-                isRunning = true
+                // Unknown / null action: satisfy a startForegroundService()
+                // call, but never pretend a recording runs.
+                answerForegroundStart()
             }
         }
-        return START_STICKY
+        // Not sticky: a restart after the process died would come back with
+        // a null intent and no session to record (a zombie foreground service).
+        return START_NOT_STICKY
     }
 
     // ── FGS helpers ───────────────────────────────────────────────────────────
 
-    private fun startForegroundMicOnly() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-            startForeground(NOTIFICATION_ID, buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-        else
-            startForeground(NOTIFICATION_ID, buildNotification())
+    private fun hasRecordAudio(): Boolean =
+            checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * The recording's foreground service. FOREGROUND_SERVICE_TYPE_MICROPHONE
+     * exists from API 30 only (29 and older: no type). Returns false, with the
+     * error event sent to Dart, when it cannot start: Android 14+ throws on
+     * startForeground(MICROPHONE) without RECORD_AUDIO, which crashed the app.
+     */
+    private fun startForegroundMicOnly(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && !hasRecordAudio()) {
+            Log.e(TAG, "RECORD_AUDIO not granted — no microphone foreground service")
+            mainHandler.post { emitError("Microphone permission is required to record") }
+            return false
+        }
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
+                startForeground(NOTIFICATION_ID, buildNotification(),
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            else
+                startForeground(NOTIFICATION_ID, buildNotification())
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "startForeground(microphone) failed: ${e.message}", e)
+            mainHandler.post { emitError("Could not start the recording service: ${e.message}") }
+            false
+        }
     }
 
+    /**
+     * MediaProjection needs a mediaProjection-typed foreground service from
+     * API 29 (MediaProjection.start() throws on 10–13 otherwise). MICROPHONE
+     * is added from API 30, only while the recorder captures the mic (and the
+     * permission is there: 14+ would throw without it).
+     */
     private fun promoteForegroundToProjection() {
-        when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE ->
-                startForeground(NOTIFICATION_ID, buildNotification(),
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE or
-                                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
-                startForeground(NOTIFICATION_ID, buildNotification(),
-                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-            else ->
-                startForeground(NOTIFICATION_ID, buildNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            var type = ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && isRunning && shouldRecord.get() && hasRecordAudio())
+                type = type or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            startForeground(NOTIFICATION_ID, buildNotification(), type)
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
         }
+    }
+
+    /**
+     * STORE_PROJECTION (and an unknown action) arrives through
+     * startForegroundService(): every branch must call startForeground, also
+     * the ones that give up — stopping without it crashes the app
+     * ("did not then call Service.startForeground"). Keeps the type the
+     * service already runs with; stops the service again when nothing records.
+     */
+    private fun answerForegroundStart() {
+        try {
+            when {
+                isProjectionGranted -> promoteForegroundToProjection()
+                isRunning           -> startForegroundMicOnly()
+                // Idle service: the user has just granted the projection
+                // (MainActivity sends STORE_PROJECTION on RESULT_OK only), so
+                // the mediaProjection type is allowed; no microphone needed.
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ->
+                    startForeground(NOTIFICATION_ID, buildNotification(),
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+                else -> startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "answerForegroundStart: ${e.message}", e)
+        }
+        if (!isRunning) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
+
+    /** ACTION_STOP / onTaskRemoved: the chunk loop finishes the current chunk (is_final), drains and stops. */
+    private fun requestStop() {
+        shouldStop.set(true)
+        shouldRecord.set(false)
+        shouldPause.set(false)
+        // If currently paused, wake the park-loop so it can exit cleanly.
+        synchronized(this) { (this as Object).notifyAll() }
     }
 
     // ── screen metrics ────────────────────────────────────────────────────────
@@ -389,8 +483,22 @@ class ScreenCaptureService : Service() {
 
         // Prepare the very first recorder before signalling Dart, so that
         // emitScreenLoopStarted() fires only when audio is truly capturing.
-        var currentRecorder = prepareRecorder(sessionDir, chunkIndex)
-        currentRecorder.start()
+        // Wrapped: an exception here, on this thread, used to kill the whole
+        // process. Now Dart gets the error event and the service stops.
+        var currentRecorder = try {
+            prepareRecorder(sessionDir, chunkIndex).also { it.start() }
+        } catch (e: Exception) {
+            Log.e(TAG, "first MediaRecorder prepare/start failed: ${e.message}", e)
+            mainHandler.post { emitError("Recording could not start: ${e.message}") }
+            shouldRecord.set(false)
+            shouldStop.set(true)
+            safeReleaseMedia()
+            isRunning = false
+            isProjectionGranted = false
+            isPaused = false
+            stopSelf()
+            return
+        }
         Log.d(TAG, "MediaRecorder.start() chunk #$chunkIndex (first)")
         mainHandler.post { emitScreenLoopStarted() }
 
@@ -652,7 +760,9 @@ class ScreenCaptureService : Service() {
         val tmp = tmpFile(sessionDir, index)
         tmp.delete()
 
-        val recorder = MediaRecorder(this).also { mediaRecorder = it }
+        // MediaRecorder(Context) is API 31+; minSdk is 24.
+        val recorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) MediaRecorder(this)
+                        else @Suppress("DEPRECATION") MediaRecorder()).also { mediaRecorder = it }
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
         if (audioOnly) {
             // Audio-only: AAC in an MP4 container (an .m4a chunk) — no video

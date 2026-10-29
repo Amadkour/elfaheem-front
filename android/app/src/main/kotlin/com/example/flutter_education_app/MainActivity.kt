@@ -182,6 +182,16 @@ class MainActivity : FlutterActivity() {
                             val maxHeight = call.argument<Int>("maxHeight")    ?: 0
                             // Audio-only: an AAC MediaRecorder with no video source (see ScreenCaptureService).
                             val audioOnly = call.argument<Boolean>("audioOnly") ?: false
+                            // Android 14+: the service's startForeground(MICROPHONE) throws without
+                            // RECORD_AUDIO, and a startForegroundService() that never reaches
+                            // startForeground crashes the app — refuse here, Dart reports the error.
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                                    checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) !=
+                                    android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                                Log.e(TAG, "startMicRecording: RECORD_AUDIO not granted")
+                                result.error("MIC_PERMISSION", "Microphone permission is required to record", null)
+                                return@setMethodCallHandler
+                            }
                             try {
                                 val i = Intent(this, ScreenCaptureService::class.java).apply {
                                     action = ScreenCaptureService.ACTION_START_MIC_ONLY
