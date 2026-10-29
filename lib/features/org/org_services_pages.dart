@@ -865,8 +865,12 @@ class _ComplaintCard extends StatelessWidget {
 }
 
 class OrgComplaintThreadScreen extends StatefulWidget {
-  const OrgComplaintThreadScreen({super.key, required this.id});
+  /// [orgId] / [canAct]: opened from outside the organization (the profile's Complaints page, D-086) — that
+  /// organization's routes and the right the server gave the row, instead of the open [OrgSession]'s.
+  const OrgComplaintThreadScreen({super.key, required this.id, this.orgId, this.canAct});
   final int id;
+  final int? orgId;
+  final bool? canAct;
 
   @override
   State<OrgComplaintThreadScreen> createState() => _OrgComplaintThreadScreenState();
@@ -877,7 +881,8 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
   bool _failed = false, _sending = false, _internal = false;
   final _msg = TextEditingController();
 
-  String get _url => '${context.read<OrgSession>().base}/complaints/${widget.id}';
+  String get _base => widget.orgId != null ? '$orgBase/orgs/${widget.orgId}' : context.read<OrgSession>().base;
+  String get _url => '$_base/complaints/${widget.id}';
 
   @override
   void initState() {
@@ -918,8 +923,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
   }
 
   Future<void> _transfer() async {
-    final s = context.read<OrgSession>();
-    final r = await OrgApi.i.getMap('${s.base}/departments');
+    final r = await OrgApi.i.getMap('$_base/departments');
     if (r == null || !mounted) return;
     final depts = asMapList(r['items'])
         .where((d) => d['id'] != _d?['dept_id'] && ((d['features'] as List?) ?? const []).contains('complaints'))
@@ -942,7 +946,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
     final s = context.watch<OrgSession>();
     final d = _d;
     final dept = d?['dept_id'] == null ? null : asInt(d?['dept_id']);
-    final canAct = d != null && s.can('complaints', 'update', dept);
+    final canAct = d != null && (widget.canAct ?? s.can('complaints', 'update', dept));
     return BasePage(
       useWebCard: true,
       maxWith: 820,
@@ -997,7 +1001,7 @@ class _OrgComplaintThreadScreenState extends State<OrgComplaintThreadScreen> {
                           const Divider(height: 22),
                           KeyValue(t('من', 'From'), '${asMap(d['user'])['name'] ?? ''}'),
                           if (canAct && d['is_anonymous'] != true && d['status'] != 'closed')
-                            Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () async { if (await showComplaintMeetingSheet(context, orgId: s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load(); }, icon: const Icon(Icons.event_available_rounded), label: Text(t('تحويل إلى اجتماع', 'Turn into a meeting')))),
+                            Align(alignment: AlignmentDirectional.centerStart, child: TextButton.icon(onPressed: () async { if (await showComplaintMeetingSheet(context, orgId: widget.orgId ?? s.currentId!, complaintId: widget.id, subject: '${d['subject']}')) _load(); }, icon: const Icon(Icons.event_available_rounded), label: Text(t('تحويل إلى اجتماع', 'Turn into a meeting')))),
                           if (d['assigned_to'] != null) KeyValue(t('المسؤول', 'Handled by'), '${asMap(d['assigned_to'])['name']}'),
                           if (d['rating'] != null) KeyValue(t('التقييم', 'Rating'), '${'★' * asInt(d['rating'])} ${d['rating_note'] ?? ''}'),
                           if (canAct && asMapList(d['assignable']).isNotEmpty) ...[
