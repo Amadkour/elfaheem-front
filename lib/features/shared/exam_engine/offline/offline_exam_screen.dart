@@ -5,13 +5,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
-import 'package:screen_protector/screen_protector.dart';
+import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../../admin/admin_common.dart' show asMap, t;
@@ -349,12 +348,8 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
     super.dispose();
   }
 
-  Future<void> _protect(bool on) async {
-    if (kIsWeb) return;
-    try {
-      on ? await ScreenProtector.preventScreenshotOn() : await ScreenProtector.preventScreenshotOff();
-    } catch (_) {}
-  }
+  /// Owned through ScreenSecurity (D-083): another protected screen closing never switches this one off.
+  Future<void> _protect(bool on) => on ? ScreenSecurity.instance.protect(this) : ScreenSecurity.instance.release(this);
 
   Future<void> _save() => _store.saveSitting(_s);
 

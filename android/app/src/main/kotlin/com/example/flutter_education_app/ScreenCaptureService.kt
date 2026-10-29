@@ -944,6 +944,7 @@ class ScreenCaptureService : Service() {
         try { virtualDisplay?.release() } catch (_: Exception) {}
         virtualDisplay = null
         isSharing = false
+        shareEndedForOverlays() // D-083: the annotate bubble and the window guard go with the share
 
         val keep = keepGrantIfRecording && isRunning && Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE
         if (!keep) releaseProjection()
@@ -959,6 +960,12 @@ class ScreenCaptureService : Service() {
         } else {
             refreshForeground()
         }
+    }
+
+    /** D-083: whatever ends the share, the annotation bubble is hidden and the presenter's window restored. */
+    private fun shareEndedForOverlays() {
+        AnnotationOverlayChannel.onShareStopped()
+        ShareWindowGuard.onShareStopped()
     }
 
     private fun releaseProjection() {
@@ -1237,6 +1244,7 @@ class ScreenCaptureService : Service() {
         ElFaheemBridge.stopScreenAudio()
         try { virtualDisplay?.release() } catch (_: Exception) {}
         virtualDisplay = null
+        if (isSharing) shareEndedForOverlays()
         isSharing = false
         releaseProjection()
         try { placeholderRenderer?.release() } catch (_: Exception) {}

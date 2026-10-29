@@ -88,25 +88,62 @@ The layer is `IgnorePointer` outside draw mode: the share view's taps / double-t
 - The room's own key handler (`KeyEventResult` around line 863): leave P / H / E / L / 1–3 / Ctrl+Z / Esc to the
   toolbar while `_annotOpen` (the toolbar's `AnnotationShortcuts` handles them on web / desktop).
 
-## 6. `room_screen_share.dart`: Android whole-screen share (burned in)
+## 6. `room_screen_share.dart`: Android whole-screen share (burned in, D-079 / D-083) — wired
 
-In `_toggleScreenShareAndroid`, after the share is published, the Annotate action works differently for the
-LOCAL presenter on Android:
+After the share is published (`_offerAnnotationOverlay`):
 
-1. `if (!await AndroidAnnotationOverlay.isPermitted())`: explain once with `appConfirm` (`t('للرسم فوق التطبيقات
-   الأخرى أثناء المشاركة، اسمح بـ «الظهور فوق التطبيقات الأخرى»', 'To draw over other apps while you share, allow
-   "Display over other apps"')`), then `await AndroidAnnotationOverlay.requestPermission()`.
-2. Granted: `AndroidAnnotationOverlay.show(colors: [for (c in annotPresetColors(context.colors)) c.toARGB32()],
-   color: _annot.colorArgb, thickness: _annot.thickness, surface: LivePalette.surfaceHi.toARGB32(), accent:
-   LivePalette.accent.toARGB32())`; on true: `_annot.setBurnedIn(true)` (viewers: students cannot draw, nothing is
-   sent as vectors), keep `_annotOpen = false` (the native toolbar replaces the in-app one).
-3. Refused / `show` false: `showAppNotice(t('بدون الإذن ترسم داخل التطبيق فقط', 'Without it you draw inside the
-   app only'))` and open the in-app toolbar (vectors, step 5) — the fallback D-079 names.
-4. `AndroidAnnotationOverlay.onClosed = () { _annot.setBurnedIn(false); }` (set once in `initState`).
-5. In `_stopScreenShareAndroid` (and the system's own Stop → `shareStopped`): `await AndroidAnnotationOverlay.hide();
-   _annot.setBurnedIn(false);`.
-iOS (ReplayKit) and web cannot draw over other apps / tabs: there the presenter annotates on the in-app view of
-the share (step 4 on the local share track) and the strokes travel as vectors.
+1. `if (!await AndroidAnnotationOverlay.isPermitted())`: explain once per room with `appConfirm` ("To draw over
+   other apps while you share, allow NextBrain to "Display over other apps" in Settings, then come back here",
+   button "Open Settings"), then `AndroidAnnotationOverlay.requestPermission()` opens the system page and answers
+   when the presenter comes back (re-checked 0.3 s / 1 s later for slow app-ops). Refused: the in-app annotation
+   on the share view stays (vectors), nothing more is asked in that room.
+2. Granted: `AndroidAnnotationOverlay.show(…)` ARMS the overlay for this share and the room's controller goes into
+   burned-in mode (`annotationOverlayActive` → `_annot.setBurnedIn(true)`: nothing is sent as vectors, students
+   cannot draw). A one-time notice says where to find it: "To draw over any screen: leave the app and tap the
+   floating pen bubble".
+3. Native (`AnnotationOverlayChannel` + `AnnotationOverlay.kt`): an armed overlay shows NOTHING while NextBrain is in
+   front. When the activity stops (home, another app, recents) or goes into picture-in-picture, a 56 dp pen bubble
+   appears over every app (draggable, snaps to the nearest side, remembers its place). Tap → a compact toolbar
+   (pen · highlighter · eraser · laser · use apps / colour · thickness · undo · clear · hide tools · close) and a
+   transparent full-screen canvas over the app below. "Use apps" and "Hide tools" keep the drawings on screen and
+   let the touches through (canvas `FLAG_NOT_TOUCHABLE`, alpha ≤ the system's obscuring limit); "Close" clears
+   them. Back in NextBrain every window goes; the drawings are kept and come back when the presenter leaves again.
+   A rotation clears them (they marked content that moved). MediaProjection captures the overlay: the strokes are in
+   the shared video and every recording.
+4. `AndroidAnnotationOverlay.onClosed` → burned-in off: only when the overlay can no longer be shown (the permission
+   was revoked while sharing). The room then falls back to in-app annotation.
+5. Every stop (`_stopScreenShareAndroid`, the system's Stop → `shareStopped`, leaving the room) hides it; natively
+   `ScreenCaptureService.stopShare` / `safeReleaseMedia` also call `AnnotationOverlayChannel.onShareStopped()`, so
+   the bubble never outlives the share even if Dart is not running.
+
+### The presenter's own window (black NextBrain area in the share)
+
+MediaProjection draws a `FLAG_SECURE` window black (Android 15+: also a window with sensitive content). The app sets
+`FLAG_SECURE` for the course video player and the exam screens. Protection now has one owner,
+`lib/core/screen_security.dart` (`ScreenSecurity.protect(owner)` / `release(owner)`); the share calls
+`beginShare()` / `endShare()`: on Android `ShareWindowGuard.kt` (channel `…/share_window`, registered by
+`AnnotationOverlayChannel.register`) clears an OWNERLESS `FLAG_SECURE`, sets the Flutter view
+`CONTENT_SENSITIVITY_NOT_SENSITIVE` (API 35+), logs what it found (`ShareWindowGuard: share window: FLAG_SECURE was
+…, content sensitivity was …` — the evidence on a device), and restores exactly what it changed when the share ends.
+On iOS an ownerless screen_protector layer is lifted for the broadcast and put back after. An open protected screen
+(a course video, an exam) keeps its protection during a share: its area stays black on purpose.
+
+### iOS and web: no drawing outside the app
+
+iOS cannot draw over other apps: the broadcast upload extension (ReplayKit) has no UI and no window above other
+apps, and iOS has no "Display over other apps" permission. While an iOS presenter shares the whole screen, the
+annotation is drawn on the in-app view of the share (step 4 on the local share track) and travels as vectors to the
+viewers: it is NOT in the broadcast frames and not on the presenter's other apps. A browser cannot draw over another
+tab or window either: same in-app path. Both are solid paths (the same ink, the same controller); only Android burns
+in.
+
+### Ink (D-083)
+
+Every pointer sample goes through `AnnotInkFilter` (annotation_ink.dart; Kotlin: `AnnotationInk.Filter`) before it is
+drawn or sent: 2-D One Euro on the position, averaged and step-limited pressure, near-duplicates dropped, the real
+last point added on lift. The painter draws the midpoint chain of quadratic Béziers; a stylus stroke (`pr: 1`) is one
+filled shape with pressure width and tapered ends, cached piece by piece so nothing already drawn moves; finger /
+mouse strokes are constant width; the highlighter is one translucent path. x / y travel with 5 decimals.
 
 ## 7. Backend / catalog (same change set)
 

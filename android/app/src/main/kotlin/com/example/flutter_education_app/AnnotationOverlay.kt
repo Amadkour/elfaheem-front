@@ -1,46 +1,59 @@
 package com.example.flutter_education_app
 
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.ComponentCallbacks
 import android.content.Context
-import android.graphics.BlurMaskFilter
+import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
+import android.graphics.RadialGradient
 import android.graphics.RectF
+import android.graphics.Shader
 import android.hardware.input.InputManager
 import android.os.Build
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
+import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.view.animation.DecelerateInterpolator
 import android.widget.LinearLayout
-import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
 /**
- * The whole-screen annotation overlay (D-079): a transparent full-screen canvas and a small floating
- * toolbar drawn over every app while the presenter shares the WHOLE Android screen. MediaProjection
- * captures overlay windows, so the strokes are burned into the shared video and every recording; the
- * app does not also send them as vectors.
+ * The whole-screen annotation overlay (D-079, D-083): while the presenter shares the WHOLE Android screen
+ * and has LEFT the app, a small floating "annotate" bubble stays over every app. Tapping it opens a compact
+ * toolbar and a transparent full-screen canvas over the app below; MediaProjection captures overlay
+ * windows, so the strokes are burned into the shared video (and every recording) and are NOT also sent as
+ * vectors (no double drawing on the viewers).
  *
- * Two windows (TYPE_APPLICATION_OVERLAY, "Display over other apps"):
- *  - the canvas, MATCH_PARENT. Drawing on: it takes the touches. Drawing off ("use apps"):
- *    FLAG_NOT_TOUCHABLE and, on Android 12+, a window alpha at most the system's
- *    maximumObscuringOpacityForTouch (0.8): the untrusted-touch rule then lets the touches reach the
- *    app below, so the presenter keeps using other apps with the drawings still on screen.
- *  - the toolbar, WRAP_CONTENT, draggable by its grip, collapsible to one button. Pen, highlighter,
- *    eraser (stroke eraser), laser (fades), use apps, undo, clear, colour, thickness, collapse, close.
+ * Windows (TYPE_APPLICATION_OVERLAY, "Display over other apps"), present only while armed AND the app is
+ * not in front (AnnotationOverlayChannel tells us):
+ *  - bubble: 56 dp, draggable, snaps to the nearest side; tap → the tools.
+ *  - toolbar: pen · highlighter · eraser · laser · use apps (drawing off) / colour · thickness · undo · clear ·
+ *    hide tools (back to the bubble, drawings stay) · close (back to the bubble, drawings cleared).
+ *  - canvas: MATCH_PARENT. Drawing: it takes the touches. Otherwise FLAG_NOT_TOUCHABLE and, on Android 12+,
+ *    a window alpha at most the system's maximumObscuringOpacityForTouch: the untrusted-touch rule then
+ *    lets the touches through to the app below while the drawings stay on screen.
+ * Back in the app every window is removed; the strokes are kept and come back when the presenter leaves the
+ * app again (they belong to that screen). A rotation clears them (the content they marked moved). The share
+ * ending disarms and clears everything.
  *
- * Stylus pressure comes from MotionEvent.getPressure; a finger draws at 0.5. Palm-safe: one pointer draws;
- * while a stylus is down (or just lifted) fingers are ignored, and the stylus's eraser end erases.
- * Labels / colours come from Dart (android_overlay.dart), so the overlay speaks the app language.
+ * Ink: AnnotationInk (the room's annotation_ink.dart rules). Stylus pressure from MotionEvent (historical
+ * samples included); a finger draws a constant width. Palm-safe: one pointer draws; while a stylus is down
+ * (or just lifted) fingers are ignored, and the stylus's eraser end erases.
  */
 class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
 
@@ -50,9 +63,11 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
         private val HIGHLIGHTER_WIDTHS = floatArrayOf(0.012f, 0.02f, 0.032f)
         const val LASER_TTL_MS = 1500L
         private const val PALM_GUARD_MS = 500L
+        private const val MAX_STROKES = 400
     }
 
     enum class Tool { PEN, HIGHLIGHTER, ERASER, LASER }
+    private enum class Mode { BUBBLE, TOOLS }
 
     private val ctx: Context =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
@@ -60,14 +75,14 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             else context.applicationContext
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-    private var canvasView: CanvasView? = null
+    private var bubble: BubbleView? = null
     private var toolbar: Toolbar? = null
-    private var canvasParams: WindowManager.LayoutParams? = null
+    private var canvasView: CanvasView? = null
+    private var bubbleParams: WindowManager.LayoutParams? = null
     private var toolbarParams: WindowManager.LayoutParams? = null
+    private var canvasParams: WindowManager.LayoutParams? = null
 
-    // State shared by the canvas and the toolbar.
-    var tool = Tool.PEN
-    var drawing = true
+    // Set by Dart (AnnotationOverlayChannel "show").
     var colors: IntArray = intArrayOf(0xFFE53935.toInt(), 0xFFFFB300.toInt(), 0xFF43A047.toInt(),
             0xFF1E88E5.toInt(), 0xFF8E24AA.toInt(), Color.WHITE, 0xFF212121.toInt())
     var color: Int = colors[0]
@@ -77,7 +92,28 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
     var accent: Int = 0xFF4FC3F7.toInt()
     var rtl = false
 
-    val isShowing: Boolean get() = canvasView != null
+    // State.
+    private var armed = false
+    private var appInFront = true
+    private var mode = Mode.BUBBLE
+    var tool = Tool.PEN
+        private set
+    /** Tools open, but the touches go to the apps below (the drawings stay). */
+    private var passThrough = false
+    private var swatchesOpen = false
+
+    /** The strokes live here, not in the canvas view: they survive the canvas window being removed. */
+    private val strokes = ArrayList<AnnotationInk.Stroke>()
+    private var strokesW = 0
+    private var strokesH = 0
+
+    // Where the bubble sits (px from the top-left corner of the screen); remembered across shows.
+    private var bubbleX = -1
+    private var bubbleY = -1
+    private var configCallbacks: ComponentCallbacks? = null
+
+    /** Armed for the running share (what Dart's isShowing means). */
+    val isShowing: Boolean get() = armed
 
     fun label(key: String, fallback: String) = labels[key]?.takeIf { it.isNotBlank() } ?: fallback
 
@@ -88,107 +124,234 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE
 
-    /** Adds both windows. False when the system refused them (no permission, a bad token…). */
+    private fun reduceMotion(): Boolean =
+            runCatching { Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+                    .getOrDefault(false)
+
+    // ── Lifecycle ───────────────────────────────────────────────────────────────
+
+    /** Arms the overlay for this share. Windows appear once the presenter leaves the app. */
     fun show(): Boolean {
-        if (isShowing) {
-            toolbar?.refresh()
+        if (!armed) {
+            armed = true
+            mode = Mode.BUBBLE
+            passThrough = false
+            registerConfig()
+            Log.d(TAG, "armed (shown outside the app)")
+        }
+        toolbar?.rebuild()
+        bubble?.invalidate()
+        return sync()
+    }
+
+    /** Disarms: every window goes, the drawings are cleared. */
+    fun hide() {
+        val was = armed
+        armed = false
+        mode = Mode.BUBBLE
+        swatchesOpen = false
+        strokes.clear()
+        removeAll()
+        unregisterConfig()
+        if (was) Log.d(TAG, "disarmed")
+    }
+
+    fun setAppInFront(front: Boolean) {
+        if (front == appInFront) return
+        appInFront = front
+        if (front) {
+            // Back in the app: the tools close (the drawings are kept for when the presenter leaves again).
+            mode = Mode.BUBBLE
+            swatchesOpen = false
+        }
+        sync()
+    }
+
+    /** Adds / removes windows for the current state. False when the system refused a window. */
+    private fun sync(): Boolean {
+        if (!armed || appInFront) {
+            removeAll()
             return true
         }
         return try {
-            val cv = CanvasView(ctx)
-            val cp = WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    WindowManager.LayoutParams.MATCH_PARENT,
-                    overlayType(),
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    PixelFormat.TRANSLUCENT,
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            when (mode) {
+                Mode.BUBBLE -> {
+                    removeToolbar()
+                    if (strokes.isEmpty()) removeCanvas() else ensureCanvas()
+                    ensureBubble()
                 }
-                title = "Annotation canvas"
+                Mode.TOOLS -> {
+                    removeBubble()
+                    ensureCanvas()
+                    ensureToolbar()
+                }
             }
-            wm.addView(cv, cp)
-            canvasView = cv
-            canvasParams = cp
-
-            val tb = Toolbar(ctx)
-            val tp = WindowManager.LayoutParams(
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    WindowManager.LayoutParams.WRAP_CONTENT,
-                    overlayType(),
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    PixelFormat.TRANSLUCENT,
-            ).apply {
-                gravity = Gravity.TOP or Gravity.START
-                x = dp(12f).toInt()
-                y = dp(96f).toInt()
-                title = "Annotation toolbar"
-            }
-            wm.addView(tb, tp)
-            toolbar = tb
-            toolbarParams = tp
             applyTouchMode()
-            Log.d(TAG, "overlay shown")
             true
         } catch (e: Exception) {
-            Log.w(TAG, "overlay could not be shown: ${e.message}")
-            hide()
+            // "Display over other apps" taken away while sharing, a bad token…: the room falls back to in-app.
+            Log.w(TAG, "overlay window refused: ${e.message}")
+            armed = false
+            strokes.clear()
+            removeAll()
+            unregisterConfig()
+            onClosed()
             false
         }
     }
 
-    fun hide() {
-        toolbar?.let { runCatching { wm.removeViewImmediate(it) } }
+    private fun removeAll() {
+        removeToolbar()
+        removeBubble()
+        removeCanvas()
+    }
+
+    // LEFT, not START: a START window measures x from the right under an Arabic system locale.
+    @SuppressLint("RtlHardcoded")
+    private fun baseParams(w: Int, h: Int, flags: Int) = WindowManager.LayoutParams(
+            w, h, overlayType(),
+            flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            PixelFormat.TRANSLUCENT,
+    ).apply { gravity = Gravity.TOP or Gravity.LEFT }
+
+    private fun ensureCanvas() {
+        if (canvasView != null) return
+        val cv = CanvasView(ctx)
+        val p = baseParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+            title = "Annotation canvas"
+        }
+        wm.addView(cv, p)
+        canvasView = cv
+        canvasParams = p
+    }
+
+    private fun removeCanvas() {
         canvasView?.let { runCatching { wm.removeViewImmediate(it) } }
-        toolbar = null
         canvasView = null
-        toolbarParams = null
         canvasParams = null
     }
 
-    /** Drawing on: the canvas takes touches. Off: touches pass through to the app below. */
-    fun setDrawingMode(on: Boolean) {
-        drawing = on
-        applyTouchMode()
-        toolbar?.refresh()
-    }
-
-    private fun applyTouchMode() {
-        val cv = canvasView ?: return
-        val p = canvasParams ?: return
-        if (drawing) {
-            p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-            p.alpha = 1f
-        } else {
-            p.flags = p.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-            p.alpha = passThroughAlpha()
+    private fun ensureBubble() {
+        if (bubble != null) return
+        val dm = ctx.resources.displayMetrics
+        val size = dp(56f).toInt()
+        if (bubbleX < 0 || bubbleY < 0) {
+            // First time: the reading-end side, a third down.
+            bubbleX = if (rtl) dp(12f).toInt() else dm.widthPixels - size - dp(12f).toInt()
+            bubbleY = dm.heightPixels / 3
         }
-        runCatching { wm.updateViewLayout(cv, p) }
+        val b = BubbleView(ctx)
+        val p = baseParams(size + dp(12f).toInt(), size + dp(12f).toInt(), WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS).apply {
+            x = bubbleX
+            y = bubbleY
+            title = "Annotation bubble"
+        }
+        wm.addView(b, p)
+        bubble = b
+        bubbleParams = p
+        b.appear()
     }
 
-    private fun passThroughAlpha(): Float {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return 1f
-        val im = ctx.getSystemService(Context.INPUT_SERVICE) as? InputManager
-        val maxOpacity = im?.maximumObscuringOpacityForTouch ?: 0.8f
-        return min(0.8f, maxOpacity)
+    private fun removeBubble() {
+        bubble?.let {
+            it.cancelAnimations()
+            runCatching { wm.removeViewImmediate(it) }
+        }
+        bubble = null
+        bubbleParams = null
     }
 
-    fun undo() = canvasView?.undo()
-    fun clear() = canvasView?.clear()
-    fun close() {
-        hide()
-        onClosed()
+    private fun ensureToolbar() {
+        if (toolbar != null) return
+        val tb = Toolbar(ctx)
+        val p = baseParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+        ).apply {
+            // Opens where the bubble was, on its side of the screen.
+            val dm = ctx.resources.displayMetrics
+            x = if (bubbleX > dm.widthPixels / 2) dm.widthPixels else 0
+            y = max(0, bubbleY)
+            title = "Annotation toolbar"
+        }
+        wm.addView(tb, p)
+        toolbar = tb
+        toolbarParams = p
+        tb.post { clampToolbar() }
     }
 
-    fun widthFraction(t: Tool): Float =
-            if (t == Tool.HIGHLIGHTER) HIGHLIGHTER_WIDTHS[thickness] else PEN_WIDTHS[thickness]
+    private fun removeToolbar() {
+        toolbar?.let { runCatching { wm.removeViewImmediate(it) } }
+        toolbar = null
+        toolbarParams = null
+    }
 
-    // ── Toolbar dragging ────────────────────────────────────────────────────────
+    private fun registerConfig() {
+        if (configCallbacks != null) return
+        val cb = object : ComponentCallbacks {
+            override fun onConfigurationChanged(newConfig: Configuration) {
+                // Rotation / screen size: keep the bubble and the toolbar on screen.
+                canvasView?.post { clampBubble(animate = false); clampToolbar() }
+                    ?: bubble?.post { clampBubble(animate = false); clampToolbar() }
+            }
+            override fun onLowMemory() {}
+        }
+        ctx.registerComponentCallbacks(cb)
+        configCallbacks = cb
+    }
+
+    private fun unregisterConfig() {
+        configCallbacks?.let { runCatching { ctx.unregisterComponentCallbacks(it) } }
+        configCallbacks = null
+    }
+
+    private fun clampBubble(animate: Boolean) {
+        val b = bubble ?: return
+        val p = bubbleParams ?: return
+        val dm = ctx.resources.displayMetrics
+        val w = if (b.width > 0) b.width else p.width
+        val h = if (b.height > 0) b.height else p.height
+        val margin = dp(6f).toInt()
+        // Snap to the nearest side.
+        val targetX = if (p.x + w / 2 < dm.widthPixels / 2) margin else dm.widthPixels - w - margin
+        val targetY = p.y.coerceIn(dp(24f).toInt(), max(dp(24f).toInt(), dm.heightPixels - h - dp(48f).toInt()))
+        if (!animate || reduceMotion()) {
+            p.x = targetX
+            p.y = targetY
+            bubbleX = p.x
+            bubbleY = p.y
+            runCatching { wm.updateViewLayout(b, p) }
+            return
+        }
+        val fromX = p.x
+        val fromY = p.y
+        b.animateTo { f ->
+            if (bubble !== b) return@animateTo
+            p.x = (fromX + (targetX - fromX) * f).toInt()
+            p.y = (fromY + (targetY - fromY) * f).toInt()
+            bubbleX = p.x
+            bubbleY = p.y
+            runCatching { wm.updateViewLayout(b, p) }
+        }
+    }
+
+    private fun clampToolbar() {
+        val tb = toolbar ?: return
+        val p = toolbarParams ?: return
+        val dm = ctx.resources.displayMetrics
+        val m = dp(8f).toInt()
+        p.x = p.x.coerceIn(m, max(m, dm.widthPixels - tb.width - m))
+        p.y = p.y.coerceIn(dp(24f).toInt(), max(dp(24f).toInt(), dm.heightPixels - tb.height - dp(24f).toInt()))
+        runCatching { wm.updateViewLayout(tb, p) }
+    }
 
     fun moveToolbarBy(dx: Float, dy: Float) {
         val tb = toolbar ?: return
@@ -199,64 +362,86 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
         runCatching { wm.updateViewLayout(tb, p) }
     }
 
+    // ── Modes and tools ─────────────────────────────────────────────────────────
+
+    private val drawing: Boolean get() = armed && !appInFront && mode == Mode.TOOLS && !passThrough
+
+    private fun openTools() {
+        mode = Mode.TOOLS
+        passThrough = false
+        sync()
+    }
+
+    /** Back to the bubble; the drawings stay on screen (touches go to the apps). */
+    private fun hideTools() {
+        mode = Mode.BUBBLE
+        swatchesOpen = false
+        sync()
+    }
+
+    /** Close: the drawings are cleared and the bubble comes back. */
+    private fun closeTools() {
+        strokes.clear()
+        canvasView?.invalidate()
+        hideTools()
+    }
+
+    private fun selectTool(t: Tool) {
+        tool = t
+        passThrough = false
+        applyTouchMode()
+        toolbar?.rebuild()
+    }
+
+    private fun setPassThrough(on: Boolean) {
+        passThrough = on
+        applyTouchMode()
+        toolbar?.rebuild()
+    }
+
+    private fun applyTouchMode() {
+        val cv = canvasView ?: return
+        val p = canvasParams ?: return
+        val touch = drawing
+        val flags = if (touch) p.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                    else p.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        val alpha = if (touch) 1f else passThroughAlpha()
+        if (flags == p.flags && alpha == p.alpha) return
+        p.flags = flags
+        p.alpha = alpha
+        runCatching { wm.updateViewLayout(cv, p) }
+    }
+
+    private fun passThroughAlpha(): Float {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return 1f
+        val im = ctx.getSystemService(Context.INPUT_SERVICE) as? InputManager
+        val maxOpacity = im?.maximumObscuringOpacityForTouch ?: 0.8f
+        return min(0.8f, maxOpacity)
+    }
+
+    private fun undo() {
+        if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1)
+        canvasView?.invalidate()
+        toolbar?.rebuild()
+    }
+
+    private fun clear() {
+        strokes.clear()
+        canvasView?.invalidate()
+        toolbar?.rebuild()
+    }
+
+    fun widthFraction(t: Tool): Float =
+            if (t == Tool.HIGHLIGHTER) HIGHLIGHTER_WIDTHS[thickness] else PEN_WIDTHS[thickness]
+
     // ─────────────────────────────────────────────────────────────────────────────
     // Canvas
     // ─────────────────────────────────────────────────────────────────────────────
 
-    private class Stroke(val highlighter: Boolean, val color: Int, val widthPx: Float) {
-        val xs = ArrayList<Float>()
-        val ys = ArrayList<Float>()
-        val ps = ArrayList<Float>()
-        var path: Path? = null
-        var pathCount = 0
-
-        fun add(x: Float, y: Float, p: Float) {
-            if (xs.isNotEmpty() && xs.last() == x && ys.last() == y) return
-            xs.add(x); ys.add(y); ps.add(p)
-        }
-
-        val size get() = xs.size
-        val pressured get() = !highlighter && ps.any { abs(it - 0.5f) > 0.02f }
-
-        fun smoothPath(): Path {
-            path?.let { if (pathCount == size) return it }
-            val p = Path()
-            if (size > 0) {
-                p.moveTo(xs[0], ys[0])
-                if (size == 2) p.lineTo(xs[1], ys[1])
-                else if (size > 2) {
-                    for (i in 1 until size - 1) {
-                        p.quadTo(xs[i], ys[i], (xs[i] + xs[i + 1]) / 2f, (ys[i] + ys[i + 1]) / 2f)
-                    }
-                    p.lineTo(xs[size - 1], ys[size - 1])
-                }
-            }
-            path = p
-            pathCount = size
-            return p
-        }
-
-        fun distanceTo(x: Float, y: Float): Float {
-            if (size == 1) return hypot(x - xs[0], y - ys[0])
-            var best = Float.MAX_VALUE
-            for (i in 1 until size) best = min(best, segDist(x, y, xs[i - 1], ys[i - 1], xs[i], ys[i]))
-            return best
-        }
-
-        private fun segDist(px: Float, py: Float, ax: Float, ay: Float, bx: Float, by: Float): Float {
-            val dx = bx - ax
-            val dy = by - ay
-            val l2 = dx * dx + dy * dy
-            if (l2 == 0f) return hypot(px - ax, py - ay)
-            val t = (((px - ax) * dx + (py - ay) * dy) / l2).coerceIn(0f, 1f)
-            return hypot(px - (ax + dx * t), py - (ay + dy * t))
-        }
-    }
-
     @SuppressLint("ViewConstructor")
     private inner class CanvasView(context: Context) : View(context) {
-        private val strokes = ArrayList<Stroke>()
-        private var current: Stroke? = null
+        private var current: AnnotationInk.Stroke? = null
+        private var filter: AnnotationInk.Filter? = null
         private var activePointer = -1
         private var activeTool: Tool? = null
         private var stylusDown = false
@@ -265,28 +450,28 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
         private var laserY = 0f
         private var laserAt = 0L
 
-        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeJoin = Paint.Join.ROUND
         }
-        private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val glow = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+        private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
 
         init {
-            // BlurMaskFilter needs software rendering on some devices; the canvas layer is small work.
-            setLayerType(LAYER_TYPE_SOFTWARE, null)
             importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
         }
 
-        fun undo() {
-            if (strokes.isNotEmpty()) strokes.removeAt(strokes.size - 1)
-            invalidate()
-        }
-
-        fun clear() {
-            strokes.clear()
-            current = null
-            invalidate()
+        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+            super.onSizeChanged(w, h, oldw, oldh)
+            // A rotation (now, or while the canvas was gone): the drawings marked content that moved.
+            if (strokesW != 0 && (w != strokesW || h != strokesH) && strokes.isNotEmpty()) {
+                strokes.clear()
+                current = null
+                activePointer = -1
+                Log.d(TAG, "screen size changed ${strokesW}x$strokesH → ${w}x$h: drawings cleared")
+            }
+            strokesW = w
+            strokesH = h
         }
 
         private fun isStylus(tt: Int) = tt == MotionEvent.TOOL_TYPE_STYLUS || tt == MotionEvent.TOOL_TYPE_ERASER
@@ -320,15 +505,17 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
                     }
                     activePointer = ev.getPointerId(idx)
                     activeTool = if (tt == MotionEvent.TOOL_TYPE_ERASER) Tool.ERASER else tool
-                    begin(ev.getX(idx), ev.getY(idx), pressure(ev, idx))
+                    begin(ev.getX(idx), ev.getY(idx), ev.eventTime / 1000.0, pressure(ev, idx), stylus)
                 }
                 MotionEvent.ACTION_MOVE -> {
                     val idx = ev.findPointerIndex(activePointer)
                     if (idx < 0) return true
                     for (h in 0 until ev.historySize) {
-                        moveTo(ev.getHistoricalX(idx, h), ev.getHistoricalY(idx, h), pressure(ev, idx, h))
+                        moveTo(ev.getHistoricalX(idx, h), ev.getHistoricalY(idx, h),
+                                ev.getHistoricalEventTime(h) / 1000.0, pressure(ev, idx, h))
                     }
-                    moveTo(ev.getX(idx), ev.getY(idx), pressure(ev, idx))
+                    moveTo(ev.getX(idx), ev.getY(idx), ev.eventTime / 1000.0, pressure(ev, idx))
+                    invalidate()
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
                     val idx = ev.actionIndex
@@ -337,25 +524,36 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
                         stylusUpAt = SystemClock.uptimeMillis()
                     }
                     if (ev.actionMasked == MotionEvent.ACTION_CANCEL || ev.getPointerId(idx) == activePointer) {
+                        if (ev.actionMasked != MotionEvent.ACTION_CANCEL) {
+                            filter?.finish(ev.getX(idx), ev.getY(idx))?.let { current?.add(it) }
+                        }
+                        current?.open = false
                         current = null
+                        filter = null
                         activePointer = -1
                         activeTool = null
+                        invalidate()
+                        toolbar?.rebuild()
                     }
                 }
             }
             return true
         }
 
-        private fun begin(x: Float, y: Float, p: Float) {
-            val t = activeTool ?: return
-            when (t) {
+        private fun begin(x: Float, y: Float, t: Double, p: Float, stylus: Boolean) {
+            val tl = activeTool ?: return
+            when (tl) {
                 Tool.PEN, Tool.HIGHLIGHTER -> {
-                    val hl = t == Tool.HIGHLIGHTER
-                    val c = if (hl) (color and 0x00FFFFFF) or (0x60 shl 24) else color
-                    val s = Stroke(hl, c, max(1f, widthFraction(t) * width))
-                    s.add(x, y, p)
+                    if (strokes.size >= MAX_STROKES) return
+                    val hl = tl == Tool.HIGHLIGHTER
+                    val c = if (hl) (color and 0x00FFFFFF) or (0x61 shl 24) else (color or (0xFF shl 24))
+                    val pressured = stylus && !hl
+                    val f = AnnotationInk.Filter(dp(0.8f), pressured)
+                    val s = AnnotationInk.Stroke(hl, c, max(1f, widthFraction(tl) * width), pressured)
+                    s.add(f.start(x, y, t, p))
                     strokes.add(s)
                     current = s
+                    filter = f
                 }
                 Tool.ERASER -> eraseAt(x, y)
                 Tool.LASER -> laser(x, y)
@@ -363,19 +561,18 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             invalidate()
         }
 
-        private fun moveTo(x: Float, y: Float, p: Float) {
+        private fun moveTo(x: Float, y: Float, t: Double, p: Float) {
             when (activeTool) {
-                Tool.PEN, Tool.HIGHLIGHTER -> current?.add(x, y, p)
+                Tool.PEN, Tool.HIGHLIGHTER -> filter?.add(x, y, t, p)?.let { current?.add(it) }
                 Tool.ERASER -> eraseAt(x, y)
                 Tool.LASER -> laser(x, y)
                 null -> {}
             }
-            invalidate()
         }
 
         private fun eraseAt(x: Float, y: Float) {
             val tol = dp(10f)
-            strokes.removeAll { it.distanceTo(x, y) <= tol + it.widthPx / 2f }
+            if (strokes.removeAll { it.distanceTo(x, y) <= tol + it.widthPx / 2f }) toolbar?.rebuild()
         }
 
         private fun laser(x: Float, y: Float) {
@@ -390,38 +587,26 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             drawLaser(canvas)
         }
 
-        private fun drawStroke(canvas: Canvas, s: Stroke) {
+        private fun drawStroke(canvas: Canvas, s: AnnotationInk.Stroke) {
             if (s.size == 0) return
-            paint.color = s.color
-            paint.strokeCap = if (s.highlighter) Paint.Cap.BUTT else Paint.Cap.ROUND
             if (s.size == 1) {
                 fill.color = s.color
-                val w = if (s.highlighter) s.widthPx else s.widthPx * (0.5f + s.ps[0])
-                if (s.highlighter) canvas.drawRect(RectF(s.xs[0] - w / 4, s.ys[0] - w / 2, s.xs[0] + w / 4, s.ys[0] + w / 2), fill)
-                else canvas.drawCircle(s.xs[0], s.ys[0], w / 2, fill)
+                if (s.highlighter) {
+                    val w = s.widthPx
+                    canvas.drawRect(RectF(s.xs[0] - w / 4, s.ys[0] - w / 2, s.xs[0] + w / 4, s.ys[0] + w / 2), fill)
+                } else canvas.drawCircle(s.xs[0], s.ys[0], s.dotRadius(), fill)
                 return
             }
-            if (!s.pressured) {
-                paint.strokeWidth = s.widthPx
-                canvas.drawPath(s.smoothPath(), paint)
+            if (s.highlighter || !s.pressured) {
+                strokePaint.color = s.color
+                strokePaint.strokeWidth = s.widthPx
+                strokePaint.strokeCap = if (s.highlighter) Paint.Cap.BUTT else Paint.Cap.ROUND
+                canvas.drawPath(s.strokedPath(), strokePaint)
                 return
             }
-            // Variable width: one quadratic piece per sample (midpoint → sample → next midpoint).
-            var fx = s.xs[0]
-            var fy = s.ys[0]
-            val seg = Path()
-            for (i in 1 until s.size) {
-                val last = i == s.size - 1
-                val tx = if (last) s.xs[i] else (s.xs[i] + s.xs[i + 1]) / 2f
-                val ty = if (last) s.ys[i] else (s.ys[i] + s.ys[i + 1]) / 2f
-                paint.strokeWidth = s.widthPx * (0.5f + s.ps[i])
-                seg.reset()
-                seg.moveTo(fx, fy)
-                seg.quadTo(s.xs[i], s.ys[i], tx, ty)
-                canvas.drawPath(seg, paint)
-                fx = tx
-                fy = ty
-            }
+            fill.color = s.color
+            canvas.drawPath(s.shape(), fill)
+            s.tail?.let { canvas.drawPath(it, fill) }
         }
 
         private fun drawLaser(canvas: Canvas) {
@@ -434,9 +619,10 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             val a = if (age <= 0.6f) 1f else (1f - (age - 0.6f) / 0.4f).coerceIn(0f, 1f)
             val r = max(dp(5f), width * 0.007f)
             val laserColor = colors.firstOrNull() ?: Color.RED
-            glow.color = withAlpha(laserColor, 0.35f * a)
-            glow.maskFilter = BlurMaskFilter(r * 1.4f, BlurMaskFilter.Blur.NORMAL)
-            canvas.drawCircle(laserX, laserY, r * 2.2f, glow)
+            // A radial glow (hardware friendly, no blur mask).
+            glow.shader = RadialGradient(laserX, laserY, r * 2.4f,
+                    intArrayOf(withAlpha(laserColor, 0.45f * a), withAlpha(laserColor, 0f)), null, Shader.TileMode.CLAMP)
+            canvas.drawCircle(laserX, laserY, r * 2.4f, glow)
             fill.color = withAlpha(laserColor, a)
             canvas.drawCircle(laserX, laserY, r, fill)
             fill.color = withAlpha(Color.WHITE, 0.85f * a)
@@ -446,18 +632,174 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
+    // Bubble
+    // ─────────────────────────────────────────────────────────────────────────────
+
+    @SuppressLint("ViewConstructor", "ClickableViewAccessibility")
+    private inner class BubbleView(context: Context) : View(context) {
+        private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val slop = ViewConfiguration.get(context).scaledTouchSlop
+        private var downRawX = 0f
+        private var downRawY = 0f
+        private var startX = 0
+        private var startY = 0
+        private var dragging = false
+        private var pressed = false
+        private var animator: ValueAnimator? = null
+        private var scale = 1f
+
+        init {
+            contentDescription = label("annotate", "Annotate")
+            isClickable = true
+            isFocusable = false
+            importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) tooltipText = label("annotate", "Annotate")
+            // A soft shadow under the disc (the window is a little larger than the disc for it).
+            elevation = dp(6f)
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    val d = dp(56f)
+                    val l = (view.width - d) / 2f
+                    val t = (view.height - d) / 2f
+                    outline.setOval(l.toInt(), t.toInt(), (l + d).toInt(), (t + d).toInt())
+                }
+            }
+            setOnClickListener { openTools() }
+        }
+
+        fun appear() {
+            if (reduceMotion()) return
+            scale = 0.6f
+            alpha = 0f
+            animate().alpha(1f).setDuration(180).start()
+            animateScale(1f, 220)
+        }
+
+        private fun animateScale(to: Float, ms: Long) {
+            val from = scale
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = ms
+                interpolator = DecelerateInterpolator()
+                addUpdateListener {
+                    scale = from + (to - from) * (it.animatedValue as Float)
+                    invalidate()
+                }
+                start()
+            }
+        }
+
+        fun animateTo(step: (Float) -> Unit) {
+            animator?.cancel()
+            animator = ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 220
+                interpolator = DecelerateInterpolator()
+                addUpdateListener { step(it.animatedValue as Float) }
+                start()
+            }
+        }
+
+        fun cancelAnimations() {
+            animator?.cancel()
+            animator = null
+            animate().cancel()
+        }
+
+        override fun onTouchEvent(ev: MotionEvent): Boolean {
+            val bp = bubbleParams ?: return false
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    animator?.cancel()
+                    downRawX = ev.rawX
+                    downRawY = ev.rawY
+                    startX = bp.x
+                    startY = bp.y
+                    dragging = false
+                    pressed = true
+                    if (!reduceMotion()) animateScale(0.92f, 90) else invalidate()
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = ev.rawX - downRawX
+                    val dy = ev.rawY - downRawY
+                    if (!dragging && hypot(dx, dy) > slop) dragging = true
+                    if (dragging) {
+                        bp.x = (startX + dx).toInt()
+                        bp.y = (startY + dy).toInt()
+                        bubbleX = bp.x
+                        bubbleY = bp.y
+                        runCatching { wm.updateViewLayout(this, bp) }
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    pressed = false
+                    if (!reduceMotion()) animateScale(1f, 120) else invalidate()
+                    if (dragging) clampBubble(animate = true)
+                    else if (ev.actionMasked == MotionEvent.ACTION_UP) performClick()
+                    dragging = false
+                }
+            }
+            return true
+        }
+
+        override fun performClick(): Boolean {
+            super.performClick()
+            return true
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width / 2f
+            val cy = height / 2f
+            val r = dp(28f) * scale
+            // Disc.
+            p.style = Paint.Style.FILL
+            p.color = surface or (0xFF shl 24)
+            canvas.drawCircle(cx, cy, r, p)
+            // Accent ring (thicker while pressed).
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = dp(if (pressed) 3f else 2f)
+            p.color = withAlpha(accent, 0.9f)
+            canvas.drawCircle(cx, cy, r - p.strokeWidth / 2f, p)
+            // Pen glyph in the current ink colour.
+            val u = r / 28f
+            canvas.save()
+            canvas.rotate(-45f, cx, cy)
+            p.style = Paint.Style.FILL
+            p.color = withAlpha(Color.WHITE, 0.95f)
+            val body = RectF(cx - 3.2f * u, cy - 11f * u, cx + 3.2f * u, cy + 6f * u)
+            canvas.drawRoundRect(body, 1.6f * u, 1.6f * u, p)
+            val tip = Path().apply {
+                moveTo(cx - 3.2f * u, cy + 6.5f * u)
+                lineTo(cx + 3.2f * u, cy + 6.5f * u)
+                lineTo(cx, cy + 11.5f * u)
+                close()
+            }
+            p.color = color or (0xFF shl 24)
+            canvas.drawPath(tip, p)
+            canvas.restore()
+            // The ink colour's dot.
+            p.color = color or (0xFF shl 24)
+            canvas.drawCircle(cx + 9f * u, cy + 9f * u, 3.4f * u, p)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = 1.5f * u
+            p.color = surface or (0xFF shl 24)
+            canvas.drawCircle(cx + 9f * u, cy + 9f * u, 3.4f * u, p)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────
     // Toolbar
     // ─────────────────────────────────────────────────────────────────────────────
 
-    enum class Glyph { MOVE, PEN, HIGHLIGHTER, ERASER, LASER, INTERACT, UNDO, CLEAR, COLOR, THICKNESS, COLLAPSE, EXPAND, CLOSE, SWATCH }
+    enum class Glyph { MOVE, PEN, HIGHLIGHTER, ERASER, LASER, INTERACT, UNDO, CLEAR, COLOR, THICKNESS, MINIMIZE, CLOSE, SWATCH }
 
     @SuppressLint("ViewConstructor")
     private inner class ToolButton(context: Context, val glyph: Glyph, val swatch: Int = 0) : View(context) {
         private val p = Paint(Paint.ANTI_ALIAS_FLAG)
         var isOn = false
+        var enabledLook = true
 
         init {
-            val s = dp(44f).toInt()
+            val s = dp(48f).toInt()
             layoutParams = LinearLayout.LayoutParams(s, s)
             isClickable = true
             isFocusable = false
@@ -465,7 +807,7 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
         }
 
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val s = if (glyph == Glyph.SWATCH) dp(40f).toInt() else dp(48f).toInt()
+            val s = dp(48f).toInt()
             setMeasuredDimension(s, s)
         }
 
@@ -478,31 +820,38 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
             val u = min(w, h) / 48f
             if (isOn) {
                 p.style = Paint.Style.FILL
-                p.color = withAlpha(accent, 0.30f)
+                p.color = withAlpha(accent, 0.28f)
                 canvas.drawRoundRect(RectF(4 * u, 4 * u, w - 4 * u, h - 4 * u), 12 * u, 12 * u, p)
             }
-            val ink = if (isOn) Color.WHITE else withAlpha(Color.WHITE, 0.75f)
+            val ink = when {
+                !enabledLook -> withAlpha(Color.WHITE, 0.35f)
+                isOn -> Color.WHITE
+                else -> withAlpha(Color.WHITE, 0.78f)
+            }
             p.color = ink
             p.style = Paint.Style.STROKE
-            p.strokeWidth = 2.4f * u
+            p.strokeWidth = 2.2f * u
             p.strokeCap = Paint.Cap.ROUND
             p.strokeJoin = Paint.Join.ROUND
             when (glyph) {
                 Glyph.MOVE -> {
                     p.style = Paint.Style.FILL
                     for (dx in intArrayOf(-1, 1)) for (dy in intArrayOf(-1, 0, 1)) {
-                        canvas.drawCircle(cx + dx * 4 * u, cy + dy * 6 * u, 2f * u, p)
+                        canvas.drawCircle(cx + dx * 4 * u, cy + dy * 6 * u, 1.8f * u, p)
                     }
                 }
                 Glyph.PEN -> {
-                    canvas.drawLine(cx - 8 * u, cy + 8 * u, cx + 7 * u, cy - 7 * u, p)
-                    p.style = Paint.Style.FILL
-                    canvas.drawCircle(cx - 9 * u, cy + 9 * u, 2.2f * u, p)
+                    canvas.save()
+                    canvas.rotate(-45f, cx, cy)
+                    canvas.drawRoundRect(RectF(cx - 3 * u, cy - 10 * u, cx + 3 * u, cy + 5 * u), 1.5f * u, 1.5f * u, p)
+                    val tip = Path().apply { moveTo(cx - 3 * u, cy + 5 * u); lineTo(cx, cy + 10 * u); lineTo(cx + 3 * u, cy + 5 * u) }
+                    canvas.drawPath(tip, p)
+                    canvas.restore()
                 }
                 Glyph.HIGHLIGHTER -> {
                     p.strokeWidth = 7 * u
                     p.strokeCap = Paint.Cap.BUTT
-                    p.color = withAlpha(color, 0.6f)
+                    p.color = withAlpha(color, 0.55f)
                     canvas.drawLine(cx - 9 * u, cy + 6 * u, cx + 9 * u, cy - 6 * u, p)
                 }
                 Glyph.ERASER -> {
@@ -544,29 +893,30 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
                     canvas.restore()
                 }
                 Glyph.CLEAR -> {
-                    p.color = 0xFFEF5350.toInt()
                     canvas.drawRoundRect(RectF(cx - 7 * u, cy - 6 * u, cx + 7 * u, cy + 10 * u), 2 * u, 2 * u, p)
                     canvas.drawLine(cx - 10 * u, cy - 9 * u, cx + 10 * u, cy - 9 * u, p)
                     canvas.drawLine(cx - 3 * u, cy - 12 * u, cx + 3 * u, cy - 12 * u, p)
+                    canvas.drawLine(cx - 2.5f * u, cy - 2 * u, cx - 2.5f * u, cy + 6 * u, p)
+                    canvas.drawLine(cx + 2.5f * u, cy - 2 * u, cx + 2.5f * u, cy + 6 * u, p)
                 }
                 Glyph.COLOR -> {
                     p.style = Paint.Style.FILL
-                    p.color = color
-                    canvas.drawCircle(cx, cy, 10 * u, p)
+                    p.color = color or (0xFF shl 24)
+                    canvas.drawCircle(cx, cy, 9 * u, p)
                     p.style = Paint.Style.STROKE
-                    p.color = Color.WHITE
-                    canvas.drawCircle(cx, cy, 10 * u, p)
+                    p.color = withAlpha(Color.WHITE, 0.9f)
+                    canvas.drawCircle(cx, cy, 10.5f * u, p)
                 }
                 Glyph.THICKNESS -> {
                     p.style = Paint.Style.FILL
-                    canvas.drawCircle(cx, cy, (3f + thickness * 3f) * u, p)
+                    canvas.drawCircle(cx, cy, (2.5f + thickness * 2.8f) * u, p)
                 }
-                Glyph.COLLAPSE -> canvas.drawLine(cx - 8 * u, cy, cx + 8 * u, cy, p)
-                Glyph.EXPAND -> {
-                    canvas.drawLine(cx - 8 * u, cy + 8 * u, cx + 7 * u, cy - 7 * u, p)
-                    p.style = Paint.Style.FILL
-                    p.color = color
-                    canvas.drawCircle(cx - 9 * u, cy + 9 * u, 3f * u, p)
+                Glyph.MINIMIZE -> {
+                    // Into the bubble: a small circle with a down-right arrow.
+                    canvas.drawCircle(cx + 4 * u, cy + 4 * u, 5 * u, p)
+                    canvas.drawLine(cx - 9 * u, cy - 9 * u, cx - 1 * u, cy - 1 * u, p)
+                    canvas.drawLine(cx - 1 * u, cy - 1 * u, cx - 6 * u, cy - 1 * u, p)
+                    canvas.drawLine(cx - 1 * u, cy - 1 * u, cx - 1 * u, cy - 6 * u, p)
                 }
                 Glyph.CLOSE -> {
                     canvas.drawLine(cx - 7 * u, cy - 7 * u, cx + 7 * u, cy + 7 * u, p)
@@ -574,12 +924,14 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
                 }
                 Glyph.SWATCH -> {
                     p.style = Paint.Style.FILL
-                    p.color = swatch
-                    val r = if (swatch == color) 11 * u else 9 * u
+                    p.color = swatch or (0xFF shl 24)
+                    val sel = swatch == color
+                    val r = if (sel) 10 * u else 9 * u
                     canvas.drawCircle(cx, cy, r, p)
                     p.style = Paint.Style.STROKE
-                    p.color = if (swatch == color) Color.WHITE else withAlpha(Color.WHITE, 0.3f)
-                    canvas.drawCircle(cx, cy, r, p)
+                    p.strokeWidth = (if (sel) 2.4f else 1.2f) * u
+                    p.color = if (sel) Color.WHITE else withAlpha(Color.WHITE, 0.3f)
+                    canvas.drawCircle(cx, cy, r + (if (sel) 2.5f else 0f) * u, p)
                 }
             }
         }
@@ -587,75 +939,69 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
 
     @SuppressLint("ViewConstructor")
     private inner class Toolbar(context: Context) : LinearLayout(context) {
-        private var collapsed = false
-        private var swatchesOpen = false
-        private val buttons = ArrayList<ToolButton>()
-
         init {
             orientation = VERTICAL
-            val pad = dp(4f).toInt()
+            val pad = dp(6f).toInt()
             setPadding(pad, pad, pad, pad)
             background = android.graphics.drawable.GradientDrawable().apply {
-                cornerRadius = dp(18f)
-                setColor(surface)
-                setStroke(dp(1f).toInt(), withAlpha(Color.WHITE, 0.19f))
+                cornerRadius = dp(20f)
+                setColor(surface or (0xF2 shl 24))
+                setStroke(dp(1f).toInt(), withAlpha(Color.WHITE, 0.14f))
             }
-            elevation = dp(8f)
+            elevation = dp(10f)
             layoutDirection = if (rtl) LAYOUT_DIRECTION_RTL else LAYOUT_DIRECTION_LTR
-            build()
-        }
-
-        fun refresh() {
-            (background as? android.graphics.drawable.GradientDrawable)?.setColor(surface)
-            layoutDirection = if (rtl) LAYOUT_DIRECTION_RTL else LAYOUT_DIRECTION_LTR
-            build()
+            rebuild()
+            if (!reduceMotion()) {
+                alpha = 0f
+                scaleX = 0.94f
+                scaleY = 0.94f
+                animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(DecelerateInterpolator()).start()
+            }
         }
 
         private fun row(): LinearLayout = LinearLayout(context).apply { orientation = HORIZONTAL }
 
-        @SuppressLint("ClickableViewAccessibility")
-        private fun build() {
-            removeAllViews()
-            buttons.clear()
-            if (collapsed) {
-                val r = row()
-                r.addView(grip())
-                r.addView(button(Glyph.EXPAND, label("expand", "Show drawing tools")) {
-                    collapsed = false
-                    build()
-                })
-                addView(r)
-                post { requestLayoutWindow() }
-                return
+        private fun divider(): View = View(context).apply {
+            layoutParams = LinearLayout.LayoutParams(dp(1f).toInt(), dp(28f).toInt()).apply {
+                gravity = Gravity.CENTER_VERTICAL
+                marginStart = dp(4f).toInt()
+                marginEnd = dp(4f).toInt()
             }
+            setBackgroundColor(withAlpha(Color.WHITE, 0.14f))
+        }
+
+        @SuppressLint("ClickableViewAccessibility")
+        fun rebuild() {
+            removeAllViews()
+            background?.let { (it as? android.graphics.drawable.GradientDrawable)?.setColor(surface or (0xF2 shl 24)) }
+            layoutDirection = if (rtl) LAYOUT_DIRECTION_RTL else LAYOUT_DIRECTION_LTR
+
             val r1 = row()
             r1.addView(grip())
             r1.addView(toolButton(Glyph.PEN, Tool.PEN, label("pen", "Pen")))
             r1.addView(toolButton(Glyph.HIGHLIGHTER, Tool.HIGHLIGHTER, label("highlighter", "Highlighter")))
             r1.addView(toolButton(Glyph.ERASER, Tool.ERASER, label("eraser", "Eraser")))
             r1.addView(toolButton(Glyph.LASER, Tool.LASER, label("laser", "Laser pointer")))
-            r1.addView(button(Glyph.INTERACT, label("interact", "Use apps (drawing off)"), selected = !drawing) {
-                setDrawingMode(false)
+            r1.addView(button(Glyph.INTERACT, label("interact", "Use apps (drawing off)"), selected = passThrough) {
+                setPassThrough(!passThrough)
             })
             addView(r1)
 
             val r2 = row()
-            r2.addView(button(Glyph.UNDO, label("undo", "Undo")) { undo() })
-            r2.addView(button(Glyph.CLEAR, label("clear", "Clear all")) { clear() })
             r2.addView(button(Glyph.COLOR, label("color", "Colour"), selected = swatchesOpen) {
                 swatchesOpen = !swatchesOpen
-                build()
+                rebuild()
+                post { clampToolbar() }
             })
             r2.addView(button(Glyph.THICKNESS, "${label("thickness", "Thickness")} ${thickness + 1}/3") {
                 thickness = (thickness + 1) % 3
-                build()
+                rebuild()
             })
-            r2.addView(button(Glyph.COLLAPSE, label("collapse", "Collapse toolbar")) {
-                collapsed = true
-                swatchesOpen = false
-                build()
-            })
-            r2.addView(button(Glyph.CLOSE, label("close", "Close annotation")) { close() })
+            r2.addView(button(Glyph.UNDO, label("undo", "Undo"), enabled = strokes.isNotEmpty()) { undo() })
+            r2.addView(button(Glyph.CLEAR, label("clear", "Clear all"), enabled = strokes.isNotEmpty()) { clear() })
+            r2.addView(divider())
+            r2.addView(button(Glyph.MINIMIZE, label("minimize", "Hide tools")) { hideTools() })
+            r2.addView(button(Glyph.CLOSE, label("close", "Stop drawing and clear")) { closeTools() })
             addView(r2)
 
             if (swatchesOpen) {
@@ -663,41 +1009,33 @@ class AnnotationOverlay(context: Context, private val onClosed: () -> Unit) {
                 for ((i, c) in colors.withIndex()) {
                     r3.addView(ToolButton(context, Glyph.SWATCH, c).apply {
                         contentDescription = "${label("color", "Colour")} ${i + 1}"
-                        isOn = c == color
+                        isOn = false
                         setOnClickListener {
                             color = c
                             swatchesOpen = false
                             if (tool == Tool.ERASER || tool == Tool.LASER) tool = Tool.PEN
-                            setDrawingMode(true)
-                            build()
+                            selectTool(tool)
+                            bubble?.invalidate()
                         }
                     })
                 }
                 addView(r3)
             }
-            post { requestLayoutWindow() }
         }
 
-        private fun requestLayoutWindow() {
-            val tp = toolbarParams ?: return
-            runCatching { wm.updateViewLayout(this, tp) }
-        }
-
-        private fun button(g: Glyph, desc: String, selected: Boolean = false, onTap: () -> Unit): ToolButton =
+        private fun button(g: Glyph, desc: String, selected: Boolean = false, enabled: Boolean = true,
+                           onTap: () -> Unit): ToolButton =
                 ToolButton(context, g).apply {
                     contentDescription = desc
                     isOn = selected
+                    enabledLook = enabled
+                    isEnabled = enabled
                     setOnClickListener { onTap() }
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) tooltipText = desc
-                    buttons.add(this)
                 }
 
         private fun toolButton(g: Glyph, t: Tool, desc: String): ToolButton =
-                button(g, desc, selected = drawing && tool == t) {
-                    tool = t
-                    setDrawingMode(true)
-                    build()
-                }
+                button(g, desc, selected = !passThrough && tool == t) { selectTool(t) }
 
         @SuppressLint("ClickableViewAccessibility")
         private fun grip(): ToolButton = ToolButton(context, Glyph.MOVE).apply {

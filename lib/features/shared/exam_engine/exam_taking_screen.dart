@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
-import 'package:screen_protector/screen_protector.dart';
+import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../admin/admin_common.dart' show asInt, asMap, t, asMapList;
@@ -149,18 +149,9 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> {
 
   /// No screenshots / recording of the paper on phones while the attempt is open (Android FLAG_SECURE, iOS blur).
   /// The web cannot prevent it — the consent screen says so.
-  Future<void> _protectScreen(bool on) async {
-    if (kIsWeb) return;
-    try {
-      if (on) {
-        await ScreenProtector.preventScreenshotOn();
-        await ScreenProtector.protectDataLeakageWithBlur();
-      } else {
-        await ScreenProtector.preventScreenshotOff();
-        await ScreenProtector.protectDataLeakageWithBlurOff();
-      }
-    } catch (_) {}
-  }
+  /// Owned through ScreenSecurity (D-083): another protected screen closing never switches this one off.
+  Future<void> _protectScreen(bool on) =>
+      on ? ScreenSecurity.instance.protect(this) : ScreenSecurity.instance.release(this);
 
   // ── timer ──
   void _tick() {

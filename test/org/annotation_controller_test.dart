@@ -93,7 +93,7 @@ void main() {
   late _Net net;
   setUp(() => net = _Net());
 
-  test('a stroke drawn by the host appears on every device, simplified the same way', () {
+  test('a stroke drawn by the host appears on every device, point for point', () {
     final host = net.join('teacher_1');
     final a = net.join('student_2');
     final b = net.join('student_3');
