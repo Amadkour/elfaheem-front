@@ -78,12 +78,12 @@ void main() {
         if (g.tier.index < before.index) drops++;
         tiers.add(g.tier);
       }
-      // The first drop at 0 s, one probe of 720p ~26 s in, 360p inside the 4-minute ceiling, one more probe, then
-      // an 8-minute ceiling. At most 3 drops in 10 minutes (the SFU flapped every ~5 s
-      // under jitter and stayed on 180p under the cap).
-      expect(drops, lessThanOrEqualTo(3));
+      // The first drop at 0 s, one probe of 720p ~26 s in, 360p; one more probe once 60 s of good end the first
+      // ceiling early (D-097: a healed dip must not wait 4 minutes), then an 8-minute ceiling. At most 4 drops in
+      // 10 minutes (the SFU flapped every ~5 s under jitter and stayed on 180p under the cap).
+      expect(drops, lessThanOrEqualTo(4));
       final medium = tiers.where((t) => t == LiveVideoTier.medium).length;
-      expect(medium / tiers.length, greaterThan(0.8));
+      expect(medium / tiers.length, greaterThan(0.75));
       expect(g.ceiling == LiveVideoTier.medium || g.tier == LiveVideoTier.medium, isTrue);
     });
 
@@ -97,15 +97,67 @@ void main() {
       expect(g.tier, LiveVideoTier.low);
       expect(g.upHold, const Duration(seconds: 24));
       expect(g.ceiling, LiveVideoTier.low);
-      // Good for a long time: the ceiling keeps it at LOW until the calm period ends, then the hold is back to 12 s.
+      // Good-ish for a long time (a fair sample every 50 s, so the 60 s early release never comes): the ceiling
+      // keeps it at LOW until the calm period ends, then the hold is back to 12 s.
       for (var s = 18; s < 16 + 240; s += 2) {
-        g.update(at(s), _good);
+        g.update(at(s), s % 50 == 0 ? _jitter : _good);
       }
       expect(g.tier, LiveVideoTier.low);
       g.update(at(16 + 240), _good);
       expect(g.upHold, const Duration(seconds: 12));
       expect(g.ceiling, LiveVideoTier.high);
+      for (var s = 258; s <= 256 + 12; s += 2) {
+        g.update(at(s), _good);
+      }
       expect(g.tier, LiveVideoTier.medium);
+    });
+
+    test('a dip that healed: the first ceiling ends after 60 s of good, not 4 minutes (D-097)', () {
+      final g = LiveQualityGovernor()..update(at(0), _poor);
+      g.update(at(2), _good);
+      g.update(at(14), _good); // → medium
+      g.update(at(16), _poor); // the step up broke it: ceiling LOW
+      expect(g.ceiling, LiveVideoTier.low);
+      for (var s = 18; s < 18 + 60; s += 2) {
+        g.update(at(s), _good);
+      }
+      expect(g.ceiling, LiveVideoTier.low);
+      g.update(at(18 + 60), _good); // 60 s of unbroken good
+      expect(g.ceiling, LiveVideoTier.high);
+      // ...and the room climbs back to HD within a few holds, instead of after the 4-minute calm period.
+      for (var s = 80; s <= 140; s += 2) {
+        g.update(at(s), _good);
+      }
+      expect(g.tier, LiveVideoTier.high);
+    });
+
+    test('a fair sample restarts the 60 s, and a second strike keeps the long ceiling', () {
+      final g = LiveQualityGovernor()..update(at(0), _poor);
+      g.update(at(2), _good);
+      g.update(at(14), _good); // → medium
+      g.update(at(16), _poor); // strike 0: ceiling LOW
+      for (var s = 18; s < 70; s += 2) {
+        g.update(at(s), _good);
+      }
+      g.update(at(70), _jitter); // fair: the run starts again
+      for (var s = 72; s < 130; s += 2) {
+        g.update(at(s), _good);
+      }
+      expect(g.ceiling, LiveVideoTier.low);
+      g.update(at(132), _good);
+      expect(g.ceiling, LiveVideoTier.high);
+      // medium again, then the same tier breaks right after its step up: 8 minutes, no early release this time.
+      var s = 134;
+      while (g.tier != LiveVideoTier.medium) {
+        g.update(at(s), _good);
+        s += 2;
+      }
+      g.update(at(s), _poor);
+      expect(g.ceiling, LiveVideoTier.low);
+      for (var k = s + 2; k < s + 300; k += 2) {
+        g.update(at(k), _good);
+      }
+      expect(g.ceiling, LiveVideoTier.low);
     });
 
     test('adaptive never goes audio-only', () {

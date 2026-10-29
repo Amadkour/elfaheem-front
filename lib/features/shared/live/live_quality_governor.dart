@@ -14,6 +14,9 @@
 //   flap   bad again within [flapWindow] of a step up doubles the hold (12 s → 24 → 48 → 96 → 120 s max) AND
 //          puts a ceiling one tier below the one that broke it, for [calmAfter] (4 min; 8, 16, 32 when the same
 //          tier breaks it again); four quiet minutes without a drop bring the hold back to 12 s. That is what stops 180p ↔ 720p flapping: a 1 Mbit/s link settles on 360p.
+//          A FIRST strike's ceiling also ends after [firstStrikeCalm] (60 s) of unbroken good samples: a dip that
+//          healed (the perf2 bench, D-097) used to hold a recovered link at 360p for ~4 min; a link that really
+//          cannot carry the tier breaks it once more and gets the long (8 min) ceiling.
 //
 // "Show video" (forceVideo) leaves audio-only for LOW and turns the audio-only step off for the rest of the room.
 // Tests: test/org/live_quality_governor_test.dart.
@@ -63,6 +66,7 @@ class LiveQualityGovernor {
     this.maxUpHold = const Duration(seconds: 120),
     this.flapWindow = const Duration(seconds: 45),
     this.calmAfter = const Duration(minutes: 4),
+    this.firstStrikeCalm = const Duration(seconds: 60),
   }) : _upHold = baseUpHold;
 
   /// `weak_network: audio_first`.
@@ -74,6 +78,7 @@ class LiveQualityGovernor {
   final Duration maxUpHold;
   final Duration flapWindow;
   final Duration calmAfter;
+  final Duration firstStrikeCalm;
 
   LiveVideoTier _tier = LiveVideoTier.high;
   LiveVideoTier get tier => _tier;
@@ -93,6 +98,9 @@ class LiveQualityGovernor {
 
   DateTime? _badSince;
   DateTime? _goodSince;
+
+  /// Good samples without a fair / bad one in between (not restarted by a step up, unlike [_goodSince]).
+  DateTime? _goodRunSince;
   DateTime? _lastUpAt;
   DateTime? _lastDropAt;
   bool _videoForced = false;
@@ -129,6 +137,7 @@ class LiveQualityGovernor {
     switch (verdictOf(sample, badLossPct: badLossPct, fairLossPct: fairLossPct)) {
       case LiveNetVerdict.bad:
         _goodSince = null;
+        _goodRunSince = null;
         _badSince ??= now;
         if (_tier.index > LiveVideoTier.low.index) {
           final lastUp = _lastUpAt;
@@ -154,12 +163,15 @@ class LiveQualityGovernor {
         }
       case LiveNetVerdict.fair:
         _goodSince = null;
+        _goodRunSince = null;
         _badSince = null;
       case LiveNetVerdict.good:
         _badSince = null;
         _goodSince ??= now;
+        _goodRunSince ??= now;
         final until = _ceilingUntil;
-        if (until != null && !now.isBefore(until)) {
+        final healed = _strikes == 0 && now.difference(_goodRunSince!) >= firstStrikeCalm;
+        if (until != null && (!now.isBefore(until) || healed)) {
           _ceiling = LiveVideoTier.high;
           _ceilingUntil = null;
         }
