@@ -172,7 +172,6 @@ Widget _bar() {
       [hands, chat],
     ],
     end: _a('live_room.end', Icons.call_end_rounded, 'lr_end'.tr),
-    rec: LiveRecBadge.recording,
   );
 }
 

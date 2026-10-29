@@ -155,17 +155,15 @@ Widget _hostBar() {
   final hands = _a('live_room.hands', Icons.back_hand_rounded, 'lr_hands'.tr, active: true, color: LivePalette.warning, badge: 3, attention: 2);
   final chat = _a('live_room.chat', Icons.chat_bubble_outline_rounded, 'lr_chat'.tr, badge: 4, pinned: true);
   final speaker = _a('live_room.speaker', Icons.speaker_phone_rounded, 'lr_speaker'.tr, active: true);
-  final pause = _a('live_room.pause_recording', Icons.pause_circle_outline_rounded, 'lr_pause'.tr, active: true, color: LivePalette.warning);
   return LiveControlBar(
     primary: [mic, cam, share, react, hands, chat],
-    secondary: [speaker, pause],
+    secondary: [speaker],
     groups: [
       [mic, cam, speaker],
-      [share, pause],
+      [share],
       [react, hands, chat],
     ],
     end: _a('live_room.end', Icons.call_end_rounded, 'lr_end'.tr),
-    rec: LiveRecBadge.recording,
     onLobby: () {},
     waitingCount: 1,
     lobbyAttention: 1,

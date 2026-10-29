@@ -26,7 +26,7 @@ import 'annotation/annotation_layer.dart';
 import 'annotation/annotation_toolbar.dart'
     show AnnotationControllerToolbar, annotPresetColors, annotShortcutThickness, annotShortcutTool;
 import 'widgets/live_call_service.dart';
-import 'widgets/live_locked_pill.dart';
+import 'widgets/live_top_row.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../admin/admin_common.dart';
 import '../components/exts.dart';
@@ -115,7 +115,6 @@ const _textLow = LivePalette.textLow;
 const _glass10 = LivePalette.glass;
 const _glass15 = LivePalette.glassBorder;
 const _glassBdr = LivePalette.glassBorder;
-Color get _recRed => LivePalette.danger;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Data models
@@ -1124,8 +1123,6 @@ class _RoomPageState extends State<RoomPage>
     });
   }
 
-  String get _sessionElapsedLabel => _formatElapsed(_sessionElapsedSeconds);
-
   // Controls bar: auto-hides on phones after 4 s without interaction, a tap on the video brings it back;
   // keyboard shortcuts (M / V / S / R / E) drive ControlsWidget through this key.
   final _controlsKey = GlobalKey<ControlsWidgetState>();
@@ -1194,6 +1191,15 @@ class _RoomPageState extends State<RoomPage>
             k == LogicalKeyboardKey.escape)) {
       return KeyEventResult.ignored;
     }
+    // Full view (D-095): Esc leaves it, F toggles it.
+    if (k == LogicalKeyboardKey.escape && _focusOn) {
+      _setFocus(false);
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.keyF && _canFocus) {
+      _setFocus(!_focusOn);
+      return KeyEventResult.handled;
+    }
     if (k == LogicalKeyboardKey.keyM) {
       controls?.toggleMic();
     } else if (k == LogicalKeyboardKey.keyV) {
@@ -1239,9 +1245,6 @@ class _RoomPageState extends State<RoomPage>
 
   /// "Hide self view" — per room (the next class starts with it shown).
   bool _selfHidden = false;
-
-  /// The top-end badge column's height: the box keeps clear of it on the right.
-  double _badgeColumnH = 0;
 
   SelfViewPrefs get _selfPrefs => SelfViewStore.instance.value;
 
@@ -2639,7 +2642,14 @@ class _RoomPageState extends State<RoomPage>
   }
 
   Widget _buildRoomPage() {
-    return Theme(
+    // Full view (D-095): the back button brings the bars back first (LiveRoomHost.handleBack asks the room's
+    // navigator, whose maybePop lands here), then minimizes as before.
+    return PopScope(
+      canPop: !_focusOn,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _focusOn) _setFocus(false);
+      },
+      child: Theme(
       data: ThemeData.dark(),
       child: Scaffold(
         backgroundColor: _bg,
@@ -2678,6 +2688,14 @@ class _RoomPageState extends State<RoomPage>
                   opacity: _entryFade,
                   child: Column(
                     children: [
+                      // The top row (D-095): one line above the stage — info, live time, countdown, network, lock,
+                      // recording, full view, minimize. Hidden in full view; the clocks rebuild only it (D-092).
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        alignment: Alignment.topCenter,
+                        child: _focusOn ? const SizedBox(width: double.infinity, height: 0) : _buildTopRow(),
+                      ),
                       Expanded(
                         child: LayoutBuilder(
                           builder: (ctx, constraints) => Stack(
@@ -2699,7 +2717,7 @@ class _RoomPageState extends State<RoomPage>
 
                               // Thumbnail strip
                               if (_stageTracks.length > 1 &&
-                                  !_isScreenShareMain && !_isBoardMain && !_videoParked)
+                                  !_isScreenShareMain && !_isBoardMain && !_videoParked && !_focusOn)
                                 FadeTransition(
                                   opacity: _thumbBarFade,
                                   child: Positioned(
@@ -2747,12 +2765,6 @@ class _RoomPageState extends State<RoomPage>
                                   ),
                                 ),
 
-                              // Recording indicators (the clocks rebuild only this, D-092)
-                              ValueListenableBuilder<int>(
-                                valueListenable: _clockTick,
-                                builder: (_, _, _) => _buildRecordingIndicator(),
-                              ),
-
                               // iOS broadcast share banner + stop button
                               if (widget.isTeacher)
                                 ValueListenableBuilder<int>(
@@ -2763,11 +2775,17 @@ class _RoomPageState extends State<RoomPage>
                               // Annotation toolbar (while drawing on the shared screen)
                               if (_annotOpen && _isScreenShareMain) _buildAnnotToolbar(),
 
-                              // Participant count badge
+                              // Participant count badge — in full view, the way back to the bars (D-095)
                               Positioned(
                                 bottom: 14 + _boardDockClearance,
                                 right: 14, // the self-view keeps clear of the bottom row (D-092)
-                                child: GestureDetector(
+                                child: _focusOn
+                                    ? LiveFocusExitButton(
+                                        onTap: () => _setFocus(false),
+                                        recording: _recordsHere && _recorder?.state == RecState.recording,
+                                        compact: MediaQuery.sizeOf(context).width < kLiveTopRowCompactWidth,
+                                      )
+                                    : GestureDetector(
                                   onTap: _toggleParticipantPanel,
                                   child: _GlassBadge(
                                     icon: Icons.people_rounded,
@@ -2829,7 +2847,7 @@ class _RoomPageState extends State<RoomPage>
                             duration: const Duration(milliseconds: 260),
                             curve: Curves.easeOutCubic,
                             alignment: Alignment.topCenter,
-                            child: _controlsVisible
+                            child: _controlsVisible && !_focusOn
                                 ? _buildControlsBar()
                                 : const SizedBox(width: double.infinity, height: 0),
                           ),
@@ -2929,6 +2947,7 @@ class _RoomPageState extends State<RoomPage>
         ),
         ),
       ),
+      ),
     );
   }
 
@@ -2999,13 +3018,13 @@ class _RoomPageState extends State<RoomPage>
           room: widget.room,
           sessionTitle: widget.sessionName,
           enrolledStudents: _enrolledStudents,
-          // Shown live too now (not just in the recording) — since the
-          // recording is a direct screenshot of this exact widget, true
-          // parity means whatever appears in the recording appears live,
-          // and vice versa. A small corner logo live is a reasonable,
-          // unobtrusive touch; revert to the default (false) if you'd
-          // rather keep it recording-only.
-          showLogo: true,
+          // D-095: no app logo in the room. The recording placeholder IS a
+          // screenshot of this live screen (_captureLiveScreenPng), so the
+          // recording has no logo either: true parity, nothing is drawn
+          // for the recording only.
+          showLogo: false,
+          // The top row carries LIVE + the time now (D-095): no second live chip on the card.
+          live: false,
         ),
         null,
       );
@@ -3039,7 +3058,7 @@ class _RoomPageState extends State<RoomPage>
   // size, fill the screen while alone, hide). Never on the stage AND in the box: the "camera twice" fix holds.
 
   /// What the box keeps clear of: the thumbnail strip, the annotation toolbar, the board's bar and dock, the
-  /// share's bottom bar, the bottom badge row, and on the right the badge column (measured).
+  /// share's bottom bar and the bottom badge row (the top badges left the stage for the top row, D-095).
   SelfViewKeepOut get _selfKeepOut {
     final strip = _stageTracks.length > 1 && !_isScreenShareMain && !_isBoardMain && !_videoParked;
     var top = 12.0;
@@ -3048,11 +3067,16 @@ class _RoomPageState extends State<RoomPage>
     if (_isBoardMain) top = math.max(top, 64);
     var bottom = 58.0 + _boardDockClearance;
     if (_isScreenShareMain) bottom = math.max(bottom, 84);
-    final badges = _badgeColumnH > 0 ? 14 + _badgeColumnH + 8 - top : 0.0;
-    return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom), topRight: math.max(0.0, badges));
+    if (_focusOn) bottom = math.max(bottom, 72); // full view: clear of the exit button (D-095)
+    return SelfViewKeepOut(base: EdgeInsets.fromLTRB(12, top, 12, bottom));
   }
 
   void _onStageTap(Offset at, Size stage) {
+    // Full view (D-095): a tap on the stage brings the bars back.
+    if (_focusOn) {
+      _setFocus(false);
+      return;
+    }
     _toggleControlsVisibility();
     // Tap to focus where it works (a local camera on a phone; guarded, never an exception per tap).
     if (_selfSpot == SelfViewSpot.stage) unawaited(LiveCameraFocus.tap(_localCamTrack, at, stage));
@@ -3464,240 +3488,104 @@ class _RoomPageState extends State<RoomPage>
     );
   }
 
-  // ── Recording indicator ────────────────────────────────────────────────────
+  // ── Top row (D-095, widgets/live_top_row.dart) ───────────────────────────
   //
-  // Top-right corner, stacked vertically:
-  //   1. Server REC badge  — LiveKit egress, visible to all participants
-  //   2. Client REC badge  — teacher only, shows live elapsed time + state
-  Widget _buildRecordingIndicator() {
-    final badges = <Widget>[];
+  // One line above the stage: (i) · LIVE + how long the room has been live (`live_started_at`) · the free-time
+  // countdown · the weak-network pill · Room locked · the recording control (Record / REC time → Pause · Resume ·
+  // Stop) · Full view · Minimize. The clocks and the recorder rebuild only this (D-092).
+  Widget _buildTopRow() => Padding(
+        padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
+        child: ListenableBuilder(
+          listenable: Listenable.merge([_clockTick, ?_recorder]),
+          builder: (_, _) => _topRow(),
+        ),
+      );
 
-    // ── Minimize: the room keeps running in a small box while moving around the app (LiveRoomLayer) ──
-    // ── (i) beside it: what this room is (MeetingInfoSheet, spec §11) ──
+  LiveTopRow _topRow() {
     final scope = LiveRoomScope.maybeOf(context);
-    if (!_endingSession) {
-      badges.add(Row(mainAxisSize: MainAxisSize.min, children: [
-        _InfoChip(onTap: _openInfo),
-        if (scope != null) ...[const SizedBox(width: 6), _MinimizeChip(onTap: scope.minimize)],
-      ]));
-    }
+    final now = DateTime.now();
+    final own = Duration(seconds: _sessionElapsedSeconds);
 
-    // ── Free-time countdown (a student's meeting) — everyone; the owner gets Upgrade near the end ──
-    final limit = _timeLimit;
-    if (limit != null && limit.showPill(DateTime.now())) {
-      final now = DateTime.now();
-      badges.add(LiveTimeLimitPill(
-        remaining: limit.remaining(now),
-        tone: limit.tone(now),
-        showUpgrade: limit.showUpgrade(now),
-        busy: _planBusy,
-        onUpgrade: _upgradePlan,
-      ));
-    }
-
-    // ── D-090: the room lowered the video for a weak connection (audio-only has its own card on the stage) ──
-    if (_media.lowered && !_media.audioOnly) {
-      badges.add(LiveNetPill(recovering: _media.tier == LiveVideoTier.medium));
-    }
-
-    // ── Room locked (hosts; live.room_lock) — the participants panel holds the switch ──
-    if (_controls?.locked == true && !AppConfig.disableList.contains(kLiveRoomLockFeatureKey)) {
-      badges.add(LiveLockedPill(onTap: _showParticipants ? null : _toggleParticipantPanel));
-    }
-
-    // ── Total session time — everyone, always (not just teacher/recording) ──
-    if (_sessionClockTimer != null) {
-      badges.add(
-        _RecBadge(
-          dotColor: _textMid,
-          dotOpacity: 1.0,
-          pulsing: false,
-          icon: Icons.schedule_rounded,
-          children: [
-            Text(
-              _sessionElapsedLabel,
-              style: TextStyle(
-                fontFamily: AppFonts.family,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: _textMid,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // ── Server egress badge ───────────────────────────────────────────────────
-    if (_serverRecording) {
-      badges.add(
-        AnimatedBuilder(
-          animation: _recDotAnim,
-          builder: (_, _) => _RecBadge(
-            dotColor: _recRed,
-            dotOpacity: _recDotOpacity.value,
-            pulsing: true,
-            children: [
-              Text(
-                'REC',
-                style: TextStyle(
-                  fontFamily: AppFonts.family,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: _recRed,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    // ── [meeting-recording] Record / Stop for a meeting's creator ─────────────
-    if (_canRecordMeeting && !_endingSession) {
-      badges.add(AnimatedBuilder(
-        animation: _recDotAnim,
-        builder: (_, _) => _MeetingRecordChip(
-          recording: _meetingRecording != null,
-          busy: _meetingRecordBusy,
-          pulse: _recDotOpacity.value,
-          onTap: _meetingRecording == null ? _recordMeeting : _stopMeetingRecording,
-        ),
-      ));
-    }
-
-    // ── Client recorder badge (the recording device only) ─────────────────────
-    if (_recordsHere && _recorder != null) { // [meeting-recording]
-      final rec   = _recorder!;
-      final state = rec.state;
-
-      if (state != RecState.idle) {
-        final Color  dotColor;
-        final bool   pulsing;
-        final String stateLabel;
-        final String timeLabel  = _recElapsedLabel;
-        final String chunkLabel = '${rec.uploadedChunks}↑';
-        final String mbLabel    =
-            '${(rec.totalBytes / 1024 / 1024).toStringAsFixed(1)}MB';
-
-        switch (state) {
-          case RecState.starting:
-            dotColor   = _textLow;
-            pulsing    = false;
-            stateLabel = 'lr_rec_starting'.tr;
-          case RecState.recording:
-            dotColor   = _emerald;
-            pulsing    = true;
-            stateLabel = 'lr_rec_recording'.tr;
-          case RecState.paused:
-            dotColor   = LivePalette.warning;
-            pulsing    = false;
-            stateLabel = 'lr_rec_paused'.tr;
-          case RecState.uploading:
-            dotColor   = LivePalette.warning;
-            pulsing    = false;
-            stateLabel = 'lr_rec_uploading'.tr;
-          case RecState.done:
-            dotColor   = _emerald;
-            pulsing    = false;
-            stateLabel = 'lr_rec_saved'.tr;
-          case RecState.error:
-            dotColor   = _rose;
-            pulsing    = false;
-            stateLabel = 'lr_rec_error'.tr;
-          default:
-            dotColor   = _textLow;
-            pulsing    = false;
-            stateLabel = '';
-        }
-
-        badges.add(
-          AnimatedBuilder(
-            animation: _recDotAnim,
-            builder: (_, _) => _RecBadge(
-              dotColor:   dotColor,
-              dotOpacity: pulsing ? _recDotOpacity.value : 1.0,
-              pulsing:    pulsing,
-              children: [
-                // State label
-                Text(
-                  stateLabel,
-                  style: TextStyle(
-                    fontFamily: AppFonts.family,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: dotColor,
-                    letterSpacing: 0.3,
-                  ),
-                ),
-                // Elapsed time — shown while recording or paused
-                if (state == RecState.recording || state == RecState.paused) ...[
-                  Container(
-                    width: 1,
-                    height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    color: dotColor.withValues(alpha: 0.35),
-                  ),
-                  Text(
-                    timeLabel,
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: dotColor,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ],
-                // Upload progress — always shown when not idle/error
-                if (state != RecState.starting &&
-                    state != RecState.done &&
-                    state != RecState.error) ...[
-                  Container(
-                    width: 1,
-                    height: 10,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    color: dotColor.withValues(alpha: 0.25),
-                  ),
-                  Text(
-                    '$chunkLabel $mbLabel',
-                    style: TextStyle(
-                      fontFamily: AppFonts.family,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: dotColor.withValues(alpha: 0.7),
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+    // Recording: this device's recorder (a course's teacher, a meeting creator who pressed Record) wins; then the
+    // creator's Record; then the server's recording (everyone, no controls — D-090 server mode included).
+    final rec = _recorder;
+    final st = _recordsHere ? rec?.state : null;
+    // The gate the bar's Pause / Resume had: a teacher follows the course's record switch (and the device recorder
+    // mode), anyone else only while this device records.
+    final controls = st != null &&
+        showsRecorderControls(
+          isTeacher: widget.isTeacher,
+          recordingEnabled: widget.recordingEnabled && widget.liveConfig.deviceRecorder,
+          recordsHere: _recordsHere,
         );
-      }
-    }
-
-    if (badges.isEmpty) return const SizedBox.shrink();
-    return Positioned(
-      top: 14,
-      right: 14,
-      // D-092: the self-view keeps clear of this column on the right (its height changes with the badges).
-      child: SelfViewSizeReporter(
-        onSize: (s) {
-          if (mounted && (s.height - _badgeColumnH).abs() > 1) setState(() => _badgeColumnH = s.height);
-        },
-        child: Column(
-          // The badges hug the physical right edge in Arabic too (end alone would follow the reading direction).
-          textDirection: TextDirection.ltr,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: badges
-              .map((w) => Padding(padding: const EdgeInsets.only(bottom: 6), child: w))
-              .toList(),
-        ),
-      ),
+    final meetingRec = _canRecordMeeting && _meetingRecording != null;
+    final phase = liveRecPhase(
+      state: st,
+      pending: meetingRec,
+      offer: _canRecordMeeting && _meetingRecording == null && !_endingSession,
+      server: _serverRecording,
     );
+    final detail = rec != null && st != null && st != RecState.idle
+        ? trp('lr_chunk_mb', {'n': '${rec.uploadedChunks}', 'mb': (rec.totalBytes / (1024 * 1024)).toStringAsFixed(1)})
+        : null;
+
+    final limit = _timeLimit;
+    return LiveTopRow(
+      onInfo: _endingSession ? null : _openInfo,
+      liveFor: _sessionClockTimer == null ? null : (meetingLiveFor(widget.liveStartedAt, now.toUtc(), own: own) ?? own),
+      limit: limit != null && limit.showPill(now)
+          ? LiveTopLimit(
+              remaining: limit.remaining(now),
+              tone: limit.tone(now),
+              showUpgrade: limit.showUpgrade(now),
+              busy: _planBusy,
+              onUpgrade: _upgradePlan,
+            )
+          : null,
+      netLowered: _media.lowered && !_media.audioOnly,
+      netRecovering: _media.tier == LiveVideoTier.medium,
+      // Room locked (hosts; live.room_lock) — the participants panel holds the switch.
+      locked: _controls?.locked == true && !AppConfig.disableList.contains(kLiveRoomLockFeatureKey),
+      onLocked: _showParticipants ? null : _toggleParticipantPanel,
+      recording: LiveTopRecording(
+        phase: phase,
+        elapsed: Duration(seconds: _recElapsedSeconds),
+        detail: detail,
+        busy: _meetingRecordBusy || _isPausingRecording || _isResumingRecording,
+        onRecord: _recordMeeting,
+        onPause: controls && st == RecState.recording && !_isPausingRecording && !_endingSession
+            ? () => unawaited(_pauseRecording())
+            : null,
+        onResume: controls && st == RecState.paused && !_isResumingRecording && !_endingSession
+            ? () => unawaited(_resumeRecording())
+            : null,
+        onStop: meetingRec && !_endingSession && !_meetingRecordBusy ? () => unawaited(_stopMeetingRecording()) : null,
+      ),
+      onFocus: _canFocus && !_endingSession ? () => _setFocus(true) : null,
+      onMinimize: scope == null || _endingSession ? null : scope.minimize,
+      pulse: _recDotOpacity,
+    );
+  }
+
+  // ── Full view (D-095) ─────────────────────────────────────────────────────
+  // The top row, the bottom bar and the thumbnail strip step aside so what fills the stage (a shared screen, the
+  // whiteboard, a camera) uses the whole screen. The way back: the floating exit button (where the participant
+  // count sits), a tap on the stage, Esc, the back button. The annotation / board toolbars live on the stage and
+  // stay; so does the self-view box.
+  bool _focus = false;
+
+  /// Something fills the stage (not the waiting card, not a parked minimized page).
+  bool get _canFocus =>
+      !_videoParked &&
+      (_isScreenShareMain || _isBoardMain || _stageTracks.isNotEmpty || _selfSpot == SelfViewSpot.stage);
+
+  /// Full view is on — and drops by itself when the stage goes back to the waiting card.
+  bool get _focusOn => _focus && _canFocus;
+
+  void _setFocus(bool on) {
+    if (on == _focus || !mounted) return;
+    setState(() => _focus = on);
+    if (!on) _pokeControls();
   }
 
   // ── Controls bar ──────────────────────────────────────────────────────────
@@ -3716,14 +3604,7 @@ class _RoomPageState extends State<RoomPage>
         // One share at a time: Share / Stop / Ask to share / Waiting… — the tap goes through _onShareTap.
         shareButton: _shareButtonMode,
         onLobby: _lobby == null ? null : _openLobby,
-        // [meeting-recording] the creator's labelled red Record / Stop in the primary group (spec §11)
-        onMeetingRecord: _canRecordMeeting && !_endingSession
-            ? (_meetingRecording == null ? _recordMeeting : _stopMeetingRecording)
-            : null,
-        meetingRecording: _meetingRecording != null,
-        meetingRecordBusy: _meetingRecordBusy,
-        // In server mode (D-090) the device does not record: no device recorder controls.
-        recordingEnabled: widget.recordingEnabled && widget.liveConfig.deviceRecorder,
+        // Recording (Record / Pause / Resume / Stop) is in the top row, not on the bar (D-095).
         onInteraction: _pokeControls,
         // End session goes through our recorder-aware wrapper
         onEndSession: _endSessionWithRecording,
@@ -3735,24 +3616,6 @@ class _RoomPageState extends State<RoomPage>
         allowCamera: _allowed.camera,
         allowShare: _allowed.share,
         onToggleScreenShare: _onShareTap,
-        // ── NEW: pause / resume ──────────────────────────────────
-        // Null when the action is not available (wrong state, or
-        // a transition is already in flight) — ControlsWidget
-        // disables the button automatically when the callback is null.
-        onPauseRecording: (_recordsHere && // [meeting-recording]
-            _recorder?.state == RecState.recording &&
-            !_isPausingRecording &&
-            !_endingSession)
-            ? _pauseRecording
-            : null,
-        onResumeRecording: (_recordsHere &&
-            _recorder?.state == RecState.paused &&
-            !_isResumingRecording &&
-            !_endingSession)
-            ? _resumeRecording
-            : null,
-        recorderState: _recordsHere ? _recorder?.state : null,
-        recordsHere: _recordsHere, // [meeting-recording] a creator's bar gets Pause / Resume while recording
         onToggleReactions: _reactions.togglePicker,
         reactionsOpen: _reactions.pickerOpen,
         // Hands: students and guests raise; the teacher gets the queue chip.
@@ -5402,195 +5265,6 @@ class _RoomPageState extends State<RoomPage>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _RecBadge — compact glass pill used in the recording indicator
-// ─────────────────────────────────────────────────────────────────────────────
-// ── [meeting-recording] Record / Stop chip (top-right, with the badges) ──────
-/// Top-right chip: shrink the room to the floating box (LiveRoomLayer) and keep using the app.
-class _MinimizeChip extends StatelessWidget {
-  const _MinimizeChip({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: const ValueKey('live_room.minimize'),
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: _surfaceHi.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: _textMid.withValues(alpha: 0.5)),
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.close_fullscreen_rounded, size: 14, color: _textHigh),
-            const SizedBox(width: 6),
-            Text(
-              t('تصغير', 'Minimize'),
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 11, fontWeight: FontWeight.w800, color: _textHigh),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-/// Top-right (i) chip: the room's info sheet (MeetingInfoSheet).
-class _InfoChip extends StatelessWidget {
-  const _InfoChip({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: t('عن الغرفة', 'About this room'),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          key: const ValueKey('live_room.info'),
-          borderRadius: BorderRadius.circular(999),
-          onTap: onTap,
-          child: Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: _surfaceHi.withValues(alpha: 0.9),
-              shape: BoxShape.circle,
-              border: Border.all(color: _textMid.withValues(alpha: 0.5)),
-            ),
-            child: const Icon(Icons.info_outline_rounded, size: 17, color: _textHigh),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The meeting creator's Record / Stop at the top (spec §11: larger, a pulsing red dot while recording).
-class _MeetingRecordChip extends StatelessWidget {
-  const _MeetingRecordChip({required this.recording, required this.busy, required this.onTap, this.pulse = 1});
-
-  final bool recording;
-  final bool busy;
-  final VoidCallback onTap;
-
-  /// 0.25–1, the room's REC blink; only used while recording.
-  final double pulse;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = recording ? _recRed : _cyan;
-    final label = recording ? t('إيقاف التسجيل', 'Stop recording') : t('تسجيل', 'Record');
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: const ValueKey('live_room.meeting_record_chip'),
-        borderRadius: BorderRadius.circular(999),
-        onTap: busy ? null : onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: recording ? Color.alphaBlend(_recRed.withValues(alpha: 0.18), _surfaceHi) : _surfaceHi.withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: color.withValues(alpha: recording ? 0.4 + 0.5 * pulse : 0.7), width: 1.4),
-            boxShadow: recording ? [BoxShadow(color: _recRed.withValues(alpha: 0.30 * pulse), blurRadius: 14)] : const [],
-          ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            if (busy)
-              SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-            else if (recording)
-              Container(
-                width: 12,
-                height: 12,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _recRed.withValues(alpha: 0.35 + 0.65 * pulse),
-                  boxShadow: [BoxShadow(color: _recRed.withValues(alpha: 0.6 * pulse), blurRadius: 8)],
-                ),
-              )
-            else
-              Icon(Icons.fiber_manual_record_rounded, size: 18, color: color),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(fontFamily: AppFonts.family, fontSize: 13, fontWeight: FontWeight.w800, color: recording ? _textHigh : color),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-}
-
-class _RecBadge extends StatelessWidget {
-  const _RecBadge({
-    required this.dotColor,
-    required this.dotOpacity,
-    required this.pulsing,
-    required this.children,
-    this.icon,
-  });
-
-  final Color        dotColor;
-  final double       dotOpacity;   // 0..1, driven by _recDotOpacity animation
-  final bool         pulsing;
-  final List<Widget> children;
-  // When set, shown instead of the dot — for badges that aren't a
-  // recording/live status indicator (e.g. the total session-time badge).
-  final IconData?    icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: LivePalette.shade(0.58),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: dotColor.withValues(
-            alpha: pulsing ? (0.28 + 0.38 * dotOpacity) : 0.40,
-          ),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: dotColor.withValues(alpha: pulsing ? 0.12 * dotOpacity : 0.08),
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null)
-            Icon(icon, size: 11, color: dotColor.withValues(alpha: 0.9))
-          else
-          // Pulsing / static dot
-            Container(
-              width: 7,
-              height: 7,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: dotColor.withValues(
-                  alpha: pulsing ? (0.38 + 0.62 * dotOpacity) : 0.9,
-                ),
-              ),
-            ),
-          const SizedBox(width: 6),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Extension helper
 // ─────────────────────────────────────────────────────────────────────────────
 extension _WidgetEx on Widget {
@@ -6522,6 +6196,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
     this.sessionTitle,
     this.enrolledStudents = const [],
     this.showLogo = false,
+    this.live = true,
   });
 
   final String teacherName;
@@ -6549,6 +6224,9 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
   // (p.identity == s.id.toString() || p.name == s.name).
   final List<EnrolledStudent> enrolledStudents;
   final bool showLogo;
+
+  /// The card's own pulsing "live" chip (the room's top row shows LIVE + the time instead, D-095).
+  final bool live;
 
 
   /// Matches a live LiveKit participant against the enrolled-students list
@@ -6650,6 +6328,7 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
       sessionTitle: sessionTitle,
       platformName: AppIdentity.instance.name,
       showLogo: showLogo,
+      live: live,
       onTapHost: () => _showParticipantProfileDialog(context, me),
       onTapOther: (i) => _showParticipantProfileDialog(context, tiles[i + 1]),
       onTapOverflow: () => _showAllParticipantsDialog(context, tiles),
