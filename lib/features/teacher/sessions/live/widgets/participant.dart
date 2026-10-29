@@ -24,6 +24,7 @@ import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:livekit_client/livekit_client.dart';
 
 import 'live_palette.dart';
+import 'live_video_view.dart';
 import 'no_video.dart';
 import 'participant_info.dart';
 import 'participant_stats.dart';
@@ -346,12 +347,9 @@ abstract class _ParticipantWidgetState<T extends ParticipantWidget>
       encrypted: p.isEncrypted,
       overlay: overlay(isScreenShare),
       stats: widget.showStatsLayer ? ParticipantStatsWidget(participant: p) : null,
-      child: camOn && widget.renderVideo
-          ? VideoTrackRenderer(
-              renderMode: VideoRenderMode.auto,
-              video,
-            )
-          : null,
+      // D-092: LiveVideoView — this tile rebuilds on every participant change (speaking, audio level); the
+      // renderer no longer re-attaches each time, and a local tile's tap reaches the room.
+      child: camOn && widget.renderVideo ? LiveVideoView(video, fit: VideoViewFit.contain) : null,
     );
   }
 }

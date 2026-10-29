@@ -108,3 +108,22 @@ the vectors); Egress puts it on the stage. Web (canvas captureStream) and Androi
 **CPU.** The aurora behind the stage runs only while the waiting card is shown and is its own repaint layer (it
 repainted the whole room 60 times a second behind every video). The whiteboard / annotation painters were checked:
 their tickers run only while a laser dot fades, `shouldRepaint` compares item lists by identity.
+
+## Self-view and the stage tap (D-092, 2026-10-29)
+- Draw a video ONLY through `LiveVideoView` (`widgets/live_video_view.dart`): livekit_client 2.13.1's VideoTrackRenderer
+  (a) wraps a LOCAL track on phones in its own tap / scale detector, which wins every tap (the stage's "show the bar"
+  never fired over my own camera or share; on a share each tap threw `setFocusMode … Video capturer not compatible`),
+  (b) re-attaches the renderer on every build (`FutureBuilder(future: _initializeRenderer())`). LiveVideoView = an
+  IgnorePointer + one renderer instance per track / fit / mirror + a RepaintBoundary. Focus-on-tap: `LiveCameraFocus`
+  (local camera, Android / iOS, off after the first failure).
+- The room must not rebuild once a second: the clocks tick `_clockTick` (badge column + iOS banner listen). Room
+  rebuilds come from the throttled sort (≤ 2/s), the governor's tier changes, the recorder and the user.
+- Android placeholder screenshots run only while the device recorder records frames (`_maybeSyncLiveScreenCapture`).
+- Self-view rules: `lib/features/shared/live/live_self_view.dart` (spot, size, keep-out, snap, prefs, the bar's
+  show / hide); widgets: `widgets/self_view_pip.dart`; room wiring: the "Self-view (D-092)" block of room.dart
+  (`_selfSpot`, `_selfKeepOut`, `_buildSelfView`, `_openSelfViewOptions`). Prefs: SharedPreferences
+  `live.self_view.v1`. Tests `test/org/live_self_view_test.dart`, `test/ui/live_self_view_layout_test.dart` (incl. the
+  tap-arena and rebuild-count checks), renders `test/visual/live_self_view_golden_test.dart`.
+- Not done on purpose: background blur / removal (no efficient path in livekit 2.13.1 / the fork without an ML
+  dependency in the encoder path), a camera bubble over other apps during an Android whole-screen share (it would be
+  broadcast inside the share).

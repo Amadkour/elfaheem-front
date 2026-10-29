@@ -20,6 +20,8 @@ import 'prejoin_mic_meter_stub.dart'
 import 'room.dart';
 import 'widgets/live_room_rules.dart' show liveConnectRetryDelay;
 import 'widgets/share_presets.dart' show SharePreset;
+import 'widgets/live_video_view.dart';
+import 'package:flutter_education_app/features/shared/live/live_self_view.dart';
 import 'package:flutter_education_app/features/shared/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/features/shared/live/live_room.dart';
 import 'package:flutter_education_app/features/shared/live/live_config.dart';
@@ -257,6 +259,9 @@ class _PreJoinPageState extends State<PreJoinPage> {
   void initState() {
     super.initState();
     AppAssistant.hide(); // full screen: no floating assistant bubble
+    // D-092: the preview takes the self-view's remembered shape.
+    SelfViewStore.instance.addListener(_onSelfViewPrefs);
+    unawaited(SelfViewStore.instance.load());
     if (!_canPublish) {
       // Listen-only guest: no tracks are ever created, no permission prompt.
       _enableAudio = false;
@@ -448,8 +453,13 @@ class _PreJoinPageState extends State<PreJoinPage> {
     }
   }
 
+  void _onSelfViewPrefs() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    SelfViewStore.instance.removeListener(_onSelfViewPrefs);
     unawaited(_subscription?.cancel());
     unawaited(_micLevelSub?.cancel());
     if (!_joined) {
@@ -756,14 +766,13 @@ class _PreJoinPageState extends State<PreJoinPage> {
         isGuest: args.guest,
         canPublish: args.canPublish,
         userName: args.userName,
+        // D-092: LiveVideoView (this page rebuilds on every mic-level sample; the renderer no longer re-attaches),
+        // in the self-view's remembered shape — the same box or circle as in the room.
         preview: _videoTrack != null && _enableVideo
-            ? VideoTrackRenderer(
-                _videoTrack!,
-                renderMode: VideoRenderMode.texture,
-                fit: VideoViewFit.cover,
-                mirrorMode: VideoViewMirrorMode.mirror,
-              )
+            ? LiveVideoView(_videoTrack!, fit: VideoViewFit.cover, mirror: VideoViewMirrorMode.mirror)
             : null,
+        previewShape: SelfViewStore.instance.value.shape,
+        onPreviewShape: (s) => unawaited(SelfViewStore.instance.update(SelfViewStore.instance.value.copyWith(shape: s))),
         micOn: _enableAudio,
         camOn: _enableVideo,
         micLevel: _enableAudio && _audioTrack != null ? _micLevel : null,

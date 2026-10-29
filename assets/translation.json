@@ -17852,5 +17852,81 @@
   "about_ask_assistant_sub": {
     "en": "Answers about the app, any time",
     "ar": "إجابات عن التطبيق في أي وقت"
+  },
+  "lr_self_view": {
+    "en": "Self view",
+    "ar": "العرض الذاتي"
+  },
+  "lr_self_view_you": {
+    "en": "You",
+    "ar": "أنت"
+  },
+  "lr_self_view_options": {
+    "en": "Self view options",
+    "ar": "خيارات العرض الذاتي"
+  },
+  "lr_self_view_drag_hint": {
+    "en": "Drag it anywhere — it snaps to the nearest edge. Only you see this view; the others see your camera as it is.",
+    "ar": "اسحبه إلى أي مكان وسيلتصق بأقرب حافة. هذا العرض لك وحدك، ويرى الآخرون كاميرتك كما هي."
+  },
+  "lr_self_view_shape": {
+    "en": "Shape",
+    "ar": "الشكل"
+  },
+  "lr_self_view_box": {
+    "en": "Box",
+    "ar": "مستطيل"
+  },
+  "lr_self_view_circle": {
+    "en": "Circle",
+    "ar": "دائرة"
+  },
+  "lr_self_view_circle_tip": {
+    "en": "The circle shows mostly your face, with less of the room behind you.",
+    "ar": "تُظهر الدائرة وجهك غالبًا، وقليلًا من المكان خلفك."
+  },
+  "lr_self_view_size": {
+    "en": "Size",
+    "ar": "الحجم"
+  },
+  "lr_self_view_small": {
+    "en": "Small",
+    "ar": "صغير"
+  },
+  "lr_self_view_medium": {
+    "en": "Medium",
+    "ar": "متوسط"
+  },
+  "lr_self_view_alone_stage": {
+    "en": "Fill the screen while I'm alone",
+    "ar": "املأ الشاشة عندما أكون وحدي"
+  },
+  "lr_self_view_alone_stage_sub": {
+    "en": "Until someone else's video or a share is on the stage",
+    "ar": "حتى يظهر فيديو شخص آخر أو مشاركة على الشاشة"
+  },
+  "lr_self_view_to_stage": {
+    "en": "Show me on the big screen",
+    "ar": "اعرضني على الشاشة الكبيرة"
+  },
+  "lr_self_view_to_box": {
+    "en": "Show me in a small box",
+    "ar": "اعرضني في نافذة صغيرة"
+  },
+  "lr_self_view_hide": {
+    "en": "Hide self view",
+    "ar": "إخفاء العرض الذاتي"
+  },
+  "lr_self_view_hide_sub": {
+    "en": "Your camera stays on for everyone else",
+    "ar": "تبقى كاميرتك ظاهرة للآخرين"
+  },
+  "lr_self_view_show": {
+    "en": "Show self view",
+    "ar": "إظهار العرض الذاتي"
+  },
+  "lr_self_view_shape_toggle": {
+    "en": "Preview shape",
+    "ar": "شكل المعاينة"
   }
 }
