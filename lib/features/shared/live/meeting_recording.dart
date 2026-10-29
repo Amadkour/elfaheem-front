@@ -3,12 +3,13 @@
 // settings a quality means, and the API. Screens are in meeting_recording_sheets.dart; the recorder itself is
 // lib/features/teacher/sessions/live/widgets/room_recorder.dart (ClientRecorder, `chunkPath` / `quality`).
 //
-//   GET    /api/v1/me/cloud                              → [CloudAccount] per provider (available · connected)
+//   GET    /api/v1/me/cloud                              → [CloudAccount] per provider (configured · connected)
 //   POST   /api/v1/me/cloud/{provider}/connect           → auth_url (opened in the browser, then GET /me/cloud is
-//                                                           polled until `connected`)
+//                                                           polled until `connected`); 503 cloud_provider_unconfigured
+//                                                           when the server lacks the provider's client id / secret
 //   DELETE /api/v1/me/cloud/{provider}
 //   POST   /api/v1/live/{kind}/{id}/recordings           {quality, destination} → [RecordingStart] (201)
-//          409 cloud_not_connected · course_session_recording · recording_active
+//          409 cloud_not_connected · course_session_recording · recording_active · 503 cloud_provider_unconfigured
 //   POST   /api/v1/live/recordings/{rid}/chunk           multipart (the recorder; `chunk_path` of the start answer)
 //   POST   /api/v1/live/recordings/{rid}/stop            is_final without a chunk
 //   GET    /api/v1/live/recordings/{rid}                 → [MeetingRecording]
@@ -51,7 +52,7 @@ enum CloudProvider {
 class CloudAccount {
   const CloudAccount({
     required this.provider,
-    this.available = false,
+    this.configured = false,
     this.connected = false,
     this.email,
     this.connectedAt,
@@ -59,14 +60,18 @@ class CloudAccount {
 
   final CloudProvider provider;
 
-  /// False until the server has that provider's client id / secret.
-  final bool available;
+  /// False while the server lacks that provider's OAuth client id or secret: it cannot be connected (the server
+  /// answers 503 `cloud_provider_unconfigured`) and the tile says so instead of offering Connect.
+  final bool configured;
   final bool connected;
   final String? email;
   final DateTime? connectedAt;
 
+  /// The older name of [configured] (the server sends both keys).
+  bool get available => configured;
+
   /// The person can start a recording to this drive.
-  bool get usable => available && connected;
+  bool get usable => configured && connected;
 
   static CloudAccount? fromJson(Map<String, dynamic> j) {
     final p = CloudProvider.fromWire(j['provider']);
@@ -74,24 +79,57 @@ class CloudAccount {
     final email = '${j['email'] ?? ''}'.trim();
     return CloudAccount(
       provider: p,
-      available: j['available'] == true,
+      configured: cloudConfiguredFrom(j),
       connected: j['connected'] == true,
       email: email.isEmpty ? null : email,
       connectedAt: parseRecordingTime(j['connected_at']),
     );
   }
 
-  CloudAccount copyWith({bool? available, bool? connected, String? email}) => CloudAccount(
+  CloudAccount copyWith({bool? configured, bool? connected, String? email}) => CloudAccount(
         provider: provider,
-        available: available ?? this.available,
+        configured: configured ?? this.configured,
         connected: connected ?? this.connected,
         email: email ?? this.email,
         connectedAt: connectedAt,
       );
 }
 
+/// `configured` of one provider entry; a server that predates it sends `available` (same meaning), and an entry
+/// with neither key is taken as configured (the server's connect answer has the last word).
+bool cloudConfiguredFrom(Map<String, dynamic> j) {
+  if (j.containsKey('configured') && j['configured'] != null) return j['configured'] == true;
+  if (j.containsKey('available') && j['available'] != null) return j['available'] == true;
+  return true;
+}
+
+/// The friendly line for a provider the server has not set up (tile, banner and the 503 notice).
+String cloudUnconfiguredText(CloudProvider? p) => p == null
+    ? t('ربط هذه السحابة غير متاح على هذا الخادم بعد. اطلب من مسؤول المنصة إعداده.',
+        "This drive isn't set up on this server yet. Ask the platform admin to set it up.")
+    : t('ربط ${p.label} غير متاح على هذا الخادم بعد. اطلب من مسؤول المنصة إعداده.',
+        "${p.label} isn't set up on this server yet. Ask the platform admin to set it up.");
+
+/// The connect / start refusal that means "this provider is not set up on the server": 503
+/// `cloud_provider_unconfigured`, or the 409 `cloud_provider_unavailable` an older server sent.
+bool isCloudUnconfigured(Object e) {
+  final code = ApiException.from(e).code;
+  return code == 'cloud_provider_unconfigured' || code == 'cloud_provider_unavailable';
+}
+
+/// [list] with [p] marked not set up on the server (the connect call said 503 `cloud_provider_unconfigured`).
+List<CloudAccount>? markCloudUnconfigured(List<CloudAccount>? list, CloudProvider p) =>
+    list == null ? null : [for (final a in list) a.provider == p ? a.copyWith(configured: false) : a];
+
+/// The provider a coded refusal names (`detail.provider`), or null.
+CloudProvider? cloudProviderOfError(Object e) {
+  final body = ApiException.from(e).body;
+  final detail = body is Map ? body['detail'] : null;
+  return detail is Map ? CloudProvider.fromWire(detail['provider']) : null;
+}
+
 /// Parses GET /me/cloud. Every provider the app knows is listed, in the enum's order; one the server did not
-/// mention is `available: false`, so an older server shows both as "not available" rather than nothing.
+/// mention is `configured: false`, so an older server shows both as "not set up" rather than nothing.
 List<CloudAccount> cloudAccountsFrom(dynamic json) {
   final byProvider = <CloudProvider, CloudAccount>{};
   for (final j in asMapList(asMap(json)['providers'])) {
@@ -337,7 +375,10 @@ const meetingRecordingCodes = <String, (String, String)>{
   'course_session_recording': ('جلسات الدورات تُسجَّل بطريقتها الخاصة، وليس إلى السحابة',
       'Course sessions record their own way, not to a drive'),
   'recording_active': ('هناك تسجيل جارٍ لهذا الاجتماع بالفعل', 'A recording of this meeting is already running'),
-  'cloud_provider_unavailable': ('هذه الخدمة غير مهيأة على الخادم بعد', 'This drive is not set up on the server yet'),
+  'cloud_provider_unavailable': ('ربط هذه السحابة غير متاح على هذا الخادم بعد. اطلب من مسؤول المنصة إعداده.',
+      "This drive isn't set up on this server yet. Ask the platform admin to set it up."),
+  'cloud_provider_unconfigured': ('ربط هذه السحابة غير متاح على هذا الخادم بعد. اطلب من مسؤول المنصة إعداده.',
+      "This drive isn't set up on this server yet. Ask the platform admin to set it up."),
   'cloud_auth_failed': ('تعذّر ربط الحساب، حاول مرة أخرى', 'Connecting the account failed, try again'),
   'recording_not_found': ('التسجيل غير موجود', 'Recording not found'),
   'not_host': ('المنظّم فقط يستطيع تسجيل الاجتماع', 'Only the organizer can record the meeting'),
@@ -346,6 +387,7 @@ const meetingRecordingCodes = <String, (String, String)>{
 
 String meetingRecordingErrorText(Object e) {
   final ex = ApiException.from(e);
+  if (isCloudUnconfigured(ex)) return cloudUnconfiguredText(cloudProviderOfError(ex));
   final pair = meetingRecordingCodes[ex.code ?? ''];
   if (pair != null) return t(pair.$1, pair.$2);
   if (ex.statusCode == 404 || ex.statusCode == 405) {

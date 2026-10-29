@@ -43,6 +43,34 @@ void main() {
       expect(cloudAccountsFrom('x').length, 2);
     });
 
+    test('configured: the new key wins, an older server\'s available is the fallback, neither means configured', () {
+      final list = cloudAccountsFrom({
+        'providers': [
+          {'provider': 'google_drive', 'configured': false, 'available': true, 'connected': true},
+          {'provider': 'onedrive', 'available': false},
+        ],
+      });
+      expect(list[0].configured, isFalse);
+      expect(list[0].available, isFalse, reason: 'available is the older name of configured');
+      expect(list[0].usable, isFalse, reason: 'a connected drive of an unconfigured provider cannot record');
+      expect(list[1].configured, isFalse);
+      expect(cloudConfiguredFrom({'provider': 'onedrive', 'configured': true, 'available': false}), isTrue);
+      expect(cloudConfiguredFrom({'provider': 'onedrive', 'available': true}), isTrue);
+      expect(cloudConfiguredFrom({'provider': 'onedrive', 'connected': true}), isTrue);
+      expect(cloudConfiguredFrom({'provider': 'onedrive', 'configured': null, 'available': false}), isFalse);
+    });
+
+    test('markCloudUnconfigured greys one provider and keeps the rest', () {
+      const g = CloudAccount(provider: CloudProvider.googleDrive, configured: true, connected: true, email: 'a@b.c');
+      const o = CloudAccount(provider: CloudProvider.onedrive, configured: true);
+      final out = markCloudUnconfigured(const [g, o], CloudProvider.googleDrive)!;
+      expect(out[0].configured, isFalse);
+      expect(out[0].connected, isTrue);
+      expect(out[0].email, 'a@b.c');
+      expect(out[1].configured, isTrue);
+      expect(markCloudUnconfigured(null, CloudProvider.onedrive), isNull);
+    });
+
     test('wire values and labels', () {
       expect(CloudProvider.googleDrive.wire, 'google_drive');
       expect(CloudProvider.onedrive.wire, 'onedrive');
@@ -189,7 +217,8 @@ void main() {
         ApiException(statusCode: status, message: 'raw', type: ApiErrorType.conflict, code: code);
 
     test('the three 409 codes of the spec and the cloud ones have bilingual text', () {
-      for (final code in ['cloud_not_connected', 'course_session_recording', 'recording_active', 'cloud_auth_failed']) {
+      for (final code in ['cloud_not_connected', 'course_session_recording', 'recording_active', 'cloud_auth_failed',
+        'cloud_provider_unconfigured', 'cloud_provider_unavailable']) {
         AppConfig.lang = 'ar';
         final ar = meetingRecordingErrorText(coded(code));
         AppConfig.lang = 'en';
@@ -198,6 +227,26 @@ void main() {
         expect(ar, isNot(en), reason: code);
       }
       expect(meetingRecordingErrorText(coded('cloud_not_connected')), contains('Connected drives'));
+    });
+
+    test('503 cloud_provider_unconfigured (and an older 409 cloud_provider_unavailable) name the provider', () {
+      const body = {
+        'detail': {'code': 'cloud_provider_unconfigured', 'message': 'raw', 'provider': 'google_drive'},
+      };
+      const e503 = ApiException(statusCode: 503, message: 'raw', type: ApiErrorType.server, code: 'cloud_provider_unconfigured', body: body);
+      expect(isCloudUnconfigured(e503), isTrue);
+      expect(cloudProviderOfError(e503), CloudProvider.googleDrive);
+      expect(meetingRecordingErrorText(e503), "Google Drive isn't set up on this server yet. Ask the platform admin to set it up.");
+      AppConfig.lang = 'ar';
+      expect(meetingRecordingErrorText(e503), 'ربط Google Drive غير متاح على هذا الخادم بعد. اطلب من مسؤول المنصة إعداده.');
+      AppConfig.lang = 'en';
+      final old = coded('cloud_provider_unavailable');
+      expect(isCloudUnconfigured(old), isTrue);
+      expect(cloudProviderOfError(old), isNull);
+      expect(meetingRecordingErrorText(old), contains('Ask the platform admin'));
+      expect(cloudUnconfiguredText(CloudProvider.onedrive), startsWith('OneDrive'));
+      expect(isCloudUnconfigured(coded('cloud_not_connected')), isFalse);
+      expect(isCloudUnconfigured(Exception('x')), isFalse);
     });
 
     test('a bare 404 / 405 means the server lacks the routes; other errors keep their message', () {

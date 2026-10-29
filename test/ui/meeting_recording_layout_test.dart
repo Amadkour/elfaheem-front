@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppPrimaryButton;
+import 'package:flutter_education_app/design/app_notice.dart' show appNoticeTopOverlay;
 import 'package:flutter_education_app/features/shared/live/meeting_recording.dart';
 import 'package:flutter_education_app/features/shared/live/meeting_recording_sheets.dart';
 import 'package:flutter_education_app/utils/widget/view_as_state.dart';
@@ -13,9 +14,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'layout_harness.dart';
 
-const _google = CloudAccount(provider: CloudProvider.googleDrive, available: true, connected: true, email: 'me@gmail.com');
-const _oneOff = CloudAccount(provider: CloudProvider.onedrive, available: true, connected: false);
+const _google = CloudAccount(provider: CloudProvider.googleDrive, configured: true, connected: true, email: 'me@gmail.com');
+const _googleOff = CloudAccount(provider: CloudProvider.googleDrive, configured: true, connected: false);
+const _googleUnset = CloudAccount(provider: CloudProvider.googleDrive);
+const _oneOff = CloudAccount(provider: CloudProvider.onedrive, configured: true, connected: false);
 const _none = CloudAccount(provider: CloudProvider.onedrive);
+
+const _unsetText = "Google Drive isn't set up on this server yet. Ask the platform admin to set it up.";
 
 MeetingRecording _rec(String status, {String? url, String? error}) => MeetingRecording(
       id: 5,
@@ -38,6 +43,7 @@ class _Api implements MeetingRecordingApi {
   RecordingQuality? startedWith;
   CloudProvider? startedTo;
   Object? startError;
+  Object? connectError;
 
   @override
   Future<List<CloudAccount>> cloud() async {
@@ -48,6 +54,8 @@ class _Api implements MeetingRecordingApi {
   @override
   Future<String> connect(CloudProvider p) async {
     calls.add('connect ${p.wire}');
+    final e = connectError;
+    if (e != null) throw e;
     return '';
   }
 
@@ -132,6 +140,20 @@ void main() {
       await expectNoLayoutErrors(t, () => CloudDrivesLayout(accounts: const [_none, _none], error: 'Network down', onRetry: () {}, connecting: CloudProvider.onedrive));
     });
 
+    testWidgets('a provider the server has not set up: greyed with the admin line, no Connect', (t) async {
+      await expectNoLayoutErrors(t, () => SingleChildScrollView(child: Column(children: [
+            RecordSetupLayout(accounts: const [_googleUnset, _oneOff], quality: RecordingQuality.p720, onPick: (_) {}, onConnect: (_) {}),
+            const RecordSetupLayout(accounts: [_googleUnset, _none], quality: RecordingQuality.p720),
+          ])));
+      await expectNoLayoutErrors(t, () => CloudDrivesLayout(accounts: const [_googleUnset, _oneOff], onConnect: (_) {}, onDisconnect: (_) {}));
+      await expectNoLayoutErrors(t, () => const CloudDrivesLayout(accounts: [_googleUnset, _none]));
+
+      await t.pumpWidget(layoutHost(CloudDrivesLayout(accounts: const [_googleUnset, _oneOff], onConnect: (_) {}), scale: 1));
+      expect(find.text(_unsetText), findsOneWidget);
+      expect(find.text('Connect'), findsOneWidget, reason: 'only OneDrive offers Connect');
+      await t.pumpWidget(const SizedBox());
+    });
+
     testWidgets('settings group', (t) async {
       await expectNoLayoutErrors(t, () => SingleChildScrollView(child: CloudDrivesGroup(onTap: () {})));
     });
@@ -193,6 +215,58 @@ void main() {
       expect(find.text('Connecting the account failed, try again'), findsOneWidget);
       await t.pump(const Duration(seconds: 7));
       expect(api.calls.where((c) => c == 'cloud'), isEmpty, reason: 'no poll without an open auth page');
+      await t.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('unconfigured provider', () {
+    Future<void> notices(WidgetTester t) async {
+      // the notice goes to the root Navigator's overlay in the app; here: the test app's own
+      appNoticeTopOverlay = () => t.state<NavigatorState>(find.byType(Navigator).first).overlay;
+      addTearDown(() => appNoticeTopOverlay = null);
+    }
+
+    const unconfigured = ApiException(
+      statusCode: 503,
+      message: 'x',
+      type: ApiErrorType.server,
+      code: 'cloud_provider_unconfigured',
+      body: {
+        'detail': {'code': 'cloud_provider_unconfigured', 'message': 'x', 'provider': 'google_drive'},
+      },
+    );
+
+    testWidgets('setup sheet: a 503 on Connect is a notice, the tile greys out, nothing is opened or polled', (t) async {
+      final api = _Api([_googleOff, _oneOff])..connectError = unconfigured;
+      await t.pumpWidget(layoutHost(RecordSetupSheet(kind: 'meeting', id: 7, api: api, initialAccounts: api.accounts), scale: 1));
+      await notices(t);
+      await t.pumpAndSettle();
+      expect(find.text('Connect'), findsNWidgets(2));
+      await t.tap(find.text('Connect').first);
+      await t.pump();
+      expect(api.calls, ['connect google_drive']);
+      expect(find.text(_unsetText), findsNWidgets(2), reason: 'the notice + the greyed tile');
+      expect(find.text('Connect'), findsOneWidget, reason: 'Google Drive no longer offers Connect');
+      expect(find.byIcon(Icons.error_outline_rounded), findsNothing, reason: 'no error banner, the notice says it');
+      expect(find.text('Finish signing in in the browser — this sheet follows automatically.'), findsNothing);
+      await t.pump(const Duration(seconds: 7));
+      expect(api.calls.where((c) => c == 'cloud'), isEmpty, reason: 'no poll: no auth page was opened');
+      await t.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('connected drives page: the same 503 is a notice and greys the tile', (t) async {
+      final api = _Api([_googleOff, _oneOff])..connectError = unconfigured;
+      await t.pumpWidget(layoutHost(CloudDrivesPage(api: api), scale: 1, scaffold: false));
+      await notices(t);
+      await t.pump();
+      await t.pump();
+      expect(api.calls, ['cloud']);
+      await t.tap(find.text('Connect').first);
+      await t.pump();
+      expect(api.calls, ['cloud', 'connect google_drive']);
+      expect(find.text(_unsetText), findsNWidgets(2));
+      expect(find.text('Connect'), findsOneWidget);
+      await t.pump(const Duration(seconds: 7));
       await t.pumpWidget(const SizedBox());
     });
   });

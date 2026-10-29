@@ -153,6 +153,7 @@
  "live.share_link",
  "live.share_requests",
  "live.teacher_controls",
+ "live.whiteboard",
  "live_room.audio_output",
  "live_room.camera",
  "live_room.flip_camera",

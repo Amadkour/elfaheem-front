@@ -10,6 +10,9 @@
 //
 // Presentational widgets take plain values ([RecordSetupLayout], [RecordingStatusCard], [CloudDrivesLayout],
 // [CloudDestinationTile]) — test/ui/meeting_recording_layout_test.dart pumps them with the layout harness.
+// A provider the server has not set up (`configured: false`) is shown greyed with the "ask the platform admin" line
+// and no Connect; a connect that still meets 503 `cloud_provider_unconfigured` shows that line as a notice and never
+// opens a browser page (the consent page of an unconfigured client is the provider's own 400).
 // Strings use t(ar, en).
 import 'dart:async';
 
@@ -57,7 +60,7 @@ IconData cloudProviderIcon(CloudProvider p) => switch (p) {
 
 /// The second line of a provider tile.
 String cloudAccountSubtitle(CloudAccount a) {
-  if (!a.available) return t('غير متاح على هذا الخادم بعد', 'Not available on this server yet');
+  if (!a.configured) return cloudUnconfiguredText(a.provider);
   if (!a.connected) return t('غير مرتبط', 'Not connected');
   return a.email ?? t('مرتبط', 'Connected');
 }
@@ -91,13 +94,13 @@ class CloudDestinationTile extends StatelessWidget {
     final c = context.colors;
     final a = account;
     final usable = a.usable;
-    final tint = !a.available ? c.textLight : (a.connected ? c.success : c.primary);
+    final tint = !a.configured ? c.textLight : (a.connected ? c.success : c.primary);
     // A small glyph sits in the row; a pill (Connect / Disconnect) moves under the text on a narrow phone,
     // where it would otherwise squeeze the name out of the row.
     Widget? glyph, pill;
     if (connecting) {
       glyph = SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: c.primary));
-    } else if (a.available && !a.connected && onConnect != null) {
+    } else if (a.configured && !a.connected && onConnect != null) {
       pill = AppPill(icon: Icons.link_rounded, label: t('ربط', 'Connect'), onTap: onConnect);
     } else if (a.connected && onDisconnect != null) {
       pill = AppPill(icon: Icons.link_off_rounded, label: t('فصل', 'Disconnect'), color: c.danger, onTap: onDisconnect);
@@ -132,7 +135,11 @@ class CloudDestinationTile extends StatelessWidget {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
                     Text(a.provider.label, style: appText(14, w: FontWeight.w700, c: c.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
-                    Text(cloudAccountSubtitle(a), style: appText(12, c: c.textMedium), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(cloudAccountSubtitle(a),
+                        key: ValueKey('cloud.${a.provider.wire}.subtitle'),
+                        style: appText(12, c: c.textMedium, h: 1.4),
+                        maxLines: a.configured ? 2 : 3,
+                        overflow: TextOverflow.ellipsis),
                   ]),
                 ),
                 if (glyph != null) ...[const SizedBox(width: 8), glyph],
@@ -192,7 +199,7 @@ class RecordSetupLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final list = accounts;
-    final none = list != null && !list.any((a) => a.available);
+    final none = list != null && !list.any((a) => a.configured);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
@@ -336,6 +343,16 @@ class _RecordSetupSheetState extends State<RecordSetupSheet> {
       _poll = EventOrPoll(kind: 'cloud', id: p.wire, every: cloudConnectPoll, fallbackEvery: cloudConnectPollLive, poll: () => _tick(p))..start();
     } catch (e) {
       if (!mounted) return;
+      if (isCloudUnconfigured(e)) {
+        // older app state or a race (the keys were removed): say so, grey the tile, open nothing
+        appToast(cloudUnconfiguredText(cloudProviderOfError(e) ?? p), error: true);
+        setState(() {
+          _connecting = null;
+          _accounts = markCloudUnconfigured(_accounts, p);
+          if (_selected == p) _selected = null;
+        });
+        return;
+      }
       setState(() {
         _connecting = null;
         _error = meetingRecordingErrorText(e);
@@ -644,7 +661,7 @@ class CloudDrivesLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final none = !loading && accounts.isNotEmpty && !accounts.any((a) => a.available);
+    final none = !loading && accounts.isNotEmpty && !accounts.any((a) => a.configured);
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
       AppHero(
         title: t('السحابات المتصلة', 'Connected drives'),
@@ -765,6 +782,14 @@ class _CloudDrivesPageState extends State<CloudDrivesPage> {
       _poll = EventOrPoll(kind: 'cloud', id: p.wire, every: cloudConnectPoll, fallbackEvery: cloudConnectPollLive, poll: () => _tick(p))..start();
     } catch (e) {
       if (!mounted) return;
+      if (isCloudUnconfigured(e)) {
+        appToast(cloudUnconfiguredText(cloudProviderOfError(e) ?? p), error: true);
+        setState(() {
+          _connecting = null;
+          _accounts = markCloudUnconfigured(_accounts, p) ?? _accounts;
+        });
+        return;
+      }
       setState(() {
         _connecting = null;
         _error = meetingRecordingErrorText(e);
