@@ -847,3 +847,22 @@ viewer); showing the overlay over NextBrain itself (it took every touch in the a
 whole share regardless of who set it (a course video under the room would be broadcast); smoothing on the receiver
 only (the drawer's preview and the viewers would differ); Catmull-Rom through every sample (it passes through the
 jitter); per-axis One Euro (flattens curves where one axis slows down).
+
+## D-084 — The Analytics tabs compare with the class, not with a previous period · 2026-10-29
+
+**Decision.** The student's and the instructor's Analytics tabs are one summary page (`shared/analytics/
+analytics_summary.dart` pure, `analytics_summary_ui.dart` plain-value widgets): concentric rings for progress ·
+attendance · exams around the overall figure with ONE sentence, four count tiles, "For you" (up to three
+plain-language nudges, one of each kind before a second, each opening what it is about), one bar per course for the
+metric picked in a segmented control (the class average as a tick), and compact lists (exam results / students who
+need attention, the first 3 + "Show all" in place). The full course cards with search, sorting and every per-course
+shortcut moved one tap down ("All courses"), keeping their feature keys. The page reads only what the screens already
+load (enrolments + the Data Lab profile; the course list + `GET /data-lab/overview`): no new request. The owner's
+brief asked for a week / month / term switch and a trend line; neither payload carries a date (both are snapshots),
+so the deltas are "vs class" (the class averages the teacher shares) and the segmented control picks the METRIC.
+A real period switch needs a dated history from the server (e.g. a weekly snapshot of the profile); the same widgets
+then take it. Tests: `test/ui/analytics_summary_test.dart`, `analytics_summary_layout_test.dart`; renders:
+`test/visual/analytics_golden_test.dart`.
+**Rejected.** A period switch over undated numbers (it would change nothing); calling `GET /student/exams` from the
+tab for dated exam scores (one more request on every open, and only exams would follow the period); a percentile
+("ahead of 70 % of your class": the server sends class averages, not the distribution).
