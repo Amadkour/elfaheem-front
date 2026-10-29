@@ -6326,7 +6326,8 @@ class _PremiumWaitingPlaceholder extends StatelessWidget {
           ),
       ],
       sessionTitle: sessionTitle,
-      platformName: AppIdentity.instance.name,
+      // the room carries no brand mark (D-095): the name goes with the logo
+      platformName: showLogo ? AppIdentity.instance.name : '',
       showLogo: showLogo,
       live: live,
       onTapHost: () => _showParticipantProfileDialog(context, me),
