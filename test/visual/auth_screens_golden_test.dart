@@ -109,8 +109,16 @@ late MyAuthProvider _auth;
 late AboutTermsProvider _terms;
 late CategoriesProvider _categories;
 
+/// `VISUAL_THEME=production` paints with the production theme (test/visual/fixtures/theme_production.json) instead
+/// of the built-in palette; the files then end in `_prod`.
+final _prodTheme = Platform.environment['VISUAL_THEME'] == 'production';
+
 Widget _host(Widget child, {required bool dark}) {
   final theme = ThemeConfigProvider(api: ApiClient());
+  if (_prodTheme) {
+    theme.debugUseColors(
+        jsonDecode(File('test/visual/fixtures/theme_production.json').readAsStringSync()) as Map<String, dynamic>);
+  }
   final rtl = AppConfig.lang == 'ar';
   _profile.darkMode = dark;
   return MultiProvider(
@@ -179,7 +187,8 @@ Future<void> _renderAll(WidgetTester tester, String name, Widget Function() buil
           expect(e, isNull, reason: '$name ${size.width.toInt()} $lang ${dark ? 'dark' : 'light'}: $e');
           await expectLater(
             find.byKey(_shot),
-            matchesGoldenFile('goldens/auth_${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}.png'),
+            matchesGoldenFile(
+                'goldens/auth_${name}_${size.width.toInt()}_${lang}_${dark ? 'dark' : 'light'}${_prodTheme ? '_prod' : ''}.png'),
           );
         }
       }

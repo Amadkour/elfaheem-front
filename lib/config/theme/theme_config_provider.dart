@@ -81,6 +81,15 @@ class ThemeConfigProvider extends ChangeNotifier with WidgetsBindingObserver {
   ThemeConfigModel? _model;
   ThemeConfigModel? get model => _model;
 
+  /// Tests and visual renders: paint with [colors] (a theme response's `colors` map) instead of the built-in
+  /// palette, without a network call.
+  @visibleForTesting
+  void debugUseColors(Map<String, dynamic> colors) {
+    _model = ThemeConfigModel.fromJson(colors);
+    _isLoading = false;
+    notifyListeners();
+  }
+
   /// True from construction until the first [load] call resolves (either
   /// from the API or, on failure, from the SharedPreferences cache).
   /// The app should show a loading/splash screen while this is true.
