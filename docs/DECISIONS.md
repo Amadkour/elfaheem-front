@@ -847,3 +847,47 @@ viewer); showing the overlay over NextBrain itself (it took every touch in the a
 whole share regardless of who set it (a course video under the room would be broadcast); smoothing on the receiver
 only (the drawer's preview and the viewers would differ); Catmull-Rom through every sample (it passes through the
 jitter); per-axis One Euro (flattens curves where one axis slows down).
+
+## D-087 — Live whiteboard: a presented board of vector items on the data channel, never a video track · 2026-10-29 · proposed
+
+**Context.** The owner: "when share I need to add: can share background and whiteboard to draw on it and typing".
+**Decision.** The Share sheet gets two tabs, Screen | Whiteboard (every platform: Android and the web already had
+the sheet; iOS and desktop now ask Screen | Whiteboard before the system picker; a phone browser, which cannot share
+a screen, gets the Whiteboard tab only). The whiteboard is a 16:9 PAGE of vector items — pen / highlighter ink (the
+annotation ink of D-083: same filter, Bézier chain, pressure shape, cache), shapes (line, arrow, rectangle,
+ellipse; Shift = square / circle / 45°), text boxes (typed on the phone keyboard or a physical one; the box's
+direction follows its first strong letter, so Arabic runs right to left by itself; move, width handle, font size
+S / M / L / XL, colour), laser — on a background (white · blackboard · grid · lined), with several pages (add,
+previous / next, delete; the presenter's page is everyone's page), undo / redo per person (add, remove, change;
+a restored item keeps its id and author), clear page and Save as PNG (1920 px, the page without the selection
+frame). Protocol (`whiteboard/board_protocol.dart`): the annotation protocol's sibling on the board SURFACE's own
+topics, `board` (reliable: state on / off + background + pages, ink start / points / end, `put` = a whole shape or
+text box, last writer wins by revision, delete, clear page, snapshot chunks + request) and `board.laser` (lossy);
+page-normalised coordinates, widths and font sizes as fractions of the page width, every packet `v: 1`, unknown
+types / keys / item kinds ignored, an unknown background drawn as white, and `bv` (the board's feature version): a
+client that receives a newer one shows "update the app" over the board instead of half a board. Apps from before the
+board route neither topic (unknown topic = dropped, live_data_route.dart), so they never crash; they keep showing
+the presenter's camera. Rules (`whiteboard/board_controller.dart`, pure, unit-tested): one board presenter, who
+answers late joiners' snapshot requests (and re-sends the board after a reconnect); the presenter and hosts draw,
+edit and remove anything and clear a page; students draw only with the ROOM'S DRAWING PERMISSION (the annotation
+permission: everyone or chosen students, from the Board sheet or the participants panel) and edit / remove only their
+own items; every packet is checked against the LiveKit sender, never a payload field (a lead may restore an item
+with its original author). A board counts as presenting for the one-share rule (D-079's arbiter): its presenter is
+in the arbiter's presenters, so a host's takeover, a hand-over and the lead host's enforcement stop it like a screen
+share, "Ask to share" can end in a board, and a host stops a participant's board from the board's bar. Who may
+present: a host, or someone the server lets share their screen. The presenter's board is kept on their device when
+they stop (a switch to a screen share and back finds the pages again); viewers drop it. Each device can pinch /
+Ctrl+wheel to zoom its own view (never sent; a "150 %" chip fits the page again). Page and ink colours are content
+constants (they travel on the wire and must look the same in every theme, like a PDF's paper), not theme tokens.
+Kill switch `live.whiteboard` (back `services/feature_catalog.py`), features guide `live_whiteboard`.
+**Recording.** The device recorders capture the room UI, so they show the board as everyone sees it (Android's room
+capture at ~2 fps; the web recorder's placeholder still refreshes as the board changes, but a camera that is on wins
+over it in the web compositor). LiveKit composite Egress (server recording) records tracks: a board is not a track,
+so a server recording shows the cameras while a board is presented. If that matters: publish the page as a low-fps
+canvas track only while a server recording runs.
+**Rejected.** Publishing the board as a video track for everyone (blurry text, a second encoder on the presenter,
+the latency of the video path, and every viewer's zoom would magnify pixels); a separate whiteboard service or a CRDT
+library (one presenter owns the state; per-item last-writer-wins is enough); putting board items on the `annot` topic
+(an older app would draw them over a later screen share); a free-size infinite canvas (viewers on a phone and a
+projector must see the same page; zoom is per device instead); image / PDF page backgrounds (needs an upload route
+and a snapshot path for large binaries — later).

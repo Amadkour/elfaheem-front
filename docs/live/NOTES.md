@@ -16,6 +16,13 @@
   `widgets/room_recorder.dart` (commented-out legacy), `recorder_web_impl.dart` (JS compositor, MediaRecorder timeslice),
   `widgets/record/recorder_native_{android,ios,shared}.dart`, `live_control_bar.dart`, `live_reactions.dart`).
 - Shared live: `lib/features/shared/live/` (lobby, share link, meeting recording, `live_room_host.dart` minimize).
+- Whiteboard (D-087): `lib/features/teacher/sessions/live/whiteboard/` — `board_protocol.dart` (topics `board` /
+  `board.laser`), `board_controller.dart` (pure: presenter, pages, items, undo / redo, snapshots, permissions),
+  `board_painter.dart`, `board_stage.dart` (pointer, text editing, selection, per-device zoom, PNG),
+  `board_toolbar.dart` (dock, bar, Board sheet, background tiles), `board_view.dart` (the stage composition +
+  Board sheet); the "Whiteboard" region of `room.dart`; the Share sheet's Whiteboard tab in
+  `widgets/share_options_sheet.dart`. Tests `test/org/board_*_test.dart`, `test/ui/whiteboard_layout_test.dart`,
+  renders `test/visual/whiteboard_golden_test.dart`.
 - Native: Android `ScreenCaptureService.kt`, `MainActivity.kt`; iOS `AppDelegate.swift`, `LocalDebugRecorder.swift`,
   `ios/BroadcastUploadExtension`.
 

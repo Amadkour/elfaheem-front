@@ -78,7 +78,10 @@ class AnnotationPainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintStroke(Canvas canvas, AnnotStroke s, Rect rect) {
+  /// One stroke in the content rect [rect] (the whiteboard draws its ink with this too, D-087).
+  static void paintStroke(Canvas canvas, AnnotStroke s, Rect rect) => _paintStroke(canvas, s, rect);
+
+  static void _paintStroke(Canvas canvas, AnnotStroke s, Rect rect) {
     final pts = s.points;
     if (pts.isEmpty) return;
     final highlighter = s.ink == AnnotInk.highlighter;
@@ -127,7 +130,7 @@ class AnnotationPainter extends CustomPainter {
   }
 
   /// A constant-width stroke's centre line (cached until the stroke changes).
-  Path _strokedPath(AnnotStroke s, Rect rect) {
+  static Path _strokedPath(AnnotStroke s, Rect rect) {
     final hit = _cache[s];
     if (hit != null && hit.matches(s, rect) && hit.stroked != null) return hit.stroked!;
     final path = annotSmoothPath([for (final p in s.points) AnnotFit.toLocal(p.x, p.y, rect)]);
@@ -135,7 +138,7 @@ class AnnotationPainter extends CustomPainter {
     return path;
   }
 
-  _InkCache _inkFor(AnnotStroke s, Rect rect, double base) {
+  static _InkCache _inkFor(AnnotStroke s, Rect rect, double base) {
     final pts = s.points;
     final n = pts.length;
     var c = _cache[s];
